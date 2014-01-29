@@ -1,0 +1,72 @@
+package org.labkey.targetedms.view.expannotations;
+
+import org.labkey.api.data.ActionButton;
+import org.labkey.api.data.ButtonBar;
+import org.labkey.api.data.ContainerFilter;
+import org.labkey.api.data.DataRegion;
+import org.labkey.api.query.QuerySettings;
+import org.labkey.api.query.QueryView;
+import org.labkey.api.security.permissions.DeletePermission;
+import org.labkey.api.security.permissions.InsertPermission;
+import org.labkey.api.view.ActionURL;
+import org.labkey.api.view.DataView;
+import org.labkey.api.view.ViewContext;
+import org.labkey.targetedms.TargetedMSController;
+import org.labkey.targetedms.TargetedMSSchema;
+
+/**
+ * User: vsharma
+ * Date: 10/2/13
+ * Time: 11:39 AM
+ */
+public class TargetedMSExperimentsWebPart extends QueryView
+{
+    public static final String WEB_PART_NAME = "Targeted MS Experiments";
+
+    public TargetedMSExperimentsWebPart(ViewContext portalCtx)
+    {
+        super(new TargetedMSSchema(portalCtx.getUser(), portalCtx.getContainer()));
+
+        setTitle(WEB_PART_NAME);
+
+        setSettings(createQuerySettings(portalCtx, WEB_PART_NAME));
+
+        setShowDetailsColumn(false);
+        setButtonBarPosition(DataRegion.ButtonBarPosition.TOP);
+        setShowExportButtons(false);
+        setShowBorders(true);
+        setShadeAlternatingRows(true);
+
+        setAllowableContainerFilterTypes(ContainerFilter.Type.Current,
+                                         ContainerFilter.Type.CurrentAndSubfolders);
+
+        setFrame(FrameType.PORTAL);
+    }
+
+    private QuerySettings createQuerySettings(ViewContext portalCtx, String dataRegionName)
+    {
+        QuerySettings settings = getSchema().getSettings(portalCtx, dataRegionName, TargetedMSSchema.TABLE_EXPERIMENT_ANNOTATIONS);
+        if(settings.getContainerFilterName() == null)
+        {
+            settings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
+        }
+        return settings;
+    }
+
+    protected void populateButtonBar(DataView view, ButtonBar bb)
+    {
+        super.populateButtonBar(view, bb);
+        ActionURL deleteExpAnnotUrl = new ActionURL(TargetedMSController.DeleteSelectedExperimentAnnotationsAction.class, getContainer());
+        ActionButton deleteExperimentAnnotation = new ActionButton(deleteExpAnnotUrl, "Delete");
+        deleteExperimentAnnotation.setActionType(ActionButton.Action.GET);
+        deleteExperimentAnnotation.setDisplayPermission(DeletePermission.class);
+        deleteExperimentAnnotation.setRequiresSelection(true);
+        bb.add(deleteExperimentAnnotation);
+
+        ActionURL createExpAnnotUrl = TargetedMSController.getNewExperimentAnnotationURL(getViewContext().getContainer(), getReturnURL(), true);
+        ActionButton createExperimentAnnotation = new ActionButton(createExpAnnotUrl, "Create New Experiment");
+        createExperimentAnnotation.setActionType(ActionButton.Action.POST);
+        createExperimentAnnotation.setDisplayPermission(InsertPermission.class);
+        bb.add(createExperimentAnnotation);
+    }
+}
