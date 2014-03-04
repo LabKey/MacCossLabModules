@@ -17,6 +17,8 @@ package org.labkey.targetedms.model;
 
 import org.labkey.api.data.Container;
 
+import java.util.Date;
+
 /**
  * User: vsharma
  * Date: 2/18/13
@@ -35,6 +37,8 @@ public class ExperimentAnnotations
     private String _citation;
     private String _abstract;
     private String _publicationLink;
+    private Date _created;
+    private int _createdBy;
 
     public int getId()
     {
@@ -144,5 +148,25 @@ public class ExperimentAnnotations
     public void setPublicationLink(String publicationLink)
     {
         _publicationLink = publicationLink;
+    }
+
+    public Date getCreated()
+    {
+        return _created;
+    }
+
+    public void setCreated(Date created)
+    {
+        _created = created;
+    }
+
+    public int getCreatedBy()
+    {
+        return _createdBy;
+    }
+
+    public void setCreatedBy(int createdBy)
+    {
+        _createdBy = createdBy;
     }
 }
