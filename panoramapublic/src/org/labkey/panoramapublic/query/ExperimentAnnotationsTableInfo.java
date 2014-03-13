@@ -15,6 +15,7 @@
  */
 package org.labkey.targetedms.query;
 
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.DataColumn;
@@ -138,11 +139,13 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
             return getValue(ctx);
         }
 
+        @NotNull
         @Override
         public String getFormattedValue(RenderContext ctx)
         {
             return h(getValue(ctx));
         }
+
         @Override
         public void addQueryFieldKeys(Set<FieldKey> keys)
         {
@@ -175,12 +178,11 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
             return getValue(ctx);
         }
 
+        @NotNull
         @Override
         public String getFormattedValue(RenderContext ctx)
         {
             return h(getValue(ctx));
         }
-
-
     }
 }
