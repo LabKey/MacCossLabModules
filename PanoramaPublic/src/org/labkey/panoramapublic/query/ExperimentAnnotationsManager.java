@@ -19,7 +19,6 @@ import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.DbScope;
-import org.labkey.api.data.RuntimeSQLException;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.SqlSelector;
@@ -33,7 +32,6 @@ import org.labkey.targetedms.TargetedMSManager;
 import org.labkey.targetedms.TargetedMSRun;
 import org.labkey.targetedms.model.ExperimentAnnotations;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -63,37 +61,30 @@ public class ExperimentAnnotationsManager
     public static ExperimentAnnotations save(Container container, ExperimentAnnotations annotations, User user)
     {
         ExperimentAnnotations toReturn = null;
-        try
+        if(annotations.getId() != 0)
         {
-            if(annotations.getId() != 0)
+            ExperimentAnnotations existingAnnotations = get(annotations.getId());
+            if(existingAnnotations == null)
             {
-                ExperimentAnnotations existingAnnotations = get(annotations.getId());
-                if(existingAnnotations == null)
-                {
-                    throw new NotFoundException("ExperimentAnnotations not found for Id "+annotations.getId());
-                }
-                else
-                {
-                    toReturn = Table.update(user, TargetedMSManager.getTableInfoExperimentAnnotations(), annotations, annotations.getId());
-                }
+                throw new NotFoundException("ExperimentAnnotations not found for Id "+annotations.getId());
             }
             else
             {
-                annotations.setContainer(container);
-                ExperimentAnnotations existingAnnotations = get(container, annotations);
-                if(existingAnnotations == null)
-                {
-                    toReturn = Table.insert(user, TargetedMSManager.getTableInfoExperimentAnnotations(), annotations);
-                }
-                else
-                {
-                    toReturn = existingAnnotations;
-                }
+                toReturn = Table.update(user, TargetedMSManager.getTableInfoExperimentAnnotations(), annotations, annotations.getId());
             }
         }
-        catch (SQLException e)
+        else
         {
-            throw new RuntimeSQLException(e);
+            annotations.setContainer(container);
+            ExperimentAnnotations existingAnnotations = get(container, annotations);
+            if(existingAnnotations == null)
+            {
+                toReturn = Table.insert(user, TargetedMSManager.getTableInfoExperimentAnnotations(), annotations);
+            }
+            else
+            {
+                toReturn = existingAnnotations;
+            }
         }
         return toReturn;
     }
@@ -143,10 +134,6 @@ public class ExperimentAnnotationsManager
             }
             transaction.commit();
         }
-        catch (SQLException e)
-        {
-            throw new RuntimeSQLException(e);
-        }
     }
 
     public static List<Integer> getRunIds(Container container, int experimentAnnotationsId)
@@ -194,10 +181,6 @@ public class ExperimentAnnotationsManager
             }
             transaction.commit();
         }
-        catch (SQLException e)
-        {
-            throw new RuntimeSQLException(e);
-        }
     }
 
     public static void removeRunIds(ExperimentAnnotations expAnnotations, List<TargetedMSRun> runs, Container container)
@@ -216,10 +199,6 @@ public class ExperimentAnnotationsManager
             }
 
             transaction.commit();
-        }
-        catch (SQLException e)
-        {
-            throw new RuntimeSQLException(e);
         }
     }
 
