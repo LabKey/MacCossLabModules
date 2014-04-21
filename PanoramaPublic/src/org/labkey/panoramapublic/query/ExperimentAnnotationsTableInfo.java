@@ -36,6 +36,8 @@ import org.labkey.targetedms.TargetedMSController;
 import org.labkey.targetedms.TargetedMSManager;
 import org.labkey.targetedms.TargetedMSSchema;
 
+import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -80,6 +82,42 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
             public DisplayColumn createRenderer(ColumnInfo colInfo)
             {
                 return new YesNoDisplayColumn(colInfo);
+            }
+        });
+
+        ColumnInfo titleCol =  getColumn(FieldKey.fromParts("Title"));
+        titleCol.setDisplayColumnFactory(new DisplayColumnFactory()
+        {
+            @Override
+            public DisplayColumn createRenderer(ColumnInfo colInfo)
+            {
+
+                return new DataColumn(colInfo, true)
+                {
+                    private boolean _renderedCSS = false;
+
+                    @Override
+                    public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                    {
+                        int id = (Integer)ctx.get("id");
+                        if (!_renderedCSS)
+                        {
+                            out.write("<script type=\"text/javascript\">\n" +
+                                    "LABKEY.requiresCss(\"/TargetedMS/css/dropDown.css\");\n" +
+                                    "LABKEY.requiresScript(\"http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js\");\n" +
+                                    "LABKEY.requiresScript(\"/TargetedMS/js/dropDownUtil.js\");\n" +
+                                    "</script>");
+
+                            _renderedCSS = true;
+                        }
+
+                        ActionURL detailsPage = TargetedMSController.getViewExperimentDetailsURL(id, getContainer());
+
+                        out.write("<span active=\"false\" loaded=\"false\" onclick=\"viewExperimentDetails(this,'"+id+"','"+detailsPage+"')\"><img id=\"expandcontract-"+id+"\" src=\"/labkey/_images/plus.gif\">&nbsp;");
+                        out.write("</span>");
+                        super.renderGridCellContents(ctx, out);
+                    }
+                };
             }
         });
 
