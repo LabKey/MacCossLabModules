@@ -1,0 +1,143 @@
+package org.labkey.targetedms.query;
+
+import org.labkey.api.data.ColumnInfo;
+import org.labkey.api.data.Container;
+import org.labkey.api.data.DataColumn;
+import org.labkey.api.data.DisplayColumn;
+import org.labkey.api.data.DisplayColumnFactory;
+import org.labkey.api.data.RenderContext;
+import org.labkey.api.data.SQLFragment;
+import org.labkey.api.query.FieldKey;
+import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.view.ActionURL;
+import org.labkey.targetedms.PublishTargetedMSExperimentsController;
+import org.labkey.targetedms.TargetedMSManager;
+import org.labkey.targetedms.TargetedMSSchema;
+import org.labkey.targetedms.view.publish.ShortUrlDisplayColumnFactory;
+
+import java.io.IOException;
+import java.io.Writer;
+import java.util.Set;
+
+/**
+ * User: vsharma
+ * Date: 9/12/2014
+ * Time: 4:07 PM
+ */
+public class JournalExperimentTableInfo extends TargetedMSTable
+{
+
+    public JournalExperimentTableInfo(final TargetedMSSchema schema, Container container, SQLFragment sql)
+    {
+        super(TargetedMSManager.getTableInfoJournalExperiment(), schema, sql);
+
+        ColumnInfo editColumn = wrapColumn("Edit", getRealTable().getColumn("ExperimentAnnotationsId"));
+        editColumn.setLabel("");
+        editColumn.setDisplayColumnFactory(new EditUrlDisplayColumnFactory(container));
+        addColumn(editColumn);
+
+        ColumnInfo deleteColumn = wrapColumn("Delete", getRealTable().getColumn("ExperimentAnnotationsId"));
+        deleteColumn.setLabel("");
+        deleteColumn.setDisplayColumnFactory(new DeleteUrlDisplayColumnFactory(container));
+        addColumn(deleteColumn);
+
+        ColumnInfo accessUrlCol = getColumn(FieldKey.fromParts("ShortAccessUrl"));
+        accessUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
+        ColumnInfo copyUrlCol = getColumn(FieldKey.fromParts("ShortCopyUrl"));
+        copyUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
+    }
+
+    public static class DeleteUrlDisplayColumnFactory implements DisplayColumnFactory
+    {
+        private final ActionURL _url;
+        private final String _linkText;
+
+        DeleteUrlDisplayColumnFactory(Container container)
+        {
+            _url = new ActionURL(PublishTargetedMSExperimentsController.DeleteJournalExperimentAction.class, container);
+            _linkText = "Delete";
+        }
+
+        @Override
+        public DisplayColumn createRenderer(ColumnInfo colInfo)
+        {
+            return new DataColumn(colInfo)
+            {
+                public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                {
+                    String experimentAnnotationsId = String.valueOf(ctx.get("ExperimentAnnotationsId"));
+                    String journalId = String.valueOf(ctx.get("JournalId"));
+                    if(ctx.get("Copied") != null)
+                    {
+                        // Do not show the delete link if the experiment has already been copied by a journal
+                        out.write("");
+                    }
+                    else
+                    {
+                        _url.replaceParameter("id", experimentAnnotationsId);
+                        _url.replaceParameter("journalId", journalId);
+                        out.write(PageFlowUtil.textLink(_linkText, _url));
+                    }
+                }
+
+                @Override
+                public void addQueryFieldKeys(Set<FieldKey> keys)
+                {
+                    super.addQueryFieldKeys(keys);
+                    keys.add(FieldKey.fromParts("Copied"));
+                }
+            };
+        }
+    }
+
+    public static class EditUrlDisplayColumnFactory implements DisplayColumnFactory
+    {
+        private final ActionURL _editUrl;
+        private final String _editLinkText;
+        private final ActionURL _resetUrl;
+        private final String _resetLinkText;
+
+        EditUrlDisplayColumnFactory(Container container)
+        {
+            _editUrl = new ActionURL(PublishTargetedMSExperimentsController.UpdateJournalExperimentAction.class, container);
+            _editUrl.addParameter("update", true);
+            _editLinkText = "Edit";
+            _resetUrl = new ActionURL(PublishTargetedMSExperimentsController.ResetJournalExperimentAction.class, container);;
+            _resetLinkText = "Reset";
+        }
+
+        @Override
+        public DisplayColumn createRenderer(ColumnInfo colInfo)
+        {
+            return new DataColumn(colInfo)
+            {
+                public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                {
+                    String experimentAnnotationsId = String.valueOf(ctx.get("ExperimentAnnotationsId"));
+                    String journalId = String.valueOf(ctx.get("JournalId"));
+                    if(ctx.get("Copied") != null)
+                    {
+                        // Show the reset link if the experiment has already been copied by a journal
+                        _resetUrl.replaceParameter("id", experimentAnnotationsId);
+                        _resetUrl.replaceParameter("journalId", journalId);
+                        out.write(PageFlowUtil.textLink(_resetLinkText, _resetUrl));
+                    }
+                    else
+                    {
+                        // Otherwise show the edit link
+                        _editUrl.replaceParameter("id", experimentAnnotationsId);
+                        _editUrl.replaceParameter("journalId", journalId);
+                        out.write(PageFlowUtil.textLink(_editLinkText, _editUrl));
+                    }
+                }
+
+                @Override
+                public void addQueryFieldKeys(Set<FieldKey> keys)
+                {
+                    super.addQueryFieldKeys(keys);
+                    keys.add(FieldKey.fromParts("Copied"));
+                }
+            };
+        }
+    }
+}

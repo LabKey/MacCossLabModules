@@ -37,7 +37,7 @@ public class ExperimentAnnotationsFormDataRegion extends DataRegion
     {
         super();
 
-        addColumns(TargetedMSManager.getTableInfoExperimentAnnotations(), "Id,Title,Organism,Instrument,SpikeIn,Abstract,Citation,PublicationLink,ExperimentDescription,SampleDescription");
+        addColumns(TargetedMSManager.getTableInfoExperimentAnnotations(), "Id,Title,Organism,Instrument,SpikeIn,Abstract,ExperimentDescription,SampleDescription, Citation,PublicationLink,");
 
         setFixedWidthColumns(false);
 

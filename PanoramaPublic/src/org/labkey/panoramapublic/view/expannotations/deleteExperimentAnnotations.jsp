@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 %>
-<%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.targetedms.TargetedMSController" %>
 <%@ page import="org.labkey.targetedms.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.targetedms.query.ExperimentAnnotationsManager" %>

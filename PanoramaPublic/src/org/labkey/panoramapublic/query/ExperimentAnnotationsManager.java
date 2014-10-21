@@ -15,27 +15,32 @@
  */
 package org.labkey.targetedms.query;
 
-import org.jetbrains.annotations.NotNull;
-import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerFilter;
+import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
-import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
-import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableSelector;
+import org.labkey.api.exp.api.ExpExperiment;
+import org.labkey.api.exp.api.ExpRun;
+import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
+import org.labkey.api.security.permissions.InsertPermission;
+import org.labkey.api.util.GUID;
 import org.labkey.api.view.NotFoundException;
-import org.labkey.targetedms.SkylineDocImporter;
 import org.labkey.targetedms.TargetedMSManager;
 import org.labkey.targetedms.TargetedMSRun;
 import org.labkey.targetedms.model.ExperimentAnnotations;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 /**
  * User: vsharma
@@ -51,16 +56,15 @@ public class ExperimentAnnotationsManager
         return new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(),null, null).getObject(experimentAnnotationsId, ExperimentAnnotations.class);
     }
 
-    public static List<ExperimentAnnotations> get(Container container)
+    public static ExperimentAnnotations getForExperiment(int experimentId)
     {
-        SimpleFilter filter = container != null ? SimpleFilter.createContainerFilter(container) : null;
         return new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(),
-                                                                   filter, null).getArrayList(ExperimentAnnotations.class);
+                new SimpleFilter(FieldKey.fromParts("ExperimentId"), experimentId), null).getObject(ExperimentAnnotations.class);
     }
 
-    public static ExperimentAnnotations save(Container container, ExperimentAnnotations annotations, User user)
+    public static ExperimentAnnotations save(ExperimentAnnotations annotations, User user)
     {
-        ExperimentAnnotations toReturn = null;
+        ExperimentAnnotations toReturn;
         if(annotations.getId() != 0)
         {
             ExperimentAnnotations existingAnnotations = get(annotations.getId());
@@ -75,154 +79,262 @@ public class ExperimentAnnotationsManager
         }
         else
         {
-            annotations.setContainer(container);
-            ExperimentAnnotations existingAnnotations = get(container, annotations);
-            if(existingAnnotations == null)
-            {
-                toReturn = Table.insert(user, TargetedMSManager.getTableInfoExperimentAnnotations(), annotations);
-            }
-            else
-            {
-                toReturn = existingAnnotations;
-            }
+            toReturn = Table.insert(user, TargetedMSManager.getTableInfoExperimentAnnotations(), annotations);
         }
         return toReturn;
     }
 
-    private static ExperimentAnnotations get(Container container, ExperimentAnnotations experimentAnnotations)
+    public static void excludeSubfoldersFromExperiment(ExperimentAnnotations expAnnotations, User user)
     {
-        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("Container"), container);
-        filter.addCondition(FieldKey.fromParts("Title"), experimentAnnotations.getTitle(),
-                experimentAnnotations.getTitle() == null ? CompareType.ISBLANK : CompareType.EQUAL);
-        filter.addCondition(FieldKey.fromParts("Organism"), experimentAnnotations.getOrganism(),
-                experimentAnnotations.getOrganism() == null ? CompareType.ISBLANK : CompareType.EQUAL);
-        filter.addCondition(FieldKey.fromParts("ExperimentDescription"), experimentAnnotations.getExperimentDescription(),
-                experimentAnnotations.getExperimentDescription() == null ? CompareType.ISBLANK : CompareType.EQUAL);
-        filter.addCondition(FieldKey.fromParts("SampleDescription"), experimentAnnotations.getSampleDescription(),
-                experimentAnnotations.getSampleDescription() == null ? CompareType.ISBLANK : CompareType.EQUAL);
-        filter.addCondition(FieldKey.fromParts("Instrument"), experimentAnnotations.getInstrument(),
-                experimentAnnotations.getInstrument() == null ? CompareType.ISBLANK : CompareType.EQUAL);
-        filter.addCondition(FieldKey.fromParts("SpikeIn"), experimentAnnotations.getSpikeIn(),
-                experimentAnnotations.getSpikeIn() == null ? CompareType.ISBLANK : CompareType.EQUAL);
-        filter.addCondition(FieldKey.fromParts("Citation"), experimentAnnotations.getCitation(),
-                experimentAnnotations.getCitation() == null ? CompareType.ISBLANK : CompareType.EQUAL);
-        filter.addCondition(FieldKey.fromParts("Abstract"), experimentAnnotations.getAbstract(),
-                experimentAnnotations.getAbstract() == null ? CompareType.ISBLANK : CompareType.EQUAL);
-        filter.addCondition(FieldKey.fromParts("PublicationLink"), experimentAnnotations.getPublicationLink(),
-                experimentAnnotations.getPublicationLink() == null ? CompareType.ISBLANK : CompareType.EQUAL);
+        ExpExperiment experiment = expAnnotations.getExperiment();
+        if(experiment == null)
+        {
+            throw new NotFoundException("Could not find experiment with rowId " + expAnnotations.getExperimentId());
+        }
 
-        return  new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(), filter, null).getObject(ExperimentAnnotations.class);
+        // Get all the runs in the experiment.
+        List<? extends ExpRun> runs = experiment.getRuns();
+        List<Integer> rowIdsToRemove = new ArrayList<>();
+        Container expContainer = experiment.getContainer();
+        // Get a list of runs that are not in the folder where the experiment is defined.
+        for(ExpRun run: runs)
+        {
+            if(!run.getContainer().equals(expContainer))
+            {
+                rowIdsToRemove.add(run.getRowId());
+            }
+        }
+
+        int[] rowIds = new int[rowIdsToRemove.size()];
+        int i = 0;
+        for(Integer rowId: rowIdsToRemove)
+        {
+            rowIds[i++] = rowId;
+        }
+
+        try(DbScope.Transaction transaction = TargetedMSManager.getSchema().getScope().ensureTransaction())
+        {
+            removeRunIds(experiment, rowIds, user);
+
+            expAnnotations.setIncludeSubfolders(false);
+            save(expAnnotations, user);
+
+            transaction.commit();
+        }
     }
 
-    public static void deleteExperimentAnnotations(int... experimentAnnotationIds)
+    private static void removeRunIds(ExpExperiment experiment, int[] rowIds, User user)
     {
+        ExperimentService.Interface expService = ExperimentService.get();
 
-        if(experimentAnnotationIds == null || experimentAnnotationIds.length == 0)
-            return;
-
-        try(DbScope.Transaction transaction = TargetedMSManager.getSchema().getScope().ensureTransaction()) {
-            for(int experimentAnnotationId: experimentAnnotationIds)
+        for(int rowId: rowIds)
+        {
+            ExpRun run = expService.getExpRun(rowId);
+            if(run != null)
             {
-                ExperimentAnnotations annotations = get(experimentAnnotationId);
-                if(annotations != null)
+                TargetedMSRun tmsRun = TargetedMSManager.getRunByLsid(run.getLSID(), run.getContainer());
+                if(tmsRun != null)
                 {
-                    Table.delete(TargetedMSManager.getTableInfoExperimentAnnotationsRun(),
-                                 new SimpleFilter(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationId));
-
-                    Table.delete(TargetedMSManager.getTableInfoExperimentAnnotations(), experimentAnnotationId);
+                    experiment.removeRun(user, run);
                 }
             }
-            transaction.commit();
         }
     }
 
-    public static List<Integer> getRunIds(Container container, int experimentAnnotationsId)
+    public static void includeSubfoldersInExperiment(ExperimentAnnotations expAnnotations, User user)
     {
-        SQLFragment sql = new SQLFragment();
-        sql.append("SELECT ear.RunId");
-        sql.append(" FROM ");
-        sql.append(TargetedMSManager.getTableInfoExperimentAnnotations(), "ea");
-        sql.append(", ");
-        sql.append(TargetedMSManager.getTableInfoExperimentAnnotationsRun(), "ear");
-        sql.append(" WHERE");
-        sql.append(" ea.id = ear.experimentAnnotationsId");
-        sql.append(" AND");
-        sql.append(" ea.container = ?");
-        sql.append(" AND");
-        sql.append(" ea.Id = ?");
-        sql.add(container);
-        sql.add(experimentAnnotationsId);
+        ExpExperiment experiment = expAnnotations.getExperiment();
 
-        return new SqlSelector(TargetedMSManager.getSchema(), sql).getArrayList(Integer.class);
-    }
+        ExperimentService.Interface expService = ExperimentService.get();
 
-    public static void addRunIds(ExperimentAnnotations expAnnotations, List<TargetedMSRun> runs, Container container, User user)
-    {
-        if(runs == null || runs.size() == 0)
-            return;
-
-        List<Integer> existingRunIds = getRunIds(container, expAnnotations.getId());
-        List<Integer> newRunIds = new ArrayList<>();
-
-        for(TargetedMSRun run: runs)
+        // Get all the runs contained in the folder and its subfolders.
+        List<ExpRun> runs = new ArrayList<>();
+        // 'children' includes the root container.
+        List<Container> children = ContainerManager.getAllChildren(experiment.getContainer(), user, InsertPermission.class);
+        for(Container child: children)
         {
-            validateRun(run.getId(), container);
-            newRunIds.add(run.getId());
+            runs.addAll(expService.getExpRuns(child, null, null));
         }
-        newRunIds.removeAll(existingRunIds);
 
-        try (DbScope.Transaction transaction = TargetedMSManager.getSchema().getScope().ensureTransaction()) {
-            for(Integer runId: newRunIds)
-            {
-                Map<String, Object> map = new HashMap();
-                map.put("experimentAnnotationsId", expAnnotations.getId());
-                map.put("runId", runId);
-                Table.insert(user, TargetedMSManager.getTableInfoExperimentAnnotationsRun(), map);
-            }
-            transaction.commit();
-        }
-    }
-
-    public static void removeRunIds(ExperimentAnnotations expAnnotations, List<TargetedMSRun> runs, Container container)
-    {
-        try (DbScope.Transaction transaction = TargetedMSManager.getSchema().getScope().ensureTransaction())
+        // Get a list of runs that already belong to the experiment.
+        List<? extends ExpRun> existingRuns = experiment.getRuns();
+        Set<Integer> existingRunRowIds = new HashSet<>();
+        for(ExpRun run: existingRuns)
         {
-            for(TargetedMSRun run: runs)
-            {
-                validateRun(run.getId(), container);
+            existingRunRowIds.add(run.getRowId());
+        }
 
-                SimpleFilter filter = new SimpleFilter();
-                filter.addCondition(FieldKey.fromParts("experimentAnnotationsId"), expAnnotations.getId());
-                filter.addCondition(FieldKey.fromParts("runID"), run.getId());
+        // Keep runs that do not already belong to the experiment.
+        Iterator<ExpRun> runIterator = runs.iterator();
+        while(runIterator.hasNext())
+        {
+            ExpRun run = runIterator.next();
+            if(existingRunRowIds.contains(run.getRowId()))
+                runIterator.remove();
+        }
+        int[] rowIds = new int[runs.size()];
+        int i = 0;
+        for(ExpRun run: runs)
+        {
+            rowIds[i++] = run.getRowId();
+        }
 
-                Table.delete(TargetedMSManager.getTableInfoExperimentAnnotationsRun(), filter);
-            }
+        try(DbScope.Transaction transaction = TargetedMSManager.getSchema().getScope().ensureTransaction())
+        {
+            addSelectedRunsToExperiment(experiment, rowIds, user);
+
+            expAnnotations.setIncludeSubfolders(true);
+            save(expAnnotations, user);
 
             transaction.commit();
         }
     }
 
-    @NotNull
-    private static TargetedMSRun validateRun(int runId, Container c)
+    public static void addSelectedRunsToExperiment(ExpExperiment experiment, int[] rowIds, User user)
     {
-        TargetedMSRun run = TargetedMSManager.getRun(runId);
+        List<ExpRun> runs = new ArrayList<>();
+        for (int rowId : rowIds)
+        {
+            ExpRun run = ExperimentService.get().getExpRun(rowId);
+            if (run != null)
+            {
+                TargetedMSRun tmsRun = TargetedMSManager.getRunByLsid(run.getLSID(), run.getContainer());
+                validateRun(tmsRun, experiment.getContainer());
 
-        if (null == run)
-            throw new NotFoundException("TargetedMS Run " + runId + " not found");
-        if (run.isDeleted())
-            throw new NotFoundException("Run has been deleted.");
-        if (run.getStatusId() == SkylineDocImporter.STATUS_RUNNING)
-            throw new NotFoundException("Targeted MS Run is still loading.  Current status: " + run.getStatus());
-        if (run.getStatusId() == SkylineDocImporter.STATUS_FAILED)
-            throw new NotFoundException("TargetedMS Run failed loading.  Status: " + run.getStatus());
+                if(tmsRun != null)
+                {
+                    runs.add(run);
+                }
+            }
+        }
+        experiment.addRuns(user, runs.toArray(new ExpRun[runs.size()]));
+    }
 
+    private static void validateRun(TargetedMSRun run, Container c)
+    {
         Container container = run.getContainer();
 
         if (container == null || (!container.equals(c) && !container.isDescendant(c)))
         {
-            throw new NotFoundException("TargetedMS run " + runId + " does not exist in container "+c.getPath() + " or one of its descendents");
+            throw new NotFoundException("TargetedMS run with Id " + run.getId() + " does not exist in container "+c.getPath() + " or one of its descendents");
+        }
+    }
+
+    public static Set<Container> getExperimentFolders(ExperimentAnnotations experimentAnnotations, User user)
+    {
+        if(experimentAnnotations.isIncludeSubfolders())
+        {
+            return new HashSet<>(ContainerManager.getAllChildren(experimentAnnotations.getContainer(), user));
+        }
+        else
+        {
+            return Collections.singleton(experimentAnnotations.getContainer());
+        }
+    }
+
+    public static void beforeDeleteExpExperiment(ExpExperiment experiment, User user)
+    {
+        if(experiment == null)
+            return;
+        ExperimentAnnotations experimentAnnotations = getForExperiment(experiment.getRowId());
+        if(experimentAnnotations != null)
+        {
+            deleteExperiment(experimentAnnotations, user);
+        }
+    }
+
+    private static void deleteExperiment(ExperimentAnnotations expAnnotations, User user)
+    {
+        // If any journal were given access to this experiment, remove the access and delete entries from the JournalExperiment table.
+        JournalManager.beforeDeleteTargetedMSExperiment(expAnnotations, user);
+
+        Table.delete(TargetedMSManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());
+    }
+
+    /**
+     *
+     * @return A list of targeted MS experiments in the given container and its subfolders
+     */
+    public static List<ExperimentAnnotations> getAllExperiments(Container container, User user)
+    {
+        SimpleFilter filter = new SimpleFilter();
+        ContainerFilter containerFilter = new ContainerFilter.CurrentAndSubfolders(user);
+        filter.addCondition(containerFilter.createFilterClause(TargetedMSManager.getSchema(), FieldKey.fromParts("Container"), container));
+
+        return new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(), filter, null).getArrayList(ExperimentAnnotations.class);
+    }
+
+    /**
+     * @param container container
+     * @return A TargetedMS experiment that includes data in the given container.  This could be an experiment defined
+     * in the given container, or in an ancestor container that has 'IncludeSubfolders' set to true.
+     */
+    public static ExperimentAnnotations getExperimentIncludesContainer(Container container)
+    {
+        Container leaf = container;
+        while(container != null && !container.isRoot())
+        {
+            ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(container);
+            if(expAnnotations == null)
+            {
+                container = container.getParent();
+                continue;
+            }
+
+            if(container.equals(leaf) || expAnnotations.isIncludeSubfolders())
+            {
+                return expAnnotations;
+            }
+            else
+            {
+                // We found an experiment in this folder, but it is either not in the container we started with
+                // or this experiment has not been configured to include subfolders.  We don't need to look any
+                // further up in the tree.
+                break;
+            }
+        }
+        return null;
+    }
+
+    private static ExperimentAnnotations get(Container container)
+    {
+        SimpleFilter filter = container != null ? SimpleFilter.createContainerFilter(container) : null;
+        List<ExperimentAnnotations> expAnnotations = new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(),
+                filter, null).getArrayList(ExperimentAnnotations.class);
+        if(expAnnotations.size() > 0)
+        {
+            // 09.04.14
+            // Return the first experiment in the container.
+            // We are now enforcing a single experiment per container, but there may already be
+            // containers with multiple experiments.
+            return expAnnotations.get(0);
+        }
+        return null;
+    }
+
+    public static boolean hasExperimentsInSubfolders(Container container, User user)
+    {
+        Collection<GUID> containerIds = new ContainerFilter.CurrentAndSubfolders(user).getIds(container);
+        if(containerIds == null || containerIds.size() == 0)
+        {
+            return false;
         }
 
-        return run;
+        Collection<GUID> subfolderIds = new ArrayList<>();
+        for(GUID containerId: containerIds)
+        {
+            if(!container.getEntityId().equals(containerId))
+            {
+                subfolderIds.add(containerId);
+            }
+        }
+
+        SimpleFilter filter = new SimpleFilter();
+        filter.addInClause(FieldKey.fromParts("Container"), subfolderIds);
+
+        List<ExperimentAnnotations> expAnnotations = new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(),
+                filter, null).getArrayList(ExperimentAnnotations.class);
+
+        return expAnnotations.size() > 0;
     }
 }

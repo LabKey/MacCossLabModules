@@ -36,7 +36,7 @@ import org.labkey.targetedms.TargetedMSSchema;
  */
 public class TargetedMSExperimentsWebPart extends QueryView
 {
-    public static final String WEB_PART_NAME = "Targeted MS Experiments";
+    public static final String WEB_PART_NAME = "Targeted MS Experiment List";
 
     public TargetedMSExperimentsWebPart(ViewContext portalCtx)
     {
@@ -77,11 +77,5 @@ public class TargetedMSExperimentsWebPart extends QueryView
         deleteExperimentAnnotation.setDisplayPermission(DeletePermission.class);
         deleteExperimentAnnotation.setRequiresSelection(true);
         bb.add(deleteExperimentAnnotation);
-
-        ActionURL createExpAnnotUrl = TargetedMSController.getNewExperimentAnnotationURL(getViewContext().getContainer(), getReturnURL(), true);
-        ActionButton createExperimentAnnotation = new ActionButton(createExpAnnotUrl, "Create New Experiment");
-        createExperimentAnnotation.setActionType(ActionButton.Action.POST);
-        createExperimentAnnotation.setDisplayPermission(InsertPermission.class);
-        bb.add(createExperimentAnnotation);
     }
 }
