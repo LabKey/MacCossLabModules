@@ -16,6 +16,8 @@
 package org.labkey.targetedms.model;
 
 import org.labkey.api.data.Container;
+import org.labkey.api.exp.api.ExpExperiment;
+import org.labkey.api.exp.api.ExperimentService;
 
 import java.util.Date;
 
@@ -27,7 +29,8 @@ import java.util.Date;
 public class ExperimentAnnotations
 {
     private int _id;
-    protected Container _container;
+    private int _experimentId;
+    private Container _container;
     private String _title;
     private String _experimentDescription;
     private String _sampleDescription;
@@ -39,6 +42,26 @@ public class ExperimentAnnotations
     private String _publicationLink;
     private Date _created;
     private int _createdBy;
+    private boolean _journalCopy;
+    private boolean _includeSubfolders;
+
+    private ExpExperiment _experiment;
+
+    public ExperimentAnnotations() {}
+
+    public ExperimentAnnotations(ExperimentAnnotations experiment)
+    {
+        _title = experiment.getTitle();
+        _experimentDescription = experiment.getExperimentDescription();
+        _sampleDescription = experiment.getSampleDescription();
+        _organism = experiment.getOrganism();
+        _instrument = experiment.getInstrument();
+        _spikeIn = experiment.getSpikeIn();
+        _citation = experiment.getCitation();
+        _abstract = experiment.getAbstract();
+        _publicationLink = experiment.getPublicationLink();
+        _includeSubfolders = experiment.isIncludeSubfolders();
+    }
 
     public int getId()
     {
@@ -48,6 +71,25 @@ public class ExperimentAnnotations
     public void setId(int id)
     {
         _id = id;
+    }
+
+    public int getExperimentId()
+    {
+        return _experimentId;
+    }
+
+    public void setExperimentId(int experimentId)
+    {
+        _experimentId = experimentId;
+    }
+
+    public ExpExperiment getExperiment()
+    {
+        if(_experiment == null)
+        {
+            _experiment = ExperimentService.get().getExpExperiment(getExperimentId());
+        }
+        return _experiment;
     }
 
     public Container getContainer()
@@ -168,5 +210,25 @@ public class ExperimentAnnotations
     public void setCreatedBy(int createdBy)
     {
         _createdBy = createdBy;
+    }
+
+    public boolean isJournalCopy()
+    {
+        return _journalCopy;
+    }
+
+    public void setJournalCopy(boolean journalCopy)
+    {
+        _journalCopy = journalCopy;
+    }
+
+    public boolean isIncludeSubfolders()
+    {
+        return _includeSubfolders;
+    }
+
+    public void setIncludeSubfolders(boolean includeSubfolders)
+    {
+        _includeSubfolders = includeSubfolders;
     }
 }

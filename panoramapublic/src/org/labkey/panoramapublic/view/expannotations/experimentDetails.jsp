@@ -22,13 +22,21 @@
 <%@ page import="org.labkey.targetedms.TargetedMSController" %>
 <%@ page import="org.labkey.api.security.UserManager" %>
 <%@ page import="org.labkey.api.security.permissions.InsertPermission" %>
+<%@ page import="org.labkey.targetedms.PublishTargetedMSExperimentsController" %>
+<%@ page import="org.labkey.api.data.Container" %>
+<%@ page import="org.labkey.api.security.permissions.AdminPermission" %>
+<%@ page import="java.text.SimpleDateFormat" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     JspView<ExperimentAnnotations> me = (JspView<ExperimentAnnotations>) HttpView.currentView();
     ExperimentAnnotations bean = me.getModelBean();
     ActionURL editUrl = TargetedMSController.getEditExperimentDetailsURL(getContainer(), bean.getId(),
             TargetedMSController.getViewExperimentDetailsURL(bean.getId(), getContainer()));
-    final boolean canEdit = bean.getContainer().hasPermission(getUser(), InsertPermission.class);
+    ActionURL publishUrl = PublishTargetedMSExperimentsController.getPublishExperimentURL(bean.getId(), getContainer());
+    Container experimentContainer = bean.getContainer();
+    final boolean canEdit = !bean.isJournalCopy() && experimentContainer.hasPermission(getUser(), InsertPermission.class);
+    // User needs to be the folder admin to publish an experiment.
+    final boolean canPublish = !bean.isJournalCopy() && experimentContainer.hasPermission(getUser(), AdminPermission.class);
     String createdBy = UserManager.getDisplayName(bean.getCreatedBy(), UserManager.getUser(bean.getCreatedBy()));
 %>
 <style>
@@ -112,7 +120,10 @@
 <div id="annotationContainer">
 <div id="title"><%=h(bean.getTitle())%></div>
     <%if(canEdit){%>
-    <a class="banner-button-small" style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>" target="_blank">Edit  Experiment</a>
+    <a class="banner-button-small" style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>">Edit  Experiment</a>
+    <%}%>
+    <%if(canPublish){%>
+    <a class="banner-button-small" style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(publishUrl)%>">Publish  Experiment</a>
     <%}%>
     <br />
     <%if(bean.getCitation() != null && bean.getPublicationLink() != null){%>
@@ -147,9 +158,9 @@
 <div class="descriptionBox"><legend>Sample Description</legend><div class="content"><p><%=h(bean.getSampleDescription())%></p></div>    </div>
     <%}%>
 
-    <div style="text-align: center; margin-top:15px;">
-<span>Created by <%=h(createdBy)%> on <%=h(bean.getCreated())%> </span>
-        </div>
+<div style="text-align: center; margin-top:15px;">
+    <span>Created by <%=h(createdBy)%> on <%=h(SimpleDateFormat.getInstance().format(bean.getCreated()))%> </span>
+</div>
 
 </div>
 

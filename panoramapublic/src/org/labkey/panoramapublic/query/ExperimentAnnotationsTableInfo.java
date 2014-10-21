@@ -25,6 +25,7 @@ import org.labkey.api.data.JdbcType;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.TableInfo;
+import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.query.DetailsURL;
 import org.labkey.api.query.ExprColumn;
 import org.labkey.api.query.FieldKey;
@@ -104,9 +105,9 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
                         {
                             out.write("<script type=\"text/javascript\">\n" +
                                     "LABKEY.requiresCss(\"/TargetedMS/css/dropDown.css\");\n" +
-                                    "LABKEY.requiresScript(\"http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js\");\n" +
                                     "LABKEY.requiresScript(\"/TargetedMS/js/dropDownUtil.js\");\n" +
                                     "</script>");
+                            out.write("\n<script src=\"//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js\"></script>\n");
 
                             _renderedCSS = true;
                         }
@@ -121,11 +122,11 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
             }
         });
 
-        SQLFragment runCountSQL = new SQLFragment("(SELECT COUNT(r.Id) FROM ");
-        runCountSQL.append(TargetedMSManager.getTableInfoExperimentAnnotationsRun(), "r");
-        runCountSQL.append(" WHERE r.ExperimentAnnotationsId = ");
+        SQLFragment runCountSQL = new SQLFragment("(SELECT COUNT(r.ExperimentRunId) FROM ");
+        runCountSQL.append(ExperimentService.get().getTinfoRunList(), "r");
+        runCountSQL.append(" WHERE r.ExperimentId = ");
         runCountSQL.append(ExprColumn.STR_TABLE_ALIAS);
-        runCountSQL.append(".Id)");
+        runCountSQL.append(".ExperimentId)");
         ExprColumn runCountColumn = new ExprColumn(this, "Runs", runCountSQL, JdbcType.INTEGER);
         addColumn(runCountColumn);
 
