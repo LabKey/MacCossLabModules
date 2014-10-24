@@ -45,7 +45,7 @@
 <div id="publishExperimentForm"></div>
 <div style="margin: 30px 20px 20px 20px">
     By publishing the experiment to the selected journal, you are providing them access to copy data as well as any
-    wiki pages, custom views, custom queries and R reports in the following folders:
+    wiki pages, custom views, custom queries, lists and R reports in the following folders:
     <ul>
     <%for(Container folder: experimentFolders) { %>
         <li><%=h(folder.getPath())%></li>
@@ -141,7 +141,7 @@
                     {
                         xtype: 'hidden',
                         name: 'journalId',
-                        value: <%=journalId%>,
+                        value: <%=journalId%>
                     },
                 <%} else { %>
                     {

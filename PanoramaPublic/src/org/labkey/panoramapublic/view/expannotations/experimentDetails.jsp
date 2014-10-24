@@ -26,6 +26,7 @@
 <%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.security.permissions.AdminPermission" %>
 <%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="org.labkey.targetedms.query.JournalManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     JspView<ExperimentAnnotations> me = (JspView<ExperimentAnnotations>) HttpView.currentView();
@@ -38,6 +39,8 @@
     // User needs to be the folder admin to publish an experiment.
     final boolean canPublish = !bean.isJournalCopy() && experimentContainer.hasPermission(getUser(), AdminPermission.class);
     String createdBy = UserManager.getDisplayName(bean.getCreatedBy(), UserManager.getUser(bean.getCreatedBy()));
+
+    boolean journalCopyPending = JournalManager.isCopyPending(bean);
 %>
 <style>
  #title
@@ -117,7 +120,28 @@
  }
 
 </style>
+<script type="text/javascript">
+
+    Ext4.onReady(function(){
+
+        var textDiv = Ext4.get("journal_copy_pending_text");
+        textDiv.hover(
+           function(){Ext4.get("journal_copy_pending_details").fadeIn();},
+           function(){Ext4.get("journal_copy_pending_details").fadeOut()}
+        );
+
+    });
+
+</script>
 <div id="annotationContainer">
+
+<%if(journalCopyPending && canEdit) { %>
+    <div style="color:red; font-weight: bold;font-size:1.1em" id="journal_copy_pending_text">Journal Copy Pending!</div>
+    <div style="color:red; visibility:hidden; margin-bottom:5px; font-size:0.85em;" id="journal_copy_pending_details">
+        This experiment has not yet been copied by the journal. Until the jounal makes a copy any changes made to this experiment,
+        or the data contained in the folder(s) for this experiment, will also get copied by the journal.
+    </div>
+<% } %>
 <div id="title"><%=h(bean.getTitle())%></div>
     <%if(canEdit){%>
     <a class="banner-button-small" style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>">Edit  Experiment</a>

@@ -376,4 +376,18 @@ public class JournalManager
             shortURLService.deleteShortURL(oldCopyUrl, user);
         }
     }
+
+    public static boolean isCopyPending(ExperimentAnnotations expAnnotation)
+    {
+        List<Journal> journals = getJournalsForExperiment(expAnnotation.getId());
+        for(Journal journal: journals)
+        {
+            JournalExperiment je = getJournalExperiment(expAnnotation.getId(), journal.getId());
+            if(je.getCopied() == null)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 }
