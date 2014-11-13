@@ -125,11 +125,19 @@
     Ext4.onReady(function(){
 
         var textDiv = Ext4.get("journal_copy_pending_text");
-        textDiv.hover(
-           function(){Ext4.get("journal_copy_pending_details").fadeIn();},
-           function(){Ext4.get("journal_copy_pending_details").fadeOut()}
-        );
-
+        if(textDiv)
+        {
+            textDiv.hover(
+                    function ()
+                    {
+                        Ext4.get("journal_copy_pending_details").fadeIn();
+                    },
+                    function ()
+                    {
+                        Ext4.get("journal_copy_pending_details").fadeOut()
+                    }
+            );
+        }
     });
 
 </script>
