@@ -21,15 +21,22 @@ import org.labkey.api.data.DbScope;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentService;
-import org.labkey.api.notification.EmailMessage;
-import org.labkey.api.notification.EmailService;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
 import org.labkey.api.pipeline.RecordedActionSet;
 import org.labkey.api.security.Group;
+import org.labkey.api.security.MutableSecurityPolicy;
+import org.labkey.api.security.RoleAssignment;
+import org.labkey.api.security.SecurityPolicy;
+import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
+import org.labkey.api.security.UserManager;
+import org.labkey.api.security.roles.FolderAdminRole;
+import org.labkey.api.security.roles.ReaderRole;
+import org.labkey.api.security.roles.Role;
+import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.util.FileType;
 import org.labkey.targetedms.TargetedMSManager;
 import org.labkey.targetedms.model.ExperimentAnnotations;
@@ -42,6 +49,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
 
 /**
  * User: vsharma
@@ -124,6 +132,27 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // Remove the copy permissions given to the journal.
             Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(jobSupport.getJournal().getLabkeyGroupId());
             JournalManager.removeJournalPermissions(jobSupport.getExpAnnotations(), journalGroup, user);
+
+            // Give read permissions to the authors (all users that are folder admins)
+            SecurityPolicy sourceSecurityPolicy = jobSupport.getExpAnnotations().getContainer().getPolicy();
+            SortedSet<RoleAssignment> roles = sourceSecurityPolicy.getAssignments();
+
+            Role folderAdminRole = RoleManager.getRole(FolderAdminRole.class);
+            List<User> authors = new ArrayList<>();
+            for(RoleAssignment role: roles)
+            {
+                if(role.getRole().equals(folderAdminRole))
+                {
+                    authors.add(UserManager.getUser(role.getUserId()));
+                }
+            }
+            Container target = experiment.getContainer();
+            MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
+            for(User author: authors)
+            {
+                newPolicy.addRoleAssignment(author, ReaderRole.class);
+            }
+            SecurityPolicyManager.savePolicy(newPolicy);
 
             transaction.commit();
         }
