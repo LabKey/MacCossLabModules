@@ -405,4 +405,18 @@ public class JournalManager
         }
         return false;
     }
+
+    public static void deleteProjectJournal(Container c, User user)
+    {
+        if(c.isProject())
+        {
+            // Journals are only associated with 'project' containers
+            SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("Project"), c.getEntityId());
+            Journal journal = new TableSelector(TargetedMSManager.getTableInfoJournal(), filter, null).getObject(Journal.class);
+            if (journal != null)
+            {
+                delete(journal, user);
+            }
+        }
+    }
 }

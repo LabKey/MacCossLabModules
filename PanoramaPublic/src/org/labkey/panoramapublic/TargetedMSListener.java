@@ -15,21 +15,57 @@
  */
 package org.labkey.targetedms;
 
+import org.jetbrains.annotations.NotNull;
+import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerManager;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExperimentListener;
 import org.labkey.api.security.User;
 import org.labkey.targetedms.query.ExperimentAnnotationsManager;
+import org.labkey.targetedms.query.JournalManager;
+
+import java.beans.PropertyChangeEvent;
+import java.util.Collection;
+import java.util.Collections;
 
 /**
  * User: vsharma
  * Date: 8/22/2014
  * Time: 3:22 PM
  */
-public class TargetedMSListener implements ExperimentListener
+public class TargetedMSListener implements ExperimentListener, ContainerManager.ContainerListener
 {
     @Override
     public void beforeExperimentDeleted(ExpExperiment experiment, User user)
     {
         ExperimentAnnotationsManager.beforeDeleteExpExperiment(experiment, user);
+    }
+
+    @Override
+    public void containerCreated(Container c, User user)
+    {
+    }
+
+    @Override
+    public void containerDeleted(Container c, User user)
+    {
+        JournalManager.deleteProjectJournal(c, user);
+    }
+
+    @Override
+    public void containerMoved(Container c, Container oldParent, User user)
+    {
+    }
+
+    @NotNull
+    @Override
+    public Collection<String> canMove(Container c, Container newParent, User user)
+    {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt)
+    {
     }
 }
