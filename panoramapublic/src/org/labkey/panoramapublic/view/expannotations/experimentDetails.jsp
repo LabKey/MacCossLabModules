@@ -146,8 +146,8 @@
 <%if(journalCopyPending && canEdit) { %>
     <div style="color:red; font-weight: bold;font-size:1.1em" id="journal_copy_pending_text">Journal Copy Pending!</div>
     <div style="color:red; visibility:hidden; margin-bottom:5px; font-size:0.85em;" id="journal_copy_pending_details">
-        This experiment has not yet been copied by the journal. Until the jounal makes a copy any changes made to this experiment,
-        or the data contained in the folder(s) for this experiment, will also get copied by the journal.
+        This experiment has not yet been copied by the journal. Any changes made to this experiment,
+        or the data contained in the folder(s) for this experiment, will also get copied when the journal makes a copy of the experiment.
     </div>
 <% } %>
 <div id="title"><%=h(bean.getTitle())%></div>

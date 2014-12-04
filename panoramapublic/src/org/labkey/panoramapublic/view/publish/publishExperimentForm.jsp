@@ -192,7 +192,7 @@
                             // console.log("Access URL changed to " + newUrl);
                             if(!shortAccessUrlSpan)
                             {
-                                shortAccessUrlSpan = Ext.get('span_short_access_url');
+                                shortAccessUrlSpan = Ext4.get('span_short_access_url');
                             }
                             shortAccessUrlSpan.dom.innerHTML = newUrl;
                         }
@@ -213,7 +213,7 @@
                             // console.log("Copy URL changed to " + newUrl);
                             if(!shortCopyUrlSpan)
                             {
-                                shortCopyUrlSpan = Ext.get('span_short_copy_url');
+                                shortCopyUrlSpan = Ext4.get('span_short_copy_url');
                             }
                             shortCopyUrlSpan.dom.innerHTML = newUrl;
                         }
