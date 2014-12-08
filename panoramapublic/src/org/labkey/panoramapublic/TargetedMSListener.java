@@ -18,6 +18,7 @@ package org.labkey.targetedms;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
+import org.labkey.api.data.SqlExecutor;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExperimentListener;
 import org.labkey.api.security.User;
@@ -50,6 +51,10 @@ public class TargetedMSListener implements ExperimentListener, ContainerManager.
     public void containerDeleted(Container c, User user)
     {
         JournalManager.deleteProjectJournal(c, user);
+
+        // Clean up QC annotations
+        new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoQCAnnotation() + " WHERE Container = ?", c);
+        new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoQCAnnotationType() + " WHERE Container = ?", c);
     }
 
     @Override
