@@ -152,7 +152,7 @@
 <% } %>
 <div id="title"><%=h(bean.getTitle())%></div>
     <%if(canEdit){%>
-    <a class="banner-button-small" style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>">Edit  Experiment</a>
+    <a class="banner-button-small" style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>">Edit</a>
     <%}%>
     <%if(canPublish){%>
     <a class="banner-button-small" style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(publishUrl)%>">Publish  Experiment</a>

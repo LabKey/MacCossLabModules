@@ -72,7 +72,7 @@
 </div>
 
 <style>
-    .helpMsg
+    .helpMsg, .urlPart
     {
         font-size: 0.75em;
     }
@@ -80,30 +80,39 @@
     {
         font-weight: bold;
     }
+    div.urlMsg
+    {
+        margin: 5px 0 15px 0;
+    }
 </style>
 <script type="text/javascript">
 
-    var accessUrlMessage = '<span class="helpMsg">';
-    accessUrlMessage += 'This is the URL that should be included in your manuscript. </span><br/>';
-    accessUrlMessage += '<span class="bold">' + <%=q(AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + "/")%> + '</span>';
-    accessUrlMessage += '<span class="bold" id="span_short_access_url">' + <%=q(accessRecord.getShortURL())%> + '</span>';
-    accessUrlMessage += '<span class="bold">' + <%=q(ShortURLRecord.URL_SUFFIX)%> + '</span>';
-    accessUrlMessage += '</br>';
-    accessUrlMessage += '<span class="helpMsg">';
-    accessUrlMessage += 'You may change the text above to a more convenient, easy to remember string. ';
+    var urlFixedPre = <%=q(AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + "/")%>;
+    var urlFixedPost = <%=q(ShortURLRecord.URL_SUFFIX)%>;
+
+    var accessUrlMessage = '<div class="urlMsg">';
+    accessUrlMessage += '<span class="helpMsg"><nobr>You may change the text above to a more convenient, easy to remember string.</nobr></span>';
     accessUrlMessage += '<br/>';
+    accessUrlMessage += '<span class="helpMsg">This is the link that should be included in the manuscript to view your supplementary data on the Panorama server is. The full link is: </span>';
+    accessUrlMessage += '</br>';
+    accessUrlMessage += '<span class="bold">' + urlFixedPre + '</span>';
+    accessUrlMessage += '<span class="bold" id="span_short_access_url">' + <%=q(accessRecord.getShortURL())%> + '</span>';
+    accessUrlMessage += '<span class="bold">' + urlFixedPost + '</span>';
+    accessUrlMessage += '</div>';
 
-    // accessUrlMessage += 'Once the journal has copied your data, this URL will redirect to the journal\'s copy of the data.';
-    accessUrlMessage += '</span>';
 
-    var copyUrlMessage = '<span class="helpMsg">This is the URL that should be provided to the journal editor for copying your data.</span></br>';
-    copyUrlMessage += '<span class="bold">' + <%=q(AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + "/")%> + '</span>';
+    var copyUrlMessage = '<div class="urlMsg">';
+    copyUrlMessage += '<span class="helpMsg"><nobr>You may change the text above to a more convenient, easy to remember string.</nobr></span>';
+    copyUrlMessage += '<br/>';
+    copyUrlMessage += '<span class="helpMsg">This is the link that should be provided to the journal editor for copying your data to a permanent location on the Panorama server. The full link is:</span></br>';
+    copyUrlMessage += '<span class="bold">' + urlFixedPre + '</span>';;
     copyUrlMessage += '<span class="bold" id="span_short_copy_url">' + <%=q(copyRecord.getShortURL())%> + '</span>';
-    copyUrlMessage += '<span class="bold">' + <%=q(ShortURLRecord.URL_SUFFIX)%> + '</span>';
+    copyUrlMessage += '<span class="bold">' + urlFixedPost + '</span>';
     copyUrlMessage += '</br>';
-    copyUrlMessage += '<span class="helpMsg">';
-    copyUrlMessage += 'You may change the text above to a more convenient, easy to remember string.';
-    copyUrlMessage += '</span>';
+
+
+
+    copyUrlMessage += '</div>';
 
     Ext4.onReady(function(){
 
@@ -127,7 +136,7 @@
             frame: false,
             defaults: {
                 labelWidth: 150,
-                width: 500,
+                width: 600,
                 labelStyle: 'background-color: #E0E6EA; padding: 5px;'
             },
             items: [
@@ -181,9 +190,11 @@
                     xtype: 'textfield',
                     name: 'shortAccessUrl',
                     value: <%=q(shortAccessUrl)%>,
-                    fieldLabel: 'Access URL',
-                    afterBodyEl: accessUrlMessage,
-                    msgTarget : 'under',
+                    fieldLabel: 'Access Link',
+                    beforeBodyEl: '<span class="urlPart">' + urlFixedPre + '</span>',
+                    afterBodyEl: urlFixedPost + accessUrlMessage,
+                    msgTarget : 'side',
+                    inputWidth: '200',
                     enableKeyEvents: true,
                     listeners: {
                         'keyup': function(field)
@@ -202,9 +213,11 @@
                     xtype: 'textfield',
                     name: 'shortCopyUrl',
                     value: <%=q(shortCopyUrl)%>,
-                    fieldLabel: 'Copy URL',
-                    afterBodyEl: copyUrlMessage,
-                    msgTarget : 'under',
+                    fieldLabel: 'Copy Link',
+                    beforeBodyEl: '<span class="urlPart">' + urlFixedPre + '</span>',
+                    afterBodyEl: urlFixedPost + copyUrlMessage,
+                    msgTarget : 'side',
+                    inputWidth: '200',
                     enableKeyEvents: true,
                     listeners: {
                         'keyup': function(field)

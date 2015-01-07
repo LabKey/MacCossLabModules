@@ -17,7 +17,9 @@ package org.labkey.targetedms.query;
 
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.ColumnInfo;
+import org.labkey.api.data.ContainerDisplayColumn;
 import org.labkey.api.data.ContainerFilter;
+import org.labkey.api.data.ContainerForeignKey;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
@@ -121,6 +123,9 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
                 };
             }
         });
+
+        ColumnInfo containerCol = getColumn(FieldKey.fromParts("Container"));
+        ContainerForeignKey.initColumn(containerCol, getUserSchema());
 
         SQLFragment runCountSQL = new SQLFragment("(SELECT COUNT(r.ExperimentRunId) FROM ");
         runCountSQL.append(ExperimentService.get().getTinfoRunList(), "r");

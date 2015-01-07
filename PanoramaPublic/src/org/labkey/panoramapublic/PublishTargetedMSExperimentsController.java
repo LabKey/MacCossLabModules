@@ -478,7 +478,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
             JspView view = new JspView("/org/labkey/targetedms/view/publish/copyExperimentForm.jsp", form, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
-            view.setTitle("Copy TargetedMS Experiment");
+            view.setTitle("Copy Targeted MS Experiment");
             return view;
         }
 
@@ -1094,6 +1094,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     // BEGIN Action for resetting an entry in targetedms.JournalExperiment table
     //       -- Set 'Copied' column to null.
     //       -- Give journal copy privilege again.
+    //       -- Reset access URL to point to the author's data
     // ------------------------------------------------------------------------
     @RequiresPermissionClass(AdminPermission.class)
     public static class ResetJournalExperimentAction extends ConfirmAction<PublishExperimentForm>
@@ -1127,6 +1128,9 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
                 _journalExperiment.setCopied(null);
                 JournalManager.updateJournalExperiment(_journalExperiment, getUser());
+
+                // Reset the access URL to point to the author's folder
+                JournalManager.updateAccessUrl(_experimentAnnotations, _experimentAnnotations, _journal, getUser());
 
                 transaction.commit();
             }
