@@ -119,7 +119,7 @@
         var journalStore = Ext4.create('Ext.data.Store', {
             fields: ['journalId','name'],
             data:   [
-                {"journalId": 0, "name": "Please select a journal..."},
+                {"journalId": 0, "name": "Please select a target..."},
                 <%for(Journal j: bean.getJournalList()){%>
                 {"journalId":<%=j.getId()%>,"name":<%=q(j.getName())%>},
                 <%}%>
@@ -161,7 +161,7 @@
                 <%if(bean.getForm().isUpdate()) { %>
                     {
                         xtype: 'displayfield',
-                        fieldLabel: "Journal",
+                        fieldLabel: "Publish To",
                         value: <%=q(journal.getName())%>
                     },
                     {
@@ -173,7 +173,7 @@
                     {
                         xtype: 'combobox',
                         name: 'journalId',
-                        fieldLabel: 'Journal',
+                        fieldLabel: 'Publish To',
                         queryMode: 'local',
                         forceSelection: 'true',
                         allowBlank: false,

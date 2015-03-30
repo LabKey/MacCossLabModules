@@ -21,12 +21,11 @@
 <%@ page extends="org.labkey.api.jsp.FormPage" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%
-    TargetedMSController.SelectedIdsForm deleteForm = (TargetedMSController.SelectedIdsForm) __form;
-    int[] experimentAnnotationIds = deleteForm.getIds(false);
+    TargetedMSController.SelectedExperimentIds deleteForm = (TargetedMSController.SelectedExperimentIds) __form;
+    int[] experimentAnnotationIds = deleteForm.getIds();
 %>
 <p>Are you sure you want to delete the following
-    <%if(experimentAnnotationIds.length > 0){%>experiments<%} else {%> experiment<%}%>
-?<br>
+    <%if(experimentAnnotationIds.length > 1){%>experiments<%} else {%> experiment<%}%>?<br>
     <ul>
     <%for(int experimentAnnotationId: experimentAnnotationIds) {%>
         <li>

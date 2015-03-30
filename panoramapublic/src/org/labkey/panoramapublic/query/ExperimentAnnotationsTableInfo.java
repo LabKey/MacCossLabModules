@@ -17,7 +17,6 @@ package org.labkey.targetedms.query;
 
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.ColumnInfo;
-import org.labkey.api.data.ContainerDisplayColumn;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
 import org.labkey.api.data.DataColumn;
@@ -28,12 +27,14 @@ import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.exp.api.ExperimentService;
+import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.DetailsURL;
 import org.labkey.api.query.ExprColumn;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
+import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.targetedms.TargetedMSController;
 import org.labkey.targetedms.TargetedMSManager;
@@ -63,8 +64,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
         super(tableInfo, schema, new ContainerFilter.CurrentAndSubfolders(user));
 
         wrapAllColumns(true);
-        setDetailsURL(new DetailsURL(new ActionURL(TargetedMSController.ShowExperimentAnnotationsAction.class,
-                getContainer()), "id", FieldKey.fromParts("Id")));
+        setDetailsURL(new DetailsURL(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer())));
 
         ColumnInfo citationCol = getColumn(FieldKey.fromParts("Citation"));
         citationCol.setDisplayColumnFactory(new DisplayColumnFactory()
@@ -114,9 +114,10 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
                             _renderedCSS = true;
                         }
 
-                        ActionURL detailsPage = TargetedMSController.getViewExperimentDetailsURL(id, getContainer());
+                        ActionURL detailsPage = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer());
+                        TargetedMSController.getViewExperimentDetailsURL(id, getContainer());
 
-                        out.write("<span active=\"false\" loaded=\"false\" onclick=\"viewExperimentDetails(this,'"+id+"','"+detailsPage+"')\"><img id=\"expandcontract-"+id+"\" src=\"/labkey/_images/plus.gif\">&nbsp;");
+                        out.write("<span active=\"false\" loaded=\"false\" onclick=\"viewExperimentDetails(this,'" + id + "','" + detailsPage + "')\"><img id=\"expandcontract-" + id + "\" src=\"/labkey/_images/plus.gif\">&nbsp;");
                         out.write("</span>");
                         super.renderGridCellContents(ctx, out);
                     }
@@ -142,7 +143,6 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
         visibleColumns.add(FieldKey.fromParts("SpikeIn"));
         visibleColumns.add(FieldKey.fromParts("Citation"));
         visibleColumns.add(FieldKey.fromParts("Runs"));
-        visibleColumns.add(FieldKey.fromParts("Container"));
 
         setDefaultVisibleColumns(visibleColumns);
     }

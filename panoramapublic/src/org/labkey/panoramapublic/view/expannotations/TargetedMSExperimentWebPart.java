@@ -20,6 +20,7 @@ import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.query.FilteredTable;
+import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
@@ -60,28 +61,9 @@ public class TargetedMSExperimentWebPart extends VBox
         else if(expAnnotations.getContainer().equals(container))
         {
             // There is already an experiment defined in this container.
-            JspView<ExperimentAnnotations> view = new JspView<>("/org/labkey/targetedms/view/expannotations/experimentDetails.jsp", expAnnotations);
+            TargetedMSController.ExperimentAnnotationsDetails experimentDetails = new TargetedMSController.ExperimentAnnotationsDetails(getViewContext().getUser(), expAnnotations, false);
+            JspView<TargetedMSController.ExperimentAnnotationsDetails> view = new JspView<>("/org/labkey/targetedms/view/expannotations/experimentDetails.jsp", experimentDetails);
             addView(view);
-
-            // List of runs in the experiment.
-            TargetedMsRunListView.ViewType viewType = expAnnotations.isJournalCopy() ? TargetedMsRunListView.ViewType.EXPERIMENT_VIEW :
-                    TargetedMsRunListView.ViewType.EDITABLE_EXPERIMENT_VIEW;
-            TargetedMsRunListView runListView = TargetedMsRunListView.createView(getViewContext(), expAnnotations, viewType);
-            TableInfo tinfo = runListView.getTable();
-            if(tinfo instanceof FilteredTable)
-            {
-                SQLFragment sql = new SQLFragment();
-
-                sql.append("lsid IN (SELECT run.lsid FROM ");
-                sql.append(ExperimentService.get().getTinfoExperimentRun(), "run").append(", ");
-                sql.append(ExperimentService.get().getTinfoRunList(), "runlist").append(" ");
-                sql.append("WHERE runlist.experimentId = ? AND runlist.experimentRunId = run.rowid) ");
-                sql.add(expAnnotations.getExperimentId());
-                ((FilteredTable) tinfo).addCondition(sql);
-            }
-
-            addView(runListView);
-
             ActionURL url = TargetedMSController.getViewExperimentDetailsURL(expAnnotations.getId(), container);
             setTitleHref(url);
         }
