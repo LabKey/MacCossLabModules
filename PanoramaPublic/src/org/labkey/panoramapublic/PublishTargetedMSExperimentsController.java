@@ -61,6 +61,9 @@ import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.services.ServiceRegistry;
+import org.labkey.api.settings.LookAndFeelProperties;
+import org.labkey.api.util.ConfigurationException;
+import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
@@ -95,6 +98,9 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import static org.labkey.targetedms.TargetedMSModule.EXPERIMENT_FOLDER_WEB_PARTS;
+import static org.labkey.targetedms.TargetedMSModule.TARGETED_MS_FOLDER_TYPE;
 
 /**
  * User: vsharma
@@ -723,7 +729,39 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 }
             }
 
-            JournalManager.addJournalAccess(_exptAnnotations, _journal, form.getShortAccessUrl(), form.getShortCopyUrl(), getUser());
+            JournalExperiment je;
+            try
+            {
+                je = JournalManager.addJournalAccess(_exptAnnotations, _journal, form.getShortAccessUrl(), form.getShortCopyUrl(), getUser());
+            }
+            catch(ValidationException | UnauthorizedException  e)
+            {
+                errors.reject(ERROR_MSG, e.getMessage());
+                return false;
+            }
+
+            // Email contact person for the journal
+            String journalEmail = LookAndFeelProperties.getInstance(_journal.getProject()).getSystemEmailAddress();
+            String panoramaAdminEmail = LookAndFeelProperties.getInstance(ContainerManager.getHomeContainer()).getSystemEmailAddress();
+
+
+            try
+            {
+                MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
+                m.setSubject("Access to copy an experiment on Panorama");
+                StringBuilder text = new StringBuilder("You have been given access to copy an experiment on Panorama.\n\n");
+                text.append("The current location of the data is:\n").append(je.getShortAccessUrl().renderShortURL());
+                text.append("\n\n");
+                text.append("Use the following link to copy the data:\n");
+                text.append(je.getShortCopyUrl().renderShortURL()).append("\n\n");
+                text.append("Thank you,\n\nPanorama team");
+                m.setText(text.toString());
+                MailHelper.send(m, getUser(), getContainer());
+            }
+            catch (Exception e)
+            {
+                logger.error("Failed to send notification email to journal.", e);
+            }
 
             return true;
         }
@@ -737,6 +775,14 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
 
             TargetedMSController.ensureCorrectContainer(getContainer(), _exptAnnotations.getContainer(), getViewContext());
+
+            // Cannot publish if this is not an "Experimental data" folder.
+            TargetedMSModule.FolderType folderType = TargetedMSModule.getFolderType(_exptAnnotations.getContainer());
+            if(folderType != TargetedMSModule.FolderType.Experiment)
+            {
+                throw new IllegalStateException("Only Targeted MS folders of type \"Experimental data\" can be published.");
+            }
+
         }
 
         boolean validateForm(PublishExperimentForm form, BindException errors) throws ServletException
@@ -752,7 +798,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
             else
             {
-                errors.reject(ERROR_MSG, "Please select a journal.");
+                errors.reject(ERROR_MSG, "Please select a publication target.");
             }
 
             // Validate the short access url.
@@ -787,7 +833,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         {
             if(JournalManager.journalHasAccess(journal, experiment))
             {
-                errors.reject(ERROR_MSG, "Journal \"" + journal.getName() + "\" already has access to this experiment. Please select another journal." );
+                errors.reject(ERROR_MSG, journal.getName() + "\" already has access to this experiment. Please select another publication target." );
             }
         }
 

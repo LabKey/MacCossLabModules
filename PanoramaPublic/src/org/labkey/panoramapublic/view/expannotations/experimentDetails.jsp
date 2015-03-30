@@ -20,34 +20,35 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.targetedms.TargetedMSController" %>
-<%@ page import="org.labkey.api.security.UserManager" %>
 <%@ page import="org.labkey.api.security.permissions.InsertPermission" %>
 <%@ page import="org.labkey.targetedms.PublishTargetedMSExperimentsController" %>
 <%@ page import="org.labkey.api.data.Container" %>
-<%@ page import="org.labkey.api.security.permissions.AdminPermission" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="org.labkey.targetedms.query.JournalManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
-    JspView<ExperimentAnnotations> me = (JspView<ExperimentAnnotations>) HttpView.currentView();
-    ExperimentAnnotations bean = me.getModelBean();
+    JspView<TargetedMSController.ExperimentAnnotationsDetails> me = (JspView<TargetedMSController.ExperimentAnnotationsDetails>) HttpView.currentView();
+    ExperimentAnnotations bean = me.getModelBean().getExperimentAnnotations();
     ActionURL editUrl = TargetedMSController.getEditExperimentDetailsURL(getContainer(), bean.getId(),
             TargetedMSController.getViewExperimentDetailsURL(bean.getId(), getContainer()));
+    ActionURL deleteUrl = TargetedMSController.getDeleteExperimentURL(getContainer(), bean.getId(), getContainer().getStartURL(getUser()));
+
     ActionURL publishUrl = PublishTargetedMSExperimentsController.getPublishExperimentURL(bean.getId(), getContainer());
     Container experimentContainer = bean.getContainer();
-    final boolean canEdit = !bean.isJournalCopy() && experimentContainer.hasPermission(getUser(), InsertPermission.class);
+    final boolean canEdit = (!bean.isJournalCopy() || getUser().isSiteAdmin()) && experimentContainer.hasPermission(getUser(), InsertPermission.class);
     // User needs to be the folder admin to publish an experiment.
-    final boolean canPublish = !bean.isJournalCopy() && experimentContainer.hasPermission(getUser(), AdminPermission.class);
-    String createdBy = UserManager.getDisplayName(bean.getCreatedBy(), UserManager.getUser(bean.getCreatedBy()));
-
+    final boolean canPublish = me.getModelBean().isCanPublish();
+    final boolean showingFullDetails = me.getModelBean().isFullDetails();
     boolean journalCopyPending = JournalManager.isCopyPending(bean);
+
+    ActionURL experimentDetailsUrl = new ActionURL(TargetedMSController.ShowExperimentAnnotationsAction.class, getContainer());
+    experimentDetailsUrl.addParameter("id", bean.getId());
 %>
 <style>
  #title
  {
      font-size: 17px;
      font-weight: bold;
-     float:left;
      padding-right:20px;
  }
  #annotationContainer p
@@ -144,29 +145,35 @@
 <div id="annotationContainer">
 
 <%if(journalCopyPending && canEdit) { %>
-    <div style="color:red; font-weight: bold;font-size:1.1em" id="journal_copy_pending_text">Journal Copy Pending!</div>
+    <div style="color:red; font-weight: bold;font-size:1.1em" id="journal_copy_pending_text">Copy Pending!</div>
     <div style="color:red; visibility:hidden; margin-bottom:5px; font-size:0.85em;" id="journal_copy_pending_details">
-        This experiment has not yet been copied by the journal. Any changes made to this experiment,
-        or the data contained in the folder(s) for this experiment, will also get copied when the journal makes a copy of the experiment.
+        This experiment has not yet been copied. Any changes made to this experiment,
+        or the data contained in the folder(s) for this experiment, will also get copied when a copy is made.
     </div>
 <% } %>
 <div id="title"><%=h(bean.getTitle())%></div>
-    <%if(canEdit){%>
-    <a class="banner-button-small" style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>">Edit</a>
-    <%}%>
+<div>
     <%if(canPublish){%>
-    <a class="banner-button-small" style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(publishUrl)%>">Publish  Experiment</a>
+        <a class="banner-button-small" style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(publishUrl)%>">Publish</a>
     <%}%>
-    <br />
-    <%if(bean.getCitation() != null && bean.getPublicationLink() != null){%>
-<div id="citation"><%=h(bean.getCitation())%> <strong><br />[<a href="<%=h(bean.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
+    <%if(canEdit){%>
+    <a style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>">[Edit]</a>
+    <a style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(deleteUrl)%>">[Delete]</a>
     <%}%>
-    <%if(bean.getCitation() != null && bean.getPublicationLink() == null){%>
+    <%if(!showingFullDetails) {%>
+    <a style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(experimentDetailsUrl)%>">[More Details...]</a>
+    <%}%>
+</div>
+<br/>
+<%if(bean.getCitation() != null && bean.getPublicationLink() != null){%>
+    <div id="citation"><%=h(bean.getCitation())%> <strong><br />[<a href="<%=h(bean.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
+<%}%>
+<%if(bean.getCitation() != null && bean.getPublicationLink() == null){%>
     <div id="citation"><%=h(bean.getCitation())%> </div>
-    <%}%>
-    <%if(bean.getCitation() == null && bean.getPublicationLink() != null){%>
+<%}%>
+<%if(bean.getCitation() == null && bean.getPublicationLink() != null){%>
     <div id="citation"><strong><br />[<a href="<%=h(bean.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
-    <%}%>
+<%}%>
 <ul>
     <%if(bean.getOrganism() != null){%>
  <li><strong>Organism:</strong> <%=h(bean.getOrganism())%></li>
@@ -191,7 +198,7 @@
     <%}%>
 
 <div style="text-align: center; margin-top:15px;">
-    <span>Created by <%=h(createdBy)%> on <%=h(SimpleDateFormat.getInstance().format(bean.getCreated()))%> </span>
+    <span>Created on <%=h(SimpleDateFormat.getInstance().format(bean.getCreated()))%> </span>
 </div>
 
 </div>

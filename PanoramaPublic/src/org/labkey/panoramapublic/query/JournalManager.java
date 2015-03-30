@@ -29,17 +29,23 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.MutableSecurityPolicy;
+import org.labkey.api.security.RoleAssignment;
 import org.labkey.api.security.SecurityPolicy;
 import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
+import org.labkey.api.security.UserManager;
 import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.security.roles.EditorRole;
+import org.labkey.api.security.roles.FolderAdminRole;
+import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.security.roles.Role;
+import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.services.ServiceRegistry;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.api.view.ShortURLService;
+import org.labkey.api.view.UnauthorizedException;
 import org.labkey.targetedms.PublishTargetedMSExperimentsController;
 import org.labkey.targetedms.TargetedMSManager;
 import org.labkey.targetedms.model.ExperimentAnnotations;
@@ -52,6 +58,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 
 /**
  * User: vsharma
@@ -161,7 +168,7 @@ public class JournalManager
         Table.delete(TargetedMSManager.getTableInfoJournal(), new SimpleFilter(FieldKey.fromParts("id"), journal.getId()));
     }
 
-    public static void saveJournalExperiment(Journal journal, ExperimentAnnotations experiment, ShortURLRecord shortAccessUrl, ShortURLRecord shortCopyUrl, User user)
+    public static JournalExperiment saveJournalExperiment(Journal journal, ExperimentAnnotations experiment, ShortURLRecord shortAccessUrl, ShortURLRecord shortCopyUrl, User user)
     {
         JournalExperiment je = new JournalExperiment();
         je.setJournalId(journal.getId());
@@ -169,6 +176,7 @@ public class JournalManager
         je.setShortAccessUrl(shortAccessUrl);
         je.setShortCopyUrl(shortCopyUrl);
         Table.insert(user, TargetedMSManager.getTableInfoJournalExperiment(), je);
+        return je;
     }
 
     public static void updateJournalExperiment(JournalExperiment journalExperiment, User user)
@@ -220,18 +228,20 @@ public class JournalManager
         return new TableSelector(TargetedMSManager.getTableInfoJournalExperiment(), filter, null).getObject(JournalExperiment.class);
     }
 
-    public static void addJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal,
+    public static JournalExperiment addJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal,
                                         String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException
     {
         try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
         {
-            setupJournalAccess(exptAnnotations, journal, shortAccessUrl, shortCopyUrl, user);
+            JournalExperiment je = setupJournalAccess(exptAnnotations, journal, shortAccessUrl, shortCopyUrl, user);
 
             transaction.commit();
+
+            return je;
         }
     }
 
-    private static void setupJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal, String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException
+    private static JournalExperiment setupJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal, String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException
     {
         Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
 
@@ -247,10 +257,11 @@ public class JournalManager
         ShortURLRecord copyUrlRecord = saveShortURL(copyUrl, shortCopyUrl, null, user);
 
         // Add an entry in the targetedms.JournalExperiment table.
-        JournalManager.saveJournalExperiment(journal, exptAnnotations,
-                accessUrlRecord,
-                copyUrlRecord,
-                user);
+        JournalExperiment je = JournalManager.saveJournalExperiment(journal, exptAnnotations,
+                                                                    accessUrlRecord,
+                                                                    copyUrlRecord,
+                                                                    user);
+        return je;
     }
 
     private static void changeJournalPermissions(ExperimentAnnotations exptAnnotations, UserPrincipal journalGroup, User user, boolean add)
@@ -276,6 +287,31 @@ public class JournalManager
         if(oldPolicy.hasPermission(journalGroup, FolderExportPermission.class))
             return;
         MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(folder, oldPolicy);
+
+        Role folderAdminRole = RoleManager.getRole(FolderAdminRole.class);
+        SortedSet<RoleAssignment> roles = oldPolicy.getAssignments();
+        boolean hasFolderAdmin = false;
+        for(RoleAssignment role: roles)
+        {
+            if(role.getRole().equals(folderAdminRole))
+            {
+                hasFolderAdmin = true;
+                break;
+            }
+        }
+        if(!hasFolderAdmin)
+        {
+            // If no folder admin role was found (as can be the case for folders with permissions inherited from a parent folder)
+            // assign folder admin role to the project administrator(s)
+            Role projectAdminRole = RoleManager.getRole(ProjectAdminRole.class);
+            for(RoleAssignment role: roles)
+            {
+                if(role.getRole().equals(projectAdminRole))
+                {
+                    newPolicy.addRoleAssignment(UserManager.getUser(role.getUserId()), FolderAdminRole.class);
+                }
+            }
+        }
         newPolicy.addRoleAssignment(journalGroup, CopyTargetedMSExperimentRole.class);
         SecurityPolicyManager.savePolicy(newPolicy);
     }
@@ -313,6 +349,7 @@ public class JournalManager
     {
         ShortURLService shortUrlService = ServiceRegistry.get(ShortURLService.class);
         ShortURLRecord shortAccessURLRecord = shortUrlService.saveShortURL(shortUrl, longURL, user);
+
         if(journalGroup != null)
         {
             MutableSecurityPolicy policy = new MutableSecurityPolicy(SecurityPolicyManager.getPolicy(shortAccessURLRecord));
