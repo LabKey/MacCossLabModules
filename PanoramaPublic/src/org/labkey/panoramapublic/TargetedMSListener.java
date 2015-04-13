@@ -55,6 +55,9 @@ public class TargetedMSListener implements ExperimentListener, ContainerManager.
         // Clean up QC annotations
         new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoQCAnnotation() + " WHERE Container = ?", c);
         new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoQCAnnotationType() + " WHERE Container = ?", c);
+
+        // Clean up Guide Sets
+        new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoGuideSet() + " WHERE Container = ?", c);
     }
 
     @Override
