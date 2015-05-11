@@ -36,6 +36,7 @@ import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.jsp.FormPage;
 import org.labkey.api.module.DefaultFolderType;
 import org.labkey.api.module.FolderType;
+import org.labkey.api.module.FolderTypeManager;
 import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.module.ModuleProperty;
@@ -62,7 +63,6 @@ import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.services.ServiceRegistry;
 import org.labkey.api.settings.LookAndFeelProperties;
-import org.labkey.api.util.ConfigurationException;
 import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
@@ -98,9 +98,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import static org.labkey.targetedms.TargetedMSModule.EXPERIMENT_FOLDER_WEB_PARTS;
-import static org.labkey.targetedms.TargetedMSModule.TARGETED_MS_FOLDER_TYPE;
 
 /**
  * User: vsharma
@@ -228,7 +225,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 // Create the project.
                 Container container = ContainerManager.createContainer(ContainerManager.getRoot(), form.getProjectName(), null, null, Container.TYPE.normal, getUser());
                 // Set the folder type to "Targeted MS".
-                FolderType type = ModuleLoader.getInstance().getFolderType(TargetedMSFolderType.NAME);
+                FolderType type = FolderTypeManager.get().getFolderType(TargetedMSFolderType.NAME);
                 container.setFolderType(type, getUser());
                 // Make this an "Experiment data" folder.
                 Module targetedMSModule = ModuleLoader.getInstance().getModule(TargetedMSModule.NAME);
