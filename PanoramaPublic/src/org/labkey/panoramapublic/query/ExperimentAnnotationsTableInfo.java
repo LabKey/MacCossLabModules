@@ -16,9 +16,12 @@
 package org.labkey.targetedms.query;
 
 import org.jetbrains.annotations.NotNull;
+import org.labkey.api.action.UrlProvider;
 import org.labkey.api.data.ColumnInfo;
+import org.labkey.api.data.ContainerDisplayColumn;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
+import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
@@ -34,7 +37,9 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
+import org.labkey.api.util.ContainerUtil;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.targetedms.TargetedMSController;
 import org.labkey.targetedms.TargetedMSManager;
@@ -161,18 +166,26 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
         }
 
         @Override
+        public String renderURL(RenderContext ctx)
+        {
+            Object publicationLink = ctx.get("PublicationLink");
+            if (publicationLink != null)
+            {
+                return (String)publicationLink;
+            }
+            return null;
+        }
+
+        @Override
         public Object getValue(RenderContext ctx)
         {
             Object citation = ctx.get("Citation");
-            Object publicationLink = ctx.get("PublicationLink");
 
             if(citation != null)
             {
-                if(publicationLink != null)
-                {
-                    setURL((String)publicationLink);
-                }
-                return citation;
+                String ellipsis = "...";
+                String displayText = (String)citation;
+                return displayText.length() > (50 - ellipsis.length()) ? displayText.substring(0, (50 - ellipsis.length())) + ellipsis : displayText;
             }
             return "";
         }

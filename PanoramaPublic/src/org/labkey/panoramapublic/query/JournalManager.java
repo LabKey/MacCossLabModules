@@ -348,7 +348,15 @@ public class JournalManager
     private static ShortURLRecord saveShortURL(ActionURL longURL, String shortUrl, Group journalGroup, User user) throws ValidationException
     {
         ShortURLService shortUrlService = ServiceRegistry.get(ShortURLService.class);
-        ShortURLRecord shortAccessURLRecord = shortUrlService.saveShortURL(shortUrl, longURL, user);
+        ShortURLRecord shortAccessURLRecord;
+        try
+        {
+            shortAccessURLRecord = shortUrlService.saveShortURL(shortUrl, longURL, user);
+        }
+        catch(UnauthorizedException e)
+        {
+            throw new ValidationException("Error saving link \"" + shortUrl + "\". It may already be in use. Error message was: " + e.getMessage());
+        }
 
         if(journalGroup != null)
         {
