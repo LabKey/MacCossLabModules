@@ -53,7 +53,7 @@ import org.labkey.api.security.Group;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.PrincipalType;
 import org.labkey.api.security.RequiresLogin;
-import org.labkey.api.security.RequiresPermissionClass;
+import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.RequiresSiteAdmin;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicyManager;
@@ -652,7 +652,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     // ------------------------------------------------------------------------
     // BEGIN Action for publishing an experiment (provide copy access to a journal)
     // ------------------------------------------------------------------------
-    @RequiresPermissionClass(AdminPermission.class)
+    @RequiresPermission(AdminPermission.class)
     public static class PublishExperimentAction extends FormViewAction<PublishExperimentForm>
     {
 
@@ -979,7 +979,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     // ------------------------------------------------------------------------
     // BEGIN Action for updating an entry in targetedms.JournalExperiment table
     // ------------------------------------------------------------------------
-    @RequiresPermissionClass(AdminPermission.class)
+    @RequiresPermission(AdminPermission.class)
     public static class UpdateJournalExperimentAction extends PublishExperimentAction
     {
         private JournalExperiment _journalExperiment;
@@ -1064,7 +1064,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     // ------------------------------------------------------------------------
     // BEGIN Action for deleting an entry in targetedms.JournalExperiment table.
     // ------------------------------------------------------------------------
-    @RequiresPermissionClass(AdminPermission.class)
+    @RequiresPermission(AdminPermission.class)
     public static class DeleteJournalExperimentAction extends ConfirmAction<PublishExperimentForm>
     {
 
@@ -1139,7 +1139,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     //       -- Give journal copy privilege again.
     //       -- Reset access URL to point to the author's data
     // ------------------------------------------------------------------------
-    @RequiresPermissionClass(AdminPermission.class)
+    @RequiresPermission(AdminPermission.class)
     public static class ResetJournalExperimentAction extends ConfirmAction<PublishExperimentForm>
     {
         private ExperimentAnnotations _experimentAnnotations;
