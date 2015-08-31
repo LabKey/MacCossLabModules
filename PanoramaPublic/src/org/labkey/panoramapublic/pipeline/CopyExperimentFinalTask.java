@@ -29,6 +29,7 @@ import org.labkey.api.pipeline.RecordedActionSet;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.RoleAssignment;
+import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicy;
 import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
@@ -130,7 +131,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             JournalManager.updateJournalExperiment(jExperiment, user);
 
             // Remove the copy permissions given to the journal.
-            Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(jobSupport.getJournal().getLabkeyGroupId());
+            Group journalGroup = SecurityManager.getGroup(jobSupport.getJournal().getLabkeyGroupId());
             JournalManager.removeJournalPermissions(jobSupport.getExpAnnotations(), journalGroup, user);
 
             // Give read permissions to the authors (all users that are folder admins)
@@ -143,7 +144,12 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             {
                 if(role.getRole().equals(folderAdminRole))
                 {
-                    authors.add(UserManager.getUser(role.getUserId()));
+                    User u = UserManager.getUser(role.getUserId());
+                    // Ignore user groups
+                    if(u != null)
+                    {
+                        authors.add(u);
+                    }
                 }
             }
             Container target = experiment.getContainer();

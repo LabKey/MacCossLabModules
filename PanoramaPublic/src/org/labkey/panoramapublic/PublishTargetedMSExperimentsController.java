@@ -137,6 +137,13 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
             VBox view = new VBox();
             ActionURL newJournalUrl = new ActionURL(CreateJournalGroupAction.class, getContainer());
+            view.addView(new HtmlView("<div style=\"margin:5px;\">Journal groups are used in conjunction with the \"publication protocol\" implemented for the targetedms module. " +
+                    "The goal of the publication protocol is to provide a mechanism for journals to copy data associated with a manuscript from the author's  project " +
+                    " on a Panorama server to the journal's project. " +
+                    "Creating a new journal group via this admin console does the following:<ol>" +
+                    "<li>Creates a project for the journal with the appropriate web parts added</li>" +
+                    "<li>Creates a new security group for members of the journal</li>" +
+                    "<li>Create an entry in the Journal table of the targetedms schema that links the journal  to the project</li></ol></div>"));
             view.addView(new HtmlView("<div><a href=\"" + newJournalUrl + "\">Create a new journal group </a></div>"));
             view.addView(qView);
             view.setFrame(WebPartView.FrameType.PORTAL);
