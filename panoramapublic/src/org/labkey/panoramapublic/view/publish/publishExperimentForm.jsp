@@ -38,16 +38,12 @@
     PublishTargetedMSExperimentsController.PublishExperimentForm form = bean.getForm();
 
     String shortAccessUrl = StringUtils.nullToEmpty(form.getShortAccessUrl());
-    String shortCopyUrl = StringUtils.nullToEmpty(form.getShortCopyUrl());
 
     Journal journal = bean.getForm().lookupJournal();
     int journalId = journal != null ? journal.getId() : 0;
 
     ShortURLRecord accessRecord = new ShortURLRecord();
     accessRecord.setShortURL(shortAccessUrl);
-
-    ShortURLRecord copyRecord = new ShortURLRecord();
-    copyRecord.setShortURL(shortCopyUrl);
 
     ExperimentAnnotations expAnnotations = bean.getExperimentAnnotations();
     Set<Container> experimentFolders = ExperimentAnnotationsManager.getExperimentFolders(expAnnotations, getUser());
@@ -100,19 +96,6 @@
     accessUrlMessage += '<span class="bold">' + urlFixedPost + '</span>';
     accessUrlMessage += '</div>';
 
-
-    var copyUrlMessage = '<div class="urlMsg">';
-    copyUrlMessage += '<span class="helpMsg"><nobr>You may change the text above to a more convenient, easy to remember string.</nobr></span>';
-    copyUrlMessage += '<br/>';
-    copyUrlMessage += '<span class="helpMsg">This is the link that should be provided to the journal editor for copying your data to a permanent location on the Panorama server. The full link is:</span></br>';
-    copyUrlMessage += '<span class="bold">' + urlFixedPre + '</span>';;
-    copyUrlMessage += '<span class="bold" id="span_short_copy_url">' + <%=q(copyRecord.getShortURL())%> + '</span>';
-    copyUrlMessage += '<span class="bold">' + urlFixedPost + '</span>';
-    copyUrlMessage += '</br>';
-
-
-
-    copyUrlMessage += '</div>';
 
     Ext4.onReady(function(){
 
@@ -208,31 +191,7 @@
                             shortAccessUrlSpan.dom.innerHTML = newUrl;
                         }
                     }
-                },
-                {
-                    xtype: 'textfield',
-                    name: 'shortCopyUrl',
-                    value: <%=q(shortCopyUrl)%>,
-                    fieldLabel: 'Copy Link',
-                    beforeBodyEl: '<span class="urlPart">' + urlFixedPre + '</span>',
-                    afterBodyEl: urlFixedPost + copyUrlMessage,
-                    msgTarget : 'side',
-                    inputWidth: '200',
-                    enableKeyEvents: true,
-                    listeners: {
-                        'keyup': function(field)
-                        {
-                            var newUrl = field.getValue();
-                            // console.log("Copy URL changed to " + newUrl);
-                            if(!shortCopyUrlSpan)
-                            {
-                                shortCopyUrlSpan = Ext4.get('span_short_copy_url');
-                            }
-                            shortCopyUrlSpan.dom.innerHTML = newUrl;
-                        }
-                    }
                 }
-
             ],
             buttonAlign: 'left',
             buttons: [{
