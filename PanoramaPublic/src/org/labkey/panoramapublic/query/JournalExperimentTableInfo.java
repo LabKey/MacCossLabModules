@@ -32,6 +32,8 @@ import org.labkey.targetedms.view.publish.ShortUrlDisplayColumnFactory;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -60,6 +62,16 @@ public class JournalExperimentTableInfo extends TargetedMSTable
         accessUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
         ColumnInfo copyUrlCol = getColumn(FieldKey.fromParts("ShortCopyUrl"));
         copyUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
+
+        List<FieldKey> columns = new ArrayList<>();
+        columns.add(FieldKey.fromParts("CreatedBy"));
+        columns.add(FieldKey.fromParts("Created"));
+        columns.add(FieldKey.fromParts("JournalId"));
+        columns.add(FieldKey.fromParts("ShortAccessURL"));
+        columns.add(FieldKey.fromParts("Copied"));
+        columns.add(FieldKey.fromParts("Edit"));
+        columns.add(FieldKey.fromParts("Delete"));
+        setDefaultVisibleColumns(columns);
     }
 
     public static class DeleteUrlDisplayColumnFactory implements DisplayColumnFactory
@@ -118,7 +130,7 @@ public class JournalExperimentTableInfo extends TargetedMSTable
             _editUrl.addParameter("update", true);
             _editLinkText = "Edit";
             _resetUrl = new ActionURL(PublishTargetedMSExperimentsController.ResetJournalExperimentAction.class, container);;
-            _resetLinkText = "Reset";
+            _resetLinkText = "Republish";
         }
 
         @Override

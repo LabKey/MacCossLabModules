@@ -696,7 +696,6 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         void setInitialShortUrls(PublishExperimentForm form)
         {
             form.setShortAccessUrl(generateRandomUrl(RANDOM_URL_SIZE));
-            form.setShortCopyUrl(generateRandomUrl(RANDOM_URL_SIZE));
         }
 
         private String generateRandomUrl(int length)
@@ -733,6 +732,9 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 }
             }
 
+            // Create a short copy URL.
+            assignShortCopyUrl(form);
+
             JournalExperiment je;
             try
             {
@@ -768,6 +770,22 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
 
             return true;
+        }
+
+        protected void assignShortCopyUrl(PublishExperimentForm form)
+        {
+            ShortURLService shortUrlService = ServiceRegistry.get().getService(ShortURLService.class);
+            String baseUrl = form.getShortAccessUrl() + "_";
+            while(true)
+            {
+                String random = RandomStringUtils.randomAlphanumeric(RANDOM_URL_SIZE);
+                ShortURLRecord shortURLRecord = shortUrlService.resolveShortURL(baseUrl + random);
+                if(shortURLRecord == null)
+                {
+                    form.setShortCopyUrl(baseUrl + random);
+                    break;
+                }
+            }
         }
 
         void validate(PublishExperimentForm form) throws ServletException
@@ -815,21 +833,6 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 errors.reject(ERROR_MSG, "Please enter a short access URL.");
             }
 
-            // Validate the short copy url.
-            if(!StringUtils.isBlank(form.getShortCopyUrl()))
-            {
-                validateShortCopyUrl(form, errors);
-            }
-            else
-            {
-                errors.reject(ERROR_MSG, "Please enter a short copy URL.");
-            }
-
-            if(StringUtils.trim(form.getShortAccessUrl()).equalsIgnoreCase(StringUtils.trim(form.getShortCopyUrl())))
-            {
-                errors.reject(ERROR_MSG, "Access URL and copy URL cannot be the same.");
-            }
-
             return errors.getErrorCount() == 0;
         }
 
@@ -844,11 +847,6 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         void validateShortAccessUrl(PublishExperimentForm form, BindException errors)
         {
             validateShortUrl(form.getShortAccessUrl(), errors);
-        }
-
-        void validateShortCopyUrl(PublishExperimentForm form, BindException errors)
-        {
-            validateShortUrl(form.getShortCopyUrl(), errors);
         }
 
         protected void validateShortUrl(String shortUrl, BindException errors)
@@ -1004,7 +1002,6 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
         protected void setInitialShortUrls(PublishExperimentForm form)
         {
-            form.setShortCopyUrl(_journalExperiment.getShortCopyUrl().getShortURL());
             form.setShortAccessUrl(_journalExperiment.getShortAccessUrl().getShortURL());
         }
 
@@ -1026,15 +1023,6 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
         }
 
-        protected void validateShortCopyUrl(PublishExperimentForm form, BindException errors)
-        {
-            ShortURLRecord copyUrlRecord = _journalExperiment.getShortCopyUrl();
-            if(!copyUrlRecord.getShortURL().equals(form.getShortCopyUrl()))
-            {
-                super.validateShortCopyUrl(form, errors);
-            }
-        }
-
         @Override
         public boolean handlePost(PublishExperimentForm form, BindException errors) throws Exception
         {
@@ -1046,13 +1034,20 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             // If this experiment has already been copied by the journal, don't allow editing.
             if(_journalExperiment.getCopied() != null)
             {
-                errors.reject(ERROR_MSG, "This experiment has already been copied by the journal. You cannot change the short URLs anymore." );
+                errors.reject(ERROR_MSG, "This experiment has already been copied by the journal. You cannot change the access URL anymore." );
                 return false;
             }
 
-            if(_journalExperiment.getShortAccessUrl().getShortURL().equalsIgnoreCase(form.getShortAccessUrl()) &&
-               _journalExperiment.getShortCopyUrl().getShortURL().equalsIgnoreCase(form.getShortCopyUrl()))
+            if(_journalExperiment.getShortAccessUrl().getShortURL().equalsIgnoreCase(form.getShortAccessUrl()))
+            {
+                // The short access URL is the same as before. Do nothing.
                 return true;
+            }
+            else
+            {
+                // Change the short copy URL to match the access URL.
+                assignShortCopyUrl(form);
+            }
 
             try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
             {
