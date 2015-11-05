@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ReportDescriptor xmlns="http://labkey.org/query/xml">
+    <Properties>
+        <Prop name="includedReports">module:lincs/reports/schemas/targetedms/GCT_input_peptidearearatio/LabKeyInput.r</Prop>
+        <Prop name="includedReports">module:lincs/reports/schemas/targetedms/GCT_input_peptidearearatio/p100_processing.r</Prop>
+    </Properties>
+</ReportDescriptor>
