@@ -57,7 +57,7 @@
 
 <div id="publishExperimentForm"></div>
 <div style="margin: 30px 20px 20px 20px">
-    By publishing the experiment to the selected journal, you are providing them access to copy data as well as any
+    By publishing the experiment you are granting access to copy data as well as any
     wiki pages, custom views, custom queries, lists and R reports in the following folders:
     <ul>
     <%for(Container folder: experimentFolders) { %>
@@ -110,7 +110,6 @@
         });
 
         var shortAccessUrlSpan;
-        var shortCopyUrlSpan;
 
         var form = Ext4.create('Ext.form.Panel', {
             renderTo: "publishExperimentForm",

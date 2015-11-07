@@ -44,6 +44,7 @@ import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.PipelineStatusUrls;
 import org.labkey.api.pipeline.PipelineValidationException;
+import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.DetailsURL;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.QuerySettings;
@@ -62,6 +63,7 @@ import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.services.ServiceRegistry;
+import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
@@ -685,6 +687,11 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             if(!reshow)
             {
                 setInitialShortUrls(form);
+                List<Journal> journals = JournalManager.getJournals();
+                if(journals != null && journals.size() > 0)
+                {
+                    form.setJournalId(journals.get(0).getId());
+                }
             }
 
             JspView view = new JspView("/org/labkey/targetedms/view/publish/publishExperimentForm.jsp", bean, errors);
@@ -756,7 +763,10 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
                 m.setSubject("Access to copy an experiment on Panorama");
                 StringBuilder text = new StringBuilder("You have been given access to copy an experiment on Panorama.\n\n");
-                text.append("The current location of the data is:\n").append(je.getShortAccessUrl().renderShortURL());
+                String containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()).getURIString();
+                text.append("The current location of the data is:\n").append(containerUrl);
+                text.append("\n\n");
+                text.append("The access URL is:\n").append(je.getShortAccessUrl().renderShortURL());
                 text.append("\n\n");
                 text.append("Use the following link to copy the data:\n");
                 text.append(je.getShortCopyUrl().renderShortURL()).append("\n\n");
@@ -1119,7 +1129,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
             if(je.getCopied() != null)
             {
-                errors.reject(ERROR_MSG, "The experiment has already been copied by the journal. Unlable to delete short access and copy URLs.");
+                errors.reject(ERROR_MSG, "The experiment has already been copied by the journal. Unable to delete short access and copy URLs.");
             }
         }
 
@@ -1142,7 +1152,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     //       -- Reset access URL to point to the author's data
     // ------------------------------------------------------------------------
     @RequiresPermission(AdminPermission.class)
-    public static class ResetJournalExperimentAction extends ConfirmAction<PublishExperimentForm>
+    public static class RepublishJournalExperimentAction extends ConfirmAction<PublishExperimentForm>
     {
         private ExperimentAnnotations _experimentAnnotations;
         private Journal _journal;
@@ -1155,9 +1165,9 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
             TargetedMSController.ensureCorrectContainer(getContainer(), _experimentAnnotations.getContainer(), getViewContext());
             StringBuilder html = new StringBuilder();
-            html.append("The experiment '").append(_experimentAnnotations.getTitle()).append(" '");
-            html.append(" has already been copied by the journal '").append(_journal.getName()).append("'.");
-            html.append(" If you click 'Continue' the journal will be given copy access again.");
+            html.append("The experiment '").append(_experimentAnnotations.getTitle()).append("' ");
+            html.append(" has already been copied by '").append(_journal.getName()).append("'.");
+            html.append(" If you click OK '").append(_journal.getName()).append("' will be given copy access again.");
             html.append("<br/>");
             html.append("Are you sure you want to continue?");
             return new HtmlView(html.toString());
@@ -1178,6 +1188,38 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 JournalManager.updateAccessUrl(_experimentAnnotations, _experimentAnnotations, _journal, getUser());
 
                 transaction.commit();
+            }
+
+            // Email contact person for the journal
+            String journalEmail = LookAndFeelProperties.getInstance(_journal.getProject()).getSystemEmailAddress();
+            String panoramaAdminEmail = LookAndFeelProperties.getInstance(ContainerManager.getHomeContainer()).getSystemEmailAddress();
+
+
+            try
+            {
+                String journalFolderUrl = AppProps.getInstance().getBaseServerUrl() +  _journalExperiment.getShortAccessUrl().getFullURL();
+
+                MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
+                m.setSubject("Request to republish an experiment on Panorama");
+                StringBuilder text = new StringBuilder("You have received a request to republish an experiment on Panorama.\n\n");
+
+                text.append("The current journal folder is: \n").append(journalFolderUrl);
+
+                text.append("\n\n");
+                String containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_experimentAnnotations.getContainer()).getURIString();
+                text.append("The user folder is:\n").append(containerUrl);
+                text.append("\n\n");
+                text.append("The access URL is:\n").append(_journalExperiment.getShortAccessUrl().renderShortURL());
+                text.append("\n\n");
+                text.append("Use the following link to copy the data:\n");
+                text.append(_journalExperiment.getShortCopyUrl().renderShortURL()).append("\n\n");
+                text.append("Thank you,\n\nPanorama team");
+                m.setText(text.toString());
+                MailHelper.send(m, getUser(), getContainer());
+            }
+            catch (Exception e)
+            {
+                logger.error("Failed to send notification email to journal.", e);
             }
 
             return true;
