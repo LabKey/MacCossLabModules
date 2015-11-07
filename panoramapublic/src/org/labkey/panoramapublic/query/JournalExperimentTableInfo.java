@@ -122,15 +122,15 @@ public class JournalExperimentTableInfo extends TargetedMSTable
         private final ActionURL _editUrl;
         private final String _editLinkText;
         private final ActionURL _resetUrl;
-        private final String _resetLinkText;
+        private final String _republishLinkText;
 
         EditUrlDisplayColumnFactory(Container container)
         {
             _editUrl = new ActionURL(PublishTargetedMSExperimentsController.UpdateJournalExperimentAction.class, container);
             _editUrl.addParameter("update", true);
             _editLinkText = "Edit";
-            _resetUrl = new ActionURL(PublishTargetedMSExperimentsController.ResetJournalExperimentAction.class, container);;
-            _resetLinkText = "Republish";
+            _resetUrl = new ActionURL(PublishTargetedMSExperimentsController.RepublishJournalExperimentAction.class, container);;
+            _republishLinkText = "Republish";
         }
 
         @Override
@@ -147,7 +147,7 @@ public class JournalExperimentTableInfo extends TargetedMSTable
                         // Show the reset link if the experiment has already been copied by a journal
                         _resetUrl.replaceParameter("id", experimentAnnotationsId);
                         _resetUrl.replaceParameter("journalId", journalId);
-                        out.write(PageFlowUtil.textLink(_resetLinkText, _resetUrl));
+                        out.write(PageFlowUtil.textLink(_republishLinkText, _resetUrl));
                     }
                     else
                     {
