@@ -18,10 +18,12 @@ package org.labkey.lincs;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabkeyError;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.data.Container;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.reports.Report;
@@ -31,22 +33,33 @@ import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.services.ServiceRegistry;
 import org.labkey.api.targetedms.ITargetedMSRun;
+import org.labkey.api.targetedms.SkylineAnnotation;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.NetworkDrive;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.RedirectException;
+import org.labkey.api.view.WebPartView;
 import org.springframework.validation.BindException;
+import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class LincsController extends SpringActionController
 {
@@ -147,9 +160,7 @@ public class LincsController extends SpringActionController
             }
 
             // If a GCT folder does not exist in this folder, create one
-            PipeRoot root = PipelineService.get().getPipelineRootSetting(getContainer());
-            assert root != null;
-            File gctDir = new File(root.getRootPath(), "GCT");
+            File gctDir = getGCTDir(getContainer());
             if(!NetworkDrive.exists(gctDir))
             {
                 if(!gctDir.mkdir())
@@ -175,7 +186,8 @@ public class LincsController extends SpringActionController
 
             // Get the last modified date on the report.
             Date reportModificationDate = report.getDescriptor().getModified();
-            // TODO: Get the date when the run was imported
+            // Get the date when the run was imported
+            Date runCreated = run.getCreated();
 
 
             // Check if the folder already contains the requested GCT file.
@@ -187,10 +199,13 @@ public class LincsController extends SpringActionController
                 {
                     if(file.getName().equals(gct.getName()) || file.getName().equals(processedGct.getName()))
                     {
-                        if(form.isRerun() || FileUtils.isFileOlder(file, reportModificationDate))
+                        if(form.isRerun() || FileUtils.isFileOlder(file, reportModificationDate)
+                                          || FileUtils.isFileOlder(file, runCreated))
                         {
-                            // If this file was created before the last modified date on the R report, delete it
-                            // so that we run the report again for this run.
+                            // Delete the file if:
+                            // 1. This file was created before the last modified date on the R report
+                            // 2. The Skyline document was re-uploaded after the last GCT file was created
+                            // We run the report again for this run.
                             file.delete();
                         }
                         else if(file.getName().equals(downloadFile.getName()))
@@ -356,5 +371,453 @@ public class LincsController extends SpringActionController
         {
             _processed = processed;
         }
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public class CreateCustomGCTAction extends FormViewAction<CustomGCTForm>
+    {
+        @Override
+        public void validateCommand(CustomGCTForm target, Errors errors)
+        {
+
+        }
+
+        @Override
+        public ModelAndView getView(CustomGCTForm customGCTForm, boolean reshow, BindException errors) throws Exception
+        {
+            if(customGCTForm.getCustomGctFile() != null)
+            {
+                JspView view = new JspView("/org/labkey/lincs/view/downloadCustomGCT.jsp", customGCTForm, errors);
+                view.setFrame(WebPartView.FrameType.PORTAL);
+                view.setTitle("Download Custom GCT");
+                return view;
+            }
+            else
+            {
+                CustomGCTBean bean = new CustomGCTBean();
+                bean.setForm(customGCTForm);
+                if(customGCTForm.getExperimentType() == null)
+                {
+                    customGCTForm.setExperimentType("DIA");
+                }
+                // Get a list of replicate annotations in this folder
+                bean.setAnnotations(getReplicateAnnotationNameValues(getContainer()));
+
+
+                JspView view = new JspView("/org/labkey/lincs/view/customGCTForm.jsp", bean, errors);
+                view.setFrame(WebPartView.FrameType.PORTAL);
+                view.setTitle("Create Custom GCT");
+                return view;
+            }
+        }
+
+        @Override
+        public boolean handlePost(CustomGCTForm customGCTForm, BindException errors) throws Exception
+        {
+            // Get the replicate annotation values from the form
+            List<SelectedAnnotation> annotations = customGCTForm.getSelectedAnnotationValues();
+            // Get a list of GCT files that we want so use as input.
+            String experimentType = customGCTForm.getExperimentType();
+            List<File> files = getGCTFiles(getContainer(), experimentType, errors);
+            if(errors.hasErrors())
+            {
+                return false;
+            }
+            if(files.size() == 0)
+            {
+                errors.reject(ERROR_MSG, "No GCT files found for in the folder for experiment type " + experimentType);
+                return false;
+            }
+
+            // Write out a custom GCT file
+            File customGct = writeCustomGCT(files, annotations, errors);
+            if(errors.hasErrors())
+            {
+                return false;
+            }
+            customGCTForm.setCustomGctFile(customGct.getName());
+
+            return false;
+        }
+
+        private File writeCustomGCT(List<File> files, List<SelectedAnnotation> annotations, BindException errors)
+        {
+            File gctDir = getGCTDir(getContainer());
+            if(!NetworkDrive.exists(gctDir))
+            {
+                errors.reject(ERROR_MSG, "GCT directory does not exist: " + gctDir.getPath());
+                return null;
+            }
+
+            Gct customGct = new Gct();
+
+            for(File file: files)
+            {
+                try
+                {
+                    Gct gct = Gct.readGct(file);
+                    for(Gct.GctEntity probe: gct.getProbes())
+                    {
+                        Gct.GctEntity finalProbe = customGct.getProbeByName(probe.getName());
+                        if(finalProbe == null)
+                        {
+                            customGct.addProbe(probe);
+                        }
+                        else
+                        {
+                            // TODO: Look at annotation values; Should be same across all GCT files.
+                            // pr_probe_normalization_group and pr_probe_suitability_manual can have different values
+                        }
+                    }
+
+                    for(Gct.GctEntity replicate: gct.getReplicates())
+                    {
+                        if(customGct.getReplicateByName(replicate.getName()) != null)
+                        {
+                            throw new Gct.GctFileException("Replicate name " + replicate.getName() + " has already been seen in another GCT file.");
+                        }
+                        if(replicate.hasAnnotationValues(annotations))
+                        {
+                            // Add this replicate column if this replicate has all the selected annotation values
+                            // OR if no annotation values were selected.
+                            customGct.addReplicate(replicate);
+                        }
+                    }
+
+                    for(Map.Entry<Gct.GctKey, String> areaRatio: gct.getAreaRatios().entrySet())
+                    {
+                        Gct.GctKey key = areaRatio.getKey();
+                        if(customGct.getReplicateByName(key.getReplicate()) == null)
+                        {
+                            continue; // This replicate may have been filtered out
+                            // throw new Gct.GctFileException("Replicate name " + key.getReplicate() + " not found in the list of replicates.");
+                        }
+                        if(customGct.getProbeByName(key.getProbe()) == null)
+                        {
+                            throw new Gct.GctFileException("Probe " + key.getProbe() + " not found in the list of probes.");
+                        }
+                        customGct.addAreaRatio(key.getProbe(), key.getReplicate(), areaRatio.getValue());
+                    }
+                }
+                catch (IOException e)
+                {
+                    errors.reject(ERROR_MSG, "Error reading GCT file " + file.getName());
+                    errors.addError(new LabkeyError(e));
+                    return null;
+                }
+            }
+
+            String gctFileName = FileUtil.makeFileNameWithTimestamp("CustomGCT", "gct");
+            File gctFile = new File(gctDir, gctFileName);
+            try
+            {
+                customGct.writeGct(gctFile);
+            }
+            catch (IOException e)
+            {
+                errors.reject(ERROR_MSG, "Error writing custom GCT file " + gctFile.getPath());
+                errors.addError(new LabkeyError(e));
+                return null;
+            }
+            return gctFile;
+        }
+
+        private List<File> getGCTFiles(Container container, String experimentType, BindException errors)
+        {
+            TargetedMSService service = ServiceRegistry.get().getService(TargetedMSService.class);
+
+            if (service == null)
+            {
+                errors.reject(ERROR_MSG, "Could not get TargetedMSService from the ServiceRegistry");
+                return Collections.emptyList();
+            }
+
+            List<ITargetedMSRun> runs = service.getRuns(container);
+            List<File> gctFiles = new ArrayList<>();
+
+            File gctDir = getGCTDir(getContainer());
+            if(!NetworkDrive.exists(gctDir))
+            {
+                errors.reject(ERROR_MSG, "GCT directory does not exist: " + gctDir.getPath());
+                return Collections.emptyList();
+            }
+
+            experimentType = "_" + experimentType.toUpperCase() + "_";
+            for(ITargetedMSRun run: runs)
+            {
+                String outputFileBaseName = run.getBaseName();
+                if(!outputFileBaseName.toUpperCase().contains(experimentType))
+                {
+                    continue;
+                }
+                File processedGct = new File(gctDir, outputFileBaseName + ".processed.gct");
+                if(NetworkDrive.exists(processedGct))
+                {
+                    gctFiles.add(processedGct);
+                }
+                else
+                {
+                    // TODO: Try to generate the GCT?
+                    errors.reject(ERROR_MSG, "GCT file does not exist: " + processedGct.getPath());
+                }
+            }
+            return gctFiles;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(CustomGCTForm customGCTForm)
+        {
+            return null;
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return null;
+        }
+    }
+
+    public static class CustomGCTForm
+    {
+        private String _experimentType;
+        private String _selectedAnnotations;
+        private String _customGctFile;
+
+        public String getExperimentType()
+        {
+            return _experimentType;
+        }
+
+        public void setExperimentType(String experimentType)
+        {
+            _experimentType = experimentType;
+        }
+
+        public String getSelectedAnnotations()
+        {
+            return _selectedAnnotations;
+        }
+
+        public void setSelectedAnnotations(String selectedAnnotations)
+        {
+            _selectedAnnotations = selectedAnnotations;
+        }
+
+        public String getCustomGctFile()
+        {
+            return _customGctFile;
+        }
+
+        public void setCustomGctFile(String customGctFile)
+        {
+            _customGctFile = customGctFile;
+        }
+
+        public List<SelectedAnnotation> getSelectedAnnotationValues()
+        {
+            String formString = StringUtils.trimToEmpty(getSelectedAnnotations());
+            String[] annotationStrings = formString.split(";");
+
+            List<SelectedAnnotation> annotations = new ArrayList<SelectedAnnotation>();
+            for(String s: annotationStrings)
+            {
+                int idx = s.indexOf(":");
+                if(idx != -1 && s.length() > idx + 1)
+                {
+                    String name = s.substring(0, idx);
+                    String[] values = s.substring(idx + 1).split(",");
+                    SelectedAnnotation annotation = new SelectedAnnotation(name);
+                    for(String value: values)
+                    {
+                        annotation.addValue(value);
+                    }
+                    annotations.add(annotation);
+                }
+            }
+            return annotations;
+        }
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public class DownloadCustomGCTReportAction extends SimpleViewAction<DownloadCustomGCTReportForm>
+    {
+        public ModelAndView getView(DownloadCustomGCTReportForm form, BindException errors) throws Exception
+        {
+            if(form.getFileName() == null)
+            {
+                errors.reject(ERROR_MSG, "Request does not contain a fileName parameter");
+                return new SimpleErrorView(errors, false);
+            }
+            PipeRoot root = PipelineService.get().getPipelineRootSetting(getContainer());
+            assert root != null;
+            File gctDir = new File(root.getRootPath(), "GCT");
+            File downloadFile = new File(gctDir, form.getFileName());
+            if(!NetworkDrive.exists(downloadFile))
+            {
+                errors.reject(ERROR_MSG, "File does not exist '" + downloadFile + "'.");
+                return new SimpleErrorView(errors, false);
+            }
+            PageFlowUtil.streamFile(getViewContext().getResponse(), downloadFile, true);
+            downloadFile.delete();
+            return null;
+        }
+
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root;
+        }
+    }
+
+    public static class DownloadCustomGCTReportForm
+    {
+        private String _fileName;
+
+        public String getFileName()
+        {
+            return _fileName;
+        }
+
+        public void setFileName(String fileName)
+        {
+            _fileName = fileName;
+        }
+    }
+    public class CustomGCTBean
+    {
+        private List<SelectedAnnotation> _annotations;
+        private CustomGCTForm _form;
+
+        public List<SelectedAnnotation> getAnnotations()
+        {
+            return _annotations;
+        }
+
+        public void setAnnotations(List<SelectedAnnotation> annotations)
+        {
+            _annotations = annotations;
+        }
+
+        public CustomGCTForm getForm()
+        {
+            return _form;
+        }
+
+        public void setForm(CustomGCTForm form)
+        {
+            _form = form;
+        }
+    }
+
+    private static List<SelectedAnnotation> getReplicateAnnotationNameValues(Container container)
+    {
+        TargetedMSService service = ServiceRegistry.get().getService(TargetedMSService.class);
+
+        if (service == null)
+        {
+            return Collections.emptyList();
+        }
+
+        List<? extends SkylineAnnotation> skyAnnotations = service.getReplicateAnnotations(container);
+
+        Map<String, SelectedAnnotation> annotationMap = new HashMap<>();
+        for(SkylineAnnotation sAnnot : skyAnnotations)
+        {
+            String name = sAnnot.getName();
+            if(name.contains("smiles") || name.equals("provenance_code "))
+            {
+                continue;
+            }
+
+            SelectedAnnotation annot = annotationMap.get(name);
+            if(annot == null)
+            {
+                // Mark which annotations are advanced vs. not
+                boolean advanced = !(name.equals("cell_id") || name.equals("det_plate")
+                        || name.equals("pert_iname") || name.equals("pert_type")
+                        || name.equals("pubchem_cid"));
+                annot = new SelectedAnnotation(name, advanced);
+                annotationMap.put(name, annot);
+            }
+            annot.addValue(sAnnot.getValue());
+        }
+
+        ArrayList<SelectedAnnotation> annotations = new ArrayList<>(annotationMap.values());
+        annotations.sort(new Comparator<SelectedAnnotation>()
+        {
+            @Override
+            public int compare(SelectedAnnotation o1, SelectedAnnotation o2)
+            {
+                return o1.getName().compareTo(o2.getName());
+            }
+        });
+        return annotations;
+    }
+
+    public static class SelectedAnnotation
+    {
+        private String _name;
+        private Set<String> _values;
+        private boolean _advanced = false;
+
+        private SelectedAnnotation(String name)
+        {
+            _name = name == null ? "" : name;
+            _values = new HashSet<>();
+        }
+
+        private SelectedAnnotation(String name, boolean advanced)
+        {
+            this(name);
+            _advanced = advanced;
+        }
+
+        public String getDisplayName()
+        {
+            switch(_name)
+            {
+                case "cell_id":
+                    return "Cell Id";
+                case "det_plate":
+                    return "Plate";
+                case "pert_type":
+                    return "Perturbation type";
+                case "pert_iname":
+                    return "Perturbation name";
+                case "pubchem_cid":
+                    return "Pubchem Id";
+                default:
+                    return _name;
+            }
+        }
+
+        private void addValue(String value)
+        {
+            if(!StringUtils.isBlank(value))
+            {
+                _values.add(value);
+            }
+        }
+
+        public String getName()
+        {
+            return _name;
+        }
+
+        public Set<String> getValues()
+        {
+            return _values;
+        }
+
+        public boolean isAdvanced()
+        {
+            return _advanced;
+        }
+    }
+
+    private static File getGCTDir(Container container)
+    {
+        PipeRoot root = PipelineService.get().getPipelineRootSetting(container);
+        assert root != null;
+        return new File(root.getRootPath(), "GCT");
     }
 }

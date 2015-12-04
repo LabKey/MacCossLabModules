@@ -32,8 +32,8 @@ function displayFiles(data)
     {
         var runId = data.rows[i].Id;
 
-        var gctParams = {runId: runId, reportName: reportName};
-        var processedGctParams = {runId: runId, reportName: reportName, processed: true};
+        var gctParams = {runId: runId, reportName: reportName, "GCT_input_peptidearearatio.RunId~eq": runId};
+        var processedGctParams = {runId: runId, reportName: reportName, "GCT_input_peptidearearatio.RunId~eq": runId, processed: true};
 
         var gctDloadUrl = LABKEY.ActionURL.buildURL('lincs', 'RunGCTReport', container, gctParams);
         var procGctDloadUrl = LABKEY.ActionURL.buildURL('lincs', 'RunGCTReport', container, processedGctParams);
