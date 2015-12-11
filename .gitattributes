@@ -2,6 +2,8 @@
 lincs/distributions/lincs.xml -text
 lincs/lincs.iml -text
 lincs/module.properties -text
+lincs/resources/lincs_peptide_annotations.txt -text
+lincs/resources/lincs_replicate_annotations.txt -text
 lincs/resources/queries/targetedms/GCT_input_peptidearearatio.sql -text
 lincs/resources/queries/targetedms/PeptideAnnotation/GCT_peptide_annotation.qview.xml -text
 lincs/resources/queries/targetedms/ReplicateAnnotation/GCT_replicate_annotation.qview.xml -text
@@ -22,12 +24,15 @@ lincs/resources/web/lincs/GENE-E_icon.png -text
 lincs/resources/web/lincs/lincs.css -text
 lincs/resources/web/lincs/lincs.js -text
 lincs/resources/web/lincs/p100_data_flow.png -text
+lincs/src/org/labkey/lincs/CustomGctBuilder.java -text
 lincs/src/org/labkey/lincs/Gct.java -text
+lincs/src/org/labkey/lincs/LincsAnnotation.java -text
 lincs/src/org/labkey/lincs/LincsContainerListener.java -text
 lincs/src/org/labkey/lincs/LincsController.java -text
 lincs/src/org/labkey/lincs/LincsManager.java -text
 lincs/src/org/labkey/lincs/LincsModule.java -text
 lincs/src/org/labkey/lincs/LincsSchema.java -text
+lincs/src/org/labkey/lincs/view/GctUtils.java -text
 lincs/src/org/labkey/lincs/view/customGCTForm.jsp -text
 lincs/src/org/labkey/lincs/view/downloadCustomGCT.jsp -text
 lincs/src/org/labkey/lincs/view/hello.jsp -text

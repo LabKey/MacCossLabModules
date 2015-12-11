@@ -1,18 +1,14 @@
 package org.labkey.lincs;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * User: vsharma
@@ -25,10 +21,14 @@ public class Gct
     private Map<String, Integer> _probeIndexMap;
     private List<GctEntity> _replicates;
     private Map<String, Integer> _replicateIndexMap;
-    private HashMap<GctKey, String> _areaRatios;
+    private GctTable<ProbeReplicate> _areaRatios;
 
     private List<String> _probeAnnotationNames;
     private List<String> _replicateAnnotationNames;
+
+    // pr_probe_normalization_group and pr_probe_suitability_manual probe annotation can have different values
+    // in the various processed GCT files.
+    private Map<String, GctTable<ProbePlate>> _multiValueProbeAnnotations;
 
     public Gct()
     {
@@ -36,7 +36,7 @@ public class Gct
         _probeIndexMap = new HashMap<>();
         _replicates = new ArrayList<>();
         _replicateIndexMap = new HashMap<>();
-        _areaRatios = new HashMap<>();
+        _areaRatios = new GctTable<>();
     }
 
     public void addProbe(GctEntity probe)
@@ -49,6 +49,13 @@ public class Gct
     {
         Integer idx = _probeIndexMap.get(name);
         return idx != null ? _probes.get(idx) : null;
+    }
+
+    public List<String> getSortedProbeNames()
+    {
+        List<String> probeNames = new ArrayList<>(_probeIndexMap.keySet());
+        Collections.sort(probeNames);
+        return probeNames;
     }
 
     public void addReplicate(GctEntity replicate)
@@ -70,15 +77,34 @@ public class Gct
 
     public void addAreaRatio(String probe, String replicate, String ratio)
     {
-        GctKey key = new GctKey(probe, replicate);
-        if(_areaRatios.containsKey(key))
-        {
-            throw new GctFileException("Area ratio has already been added for probe " + probe + " and replicate " + replicate);
-        }
-        _areaRatios.put(key, ratio);
+        _areaRatios.addValue(new ProbeReplicate(probe, replicate), ratio);
     }
 
-    public Map<GctKey, String> getAreaRatios()
+    public void addMultiValueProbeAnnotation(String annotationName, ProbePlate key, String value)
+    {
+        if(_multiValueProbeAnnotations == null)
+        {
+            _multiValueProbeAnnotations = new HashMap<>();
+        }
+        GctTable<ProbePlate> probePlateValues = _multiValueProbeAnnotations.get(annotationName);
+        if(probePlateValues == null)
+        {
+            probePlateValues = new GctTable<>();
+            _multiValueProbeAnnotations.put(annotationName, probePlateValues);
+        }
+        probePlateValues.addValue(key, value);
+    }
+
+    public Gct.GctTable<Gct.ProbePlate>  getMultiValueProbeAnnotation(String annotationName)
+    {
+        if(_multiValueProbeAnnotations != null)
+        {
+            return _multiValueProbeAnnotations.get(annotationName);
+        }
+        return null;
+    }
+
+    public GctTable<ProbeReplicate> getAreaRatios()
     {
         return _areaRatios;
     }
@@ -93,207 +119,85 @@ public class Gct
         return _replicates;
     }
 
-    private int getProbeCount()
+    public int getProbeCount()
     {
         return _probes.size();
     }
 
-    private int getProbeAnnotationCount()
+    public int getProbeAnnotationCount()
     {
         if(_probeAnnotationNames == null)
         {
-            LinkedHashSet<String> annotations = new LinkedHashSet<>();
-            for(GctEntity probe: _probes)
-            {
-                annotations.addAll(probe.getAnnotations().keySet());
-            }
-            _probeAnnotationNames = new ArrayList<>(annotations);
-            Collections.sort(_probeAnnotationNames);
+            filterProbeAnnotations(Collections.emptySet());
         }
+
         return _probeAnnotationNames.size();
     }
 
-    private int getReplicateCount()
+    public List<String> getProbeAnnotationNames()
+    {
+        return _probeAnnotationNames == null ? Collections.emptyList() : _probeAnnotationNames;
+    }
+
+    private void filterProbeAnnotations(Set<String> toIgnore)
+    {
+        _probeAnnotationNames = filterAnnotations(getProbes(), toIgnore);
+    }
+
+    public int getReplicateCount()
     {
         return _replicates.size();
     }
 
-    private int getReplicateAnnotationCount()
+    public int getReplicateAnnotationCount()
     {
         if(_replicateAnnotationNames == null)
         {
-            LinkedHashSet<String> annotations = new LinkedHashSet<>();
-            for(GctEntity replicate: _replicates)
-            {
-                annotations.addAll(replicate.getAnnotations().keySet());
-            }
-            _replicateAnnotationNames = new ArrayList<>(annotations);
-            Collections.sort(_replicateAnnotationNames);
+            filterProbeAnnotations(Collections.emptySet());
         }
+
         return _replicateAnnotationNames.size();
     }
 
-    public void writeGct(File outFile) throws IOException
+    public List<String> getReplicateAnnotationNames()
     {
-        BufferedWriter writer = null;
-        try
-        {
-            writer = new BufferedWriter(new FileWriter(outFile));
-            writer.write("#1.3");
-            writer.newLine();
-            int probeAnnotationCount = getProbeAnnotationCount();
-            writer.write(getProbeCount() + "\t" +
-                         getReplicateCount() + "\t" +
-                         probeAnnotationCount + "\t" +
-                         getReplicateAnnotationCount());
-            writer.newLine();
-            writer.write("id"); // first column, first row in GCT table
-            // FIRST ROW: Write probe annotation names
-            for(String probeAnnotation: _probeAnnotationNames)
-            {
-                writer.write("\t");
-                writer.write(probeAnnotation);
-            }
-            // FIRST ROW: Write replicate names
-            for(GctEntity replicate: _replicates)
-            {
-                writer.write("\t");
-                writer.write(replicate.getName());
-            }
-            writer.newLine();
-
-            // REPLICATE ANNOTATION ROWS: Write replicate annotation values
-            for(String repAnnotationName: _replicateAnnotationNames)
-            {
-                writer.write(repAnnotationName);
-                for(int i = 0; i < probeAnnotationCount; i++)
-                {
-                    writer.write("\tNA");
-                }
-
-                for(GctEntity replicate: _replicates)
-                {
-                    writer.write("\t");
-                    String annotationValue = replicate.getAnnotationValue(repAnnotationName);
-                    writer.write(annotationValue == null ? "NA" : annotationValue);
-                }
-                writer.newLine();
-            }
-
-            // PROBE ROWS: Write probe names, probe annotation values and area ratios
-            List<String> probeNames = new ArrayList<>(_probeIndexMap.keySet());
-            Collections.sort(probeNames);
-            for(String probeName: probeNames)
-            {
-                GctEntity probe = _probes.get(_probeIndexMap.get(probeName));
-                writer.write(probe.getName());
-                for(String probeAnnotationName: _probeAnnotationNames)
-                {
-                    writer.write("\t");
-                    String annotationValue = probe.getAnnotationValue(probeAnnotationName);
-                    writer.write(annotationValue == null ? "NA" : annotationValue);
-                }
-
-                // Write the area ratios for this probe in all the replicates
-                for(GctEntity replicate: _replicates)
-                {
-                    String value = _areaRatios.get(new GctKey(probe.getName(), replicate.getName()));
-                    writer.write("\t");
-                    writer.write(value == null ? "NA" : value);
-                }
-                writer.newLine();
-            }
-        }
-        finally
-        {
-            if(writer != null) try {writer.close();} catch(IOException ignored) {}
-        }
+        return _replicateAnnotationNames == null ? Collections.emptyList() : _replicateAnnotationNames;
     }
 
-
-    public static Gct readGct(File inFile) throws IOException
+    private void filterReplicateAnnotations(Set<String> toIgnore)
     {
-        BufferedReader reader = null;
-        try
-        {
-            Gct gct = new Gct();
-            int probeCount, replicateCount, probeAnnotationCount, replicateAnnotationCount;
-
-            reader = new BufferedReader(new FileReader(inFile));
-            reader.readLine();  // GCT version number
-
-            // Header with number of probes, replicates, replicate annotations, probe annotations
-            String[] tokens = readNextLine(reader, 4);
-            probeCount = Integer.parseInt(tokens[0]);
-            replicateCount = Integer.parseInt(tokens[1]);
-            probeAnnotationCount = Integer.parseInt(tokens[2]);
-            replicateAnnotationCount = Integer.parseInt(tokens[3]);
-
-
-            // Probe annotation names and replicate names
-            int numColumns = 1 + probeAnnotationCount + replicateCount;
-            tokens = readNextLine(reader, numColumns);
-
-            List<String> probeAnnotationNames = new ArrayList<>(probeAnnotationCount);
-            probeAnnotationNames.addAll(Arrays.asList(tokens).subList(1, probeAnnotationCount + 1));
-
-            for(int i = probeAnnotationCount + 1; i < tokens.length; i++)
-            {
-                gct.addReplicate(new GctEntity(tokens[i]));
-            }
-
-            // Read the replicate annotation values for all replicates
-            for(int i = 0; i < replicateAnnotationCount; i++)
-            {
-                tokens = readNextLine(reader, numColumns);
-                String replAnnotationName = tokens[0];
-                for(int j = probeAnnotationCount + 1; j < tokens.length; j++)
-                {
-                    GctEntity replicate = gct.getReplicateAtIndex(j - (probeAnnotationCount + 1));
-                    replicate.addAnnotation(replAnnotationName, tokens[j]);
-                }
-            }
-
-            // Read the probe annotation values and the area ratios
-            for(int i = 0; i < probeCount; i++)
-            {
-                tokens = readNextLine(reader, numColumns);
-                GctEntity probe = new GctEntity(tokens[0]);
-                gct.addProbe(probe);
-
-                for(int j = 1; j <= probeAnnotationCount; j++)
-                {
-                    probe.addAnnotation(probeAnnotationNames.get(j - 1), tokens[j]);
-                }
-
-                for(int j = probeAnnotationCount + 1; j < tokens.length; j++)
-                {
-                    String replicateName = gct.getReplicateAtIndex(j - (probeAnnotationCount + 1)).getName();
-                    gct.addAreaRatio(probe.getName(), replicateName, tokens[j]);
-                }
-            }
-
-            return gct;
-        }
-        finally
-        {
-            if(reader != null) try {reader.close();} catch(IOException ignored){}
-        }
+        _replicateAnnotationNames = filterAnnotations(getReplicates(), toIgnore);
     }
 
-    private static String[] readNextLine(BufferedReader reader, int expectedColumns) throws IOException
+    private List<String> filterAnnotations(List<GctEntity> gctEntities, Set<String> toIgnore)
     {
-        String line = reader.readLine();
-        if(line == null)
+        LinkedHashSet<String> annotations = new LinkedHashSet<>();
+        for(GctEntity gctEntity: gctEntities)
         {
-            throw new GctFileException("Could not read next line in file.");
+            annotations.addAll(gctEntity.getAnnotations().keySet());
         }
-        String[] tokens = line.split("\\t");
-        if(tokens.length != expectedColumns)
+        List<String> annotationNames = new ArrayList<>(annotations);
+        Iterator<String> iterator = annotationNames.iterator();
+        while(iterator.hasNext())
         {
-            throw new GctFileException("Expecting line with " + expectedColumns + " columns. Found " + tokens.length + ":\n " + line);
+            String annotationName = iterator.next();
+            if(toIgnore.contains(annotationName))
+            {
+                iterator.remove();
+            }
         }
-        return tokens;
+        Collections.sort(annotationNames);
+        return annotationNames;
+    }
+
+    public void setIgnoredReplicateAnnotations(Set<String> ignored)
+    {
+        filterReplicateAnnotations(ignored);
+    }
+
+    public void setIgnoredProbeAnnotations(Set<String> ignored)
+    {
+        filterProbeAnnotations(ignored);
     }
 
     public static class GctEntity
@@ -363,26 +267,59 @@ public class Gct
         }
     }
 
-    public static class GctKey
+    public static class ProbeReplicate extends GctKey
     {
-        private final String _probe;
-        private final String _replicate;
-
-        public GctKey(String probe, String replicate)
+        public ProbeReplicate (String probe, String replicate)
         {
-            _probe = probe;
-            _replicate = replicate;
+            super(probe, replicate);
+        }
+
+        @Override
+        public String getKey1Name()
+        {
+            return "probe";
+        }
+
+        @Override
+        public String getKey2Name()
+        {
+            return "replicate";
         }
 
         public String getProbe()
         {
-            return _probe;
+            return super.getKey1();
         }
 
         public String getReplicate()
         {
-            return _replicate;
+            return super.getKey2();
         }
+    }
+
+    private abstract static  class GctKey
+    {
+        private final String _key1;
+        private final String _key2;
+
+        public GctKey(String probe, String replicate)
+        {
+            _key1 = probe;
+            _key2 = replicate;
+        }
+
+        public String getKey1()
+        {
+            return _key1;
+        }
+
+        public String getKey2()
+        {
+            return _key2;
+        }
+
+        public abstract String getKey1Name();
+        public abstract String getKey2Name();
 
         @Override
         public boolean equals(Object o)
@@ -392,16 +329,29 @@ public class Gct
 
             GctKey gctKey = (GctKey) o;
 
-            return _probe.equals(gctKey._probe) && _replicate.equals(gctKey._replicate);
-
+            return _key1.equals(gctKey._key1) && _key2.equals(gctKey._key2);
         }
 
         @Override
         public int hashCode()
         {
-            int result = _probe.hashCode();
-            result = 31 * result + _replicate.hashCode();
+            int result = _key1.hashCode();
+            result = 31 * result + _key2.hashCode();
             return result;
+        }
+    }
+
+    public interface GctKeyBuilder <T extends GctKey>
+    {
+        public T build(String key1, String key2);
+    }
+
+    public static class ProbePlateKeyBuilder implements GctKeyBuilder<ProbePlate>
+    {
+        @Override
+        public ProbePlate build(String key1, String key2)
+        {
+            return new ProbePlate(key1, key2);
         }
     }
 
@@ -410,6 +360,98 @@ public class Gct
         public GctFileException(String message)
         {
             super(message);
+        }
+
+        public GctFileException(String message, Throwable cause)
+        {
+            super(message, cause);
+        }
+    }
+
+    public static class GctTable <T extends GctKey>
+    {
+        private Map<T, String> _tableValues;
+        private List<String> _sortedKey2;
+
+        public GctTable()
+        {
+            _tableValues = new HashMap<>();
+        }
+
+        public void addValue(T key, String value)
+        {
+            if(_tableValues.containsKey(key))
+            {
+                throw new GctFileException("Value has already been added for " + key.getKey1Name() + " " + key.getKey1() +
+                                           " and " + key.getKey2Name() + " " + key.getKey2());
+            }
+            _tableValues.put(key, value);
+        }
+
+        public String getValue(T key)
+        {
+            String value = _tableValues.get(key);
+            return value == null ? "NA" : value;
+        }
+
+        public Set<T> getKeys()
+        {
+            return _tableValues.keySet();
+        }
+
+        public String getSortedValuesForKey1(String key1, GctKeyBuilder<T> gctKeyBuilder)
+        {
+            if(_sortedKey2 == null)
+            {
+                Set<String> uniqKey2Set = new HashSet<>();
+                for(T key: _tableValues.keySet())
+                {
+                    uniqKey2Set.add(key.getKey2());
+                }
+                _sortedKey2 = new ArrayList<>(uniqKey2Set);
+                Collections.sort(_sortedKey2);
+            }
+
+            StringBuilder values = new StringBuilder();
+            if(_sortedKey2.size() > 1)
+            {
+                values.append("[");
+            }
+
+            String comma = "";
+            for(String key2: _sortedKey2)
+            {
+                String value = getValue(gctKeyBuilder.build(key1, key2));
+                values.append(comma).append(value);
+                comma = ",";
+            }
+
+            if(_sortedKey2.size() > 1)
+            {
+                values.append("]");
+            }
+
+            return values.toString();
+        }
+    }
+
+    public static class ProbePlate extends GctKey
+    {
+        public ProbePlate(String probe, String plate)
+        {
+            super(probe, plate);
+        }
+
+        @Override
+        public String getKey1Name()
+        {
+            return "probe";
+        }
+
+        @Override
+        public String getKey2Name()
+        {
+            return "plate";
         }
     }
 }

@@ -27,11 +27,12 @@
 
 <%
     JspView<LincsController.CustomGCTForm> jspView = (JspView<LincsController.CustomGCTForm>) HttpView.currentView();
-    LincsController.CustomGCTForm bean = jspView.getModelBean();
-    List<LincsController.SelectedAnnotation> annotations = bean.getSelectedAnnotationValues();
+    LincsController.CustomGCTForm form = jspView.getModelBean();
+    List<LincsController.SelectedAnnotation> annotations = form.getSelectedAnnotationValues();
+    LincsController.GctBean gctBean = form.getCustomGctBean();
 
     ActionURL downloadGctUrl = new ActionURL(LincsController.DownloadCustomGCTReportAction.class, getContainer());
-    downloadGctUrl.addParameter("fileName", bean.getCustomGctFile());
+    downloadGctUrl.addParameter("fileName", gctBean.getGctFile().getName());
 %>
 
 <div style="margin:20px 10px 20px 10px">
@@ -41,7 +42,7 @@
 
 <div style="margin:20px 10px 20px 10px">
     <div style="font-weight:bold;">Selected options:</div>
-    <p>Experiment type: <%=bean.getExperimentType()%></p>
+    <p>Experiment type: <%=form.getExperimentType()%></p>
     <p>
         <%for(LincsController.SelectedAnnotation annotation: annotations) { %>
             <%=annotation.getDisplayName()%>:
@@ -53,5 +54,12 @@
             </br>
         <%}%>
     </p>
+</div>
 
+<div style="margin:20px 10px 20px 10px">
+    <div style="font-weight:bold;">GCT output:</div>
+    <div># Probes: <%=gctBean.getProbeCount()%></div>
+    <div># Replicates: <%=gctBean.getReplicateCount()%></div>
+    <div># Probe Annotations: <%=gctBean.getProbeAnnotationCount()%></div>
+    <div># Replicate Annotations: <%=gctBean.getReplicateAnnotationCount()%></div>
 </div>

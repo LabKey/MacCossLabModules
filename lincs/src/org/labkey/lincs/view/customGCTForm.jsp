@@ -122,8 +122,7 @@
                 queryMode: 'local',
                 listeners:{
                     scope: this,
-                    'select': onSelect,
-                    'beforedeselect': clearSelected
+                    'change': onChange
                 }
             });
 
@@ -131,25 +130,53 @@
         <% } %>
     }
 
-    function onSelect(combo, records, index)
+    function onChange(field, newValue, oldValue, eOpts)
     {
-        var id = combo.id + '_selected';
-        var owningDiv = Ext.get(id);
+        // console.log(newValue, oldValue);
+        var comboboxId = field.id ;
+        var owningDiv = Ext.get(comboboxId + '_selected');
+
+        if(!owningDiv) return;
 
         var selectedHtml = "";
-        for(var i = 0; i < records.length; i += 1)
+        for(var i = 0; i < newValue.length; i += 1)
         {
-            var file = records[i].get("DisplayName");
-            selectedHtml += '<span id="selected">' + file + '</span><br>';
+            var record = field.findRecordByValue(newValue[i]);
+            var nameValue = newValue[i];
+            var displayValue = record ? record.get("DisplayName") : nameValue;
+            var spanId = id + "_span";
+            selectedHtml += '<img src="/labkey/_images/delete.png" style="width:10px; height:10px; margin-right:3px" ';
+            selectedHtml += "onclick=\"deleteSelected('" + comboboxId + "', '" + nameValue + "');\"/>";
+            selectedHtml += '<span id="' +spanId + '">' + displayValue + '</span><br>';
         }
         owningDiv.dom.innerHTML = selectedHtml;
     }
 
-    function clearSelected(combo, records, index)
+    function deleteSelected(comboBoxId, valToRemove)
     {
-        var id = combo.id + '_selected';
-        var owningDiv = Ext.get(id);
-        owningDiv.dom.innerHTML = '';
+        var combo;
+        for(var i = 0; i < replAnnotationCB.length; i += 1)
+        {
+            if(replAnnotationCB[i].id == comboBoxId)
+            {
+                combo = replAnnotationCB[i];
+                break;
+            }
+        }
+        if(combo)
+        {
+            var values = combo.getValue();
+            var newValues = [];
+            for(var i = 0; i < values.length; i += 1)
+            {
+                if(!(valToRemove === values[i]))
+                {
+                    newValues.push(values[i]);
+                }
+            }
+
+            combo.setValue(newValues); // This will fire the 'change' event
+        }
     }
 
     function toggleAdvanced()
@@ -235,7 +262,11 @@
                 </select>
             </td>
         </tr>
-        <tr><td colspan="2" style="text-align:left; font-weight:bold; padding-top:20px;">Select replicate annotations</td></tr>
+        <tr><td colspan="2" style="text-align:left; font-weight:bold; padding-top:20px;">
+            Select replicate annotations
+            <br/>
+            <span style="color:red;font-size:x-small;font-weight:normal;">Multiple values can be selected in the drop-down list for each annotation</span>
+        </td></tr>
         <tr id="annotationList">
         </tr>
         <tr>

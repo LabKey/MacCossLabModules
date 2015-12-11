@@ -30,6 +30,7 @@ import org.labkey.api.reports.Report;
 import org.labkey.api.reports.report.RReport;
 import org.labkey.api.reports.report.view.ReportUtil;
 import org.labkey.api.security.RequiresPermission;
+import org.labkey.api.security.User;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.services.ServiceRegistry;
 import org.labkey.api.targetedms.ITargetedMSRun;
@@ -44,6 +45,7 @@ import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.RedirectException;
 import org.labkey.api.view.WebPartView;
+import org.labkey.lincs.view.GctUtils;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
@@ -385,7 +387,7 @@ public class LincsController extends SpringActionController
         @Override
         public ModelAndView getView(CustomGCTForm customGCTForm, boolean reshow, BindException errors) throws Exception
         {
-            if(customGCTForm.getCustomGctFile() != null)
+            if(customGCTForm.getCustomGctBean() != null)
             {
                 JspView view = new JspView("/org/labkey/lincs/view/downloadCustomGCT.jsp", customGCTForm, errors);
                 view.setFrame(WebPartView.FrameType.PORTAL);
@@ -401,7 +403,7 @@ public class LincsController extends SpringActionController
                     customGCTForm.setExperimentType("DIA");
                 }
                 // Get a list of replicate annotations in this folder
-                bean.setAnnotations(getReplicateAnnotationNameValues(getContainer()));
+                bean.setAnnotations(getReplicateAnnotationNameValues(getUser(), getContainer()));
 
 
                 JspView view = new JspView("/org/labkey/lincs/view/customGCTForm.jsp", bean, errors);
@@ -430,17 +432,19 @@ public class LincsController extends SpringActionController
             }
 
             // Write out a custom GCT file
-            File customGct = writeCustomGCT(files, annotations, errors);
+
+            GctBean customGctBean = writeCustomGCT(files, annotations,errors);
             if(errors.hasErrors())
             {
                 return false;
             }
-            customGCTForm.setCustomGctFile(customGct.getName());
+            customGCTForm.setCustomGctBean(customGctBean);
 
             return false;
         }
 
-        private File writeCustomGCT(List<File> files, List<SelectedAnnotation> annotations, BindException errors)
+        private GctBean writeCustomGCT(List<File> files, List<SelectedAnnotation> selectedAnnotations,
+                                    BindException errors)
         {
             File gctDir = getGCTDir(getContainer());
             if(!NetworkDrive.exists(gctDir))
@@ -449,78 +453,46 @@ public class LincsController extends SpringActionController
                 return null;
             }
 
-            Gct customGct = new Gct();
-
-            for(File file: files)
+            LincsManager manager = LincsManager.get();
+            User user = getUser();
+            Container container = getContainer();
+            Set<String> ignoredProbeAnnotations = getIgnoredAnnotations(manager.getPeptideAnnotations(user, container));
+            Set<String> ignoredReplicateAnnotations = getIgnoredAnnotations(manager.getReplicateAnnotations(user, container));
+            Gct customGct;
+            try
             {
-                try
-                {
-                    Gct gct = Gct.readGct(file);
-                    for(Gct.GctEntity probe: gct.getProbes())
-                    {
-                        Gct.GctEntity finalProbe = customGct.getProbeByName(probe.getName());
-                        if(finalProbe == null)
-                        {
-                            customGct.addProbe(probe);
-                        }
-                        else
-                        {
-                            // TODO: Look at annotation values; Should be same across all GCT files.
-                            // pr_probe_normalization_group and pr_probe_suitability_manual can have different values
-                        }
-                    }
-
-                    for(Gct.GctEntity replicate: gct.getReplicates())
-                    {
-                        if(customGct.getReplicateByName(replicate.getName()) != null)
-                        {
-                            throw new Gct.GctFileException("Replicate name " + replicate.getName() + " has already been seen in another GCT file.");
-                        }
-                        if(replicate.hasAnnotationValues(annotations))
-                        {
-                            // Add this replicate column if this replicate has all the selected annotation values
-                            // OR if no annotation values were selected.
-                            customGct.addReplicate(replicate);
-                        }
-                    }
-
-                    for(Map.Entry<Gct.GctKey, String> areaRatio: gct.getAreaRatios().entrySet())
-                    {
-                        Gct.GctKey key = areaRatio.getKey();
-                        if(customGct.getReplicateByName(key.getReplicate()) == null)
-                        {
-                            continue; // This replicate may have been filtered out
-                            // throw new Gct.GctFileException("Replicate name " + key.getReplicate() + " not found in the list of replicates.");
-                        }
-                        if(customGct.getProbeByName(key.getProbe()) == null)
-                        {
-                            throw new Gct.GctFileException("Probe " + key.getProbe() + " not found in the list of probes.");
-                        }
-                        customGct.addAreaRatio(key.getProbe(), key.getReplicate(), areaRatio.getValue());
-                    }
-                }
-                catch (IOException e)
-                {
-                    errors.reject(ERROR_MSG, "Error reading GCT file " + file.getName());
-                    errors.addError(new LabkeyError(e));
-                    return null;
-                }
+                CustomGctBuilder builder = new CustomGctBuilder();
+                customGct = builder.build(files, selectedAnnotations, ignoredProbeAnnotations, ignoredReplicateAnnotations);
+            }
+            catch (Exception e)
+            {
+                errors.reject(ERROR_MSG, e.getMessage());
+                errors.addError(new LabkeyError(e));
+                return null;
             }
 
             String gctFileName = FileUtil.makeFileNameWithTimestamp("CustomGCT", "gct");
             File gctFile = new File(gctDir, gctFileName);
             try
             {
-                customGct.writeGct(gctFile);
+                GctUtils.writeGct(customGct, gctFile);
             }
-            catch (IOException e)
+            catch (Exception e)
             {
                 errors.reject(ERROR_MSG, "Error writing custom GCT file " + gctFile.getPath());
                 errors.addError(new LabkeyError(e));
                 return null;
             }
-            return gctFile;
+            GctBean customGctBean = new GctBean();
+            customGctBean.setGctFile(gctFile);
+            customGctBean.setProbeCount(customGct.getProbeCount());
+            customGctBean.setProbeAnnotationCount(customGct.getProbeAnnotationCount());
+            customGctBean.setReplicateCount(customGct.getReplicateCount());
+            customGctBean.setReplicateAnnotationCount(customGct.getReplicateAnnotationCount());
+            return customGctBean;
         }
+
+
 
         private List<File> getGCTFiles(Container container, String experimentType, BindException errors)
         {
@@ -577,11 +549,24 @@ public class LincsController extends SpringActionController
         }
     }
 
+    private Set<String> getIgnoredAnnotations(List<LincsAnnotation> lincsAnnotations)
+    {
+        Set<String> ignored = new HashSet<>();
+        for(LincsAnnotation annotation: lincsAnnotations)
+        {
+            if(annotation.isIgnored())
+            {
+                ignored.add(annotation.getName());
+            }
+        }
+        return ignored;
+    }
+
     public static class CustomGCTForm
     {
         private String _experimentType;
         private String _selectedAnnotations;
-        private String _customGctFile;
+        private GctBean _customGctBean;
 
         public String getExperimentType()
         {
@@ -603,14 +588,14 @@ public class LincsController extends SpringActionController
             _selectedAnnotations = selectedAnnotations;
         }
 
-        public String getCustomGctFile()
+        public GctBean getCustomGctBean()
         {
-            return _customGctFile;
+            return _customGctBean;
         }
 
-        public void setCustomGctFile(String customGctFile)
+        public void setCustomGctBean(GctBean customGctBean)
         {
-            _customGctFile = customGctFile;
+            _customGctBean = customGctBean;
         }
 
         public List<SelectedAnnotation> getSelectedAnnotationValues()
@@ -618,7 +603,7 @@ public class LincsController extends SpringActionController
             String formString = StringUtils.trimToEmpty(getSelectedAnnotations());
             String[] annotationStrings = formString.split(";");
 
-            List<SelectedAnnotation> annotations = new ArrayList<SelectedAnnotation>();
+            List<SelectedAnnotation> annotations = new ArrayList<>();
             for(String s: annotationStrings)
             {
                 int idx = s.indexOf(":");
@@ -626,7 +611,7 @@ public class LincsController extends SpringActionController
                 {
                     String name = s.substring(0, idx);
                     String[] values = s.substring(idx + 1).split(",");
-                    SelectedAnnotation annotation = new SelectedAnnotation(name);
+                    SelectedAnnotation annotation = new SelectedAnnotation(new LincsAnnotation(name, name, false, false));
                     for(String value: values)
                     {
                         annotation.addValue(value);
@@ -638,6 +623,64 @@ public class LincsController extends SpringActionController
         }
     }
 
+    public static class GctBean
+    {
+        private File _gctFile;
+        private int _probeCount;
+        private int _replicateCount;
+        private int _probeAnnotationCount;
+        private int _replicateAnnotationCount;
+
+        public File getGctFile()
+        {
+            return _gctFile;
+        }
+
+        public void setGctFile(File gctFile)
+        {
+            _gctFile = gctFile;
+        }
+
+        public int getProbeCount()
+        {
+            return _probeCount;
+        }
+
+        public void setProbeCount(int probeCount)
+        {
+            _probeCount = probeCount;
+        }
+
+        public int getReplicateCount()
+        {
+            return _replicateCount;
+        }
+
+        public void setReplicateCount(int replicateCount)
+        {
+            _replicateCount = replicateCount;
+        }
+
+        public int getProbeAnnotationCount()
+        {
+            return _probeAnnotationCount;
+        }
+
+        public void setProbeAnnotationCount(int probeAnnotationCount)
+        {
+            _probeAnnotationCount = probeAnnotationCount;
+        }
+
+        public int getReplicateAnnotationCount()
+        {
+            return _replicateAnnotationCount;
+        }
+
+        public void setReplicateAnnotationCount(int replicateAnnotationCount)
+        {
+            _replicateAnnotationCount = replicateAnnotationCount;
+        }
+    }
     @RequiresPermission(ReadPermission.class)
     public class DownloadCustomGCTReportAction extends SimpleViewAction<DownloadCustomGCTReportForm>
     {
@@ -654,7 +697,7 @@ public class LincsController extends SpringActionController
             File downloadFile = new File(gctDir, form.getFileName());
             if(!NetworkDrive.exists(downloadFile))
             {
-                errors.reject(ERROR_MSG, "File does not exist '" + downloadFile + "'.");
+                errors.reject(ERROR_MSG, "File does not exist '" + form.getFileName() + "'.");
                 return new SimpleErrorView(errors, false);
             }
             PageFlowUtil.streamFile(getViewContext().getResponse(), downloadFile, true);
@@ -708,7 +751,7 @@ public class LincsController extends SpringActionController
         }
     }
 
-    private static List<SelectedAnnotation> getReplicateAnnotationNameValues(Container container)
+    private static List<SelectedAnnotation> getReplicateAnnotationNameValues(User user, Container container)
     {
         TargetedMSService service = ServiceRegistry.get().getService(TargetedMSService.class);
 
@@ -719,25 +762,33 @@ public class LincsController extends SpringActionController
 
         List<? extends SkylineAnnotation> skyAnnotations = service.getReplicateAnnotations(container);
 
+        List<LincsAnnotation> lincsAnnotations = LincsManager.get().getReplicateAnnotations(user, container);
+        Map<String, LincsAnnotation> lincsAnnotationMap = new HashMap<>(lincsAnnotations.size());
+        for(LincsAnnotation annotation: lincsAnnotations)
+        {
+            lincsAnnotationMap.put(annotation.getName(), annotation);
+        }
+
         Map<String, SelectedAnnotation> annotationMap = new HashMap<>();
         for(SkylineAnnotation sAnnot : skyAnnotations)
         {
             String name = sAnnot.getName();
-            if(name.contains("smiles") || name.equals("provenance_code "))
-            {
-                continue;
-            }
-
             SelectedAnnotation annot = annotationMap.get(name);
             if(annot == null)
             {
-                // Mark which annotations are advanced vs. not
-                boolean advanced = !(name.equals("cell_id") || name.equals("det_plate")
-                        || name.equals("pert_iname") || name.equals("pert_type")
-                        || name.equals("pubchem_cid"));
-                annot = new SelectedAnnotation(name, advanced);
+                LincsAnnotation lAnnot = lincsAnnotationMap.get(name);
+                if (lAnnot == null)
+                {
+                    lAnnot = new LincsAnnotation(name, name, false, false);
+                }
+                else if (lAnnot.isIgnored())
+                {
+                    continue;
+                }
+                annot = new SelectedAnnotation(lAnnot);
                 annotationMap.put(name, annot);
             }
+
             annot.addValue(sAnnot.getValue());
         }
 
@@ -755,39 +806,18 @@ public class LincsController extends SpringActionController
 
     public static class SelectedAnnotation
     {
-        private String _name;
+        private LincsAnnotation _lincsAnnotation;
         private Set<String> _values;
-        private boolean _advanced = false;
 
-        private SelectedAnnotation(String name)
+        private SelectedAnnotation(LincsAnnotation lincsAnnotation)
         {
-            _name = name == null ? "" : name;
+            _lincsAnnotation = lincsAnnotation;
             _values = new HashSet<>();
-        }
-
-        private SelectedAnnotation(String name, boolean advanced)
-        {
-            this(name);
-            _advanced = advanced;
         }
 
         public String getDisplayName()
         {
-            switch(_name)
-            {
-                case "cell_id":
-                    return "Cell Id";
-                case "det_plate":
-                    return "Plate";
-                case "pert_type":
-                    return "Perturbation type";
-                case "pert_iname":
-                    return "Perturbation name";
-                case "pubchem_cid":
-                    return "Pubchem Id";
-                default:
-                    return _name;
-            }
+            return _lincsAnnotation.getDisplayName();
         }
 
         private void addValue(String value)
@@ -800,7 +830,7 @@ public class LincsController extends SpringActionController
 
         public String getName()
         {
-            return _name;
+            return _lincsAnnotation.getName();
         }
 
         public Set<String> getValues()
@@ -810,7 +840,7 @@ public class LincsController extends SpringActionController
 
         public boolean isAdvanced()
         {
-            return _advanced;
+            return _lincsAnnotation.isAdvanced();
         }
     }
 

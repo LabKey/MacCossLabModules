@@ -7,14 +7,19 @@
     Ext4.onReady(init);
     function init(){initGCTDownloadTable("GCT File GCP");}
 
+    function showCustomGCTForm()
+    {
+        var url = LABKEY.ActionURL.buildURL("lincs", "createCustomGCT", LABKEY.ActionURL.getContainer());
+        window.location = url;
+    }
+
 </script>
 
 <table id="skylinefiles">
     <thead><tr><th>File</th><th colspan="2">Download</th></tr></thead>
     <tbody></tbody>
 </table>
-<!--
+
 <div style="margin:20px;">
-    <a href="GCT_form" class="button" id="customGctButton">Create Custom GCT</a>
+    <a class="button" id="customGctButton" onclick="showCustomGCTForm()">Create Custom GCT</a>
 </div>
--->
