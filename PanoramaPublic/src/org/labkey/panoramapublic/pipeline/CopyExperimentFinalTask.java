@@ -15,6 +15,7 @@
  */
 package org.labkey.targetedms.pipeline;
 
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
@@ -64,6 +65,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         super(factory, job);
     }
 
+    @NotNull
     public RecordedActionSet run() throws PipelineJobException
     {
         PipelineJob job = getJob();

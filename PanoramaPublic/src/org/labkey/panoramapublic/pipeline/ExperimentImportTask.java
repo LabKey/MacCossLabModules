@@ -15,6 +15,7 @@
  */
 package org.labkey.targetedms.pipeline;
 
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.admin.FolderImportContext;
 import org.labkey.api.admin.FolderImporterImpl;
 import org.labkey.api.admin.PipelineJobLoggerGetter;
@@ -45,6 +46,7 @@ public class ExperimentImportTask extends PipelineJob.Task<ExperimentImportTask.
         super(factory, job);
     }
 
+    @NotNull
     public RecordedActionSet run() throws PipelineJobException
     {
         PipelineJob job = getJob();

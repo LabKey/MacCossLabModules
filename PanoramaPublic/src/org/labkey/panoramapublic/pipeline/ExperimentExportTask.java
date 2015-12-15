@@ -16,6 +16,7 @@
 package org.labkey.targetedms.pipeline;
 
 import org.apache.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.admin.FolderExportContext;
 import org.labkey.api.admin.FolderWriterImpl;
 import org.labkey.api.admin.FolderWriterNames;
@@ -49,6 +50,7 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
         super(factory, job);
     }
 
+    @NotNull
     public RecordedActionSet run() throws PipelineJobException
     {
         PipelineJob job = getJob();
