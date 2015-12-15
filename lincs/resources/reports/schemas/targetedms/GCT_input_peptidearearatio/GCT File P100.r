@@ -3,8 +3,8 @@
 library(Rlabkey)
 require(reshape2)
 
-source("LabKeyInput.r");
-source("p100_processing.r");
+source("LabKeyInput.R");
+source("p100_processing.R");
 
 print("Updated 09/21/15 - 11:00PM");
 print("------------- URL Params ---------------");

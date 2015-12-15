@@ -27,8 +27,11 @@ import org.labkey.api.data.Container;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.reports.Report;
+import org.labkey.api.reports.report.ModuleReportDescriptor;
 import org.labkey.api.reports.report.RReport;
+import org.labkey.api.reports.report.ReportDescriptor;
 import org.labkey.api.reports.report.view.ReportUtil;
+import org.labkey.api.resource.Resource;
 import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.User;
 import org.labkey.api.security.permissions.ReadPermission;
@@ -107,9 +110,9 @@ public class LincsController extends SpringActionController
                 return new SimpleErrorView(errors, true);
             }
 
-            if (form.getReportId() == null && StringUtils.isBlank(form.getReportName()))
+            if (StringUtils.isBlank(form.getReportName()))
             {
-                errors.addError(new LabkeyError("No report name or report Id found in the request."));
+                errors.addError(new LabkeyError("No report name found in the request."));
                 return new SimpleErrorView(errors, true);
             }
 
@@ -117,8 +120,7 @@ public class LincsController extends SpringActionController
 
             if(report == null)
             {
-                errors.addError(new LabkeyError("Could not find report with name " + form.getReportName() +
-                        (form.getReportId() != null ? "or Id: " + form.getReportId() : "")));
+                errors.addError(new LabkeyError("Could not find report with name " + form.getReportName()));
                 return new SimpleErrorView(errors, true);
             }
 
@@ -187,7 +189,16 @@ public class LincsController extends SpringActionController
             }
 
             // Get the last modified date on the report.
-            Date reportModificationDate = report.getDescriptor().getModified();
+            Date reportModificationDate = new Date();
+            ReportDescriptor descriptor = report.getDescriptor();
+            if(descriptor instanceof ModuleReportDescriptor)
+            {
+                Resource resource = ((ModuleReportDescriptor) descriptor).getSourceFile();
+                if(resource != null && resource.exists())
+                {
+                    reportModificationDate = new Date(resource.getLastModified());
+                }
+            }
             // Get the date when the run was imported
             Date runCreated = run.getCreated();
 
@@ -297,14 +308,9 @@ public class LincsController extends SpringActionController
         public Report getReport(GCTReportForm form)
         {
             Report report = null;
-            String reportId = form.getReportId();
             String reportName = form.getReportName();
 
-            if (reportId != null)
-            {
-                report = ReportUtil.getReportById(getViewContext(), reportId);
-            }
-            else if (reportName != null)
+            if (reportName != null)
             {
                 String key = ReportUtil.getReportKey("targetedms", "GCT_input_peptidearearatio");
                 if (StringUtils.isBlank(key))
@@ -318,21 +324,10 @@ public class LincsController extends SpringActionController
 
     public static class GCTReportForm
     {
-        private String _reportId;
         private String _reportName;
         private int _runId;
         private boolean _rerun;
         private boolean _processed;
-
-        public String getReportId()
-        {
-            return _reportId;
-        }
-
-        public void setReportId(String reportId)
-        {
-            _reportId = reportId;
-        }
 
         public String getReportName()
         {
@@ -518,7 +513,8 @@ public class LincsController extends SpringActionController
             for(ITargetedMSRun run: runs)
             {
                 String outputFileBaseName = run.getBaseName();
-                if(!outputFileBaseName.toUpperCase().contains(experimentType))
+                if(!(outputFileBaseName.toUpperCase().contains(experimentType) ||
+                     outputFileBaseName.toUpperCase().contains("_GCP_"))) // TODO: GCP files no not have experiment type in file names
                 {
                     continue;
                 }

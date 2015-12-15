@@ -102,10 +102,10 @@ public class LincsManager
             String[] headers = line.split("\\t");
             for(int i = 0; i < headers.length; i++)
             {
-                if(headers[i].toLowerCase().equals("Name")) {nameCol = i;}
-                else if(headers[i].toLowerCase().equals("DisplayName")) {displayNameCol = i;}
-                else if(headers[i].toLowerCase().equals("Advanced")) {advancedCol = i;}
-                else if(headers[i].toLowerCase().equals("Ignored")) {ignoredCol = i;}
+                if(headers[i].toLowerCase().equals("name")) {nameCol = i;}
+                else if(headers[i].toLowerCase().equals("displayname")) {displayNameCol = i;}
+                else if(headers[i].toLowerCase().equals("advanced")) {advancedCol = i;}
+                else if(headers[i].toLowerCase().equals("ignored")) {ignoredCol = i;}
             }
 
             List<LincsAnnotation> annotations = new ArrayList<>();
@@ -116,8 +116,8 @@ public class LincsManager
                 LincsAnnotation annotation = new LincsAnnotation(
                         name,  // Name
                         displayNameCol == -1 ? name : parts[displayNameCol],    // Display Name
-                        advancedCol == -1 ? false : Boolean.valueOf(parts[1]),  // Advanced
-                        ignoredCol == -1 ? false : Boolean.valueOf(parts[2]));  // Ignored
+                        advancedCol == -1 ? false : Boolean.valueOf(parts[advancedCol]),  // Advanced
+                        ignoredCol == -1 ? false : Boolean.valueOf(parts[ignoredCol]));  // Ignored
                 annotations.add(annotation);
             }
             return annotations;

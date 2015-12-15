@@ -21,3 +21,4 @@ pert_type	false	false	Perturbation Type
 pert_vehicle	true	false	Perturbation Vehicle
 provenance_code	false	true	Provenance Code
 pubchem_cid	false	false	Pubchem Id
+cell_reprogrammed	true	false	Cell Reprogrammed
