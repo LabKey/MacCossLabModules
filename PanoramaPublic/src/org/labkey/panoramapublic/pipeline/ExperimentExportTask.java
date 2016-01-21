@@ -19,7 +19,7 @@ import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.admin.FolderExportContext;
 import org.labkey.api.admin.FolderWriterImpl;
-import org.labkey.api.admin.FolderWriterNames;
+import org.labkey.api.admin.FolderArchiveDataTypes;
 import org.labkey.api.admin.StaticLoggerGetter;
 import org.labkey.api.data.Container;
 import org.labkey.api.pipeline.AbstractTaskFactory;
@@ -85,15 +85,15 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
     {
         // This is what we will export from the folder (and subfolders, if required)
         String[] templateWriterTypes = new String[] {
-                FolderWriterNames.FOLDER_TYPE_AND_ACTIVE_MODULES, // "Folder type and active modules",
-                FolderWriterNames.WEBPART_PROPERTIES_AND_LAYOUT, // "Webpart properties and layout",
-                FolderWriterNames.QUERIES, // "Queries",
-                FolderWriterNames.CUSTOM_VIEWS, // "Custom Views",
-                FolderWriterNames.REPORTS, // "Reports",
-                FolderWriterNames.WIKIS_AND_THEIR_ATTACHMENTS, // "Wikis and their attachments",
-                FolderWriterNames.CONTAINER_SPECIFIC_MODULE_PROPERTIES, // "Container specific module properties",
-                FolderWriterNames.EXPERIMENTS_AND_RUNS, // "Experiments and runs"
-                FolderWriterNames.LISTS // "Lists"
+                FolderArchiveDataTypes.FOLDER_TYPE_AND_ACTIVE_MODULES, // "Folder type and active modules",
+                FolderArchiveDataTypes.WEBPART_PROPERTIES_AND_LAYOUT, // "Webpart properties and layout",
+                FolderArchiveDataTypes.QUERIES, // "Queries",
+                FolderArchiveDataTypes.CUSTOM_VIEWS, // "Custom Views",
+                FolderArchiveDataTypes.REPORTS, // "Reports",
+                FolderArchiveDataTypes.WIKIS_AND_THEIR_ATTACHMENTS, // "Wikis and their attachments",
+                FolderArchiveDataTypes.CONTAINER_SPECIFIC_MODULE_PROPERTIES, // "Container specific module properties",
+                FolderArchiveDataTypes.EXPERIMENTS_AND_RUNS, // "Experiments and runs"
+                FolderArchiveDataTypes.LISTS // "Lists"
                 };
 
 
