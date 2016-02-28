@@ -40,7 +40,7 @@ public class LincsModule extends DefaultModule
     @Override
     public double getVersion()
     {
-        return 15.11;
+        return 16.10;
     }
 
     @Override
