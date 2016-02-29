@@ -22,19 +22,27 @@ import org.labkey.api.data.SqlExecutor;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExperimentListener;
 import org.labkey.api.security.User;
+import org.labkey.api.view.ShortURLRecord;
+import org.labkey.api.view.ShortURLService;
+import org.labkey.targetedms.model.ExperimentAnnotations;
+import org.labkey.targetedms.model.Journal;
+import org.labkey.targetedms.model.JournalExperiment;
 import org.labkey.targetedms.query.ExperimentAnnotationsManager;
 import org.labkey.targetedms.query.JournalManager;
 
 import java.beans.PropertyChangeEvent;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * User: vsharma
  * Date: 8/22/2014
  * Time: 3:22 PM
  */
-public class TargetedMSListener implements ExperimentListener, ContainerManager.ContainerListener
+public class TargetedMSListener implements ExperimentListener, ContainerManager.ContainerListener,
+        ShortURLService.ShortURLListener
 {
     @Override
     public void beforeExperimentDeleted(ExpExperiment experiment, User user)
@@ -75,5 +83,28 @@ public class TargetedMSListener implements ExperimentListener, ContainerManager.
     @Override
     public void propertyChange(PropertyChangeEvent evt)
     {
+    }
+
+    @NotNull
+    @Override
+    public List<String> canDelete(ShortURLRecord shortUrl)
+    {
+        List<JournalExperiment> journalExperiments = JournalManager.getRecordsForShortUrl(shortUrl);
+        if(journalExperiments.size() == 0)
+        {
+            return Collections.emptyList();
+        }
+
+        List<String> errors = new ArrayList<>();
+        String url = shortUrl.getShortURL();
+        for(JournalExperiment je: journalExperiments)
+        {
+            ExperimentAnnotations experiment = ExperimentAnnotationsManager.get(je.getExperimentAnnotationsId());
+            Journal journal = JournalManager.getJournal(je.getJournalId());
+
+            errors.add("Short URL \"" + url + "\" is associated with the experiment \"" + experiment.getTitle() + "\" published to \"" + journal.getName() + "\"");
+        }
+
+        return errors;
     }
 }

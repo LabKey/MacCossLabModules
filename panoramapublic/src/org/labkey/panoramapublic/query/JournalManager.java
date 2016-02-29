@@ -15,7 +15,9 @@
  */
 package org.labkey.targetedms.query;
 
+import org.apache.log4j.Logger;
 import org.labkey.api.admin.FolderExportPermission;
+import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DbScope;
@@ -67,6 +69,8 @@ import java.util.SortedSet;
  */
 public class JournalManager
 {
+    private static final Logger LOG = Logger.getLogger(JournalManager.class);
+
     public static List<Journal> getJournals()
     {
         return new TableSelector(TargetedMSManager.getTableInfoJournal()).getArrayList(Journal.class);
@@ -118,6 +122,18 @@ public class JournalManager
         filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
         filter.addCondition(FieldKey.fromParts("JournalId"), journalId);
         return new TableSelector(TargetedMSManager.getTableInfoJournalExperiment(), filter, null).getObject(JournalExperiment.class);
+    }
+
+    public static List<JournalExperiment> getRecordsForShortUrl(ShortURLRecord shortUrl)
+    {
+
+        SimpleFilter.OrClause or = new SimpleFilter.OrClause();
+        or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("shortAccessUrl"), CompareType.EQUAL, shortUrl.getEntityId()));
+        or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("shortCopyUrl"), CompareType.EQUAL, shortUrl.getEntityId()));
+
+        SimpleFilter filter = new SimpleFilter();
+        filter.addClause(or);
+        return new TableSelector(TargetedMSManager.getTableInfoJournalExperiment(), filter, null).getArrayList(JournalExperiment.class);
     }
 
     public static boolean userHasCopyAccess(ExperimentAnnotations experimentAnnotations, Journal journal, User user)
@@ -388,12 +404,31 @@ public class JournalManager
         filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId());
         Table.delete(TargetedMSManager.getTableInfoJournalExperiment(), filter);
 
-        ShortURLService shortURLService = ServiceRegistry.get(ShortURLService.class);
-        shortURLService.deleteShortURL(je.getShortAccessUrl(), user);
-        shortURLService.deleteShortURL(je.getShortCopyUrl(), user);
+        // Try to delete the short copy and access URLs. Since we just deleted the entry in table JournalExperiment
+        // that references these URLs we should not get a foreign key constraint error.
+        tryDeleteShortUrl(je.getShortAccessUrl(), user);
+        tryDeleteShortUrl(je.getShortCopyUrl(), user);
+
 
         Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
         removeJournalPermissions(expAnnotations, journalGroup, user);
+    }
+
+    private static void tryDeleteShortUrl(ShortURLRecord shortUrl, User user)
+    {
+        ShortURLService shortURLService = ServiceRegistry.get(ShortURLService.class);
+        try
+        {
+            shortURLService.deleteShortURL(shortUrl, user);
+        }
+        catch(UnauthorizedException e)
+        {
+            LOG.error("User " + user.getEmail() + " (" + user.getUserId() + ") is not authorized to delete the shortUrlL: " + shortUrl.getShortURL(), e);
+        }
+        catch(ValidationException e)
+        {
+            LOG.error("Cannot delete the shortUrl: " + shortUrl.getShortURL(), e);
+        }
     }
 
     public static void updateJournalExperimentUrls(ExperimentAnnotations expAnnotations, Journal journal, String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException
