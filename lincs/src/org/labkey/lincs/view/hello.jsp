@@ -23,7 +23,7 @@
     User user = getUser();
 %>
 Welcome to the LINCS module.
-To learn more about LINCS ((Library of Integrated Network-based Cellular Signatures), please visit
+To learn more about LINCS (Library of Integrated Network-based Cellular Signatures), please visit
 <a href="http://www.lincsproject.org/">www.lincsproject.org</a>
 <p>
 <img style="width: 910px; height: 313px;" src="<%=getContextPath()%>/lincs/p100_data_flow.png" alt="P100 data flow"/>

@@ -22,6 +22,8 @@ package org.labkey.lincs;
  */
 public class LincsAnnotation
 {
+    public static String PLATE_ANNOTATION = "det_plate";
+
     private String _name;
     private String _displayName;
     private boolean _advanced;

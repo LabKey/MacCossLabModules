@@ -142,8 +142,9 @@ public class GctUtils
                 writer.write("\t");
                 writer.write(probeAnnotation);
             }
-            // FIRST ROW: Write replicate names
-            for (Gct.GctEntity replicate : gct.getReplicates())
+            // FIRST ROW: Write replicate names (sorted by det_plate)
+            List<Gct.GctEntity> sortedReplicates = gct.getSortedReplicates();
+            for (Gct.GctEntity replicate : sortedReplicates)
             {
                 writer.write("\t");
                 writer.write(replicate.getName());
@@ -159,7 +160,7 @@ public class GctUtils
                     writer.write("\tNA");
                 }
 
-                for (Gct.GctEntity replicate : gct.getReplicates())
+                for (Gct.GctEntity replicate : sortedReplicates)
                 {
                     writer.write("\t");
                     String annotationValue = replicate.getAnnotationValue(repAnnotationName);
@@ -198,7 +199,7 @@ public class GctUtils
 
                 // Write the area ratios for this probe in all the replicates
                 Gct.GctTable<Gct.ProbeReplicate> areaRatios = gct.getAreaRatios();
-                for (Gct.GctEntity replicate : gct.getReplicates())
+                for (Gct.GctEntity replicate : sortedReplicates)
                 {
                     String value = areaRatios.getValue(new Gct.ProbeReplicate(probe.getName(), replicate.getName()));
                     writer.write("\t");

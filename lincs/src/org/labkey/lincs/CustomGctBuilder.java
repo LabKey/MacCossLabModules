@@ -77,7 +77,8 @@ public class CustomGctBuilder
     private void updateMultiValueProbeAnnotations(Gct gct, Gct customGct)
     {
         // All replicates in a single GCT file should have the same value for the "det_plate" replicate annotation.
-        String detPlateAnnotationVal = gct.getReplicates().get(0).getAnnotationValue("det_plate");
+        // TODO: This is not true for GCP plate 16 file.
+        String detPlateAnnotationVal = gct.getReplicates().get(0).getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION);
 
         // pr_probe_normalization_group and pr_probe_suitability_manual probe annotation can have different values
         // in the various processed GCT files. Combine them as a vector (e.g. [1,2,1]) sorted by the plate number.
@@ -99,7 +100,9 @@ public class CustomGctBuilder
         Gct.GctTable<Gct.ProbeReplicate> areaRatioTable = gct.getAreaRatios();
         for(Gct.ProbeReplicate key: areaRatioTable.getKeys())
         {
-            if(customGct.getReplicateByName(key.getReplicate()) == null)
+            Gct.GctEntity replicate = gct.getReplicateByName(key.getReplicate());
+            String customReplicateName = gct.getPlateReplicateName(replicate);
+            if(customGct.getReplicateByName(customReplicateName) == null)
             {
                 continue; // This replicate may have been filtered out
             }
@@ -107,7 +110,7 @@ public class CustomGctBuilder
             {
                 throw new Gct.GctFileException("Probe " + key.getProbe() + " not found in the list of probes.");
             }
-            customGct.addAreaRatio(key.getProbe(), key.getReplicate(), areaRatioTable.getValue(key));
+            customGct.addAreaRatio(key.getProbe(), customReplicateName, areaRatioTable.getValue(key));
         }
     }
 
@@ -156,15 +159,20 @@ public class CustomGctBuilder
         int addedReplicates = 0;
         for(Gct.GctEntity replicate: gct.getReplicates())
         {
-            if(customGct.getReplicateByName(replicate.getName()) != null)
+            // Append the value of the det_plate annotation to the replicate name since replicate names are
+            // not unique across Skyline documents (plates).
+            String customReplicateName = gct.getPlateReplicateName(replicate);
+
+            if(customGct.getReplicateByName(customReplicateName) != null)
             {
-                throw new Gct.GctFileException("Replicate name " + replicate.getName() + " has already been seen in another GCT file.");
+                throw new Gct.GctFileException("Replicate name " + replicate.getName() + " has already been seen in plate " + replicate.getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION));
             }
             if(replicate.hasAnnotationValues(selectedAnnotations))
             {
                 // Add this replicate column if this replicate has all the selected annotation values
                 // OR if no annotation values were selected.
-                customGct.addReplicate(replicate);
+                Gct.GctEntity customReplicate = replicate.copy(customReplicateName); // Create a new replicate with the custom replicate name
+                customGct.addReplicate(customReplicate);
                 addedReplicates++;
             }
         }

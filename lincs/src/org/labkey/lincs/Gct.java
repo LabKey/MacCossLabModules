@@ -15,8 +15,11 @@
  */
 package org.labkey.lincs;
 
+import sun.misc.ASCIICaseInsensitiveComparator;
+
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -69,7 +72,7 @@ public class Gct
     public List<String> getSortedProbeNames()
     {
         List<String> probeNames = new ArrayList<>(_probeIndexMap.keySet());
-        Collections.sort(probeNames);
+        Collections.sort(probeNames, new ASCIICaseInsensitiveComparator());
         return probeNames;
     }
 
@@ -88,6 +91,14 @@ public class Gct
     public GctEntity getReplicateAtIndex(int index)
     {
         return index < _replicates.size() ? _replicates.get(index) : null;
+    }
+
+    public String getPlateReplicateName(GctEntity replicate)
+    {
+        // Append the value of the det_plate annotation to the replicate name.
+        String plateNumber = replicate.getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION);
+        return plateNumber + "_" + replicate.getName();
+
     }
 
     public void addAreaRatio(String probe, String replicate, String ratio)
@@ -132,6 +143,27 @@ public class Gct
     public List<GctEntity> getReplicates()
     {
         return _replicates;
+    }
+
+    public List<GctEntity> getSortedReplicates()
+    {
+        // Sort replicates by the value of the det_plate annotation.
+        List<GctEntity> sortedReplicates = new ArrayList<GctEntity>(_replicates.size());
+        sortedReplicates.addAll(_replicates);
+        Collections.sort(sortedReplicates, new Comparator<GctEntity>()
+        {
+            @Override
+            public int compare(GctEntity rep1, GctEntity rep2)
+            {
+                String annot1 = rep1.getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION);
+                String annot2 = rep2.getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION);
+                if(annot1 == null) return 1;
+                if(annot2 == null) return -1;
+                int val = annot1.compareTo(annot2);
+                return val != 0 ? val : rep1.getName().compareTo(rep2.getName());
+            }
+        });
+        return sortedReplicates;
     }
 
     public int getProbeCount()
@@ -261,6 +293,16 @@ public class Gct
         public Map<String, String> getAnnotations()
         {
             return _annotations;
+        }
+
+        public GctEntity copy(String newName)
+        {
+            GctEntity newReplicate = new GctEntity(newName);
+            for(String key: _annotations.keySet())
+            {
+                newReplicate.addAnnotation(key, _annotations.get(key));
+            }
+            return newReplicate;
         }
 
         @Override

@@ -160,9 +160,10 @@ getReplicateAnnotations <- function(folderPath) {
   print("ReplicateAnnotations AFTER FILTERING");
   print(dim(replicateAnnotations));
 
-  # Set the provenance_code to L2X
-  # surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,"L2X");
-  replicateAnnotations$Value[replicateAnnotations$Name == 'provenance_code'] = "L2X";
+   # Append L2X to the provenance_code annotation value
+   # surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,"L2X");
+   prov_code_annot <- paste(replicateAnnotations$Value[replicateAnnotations$Name == 'provenance_code'], "L2X", sep="+");
+   replicateAnnotations$Value[replicateAnnotations$Name == 'provenance_code'] = prov_code_annot;
 
   # Pivot by replicate Id
   replicateAnnotations <- dcast(replicateAnnotations, Name ~ ReplicateId, value.var="Value");
