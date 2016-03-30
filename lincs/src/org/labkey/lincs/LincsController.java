@@ -273,19 +273,21 @@ public class LincsController extends SpringActionController
                 @Override
                 public boolean accept(File dir, String name)
                 {
-                    return name.toLowerCase().endsWith(".txt") || name.toCharArray().equals("script.Rout");
+                    return name.toLowerCase().endsWith(".txt")
+                            || name.toLowerCase().endsWith(".gct")
+                            || name.toCharArray().equals("script.Rout");
                 }
             });
 
-            // The report should create two files: lincs.gct.txt and lincs.processed.gct.txt
+            // The report should create two files: lincs.gct and lincs.processed.gct
             // Copy both to the GCT folder
             for(File file: reportDirFiles)
             {
-                if(file.getName().toLowerCase().equals("lincs.gct.txt"))
+                if(file.getName().toLowerCase().equals("lincs.gct"))
                 {
                     FileUtil.copyFile(file, gct);
                 }
-                else if(file.getName().toLowerCase().equals("lincs.processed.gct.txt"))
+                else if(file.getName().toLowerCase().equals("lincs.processed.gct"))
                 {
                     FileUtil.copyFile(file, processedGct);
                 }
