@@ -88,8 +88,8 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
                 FolderArchiveDataTypes.FOLDER_TYPE_AND_ACTIVE_MODULES, // "Folder type and active modules",
                 FolderArchiveDataTypes.WEBPART_PROPERTIES_AND_LAYOUT, // "Webpart properties and layout",
                 FolderArchiveDataTypes.QUERIES, // "Queries",
-                FolderArchiveDataTypes.CUSTOM_VIEWS, // "Custom Views",
-                FolderArchiveDataTypes.REPORTS, // "Reports",
+                FolderArchiveDataTypes.GRID_VIEWS, // "Custom Grid Views",
+                FolderArchiveDataTypes.REPORTS_AND_CHARTS, // "Reports & Charts",
                 FolderArchiveDataTypes.WIKIS_AND_THEIR_ATTACHMENTS, // "Wikis and their attachments",
                 FolderArchiveDataTypes.CONTAINER_SPECIFIC_MODULE_PROPERTIES, // "Container specific module properties",
                 FolderArchiveDataTypes.EXPERIMENTS_AND_RUNS, // "Experiments and runs"
