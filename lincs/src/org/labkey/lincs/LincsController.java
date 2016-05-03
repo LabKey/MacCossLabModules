@@ -47,8 +47,11 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.RedirectException;
+import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartView;
 import org.labkey.lincs.view.GctUtils;
+import org.springframework.beans.MutablePropertyValues;
+import org.springframework.beans.PropertyValues;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
@@ -128,22 +131,6 @@ public class LincsController extends SpringActionController
             {
                 errors.addError(new LabkeyError("The specified report is not based upon an R script and therefore cannot be executed."));
                 return new SimpleErrorView(errors, true);
-            }
-
-            // Ensure that the query.RunId param is set to the same value as the runId
-            String queryRunIdParam = "query.RunId~eq";
-            String param = getViewContext().getActionURL().getParameter(queryRunIdParam);
-            int paramRunId = 0;
-            if(param != null)
-            {
-                try {paramRunId = Integer.parseInt(param);} catch(NumberFormatException ignored){}
-            }
-            if(paramRunId != form.getRunId())
-            {
-                ActionURL redirectUrl = getViewContext().getActionURL().clone();
-                redirectUrl.replaceParameter(queryRunIdParam, String.valueOf(form.getRunId()));
-
-                throw new RedirectException(redirectUrl);
             }
 
             // Get the TargetedMS run.
@@ -237,11 +224,29 @@ public class LincsController extends SpringActionController
                 }
             }
 
-            // Execute the script
+
+            // Create a new ViewContext that will be used to initialize QuerySettings for getting input data file (labkey.data)
+            ViewContext ctx = new ViewContext(getViewContext());
+            ActionURL url = getViewContext().getActionURL();
+            MutablePropertyValues propertyValues = new MutablePropertyValues();
+            for (String key : url.getParameterMap().keySet())
+            {
+                propertyValues.addPropertyValue(key, url.getParameter(key));
+            }
+            // This is required so that the grid gets filtered by the given RunId.
+            propertyValues.addPropertyValue("GCT_input_peptidearearatio.RunId~eq", form.getRunId());
+            if(outputFileBaseName.contains("_QC_"))
+            {
+                // GCT_input_peptidearearatio is a parameterized query; parameter is "isotope".
+                // For QC files we want the medium/heavy ratio.
+                propertyValues.addPropertyValue("param.isotope", "medium");
+            }
+            ctx.setBindPropertyValues(propertyValues);
             RReport rreport = (RReport)report;
             try
             {
-                rreport.runScript(getViewContext(), new ArrayList<>(), rreport.createInputDataFile(getViewContext()), null);
+                // Execute the script
+                rreport.runScript(getViewContext(), new ArrayList<>(), rreport.createInputDataFile(ctx), null);
             }
             catch(Exception e)
             {

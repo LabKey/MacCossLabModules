@@ -34,9 +34,9 @@ print("----------------------------------------");
 # [5] "peptideid"                         "peptideid_peptidemodifiedsequence"
 # [7] "probeid"                           "arearatio"
 # [9] "isotopelabel"                      "isotopelabelstd"
+print(paste("Looking at ratio: ", labkey.data[1,9], " to " , labkey.data[1,10]));
 labkey.data <- labkey.data[,c(1,4,5,7,8)];
-# print(labkey.data[1:10,]);
-
+print(colnames(labkey.data));
 
 # Replicate annotations
 replicateAnnotations <- getReplicateAnnotations(labkey.url.path);

@@ -13,6 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+PARAMETERS
+(
+    isotope VARCHAR DEFAULT 'light'
+)
+
 SELECT
 peptidechrominfo.samplefileid.replicateid.runid.id AS RunId,
 peptidechrominfo.samplefileid.replicateid.runid AS File,
@@ -27,5 +32,5 @@ peptidechrominfo
 LEFT JOIN PeptideAnnotation AS pepAnnot ON (peptidechrominfo.PeptideId = pepAnnot.PeptideId AND pepAnnot.Name='pr_id')
 LEFT JOIN PeptideAreaRatio AS peptidearearatio
  ON (peptidechrominfo.Id = peptidearearatio.PeptideChrominfoId
- AND peptidearearatio.IsotopeLabelId.Name = 'light'
+ AND peptidearearatio.IsotopeLabelId.Name = isotope
  AND peptidearearatio.IsotopeLabelStdId.Name = 'heavy')

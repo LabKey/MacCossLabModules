@@ -66,10 +66,15 @@ getReplicateIds <- function(replicateAnnotations){
 
 filters <- function(fieldKey){
 
-  runId <- labkey.url.params$"query.PeptideChrominfoId/SampleFileId/ReplicateId/RunId/Id~eq";
+  runId <- labkey.url.params$"runId";
+
   if(is.null(runId))
   {
     runId <- labkey.url.params$"query.RunId~eq";
+  }
+  if(is.null(runId))
+  {
+    runId <- labkey.url.params$"query.PeptideChrominfoId/SampleFileId/ReplicateId/RunId/Id~eq";
   }
 
   if(!is.null(runId)){
@@ -88,10 +93,10 @@ getPeptideAnnotations <- function(folderPath){
     baseUrl=baseUrl(),
     folderPath=folderPath,
     schemaName="targetedms",
-    queryName="peptideAnnotation",
+    queryName="GeneralMoleculeAnnotation",
     viewName="GCT_peptide_annotation",
     showHidden = TRUE,
-    colFilter = filters("PeptideId/PeptideGroupId/RunId/Id"),
+    colFilter = filters("PeptideId/PeptideGroupId/RunId/File/Id"),
     containerFilter="Current" # labkey.url.params$"query.containerFilterName"
   );
   print("PeptideAnnotations");

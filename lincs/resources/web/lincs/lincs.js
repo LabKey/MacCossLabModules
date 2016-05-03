@@ -37,11 +37,14 @@ function displayFiles(data)
     {
         var runId = data.rows[i].Id;
 
-        var gctParams = {runId: runId, reportName: reportName, "GCT_input_peptidearearatio.RunId~eq": runId};
-        var processedGctParams = {runId: runId, reportName: reportName, "GCT_input_peptidearearatio.RunId~eq": runId, processed: true};
+        var params = {};
+        params["runId"] = runId;
+        params["reportName"] = reportName;
 
-        var gctDloadUrl = LABKEY.ActionURL.buildURL('lincs', 'RunGCTReport', container, gctParams);
-        var procGctDloadUrl = LABKEY.ActionURL.buildURL('lincs', 'RunGCTReport', container, processedGctParams);
+        var gctDloadUrl = LABKEY.ActionURL.buildURL('lincs', 'RunGCTReport', container, params);
+
+        params["processed"] = true;
+        var procGctDloadUrl = LABKEY.ActionURL.buildURL('lincs', 'RunGCTReport', container, params);
 
         //console.log(gctDloadUrl);
         //console.log(procGctDloadUrl);
@@ -62,7 +65,6 @@ function displayFiles(data)
 
         externalHeapmapViewerLink(container, fileNameNoExt, '.gct', gctToExternalIdPrefix + i);
         externalHeapmapViewerLink(container, fileNameNoExt, '.processed.gct', gctProcToExternalIdPrefix + i);
-
     }
 
 }

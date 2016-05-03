@@ -5,7 +5,7 @@ lincs/module.properties -text
 lincs/resources/lincs_peptide_annotations.txt -text
 lincs/resources/lincs_replicate_annotations.txt -text
 lincs/resources/queries/targetedms/GCT_input_peptidearearatio.sql -text
-lincs/resources/queries/targetedms/PeptideAnnotation/GCT_peptide_annotation.qview.xml -text
+lincs/resources/queries/targetedms/GeneralMoleculeAnnotation/GCT_peptide_annotation.qview.xml -text
 lincs/resources/queries/targetedms/ReplicateAnnotation/GCT_replicate_annotation.qview.xml -text
 lincs/resources/reports/schemas/targetedms/GCT_input_peptidearearatio/GCT[!!-~]File[!!-~]GCP.r -text
 lincs/resources/reports/schemas/targetedms/GCT_input_peptidearearatio/GCT[!!-~]File[!!-~]GCP.report.xml -text
