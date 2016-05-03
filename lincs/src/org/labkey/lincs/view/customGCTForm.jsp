@@ -19,14 +19,26 @@
 <%@ page import="org.labkey.lincs.LincsController" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="java.util.List" %>
+<%@ page import="org.labkey.api.view.template.ClientDependency" %>
+<%@ page import="java.util.LinkedHashSet" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
 <labkey:errors/>
 
+<%!
+    public LinkedHashSet<ClientDependency> getClientDependencies()
+    {
+        LinkedHashSet<ClientDependency> resources = new LinkedHashSet<>();
+        resources.add(ClientDependency.fromPath("Ext4"));
+        return resources;
+    }
+%>
+
 <%
     JspView<LincsController.CustomGCTBean> jspView = (JspView<LincsController.CustomGCTBean>) HttpView.currentView();
     LincsController.CustomGCTBean bean = jspView.getModelBean();
+    LincsController.CustomGCTForm form = bean.getForm();
     List<LincsController.SelectedAnnotation> annotations = bean.getAnnotations();
 %>
 
@@ -38,7 +50,7 @@
 <script type="text/javascript">
 
     // Download Ext4 js and css files.
-    LABKEY.requiresExt4Sandbox();
+    // LABKEY.requiresExt4Sandbox();
 
     var replAnnotationCB = new Array();
 
@@ -134,7 +146,7 @@
     {
         // console.log(newValue, oldValue);
         var comboboxId = field.id ;
-        var owningDiv = Ext.get(comboboxId + '_selected');
+        var owningDiv = Ext4.get(comboboxId + '_selected');
 
         if(!owningDiv) return;
 
@@ -144,7 +156,7 @@
             var record = field.findRecordByValue(newValue[i]);
             var nameValue = newValue[i];
             var displayValue = record ? record.get("DisplayName") : nameValue;
-            var spanId = id + "_span";
+            var spanId = comboboxId + "_span";
             selectedHtml += '<img src="/labkey/_images/delete.png" style="width:10px; height:10px; margin-right:3px" ';
             selectedHtml += "onclick=\"deleteSelected('" + comboboxId + "', '" + nameValue + "');\"/>";
             selectedHtml += '<span id="' +spanId + '">' + displayValue + '</span><br>';
@@ -257,8 +269,9 @@
             <td style="font-weight:bold;">Experiment type:</td>
             <td>
                 <select name="experimentType">
-                    <option <%=selected(bean.getForm().getExperimentType().equals("DIA"))%> value="DIA">DIA</option>
-                    <option <%=selected(bean.getForm().getExperimentType().equals("PRM"))%> value="PRM">PRM</option>
+                    <%for(String expType: LincsController.CustomGCTForm.EXP_TYPES) {%>
+                        <option <%=selected(form.getExperimentType().equals(expType))%> value="<%=expType%>"><%=expType%></option>
+                    <%}%>
                 </select>
             </td>
         </tr>

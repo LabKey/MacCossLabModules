@@ -3,11 +3,14 @@
  *
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
-var reportName; /* "GCT File P100" or "GCT File GCP"*/
-function initGCTDownloadTable(report)
+var _assayType; // P100 or GCP
+var _reportName; /* "GCT File P100" or "GCT File GCP"*/
+
+function initGCTDownloadTable(assayType)
 {
-    // console.log("Initializing..");
-    reportName = report;
+    // console.log("Initializing for assay type " + assayType);
+    _assayType = assayType
+    _reportName = "GCT File " + _assayType;
 
     // Get a list of Skyline files in this folder
     LABKEY.Query.selectRows({
@@ -28,7 +31,7 @@ function displayFiles(data)
 {
     var container = LABKEY.ActionURL.getContainer();
     // console.log(container);
-    console.log("Report: " + reportName)
+    console.log("Report: " + _reportName)
 
     var gctToExternalIdPrefix = "toexternal_";
     var gctProcToExternalIdPrefix = "toexternal_proc_";
@@ -39,7 +42,7 @@ function displayFiles(data)
 
         var params = {};
         params["runId"] = runId;
-        params["reportName"] = reportName;
+        params["reportName"] = _reportName;
 
         var gctDloadUrl = LABKEY.ActionURL.buildURL('lincs', 'RunGCTReport', container, params);
 
@@ -63,8 +66,8 @@ function displayFiles(data)
         var extRow = new Ext4.Template(newRow);
         extRow.append('skylinefiles');
 
-        externalHeapmapViewerLink(container, fileNameNoExt, '.gct', gctToExternalIdPrefix + i);
-        externalHeapmapViewerLink(container, fileNameNoExt, '.processed.gct', gctProcToExternalIdPrefix + i);
+        externalHeapmapViewerLink(container, fileNameNoExt + '.gct', gctToExternalIdPrefix + i, _assayType);
+        externalHeapmapViewerLink(container, fileNameNoExt + '.processed.gct', gctProcToExternalIdPrefix + i, _assayType);
     }
 
 }
@@ -79,21 +82,21 @@ function getBaseFileName(fileName)
     return fileName.substring(0, idx);
 }
 
-function externalHeapmapViewerLink(container, fileNameNoExt, extension, elementId)
+function externalHeapmapViewerLink(container, fileName, elementId, assayType)
 {
-    var fileUrl= LABKEY.ActionURL.buildURL("_webdav", "REMOVE", LABKEY.ActionURL.getContainer() + '/@files/GCT/' + fileNameNoExt + extension);
+    var fileUrl= LABKEY.ActionURL.buildURL("_webdav", "REMOVE", container + '/@files/GCT/' + fileName);
     fileUrl= fileUrl.substring(0, fileUrl.indexOf("/REMOVE"));
     fileUrl= LABKEY.ActionURL.getBaseURL(true) + fileUrl;
-    console.log("File URL is" + fileUrl);
+    // console.log("File URL is " + fileUrl);
 
-    var morpheusUrl = getMorpheusUrl(fileUrl);
+    var morpheusUrl = getMorpheusUrl(fileUrl, assayType);
 
-    Ext.Ajax.request({
+    Ext4.Ajax.request({
         url: fileUrl,
         method: 'HEAD',
         success: function(response, opts) {
             var imgUrl = LABKEY.ActionURL.getContextPath() + "/lincs/GENE-E_icon.png";
-            Ext.get(elementId).dom.innerHTML = '(<a target="_blank" href="' + morpheusUrl + '">View in Morpheus</a> <a href="' + morpheusUrl + '"><img src=' + imgUrl + ' width="13", height="13"/></a>)';
+            Ext4.get(elementId).dom.innerHTML = '(<a target="_blank" href="' + morpheusUrl + '">View in Morpheus</a> <a href="' + morpheusUrl + '"><img src=' + imgUrl + ' width="13", height="13"/></a>)';
         },
         failure: function(response, opts) {
             console.log('server-side failure with status code ' + response.status);
@@ -102,10 +105,17 @@ function externalHeapmapViewerLink(container, fileNameNoExt, extension, elementI
 
 }
 
-function getMorpheusUrl(fileUrl)
+function getMorpheusUrl(fileUrl, assayType)
 {
     var morpheusJson = '{"dataset":"' + fileUrl + '",';
-    morpheusJson += '"rows":[{"field":"pr_p100_modified_peptide_code","display":"Text"},{"field":"pr_gene_symbol","display":"Text"},{"field":"pr_p100_phosphosite","display":"Text"},{"field":"pr_uniprot_id","display":"Text"}],';
+    if(assayType === 'P100')
+    {
+        morpheusJson += '"rows":[{"field":"pr_p100_modified_peptide_code","display":"Text"},{"field":"pr_gene_symbol","display":"Text"},{"field":"pr_p100_phosphosite","display":"Text"},{"field":"pr_uniprot_id","display":"Text"}],';
+    }
+    if(assayType === 'GCP')
+    {
+        morpheusJson += '"rows":[{"field":"pr_gcp_histone_mark","display":"Text"},{"field":"pr_gcp_modified_peptide_code","display":"Text"}],'
+    }
     morpheusJson += '"columns":[{"field":"pert_iname","display":"Text"},{"field":"det_well","display":"Text"}],';
     morpheusJson += '"colorScheme":{"type":"fixed","map":[{"value":-3,"color":"blue"},{"value":0,"color":"white"},{"value":3,"color":"red"}]}';
     morpheusJson += '}';

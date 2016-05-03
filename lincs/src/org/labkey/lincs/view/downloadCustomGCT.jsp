@@ -20,10 +20,20 @@
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="java.util.List" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
+<%@ page import="org.labkey.api.view.template.ClientDependency" %>
+<%@ page import="java.util.LinkedHashSet" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
 
+<%!
+    public LinkedHashSet<ClientDependency> getClientDependencies()
+    {
+        LinkedHashSet<ClientDependency> resources = new LinkedHashSet<>();
+        resources.add(ClientDependency.fromPath("Ext4"));
+        return resources;
+    }
+%>
 
 <%
     JspView<LincsController.CustomGCTForm> jspView = (JspView<LincsController.CustomGCTForm>) HttpView.currentView();
@@ -32,13 +42,34 @@
     LincsController.GctBean gctBean = form.getCustomGctBean();
 
     ActionURL downloadGctUrl = new ActionURL(LincsController.DownloadCustomGCTReportAction.class, getContainer());
-    downloadGctUrl.addParameter("fileName", gctBean.getGctFile().getName());
+    String fileName = gctBean.getGctFile().getName();
+    downloadGctUrl.addParameter("fileName", fileName);
 %>
+
+<script type="text/javascript">
+
+    LABKEY.requiresCss("/lincs/lincs.css");
+    LABKEY.requiresScript("/lincs/lincs.js");
+
+    // Initialize
+    Ext4.onReady(init);
+    function init()
+    {
+        var container = LABKEY.ActionURL.getContainer();
+        var assayType = container.indexOf("P100") !== -1 ? "P100" : "GCP";
+        console.log("Initializing for <%=fileName%>");
+        var morpheusUrl = externalHeapmapViewerLink(container, '<%=fileName%>', "morpheusLink", assayType);
+        console.log("Morpheus URL: " + morpheusUrl);
+    }
+
+</script>
+
+
 
 <div style="margin:20px 10px 20px 10px">
 <span style="font-weight:bold;"><a href="<%=h(downloadGctUrl)%>">[Download GCT]</a></span>
+<span style="font-weight:bold;" id="morpheusLink"></span>
 <div style="color:red; margin-bottom:20px;">NOTE: The file will be deleted from the server after it is downloaded.</div>
-</div>
 
 <div style="margin:20px 10px 20px 10px">
     <div style="font-weight:bold;">Selected options:</div>

@@ -142,7 +142,7 @@ public class GctUtils
                 writer.write("\t");
                 writer.write(probeAnnotation);
             }
-            // FIRST ROW: Write replicate names (sorted by det_plate)
+            // FIRST ROW: Write replicate names (sorted by det_plate, and then by replicate name)
             List<Gct.GctEntity> sortedReplicates = gct.getSortedReplicates();
             for (Gct.GctEntity replicate : sortedReplicates)
             {
@@ -171,7 +171,7 @@ public class GctUtils
 
             // PROBE ROWS: Write probe names, probe annotation values and area ratios
             List<String> probeNames = gct.getSortedProbeNames();
-            Gct.GctKeyBuilder<Gct.ProbePlate> keyBuilder = new Gct.ProbePlateKeyBuilder();
+            Gct.GctKeyBuilder<Gct.ProbeExpTypePlate> keyBuilder = new Gct.ProbePlateKeyBuilder();
             for (String probeName : probeNames)
             {
                 Gct.GctEntity probe = gct.getProbeByName(probeName);
@@ -180,13 +180,15 @@ public class GctUtils
                 {
                     writer.write("\t");
                     String annotationValue;
-                    Gct.GctTable<Gct.ProbePlate> valuesTable = gct.getMultiValueProbeAnnotation(probeAnnotationName);
+                    Gct.GctTable<Gct.ProbeExpTypePlate> valuesTable = gct.getMultiValueProbeAnnotation(probeAnnotationName);
                     if (valuesTable != null)
                     {
                         // pr_probe_normalization_group and pr_probe_suitability_manual probe annotation can have different values
                         // in the various processed GCT files. Combine them as a vector (e.g. [1,2,1]) sorted by the plate number.
                         // For example: if the value of pr_probe_normalization_group is 1 in plate 17 and 2 in plate 18, the combined value
                         // will be [1,2]
+                        // 05/03/16 - Sorting will be on both experiment type (DIA/PRM) and plate number since the key (key2 = expType_plate)
+                        // has both experiment type and plate.
                         annotationValue = valuesTable.getSortedValuesForKey1(probe.getName(), keyBuilder);
                     }
                     else

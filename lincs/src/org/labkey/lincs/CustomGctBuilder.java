@@ -80,6 +80,12 @@ public class CustomGctBuilder
         // TODO: This is not true for GCP plate 16 file.
         String detPlateAnnotationVal = gct.getReplicates().get(0).getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION);
 
+        // All replicates in a single GCT file should have the same value for the "provenance_code" replicate annotation
+        String expType = gct.getExperimentType(gct.getReplicates().get(0).getAnnotationValue(LincsAnnotation.PROVENANCE_CODE));
+
+        // Append experiment type to plate annotation since we can have same plate (e.g. plate 18) analyzed by both DIA and PRM.
+        String expTypeAndPlate = expType + "_" + detPlateAnnotationVal;
+
         // pr_probe_normalization_group and pr_probe_suitability_manual probe annotation can have different values
         // in the various processed GCT files. Combine them as a vector (e.g. [1,2,1]) sorted by the plate number.
         // For example: if the value of pr_probe_normalization_group is 1 in plate 17 and 2 in plate 18, the combined value
@@ -89,7 +95,7 @@ public class CustomGctBuilder
             for (String annotationName : multiValueProbeAnnotations)
             {
                 customGct.addMultiValueProbeAnnotation(annotationName,
-                        new Gct.ProbePlate(probe.getName(), detPlateAnnotationVal),
+                        new Gct.ProbeExpTypePlate(probe.getName(), expTypeAndPlate),
                         probe.getAnnotationValue(annotationName));
             }
         }
@@ -101,7 +107,7 @@ public class CustomGctBuilder
         for(Gct.ProbeReplicate key: areaRatioTable.getKeys())
         {
             Gct.GctEntity replicate = gct.getReplicateByName(key.getReplicate());
-            String customReplicateName = gct.getPlateReplicateName(replicate);
+            String customReplicateName = gct.uniquifyReplicateName(replicate);
             if(customGct.getReplicateByName(customReplicateName) == null)
             {
                 continue; // This replicate may have been filtered out
@@ -159,13 +165,17 @@ public class CustomGctBuilder
         int addedReplicates = 0;
         for(Gct.GctEntity replicate: gct.getReplicates())
         {
-            // Append the value of the det_plate annotation to the replicate name since replicate names are
-            // not unique across Skyline documents (plates).
-            String customReplicateName = gct.getPlateReplicateName(replicate);
+            // Append the value of the det_plate annotation AND experiment type (DIA or PRM) to the replicate name
+            // since replicate names are not unique across Skyline documents (plates).  And we can have the same plate
+            // analyzed with both DIA and PRM.
+            String customReplicateName = gct.uniquifyReplicateName(replicate);
 
             if(customGct.getReplicateByName(customReplicateName) != null)
             {
-                throw new Gct.GctFileException("Replicate name " + replicate.getName() + " has already been seen in plate " + replicate.getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION));
+                throw new Gct.GctFileException("Replicate name " + replicate.getName()
+                        + " has already been seen in plate " + replicate.getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION)
+                        + ", in experiment type " + gct.getExperimentType(replicate)
+                        + ". (Custom GCT replicate name " + customReplicateName + ")");
             }
             if(replicate.hasAnnotationValues(selectedAnnotations))
             {

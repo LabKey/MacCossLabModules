@@ -280,7 +280,7 @@ public class LincsController extends SpringActionController
                 {
                     return name.toLowerCase().endsWith(".txt")
                             || name.toLowerCase().endsWith(".gct")
-                            || name.toCharArray().equals("script.Rout");
+                            || name.equals("script.Rout");
                 }
             });
 
@@ -300,9 +300,9 @@ public class LincsController extends SpringActionController
                 {
                     FileUtil.copyFile(file, new File(gctDir, outputFileBaseName + ".console.txt" ));
                 }
-                else if(file.getName().toLowerCase().equals("script.Rout"))
+                else if(file.getName().equals("script.Rout"))
                 {
-                    FileUtil.copyFile(file, new File(gctDir, outputFileBaseName + "script.Rout" ));
+                    FileUtil.copyFile(file, new File(gctDir, outputFileBaseName + ".script.Rout" ));
                 }
             }
         }
@@ -402,7 +402,7 @@ public class LincsController extends SpringActionController
                 bean.setForm(customGCTForm);
                 if(customGCTForm.getExperimentType() == null)
                 {
-                    customGCTForm.setExperimentType("DIA");
+                    customGCTForm.setExperimentType(CustomGCTForm.DEFAULT_EXPTYPE);
                 }
                 // Get a list of replicate annotations in this folder
                 bean.setAnnotations(getReplicateAnnotationNameValues(getUser(), getContainer()));
@@ -421,15 +421,15 @@ public class LincsController extends SpringActionController
             // Get the replicate annotation values from the form
             List<SelectedAnnotation> annotations = customGCTForm.getSelectedAnnotationValues();
             // Get a list of GCT files that we want so use as input.
-            String experimentType = customGCTForm.getExperimentType();
-            List<File> files = getGCTFiles(getContainer(), experimentType, errors);
+            String[] experimentTypes = customGCTForm.getExperimentTypes();
+            List<File> files = getGCTFiles(getContainer(), experimentTypes, errors);
             if(errors.hasErrors())
             {
                 return false;
             }
             if(files.size() == 0)
             {
-                errors.reject(ERROR_MSG, "No GCT files found for in the folder for experiment type " + experimentType);
+                errors.reject(ERROR_MSG, "No GCT files found in the folder for experiment type " + customGCTForm.getExperimentType());
                 return false;
             }
 
@@ -496,7 +496,7 @@ public class LincsController extends SpringActionController
 
 
 
-        private List<File> getGCTFiles(Container container, String experimentType, BindException errors)
+        private List<File> getGCTFiles(Container container, String[] experimentTypes, BindException errors)
         {
             TargetedMSService service = ServiceRegistry.get().getService(TargetedMSService.class);
 
@@ -516,12 +516,10 @@ public class LincsController extends SpringActionController
                 return Collections.emptyList();
             }
 
-            experimentType = "_" + experimentType.toUpperCase() + "_";
             for(ITargetedMSRun run: runs)
             {
                 String outputFileBaseName = run.getBaseName();
-                if(!(outputFileBaseName.toUpperCase().contains(experimentType) ||
-                     outputFileBaseName.toUpperCase().contains("_GCP_"))) // TODO: GCP files no not have experiment type in file names
+                if(!fileMatchesExperimentType(outputFileBaseName, experimentTypes))
                 {
                     continue;
                 }
@@ -537,6 +535,23 @@ public class LincsController extends SpringActionController
                 }
             }
             return gctFiles;
+        }
+
+        private boolean fileMatchesExperimentType(String outputFileBaseName, String[] experimentTypes)
+        {
+            outputFileBaseName = outputFileBaseName.toUpperCase();
+            if(outputFileBaseName.contains("_GCP_"))
+            {
+                return true; // TODO: GCP files do not have experiment type in file names; include all
+            }
+            for(String expType: experimentTypes)
+            {
+               if(outputFileBaseName.contains("_" + expType.toUpperCase() + "_"))
+               {
+                   return true;
+               }
+            }
+            return false;
         }
 
         @Override
@@ -571,9 +586,25 @@ public class LincsController extends SpringActionController
         private String _selectedAnnotations;
         private GctBean _customGctBean;
 
+        public static final String DIA = "DIA";
+        public static final String PRM = "PRM";
+        public static final String DIA_OR_PRM = DIA + " or " + PRM;
+        public static final String DEFAULT_EXPTYPE = DIA_OR_PRM;
+        public static final String[] EXP_TYPES = new String[] {DIA_OR_PRM, DIA, PRM};
+
         public String getExperimentType()
         {
             return _experimentType;
+        }
+
+        public String[] getExperimentTypes()
+        {
+            if(StringUtils.isBlank(_experimentType))
+            {
+                return new String[0];
+            }
+
+            return _experimentType.split("\\sor\\s");
         }
 
         public void setExperimentType(String experimentType)

@@ -46,7 +46,8 @@ public class Gct
 
     // pr_probe_normalization_group and pr_probe_suitability_manual probe annotation can have different values
     // in the various processed GCT files.
-    private Map<String, GctTable<ProbePlate>> _multiValueProbeAnnotations;
+    // GctTable<ProbeExpTypePlate> : table with probes as rows and <expType>_<plateNumber> (e.g. DIA_P0018) as columns.
+    private Map<String, GctTable<ProbeExpTypePlate>> _multiValueProbeAnnotations;
 
     public Gct()
     {
@@ -93,12 +94,28 @@ public class Gct
         return index < _replicates.size() ? _replicates.get(index) : null;
     }
 
-    public String getPlateReplicateName(GctEntity replicate)
+    public String uniquifyReplicateName(GctEntity replicate)
     {
-        // Append the value of the det_plate annotation to the replicate name.
+        // Append the value of the det_plate annotation AND experiment type (DIA or PRM) to the replicate name.
         String plateNumber = replicate.getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION);
-        return plateNumber + "_" + replicate.getName();
 
+        return getExperimentType(replicate) + "_" + plateNumber + "_" + replicate.getName();
+    }
+
+    public String getExperimentType(GctEntity replicate)
+    {
+        String provenanceCode = replicate.getAnnotationValue(LincsAnnotation.PROVENANCE_CODE);
+        return getExperimentType(provenanceCode);
+    }
+
+    public static String getExperimentType(String provenanceCode)
+    {
+        String exptType = "";
+        if(provenanceCode != null)
+        {
+            exptType = provenanceCode.startsWith("DIA1+") ? "DIA" : (provenanceCode.startsWith("PR1") ? "PRM" : "");
+        }
+        return exptType;
     }
 
     public void addAreaRatio(String probe, String replicate, String ratio)
@@ -106,13 +123,13 @@ public class Gct
         _areaRatios.addValue(new ProbeReplicate(probe, replicate), ratio);
     }
 
-    public void addMultiValueProbeAnnotation(String annotationName, ProbePlate key, String value)
+    public void addMultiValueProbeAnnotation(String annotationName, ProbeExpTypePlate key, String value)
     {
         if(_multiValueProbeAnnotations == null)
         {
             _multiValueProbeAnnotations = new HashMap<>();
         }
-        GctTable<ProbePlate> probePlateValues = _multiValueProbeAnnotations.get(annotationName);
+        GctTable<ProbeExpTypePlate> probePlateValues = _multiValueProbeAnnotations.get(annotationName);
         if(probePlateValues == null)
         {
             probePlateValues = new GctTable<>();
@@ -121,7 +138,7 @@ public class Gct
         probePlateValues.addValue(key, value);
     }
 
-    public Gct.GctTable<Gct.ProbePlate>  getMultiValueProbeAnnotation(String annotationName)
+    public Gct.GctTable<ProbeExpTypePlate>  getMultiValueProbeAnnotation(String annotationName)
     {
         if(_multiValueProbeAnnotations != null)
         {
@@ -147,7 +164,9 @@ public class Gct
 
     public List<GctEntity> getSortedReplicates()
     {
-        // Sort replicates by the value of the det_plate annotation.
+        // Sort replicates by the value of the det_plate annotation, and then
+        // by replicate name. For custom GCT, the replicate name is:
+        // <exp_type>_<plate_number>_<original_replicate_name>
         List<GctEntity> sortedReplicates = new ArrayList<GctEntity>(_replicates.size());
         sortedReplicates.addAll(_replicates);
         Collections.sort(sortedReplicates, new Comparator<GctEntity>()
@@ -359,10 +378,10 @@ public class Gct
         private final String _key1;
         private final String _key2;
 
-        public GctKey(String probe, String replicate)
+        public GctKey(String key1, String key2)
         {
-            _key1 = probe;
-            _key2 = replicate;
+            _key1 = key1;
+            _key2 = key2;
         }
 
         public String getKey1()
@@ -396,6 +415,12 @@ public class Gct
             result = 31 * result + _key2.hashCode();
             return result;
         }
+
+        @Override
+        public String toString()
+        {
+            return "Key{" + getKey1Name() + ": " + _key1 + ", " + getKey2Name() + ": " + _key2 + "}";
+        }
     }
 
     public interface GctKeyBuilder <T extends GctKey>
@@ -403,12 +428,12 @@ public class Gct
         public T build(String key1, String key2);
     }
 
-    public static class ProbePlateKeyBuilder implements GctKeyBuilder<ProbePlate>
+    public static class ProbePlateKeyBuilder implements GctKeyBuilder<ProbeExpTypePlate>
     {
-        @Override
-        public ProbePlate build(String key1, String key2)
+        // @Override
+        public ProbeExpTypePlate build(String probe, String expTypeAndPlate)
         {
-            return new ProbePlate(key1, key2);
+            return new ProbeExpTypePlate(probe, expTypeAndPlate);
         }
     }
 
@@ -427,33 +452,32 @@ public class Gct
 
     public static class GctTable <T extends GctKey>
     {
-        private Map<T, String> _tableValues;
+        private Map<T, String> _map;
         private List<String> _sortedKey2;
 
         public GctTable()
         {
-            _tableValues = new HashMap<>();
+            _map = new HashMap<>();
         }
 
         public void addValue(T key, String value)
         {
-            if(_tableValues.containsKey(key))
+            if(_map.containsKey(key))
             {
-                throw new GctFileException("Value has already been added for " + key.getKey1Name() + " " + key.getKey1() +
-                                           " and " + key.getKey2Name() + " " + key.getKey2());
+                throw new GctFileException("Value has already been added for " + key.toString());
             }
-            _tableValues.put(key, value);
+            _map.put(key, value);
         }
 
         public String getValue(T key)
         {
-            String value = _tableValues.get(key);
+            String value = _map.get(key);
             return value == null ? "NA" : value;
         }
 
         public Set<T> getKeys()
         {
-            return _tableValues.keySet();
+            return _map.keySet();
         }
 
         public String getSortedValuesForKey1(String key1, GctKeyBuilder<T> gctKeyBuilder)
@@ -461,7 +485,7 @@ public class Gct
             if(_sortedKey2 == null)
             {
                 Set<String> uniqKey2Set = new HashSet<>();
-                for(T key: _tableValues.keySet())
+                for(T key: _map.keySet())
                 {
                     uniqKey2Set.add(key.getKey2());
                 }
@@ -492,11 +516,11 @@ public class Gct
         }
     }
 
-    public static class ProbePlate extends GctKey
+    public static class ProbeExpTypePlate extends GctKey
     {
-        public ProbePlate(String probe, String plate)
+        public ProbeExpTypePlate(String probe, String expTypeAndPlate)
         {
-            super(probe, plate);
+            super(probe, expTypeAndPlate);
         }
 
         @Override
@@ -508,7 +532,7 @@ public class Gct
         @Override
         public String getKey2Name()
         {
-            return "plate";
+            return "expType_plate";
         }
     }
 }

@@ -23,10 +23,11 @@ package org.labkey.lincs;
 public class LincsAnnotation
 {
     public static String PLATE_ANNOTATION = "det_plate";
+    public static String PROVENANCE_CODE = "provenance_code";
 
     private String _name;
     private String _displayName;
-    private boolean _advanced;
+    private boolean _advanced; // These annotations are displayed when the user clicks on "Show all annotations"
     private boolean _ignored;
 
     public LincsAnnotation() {}
@@ -64,6 +65,7 @@ public class LincsAnnotation
         _displayName = displayName;
     }
 
+    // Returns true if this annotation is displayed when the user clicks on "Show all annotations"
     public boolean isAdvanced()
     {
         return _advanced;
