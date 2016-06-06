@@ -1,18 +1,3 @@
-##
-#  Copyright (c) 2015-2016 LabKey Corporation
-# 
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-# 
-#      http://www.apache.org/licenses/LICENSE-2.0
-# 
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-##
 #MAJOR VERSION 2.0
 #MINOR VERSION 1.4
 #8-JUL-2015
@@ -26,7 +11,7 @@
 
 P100processGCTMaster <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NULL, dataTable=NULL,
                                   fileOutput=TRUE,outputFileName=NULL, processMode='full',
-                                  optim=TRUE,log2=TRUE,samplePctCutoff=0.8, probePctCutoff=0.9, probeSDCutoff=3, distSDcutoff=3)
+                                  optim=TRUE,log2=TRUE,samplePctCutoff=0.8, probePctCutoff=0.9, probeSDCutoff=3, distSDcutoff=5)
 {
   ######################################################################################
   #  This function is the major entry point for automated data processing of P100.     #
@@ -41,12 +26,12 @@ P100processGCTMaster <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NUL
   ######################################################################################
 
   o<-list();
-
+  
   #CHECK THAT AT LEAST ONE MODE OF INPUT IS FULLY EMPLOYED
   if (is.null(gctFileName) && (is.null(repAnnot) || is.null(repAnnot) || is.null(probeAnnot))) {
     stop('Either provide a gctFileName or data objects from Panorama');
   }
-
+  
   #GET THE DATA (LIST) OBJECT AND SET METHOD SPECIFIC PARAMETERS
   if (!(is.null(gctFileName))) {
     #IF FROM LOCAL FILE
@@ -71,12 +56,14 @@ P100processGCTMaster <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NUL
     po<-P100processGCTquick(o,log2=log2)
   } else {
     stop(paste('That processing mode is not supported: ',as.character(processMode),sep=''));
-  }
+  } 
 
   #WRITE THE GCT FILE (IF FILE WRITING ENABLED)
   if (fileOutput) {
     P100writeGCTForProcessedObject(output.name=outputFileName,processedObject=po);
   }
+
+  return(po);
 }
 
 GCPprocessGCTMaster <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NULL, dataTable=NULL,
@@ -96,12 +83,12 @@ GCPprocessGCTMaster <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NULL
   ######################################################################################
 
   o<-list();
-
+  
   #CHECK THAT AT LEAST ONE MODE OF INPUT IS FULLY EMPLOYED
   if (is.null(gctFileName) && (is.null(repAnnot) || is.null(repAnnot) || is.null(probeAnnot))) {
     stop('Either provide a gctFileName or data objects from Panorama');
   }
-
+  
   #GET THE DATA (LIST) OBJECT AND SET METHOD SPECIFIC PARAMETERS
   if (!(is.null(gctFileName))) {
     #IF FROM LOCAL FILE
@@ -124,12 +111,13 @@ GCPprocessGCTMaster <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NULL
     po<-GCPprocessGCT(o,log2=log2,samplePctCutoff=samplePctCutoff, probePctCutoff=probePctCutoff, probeSDCutoff=probeSDCutoff, normalization_peptide_id=normalization_peptide_id, probeGroupNormalization=probeGroupNormalization)
   } else {
     stop(paste('That processing mode is not supported: ',as.character(processMode),sep=''));
-  }
+  } 
 
   #WRITE THE GCT FILE (IF FILE WRITING ENABLED)
   if (fileOutput) {
     P100writeGCTForProcessedObject(output.name=outputFileName,processedObject=po);
   }
+  return(po);
 }
 
 P100processGCT <- function (g,optim=TRUE,log2=TRUE,samplePctCutoff=0.8, probePctCutoff=0.9, probeSDCutoff=3, distSDcutoff=3, probeGroupNormalization=FALSE) {
@@ -246,7 +234,7 @@ GCPprocessGCT <- function (g,log2=TRUE,samplePctCutoff=0.8, probePctCutoff=0.9, 
   s<-P100filterSamplesForPoorCoverage(h$filteredData, pctFilterCutoff=samplePctCutoff)
   surviving_headers<-surviving_headers[,s$colsPassing];
   surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,"SF5");
-
+  
   #check for explicit probe rejection
   goodProbes<-logical(length=dim(surviving_rowAnnots)[1]);
   goodProbes[]<-TRUE;
@@ -282,11 +270,11 @@ GCPprocessGCT <- function (g,log2=TRUE,samplePctCutoff=0.8, probePctCutoff=0.9, 
 #                                    #
 ######################################
 
-# Example GCT header:
-  #
+# Example GCT header: 
+  # 
   # #1.3
   # 96  36  9 15
-  #
+  # 
   # 96 = number of probes (data rows)
   # 36 = number of replicates (in columns)
   # 9 = number of probe annotations (+1 for the 'id' column -- first column)
@@ -334,13 +322,20 @@ P100provideGCTlistObjectFromFile <- function (gctFileName) {
   local_surviving_headers<-g$headers[,(g$colsAnnot+1):(g$colsAnnot+g$colsData)];
   local_surviving_rowAnnots<-g$rowAnnot;
   local_dt<-g$data;
-  id_field<-local_static_headers[1,1]
-  colnames(local_static_headers)<-local_static_headers[id_field,]; #NOTE this needs attention pr_id vs. id.  Maybe should check and standardize that 1,1 is always 'id'
-  colnames(local_surviving_rowAnnots)<-colnames(local_static_headers);
-  rownames(local_surviving_rowAnnots)<-local_surviving_rowAnnots[,id_field];
+  id_field<-'id'; #default this to initialze for if statement below (keep in scope)
+  if (g$colsAnnot == 1) {
+    id_field<-local_static_headers[1]; #this only happens when there is no further row annotation;
+    names(local_static_headers)<-local_static_headers;
+  } else {
+    id_field<-local_static_headers[1,1]; #this is the expected normal case
+    colnames(local_static_headers)<-local_static_headers[id_field,];
+  }
+  #colnames(local_static_headers)<-local_static_headers[id_field,]; #NOTE this needs attention pr_id vs. id.  Maybe should check and standardize that 1,1 is always 'id'
+  if (g$colsAnnot > 1) { colnames(local_surviving_rowAnnots)<-colnames(local_static_headers); }
+  if (g$colsAnnot > 1) { rownames(local_surviving_rowAnnots)<-local_surviving_rowAnnots[,id_field]; }
   colnames(local_surviving_headers)<-local_surviving_headers[id_field,];
   colnames(local_dt)<-colnames(local_surviving_headers);
-  rownames(local_dt)<-rownames(local_surviving_rowAnnots);
+  if (g$colsAnnot > 1)  { rownames(local_dt)<-rownames(local_surviving_rowAnnots); } else {rownames(local_dt)<-local_surviving_rowAnnots}
   a<-list(surviving_headers=local_surviving_headers,static_headers=local_static_headers,surviving_rowAnnots=local_surviving_rowAnnots,dt=local_dt,colsAnnot=g$colsAnnot,rowsAnnot=g$rowsAnnot,gctFileName=gctFileName);
   return(a)
 }
@@ -368,11 +363,11 @@ P100_ReadGCT <- function(gctFile) {
 }
 
 P100writeGCTForProcessedObject <- function (output.name,processedObject) {
-
-  P100writeGCT(output.name,
-               processedObject$static_headers,
-               processedObject$surviving_headers,
-               processedObject$surviving_rowAnnots,
+  
+  P100writeGCT(output.name, 
+               processedObject$static_headers, 
+               processedObject$surviving_headers, 
+               processedObject$surviving_rowAnnots, 
                processedObject$outputData,
                processedObject$colsAnnot,
                processedObject$rowsAnnot
@@ -389,7 +384,11 @@ P100writeGCT <- function (output.name,static_headers,surviving_headers,surviving
 
   write.table(line1,output.name,sep="\t",row.names=FALSE,col.names=FALSE,quote=FALSE)
   write.table(line2,output.name,sep="\t",row.names=FALSE,col.names=FALSE,append=TRUE,quote=FALSE)
-  write.table(all_headers,output.name,sep="\t",row.names=FALSE,col.names=FALSE,append=TRUE,quote=FALSE)
+  if (colsAnnot == 1) {
+    write.table(surviving_headers,output.name,sep="\t",row.names=TRUE,col.names=FALSE,append=TRUE,quote=FALSE)
+  } else {
+    write.table(all_headers,output.name,sep="\t",row.names=FALSE,col.names=FALSE,append=TRUE,quote=FALSE)
+  }
   write.table(all_data,output.name,sep="\t",row.names=FALSE,col.names=FALSE,append=TRUE,quote=FALSE)
 }
 
@@ -664,7 +663,7 @@ P100evaluateGCTasPlate <- function (gctFileName,optim=TRUE,fileOutput=TRUE,log2=
 
   qq2<-plotSurvivingRowsLogical(surviving_headers,stage='Filter Poor Coverage')
   #readline(prompt='next');
-
+  
   #check for explicit probe rejection
   goodProbes<-logical(length=dim(surviving_rowAnnots)[1]);
   goodProbes[]<-TRUE;
@@ -704,11 +703,11 @@ P100evaluateGCTasPlate <- function (gctFileName,optim=TRUE,fileOutput=TRUE,log2=
 
 P100evaluateEnrichment <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NULL, dataTable=NULL, all=FALSE) {
   o<-list();
-
+  
   if (is.null(gctFileName) && (is.null(repAnnot) || is.null(repAnnot) || is.null(probeAnnot))) {
     stop('Either provide a gctFileName or data objects from Panorama');
   }
-
+  
   if (!(is.null(gctFileName))) {
     o<-P100provideGCTlistObjectFromFile(gctFileName);
   } else {
@@ -731,11 +730,11 @@ P100evaluateEnrichment <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=N
 
 P100evaluateProbeIntensities <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NULL, dataTable=NULL, all=FALSE, labelType='heavy') {
   o<-list();
-
+  
   if (is.null(gctFileName) && (is.null(repAnnot) || is.null(repAnnot) || is.null(probeAnnot))) {
     stop('Either provide a gctFileName or data objects from Panorama');
   }
-
+  
   if (!(is.null(gctFileName))) {
     o<-P100provideGCTlistObjectFromFile(gctFileName);
   } else {
@@ -1054,3 +1053,9 @@ P100overlapNames<-function(somenames) {
   colnames(b)<-somenames;
   return(b);
 }
+
+.zscore <- function (d) {
+  z<-(d-mean(d,na.rm=TRUE))/sd(d,na.rm=TRUE)
+  return(z)
+}
+

@@ -540,9 +540,9 @@ public class LincsController extends SpringActionController
         private boolean fileMatchesExperimentType(String outputFileBaseName, String[] experimentTypes)
         {
             outputFileBaseName = outputFileBaseName.toUpperCase();
-            if(outputFileBaseName.contains("_GCP_"))
+            if(outputFileBaseName.contains("_GCP_") || outputFileBaseName.contains("_QC"))
             {
-                return true; // TODO: GCP files do not have experiment type in file names; include all
+                return true; // TODO: GCP and QC files do not have experiment type in file names; include all
             }
             for(String expType: experimentTypes)
             {
