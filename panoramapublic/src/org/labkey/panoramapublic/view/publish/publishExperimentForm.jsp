@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 %>
+<%@ page import="org.apache.commons.lang3.StringUtils" %>
 <%@ page import="org.labkey.api.data.Container" %>
-<%@ page import="org.labkey.api.gwt.client.util.StringUtils" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
@@ -31,13 +31,12 @@
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
-
 <%
     JspView<PublishTargetedMSExperimentsController.PublishExperimentFormBean> me = (JspView<PublishTargetedMSExperimentsController.PublishExperimentFormBean>) HttpView.currentView();
     PublishTargetedMSExperimentsController.PublishExperimentFormBean bean = me.getModelBean();
     PublishTargetedMSExperimentsController.PublishExperimentForm form = bean.getForm();
 
-    String shortAccessUrl = StringUtils.nullToEmpty(form.getShortAccessUrl());
+    String shortAccessUrl = StringUtils.trimToEmpty(form.getShortAccessUrl());
 
     Journal journal = bean.getForm().lookupJournal();
     int journalId = journal != null ? journal.getId() : 0;
