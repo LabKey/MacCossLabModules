@@ -13,7 +13,6 @@ lincs/resources/reports/schemas/targetedms/GCT_input_peptidearearatio/GCT[!!-~]F
 lincs/resources/reports/schemas/targetedms/GCT_input_peptidearearatio/GCT[!!-~]File[!!-~]P100.report.xml -text
 lincs/resources/reports/schemas/targetedms/GCT_input_peptidearearatio/LabKeyInput.r -text
 lincs/resources/reports/schemas/targetedms/GCT_input_peptidearearatio/p100_processing.r -text
-lincs/resources/schemas/lincs.xml -text
 lincs/resources/views/GCTDownloadGCP.html -text
 lincs/resources/views/GCTDownloadGCP.view.xml -text
 lincs/resources/views/GCTDownloadGCP.webpart.xml -text
