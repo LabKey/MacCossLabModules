@@ -69,6 +69,9 @@ public class TargetedMSListener implements ExperimentListener, ContainerManager.
 
         // Clean up AutoQCPing
         new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoAutoQCPing() + " WHERE Container = ?", c);
+
+        // Clean up Metric Configurations
+        new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoQCMetricConfiguration() + " WHERE Container = ?", c);
     }
 
     @Override
