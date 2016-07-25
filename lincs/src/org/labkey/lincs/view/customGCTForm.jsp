@@ -24,14 +24,13 @@
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
 <labkey:errors/>
-
 <%!
+    @Override
     public void addClientDependencies(ClientDependencies dependencies)
     {
         dependencies.add("Ext4");
     }
 %>
-
 <%
     JspView<LincsController.CustomGCTBean> jspView = (JspView<LincsController.CustomGCTBean>) HttpView.currentView();
     LincsController.CustomGCTBean bean = jspView.getModelBean();

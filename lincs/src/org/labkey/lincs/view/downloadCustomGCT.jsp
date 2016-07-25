@@ -26,12 +26,12 @@
 <labkey:errors/>
 
 <%!
+    @Override
     public void addClientDependencies(ClientDependencies dependencies)
     {
         dependencies.add("Ext4");
     }
 %>
-
 <%
     JspView<LincsController.CustomGCTForm> jspView = (JspView<LincsController.CustomGCTForm>) HttpView.currentView();
     LincsController.CustomGCTForm form = jspView.getModelBean();
