@@ -49,7 +49,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
         super(CopyExperimentPipelineProvider.NAME, info, root);
         _experimentAnnotations = experiment;
         _journal = journal;
-        _description = "Copying expriment:  " + experiment.getTitle();
+        _description = "Copying experiment:  " + experiment.getTitle();
 
         setLogFile(getLogFileFor(root, experiment));
 
@@ -107,7 +107,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     {
         Container source = _experimentAnnotations.getContainer();
         PipeRoot root = getPipeRoot();
-        if (root == null || !root.isValid())
+        if (!root.isValid())
         {
             throw new NotFoundException("No valid pipeline root found for " + source.getPath());
         }
