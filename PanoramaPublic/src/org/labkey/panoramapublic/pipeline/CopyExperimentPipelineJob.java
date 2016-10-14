@@ -19,6 +19,7 @@ import org.labkey.api.data.Container;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobService;
+import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.TaskId;
 import org.labkey.api.pipeline.TaskPipeline;
 import org.labkey.api.portal.ProjectUrls;
@@ -119,9 +120,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     public File getImportDir()
     {
         PipeRoot pipelineRoot = getPipeRoot();
-
-        String dirName = "unzip";
-        return pipelineRoot.resolvePath(dirName);
+        return pipelineRoot.resolvePath(PipelineService.UNZIP_DIR);
     }
 
     @Override
