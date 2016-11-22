@@ -18,12 +18,17 @@ package org.labkey.lincs;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.labkey.api.action.ApiAction;
+import org.labkey.api.action.ApiResponse;
+import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabkeyError;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
 import org.labkey.api.data.Container;
+import org.labkey.api.module.Module;
+import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.reports.Report;
@@ -59,6 +64,7 @@ import org.springframework.web.servlet.ModelAndView;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -883,5 +889,65 @@ public class LincsController extends SpringActionController
         PipeRoot root = PipelineService.get().getPipelineRootSetting(container);
         assert root != null;
         return new File(root.getRootPath(), "GCT");
+    }
+
+    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+
+    @RequiresPermission(ReadPermission.class)
+    public class GetLincsStatusAction extends ApiAction
+    {
+        @Override
+        public Object execute(Object o, BindException errors) throws Exception
+        {
+            ApiSimpleResponse response = new ApiSimpleResponse();
+            // Make sure the LINCS module is enabled in the folder
+            if(!getContainer().getActiveModules().contains(ModuleLoader.getInstance().getModule(LincsModule.class)))
+            {
+                response.put("error", "Not a LINCS folder.");
+                return response;
+            }
+
+            // Get a list of runs in the folder
+            TargetedMSService service = ServiceRegistry.get().getService(TargetedMSService.class);
+            List<ITargetedMSRun> runs = service.getRuns(getContainer());
+
+            // Get the location of the GCT folder
+            File gctDir = getGCTDir(getContainer());
+
+
+            // For each run get return the date it was imported, along with the names and create dates on the .gct
+            // and .processed.gct files for the run
+            List<Map<String, Object>> lincsData = new ArrayList<>();
+            for(ITargetedMSRun run: runs)
+            {
+                Map<String, Object> data = new HashMap<>();
+                data.put("skyline_doc", run.getBaseName());
+                data.put("skyline_doc_date", dateFormat.format(run.getCreated()));
+
+                if(gctDir.exists())
+                {
+                    String outputFileBaseName = run.getBaseName();
+                    File gct = new File(gctDir, outputFileBaseName + ".gct");
+                    File processedGct = new File(gctDir, outputFileBaseName + ".processed.gct");
+
+                    if(gct.exists())
+                    {
+                        //data.put("gct", gct.getName());
+                        data.put("gct_date", dateFormat.format(gct.lastModified()));
+                    }
+
+                    if(processedGct.exists())
+                    {
+                        //data.put("processed_gct", processedGct.getName());
+                        data.put("processed_gct_date", dateFormat.format(processedGct.lastModified()));
+                    }
+                }
+
+                lincsData.add(data);
+            }
+
+            response.put("lincs_data", lincsData);
+            return response;
+        }
     }
 }

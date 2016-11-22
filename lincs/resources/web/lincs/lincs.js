@@ -56,10 +56,13 @@ function displayFiles(data)
         var fileNameNoExt = getBaseFileName(fileName);
         console.log(fileNameNoExt);
 
+        var analyticsEvtGct = " onclick=\"_gaq.push(['_trackEvent, 'Lincs', 'Download', 'GCT']);\" ";
+        var analyticsEvtGctProc = " onclick=\"_gaq.push(['_trackEvent, 'Lincs', 'Download', 'GCT_proc']);\" ";
+
         var newRow = '<tr>';
         newRow += '<td>' + fileName + '</td>';
-        newRow += '<td> <a href="' + gctDloadUrl + '"> [GCT] </a> <span id="' + gctToExternalIdPrefix + i + '"></span>&nbsp;&nbsp;';
-        newRow += '<a href="' + procGctDloadUrl + '"> [Processed GCT] </a><span id="' + gctProcToExternalIdPrefix + i + '"></span></td>';
+        newRow += '<td> <a ' + analyticsEvtGct + 'href="' + gctDloadUrl + '"> [GCT] </a> <span id="' + gctToExternalIdPrefix + i + '"></span>&nbsp;&nbsp;';
+        newRow += '<a ' + analyticsEvtGctProc + 'href="' + procGctDloadUrl + '"> [Processed GCT] </a><span id="' + gctProcToExternalIdPrefix + i + '"></span></td>';
         newRow += '</tr>';
         // alert("Results returned: " + data.rows[i].FileName + ", " + data.rows[i].Id);
         // $("#skylinefiles tbody").append(newRow);
@@ -91,12 +94,14 @@ function externalHeapmapViewerLink(container, fileName, elementId, assayType)
 
     var morpheusUrl = getMorpheusUrl(fileUrl, assayType);
 
+    var analyticsEvt = " onclick=\"_gaq.push(['_trackEvent', 'Lincs', 'Morpheus', '" + fileName + "']);\" ";
+
     Ext4.Ajax.request({
         url: fileUrl,
         method: 'HEAD',
         success: function(response, opts) {
             var imgUrl = LABKEY.ActionURL.getContextPath() + "/lincs/GENE-E_icon.png";
-            Ext4.get(elementId).dom.innerHTML = '(<a target="_blank" href="' + morpheusUrl + '">View in Morpheus</a> <a href="' + morpheusUrl + '"><img src=' + imgUrl + ' width="13", height="13"/></a>)';
+            Ext4.get(elementId).dom.innerHTML = '(<a target="_blank" ' + analyticsEvt + 'href="' + morpheusUrl + '">View in Morpheus</a> <img src=' + imgUrl + ' width="13", height="13"/>)';
         },
         failure: function(response, opts) {
             console.log('server-side failure with status code ' + response.status);
