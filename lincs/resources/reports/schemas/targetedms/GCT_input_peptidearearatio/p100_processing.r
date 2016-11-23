@@ -1,18 +1,3 @@
-##
-#  Copyright (c) 2015-2016 LabKey Corporation
-# 
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-# 
-#      http://www.apache.org/licenses/LICENSE-2.0
-# 
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-##
 #MAJOR VERSION 2.0
 #MINOR VERSION 1.4
 #8-JUL-2015
@@ -83,7 +68,9 @@ P100processGCTMaster <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NUL
 
 GCPprocessGCTMaster <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NULL, dataTable=NULL,
                                   fileOutput=TRUE,outputFileName=NULL, processMode='full', normalization_peptide_id = 'BI10052',
-                                  log2=TRUE,samplePctCutoff=0.5, probePctCutoff=0.5, probeSDCutoff=4, probeGroupNormalization=FALSE)
+                                  log2=TRUE,samplePctCutoff=0.5, probePctCutoff=0.5, probeSDCutoff=4, probeGroupNormalization=FALSE, 
+                                  base_histone_uniprots=c("P68431","P84243","P62805","P0C0S8"), 
+                                  base_histone_normalization_mapping=c('BI10052','BI10052','BI10108','BI10109'))
 {
   ######################################################################################
   #  This function is the major entry point for automated data processing of GCP.      #
@@ -226,7 +213,9 @@ P100processGCTquick <- function (g,log2=TRUE) {
   return(q);
 }
 
-GCPprocessGCT <- function (g,log2=TRUE,samplePctCutoff=0.8, probePctCutoff=0.9, probeSDCutoff=3, normalization_peptide_id = 'BI10052', probeGroupNormalization=FALSE) {
+GCPprocessGCT <- function (g,log2=TRUE,samplePctCutoff=0.8, probePctCutoff=0.9, probeSDCutoff=3, normalization_peptide_id = 'BI10052', 
+                           probeGroupNormalization=FALSE, base_histone_uniprots=c("P68431","P84243","P62805","P0C0S8"), 
+                           base_histone_normalization_mapping=c('BI10052','BI10052','BI10108','BI10109')) {
 
   static_headers<-g$static_headers;
   surviving_headers<-g$surviving_headers;
@@ -242,8 +231,10 @@ GCPprocessGCT <- function (g,log2=TRUE,samplePctCutoff=0.8, probePctCutoff=0.9, 
     surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,"L2X");
   }
 
-  h<-GCPhistoneNormalize(dt,surviving_rowAnnots,normalization_peptide_id)
-  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,"H3N");
+  #h<-GCPhistoneNormalize(dt,surviving_rowAnnots,normalization_peptide_id)
+  #h<-GCPmultiHistoneNormalizeByProbeGroup(dt,surviving_rowAnnots,normalization_peptide_id);
+  h<-GCPmultiHistoneNormalizeByBaseUniprotMapping(dt,surviving_rowAnnots,normalization_peptide_id,base_histone_uniprots,base_histone_normalization_mapping);
+  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,"HPN");
   surviving_rowAnnots<-h$survivingRows;
 
   s<-P100filterSamplesForPoorCoverage(h$filteredData, pctFilterCutoff=samplePctCutoff)
@@ -437,12 +428,13 @@ GCPprobeGroupSpecificRowMedianNormalize <- function (data,ra,sth,sh) {
   probe_normalization_group<-unique(probe_normalization_assignments);
   num_probe_groups<-length(probe_normalization_group);
   sample_group_vectors<-sh['det_normalization_group_vector',];
-  sample_group_matrix<-matrix(as.numeric(unlist(strsplit(unlist(sample_group_vectors),split=','))),nrow=num_probe_groups);
+  typical_sample_group_vector_length <- length(unlist(strsplit(unlist(sample_group_vectors[1]),split=',')))
+  sample_group_matrix<-matrix(as.numeric(unlist(strsplit(unlist(sample_group_vectors),split=','))),nrow=max(typical_sample_group_vector_length,num_probe_groups));
   sample_group_maxes<-apply(sample_group_matrix,1,max);
   copy_of_data<-data;
   G<-list();
 
-  for (j in 1:num_probe_groups) {
+  for (j in 1:max(typical_sample_group_vector_length,num_probe_groups)) {
     for (k in 1:sample_group_maxes[j]) {
       if (sample_group_maxes[j] > 1) {
         G[[j]]<-list();
@@ -568,6 +560,114 @@ GCPhistoneNormalize <- function (dt, surv_rows, norm_peptide_id) {
 
   return(retList);
 
+}
+
+GCPmultiHistoneNormalizeByProbeGroup <- function (dt, surv_rows, norm_peptide_id) {
+  #norm_peptide_id may be a vector, and needs to have the same number of entries as there are unique
+  #Filter out columns missing x% of data;
+  retList<-list(filteredData=dt,originalData=dt,normConstants=dt[1,],survivingRows=surv_rows);
+  dt<-as.matrix(dt);
+  ddt<-dim(dt);
+  nRows<-ddt[1];
+  nCols<-ddt[2];
+
+  #find the number of probe normalization groups
+  probe_groups <-unique(surv_rows$pr_probe_normalization_group);
+  num_probe_groups <- length(probe_groups);
+  retList$normConstants <- dt[1:num_probe_groups,]; # initialize a matrix to hold all the norm constants
+
+  #find the norm peptides, check for agreement
+  #note that the (1-based) array index of the norm peptide vector will be used as a key for the probe norm group
+  #entries may be repeated
+  #these will ultimately be deleted from the matrix
+  #The id of the norm peptide should only appear once in the rows
+  num_norm_peptides <- length(norm_peptide_id);
+  if (!(num_norm_peptides == num_probe_groups)) {
+    stop("Number of normalization peptides is not equal to the number of normalization groups. Normalization failed.")
+  }
+
+  #now iterate through each probe group
+  for (n in 1:num_probe_groups) {
+    #Find the norm peptide row:
+    indarr<-surv_rows[,1]==norm_peptide_id[n];
+    norm_consts<-dt[indarr,];
+    retList$normConstants[n,]<-norm_consts;
+
+    #find the rows in the data matrix to apply to
+    probe_group_data_indices <- which(surv_rows$pr_probe_normalization_group == n);
+    data_to_normalize <- dt[probe_group_data_indices,];
+
+    #previous way I did this...maybe apply is not working?
+    norm_mat<-matrix(data=retList$normConstants[n,],nrow=length(probe_group_data_indices),ncol=nCols,byrow=TRUE)
+    retList$filteredData[probe_group_data_indices,]<-data_to_normalize-norm_mat;
+    
+  }
+
+  #get rid of norm probes at end
+  norm_peptide_logical <- surv_rows[,1] %in% norm_peptide_id
+  retList$filteredData<-retList$filteredData[(!norm_peptide_logical),];
+  retList$survivingRows<-retList$survivingRows[(!norm_peptide_logical),];
+
+
+  return(retList);
+
+}
+
+GCPmultiHistoneNormalizeByBaseUniprotMapping <- function (dt, surv_rows, norm_peptide_id, base_uniprot_ids, uniprot_normpep_map) {
+  #norm_peptide_id may be a vector, and needs to have the same number of entries as there are unique
+  #Filter out columns missing x% of data;
+  retList<-list(filteredData=dt,originalData=dt,normConstants=dt[1,],survivingRows=surv_rows);
+  dt<-as.matrix(dt);
+  ddt<-dim(dt);
+  nRows<-ddt[1];
+  nCols<-ddt[2];
+  
+  #find the number of histone normalization groups
+  base_uniprots_in_metadata <- data.frame(uniprots=unique(surv_rows$pr_uniprot_id),stringsAsFactors = FALSE)
+  if (!(length(base_uniprot_ids) == length(uniprot_normpep_map))) {
+    stop("Lengths of specified uniprot entries and specified histone normalizing peptide arrays do not match")
+  }
+  uniprot_to_norm_map <- data.frame(uniprots=base_uniprot_ids,histone_normalizers=uniprot_normpep_map,stringsAsFactors = FALSE)
+  mapping_table<-merge(base_uniprots_in_metadata,uniprot_to_norm_map,all.x=TRUE,sort=FALSE)
+
+  #make sure any <NA> values get replaced with the default norm peptide id
+  mapping_table$histone_normalizers[is.na(mapping_table$histone_normalizers)]<-norm_peptide_id;
+  
+  num_norm_groups <- length(mapping_table$uniprots);
+  retList$normConstants <- dt[1:num_norm_groups,]; # initialize a matrix to hold all the norm constants
+  
+  #find the norm peptides, check for agreement
+  #note that the (1-based) array index of the norm peptide vector will be used as a key for the probe norm group
+  #entries may be repeated
+  #these will ultimately be deleted from the matrix
+  #The id of the norm peptide should only appear once in the rows
+  num_norm_tasks <- length(mapping_table$uniprots);
+
+  #now iterate through each histone normalization task (1 per unique uniprot in the metadata)
+  for (n in 1:num_norm_tasks) {
+    #Find the norm peptide row:
+    indarr<-surv_rows[,1]==mapping_table$histone_normalizers[n];
+    norm_consts<-dt[indarr,];
+    retList$normConstants[n,]<-norm_consts;
+    
+    #find the rows in the data matrix to apply to
+    probe_group_data_indices <- which(surv_rows$pr_uniprot_id == mapping_table$uniprots[n]);
+    data_to_normalize <- dt[probe_group_data_indices,];
+    
+    #previous way I did this...maybe apply is not working?
+    norm_mat<-matrix(data=retList$normConstants[n,],nrow=length(probe_group_data_indices),ncol=nCols,byrow=TRUE)
+    retList$filteredData[probe_group_data_indices,]<-data_to_normalize-norm_mat;
+    
+  }
+  
+  #get rid of norm probes at end
+  norm_peptide_logical <- surv_rows[,1] %in% mapping_table$histone_normalizers;
+  retList$filteredData<-retList$filteredData[(!norm_peptide_logical),];
+  retList$survivingRows<-retList$survivingRows[(!norm_peptide_logical),];
+  
+  
+  return(retList);
+  
 }
 
 .getRowMedians <- function(x) {
