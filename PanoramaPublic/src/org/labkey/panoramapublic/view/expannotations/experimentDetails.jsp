@@ -120,6 +120,15 @@
      filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#a90329', endColorstr='#6d0019',GradientType=0 ); /* IE6-8 */
  }
 
+ span.moreContent
+ {
+     display: none;
+ }
+ a.moreLink
+ {
+     display: block;
+ }
+
 </style>
 <script type="text/javascript">
 
@@ -188,13 +197,13 @@
     <%}%>
 </ul>
     <%if(bean.getAbstract() != null){%>
-<div class="descriptionBox"><legend>Abstract</legend><div class="content"><p><%=h(bean.getAbstract())%></p></div></div>
+<div class="descriptionBox"><legend>Abstract</legend><div class="content"><%=h(bean.getAbstract())%></div></div>
     <%}%>
     <%if(bean.getExperimentDescription() != null){%>
-<div class="descriptionBox"><legend>Experiment Description</legend><div class="content"><p><%=h(bean.getExperimentDescription())%></p></div> </div>
+<div class="descriptionBox"><legend>Experiment Description</legend><div class="content"><%=h(bean.getExperimentDescription())%></div> </div>
     <%}%>
     <%if(bean.getSampleDescription() != null){%>
-<div class="descriptionBox"><legend>Sample Description</legend><div class="content"><p><%=h(bean.getSampleDescription())%></p></div>    </div>
+<div class="descriptionBox"><legend>Sample Description</legend><div class="content"><%=h(bean.getSampleDescription())%></div></div>
     <%}%>
 
 <div style="text-align: center; margin-top:15px;">
@@ -206,40 +215,46 @@
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
 <script type="text/javascript">
 
-    var READ_MORE_TEXT = "Read more";
-    var READ_LESS_TEXT = "Close";
-    var BASE_SLIDE_TIME = 100;
-    var LINE_THRESHOLD = 3.0;
+    var SHOW_MORE_TEXT = "[Show more]";
+    var SHOW_LESS_TEXT = "[Show less]";
+    var MAX_CHARS = 500;
 
-    function adjustContent(element) {
-        var newP = $("<p />").html($("<a />").text(READ_MORE_TEXT).click(function() {
-            var content = $(this).parent().prev();
-            var smallHeight = content.data("smallheight");
-            var fullHeight = content.data("fullheight") + 10;
-            var expand = content.height() < fullHeight;
-            var slideTime = fullHeight - smallHeight + BASE_SLIDE_TIME;
-            content.animate(
-                    {height: expand ? fullHeight : smallHeight},
-                    {queue: false, duration: slideTime}
-            );
-            $(this).fadeOut({
-                        queue: false, duration: slideTime / 2, always: function() {
-                            $(this).text(expand ? READ_LESS_TEXT : READ_MORE_TEXT);
-                            $(this).fadeIn({queue: false, duration: slideTime / 2});
-                        }}
-            );
-        }));
-        var lineThresholdHeight = parseInt(element.css("line-height", "120%").css("line-height")) * LINE_THRESHOLD + 1;
-        if (element.height() > lineThresholdHeight) {
-            element.after(newP)
-                    .data("fullheight", element.height()).data("smallheight", lineThresholdHeight)
-                    .css("overflow", "hidden").height(lineThresholdHeight);
+    function showLess(element)
+    {
+        var text = element.html();
+        var length = text.length;
+        if(length > MAX_CHARS)
+        {
+            var less = text.substr(0, MAX_CHARS);
+            var ellipsis = "...";
+            var more = text.substr(MAX_CHARS);
+
+            var html = less + "<span class=\"ellipsis\">" + ellipsis +"</span><span class=\"moreContent\">" + more + "</span>";
+            var moreLink = "<a class=\"moreLink\">" + SHOW_MORE_TEXT + "</a>";
+            element.html(html + moreLink);
         }
     }
 
     $(document).ready(function()
     {
-        $(".content").each(function() {adjustContent($(this));});
+        $(".content").each(function() {showLess($(this));});
+
+        $(".moreLink").click(function(event)
+        {
+            event.preventDefault();
+            if($(this).hasClass("less"))
+            {
+                $(this).removeClass("less");
+                $(this).html(SHOW_MORE_TEXT);
+            }
+            else
+            {
+                $(this).addClass("less");
+                $(this).html(SHOW_LESS_TEXT);
+            }
+            $(this).prev().prev().toggle();
+            $(this).prev().toggle();
+        });
     });
-    window.onresize = function(){ location.reload(); }
+
 </script>
