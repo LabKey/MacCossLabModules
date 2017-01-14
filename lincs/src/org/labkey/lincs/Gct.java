@@ -15,8 +15,6 @@
  */
 package org.labkey.lincs;
 
-import sun.misc.ASCIICaseInsensitiveComparator;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -73,7 +71,7 @@ public class Gct
     public List<String> getSortedProbeNames()
     {
         List<String> probeNames = new ArrayList<>(_probeIndexMap.keySet());
-        Collections.sort(probeNames, new ASCIICaseInsensitiveComparator());
+        probeNames.sort(String.CASE_INSENSITIVE_ORDER);
         return probeNames;
     }
 
