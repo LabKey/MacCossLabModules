@@ -1,7 +1,7 @@
-#MAJOR VERSION 2.0
-#MINOR VERSION 1.4
-#8-JUL-2015
-
+#MAJOR VERSION 3.0
+#MINOR VERSION 1.0
+#1-FEB-2017
+require(jsonlite);
 
 ######################################
 #                                    #
@@ -11,7 +11,7 @@
 
 P100processGCTMaster <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NULL, dataTable=NULL,
                                   fileOutput=TRUE,outputFileName=NULL, processMode='full',
-                                  optim=TRUE,log2=TRUE,samplePctCutoff=0.8, probePctCutoff=0.9, probeSDCutoff=3, distSDcutoff=5)
+                                  optim=TRUE,log2=TRUE,samplePctCutoff=0.8, probePctCutoff=0.9, probeSDCutoff=3, distSDcutoff=5,overrideEmbeddedParameters=FALSE)
 {
   ######################################################################################
   #  This function is the major entry point for automated data processing of P100.     #
@@ -48,6 +48,20 @@ P100processGCTMaster <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NUL
     }
   }
 
+  ##NEW FEB 2017##
+  ##CHECK FOR PARAMETERS IN THE GCT FILE THAT WILL OVERRIDE DEFAULTS##
+  ##NOW REQUIRES jsonlite PACKAGE##
+  paramUpdates<-checkForEmbeddedParameters(o,optim=optim,log2=log2,samplePctCutoff=samplePctCutoff, probePctCutoff=probePctCutoff, probeSDCutoff=probeSDCutoff, distSDcutoff=distSDcutoff,overrideEmbeddedParameters=overrideEmbeddedParameters);
+  if (!(is.null(paramUpdates))) {
+    optim=paramUpdates$optim;
+    log2=paramUpdates$log2;
+    samplePctCutoff=paramUpdates$samplePctCutoff;
+    probePctCutoff=paramUpdates$probePctCutoff;
+    probeSDCutoff=paramUpdates$probeSDCutoff;
+    distSDcutoff=paramUpdates$distSDcutoff;
+  }
+
+
   po<-list();
   #DO THE PROCESSING AND RETURN AN OBJECT READY TO BE WRITTEN TO GCT FILE FORMAT
   if (processMode == 'full') {
@@ -70,7 +84,7 @@ GCPprocessGCTMaster <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NULL
                                   fileOutput=TRUE,outputFileName=NULL, processMode='full', normalization_peptide_id = 'BI10052',
                                   log2=TRUE,samplePctCutoff=0.5, probePctCutoff=0.5, probeSDCutoff=4, probeGroupNormalization=FALSE, 
                                   base_histone_uniprots=c("P68431","P84243","P62805","P0C0S8"), 
-                                  base_histone_normalization_mapping=c('BI10052','BI10052','BI10108','BI10109'))
+                                  base_histone_normalization_mapping=c('BI10052','BI10052','BI10108','BI10109'),overrideEmbeddedParameters=FALSE)
 {
   ######################################################################################
   #  This function is the major entry point for automated data processing of GCP.      #
@@ -107,10 +121,25 @@ GCPprocessGCTMaster <- function (gctFileName=NULL,repAnnot=NULL, probeAnnot=NULL
     }
   }
 
+  ##NEW FEB 2017##
+  ##CHECK FOR PARAMETERS IN THE GCT FILE THAT WILL OVERRIDE DEFAULTS##
+  ##NOW REQUIRES jsonlite PACKAGE##
+  paramUpdates<-checkForEmbeddedParameters(o,optim=NULL,log2=log2,samplePctCutoff=samplePctCutoff, probePctCutoff=probePctCutoff, probeSDCutoff=probeSDCutoff, distSDcutoff=NULL, overrideEmbeddedParameters=overrideEmbeddedParameters,base_histone_uniprots=base_histone_uniprots,base_histone_normalization_mapping=base_histone_normalization_mapping);
+  if (!(is.null(paramUpdates))) {
+    optim=paramUpdates$optim;
+    log2=paramUpdates$log2;
+    samplePctCutoff=paramUpdates$samplePctCutoff;
+    probePctCutoff=paramUpdates$probePctCutoff;
+    probeSDCutoff=paramUpdates$probeSDCutoff;
+    distSDcutoff=paramUpdates$distSDcutoff;
+    base_histone_uniprots=paramUpdates$base_histone_uniprots;
+    base_histone_normalization_mapping=paramUpdates$base_histone_normalization_mapping;
+  }
+
   po<-list();
   #DO THE PROCESSING AND RETURN AN OBJECT READY TO BE WRITTEN TO GCT FILE FORMAT
   if (processMode == 'full') {
-    po<-GCPprocessGCT(o,log2=log2,samplePctCutoff=samplePctCutoff, probePctCutoff=probePctCutoff, probeSDCutoff=probeSDCutoff, normalization_peptide_id=normalization_peptide_id, probeGroupNormalization=probeGroupNormalization)
+    po<-GCPprocessGCT(o,log2=log2,samplePctCutoff=samplePctCutoff, probePctCutoff=probePctCutoff, probeSDCutoff=probeSDCutoff, normalization_peptide_id=normalization_peptide_id, probeGroupNormalization=probeGroupNormalization,base_histone_uniprots=base_histone_uniprots,base_histone_normalization_mapping=base_histone_normalization_mapping)
   } else {
     stop(paste('That processing mode is not supported: ',as.character(processMode),sep=''));
   } 
@@ -140,7 +169,7 @@ P100processGCT <- function (g,optim=TRUE,log2=TRUE,samplePctCutoff=0.8, probePct
 
   s<-P100filterSamplesForPoorCoverage(dt, pctFilterCutoff=samplePctCutoff)
   surviving_headers<-surviving_headers[,s$colsPassing];
-  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,"SF8");
+  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,paste0("SF",round(samplePctCutoff*10,0)));
 
   #check for explicit probe rejection
   goodProbes<-logical(length=dim(surviving_rowAnnots)[1]);
@@ -150,7 +179,8 @@ P100processGCT <- function (g,optim=TRUE,log2=TRUE,samplePctCutoff=0.8, probePct
   }
   f<-P100filterProbes(s$filteredData, pctFilterCutoff=probePctCutoff, sdFilterCutoff=probeSDCutoff, explicitRejects=goodProbes);
   surviving_rowAnnots<-surviving_rowAnnots[f$rowsPassing,];
-  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,"PF9");
+  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,paste0("PF",round(probePctCutoff*10,0)));
+  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,paste0("PSDF",round(probeSDCutoff,0)));
 
   o<-P100optimizeSampleBalance(f$filteredData);
 
@@ -159,7 +189,7 @@ P100processGCT <- function (g,optim=TRUE,log2=TRUE,samplePctCutoff=0.8, probePct
   if (optim) {
     surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,"LLB");
   }
-  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,"OSF");
+  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,paste0("OF",round(distSDcutoff,0)));
 
   n<-P100rowMedianNormalize(b$filteredData);
   if (length(unique(surviving_rowAnnots$pr_probe_normalization_group)) > 1 || length(unique(t(surviving_headers['det_normalization_group_vector',]))) > 1) {
@@ -239,7 +269,7 @@ GCPprocessGCT <- function (g,log2=TRUE,samplePctCutoff=0.8, probePctCutoff=0.9, 
 
   s<-P100filterSamplesForPoorCoverage(h$filteredData, pctFilterCutoff=samplePctCutoff)
   surviving_headers<-surviving_headers[,s$colsPassing];
-  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,"SF5");
+  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,paste0("SF",round(samplePctCutoff*10,0)));
   
   #check for explicit probe rejection
   goodProbes<-logical(length=dim(surviving_rowAnnots)[1]);
@@ -249,7 +279,8 @@ GCPprocessGCT <- function (g,log2=TRUE,samplePctCutoff=0.8, probePctCutoff=0.9, 
   }
   f<-P100filterProbes(s$filteredData, pctFilterCutoff=probePctCutoff, sdFilterCutoff=probeSDCutoff, explicitRejects=goodProbes);
   surviving_rowAnnots<-surviving_rowAnnots[f$rowsPassing,];
-  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,"PF5");
+  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,paste0("PF",round(probePctCutoff*10,0)));
+  surviving_headers<-.updateProvenanceCode(static_headers,surviving_headers,paste0("PSDF",round(probeSDCutoff,0)));
 
   n<-P100rowMedianNormalize(f$filteredData);
   if (length(unique(surviving_rowAnnots$pr_probe_normalization_group)) > 1 || length(unique(t(surviving_headers['det_normalization_group_vector',]))) > 1) {
@@ -1174,3 +1205,48 @@ P100overlapNames<-function(somenames) {
   return(z)
 }
 
+checkForEmbeddedParameters<-function(gctObj, optim, log2, samplePctCutoff, probePctCutoff, probeSDCutoff, distSDcutoff, overrideEmbeddedParameters, ...) {
+  extraArgs<-list(...);
+  if (!(any(colnames(gctObj$surviving_rowAnnots) %in% 'pr_processing_params')) || overrideEmbeddedParameters) {
+    return(NULL);
+  } else {
+    returnObject<-list(optim=optim,log2=log2,samplePctCutoff=samplePctCutoff, probePctCutoff=probePctCutoff, probeSDCutoff=probeSDCutoff, distSDcutoff=distSDcutoff);
+    processingParamsFirstRow<-fromJSON(gctObj$surviving_rowAnnots$pr_processing_params[1]);
+
+    if (!(is.null(processingParamsFirstRow$optim))) {
+      returnObject$optim=as.logical(processingParamsFirstRow$optim);
+    }
+
+    if (!(is.null(processingParamsFirstRow$log2))) {
+      returnObject$log2=as.logical(processingParamsFirstRow$log2);
+    }
+
+    if (!(is.null(processingParamsFirstRow$samplePctCutoff))) {
+      returnObject$samplePctCutoff=as.numeric(processingParamsFirstRow$samplePctCutoff);
+    }
+
+    if (!(is.null(processingParamsFirstRow$probePctCutoff))) {
+      returnObject$probePctCutoff=as.numeric(processingParamsFirstRow$probePctCutoff);
+    }
+
+    if (!(is.null(processingParamsFirstRow$probeSDCutoff))) {
+      returnObject$probeSDCutoff=as.numeric(processingParamsFirstRow$probeSDCutoff);
+    }
+
+    if (!(is.null(processingParamsFirstRow$distSDcutoff))) {
+      returnObject$distSDcutoff=as.numeric(processingParamsFirstRow$distSDcutoff);
+    }
+
+    if (length(extraArgs) > 0) {
+      for (j in 1:length(extraArgs)) {
+        returnObject[names(extraArgs[j])]=as.array(extraArgs[j]);
+        if (!(is.na(names(processingParamsFirstRow[names(extraArgs[j])])))) {
+          returnObject[names(extraArgs[j])]=as.array(processingParamsFirstRow[names(extraArgs[j])]);
+        }
+      }
+    }
+
+    return(returnObject);
+
+  }
+}
