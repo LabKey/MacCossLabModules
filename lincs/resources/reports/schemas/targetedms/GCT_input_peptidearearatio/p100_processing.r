@@ -467,13 +467,23 @@ GCPprobeGroupSpecificRowMedianNormalize <- function (data,ra,sth,sh) {
 
   for (j in 1:max(typical_sample_group_vector_length,num_probe_groups)) {
     for (k in 1:sample_group_maxes[j]) {
-      if (sample_group_maxes[j] > 1) {
+      if (sample_group_maxes[j] > 1 && k==1) {
         G[[j]]<-list();
       }
       working_data<-data[probe_normalization_assignments==j,sample_group_matrix[j,]==k];
+      #SPECIAL CASE WHEN THERE IS ONLY 1 PROBE GROUP BUT TWO (or more) PASS GROUP NORMALIZATION IS DESIRED
+      if (num_probe_groups == 1 && j>1) {
+        working_data<-copy_of_data[probe_normalization_assignments==1,sample_group_matrix[j,]==k];
+        #print("SPECIAL NORM CASE INVOKED!!!!")
+      }
       working_data_medians<-apply(working_data,1,median,na.rm=TRUE);
       working_data<-working_data-working_data_medians;
-      copy_of_data[probe_normalization_assignments==j,sample_group_matrix[j,]==k]<-working_data;
+      if (num_probe_groups == 1 && j>1) {
+        copy_of_data[probe_normalization_assignments==1,sample_group_matrix[j,]==k]<-working_data;
+        #print("SPECIAL WORKING DATA ASSIGNMENT INVOKED!!!!")
+      } else {
+        copy_of_data[probe_normalization_assignments==j,sample_group_matrix[j,]==k]<-working_data;
+      }
       if (sample_group_maxes[j] > 1) {
         #print(c(j,k))
         #print(working_data_medians);
