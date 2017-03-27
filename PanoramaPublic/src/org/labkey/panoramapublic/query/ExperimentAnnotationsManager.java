@@ -125,7 +125,7 @@ public class ExperimentAnnotationsManager
 
     private static void removeRunIds(ExpExperiment experiment, int[] rowIds, User user)
     {
-        ExperimentService.Interface expService = ExperimentService.get();
+        ExperimentService expService = ExperimentService.get();
 
         for(int rowId: rowIds)
         {
@@ -145,7 +145,7 @@ public class ExperimentAnnotationsManager
     {
         ExpExperiment experiment = expAnnotations.getExperiment();
 
-        ExperimentService.Interface expService = ExperimentService.get();
+        ExperimentService expService = ExperimentService.get();
 
         // Get all the runs contained in the folder and its subfolders.
         List<ExpRun> runs = new ArrayList<>();
