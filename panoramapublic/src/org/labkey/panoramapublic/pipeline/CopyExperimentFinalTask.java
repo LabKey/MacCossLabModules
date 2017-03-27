@@ -169,7 +169,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     private static int[] getAllExpRunRowIdsInSubfolders(Container container)
     {
         Set<Container> children = ContainerManager.getAllChildren(container);
-        ExperimentService.Interface expService = ExperimentService.get();
+        ExperimentService expService = ExperimentService.get();
         List<Integer> expRunRowIds = new ArrayList<>();
         for(Container child: children)
         {
