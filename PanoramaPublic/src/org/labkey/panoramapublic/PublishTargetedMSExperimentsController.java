@@ -55,10 +55,10 @@ import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.PrincipalType;
 import org.labkey.api.security.RequiresLogin;
 import org.labkey.api.security.RequiresPermission;
-import org.labkey.api.security.RequiresSiteAdmin;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.UserManager;
+import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.roles.ProjectAdminRole;
@@ -124,7 +124,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     // ------------------------------------------------------------------------
     // BEGIN Actions for journal groups.
     // ------------------------------------------------------------------------
-    @RequiresSiteAdmin
+    @RequiresPermission(AdminOperationsPermission.class)
     public static class JournalGroupsAdminViewAction extends SimpleViewAction
     {
         @Override
@@ -161,7 +161,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
     }
 
-    @RequiresSiteAdmin
+    @RequiresPermission(AdminOperationsPermission.class)
     public static class CreateJournalGroupAction extends FormViewAction<CreateJournalGroupForm>
     {
         private Journal _journal;
@@ -328,7 +328,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
     }
 
-    @RequiresSiteAdmin
+    @RequiresPermission(AdminOperationsPermission.class)
     public static class DeleteJournalGroupAction extends ConfirmAction<JournalForm>
     {
         @Override
@@ -379,7 +379,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
     }
 
-    @RequiresSiteAdmin
+    @RequiresPermission(AdminOperationsPermission.class)
     public static class JournalGroupDetailsAction extends SimpleViewAction<JournalForm>
     {
         @Override
