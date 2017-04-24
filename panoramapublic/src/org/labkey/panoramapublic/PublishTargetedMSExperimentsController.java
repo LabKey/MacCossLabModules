@@ -50,6 +50,7 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.QuerySettings;
 import org.labkey.api.query.QueryView;
 import org.labkey.api.query.ValidationException;
+import org.labkey.api.security.AdminConsoleAction;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.PrincipalType;
@@ -57,7 +58,9 @@ import org.labkey.api.security.RequiresLogin;
 import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicyManager;
+import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
+import org.labkey.api.security.permissions.AbstractActionPermissionTest;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.InsertPermission;
@@ -67,6 +70,7 @@ import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.TestContext;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.DetailsView;
@@ -124,7 +128,8 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     // ------------------------------------------------------------------------
     // BEGIN Actions for journal groups.
     // ------------------------------------------------------------------------
-    @RequiresPermission(AdminOperationsPermission.class)
+    @AdminConsoleAction
+    @RequiresPermission(AdminPermission.class)
     public static class JournalGroupsAdminViewAction extends SimpleViewAction
     {
         @Override
@@ -138,7 +143,6 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             qView.setFrame(WebPartView.FrameType.NONE);
 
             VBox view = new VBox();
-            ActionURL newJournalUrl = new ActionURL(CreateJournalGroupAction.class, getContainer());
             view.addView(new HtmlView("<div style=\"margin:5px;\">Journal groups are used in conjunction with the \"publication protocol\" implemented for the targetedms module. " +
                     "The goal of the publication protocol is to provide a mechanism for journals to copy data associated with a manuscript from the author's  project " +
                     " on a Panorama server to the journal's project. " +
@@ -146,7 +150,13 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                     "<li>Creates a project for the journal with the appropriate web parts added</li>" +
                     "<li>Creates a new security group for members of the journal</li>" +
                     "<li>Create an entry in the Journal table of the targetedms schema that links the journal  to the project</li></ol></div>"));
-            view.addView(new HtmlView("<div><a href=\"" + newJournalUrl + "\">Create a new journal group </a></div>"));
+
+            if (getContainer().hasPermission(getUser(), AdminOperationsPermission.class))
+            {
+                ActionURL newJournalUrl = new ActionURL(CreateJournalGroupAction.class, getContainer());
+                view.addView(new HtmlView("<div><a href=\"" + newJournalUrl + "\">Create a new journal group </a></div>"));
+            }
+
             view.addView(qView);
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Journal groups");
@@ -379,7 +389,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
     }
 
-    @RequiresPermission(AdminOperationsPermission.class)
+    @RequiresPermission(AdminPermission.class)
     public static class JournalGroupDetailsAction extends SimpleViewAction<JournalForm>
     {
         @Override
@@ -397,11 +407,15 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
             ButtonBar buttonBar = new ButtonBar();
             buttonBar.setStyle(ButtonBar.Style.separateButtons);
-            ActionURL url = new ActionURL(DeleteJournalGroupAction.class, getViewContext().getContainer());
-            ActionButton deleteJournalButton = new ActionButton(url,"Delete");
-            deleteJournalButton.setActionType(ActionButton.Action.GET);
-            buttonBar.add(deleteJournalButton);
+            if (getContainer().hasPermission(getUser(), AdminOperationsPermission.class))
+            {
+                ActionURL url = new ActionURL(DeleteJournalGroupAction.class, getViewContext().getContainer());
+                ActionButton deleteJournalButton = new ActionButton(url, "Delete");
+                deleteJournalButton.setActionType(ActionButton.Action.GET);
+                buttonBar.add(deleteJournalButton);
+            }
             journalDetails.setButtonBar(buttonBar);
+
             // Add the journal "id" in a hidden form field.
             journalDetails.addHiddenFormField("id", String.valueOf(journal.getId()));
 
@@ -1273,5 +1287,36 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         ActionURL result = new ActionURL(PublishExperimentAction.class, container);
         result.addParameter("id", experimentAnnotationsId);
         return result;
+    }
+
+    public static class TestCase extends AbstractActionPermissionTest
+    {
+        @Override
+        public void testActionPermissions()
+        {
+            User user = TestContext.get().getUser();
+            assertTrue(user.isInSiteAdminGroup());
+
+            // @RequiresPermission(AdminPermission.class)
+            assertForAdminPermission(user,
+                new JournalGroupDetailsAction(),
+                new PublishExperimentAction(),
+                new UpdateJournalExperimentAction(),
+                new DeleteJournalExperimentAction(),
+                new RepublishJournalExperimentAction()
+            );
+
+            // @RequiresPermission(AdminOperationsPermission.class)
+            assertForAdminOperationsPermission(user,
+                new CreateJournalGroupAction(),
+                new DeleteJournalGroupAction()
+            );
+
+            // @AdminConsoleAction
+            // @RequiresPermission(AdminPermission.class)
+            assertForAdminPermission(ContainerManager.getRoot(), user,
+                new JournalGroupsAdminViewAction()
+            );
+        }
     }
 }
