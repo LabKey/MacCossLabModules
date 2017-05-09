@@ -2,7 +2,6 @@
 lincs/build.gradle -text
 lincs/distributions/lincs.xml -text
 lincs/distributions/lincs_dist/build.gradle -text
-lincs/lincs.iml -text
 lincs/module.properties -text
 lincs/resources/lincs_peptide_annotations.txt -text
 lincs/resources/lincs_replicate_annotations.txt -text
