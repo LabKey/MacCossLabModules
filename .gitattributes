@@ -1,6 +1,5 @@
 * text=auto !eol
 lincs/build.gradle -text
-lincs/distributions/lincs.xml -text
 lincs/distributions/lincs_dist/build.gradle -text
 lincs/module.properties -text
 lincs/resources/lincs_peptide_annotations.txt -text
