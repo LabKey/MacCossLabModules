@@ -167,18 +167,14 @@ public class Gct
         // <exp_type>_<plate_number>_<original_replicate_name>
         List<GctEntity> sortedReplicates = new ArrayList<GctEntity>(_replicates.size());
         sortedReplicates.addAll(_replicates);
-        Collections.sort(sortedReplicates, new Comparator<GctEntity>()
+        sortedReplicates.sort((rep1, rep2) ->
         {
-            @Override
-            public int compare(GctEntity rep1, GctEntity rep2)
-            {
-                String annot1 = rep1.getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION);
-                String annot2 = rep2.getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION);
-                if(annot1 == null) return 1;
-                if(annot2 == null) return -1;
-                int val = annot1.compareTo(annot2);
-                return val != 0 ? val : rep1.getName().compareTo(rep2.getName());
-            }
+            String annot1 = rep1.getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION);
+            String annot2 = rep2.getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION);
+            if (annot1 == null) return 1;
+            if (annot2 == null) return -1;
+            int val = annot1.compareTo(annot2);
+            return val != 0 ? val : rep1.getName().compareTo(rep2.getName());
         });
         return sortedReplicates;
     }

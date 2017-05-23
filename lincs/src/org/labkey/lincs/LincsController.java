@@ -833,14 +833,7 @@ public class LincsController extends SpringActionController
         }
 
         ArrayList<SelectedAnnotation> annotations = new ArrayList<>(annotationMap.values());
-        annotations.sort(new Comparator<SelectedAnnotation>()
-        {
-            @Override
-            public int compare(SelectedAnnotation o1, SelectedAnnotation o2)
-            {
-                return o1.getName().compareTo(o2.getName());
-            }
-        });
+        annotations.sort(Comparator.comparing(SelectedAnnotation::getName));
         return annotations;
     }
 
