@@ -21,7 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.labkey.api.action.ApiAction;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.FormViewAction;
-import org.labkey.api.action.LabKey_Error;
+import org.labkey.api.action.LabKeyError;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
@@ -111,13 +111,13 @@ public class LincsController extends SpringActionController
         {
             if(form.getRunId() == 0)
             {
-                errors.addError(new LabKey_Error("No run Id found in the request."));
+                errors.addError(new LabKeyError("No run Id found in the request."));
                 return new SimpleErrorView(errors, true);
             }
 
             if (StringUtils.isBlank(form.getReportName()))
             {
-                errors.addError(new LabKey_Error("No report name found in the request."));
+                errors.addError(new LabKeyError("No report name found in the request."));
                 return new SimpleErrorView(errors, true);
             }
 
@@ -125,13 +125,13 @@ public class LincsController extends SpringActionController
 
             if(report == null)
             {
-                errors.addError(new LabKey_Error("Could not find report with name " + form.getReportName()));
+                errors.addError(new LabKeyError("Could not find report with name " + form.getReportName()));
                 return new SimpleErrorView(errors, true);
             }
 
             if (!(report instanceof RReport))
             {
-                errors.addError(new LabKey_Error("The specified report is not based upon an R script and therefore cannot be executed."));
+                errors.addError(new LabKeyError("The specified report is not based upon an R script and therefore cannot be executed."));
                 return new SimpleErrorView(errors, true);
             }
 
@@ -140,7 +140,7 @@ public class LincsController extends SpringActionController
 
             if (service == null)
             {
-                errors.addError(new LabKey_Error("Run with ID " + form.getRunId() + " was not found in the folder."));
+                errors.addError(new LabKeyError("Run with ID " + form.getRunId() + " was not found in the folder."));
                 return new SimpleErrorView(errors, false);
             }
 
@@ -148,7 +148,7 @@ public class LincsController extends SpringActionController
 
             if(run == null)
             {
-                errors.addError(new LabKey_Error("Run with ID " + form.getRunId() + " was not found in the folder."));
+                errors.addError(new LabKeyError("Run with ID " + form.getRunId() + " was not found in the folder."));
                 return new SimpleErrorView(errors, false);
             }
 
@@ -158,7 +158,7 @@ public class LincsController extends SpringActionController
             {
                 if(!gctDir.mkdir())
                 {
-                    errors.addError(new LabKey_Error("Failed to create GCT directory '" + gctDir + "'."));
+                    errors.addError(new LabKeyError("Failed to create GCT directory '" + gctDir + "'."));
                     return new SimpleErrorView(errors, true);
                 }
             }
@@ -214,7 +214,7 @@ public class LincsController extends SpringActionController
                         {
                             if(!NetworkDrive.exists(downloadFile))
                             {
-                                errors.addError(new LabKey_Error("File " + downloadFile + " does not exist."));
+                                errors.addError(new LabKeyError("File " + downloadFile + " does not exist."));
                                 return new SimpleErrorView(errors, true);
                             }
                             // We found the requested GCT file.
@@ -253,8 +253,8 @@ public class LincsController extends SpringActionController
             catch(Exception e)
             {
                 copyFiles(gctDir, outputFileBaseName, gct, processedGct, rreport.getReportDir(getContainer().getId()));
-                errors.addError(new LabKey_Error("There was an error running the GCT R script."));
-                errors.addError(new LabKey_Error(e));
+                errors.addError(new LabKeyError("There was an error running the GCT R script."));
+                errors.addError(new LabKeyError(e));
                 return new SimpleErrorView(errors, true);
             }
 
@@ -264,7 +264,7 @@ public class LincsController extends SpringActionController
             {
                 if(!NetworkDrive.exists(downloadFile))
                 {
-                    errors.addError(new LabKey_Error("File " + downloadFile + " does not exist."));
+                    errors.addError(new LabKeyError("File " + downloadFile + " does not exist."));
                     return new SimpleErrorView(errors, true);
                 }
                 PageFlowUtil.streamFile(getViewContext().getResponse(), downloadFile, false);
@@ -471,7 +471,7 @@ public class LincsController extends SpringActionController
             catch (Exception e)
             {
                 errors.reject(ERROR_MSG, e.getMessage());
-                errors.addError(new LabKey_Error(e));
+                errors.addError(new LabKeyError(e));
                 return null;
             }
 
@@ -484,7 +484,7 @@ public class LincsController extends SpringActionController
             catch (Exception e)
             {
                 errors.reject(ERROR_MSG, "Error writing custom GCT file " + gctFile.getPath());
-                errors.addError(new LabKey_Error(e));
+                errors.addError(new LabKeyError(e));
                 return null;
             }
             GctBean customGctBean = new GctBean();
