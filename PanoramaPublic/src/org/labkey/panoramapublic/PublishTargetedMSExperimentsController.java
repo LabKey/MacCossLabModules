@@ -20,7 +20,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.action.ConfirmAction;
 import org.labkey.api.action.FormViewAction;
-import org.labkey.api.action.LabKey_Error;
+import org.labkey.api.action.LabKeyError;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
@@ -196,14 +196,14 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             String message = UserManager.validGroupName(form.getGroupName(), PrincipalType.GROUP);
             if(message != null)
             {
-                errors.addError(new LabKey_Error(message));
+                errors.addError(new LabKeyError(message));
             }
             else
             {
                 Integer groupId = org.labkey.api.security.SecurityManager.getGroupId(null, form.getGroupName(), null, false);
                 if (groupId != null)
                 {
-                    errors.addError(new LabKey_Error("Group with name " + form.getGroupName() + " already exists."));
+                    errors.addError(new LabKeyError("Group with name " + form.getGroupName() + " already exists."));
                 }
             }
 
@@ -213,24 +213,24 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             {
                 if(ContainerManager.getRoot().getChild(form.getProjectName()) != null)
                 {
-                    errors.addError(new LabKey_Error("Project name " + form.getProjectName() + " already exists."));
+                    errors.addError(new LabKeyError("Project name " + form.getProjectName() + " already exists."));
                 }
             }
             else if(error.length() > 0)
             {
-                errors.addError(new LabKey_Error(error.toString()));
+                errors.addError(new LabKeyError(error.toString()));
             }
 
             // Validate the journal name
             if(StringUtils.isBlank(form.getJournalName()))
             {
-                errors.addError(new LabKey_Error("Journal name cannot be blank."));
+                errors.addError(new LabKeyError("Journal name cannot be blank."));
             }
             else
             {
                 if(JournalManager.getJournal(form.getJournalName()) != null)
                 {
-                    errors.addError(new LabKey_Error("Journal with name " + form.getJournalName() + " already exists"));
+                    errors.addError(new LabKeyError("Journal with name " + form.getJournalName() + " already exists"));
                 }
             }
 
@@ -354,7 +354,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
             if(journal == null)
             {
-                errors.addError(new LabKey_Error("No journal found for journal ID  " + form.getId()));
+                errors.addError(new LabKeyError("No journal found for journal ID  " + form.getId()));
                 return false;
             }
 
@@ -398,7 +398,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             Journal journal = form.lookupJournal();
             if(journal == null)
             {
-                errors.addError(new LabKey_Error("No journal found for journal ID  " + form.getId()));
+                errors.addError(new LabKeyError("No journal found for journal ID  " + form.getId()));
                 return new SimpleErrorView(errors, true);
             }
 
