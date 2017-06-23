@@ -21,6 +21,7 @@ import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.Table;
+import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExpRun;
@@ -30,6 +31,7 @@ import org.labkey.api.security.User;
 import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.util.GUID;
 import org.labkey.api.view.NotFoundException;
+import org.labkey.api.view.ShortURLRecord;
 import org.labkey.targetedms.TargetedMSManager;
 import org.labkey.targetedms.TargetedMSRun;
 import org.labkey.targetedms.model.ExperimentAnnotations;
@@ -249,6 +251,12 @@ public class ExperimentAnnotationsManager
         JournalManager.beforeDeleteTargetedMSExperiment(expAnnotations, user);
 
         Table.delete(TargetedMSManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());
+
+        if(expAnnotations.isJournalCopy() && expAnnotations.getShortUrl() != null)
+        {
+            // Delete the short access URL
+            JournalManager.tryDeleteShortUrl(expAnnotations.getShortUrl(), user);
+        }
     }
 
     /**
@@ -336,5 +344,28 @@ public class ExperimentAnnotationsManager
                 filter, null).getArrayList(ExperimentAnnotations.class);
 
         return expAnnotations.size() > 0;
+    }
+
+    public static ExperimentAnnotations getExperimentForShortUrl(ShortURLRecord shortUrl)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("shortUrl"), shortUrl);
+        // There should be at most 1 record associated with a shortURL in the ExperimentAnnotations table.
+        return new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(),
+                filter, null).getObject(ExperimentAnnotations.class);
+    }
+
+    public static void removeShortUrl(int sourceExperimentId, ShortURLRecord shortAccessUrl, User user)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("sourceExperimentId"), sourceExperimentId);
+        filter.addCondition(FieldKey.fromParts("shortUrl"), shortAccessUrl);
+        TableInfo tInfo = TargetedMSManager.getTableInfoExperimentAnnotations();
+
+        ExperimentAnnotations expAnnot = new TableSelector(tInfo, filter, null).getObject(ExperimentAnnotations.class);
+
+        if(expAnnot != null)
+        {
+            expAnnot.setShortUrl(null);
+            Table.update(user, tInfo, expAnnot, expAnnot.getId());
+        }
     }
 }

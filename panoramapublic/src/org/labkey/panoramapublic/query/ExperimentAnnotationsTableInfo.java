@@ -16,12 +16,9 @@
 package org.labkey.targetedms.query;
 
 import org.jetbrains.annotations.NotNull;
-import org.labkey.api.action.UrlProvider;
 import org.labkey.api.data.ColumnInfo;
-import org.labkey.api.data.ContainerDisplayColumn;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
-import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
@@ -37,13 +34,12 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
-import org.labkey.api.util.ContainerUtil;
 import org.labkey.api.util.PageFlowUtil;
-import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.targetedms.TargetedMSController;
 import org.labkey.targetedms.TargetedMSManager;
 import org.labkey.targetedms.TargetedMSSchema;
+import org.labkey.targetedms.model.ExperimentAnnotations;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -133,6 +129,49 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
         ColumnInfo containerCol = getColumn(FieldKey.fromParts("Container"));
         ContainerForeignKey.initColumn(containerCol, getUserSchema());
 
+        ColumnInfo shareCol = wrapColumn("Share", getRealTable().getColumn("Id"));
+        shareCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
+        {
+            private boolean _renderedCSS = false;
+
+            @Override
+            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            {
+                // Get the ExperimentAnnotations record
+                Integer experimentAnnotationsId = ctx.get(FieldKey.fromParts(colInfo.getAlias()), Integer.class);
+                ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
+
+                String accessUrl = JournalManager.getExperimentShortUrl(expAnnotations);
+
+                if(accessUrl == null)
+                {
+                    out.write("");
+                }
+                else
+                {
+                    if(!_renderedCSS)
+                    {
+                        out.write("<script type=\"text/javascript\">\n" +
+                                "LABKEY.requiresScript(\"TargetedMS/js/clipboard.min.js\");\n" +
+                                "LABKEY.requiresCss(\"/TargetedMS/css/ExperimentAnnotations.css\");\n" +
+                                "LABKEY.requiresScript(\"/TargetedMS/js/ExperimentAnnotations.js\");\n" +
+                                "LABKEY.requiresCss(\"hopscotch/css/hopscotch.min.css\");\n" +
+                                "LABKEY.requiresScript(\"hopscotch/js/hopscotch.min.js\");\n" +
+                                "</script>");
+
+                        _renderedCSS = true;
+                    }
+
+                    String content = "<div><a class=\"button-small button-small-green\" style=\"margin:0px 5px 0px 2px;\""
+                                     + "href=\"\" onclick=\"showShareLink(this, '" + PageFlowUtil.filter(accessUrl) + "');return false;\""
+                               + ">Share</a>";
+                    content += "</div>";
+                    out.write(content);
+                }
+            }
+        });
+        addColumn(shareCol);
+
         SQLFragment runCountSQL = new SQLFragment("(SELECT COUNT(r.ExperimentRunId) FROM ");
         runCountSQL.append(ExperimentService.get().getTinfoRunList(), "r");
         runCountSQL.append(" WHERE r.ExperimentId = ");
@@ -142,6 +181,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
         addColumn(runCountColumn);
 
         List<FieldKey> visibleColumns = new ArrayList<>();
+        visibleColumns.add(FieldKey.fromParts("Share"));
         visibleColumns.add(FieldKey.fromParts("Title"));
         visibleColumns.add(FieldKey.fromParts("Organism"));
         visibleColumns.add(FieldKey.fromParts("Instrument"));

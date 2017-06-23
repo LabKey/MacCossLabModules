@@ -96,21 +96,31 @@ public class TargetedMSListener implements ExperimentListener, ContainerManager.
     public List<String> canDelete(ShortURLRecord shortUrl)
     {
         List<JournalExperiment> journalExperiments = JournalManager.getRecordsForShortUrl(shortUrl);
-        if(journalExperiments.size() == 0)
+        if(journalExperiments.size() > 0)
         {
-            return Collections.emptyList();
-        }
+            List<String> errors = new ArrayList<>();
+            String url = shortUrl.getShortURL();
+            for(JournalExperiment je: journalExperiments)
+            {
+                ExperimentAnnotations experiment = ExperimentAnnotationsManager.get(je.getExperimentAnnotationsId());
+                Journal journal = JournalManager.getJournal(je.getJournalId());
 
-        List<String> errors = new ArrayList<>();
-        String url = shortUrl.getShortURL();
-        for(JournalExperiment je: journalExperiments)
+                errors.add("Short URL \"" + url + "\" is associated with the experiment \"" + experiment.getTitle() + "\" published to \"" + journal.getName() + "\"");
+            }
+            return errors;
+        }
+        else
         {
-            ExperimentAnnotations experiment = ExperimentAnnotationsManager.get(je.getExperimentAnnotationsId());
-            Journal journal = JournalManager.getJournal(je.getJournalId());
-
-            errors.add("Short URL \"" + url + "\" is associated with the experiment \"" + experiment.getTitle() + "\" published to \"" + journal.getName() + "\"");
+            // Check if this short URL is associated with a published experiment in a journal (e.g. Panorama Public) folder.
+            ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.getExperimentForShortUrl(shortUrl);
+            if(expAnnotations != null)
+            {
+                List<String> errors = new ArrayList<>();
+                errors.add("Short URL \"" + shortUrl.getShortURL() + "\" is associated with the experiment \"" + expAnnotations.getTitle()
+                        + "\" in the folder \"" + expAnnotations.getContainer().getPath() + "\"");
+                return errors;
+            }
         }
-
-        return errors;
+        return Collections.emptyList();
     }
 }
