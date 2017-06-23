@@ -1199,7 +1199,11 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 JournalManager.updateJournalExperiment(_journalExperiment, getUser());
 
                 // Reset the access URL to point to the author's folder
-                JournalManager.updateAccessUrl(_experimentAnnotations, _experimentAnnotations, _journal, getUser());
+                JournalManager.updateAccessUrl(_experimentAnnotations, _journalExperiment, getUser());
+
+                // Remove shortAccessURL from the existing copy of the experiment in the journal's project
+                ExperimentAnnotationsManager.removeShortUrl(_journalExperiment.getExperimentAnnotationsId(),
+                                                            _journalExperiment.getShortAccessUrl(), getUser());
 
                 transaction.commit();
             }

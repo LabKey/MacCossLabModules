@@ -25,7 +25,25 @@
 <%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="org.labkey.targetedms.query.JournalManager" %>
+<%@ page import="org.apache.commons.lang3.StringUtils" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
+<%@ page import="org.labkey.targetedms.model.Journal" %>
+<%@ page import="org.labkey.targetedms.model.JournalExperiment" %>
+<%@ page import="org.labkey.api.view.ShortURLRecord" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("Ext4");
+        dependencies.add("TargetedMS/js/clipboard.min.js");
+        dependencies.add("TargetedMS/js/ExperimentAnnotations.js");
+        dependencies.add("TargetedMS/css/ExperimentAnnotations.css");
+        dependencies.add("hopscotch/js/hopscotch.min.js");
+        dependencies.add("hopscotch/css/hopscotch.min.css");
+    }
+%>
+
 <%
     JspView<TargetedMSController.ExperimentAnnotationsDetails> me = (JspView<TargetedMSController.ExperimentAnnotationsDetails>) HttpView.currentView();
     ExperimentAnnotations bean = me.getModelBean().getExperimentAnnotations();
@@ -39,10 +57,22 @@
     // User needs to be the folder admin to publish an experiment.
     final boolean canPublish = me.getModelBean().isCanPublish();
     final boolean showingFullDetails = me.getModelBean().isFullDetails();
-    boolean journalCopyPending = JournalManager.isCopyPending(bean);
 
     ActionURL experimentDetailsUrl = new ActionURL(TargetedMSController.ShowExperimentAnnotationsAction.class, getContainer());
     experimentDetailsUrl.addParameter("id", bean.getId());
+
+    Journal journal = null;
+    boolean journalCopyPending = false;
+    ShortURLRecord accessUrlRecord = bean.getShortUrl(); // Will have a value if this is a journal copy of an experiment.
+    JournalExperiment je = JournalManager.getLastPublishedRecord(bean.getId()); // Will be non-null if this experiment is in a user (not journal) project.
+    if(je != null)
+    {
+        journal = JournalManager.getJournal(je.getJournalId());
+        journalCopyPending = je.getCopied() == null;
+        accessUrlRecord = je.getShortAccessUrl();
+    }
+    String accessUrl = accessUrlRecord == null ? null : accessUrlRecord.renderShortURL();
+    String linkText = accessUrl == null ? null : (bean.isJournalCopy() ? "Link" : (journalCopyPending ? "Access link" : journal.getName() + " link"));
 %>
 <style>
  #title
@@ -81,7 +111,7 @@
     padding:3px 0px 0px 0px;
      margin:0;
  }
- #citation
+ .link
  {
      font-size:12px;
      font-weight: normal;
@@ -94,32 +124,6 @@
      margin:10px 0px 0px 0px;
 
  }
- a.banner-button-small{
-     display: block;
-     float:left;
-     margin: 15px 0 0 15px;
-     padding: 2px 9px 0 9px;
-     height: 15px;
-     color: #fff;
-     border-radius: 5px;
-     font-size: 75%;
-     font-weight: bold;
-     border: 1px solid #6d0019;
-     text-shadow: -1px -1px #6d0019;
-     box-shadow: 0 2px #ccc;
-     text-align: center;
-     background: #a90329; /* Old browsers */
-     /* IE9 SVG, needs conditional override of 'filter' to 'none' */
-     background: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzczYTBlMiIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyMTVkYTAiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);
-     background: -moz-linear-gradient(top,  #a90329 0%, #6d0019 100%); /* FF3.6+ */
-     background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#a90329), color-stop(100%,#6d0019)); /* Chrome,Safari4+ */
-     background: -webkit-linear-gradient(top,  #a90329 0%,#6d0019 100%); /* Chrome10+,Safari5.1+ */
-     background: -o-linear-gradient(top,  #a90329 0%,#6d0019 100%); /* Opera 11.10+ */
-     background: -ms-linear-gradient(top,  #a90329 0%,#6d0019 100%); /* IE10+ */
-     background: linear-gradient(to bottom,  #a90329 0%,#6d0019 100%); /* W3C */
-     filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#a90329', endColorstr='#6d0019',GradientType=0 ); /* IE6-8 */
- }
-
  span.moreContent
  {
      display: none;
@@ -163,7 +167,7 @@
 <div id="title"><%=h(bean.getTitle())%></div>
 <div>
     <%if(canPublish){%>
-        <a class="banner-button-small" style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(publishUrl)%>">Publish</a>
+        <a class="button-small button-small-red" style="float:left; margin:0px 5px 0px 2px;" href="<%=h(publishUrl)%>">Publish</a>
     <%}%>
     <%if(canEdit){%>
     <a style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>">[Edit]</a>
@@ -174,14 +178,22 @@
     <%}%>
 </div>
 <br/>
+<% if(!StringUtils.isBlank(accessUrl)) {%>
+    <div class="link">
+       <strong><%=linkText%>: </strong>
+       <span id="accessUrl" style="margin-top:5px;"><a href="<%=h(accessUrl)%>"><%=h(accessUrl)%></a></span>
+       <a class="button-small button-small-green" style="margin:0px 5px 0px 2px;" href="" onclick="showShareLink(this, '<%=h(accessUrl)%>'); return false;">Share</a>
+    </div>
+ <% } %>
+
 <%if(bean.getCitation() != null && bean.getPublicationLink() != null){%>
-    <div id="citation"><%=h(bean.getCitation())%> <strong><br />[<a href="<%=h(bean.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
+    <div class="link"><%=h(bean.getCitation())%> <strong><br />[<a href="<%=h(bean.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
 <%}%>
 <%if(bean.getCitation() != null && bean.getPublicationLink() == null){%>
-    <div id="citation"><%=h(bean.getCitation())%> </div>
+    <div class="link"><%=h(bean.getCitation())%> </div>
 <%}%>
 <%if(bean.getCitation() == null && bean.getPublicationLink() != null){%>
-    <div id="citation"><strong><br />[<a href="<%=h(bean.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
+    <div class="link"><strong><br />[<a href="<%=h(bean.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
 <%}%>
 <ul>
     <%if(bean.getOrganism() != null){%>

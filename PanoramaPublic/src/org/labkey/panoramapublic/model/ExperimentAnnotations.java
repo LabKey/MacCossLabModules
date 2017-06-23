@@ -18,6 +18,7 @@ package org.labkey.targetedms.model;
 import org.labkey.api.data.Container;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExperimentService;
+import org.labkey.api.view.ShortURLRecord;
 
 import java.util.Date;
 
@@ -42,10 +43,17 @@ public class ExperimentAnnotations
     private String _publicationLink;
     private Date _created;
     private int _createdBy;
-    private boolean _journalCopy;
     private boolean _includeSubfolders;
-
     private ExpExperiment _experiment;
+
+    private boolean _journalCopy; // true if this experiment was copied by a journal (e.g. "Panorama Public" on panoramaweb.org)
+    // The following fields (_sourceExperimentId, _sourceExperimentPath, _shortUrl) will be populated only if _journalCopy is true.
+    private Integer _sourceExperimentId;
+    private String _sourceExperimentPath; // Store this in case the original source experiment and/or container is deleted by user.
+    // Store the shortAccessUrl if this is a journal copy.  We can get to this by doing a lookup for the sourceExperimentId
+    // in the JournalExperiment table.  But we lose the link if the source experiment gets deleted.
+    private ShortURLRecord _shortUrl;
+
 
     public ExperimentAnnotations() {}
 
@@ -212,6 +220,16 @@ public class ExperimentAnnotations
         _createdBy = createdBy;
     }
 
+    public Integer getSourceExperimentId()
+    {
+        return _sourceExperimentId;
+    }
+
+    public void setSourceExperimentId(Integer sourceExperiment)
+    {
+        _sourceExperimentId = sourceExperiment;
+    }
+
     public boolean isJournalCopy()
     {
         return _journalCopy;
@@ -230,5 +248,25 @@ public class ExperimentAnnotations
     public void setIncludeSubfolders(boolean includeSubfolders)
     {
         _includeSubfolders = includeSubfolders;
+    }
+
+    public String getSourceExperimentPath()
+    {
+        return _sourceExperimentPath;
+    }
+
+    public void setSourceExperimentPath(String sourceExperimentPath)
+    {
+        _sourceExperimentPath = sourceExperimentPath;
+    }
+
+    public ShortURLRecord getShortUrl()
+    {
+        return _shortUrl;
+    }
+
+    public void setShortUrl(ShortURLRecord shortAccessUrl)
+    {
+        _shortUrl = shortAccessUrl;
     }
 }

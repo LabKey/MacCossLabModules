@@ -117,18 +117,22 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // Create a new entry in targetedms.ExperimentAnnotations and link it to the new experiment created during folder import.
             job.getLogger().info("Creating a new TargetedMS experiment entry in targetedms.ExperimentAnnotations.");
             ExperimentAnnotations sourceExperiment = jobSupport.getExpAnnotations();
+            JournalExperiment jExperiment = JournalManager.getJournalExperiment(sourceExperiment, jobSupport.getJournal());
+
             ExperimentAnnotations targetExperiment = new ExperimentAnnotations(sourceExperiment);
             targetExperiment.setExperimentId(experiment.getRowId());
             targetExperiment.setContainer(experiment.getContainer());
             targetExperiment.setJournalCopy(true);
+            targetExperiment.setSourceExperimentId(sourceExperiment.getId());
+            targetExperiment.setSourceExperimentPath(sourceExperiment.getContainer().getPath());
+            targetExperiment.setShortUrl(jExperiment.getShortAccessUrl());
             targetExperiment = ExperimentAnnotationsManager.save(targetExperiment, user);
 
             // Update the target of the short access URL to the journal's copy of the experiment.
             job.getLogger().info("Updating access URL to point to the new copy of the data.");
-            JournalManager.updateAccessUrl(jobSupport.getExpAnnotations(), targetExperiment, jobSupport.getJournal(), user);
+            JournalManager.updateAccessUrl(targetExperiment, jExperiment, user);
 
             // Update the JournalExperiment table -- set the 'copied' timestamp
-            JournalExperiment jExperiment = JournalManager.getJournalExperiment(sourceExperiment.getId(), jobSupport.getJournal().getId());
             jExperiment.setCopied(new Date());
             JournalManager.updateJournalExperiment(jExperiment, user);
 

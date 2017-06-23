@@ -23,6 +23,7 @@ import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
+import org.labkey.api.data.Sort;
 import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableSelector;
@@ -124,12 +125,47 @@ public class JournalManager
         return new TableSelector(TargetedMSManager.getTableInfoJournalExperiment(), filter, null).getObject(JournalExperiment.class);
     }
 
+    private static List<JournalExperiment> getJournalExperiments(int experimentAnnotationsId)
+    {
+        SimpleFilter filter = new SimpleFilter();
+        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
+        Sort sort = new Sort();
+        sort.appendSortColumn(FieldKey.fromParts("Created"), Sort.SortDirection.DESC, true);
+        return new TableSelector(TargetedMSManager.getTableInfoJournalExperiment(), filter, sort).getArrayList(JournalExperiment.class);
+    }
+
+    public static JournalExperiment getLastPublishedRecord(int experimentAnnotationsId)
+    {
+        // Get the JournalExperiment entries for the experiment (sorted by date created, descending)
+        List<JournalExperiment> jeList = getJournalExperiments(experimentAnnotationsId);
+        return jeList.size() > 0 ? jeList.get(0) : null;
+    }
+
+    public static String getExperimentShortUrl(ExperimentAnnotations expAnnotations)
+    {
+        if(expAnnotations.isJournalCopy())
+        {
+            if(expAnnotations.getShortUrl() != null)
+            {
+                return expAnnotations.getShortUrl().renderShortURL();
+            }
+        }
+        else
+        {
+            // Return the short access URL of the most recent JournalExperiment record
+            // On panoramaweb.org jeList will have only one entry, since we only have one 'journal' (Panorama Public)
+            // and an experiment can be published to a 'journal' only once.
+            JournalExperiment je = JournalManager.getLastPublishedRecord(expAnnotations.getId());
+            return je == null ? null : je.getShortAccessUrl().renderShortURL();
+        }
+        return null;
+    }
+
     public static List<JournalExperiment> getRecordsForShortUrl(ShortURLRecord shortUrl)
     {
-
         SimpleFilter.OrClause or = new SimpleFilter.OrClause();
-        or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("shortAccessUrl"), CompareType.EQUAL, shortUrl.getEntityId()));
-        or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("shortCopyUrl"), CompareType.EQUAL, shortUrl.getEntityId()));
+        or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("shortAccessUrl"), CompareType.EQUAL, shortUrl));
+        or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("shortCopyUrl"), CompareType.EQUAL, shortUrl));
 
         SimpleFilter filter = new SimpleFilter();
         filter.addClause(or);
@@ -216,32 +252,25 @@ public class JournalManager
         return (journalId != null);
     }
 
-    public static void updateAccessUrl(ExperimentAnnotations experiment, ExperimentAnnotations targetExperiment, Journal journal, User user) throws ValidationException
+    public static void updateAccessUrl(ExperimentAnnotations targetExperiment, JournalExperiment sourceJournalExp, User user) throws ValidationException
     {
-        Container target = targetExperiment.getContainer();
-
-        JournalExperiment je = getJournalExperiment(experiment, journal);
-
-        ShortURLRecord shortAccessUrlRecord = je.getShortAccessUrl();
-        ActionURL targetUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(target);
+        ShortURLRecord shortAccessUrlRecord = sourceJournalExp.getShortAccessUrl();
+        ActionURL targetUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(targetExperiment.getContainer());
 
         ShortURLService shortURLService = ServiceRegistry.get(ShortURLService.class);
         shortAccessUrlRecord = shortURLService.saveShortURL(shortAccessUrlRecord.getShortURL(), targetUrl, user);
 
-        je.setShortAccessUrl(shortAccessUrlRecord);
+        sourceJournalExp.setShortAccessUrl(shortAccessUrlRecord);
 
         Map<String, Integer> pkVals = new HashMap<>();
-        pkVals.put("JournalId", je.getJournalId());
-        pkVals.put("ExperimentAnnotationsId", je.getExperimentAnnotationsId());
-        Table.update(user, TargetedMSManager.getTableInfoJournalExperiment(), je, pkVals);
+        pkVals.put("JournalId", sourceJournalExp.getJournalId());
+        pkVals.put("ExperimentAnnotationsId", sourceJournalExp.getExperimentAnnotationsId());
+        Table.update(user, TargetedMSManager.getTableInfoJournalExperiment(), sourceJournalExp, pkVals);
     }
 
-    private static JournalExperiment getJournalExperiment(ExperimentAnnotations experiment, Journal journal)
+    public static JournalExperiment getJournalExperiment(ExperimentAnnotations experiment, Journal journal)
     {
-        SimpleFilter filter = new SimpleFilter();
-        filter.addCondition(FieldKey.fromParts("JournalId"), journal.getId());
-        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experiment.getId());
-        return new TableSelector(TargetedMSManager.getTableInfoJournalExperiment(), filter, null).getObject(JournalExperiment.class);
+        return getJournalExperiment(experiment.getId(), journal.getId());
     }
 
     public static JournalExperiment addJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal,
@@ -404,17 +433,23 @@ public class JournalManager
         filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId());
         Table.delete(TargetedMSManager.getTableInfoJournalExperiment(), filter);
 
-        // Try to delete the short copy and access URLs. Since we just deleted the entry in table JournalExperiment
-        // that references these URLs we should not get a foreign key constraint error.
-        tryDeleteShortUrl(je.getShortAccessUrl(), user);
+        // Try to delete the short copy URL. Since we just deleted the entry in table JournalExperiment
+        // that references this URL we should not get a foreign key constraint error.
         tryDeleteShortUrl(je.getShortCopyUrl(), user);
+        // Try to delete the short access URL only if the experiment has not yet been copied (accessURL points to journal's folder after copy)
+        // OR the access url is no longer referenced in the ExperimentAnnotations table.
+        if(je.getCopied() == null || ExperimentAnnotationsManager.getExperimentForShortUrl(je.getShortAccessUrl()) == null)
+        {
+            tryDeleteShortUrl(je.getShortAccessUrl(), user);
+        }
+
 
 
         Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
         removeJournalPermissions(expAnnotations, journalGroup, user);
     }
 
-    private static void tryDeleteShortUrl(ShortURLRecord shortUrl, User user)
+    static void tryDeleteShortUrl(ShortURLRecord shortUrl, User user)
     {
         ShortURLService shortURLService = ServiceRegistry.get(ShortURLService.class);
         try
@@ -470,20 +505,6 @@ public class JournalManager
         {
             shortURLService.deleteShortURL(oldCopyUrl, user);
         }
-    }
-
-    public static boolean isCopyPending(ExperimentAnnotations expAnnotation)
-    {
-        List<Journal> journals = getJournalsForExperiment(expAnnotation.getId());
-        for(Journal journal: journals)
-        {
-            JournalExperiment je = getJournalExperiment(expAnnotation.getId(), journal.getId());
-            if(je.getCopied() == null)
-            {
-                return true;
-            }
-        }
-        return false;
     }
 
     public static void deleteProjectJournal(Container c, User user)
