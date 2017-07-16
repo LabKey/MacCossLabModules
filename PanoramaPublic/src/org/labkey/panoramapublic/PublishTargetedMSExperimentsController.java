@@ -183,7 +183,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public ModelAndView getView(CreateJournalGroupForm form, boolean reshow, BindException errors) throws Exception
         {
-            JspView view = new JspView("/org/labkey/targetedms/view/publish/createJournalGroup.jsp", form, errors);
+            JspView view = new JspView<>("/org/labkey/targetedms/view/publish/createJournalGroup.jsp", form, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Create New Journal Group");
             return view;
@@ -209,9 +209,9 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
             // Validate the project name.
             StringBuilder error = new StringBuilder();
-            if(Container.isLegalName(form.getProjectName(), error))
+            if (Container.isLegalName(form.getProjectName(), true, error))
             {
-                if(ContainerManager.getRoot().getChild(form.getProjectName()) != null)
+                if (ContainerManager.getRoot().getChild(form.getProjectName()) != null)
                 {
                     errors.addError(new LabKeyError("Project name " + form.getProjectName() + " already exists."));
                 }
@@ -549,7 +549,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
             String destinationFolder = form.getDestContainerName();
             StringBuilder errMessages = new StringBuilder();
-            if(!Container.isLegalName(destinationFolder, errMessages))
+            if(!Container.isLegalName(destinationFolder, parentContainer.isRoot(), errMessages))
             {
                 errors.reject(ERROR_MSG, "Invalid destination folder name " + destinationFolder + ". " + errMessages.toString());
                 return false;
