@@ -22,6 +22,7 @@ import org.labkey.api.admin.FolderWriterImpl;
 import org.labkey.api.admin.FolderArchiveDataTypes;
 import org.labkey.api.admin.StaticLoggerGetter;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.PHI;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
@@ -102,7 +103,7 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
         FolderWriterImpl writer = new FolderWriterImpl();
 
         FolderExportContext ctx = new FolderExportContext(user, source, PageFlowUtil.set(templateWriterTypes),
-                null, includeSubfolders, false, false,
+                null, includeSubfolders, false, false, PHI.NotPHI, false,
                 false, false, new StaticLoggerGetter(Logger.getLogger(FolderWriterImpl.class)));
 
 
