@@ -113,7 +113,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
             throw new NotFoundException("No valid pipeline root found for " + source.getPath());
         }
 
-        return root.resolvePath("export");
+        return root.resolvePath(PipelineService.EXPORT_DIR);
     }
 
     @Override
