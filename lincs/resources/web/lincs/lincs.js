@@ -56,8 +56,16 @@ function displayFiles(data)
         var fileNameNoExt = getBaseFileName(fileName);
         console.log(fileNameNoExt);
 
-        var analyticsEvtGct = " onclick=\"_gaq.push(['_trackEvent, 'Lincs', 'Download', 'GCT']);\" ";
-        var analyticsEvtGctProc = " onclick=\"_gaq.push(['_trackEvent, 'Lincs', 'Download', 'GCT_proc']);\" ";
+        // http://www.blastam.com/blog/how-to-track-downloads-in-google-analytics
+        // Tell the browser to wait 400ms before going to the download.  This is to ensure
+        // that the GA tracking request goes through. Some browsers will interrupt the tracking
+        // request if the download opens on the same page.
+        var timeout = "that = this; setTimeout(function(){location.href=that.href;},400);return false;";
+        var gaEventPush = "_gaq.push(['_trackEvent', 'Lincs', 'DownloadGCT', ";
+        var gctFile = fileNameNoExt + '.gct';
+        var procGctFile = fileNameNoExt + '.processed.gct';
+        var analyticsEvtGct = " onclick=\"" + gaEventPush + "'" + gctFile + "']); " + timeout + "\" ";
+        var analyticsEvtGctProc = " onclick=\"" + gaEventPush + "'" + procGctFile + "']); " + timeout + "\" ";
 
         var newRow = '<tr>';
         newRow += '<td>' + fileName + '</td>';
@@ -69,8 +77,8 @@ function displayFiles(data)
         var extRow = new Ext4.Template(newRow);
         extRow.append('skylinefiles');
 
-        externalHeapmapViewerLink(container, fileNameNoExt + '.gct', gctToExternalIdPrefix + i, _assayType);
-        externalHeapmapViewerLink(container, fileNameNoExt + '.processed.gct', gctProcToExternalIdPrefix + i, _assayType);
+        externalHeapmapViewerLink(container, gctFile, gctToExternalIdPrefix + i, _assayType);
+        externalHeapmapViewerLink(container, procGctFile, gctProcToExternalIdPrefix + i, _assayType);
     }
 
 }
