@@ -28,7 +28,7 @@ import java.util.Map;
 // It is currently scheduled to send an email every morning at 8am which is why we show all runs since the previous 8am.
 public class SendTestResultsEmail implements org.quartz.Job
 {
-    private String[] recipients = new String[]{"skyline-dev@proteinms.net"};
+    private List<String> recipients = Collections.singletonList("skyline-dev@proteinms.net");
 
     private static final Logger LOG = Logger.getLogger(SendTestResultsEmail.class);
 
@@ -72,7 +72,7 @@ public class SendTestResultsEmail implements org.quartz.Job
         // null flag for test, only send email to Yuval
         if(jobExecutionContext == null) {
             message.append("<h1>THIS IS A TEST EMAIL BEING SENT BY YUVAL FOR TESTING, IGNORE POR FA</h1>");
-            recipients = new String[]{"yuval@uw.edu"};
+            recipients = Collections.singletonList("yuval@uw.edu");
         }
 
         Calendar c = Calendar.getInstance();
