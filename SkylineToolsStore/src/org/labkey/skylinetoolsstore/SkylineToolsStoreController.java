@@ -240,7 +240,7 @@ public class SkylineToolsStoreController extends SpringActionController
     protected Container makeContainer(Container parent, String folderName, List<User> users, Role role)
     {
         StringBuilder sb = new StringBuilder();
-        if (!Container.isLegalName(folderName, sb))
+        if (!Container.isLegalName(folderName, false, sb))
             return null;
 
         if (parent.hasChild(folderName))
