@@ -45,7 +45,7 @@ public class TargetedMSListener implements ExperimentListener, ContainerManager.
         ShortURLService.ShortURLListener
 {
     @Override
-    public void beforeExperimentDeleted(ExpExperiment experiment, User user)
+    public void beforeExperimentDeleted(Container c, User user, ExpExperiment experiment)
     {
         ExperimentAnnotationsManager.beforeDeleteExpExperiment(experiment, user);
     }
