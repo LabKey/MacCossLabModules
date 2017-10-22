@@ -17,6 +17,7 @@
 package org.labkey.skylinetoolsstore;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.json.JSONObject;
 import org.labkey.api.action.NavTrailAction;
@@ -29,7 +30,6 @@ import org.labkey.api.action.SpringActionController;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.files.FileContentService;
-import org.labkey.api.gwt.client.util.StringUtils;
 import org.labkey.api.module.FolderTypeManager;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.security.ActionNames;
