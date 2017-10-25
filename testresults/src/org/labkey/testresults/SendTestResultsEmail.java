@@ -9,6 +9,7 @@ import org.labkey.api.notification.EmailService;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.ValidEmail;
 import org.labkey.api.util.MimeMap;
+import org.labkey.api.util.Pair;
 import org.labkey.api.util.Path;
 import org.labkey.api.view.ActionURL;
 import org.quartz.JobExecutionContext;
@@ -28,7 +29,15 @@ import java.util.Map;
 // It is currently scheduled to send an email every morning at 8am which is why we show all runs since the previous 8am.
 public class SendTestResultsEmail implements org.quartz.Job
 {
-    private List<String> recipients = Collections.singletonList("skyline-dev@proteinms.net");
+    public static final  String TEST_ADMIN = "testadmin";
+    public static final String TEST_CUSTOM = "testcustom";
+    public static final String TEST_GET_HTML_EMAIL = "gethtml";
+    public static final String MORNING_EMAIL = "morningemail";
+
+    public interface DEFAULT_EMAIL {
+        String RECIPIENT = "skyline-dev@proteinms.net";
+        String ADMIN_EMAIL = "yuval@uw.edu";
+    }
 
     private static final Logger LOG = Logger.getLogger(SendTestResultsEmail.class);
 
@@ -37,30 +46,14 @@ public class SendTestResultsEmail implements org.quartz.Job
 
     }
 
-    @Override
-    public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException
-    {
-        LOG.info("Sending daily emails...");
+    public Pair<String, String> getHTMLEmail(org.labkey.api.security.User from) {
         // Sends email for all runs since 8:01 the previous morning, at 8am every morning
         Container parent = ContainerManager.getForPath(new Path(new String[]{"home","development"}));
-//         parent = ContainerManager.getForPath(new Path(new String[]{"home"})); // DEV ONLY, localhost container path
-        ValidEmail email = null;
-        try
-        {
-            email = new ValidEmail("yuval@uw.edu");
-        }
-        catch (ValidEmail.InvalidEmailException e)
-        {
-            e.printStackTrace();
-        }
-        org.labkey.api.security.User y = UserManager.getUser(email);
-        if(email == null)
-            throw new JobExecutionException("Cant find user yuval@uw.edu");
+        //parent = ContainerManager.getForPath(new Path(new String[]{"home"})); // DEV ONLY, localhost container path
 
-        List<Container> containers = ContainerManager.getAllChildren(parent, y);
+        List<Container> containers = ContainerManager.getAllChildren(parent, from);
         if(containers.size() == 0)
-            throw new JobExecutionException("No containers! :(");
-
+            return null;
         int totalErrorRuns = 0;
         int totalWarningRuns = 0;
         int totalGoodRuns = 0;
@@ -68,12 +61,6 @@ public class SendTestResultsEmail implements org.quartz.Job
         int totalMissingUsers = 0;
         StringBuilder message = new StringBuilder();
         message.append("<!doctype HTML><head><meta charset=\"UTF-8\"></head>");
-
-        // null flag for test, only send email to Yuval
-        if(jobExecutionContext == null) {
-            message.append("<h1>THIS IS A TEST EMAIL BEING SENT BY YUVAL FOR TESTING, IGNORE POR FA</h1>");
-            recipients = Collections.singletonList("yuval@uw.edu");
-        }
 
         Calendar c = Calendar.getInstance();
         c.set(Calendar.HOUR_OF_DAY, 8);
@@ -86,7 +73,7 @@ public class SendTestResultsEmail implements org.quartz.Job
         for(Container container: containers)
         {
             SQLFragment sqlFragment = new SQLFragment();
-            RunDetail[] runs = TestResultsController.getRunsSinceDate(start, end, container, null, false);
+            RunDetail[] runs = TestResultsController.getRunsSinceDate(start, end, container, null, false, false);
             Arrays.sort(runs);
 
             if(runs.length == 0) // IF NO RUNS DONT ADD CONTAINER TO EMAIL
@@ -174,7 +161,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                                 "http://skyline.ms" + new ActionURL(TestResultsController.ShowRunAction.class, container) + "runId=" + run.getId()
                                 + "\" target=\"_blank\" style=\"text-decoration:none; font-weight:600; color:black;\">"
                                 + run.getUsername() + "</a></td>");
-                        message.append("\n<td style='padding: 6px;'>" + round(run.getAverageMemory(), 2) + "</td>");
+                        message.append("\n<td style='padding: 6px;'>" + data.round(run.getAverageMemory(), 2) + "</td>");
                         message.append("\n<td style='padding: 6px;'>" + run.getPassedtests() + "</td>");
                         message.append("\n<td style='padding: 6px;'>" + run.getPostTime() + "</td>");
                         message.append("\n<td style='padding: 6px;'>" + run.getDuration() + "</td>");
@@ -212,23 +199,16 @@ public class SendTestResultsEmail implements org.quartz.Job
                 message.append("\n<tr >");
                 message.append("\n<td style='width:200px; overflow:hidden; padding:0px;'>Fail: <span style='font-weight:600; color:red;'>X</span> | Leak: <span style='font-weight:600; color:orange;'>X</span></td>");
 
-                TestFailDetail[] allFails = data.getFailures();
-                TestLeakDetail[] allLeaks = data.getLeaks();
                 for (RunDetail run: runs)
                 {
                     boolean addUser = false;
-                    for (TestFailDetail f : allFails)
-                    {
-                        if (run.getFailedtests() > 0)
-                            addUser = true;
-                    }
+
+                    if (run.getFailedtests() > 0)
+                        addUser = true;
                     if (!addUser)
                     {
-                        for (TestLeakDetail l : allLeaks)
-                        {
-                            if (run.getLeakedtests() > 0)
-                                addUser = true;
-                        }
+                        if (run.getLeakedtests() > 0)
+                            addUser = true;
                     }
                     if (addUser)
                         message.append("\n<td style='max-width:60px; width:60px; overflow:hidden; text-overflow: ellipsis; padding:3px; border:1px solid #ccc;'>" + run.getUsername() + "</td>");
@@ -293,7 +273,6 @@ public class SendTestResultsEmail implements org.quartz.Job
                 message.append("\n</table>");
             }
         }
-        EmailService svc = EmailService.get();
 
         SimpleDateFormat formatter = new SimpleDateFormat("MM/dd");
         String subject = "TestResults " + formatter.format(start) + " - " + formatter.format(end) + " (8AM - 8AM)";
@@ -307,29 +286,33 @@ public class SendTestResultsEmail implements org.quartz.Job
             subject += "Missing: "+ totalMissingUsers;
 
         subject += " | " + new DecimalFormat("#,###").format(totalTotalPasses) + " tests run";
+        return new Pair(subject, message.toString());
+    }
+    public void execute(String ctx, org.labkey.api.security.User from, String emailTo) throws JobExecutionException
+    {
+        String[] recipients = new String[]{emailTo};
+        if(ctx.equals(MORNING_EMAIL))
+            LOG.info("Sending daily emails...");
 
+        Pair<String,String> msg = getHTMLEmail(from);
 
-        EmailMessage emailMsg = svc.createMessage("yuval@uw.edu", recipients, subject);
-        emailMsg.addContent(MimeMap.MimeType.HTML, message.toString());
+        EmailService svc = EmailService.get();
+        EmailMessage emailMsg = svc.createMessage(from.getEmail(), recipients, msg.first);
+        emailMsg.addContent(MimeMap.MimeType.HTML, msg.second);
+        svc.sendMessages(Collections.singletonList(emailMsg), from, ContainerManager.getHomeContainer());
+    }
+    @Override
+    public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException
+    {
+        ValidEmail admin = null;
         try
         {
-            org.labkey.api.security.User user = UserManager.getUser(new ValidEmail("yuval@uw.edu"));
-            svc.sendMessages(Collections.singletonList(emailMsg), user, ContainerManager.getHomeContainer());
+            admin = new ValidEmail(DEFAULT_EMAIL.ADMIN_EMAIL);
         }
         catch (ValidEmail.InvalidEmailException e)
         {
-            LOG.error("Error sending email", e);
             e.printStackTrace();
         }
-        LOG.info("Sent emails.");
-    }
-
-    public double round(double value, int places) {
-        if (places < 0) throw new IllegalArgumentException();
-
-        long factor = (long) Math.pow(10, places);
-        value = value * factor;
-        long tmp = Math.round(value);
-        return (double) tmp / factor;
+        execute(MORNING_EMAIL, UserManager.getUser(admin), DEFAULT_EMAIL.RECIPIENT);
     }
 }

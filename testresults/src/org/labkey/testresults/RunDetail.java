@@ -16,13 +16,16 @@
 package org.labkey.testresults;
 
 import org.labkey.api.data.Container;
+import org.labkey.api.reader.Readers;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
 
 /**
  * User: Yuval Boss, yuval(at)uw.edu
@@ -46,6 +49,8 @@ public class RunDetail implements Comparable<RunDetail>
     private TestLeakDetail[] leaks; // all leaks detected during this run
 
     private byte[] xml; // compressed xml
+
+    private byte[] log;
     private byte[] pointsummary;
     private int passedtests;
     private int failedtests;
@@ -58,7 +63,7 @@ public class RunDetail implements Comparable<RunDetail>
     }
 
     public RunDetail(int userid, int duration, Date posttime, Date timestamp, String os, int revision, Container container, boolean flagged, byte[] xml,
-                     byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem) {
+                     byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem, byte[] log) {
         this.userid = userid;
         this.username = null;
         this.duration = duration;
@@ -77,10 +82,11 @@ public class RunDetail implements Comparable<RunDetail>
         this.failedtests = failedtests;
         this.leakedtests = leakedtests;
         this.averagemem = averagemem;
+        this.log = log;
     }
     public RunDetail(int userid, String username, int duration, Date posttime, Date timestamp, String os, int revision, Container container, boolean flagged, byte[] xml,
                      byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem) {
-        this(userid, duration, posttime, timestamp, os, revision, container, flagged, xml, pointsummary, passedtests, failedtests, leakedtests, averagemem);
+        this(userid, duration, posttime, timestamp, os, revision, container, flagged, xml, pointsummary, passedtests, failedtests, leakedtests, averagemem, new byte[0]);
         this.username = username;
     }
 
@@ -235,6 +241,34 @@ public class RunDetail implements Comparable<RunDetail>
     public byte[] getPointsummary() { return pointsummary; }
 
     public void setPointsummary(byte[] pointsummary) { this.pointsummary = pointsummary; }
+    public byte[] getLog() { return log; }
+
+    public void setLog(byte[] log) { this.log = log; }
+
+    public String getDecodedLog() {
+        byte[] bytes = getLog();
+        if(bytes == null)
+            return "";
+
+        ByteArrayInputStream baos = new ByteArrayInputStream(bytes);
+        StringBuilder out = new StringBuilder();
+        try(GZIPInputStream s = new GZIPInputStream(baos)){
+            BufferedReader reader = Readers.getReader(s);
+            BufferedReader in = new BufferedReader(reader);
+            for (String line = in.readLine(); line != null; line = in.readLine()) {
+                out.append(line);
+                out.append("\r\n");
+            }
+
+        }
+        catch (IOException e1)
+        {
+            e1.printStackTrace();
+        }
+
+        return out.toString();
+    }
+
 
     // decodes point pass summary data points from the byte array
     public Double[] getPoints() throws IOException {

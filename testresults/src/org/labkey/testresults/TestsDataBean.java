@@ -48,6 +48,44 @@ public class TestsDataBean
     private Map<Integer, RunDetail> runs;
     private RunDetail[] statRuns;
     private User[] users;
+    private String viewType;
+    private Date startDate;
+    private Date endDate;
+
+    public Date getStartDate()
+    {
+        if(startDate == null)
+            startDate = new Date();
+        return startDate;
+    }
+
+    public void setStartDate(Date startDate)
+    {
+        this.startDate = startDate;
+    }
+
+    public Date getEndDate()
+    {
+        if(endDate == null)
+            setEndDate(new Date());
+        return endDate;
+    }
+
+    public void setEndDate(Date day)
+    {
+        this.endDate = day;
+    }
+
+    public String getViewType()
+    {
+        return viewType;
+    }
+
+    public void setViewType(String viewType)
+    {
+        this.viewType = viewType;
+    }
+
 
     private TestFailDetail[] nonAssociatedFailures;
 
@@ -60,6 +98,18 @@ public class TestsDataBean
         this(runs);
         setUsers(users);
     }
+
+    public TestsDataBean(RunDetail[] runs, User[] users, String viewType) {
+        this(runs, users);
+        setViewType(viewType);
+    }
+
+    public TestsDataBean(RunDetail[] runs, User[] users, String viewType, Date startDate, Date endDate) {
+        this(runs, users, viewType);
+        setStartDate(startDate);
+        setEndDate(endDate);
+    }
+
     // Getters and Setters for fields
     public RunDetail[] getRuns() {
         RunDetail[] r = runs.values().toArray(new RunDetail[runs.size()]);

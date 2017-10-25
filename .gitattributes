@@ -31,9 +31,9 @@ SkylineToolsStore/src/org/labkey/skylinetoolsstore/view/SkylineToolSupplementUpl
 SkylineToolsStore/src/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp -text
 SkylineToolsStore/src/org/labkey/skylinetoolsstore/view/SkylineToolsStoreWebPart.java -text
 SkylineToolsStore/src/org/labkey/skylinetoolsstore/view/SkylineToolsStoreWebPart.jsp -text
-SkylineToolsStore/test/src/org.labkey.test.tests/ToolStoreRatingsTest.java -text
-SkylineToolsStore/test/src/org.labkey.test.tests/ToolStoreTest.java -text
-SkylineToolsStore/test/src/org.labkey.test.tests/ToolStoreTestPart.java -text
+SkylineToolsStore/test_disabled/src/org.labkey.test.tests/ToolStoreRatingsTest.java -text
+SkylineToolsStore/test_disabled/src/org.labkey.test.tests/ToolStoreTest.java -text
+SkylineToolsStore/test_disabled/src/org.labkey.test.tests/ToolStoreTestPart.java -text
 SkylineToolsStore/webapp/SkylineToolsStore/css/jquery-ui.css -text
 SkylineToolsStore/webapp/SkylineToolsStore/img/author.png -text
 SkylineToolsStore/webapp/SkylineToolsStore/img/bg.jpg -text
@@ -102,6 +102,7 @@ testresults/resources/schemas/dbscripts/postgresql/testresults-13.28-13.29.sql -
 testresults/resources/schemas/dbscripts/postgresql/testresults-13.29-13.30.sql -text
 testresults/resources/schemas/dbscripts/postgresql/testresults-13.30-13.31.sql -text
 testresults/resources/schemas/dbscripts/postgresql/testresults-13.31-13.32.sql -text
+testresults/resources/schemas/dbscripts/postgresql/testresults-13.32-13.33.sql -text
 testresults/resources/schemas/dbscripts/sqlserver/testresults-13.20-13.21.sql -text
 testresults/resources/schemas/testresults.xml -text
 testresults/src/org/labkey/testresults/RunDetail.java -text

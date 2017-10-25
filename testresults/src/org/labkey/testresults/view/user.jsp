@@ -21,11 +21,9 @@
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.NavigableSet" %>
 <%@ page import="java.util.TreeSet" %>
-<%@ page import="java.util.HashMap" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.Iterator" %>
 <%@ page import="java.util.TreeMap" %>
-<%@ page import="sun.reflect.generics.tree.Tree" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%

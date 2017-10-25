@@ -56,7 +56,7 @@
     TestPassDetail[] passes = run.getPasses();
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
     DateFormat dfMDHM = new SimpleDateFormat("MM/dd HH:mm");
-
+    String log = run.getDecodedLog();
     boolean hasHang = run.hasHang();
 %>
 
@@ -89,6 +89,11 @@
             <%=h((run.isTrainRun()) ? "Remove from training set" : "Add to training set")%>
         </a>
     </p>
+    <%if(log.length() > 0){%>
+        <button onclick="showLog()">View Log</button>
+        <pre id="log" style="font-family: monospace; display:none;"><%=h(log)%></pre>
+    <%}%>
+
     <!--Script to handle deleting of run-->
     <script>
         var current = "";
@@ -202,6 +207,9 @@
     var jsonObject = jQuery.parseJSON( <%=q(data.getMemoryJson(run.getId(), false).toString())%>);
     var passes = [];
     var pass = 0;
+    if(jsonObject.json[0].testName.length == 0) {
+        $('#memoryGraph').hide();
+    }
     for(var i = 0; i < jsonObject.json[0].testName.length; i++) {
         if(jsonObject.json[0].testName[i].split(":")[1] != pass) {
             passes[pass] = i;
@@ -249,6 +257,11 @@
         }
         return result;
     }
+    function showLog() {
+        var wnd = window.open("about:blank", "", "_blank");
+        wnd.document.write("<pre>" + $("#log").text() + "</pre>");
+    }
+
 </script>
 
 <%} else {%>

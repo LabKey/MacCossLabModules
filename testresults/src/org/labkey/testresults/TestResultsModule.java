@@ -35,11 +35,24 @@ import java.util.Set;
  * User: Yuval Boss, yuval(at)uw.edu
  * Date: 1/14/2015
  */
+
 public class TestResultsModule extends DefaultModule
 {
     public static final WebPartFactory _testResultsFactory = new TestResultsWebPart();
     public static final String JOB_NAME = "TestResultsEmailTrigger";
     public static final String JOB_GROUP = "TestResultsGroup";
+
+    // for saving
+    public static final String TR_VIEW = "testresults-view";
+
+    public interface ViewType {
+
+        String DAY = "day";
+        String WEEK= "wk";
+        String MONTH = "mo";
+        String YEAR = "yr";
+        String ALLTIME = "at";
+    }
 
     @Override
     public String getName()

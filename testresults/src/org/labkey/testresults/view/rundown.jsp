@@ -1,4 +1,3 @@
-<%@ page import="org.apache.commons.lang3.time.DateUtils" %>
 <%@ page import="org.json.JSONObject" %>
 <%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.data.statistics.MathStat" %>
@@ -19,6 +18,7 @@
 <%@ page import="java.util.Date" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
@@ -31,19 +31,17 @@
     final String contextPath = AppProps.getInstance().getContextPath();
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
 
-    Date selectedDate = new Date();
-    String end = getViewContext().getRequest().getParameter("end");
-    if(end!= null && !end.equals("")) {
-        selectedDate = df.parse(end);
-    }
-    String viewType = getViewContext().getRequest().getParameter("viewType");
+
+    String viewType = data.getViewType();
     if(viewType == null || viewType.equals(""))
-        viewType = "mo";
+        viewType = ViewType.MONTH;
     String viewTypeWord = "Month";
-    if(viewType != null && viewType.equals("wk"))
+    if(viewType.equals(ViewType.WEEK))
         viewTypeWord = "Week";
-    if(viewType != null && viewType.equals("yr"))
+    if(viewType.equals(ViewType.YEAR))
         viewTypeWord = "Year";
+
+    Date selectedDate = data.getEndDate();
     Date yesterday = new Date(selectedDate.getTime() - (1000 * 60 * 60 * 24));
     Date tomorrow = new Date(selectedDate.getTime() + (1000 * 60 * 60 * 24));
 
@@ -89,9 +87,9 @@
 </div>
 <div id="content">
     <p>
-        <a href="<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>end=<%=h(df.format(yesterday))%>&viewType=<%=h(viewType)%>"><<<</a>
+        <a href="<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>end=<%=h(df.format(yesterday))%>"><<<</a>
         Date: <input type="text" id="datepicker" size="30">
-        <a href="<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>end=<%=h(df.format(tomorrow))%>&viewType=<%=h(viewType)%>">>>></a>
+        <a href="<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>end=<%=h(df.format(tomorrow))%>">>>></a>
     </p>
     <div id="headerContent">
     </div>
@@ -188,7 +186,7 @@
                     <td style="font-size:11px;" data-sort-value="<%=h(run.getPostTime().getTime())%>"><%=h(dfMDHM.format(run.getPostTime()))%></td>
                     <td ><%=h(run.getDuration())%><%if(run.hasHang()){%> <img style="width:16px; height:16px;" src='<%=h(contextPath)%>/TestResults/img/hangicon.png'><%}%>
                         <%if(run.getDuration()< 540) {%><img src='<%=h(contextPath)%>/TestResults/img/fail.png'><%}%></td>
-                    <td><%=h(passes)%> 
+                    <td><%=h(passes)%>
                         <%if(highlightPasses) {%><img src='<%=h(contextPath)%>/TestResults/img/fail.png'><%}%></td>
                     <td><%=h(failures)%>
                         <%if(run.getFailures().length > 0) {%><img src='<%=h(contextPath)%>/TestResults/img/fail.png'><%}%></td>
@@ -292,14 +290,14 @@
             <center>( Trends for previous <%=h(viewTypeWord.toLowerCase())%> )</center>
             <center>
                 <select id="viewType">
-                    <option value="wk" id="wk">Week</option>
-                    <option value="mo" id="mo">Month</option>
-                    <option value="yr" id="yr">Year</option>
+                    <option value="<%=h(ViewType.WEEK)%>" id="<%=h(ViewType.WEEK)%>">Week</option>
+                    <option value="<%=h(ViewType.MONTH)%>" id="<%=h(ViewType.MONTH)%>">Month</option>
+                    <option value="<%=h(ViewType.YEAR)%>" id="<%=h(ViewType.YEAR)%>">Year</option>
                 </select>
             </center>
             <script type="text/javascript">
                 $('#viewType').on('change', function() {
-                    window.location.href = "<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>end=<%=h(df.format(selectedDate))%>&viewType=" + this.value;
+                    window.location.href = "<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>&viewType=" + this.value;
                 });
             </script>
             <!--Bar Graphs for average over past week-->
@@ -411,7 +409,6 @@
         var pointRatio = 30;
         var jsonObject = jQuery.parseJSON( <%=q(memoryChartData.toString())%>);
         var sortedRunDetails = {};
-        var storedRegions = [];
         for(var key in jsonObject["runs"]) {
             sortedRunDetails[key] = jsonObject["runs"][key];
         }

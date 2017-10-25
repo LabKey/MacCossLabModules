@@ -10,6 +10,7 @@
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="java.util.ArrayList" %>
 <%@ page import="java.util.List" %>
+<%@ page import="org.labkey.testresults.SendTestResultsEmail" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     /**
@@ -43,10 +44,40 @@
             <img src="<%=h(contextPath)%>/TestResults/img/uw.png" id="uw">
         </ul>
     </div>
-    <div style="font-weight:600; margin-top:20px;" title="testresults-setEmailCron.view?action={status|start|stop}">Email cron active: <span id="emailstatus" style="color:#247BA0;"></span>
-        <input type='button' value='' id='email-cron-button' style="margin-left:20px;">
-        <div id="cron-message"></div>
-    </div>
+    <table>
+        <tr>
+            <td style="vertical-align: top; padding-right: 20px;">
+                <div style="font-weight:600;" title="testresults-setEmailCron.view?action={status|start|stop}">Email cron active: <span id="emailstatus" style="color:#247BA0;"></span>
+                    <input type='button' value='' id='email-cron-button' style="margin-left:10px;">
+                    <div id="email-cron"></div>
+                </div>
+            </td>
+            <td style="vertical-align: top; padding-right: 20px;">
+                <form autocomplete="off">
+                    <table style="margin-top: 0px;">
+                        <tr>
+                            <td style="text-align: left;">From:</td>
+                            <td><input type="text" name="from" id="emailFrom" value="<%=h(SendTestResultsEmail.DEFAULT_EMAIL.ADMIN_EMAIL)%>" autocomplete="off"></td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">To:</td>
+                            <td><input type="text" name="to" id="emailTo" value="<%=h(SendTestResultsEmail.DEFAULT_EMAIL.RECIPIENT)%>" autocomplete="off"></td>
+                        </tr>
+                    </table>
+
+                    <input type='button' value='Send' id='send-button' style="margin-left:20px;">
+                    <div id="send-email-msg"></div>
+                </form>
+            </td>
+            <td style="vertical-align: top; padding-right: 20px;">
+                <input type='button' value='Generate Email' id='html-button' style="margin-left:20px;">
+            </td>
+        </tr>
+    </table>
+
+
+    <div id="msg-container"></div>
+
     <table id="trainingdata">
         <tr style="border:none; font-weight:800;">
             <td style="border-left:1px solid #000; padding-left:5px;">Date</td>
@@ -154,6 +185,18 @@
             });
         }
     });
+    $("#html-button").click(function() {
+        $.getJSON('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=<%=h(SendTestResultsEmail.TEST_GET_HTML_EMAIL)%>', function(data){
+            console.log(data);
+            $('#msg-container').html(data.HTML);
+        })
+    });
+    $("#send-button").click(function() {
+        $.getJSON('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>' + 'action=<%=h(SendTestResultsEmail.TEST_CUSTOM)%>&emailF='+$('#emailFrom').val()+'&emailT='+$('#emailTo').val(), function (data) {
+            console.log(data);
+            $('#send-email-msg').text(data.Message);
+        });
+    });
 
     $('.deactivate-user').click(function(obj) {
         var userId = this.getAttribute("userid");
@@ -161,7 +204,7 @@
             console.log(data);
             location.reload();
         })
-    })
+    });
 
     $('.activate-user').click(function(obj) {
         var userId = this.getAttribute("userid");
@@ -169,5 +212,5 @@
             console.log(data);
             location.reload();
         })
-    })
+    });
 </script>

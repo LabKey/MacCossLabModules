@@ -1,0 +1,1 @@
+ALTER TABLE testresults.testruns ADD log bytea;

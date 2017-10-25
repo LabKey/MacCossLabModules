@@ -48,7 +48,7 @@ public class TestResultsWebPart extends BaseWebPartFactory
         TestsDataBean bean = null;
         try
         {
-            bean = TestResultsController.getRunDownData(c, portalCtx);
+            bean = TestResultsController.getRunDownData(portalCtx.getUser(), c, portalCtx);
         }
         catch (ParseException e)
         {

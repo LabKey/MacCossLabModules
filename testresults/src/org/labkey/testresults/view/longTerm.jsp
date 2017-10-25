@@ -8,6 +8,7 @@
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.testresults.TestResultsController" %>
 <%@ page import="org.labkey.testresults.TestsDataBean" %>
+<%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
@@ -18,9 +19,7 @@
     JspView<?> me = (JspView<?>) HttpView.currentView();
     TestsDataBean data = (TestsDataBean)me.getModelBean();
     final String contextPath = AppProps.getInstance().getContextPath();
-    String viewType = getViewContext().getRequest().getParameter("viewType");
-    if(viewType == null)
-        viewType = "yr";
+    String viewType = data.getViewType();
     Container c = getContainer();
 %>
 <div id="menu">
@@ -45,10 +44,10 @@
 <form action="<%=h(new ActionURL(TestResultsController.LongTermAction.class, c))%>">
     View Type: <select name="viewType">
         <option disabled selected> -- select an option -- </option>
-        <option id="wk" value="wk">Week</option>
-        <option id="mo" value="mo">Month</option>
-    <option id="yr" value="yr">Year</option>
-    <option id="at" value="at">The Beginning of Time</option>
+        <option id="<%=h(ViewType.WEEK)%>" value="<%=h(ViewType.WEEK)%>">Week</option>
+        <option id="<%=h(ViewType.MONTH)%>" value="<%=h(ViewType.MONTH)%>">Month</option>
+    <option id="<%=h(ViewType.YEAR)%>" value="<%=h(ViewType.YEAR)%>">Year</option>
+    <option id="<%=h(ViewType.ALLTIME)%>" value="<%=h(ViewType.ALLTIME)%>">The Beginning of Time</option>
 </select>
     <input type="submit" value="Submit">
 </form>
@@ -81,7 +80,7 @@
             var trendsJson = jQuery.parseJSON( <%= q(trendsJson.toString()) %> );
             var failureJson = jQuery.parseJSON( <%= q(failureJson.toString()) %> );
             var runCountPerDayJson = jQuery.parseJSON( <%= q(runCountPerDayJson.toString()) %> );
-            generateTrendCharts(trendsJson, <%=h(viewType.equals("yr") || viewType.equals("at"))%>);
+            generateTrendCharts(trendsJson, <%=h(viewType.equals(ViewType.YEAR) || viewType.equals(ViewType.ALLTIME))%>);
 
             function subchartDomainUpdated(domain) { changeData(domain); }
             function changeData(domain) {
