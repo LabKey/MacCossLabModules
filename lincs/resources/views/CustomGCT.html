@@ -1,0 +1,15 @@
+<script type="text/javascript">
+
+    LABKEY.requiresCss("/lincs/lincs.css");
+
+    function showCustomGCTForm()
+    {
+        var url = LABKEY.ActionURL.buildURL("lincs", "createCustomGCT", LABKEY.ActionURL.getContainer());
+        window.location = url;
+    }
+
+</script>
+
+<div style="margin:20px;">
+    <a class="button" id="customGctButton" onclick="showCustomGCTForm()">Create Custom GCT</a>
+</div>

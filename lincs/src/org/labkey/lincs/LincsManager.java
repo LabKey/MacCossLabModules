@@ -51,6 +51,11 @@ public class LincsManager
         return _instance;
     }
 
+    public String getSchemaName()
+    {
+        return LincsSchema.SCHEMA_NAME;
+    }
+
     public List<LincsAnnotation> getReplicateAnnotations(User user, Container container)
     {
         String listName = "LincsReplicateAnnotation";

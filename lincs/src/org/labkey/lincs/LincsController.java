@@ -75,6 +75,9 @@ public class LincsController extends SpringActionController
 {
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(LincsController.class);
     public static final String NAME = "lincs";
+    public static final String GCT_DIR = "GCT";
+    public static final String P100 = "P100";
+    public static final String GCP = "GCP";
 
     public LincsController()
     {
@@ -877,7 +880,7 @@ public class LincsController extends SpringActionController
     {
         PipeRoot root = PipelineService.get().getPipelineRootSetting(container);
         assert root != null;
-        return new File(root.getRootPath(), "GCT");
+        return new File(root.getRootPath(), GCT_DIR);
     }
 
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
@@ -938,5 +941,31 @@ public class LincsController extends SpringActionController
             response.put("lincs_data", lincsData);
             return response;
         }
+    }
+
+    public static LincsDataTable.LincsAssay getLincsAssayType(Container container)
+    {
+        if(isOrHasAncestor(container, LincsController.P100))
+        {
+            return LincsDataTable.LincsAssay.P100;
+        }
+        else if(isOrHasAncestor(container, LincsController.GCP))
+        {
+            return LincsDataTable.LincsAssay.GCP;
+        }
+        return null;
+    }
+
+    private static boolean isOrHasAncestor(Container container, String name)
+    {
+        if(container.isRoot())
+        {
+            return false;
+        }
+        if(container.getName().equals(name))
+        {
+            return true;
+        }
+        return isOrHasAncestor(container.getParent(), name);
     }
 }

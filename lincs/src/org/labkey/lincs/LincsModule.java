@@ -19,14 +19,21 @@ package org.labkey.lincs;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
-import org.labkey.api.module.CodeOnlyModule;
+import org.labkey.api.module.DefaultModule;
 import org.labkey.api.module.ModuleContext;
+import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.view.BaseWebPartFactory;
+import org.labkey.api.view.Portal;
+import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartFactory;
+import org.labkey.api.view.WebPartView;
+import org.labkey.lincs.view.LincsDataView;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Set;
 
-public class LincsModule extends CodeOnlyModule
+public class LincsModule extends DefaultModule
 {
     public static final String NAME = "LINCS";
 
@@ -36,17 +43,45 @@ public class LincsModule extends CodeOnlyModule
         return NAME;
     }
 
+    public double getVersion()
+    {
+        return 17.21;
+    }
+
     @Override
     @NotNull
     protected Collection<WebPartFactory> createWebPartFactories()
     {
-        return Collections.emptyList();
+        //return Collections.emptyList();
+        BaseWebPartFactory runsList = new BaseWebPartFactory(LincsDataView.WEB_PART_NAME)
+        {
+            @Override
+            public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
+            {
+                return new LincsDataView(portalCtx);
+            }
+        };
+        return Collections.singleton(runsList);
+    }
+
+    @Override
+    public boolean hasScripts()
+    {
+        return true;
     }
 
     @Override
     protected void init()
     {
         addController(LincsController.NAME, LincsController.class);
+        LincsSchema.register(this);
+    }
+
+    @Override
+    @NotNull
+    public Set<String> getSchemaNames()
+    {
+        return PageFlowUtil.set(LincsManager.get().getSchemaName());
     }
 
     @Override

@@ -77,8 +77,8 @@ function displayFiles(data)
         var extRow = new Ext4.Template(newRow);
         extRow.append('skylinefiles');
 
-        externalHeapmapViewerLink(container, gctFile, gctToExternalIdPrefix + i, _assayType);
-        externalHeapmapViewerLink(container, procGctFile, gctProcToExternalIdPrefix + i, _assayType);
+        externalHeatmapViewerLink(container, gctFile, gctToExternalIdPrefix + i, _assayType);
+        externalHeatmapViewerLink(container, procGctFile, gctProcToExternalIdPrefix + i, _assayType);
     }
 
 }
@@ -93,7 +93,7 @@ function getBaseFileName(fileName)
     return fileName.substring(0, idx);
 }
 
-function externalHeapmapViewerLink(container, fileName, elementId, assayType)
+function externalHeatmapViewerLink(container, fileName, elementId, assayType)
 {
     var fileUrl= LABKEY.ActionURL.buildURL("_webdav", "REMOVE", container + '/@files/GCT/' + fileName);
     fileUrl= fileUrl.substring(0, fileUrl.indexOf("/REMOVE"));
