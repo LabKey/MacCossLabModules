@@ -290,7 +290,7 @@ public class SendTestResultsEmail implements org.quartz.Job
     }
     public void execute(String ctx, org.labkey.api.security.User from, String emailTo) throws JobExecutionException
     {
-        String[] recipients = new String[]{emailTo};
+        List<String> recipients = Collections.singletonList(emailTo);
         if(ctx.equals(MORNING_EMAIL))
             LOG.info("Sending daily emails...");
 
