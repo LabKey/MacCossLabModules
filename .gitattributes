@@ -87,7 +87,7 @@ signup/src/org/labkey/signup/SignUpSchema.java -text
 signup/src/org/labkey/signup/TempUser.java -text
 signup/src/org/labkey/signup/signupPage.jsp -text
 testresults/TestResults.iml -text
-testresults/distributions/skyline/build.gradle -text
+testresults/distributions_disabled/skyline/build.gradle -text
 testresults/lib/deploy -text
 testresults/module.properties -text
 testresults/resources/schemas/dbscripts/postgresql/testresults-13.20-13.21.sql -text
