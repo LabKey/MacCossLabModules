@@ -24,9 +24,17 @@
 <%@ page import="org.labkey.targetedms.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.targetedms.model.Journal" %>
 <%@ page import="org.labkey.api.security.roles.RoleManager" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
+
+<%!
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("Ext4");
+    }
+%>
 
 <%
     JspView<PublishTargetedMSExperimentsController.CopyExperimentForm> me = (JspView<PublishTargetedMSExperimentsController.CopyExperimentForm>) HttpView.currentView();
