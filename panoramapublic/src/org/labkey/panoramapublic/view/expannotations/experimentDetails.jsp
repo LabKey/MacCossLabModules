@@ -46,33 +46,41 @@
 
 <%
     JspView<TargetedMSController.ExperimentAnnotationsDetails> me = (JspView<TargetedMSController.ExperimentAnnotationsDetails>) HttpView.currentView();
-    ExperimentAnnotations bean = me.getModelBean().getExperimentAnnotations();
-    ActionURL editUrl = TargetedMSController.getEditExperimentDetailsURL(getContainer(), bean.getId(),
-            TargetedMSController.getViewExperimentDetailsURL(bean.getId(), getContainer()));
-    ActionURL deleteUrl = TargetedMSController.getDeleteExperimentURL(getContainer(), bean.getId(), getContainer().getStartURL(getUser()));
+    TargetedMSController.ExperimentAnnotationsDetails annotDetails = me.getModelBean();
+    ExperimentAnnotations annot = annotDetails.getExperimentAnnotations();
+    ActionURL editUrl = TargetedMSController.getEditExperimentDetailsURL(getContainer(), annot.getId(),
+            TargetedMSController.getViewExperimentDetailsURL(annot.getId(), getContainer()));
+    ActionURL deleteUrl = TargetedMSController.getDeleteExperimentURL(getContainer(), annot.getId(), getContainer().getStartURL(getUser()));
 
-    ActionURL publishUrl = PublishTargetedMSExperimentsController.getPublishExperimentURL(bean.getId(), getContainer());
-    Container experimentContainer = bean.getContainer();
-    final boolean canEdit = (!bean.isJournalCopy() || getUser().isSiteAdmin()) && experimentContainer.hasPermission(getUser(), InsertPermission.class);
+    ActionURL publishUrl = PublishTargetedMSExperimentsController.getPublishExperimentURL(annot.getId(), getContainer());
+    Container experimentContainer = annot.getContainer();
+    final boolean canEdit = (!annot.isJournalCopy() || getUser().isSiteAdmin()) && experimentContainer.hasPermission(getUser(), InsertPermission.class);
     // User needs to be the folder admin to publish an experiment.
-    final boolean canPublish = me.getModelBean().isCanPublish();
-    final boolean showingFullDetails = me.getModelBean().isFullDetails();
+    final boolean canPublish = annotDetails.isCanPublish();
+    final boolean showingFullDetails = annotDetails.isFullDetails();
 
     ActionURL experimentDetailsUrl = new ActionURL(TargetedMSController.ShowExperimentAnnotationsAction.class, getContainer());
-    experimentDetailsUrl.addParameter("id", bean.getId());
+    experimentDetailsUrl.addParameter("id", annot.getId());
 
     Journal journal = null;
     boolean journalCopyPending = false;
-    ShortURLRecord accessUrlRecord = bean.getShortUrl(); // Will have a value if this is a journal copy of an experiment.
-    JournalExperiment je = JournalManager.getLastPublishedRecord(bean.getId()); // Will be non-null if this experiment is in a user (not journal) project.
+    ShortURLRecord accessUrlRecord = annot.getShortUrl(); // Will have a value if this is a journal copy of an experiment.
+    JournalExperiment je = me.getModelBean().getLastPublishedRecord(); // Will be non-null if this experiment is in a user (not journal) project.
+    String publishButtonText = "Publish";
     if(je != null)
     {
         journal = JournalManager.getJournal(je.getJournalId());
         journalCopyPending = je.getCopied() == null;
         accessUrlRecord = je.getShortAccessUrl();
+
+        if(!journalCopyPending)
+        {
+            publishButtonText = "Re-publish";
+            publishUrl = PublishTargetedMSExperimentsController.getRePublishExperimentURL(annot.getId(), je.getJournalId(), getContainer());
+        }
     }
     String accessUrl = accessUrlRecord == null ? null : accessUrlRecord.renderShortURL();
-    String linkText = accessUrl == null ? null : (bean.isJournalCopy() ? "Link" : (journalCopyPending ? "Access link" : journal.getName() + " link"));
+    String linkText = accessUrl == null ? null : (annot.isJournalCopy() ? "Link" : (journalCopyPending ? "Access link" : journal.getName() + " link"));
 %>
 <style>
  #title
@@ -164,10 +172,10 @@
         or the data contained in the folder(s) for this experiment, will also get copied when a copy is made.
     </div>
 <% } %>
-<div id="title"><%=h(bean.getTitle())%></div>
+<div id="title"><%=h(annot.getTitle())%></div>
 <div>
     <%if(canPublish){%>
-        <a class="button-small button-small-red" style="float:left; margin:0px 5px 0px 2px;" href="<%=h(publishUrl)%>">Publish</a>
+        <a class="button-small button-small-red" style="float:left; margin:0px 5px 0px 2px;" href="<%=h(publishUrl)%>"><%=publishButtonText%></a>
     <%}%>
     <%if(canEdit){%>
     <a style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>">[Edit]</a>
@@ -186,40 +194,40 @@
     </div>
  <% } %>
 
-<%if(bean.getCitation() != null && bean.getPublicationLink() != null){%>
-    <div class="link"><%=h(bean.getCitation())%> <strong><br />[<a href="<%=h(bean.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
+<%if(annot.getCitation() != null && annot.getPublicationLink() != null){%>
+    <div class="link"><%=h(annot.getCitation())%> <strong><br />[<a href="<%=h(annot.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
 <%}%>
-<%if(bean.getCitation() != null && bean.getPublicationLink() == null){%>
-    <div class="link"><%=h(bean.getCitation())%> </div>
+<%if(annot.getCitation() != null && annot.getPublicationLink() == null){%>
+    <div class="link"><%=h(annot.getCitation())%> </div>
 <%}%>
-<%if(bean.getCitation() == null && bean.getPublicationLink() != null){%>
-    <div class="link"><strong><br />[<a href="<%=h(bean.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
+<%if(annot.getCitation() == null && annot.getPublicationLink() != null){%>
+    <div class="link"><strong><br />[<a href="<%=h(annot.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
 <%}%>
 <ul>
-    <%if(bean.getOrganism() != null){%>
- <li><strong>Organism:</strong> <%=h(bean.getOrganism())%></li>
+    <%if(annot.getOrganism() != null){%>
+ <li><strong>Organism:</strong> <%=h(annot.getOrganism())%></li>
     <%}%>
-    <%if(bean.getInstrument() != null){%>
- <li><strong>Instrument:</strong> <%=h(bean.getInstrument())%></li>
+    <%if(annot.getInstrument() != null){%>
+ <li><strong>Instrument:</strong> <%=h(annot.getInstrument())%></li>
     <%}%>
-    <%if(bean.getSpikeIn() != null){%>
+    <%if(annot.getSpikeIn() != null){%>
  <li><strong>SpikeIn:</strong>
-     <%=bean.getSpikeIn() ? "Yes" : "No"%>
+     <%=annot.getSpikeIn() ? "Yes" : "No"%>
  </li>
     <%}%>
 </ul>
-    <%if(bean.getAbstract() != null){%>
-<div class="descriptionBox"><legend>Abstract</legend><div class="content"><%=h(bean.getAbstract())%></div></div>
+    <%if(annot.getAbstract() != null){%>
+<div class="descriptionBox"><legend>Abstract</legend><div class="content"><%=h(annot.getAbstract())%></div></div>
     <%}%>
-    <%if(bean.getExperimentDescription() != null){%>
-<div class="descriptionBox"><legend>Experiment Description</legend><div class="content"><%=h(bean.getExperimentDescription())%></div> </div>
+    <%if(annot.getExperimentDescription() != null){%>
+<div class="descriptionBox"><legend>Experiment Description</legend><div class="content"><%=h(annot.getExperimentDescription())%></div> </div>
     <%}%>
-    <%if(bean.getSampleDescription() != null){%>
-<div class="descriptionBox"><legend>Sample Description</legend><div class="content"><%=h(bean.getSampleDescription())%></div></div>
+    <%if(annot.getSampleDescription() != null){%>
+<div class="descriptionBox"><legend>Sample Description</legend><div class="content"><%=h(annot.getSampleDescription())%></div></div>
     <%}%>
 
 <div style="text-align: center; margin-top:15px;">
-    <span>Created on <%=h(SimpleDateFormat.getInstance().format(bean.getCreated()))%> </span>
+    <span>Created on <%=h(SimpleDateFormat.getInstance().format(annot.getCreated()))%> </span>
 </div>
 
 </div>

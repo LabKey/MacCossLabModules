@@ -1293,6 +1293,14 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         return result;
     }
 
+    public static ActionURL getRePublishExperimentURL(int experimentAnnotationsId, int journalId, Container container)
+    {
+        ActionURL result = new ActionURL(RepublishJournalExperimentAction.class, container);
+        result.addParameter("id", experimentAnnotationsId);
+        result.addParameter("journalId", journalId);
+        return result;
+    }
+
     public static class TestCase extends AbstractActionPermissionTest
     {
         @Override

@@ -129,7 +129,7 @@ public class JournalExperimentTableInfo extends TargetedMSTable
             _editUrl = new ActionURL(PublishTargetedMSExperimentsController.UpdateJournalExperimentAction.class, container);
             _editUrl.addParameter("update", true);
             _editLinkText = "Edit";
-            _resetUrl = new ActionURL(PublishTargetedMSExperimentsController.RepublishJournalExperimentAction.class, container);;
+            _resetUrl = new ActionURL(PublishTargetedMSExperimentsController.RepublishJournalExperimentAction.class, container);
             _republishLinkText = "Republish";
         }
 

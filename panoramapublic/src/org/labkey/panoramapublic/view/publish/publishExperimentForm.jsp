@@ -28,8 +28,17 @@
 <%@ page import="org.labkey.targetedms.model.Journal" %>
 <%@ page import="org.labkey.targetedms.query.ExperimentAnnotationsManager" %>
 <%@ page import="java.util.Set" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
+
+<%!
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("Ext4");
+    }
+%>
+
 <labkey:errors/>
 <%
     JspView<PublishTargetedMSExperimentsController.PublishExperimentFormBean> me = (JspView<PublishTargetedMSExperimentsController.PublishExperimentFormBean>) HttpView.currentView();
