@@ -80,7 +80,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
 
     public static File getLogFileFor(PipeRoot root, ExperimentAnnotations experimentAnnotations) throws IOException
     {
-        File rootDir = root.getRootPath();
+        File rootDir = root.getLogDirectory();
         if (!rootDir.exists())
         {
             throw new IOException("Pipeline root directory " + rootDir.getAbsolutePath() + " does not exist.");
