@@ -7,7 +7,7 @@ apply plugin: 'org.labkey.distribution'
 
 Distribution.inheritDependencies(project, ":server:distributions:legacy")
 
-BuildUtils.addModuleDistributionDependencies(project, [":server:customModules:lincs"])
+BuildUtils.addModuleDistributionDependencies(project, [":server:customModules:lincs", ":server:optionalModules:cloud"])
 
 project.task(
         "distribution",
