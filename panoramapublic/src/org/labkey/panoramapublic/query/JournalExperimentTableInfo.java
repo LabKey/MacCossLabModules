@@ -126,11 +126,11 @@ public class JournalExperimentTableInfo extends TargetedMSTable
 
         EditUrlDisplayColumnFactory(Container container)
         {
-            _editUrl = new ActionURL(PublishTargetedMSExperimentsController.UpdateJournalExperimentAction.class, container);
+            _editUrl = new ActionURL(PublishTargetedMSExperimentsController.ViewPublishExperimentFormAction.class, container);
             _editUrl.addParameter("update", true);
             _editLinkText = "Edit";
             _resetUrl = new ActionURL(PublishTargetedMSExperimentsController.RepublishJournalExperimentAction.class, container);
-            _republishLinkText = "Republish";
+            _republishLinkText = "Resubmit";
         }
 
         @Override
