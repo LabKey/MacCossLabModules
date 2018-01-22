@@ -49,6 +49,7 @@
 
     Journal journal = bean.getForm().lookupJournal();
     int journalId = journal != null ? journal.getId() : 0;
+    String journalName = journal != null ? journal.getName() : "No_Name";
 
     ShortURLRecord accessRecord = new ShortURLRecord();
     accessRecord.setShortURL(shortAccessUrl);
@@ -57,7 +58,7 @@
     Set<Container> experimentFolders = ExperimentAnnotationsManager.getExperimentFolders(expAnnotations, getUser());
 
     boolean isUpdate = bean.getForm().isUpdate();
-    String publishButtonText = isUpdate ? "Update" : "Publish";
+    String publishButtonText = isUpdate ? "Update" : "Submit";
     String submitUrl = isUpdate ? new ActionURL(PublishTargetedMSExperimentsController.UpdateJournalExperimentAction.class, getContainer()).getLocalURIString() :
             new ActionURL(PublishTargetedMSExperimentsController.PublishExperimentAction.class, getContainer()).getLocalURIString();
     String cancelUrl = TargetedMSController.getViewExperimentDetailsURL(bean.getForm().getId(), getContainer()).getLocalURIString();
@@ -65,7 +66,7 @@
 
 <div id="publishExperimentForm"></div>
 <div style="margin: 30px 20px 20px 20px">
-    By publishing the experiment you are granting access to copy data as well as any
+    By submitting the experiment you are granting access to <%=journalName%> to copy data as well as any
     wiki pages, custom views, custom queries, lists and R reports in the following folders:
     <ul>
     <%for(Container folder: experimentFolders) { %>
@@ -151,7 +152,7 @@
                 <%if(bean.getForm().isUpdate()) { %>
                     {
                         xtype: 'displayfield',
-                        fieldLabel: "Publish To",
+                        fieldLabel: "Submit To",
                         value: <%=q(journal.getName())%>
                     },
                     {
@@ -163,7 +164,7 @@
                     {
                         xtype: 'combobox',
                         name: 'journalId',
-                        fieldLabel: 'Publish To',
+                        fieldLabel: 'Submit To',
                         queryMode: 'local',
                         forceSelection: 'true',
                         allowBlank: false,
@@ -198,6 +199,14 @@
                             shortAccessUrlSpan.dom.innerHTML = newUrl;
                         }
                     }
+                },
+                {
+                    xtype: 'checkbox',
+                    fieldLabel: "Keep Private",
+                    hidden: false,
+                    checked: false,
+                    name: 'keepPrivate',
+                    boxLabel: 'Check this box to keep your data on Panorama Public private. A read-only reviewer account will be provided.'
                 }
             ],
             buttonAlign: 'left',
@@ -208,7 +217,7 @@
                     console.log(values);
                     form.submit({
                         url: <%=q(submitUrl)%>,
-                        method: 'POST',
+                        method: 'GET',
                         params: values
                         });
                     }

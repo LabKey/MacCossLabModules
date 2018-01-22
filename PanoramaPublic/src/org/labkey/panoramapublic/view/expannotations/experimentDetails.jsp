@@ -66,7 +66,7 @@
     boolean journalCopyPending = false;
     ShortURLRecord accessUrlRecord = annot.getShortUrl(); // Will have a value if this is a journal copy of an experiment.
     JournalExperiment je = me.getModelBean().getLastPublishedRecord(); // Will be non-null if this experiment is in a user (not journal) project.
-    String publishButtonText = "Publish";
+    String publishButtonText = "Submit";
     if(je != null)
     {
         journal = JournalManager.getJournal(je.getJournalId());
@@ -75,7 +75,7 @@
 
         if(!journalCopyPending)
         {
-            publishButtonText = "Re-publish";
+            publishButtonText = "Resubmit";
             publishUrl = PublishTargetedMSExperimentsController.getRePublishExperimentURL(annot.getId(), je.getJournalId(), getContainer());
         }
     }
@@ -174,7 +174,7 @@
 <% } %>
 <div id="title"><%=h(annot.getTitle())%></div>
 <div>
-    <%if(canPublish){%>
+    <%if(canPublish && !journalCopyPending){%>
         <a class="button-small button-small-red" style="float:left; margin:0px 5px 0px 2px;" href="<%=h(publishUrl)%>"><%=publishButtonText%></a>
     <%}%>
     <%if(canEdit){%>

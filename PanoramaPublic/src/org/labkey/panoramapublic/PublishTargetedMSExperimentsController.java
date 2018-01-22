@@ -17,6 +17,7 @@ package org.labkey.targetedms;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.action.ConfirmAction;
 import org.labkey.api.action.FormViewAction;
@@ -112,6 +113,8 @@ import java.util.List;
  */
 public class PublishTargetedMSExperimentsController extends SpringActionController
 {
+    private static final Logger LOG = Logger.getLogger(PublishTargetedMSExperimentsController.class);
+
     public static Class[] getActions()
     {
         Class[] innerClasses = PublishTargetedMSExperimentsController.class.getDeclaredClasses();
@@ -676,90 +679,165 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     // BEGIN Action for publishing an experiment (provide copy access to a journal)
     // ------------------------------------------------------------------------
     @RequiresPermission(AdminPermission.class)
-    public static class PublishExperimentAction extends FormViewAction<PublishExperimentForm>
+    public static class ViewPublishExperimentFormAction extends SimpleViewAction<PublishExperimentForm>
     {
-
-        ExperimentAnnotations _exptAnnotations;
-        Journal _journal;
-
-        private static final int RANDOM_URL_SIZE = 6;
         @Override
-        public void validateCommand(PublishExperimentForm form, Errors errors)
+        public NavTree appendNavTrail(NavTree root)
         {
+            return null;
         }
 
         @Override
-        public ModelAndView getView(PublishExperimentForm form, boolean reshow, BindException errors) throws Exception
+        public ModelAndView getView(PublishExperimentForm form, BindException errors) throws Exception
         {
-            validate(form);
-
-            PublishExperimentFormBean bean = new PublishExperimentFormBean();
-            bean.setForm(form);
-            bean.setJournalList(JournalManager.getJournals());
-            bean.setExperimentAnnotations(_exptAnnotations);
-
-            if(!reshow)
+            ExperimentAnnotations exptAnnotations = form.lookupExperiment();
+            if(exptAnnotations == null)
             {
-                setInitialShortUrls(form);
-                List<Journal> journals = JournalManager.getJournals();
-                if(journals != null && journals.size() > 0)
-                {
-                    form.setJournalId(journals.get(0).getId());
-                }
+                throw new NotFoundException("Could not find experiment with id " + form.getId());
             }
 
-            JspView view = new JspView("/org/labkey/targetedms/view/publish/publishExperimentForm.jsp", bean, errors);
-            view.setFrame(WebPartView.FrameType.PORTAL);
-            view.setTitle("Publish Experiment");
+            return getPublishFormView(form, exptAnnotations, errors, !form.isUpdate());
+        }
+    }
+
+    private static final int RANDOM_URL_SIZE = 6;
+    private static JspView getPublishFormView(PublishExperimentForm form, ExperimentAnnotations exptAnnotations, BindException errors, boolean newForm)
+    {
+        PublishExperimentFormBean bean = new PublishExperimentFormBean();
+        bean.setForm(form);
+        bean.setJournalList(JournalManager.getJournals());
+        bean.setExperimentAnnotations(exptAnnotations);
+
+        if(newForm)
+        {
+            form.setShortAccessUrl(generateRandomUrl(RANDOM_URL_SIZE));
+            List<Journal> journals = JournalManager.getJournals();
+            if (journals.size() == 0)
+            {
+                throw new NotFoundException("Could not find any journals.");
+            }
+            form.setJournalId(journals.get(0).getId()); // This is "Panorama Public" on panoramaweb.org
+        }
+        else
+        {
+            JournalExperiment journalExperiment = JournalManager.getJournalExperiment(exptAnnotations.getId(), form.getJournalId());
+            if(journalExperiment == null)
+            {
+                throw new NotFoundException("Could not find an entry in JournalExperiment for experiment ID " + exptAnnotations.getId() + " and journal ID " + form.getJournalId());
+            }
+            form.setShortAccessUrl(journalExperiment.getShortAccessUrl().getShortURL());
+            form.setJournalId(journalExperiment.getJournalId());
+        }
+
+        JspView view = new JspView("/org/labkey/targetedms/view/publish/publishExperimentForm.jsp", bean, errors);
+        view.setFrame(WebPartView.FrameType.PORTAL);
+        view.setTitle("Submit to " + form.lookupJournal().getName());
+        return view;
+    }
+
+    private static String generateRandomUrl(int length)
+    {
+        ShortURLService shortUrlService = ServiceRegistry.get().getService(ShortURLService.class);
+        while(true)
+        {
+            String random = RandomStringUtils.randomAlphanumeric(length);
+            ShortURLRecord shortURLRecord = shortUrlService.resolveShortURL(random);
+            if(shortURLRecord == null)
+            {
+                return random;
+            }
+        }
+    }
+
+    @RequiresPermission(AdminPermission.class)
+    public static class PublishExperimentAction extends JournalExperimentAction
+    {
+        @Override
+        public void validateForm(PublishExperimentForm form, Errors errors)
+        {
+            validateJournal(errors, _experimentAnnotations, _journal);
+
+            // Cannot publish if this is not an "Experimental data" folder.
+            TargetedMSModule.FolderType folderType = TargetedMSModule.getFolderType(_experimentAnnotations.getContainer());
+            if(folderType != TargetedMSModule.FolderType.Experiment)
+            {
+                errors.reject(ERROR_MSG,"Only Targeted MS folders of type \"Experimental data\" can be submitted to " + _journal.getName() + ".");
+            }
+
+            // Validate the short access url.
+            if(!StringUtils.isBlank(form.getShortAccessUrl()))
+            {
+                validateShortAccessUrl(form, errors);
+            }
+            else
+            {
+                errors.reject(ERROR_MSG, "Please enter a short access URL.");
+            }
+
+            if (_experimentAnnotations.isIncludeSubfolders())
+            {
+                // Make sure that there is only one experiment in the container tree rooted at this folder.
+                List<ExperimentAnnotations> expAnnotations = ExperimentAnnotationsManager.getAllExperiments(_experimentAnnotations.getContainer(), getUser());
+                if(expAnnotations.size() > 1)
+                {
+                    errors.reject(ERROR_MSG, "There are multiple experiments in this folder and its subfolders. " +
+                            "The experiment you want to submit should be the only experiment defined in a folder and its subfolders.");
+                }
+            }
+        }
+
+        public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors) throws Exception
+        {
+            String journal = _journal.getName();
+            StringBuilder html = new StringBuilder();
+            html.append("You are giving access to ").append(journal).append(" to make a copy of your data. ");
+            if(form.isKeepPrivate())
+            {
+                html.append("Your data on ").append(journal).append(" will be kept private, and a read-only reviewer account will be provided to you. ");
+            }
+            else
+            {
+                html.append("Your data on ").append(journal).append(" will be made public. ");
+            }
+            html.append("Are you sure you want to continue?");
+            HtmlView view = new HtmlView(html.toString());
+            view.setTitle("Submit to " + journal);
             return view;
         }
 
-        void setInitialShortUrls(PublishExperimentForm form)
+        public ModelAndView getSuccessView(PublishExperimentForm form)
         {
-            form.setShortAccessUrl(generateRandomUrl(RANDOM_URL_SIZE));
+            String journal = _journal.getName();
+            ActionURL returnUrl = TargetedMSController.getViewExperimentDetailsURL(_experimentAnnotations.getId(), getContainer());
+            StringBuilder html = new StringBuilder();
+            html.append("Thank you for submitting your data to ").append(journal).append("!");
+            html.append(" We will send you a confirmation email once your data has been successfully copied to ").append(journal).append(". This can take up to a week.");
+            if(form.isKeepPrivate())
+            {
+                html.append(" Your data on ").append(journal).append(" will be kept private and reviewer account details will be included in the confirmation email. ");
+            }
+            html.append("<br><br>");
+            html.append("<a href=" + returnUrl.getEncodedLocalURIString() + "><span class=\"labkey-button\">Back to Experiment Details</span></a>");
+            HtmlView view = new HtmlView(html.toString());
+            view.setTitle("Submit to " + journal);
+            return view;
         }
 
-        private String generateRandomUrl(int length)
+        public ModelAndView getFailView(PublishExperimentForm form, BindException errors)
         {
-            ShortURLService shortUrlService = ServiceRegistry.get().getService(ShortURLService.class);
-            while(true)
-            {
-                String random = RandomStringUtils.randomAlphanumeric(length);
-                ShortURLRecord shortURLRecord = shortUrlService.resolveShortURL(random);
-                if(shortURLRecord == null)
-                {
-                    return random;
-                }
-            }
+            return getPublishFormView(form, _experimentAnnotations, errors, false);
         }
 
         @Override
         public boolean handlePost(PublishExperimentForm form, BindException errors) throws Exception
         {
-            if(!validateForm(form, errors))
-            {
-                return false;
-            }
-
-            if (_exptAnnotations.isIncludeSubfolders())
-            {
-                // Make sure that there is only one experiment in the container tree rooted at this folder.
-                List<ExperimentAnnotations> expAnnotations = ExperimentAnnotationsManager.getAllExperiments(_exptAnnotations.getContainer(), getUser());
-                if(expAnnotations.size() > 1)
-                {
-                    errors.reject(ERROR_MSG, "There are multiple experiments in this folder and its subfolders. " +
-                            "The experiment you want to publish should be the only experiment defined in a folder and its subfolders.");
-                    return false;
-                }
-            }
-
             // Create a short copy URL.
             assignShortCopyUrl(form);
 
             JournalExperiment je;
             try
             {
-                je = JournalManager.addJournalAccess(_exptAnnotations, _journal, form.getShortAccessUrl(), form.getShortCopyUrl(), getUser());
+                je = JournalManager.addJournalAccess(_experimentAnnotations, _journal, form.getShortAccessUrl(), form.getShortCopyUrl(), getUser());
             }
             catch(ValidationException | UnauthorizedException  e)
             {
@@ -768,30 +846,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
 
             // Email contact person for the journal
-            String journalEmail = LookAndFeelProperties.getInstance(_journal.getProject()).getSystemEmailAddress();
-            String panoramaAdminEmail = LookAndFeelProperties.getInstance(ContainerManager.getHomeContainer()).getSystemEmailAddress();
-
-
-            try
-            {
-                MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
-                m.setSubject("Access to copy an experiment on Panorama");
-                StringBuilder text = new StringBuilder("You have been given access to copy an experiment on Panorama.\n\n");
-                String containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()).getURIString();
-                text.append("The current location of the data is:\n").append(containerUrl);
-                text.append("\n\n");
-                text.append("The access URL is:\n").append(je.getShortAccessUrl().renderShortURL());
-                text.append("\n\n");
-                text.append("Use the following link to copy the data:\n");
-                text.append(je.getShortCopyUrl().renderShortURL()).append("\n\n");
-                text.append("Thank you,\n\nPanorama team");
-                m.setText(text.toString());
-                MailHelper.send(m, getUser(), getContainer());
-            }
-            catch (Exception e)
-            {
-                logger.error("Failed to send notification email to journal.", e);
-            }
+            sendNotification(form, _experimentAnnotations, _journal, je, getUser(), getContainer(), false);
 
             return true;
         }
@@ -812,55 +867,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
         }
 
-        void validate(PublishExperimentForm form) throws ServletException
-        {
-            _exptAnnotations = form.lookupExperiment();
-            if(_exptAnnotations == null)
-            {
-                throw new NotFoundException("Could not find experiment with id " + form.getId());
-            }
-
-            TargetedMSController.ensureCorrectContainer(getContainer(), _exptAnnotations.getContainer(), getViewContext());
-
-            // Cannot publish if this is not an "Experimental data" folder.
-            TargetedMSModule.FolderType folderType = TargetedMSModule.getFolderType(_exptAnnotations.getContainer());
-            if(folderType != TargetedMSModule.FolderType.Experiment)
-            {
-                throw new IllegalStateException("Only Targeted MS folders of type \"Experimental data\" can be published.");
-            }
-
-        }
-
-        boolean validateForm(PublishExperimentForm form, BindException errors) throws ServletException
-        {
-
-            validate(form);
-
-            // Validate the journal.
-            _journal = form.lookupJournal();
-            if(_journal != null)
-            {
-                validateJournal(errors, _exptAnnotations, _journal);
-            }
-            else
-            {
-                errors.reject(ERROR_MSG, "Please select a publication target.");
-            }
-
-            // Validate the short access url.
-            if(!StringUtils.isBlank(form.getShortAccessUrl()))
-            {
-                validateShortAccessUrl(form, errors);
-            }
-            else
-            {
-                errors.reject(ERROR_MSG, "Please enter a short access URL.");
-            }
-
-            return errors.getErrorCount() == 0;
-        }
-
-        void validateJournal(BindException errors, ExperimentAnnotations experiment, Journal journal)
+        void validateJournal(Errors errors, ExperimentAnnotations experiment, Journal journal)
         {
             if(JournalManager.journalHasAccess(journal, experiment))
             {
@@ -868,12 +875,12 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
         }
 
-        void validateShortAccessUrl(PublishExperimentForm form, BindException errors)
+        void validateShortAccessUrl(PublishExperimentForm form, Errors errors)
         {
             validateShortUrl(form.getShortAccessUrl(), errors);
         }
 
-        protected void validateShortUrl(String shortUrl, BindException errors)
+        private void validateShortUrl(String shortUrl, Errors errors)
         {
             ShortURLService shortUrlService = ServiceRegistry.get(ShortURLService.class);
             try
@@ -897,12 +904,6 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         public URLHelper getSuccessURL(PublishExperimentForm form)
         {
             return TargetedMSController.getViewExperimentDetailsURL(form.getId(), getContainer());
-        }
-
-        @Override
-        public NavTree appendNavTrail(NavTree root)
-        {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
         }
     }
 
@@ -949,6 +950,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         private String _shortAccessUrl;
         private String _shortCopyUrl;
         private boolean _update = false;
+        private boolean _keepPrivate = false;
 
         public int getJournalId()
         {
@@ -999,6 +1001,16 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         {
             _update = update;
         }
+
+        public boolean isKeepPrivate()
+        {
+            return _keepPrivate;
+        }
+
+        public void setKeepPrivate(boolean keepPrivate)
+        {
+            _keepPrivate = keepPrivate;
+        }
     }
     // ------------------------------------------------------------------------
     // END Action for publishing an experiment (provide copy access to a journal)
@@ -1013,23 +1025,29 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     {
         private JournalExperiment _journalExperiment;
 
-        protected void validate(PublishExperimentForm form) throws ServletException
+        public void validateForm(PublishExperimentForm form, Errors errors)
         {
-            super.validate(form);
-
-            _journalExperiment = JournalManager.getJournalExperiment(_exptAnnotations.getId(), form.getJournalId());
+            _journalExperiment = JournalManager.getJournalExperiment(_experimentAnnotations.getId(), form.getJournalId());
             if(_journalExperiment == null)
             {
-                throw new NotFoundException("Could not find an entry in JournalExperiment for experiment ID " + _exptAnnotations.getId() + " and journal ID " + form.getJournalId());
+                errors.reject(ERROR_MSG,"Could not find an entry in JournalExperiment for experiment ID " + _experimentAnnotations.getId() + " and journal ID " + form.getJournalId());
             }
+
+            // If this experiment has already been copied by the journal, don't allow editing.
+            if(_journalExperiment.getCopied() != null)
+            {
+                errors.reject(ERROR_MSG, "This experiment has already been copied by " + _journal.getName() + ". You cannot change the access URL anymore." );
+            }
+
+            if(errors.getErrorCount() > 0)
+            {
+                return;
+            }
+
+            super.validateForm(form, errors);
         }
 
-        protected void setInitialShortUrls(PublishExperimentForm form)
-        {
-            form.setShortAccessUrl(_journalExperiment.getShortAccessUrl().getShortURL());
-        }
-
-        protected void validateJournal(BindException errors, ExperimentAnnotations experiment, Journal journal)
+        protected void validateJournal(Errors errors, ExperimentAnnotations experiment, Journal journal)
         {
             Journal oldJournal = JournalManager.getJournal(_journalExperiment.getJournalId());
             if(oldJournal != null && (!oldJournal.getId().equals(journal.getId())))
@@ -1038,7 +1056,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
         }
 
-        protected void validateShortAccessUrl(PublishExperimentForm form, BindException errors)
+        protected void validateShortAccessUrl(PublishExperimentForm form, Errors errors)
         {
             ShortURLRecord accessUrlRecord = _journalExperiment.getShortAccessUrl();
             if(!accessUrlRecord.getShortURL().equals(form.getShortAccessUrl()))
@@ -1047,94 +1065,147 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
         }
 
-        @Override
-        public boolean handlePost(PublishExperimentForm form, BindException errors) throws Exception
+        public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors) throws Exception
         {
-            if(!validateForm(form, errors))
+            StringBuilder html = new StringBuilder();
+            String journal = _journal.getName();
+            html.append("Are you sure you want to update your submission request to " + journal + "? ");
+            html.append("<br><br>");
+            html.append("The new short access link is: " + AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + "/" + form.getShortAccessUrl() + ShortURLRecord.URL_SUFFIX);
+            html.append("<br>");
+            if(form.isKeepPrivate())
             {
-                return false;
-            }
-
-            // If this experiment has already been copied by the journal, don't allow editing.
-            if(_journalExperiment.getCopied() != null)
-            {
-                errors.reject(ERROR_MSG, "This experiment has already been copied by the journal. You cannot change the access URL anymore." );
-                return false;
-            }
-
-            if(_journalExperiment.getShortAccessUrl().getShortURL().equalsIgnoreCase(form.getShortAccessUrl()))
-            {
-                // The short access URL is the same as before. Do nothing.
-                return true;
+                html.append("Your data on ").append(journal).append(" will be kept private, and a read-only reviewer account will be provided to you. ");
             }
             else
             {
-                // Change the short copy URL to match the access URL.
-                assignShortCopyUrl(form);
+                html.append("Your data on ").append(journal).append(" will be made public. ");
             }
 
-            try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
+            HtmlView view = new HtmlView(html.toString());
+            view.setTitle("Update Submission Request to " + journal);
+            return view;
+        }
+
+        @Override
+        public boolean handlePost(PublishExperimentForm form, BindException errors) throws Exception
+        {
+            if(!_journalExperiment.getShortAccessUrl().getShortURL().equalsIgnoreCase(form.getShortAccessUrl()))
             {
-                JournalManager.updateJournalExperimentUrls(_exptAnnotations, _journal, form.getShortAccessUrl(), form.getShortCopyUrl(), getUser());
-                transaction.commit();
+                // Change the short copy URL to match the access URL.
+                assignShortCopyUrl(form);
+
+            try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
+                {
+                    JournalManager.updateJournalExperimentUrls(_experimentAnnotations, _journal, form.getShortAccessUrl(), form.getShortCopyUrl(), getUser());
+                    transaction.commit();
+                }
             }
+
+            sendNotification(form, _experimentAnnotations, _journal, _journalExperiment, getUser(), getContainer(), true);
 
             return true;
         }
     }
-
     // ------------------------------------------------------------------------
     // END Action for updating an entry in targetedms.JournalExperiment table
     // ------------------------------------------------------------------------
+
+    private static void sendNotification(PublishExperimentForm form, ExperimentAnnotations exptAnnotations, Journal journal, JournalExperiment journalExperiment,
+                                         User user, Container container, boolean updated)
+    {
+        // Email contact person for the journal
+        String journalEmail = LookAndFeelProperties.getInstance(journal.getProject()).getSystemEmailAddress();
+        String panoramaAdminEmail = LookAndFeelProperties.getInstance(ContainerManager.getHomeContainer()).getSystemEmailAddress();
+        try
+        {
+            MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
+            m.setSubject(String.format("Access to copy an experiment(ID:" + exptAnnotations.getId() + ") on Panorama%s", (updated ? " (**UPDATED**)" : "")));
+
+            StringBuilder text = new StringBuilder("You have been given access to copy an experiment on Panorama.\n\n");
+            text.append("ExperimentID: ").append(exptAnnotations.getId());
+            text.append("\n\n");
+            String containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(exptAnnotations.getContainer()).getURIString();
+            text.append("The current location of the data is:\n").append(containerUrl);
+            text.append("\n\n");
+            text.append("The access URL is:\n").append(journalExperiment.getShortAccessUrl().renderShortURL());
+            text.append("\n\n");
+            text.append("Use the following link to copy the data:\n");
+            text.append(journalExperiment.getShortCopyUrl().renderShortURL()).append("\n\n");
+            if(form.isKeepPrivate())
+            {
+                text.append("\n");
+                text.append("Keep data private. Reviewer account requested.");
+                text.append("\n\n");
+            }
+
+            text.append("Thank you,\n\nPanorama team");
+            m.setText(text.toString());
+            MailHelper.send(m, user, container);
+        }
+        catch (Exception e)
+        {
+            LOG.error("Failed to send notification email to journal.", e);
+        }
+    }
+
+    private static void sendDeleteNotification(ExperimentAnnotations exptAnnotations, Journal journal, User user, Container container)
+    {
+        // Email contact person for the journal
+        String journalEmail = LookAndFeelProperties.getInstance(journal.getProject()).getSystemEmailAddress();
+        String panoramaAdminEmail = LookAndFeelProperties.getInstance(ContainerManager.getHomeContainer()).getSystemEmailAddress();
+        try
+        {
+            MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
+            m.setSubject(String.format("Publish request for experiment(ID:" + exptAnnotations.getId() + ") DELETED"));
+
+            StringBuilder text = new StringBuilder("Request to publish to ").append(journal.getName()).append(" has been deleted.\n\n");
+            text.append("ExperimentID: ").append(exptAnnotations.getId());
+            text.append("\n\n");
+            String containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(exptAnnotations.getContainer()).getURIString();
+            text.append("The current location of the data is:\n").append(containerUrl);
+            text.append("\n\n");
+
+            text.append("Thank you,\n\nPanorama team");
+            m.setText(text.toString());
+            MailHelper.send(m, user, container);
+        }
+        catch (Exception e)
+        {
+            LOG.error("Failed to send notification email to journal.", e);
+        }
+    }
 
     // ------------------------------------------------------------------------
     // BEGIN Action for deleting an entry in targetedms.JournalExperiment table.
     // ------------------------------------------------------------------------
     @RequiresPermission(AdminPermission.class)
-    public static class DeleteJournalExperimentAction extends ConfirmAction<PublishExperimentForm>
+    public static class DeleteJournalExperimentAction extends JournalExperimentAction
     {
-
-        private ExperimentAnnotations _experimentAnnotations;
-        private Journal _journal;
-
         @Override
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors) throws Exception
         {
-            validate(form, errors);
-
-            TargetedMSController.ensureCorrectContainer(getContainer(), _experimentAnnotations.getContainer(), getViewContext());
             StringBuilder html = new StringBuilder();
-            html.append("Are you sure you want to remove permissions given to the journal ");
-            html.append("\'").append(_journal.getName()).append(" \'");
-            html.append(" to copy the experiment ");
-            html.append("\'").append(_experimentAnnotations.getTitle()).append(" \'");
+            html.append("Are you sure you want to cancel submission to \'").append(_journal.getName()).append(" \'");
             html.append("?");
-            html.append(" This action will also delete the short access and copy URLs.");
-            return new HtmlView(html.toString());
+            html.append("<br><br>");
+            html.append("Experiment: ").append(_experimentAnnotations.getTitle());
+            HtmlView view = new HtmlView(html.toString());
+            view.setTitle("Cancel Submission to " + _journal.getName());
+            return view;
         }
 
         @Override
         public boolean handlePost(PublishExperimentForm form, BindException errors) throws Exception
         {
             JournalManager.deleteJournalAccess(_experimentAnnotations, _journal, getUser());
+            sendDeleteNotification(_experimentAnnotations, _journal, getUser(), getContainer());
             return true;
         }
 
         @Override
-        public void validateCommand(PublishExperimentForm form, Errors errors)
+        public void validateForm(PublishExperimentForm form, Errors errors)
         {
-            _experimentAnnotations = form.lookupExperiment();
-            if(_experimentAnnotations == null)
-            {
-                throw new NotFoundException("Could not find experiment with Id " + form.getId());
-            }
-
-            _journal = form.lookupJournal();
-            if(_journal == null)
-            {
-                throw new NotFoundException("Could not find a journal with Id " + form.getJournalId());
-            }
-
             JournalExperiment je = JournalManager.getJournalExperiment(_experimentAnnotations.getId(), _journal.getId());
             if(je == null)
             {
@@ -1166,30 +1237,31 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     //       -- Reset access URL to point to the author's data
     // ------------------------------------------------------------------------
     @RequiresPermission(AdminPermission.class)
-    public static class RepublishJournalExperimentAction extends ConfirmAction<PublishExperimentForm>
+    public static class RepublishJournalExperimentAction extends JournalExperimentAction
     {
-        private ExperimentAnnotations _experimentAnnotations;
-        private Journal _journal;
         private JournalExperiment _journalExperiment;
 
         @Override
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors) throws Exception
         {
-            validate(form, errors);
-
-            TargetedMSController.ensureCorrectContainer(getContainer(), _experimentAnnotations.getContainer(), getViewContext());
             StringBuilder html = new StringBuilder();
-            html.append("The experiment '").append(_experimentAnnotations.getTitle()).append("' ");
-            html.append(" has already been copied by '").append(_journal.getName()).append("'.");
-            html.append(" If you click OK '").append(_journal.getName()).append("' will be given copy access again.");
+            html.append("Experiment: ").append(_experimentAnnotations.getTitle());
+            html.append("<br><br>");
+            html.append("The experiment has already been copied by ").append(_journal.getName());
+            html.append(". If you click OK the existing copy on ").append(_journal.getName()).append(" will be deleted and a request will be sent to make a new copy.");
             html.append("<br/>");
             html.append("Are you sure you want to continue?");
-            return new HtmlView(html.toString());
+            HtmlView view = new HtmlView(html.toString());
+            view.setTitle("Resubmit to " + _journal.getName());
+            return view;
         }
 
         @Override
         public boolean handlePost(PublishExperimentForm form, BindException errors) throws Exception
         {
+            // Remember the existing location of the copy in the journal's project
+            String journalFolderUrl = AppProps.getInstance().getBaseServerUrl() +  _journalExperiment.getShortAccessUrl().getFullURL();
+
             try(DbScope.Transaction transaction = TargetedMSManager.getSchema().getScope().ensureTransaction())
             {
                 Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(_journal.getLabkeyGroupId());
@@ -1212,17 +1284,13 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             String journalEmail = LookAndFeelProperties.getInstance(_journal.getProject()).getSystemEmailAddress();
             String panoramaAdminEmail = LookAndFeelProperties.getInstance(ContainerManager.getHomeContainer()).getSystemEmailAddress();
 
-
             try
             {
-                String journalFolderUrl = AppProps.getInstance().getBaseServerUrl() +  _journalExperiment.getShortAccessUrl().getFullURL();
-
                 MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
-                m.setSubject("Request to republish an experiment on Panorama");
+                m.setSubject("Request to republish an experiment(ID: "+ _experimentAnnotations.getId() + ") on Panorama");
                 StringBuilder text = new StringBuilder("You have received a request to republish an experiment on Panorama.\n\n");
-
+                text.append("Experiment ID: ").append(_experimentAnnotations.getId()).append("\n\n");
                 text.append("The current journal folder is: \n").append(journalFolderUrl);
-
                 text.append("\n\n");
                 String containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_experimentAnnotations.getContainer()).getURIString();
                 text.append("The user folder is:\n").append(containerUrl);
@@ -1244,24 +1312,12 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
 
         @Override
-        public void validateCommand(PublishExperimentForm form, Errors errors)
+        public void validateForm(PublishExperimentForm form, Errors errors)
         {
-            _experimentAnnotations = form.lookupExperiment();
-            if(_experimentAnnotations == null)
-            {
-                throw new NotFoundException("Could not find experiment with Id " + form.getId());
-            }
-
-            _journal = form.lookupJournal();
-            if(_journal == null)
-            {
-                throw new NotFoundException("Could not find a journal with Id " + form.getJournalId());
-            }
-
             _journalExperiment = JournalManager.getJournalExperiment(_experimentAnnotations.getId(), _journal.getId());
             if(_journalExperiment == null)
             {
-                throw new NotFoundException("Could not find an entry for experiment with Id " + form.getId() + " and journal Id " + _journal.getId());
+                errors.reject(ERROR_MSG,"Could not find an entry for experiment with Id " + form.getId() + " and journal Id " + _journal.getId());
             }
         }
 
@@ -1277,6 +1333,39 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     // END Action for resetting an entry in targetedms.JournalExperiment table
     // ------------------------------------------------------------------------
 
+    @RequiresPermission(AdminPermission.class)
+    public abstract static class JournalExperimentAction extends ConfirmAction<PublishExperimentForm>
+    {
+        protected ExperimentAnnotations _experimentAnnotations;
+        protected Journal _journal;
+
+        public abstract void validateForm(PublishExperimentForm form, Errors errors);
+
+        @Override
+        public void validateCommand(PublishExperimentForm form, Errors errors)
+        {
+            _experimentAnnotations = form.lookupExperiment();
+            if(_experimentAnnotations == null)
+            {
+                errors.reject(ERROR_MSG,"Could not find experiment with Id " + form.getId());
+            }
+
+            TargetedMSController.ensureCorrectContainer(getContainer(), _experimentAnnotations.getContainer(), getViewContext());
+
+            _journal = form.lookupJournal();
+            if(_journal == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find a journal with Id " + form.getJournalId());
+            }
+
+            if(errors.getErrorCount() > 0)
+            {
+                return;
+            }
+
+            validateForm(form, errors);
+        }
+    }
 
     public static ActionURL getCopyExperimentURL(int experimentAnnotationsId, int journalId, Container container)
     {
@@ -1288,7 +1377,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
     public static ActionURL getPublishExperimentURL(int experimentAnnotationsId, Container container)
     {
-        ActionURL result = new ActionURL(PublishExperimentAction.class, container);
+        ActionURL result = new ActionURL(ViewPublishExperimentFormAction.class, container);
         result.addParameter("id", experimentAnnotationsId);
         return result;
     }
