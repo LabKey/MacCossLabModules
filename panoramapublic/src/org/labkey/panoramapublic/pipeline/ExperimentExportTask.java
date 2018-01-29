@@ -103,7 +103,7 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
         FolderWriterImpl writer = new FolderWriterImpl();
 
         FolderExportContext ctx = new FolderExportContext(user, source, PageFlowUtil.set(templateWriterTypes),
-                null, includeSubfolders, false, PHI.NotPHI, false,
+                null, includeSubfolders, PHI.NotPHI, false,
                 false, false, new StaticLoggerGetter(Logger.getLogger(FolderWriterImpl.class)));
 
 
