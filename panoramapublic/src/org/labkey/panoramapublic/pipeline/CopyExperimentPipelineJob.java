@@ -15,7 +15,7 @@
  */
 package org.labkey.targetedms.pipeline;
 
-import org.labkey.api.data.Container;
+import org.labkey.api.pipeline.LocalDirectory;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobService;
@@ -23,10 +23,12 @@ import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.TaskId;
 import org.labkey.api.pipeline.TaskPipeline;
 import org.labkey.api.portal.ProjectUrls;
+import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.api.view.ViewBackgroundInfo;
+import org.labkey.targetedms.TargetedMSModule;
 import org.labkey.targetedms.model.ExperimentAnnotations;
 import org.labkey.targetedms.model.Journal;
 
@@ -52,7 +54,15 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
         _journal = journal;
         _description = "Copying experiment:  " + experiment.getTitle();
 
-        setLogFile(getLogFileFor(root, experiment));
+        // Ensure local directory for the source
+        String baseLogFileName = "Experiment_" + experiment.getExperimentId() + ".log";
+        PipeRoot sourceRoot = PipelineService.get().findPipelineRoot(experiment.getContainer());
+        if (null == sourceRoot)
+            throw new NotFoundException("Cannot find source pipeline root.");
+        LocalDirectory localDirectory = LocalDirectory.create(sourceRoot, TargetedMSModule.NAME, baseLogFileName,
+                !sourceRoot.isCloudRoot() ? FileUtil.pathToString(sourceRoot.getRootNioPath()) : FileUtil.getTempDirectory().getPath());
+        setLocalDirectory(localDirectory);
+        setLogFile(localDirectory.determineLogFile());
 
         header("Copying experiment \"" + experiment.getTitle() + "\" from folder "
                 + experiment.getContainer().getPath() + " to " + getContainer().getPath());
@@ -106,14 +116,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     @Override
     public File getExportDir()
     {
-        Container source = _experimentAnnotations.getContainer();
-        PipeRoot root = getPipeRoot();
-        if (!root.isValid())
-        {
-            throw new NotFoundException("No valid pipeline root found for " + source.getPath());
-        }
-
-        return root.resolvePath(PipelineService.EXPORT_DIR);
+        return new File(getLocalDirectory().getLocalDirectoryFile(), PipelineService.EXPORT_DIR);
     }
 
     @Override
