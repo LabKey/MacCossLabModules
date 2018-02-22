@@ -731,7 +731,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
         JspView view = new JspView("/org/labkey/targetedms/view/publish/publishExperimentForm.jsp", bean, errors);
         view.setFrame(WebPartView.FrameType.PORTAL);
-        view.setTitle("Submit to " + form.lookupJournal().getName());
+        view.setTitle("Submission Request to " + form.lookupJournal().getName());
         return view;
     }
 
@@ -793,7 +793,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             html.append("You are giving access to ").append(journal).append(" to make a copy of your data. ");
             if(form.isKeepPrivate())
             {
-                html.append("Your data on ").append(journal).append(" will be kept private, and a read-only reviewer account will be provided to you. ");
+                html.append("Your data on ").append(journal).append(" will be kept private and a reviewer account will be provided to you. ");
             }
             else
             {
@@ -801,7 +801,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
             html.append("Are you sure you want to continue?");
             HtmlView view = new HtmlView(html.toString());
-            view.setTitle("Submit to " + journal);
+            view.setTitle("Submission Request to " + journal);
             return view;
         }
 
@@ -811,7 +811,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             ActionURL returnUrl = TargetedMSController.getViewExperimentDetailsURL(_experimentAnnotations.getId(), getContainer());
             StringBuilder html = new StringBuilder();
             html.append("Thank you for submitting your data to ").append(journal).append("!");
-            html.append(" We will send you a confirmation email once your data has been successfully copied to ").append(journal).append(". This can take up to a week.");
+            html.append(" We will send you a confirmation email once your data has been copied to ").append(journal).append(". This can take up to a week.");
             if(form.isKeepPrivate())
             {
                 html.append(" Your data on ").append(journal).append(" will be kept private and reviewer account details will be included in the confirmation email. ");
@@ -819,7 +819,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             html.append("<br><br>");
             html.append("<a href=" + returnUrl.getEncodedLocalURIString() + "><span class=\"labkey-button\">Back to Experiment Details</span></a>");
             HtmlView view = new HtmlView(html.toString());
-            view.setTitle("Submit to " + journal);
+            view.setTitle("Request Submitted to " + journal);
             return view;
         }
 
@@ -1075,7 +1075,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             html.append("<br>");
             if(form.isKeepPrivate())
             {
-                html.append("Your data on ").append(journal).append(" will be kept private, and a read-only reviewer account will be provided to you. ");
+                html.append("Your data on ").append(journal).append(" will be kept private and a reviewer account will be provided to you. ");
             }
             else
             {
@@ -1120,7 +1120,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         try
         {
             MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
-            m.setSubject(String.format("Access to copy an experiment(ID:" + exptAnnotations.getId() + ") on Panorama%s", (updated ? " (**UPDATED**)" : "")));
+            m.setSubject(String.format("Access to copy an experiment on Panorama (ID: %s)%s", exptAnnotations.getId(), (updated ? " (**UPDATED**)" : "")));
 
             StringBuilder text = new StringBuilder("You have been given access to copy an experiment on Panorama.\n\n");
             text.append("ExperimentID: ").append(exptAnnotations.getId());
@@ -1135,7 +1135,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             if(form.isKeepPrivate())
             {
                 text.append("\n");
-                text.append("Keep data private. Reviewer account requested.");
+                text.append("***Keep data private. Reviewer account requested.***");
                 text.append("\n\n");
             }
 
@@ -1157,7 +1157,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         try
         {
             MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
-            m.setSubject(String.format("Publish request for experiment(ID:" + exptAnnotations.getId() + ") DELETED"));
+            m.setSubject(String.format("Publish request for experiment DELETED (ID: %s)", exptAnnotations.getId()));
 
             StringBuilder text = new StringBuilder("Request to publish to ").append(journal.getName()).append(" has been deleted.\n\n");
             text.append("ExperimentID: ").append(exptAnnotations.getId());
@@ -1186,12 +1186,12 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors) throws Exception
         {
             StringBuilder html = new StringBuilder();
-            html.append("Are you sure you want to cancel submission to \'").append(_journal.getName()).append(" \'");
+            html.append("Are you sure you want to cancel your submission request to ").append(_journal.getName());
             html.append("?");
             html.append("<br><br>");
             html.append("Experiment: ").append(_experimentAnnotations.getTitle());
             HtmlView view = new HtmlView(html.toString());
-            view.setTitle("Cancel Submission to " + _journal.getName());
+            view.setTitle("Cancel Submission Request to " + _journal.getName());
             return view;
         }
 
@@ -1216,6 +1216,18 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             {
                 errors.reject(ERROR_MSG, "The experiment has already been copied by the journal. Unable to delete short access and copy URLs.");
             }
+        }
+
+        @Override
+        public String getConfirmText()
+        {
+            return "Yes";
+        }
+
+        @Override
+        public String getCancelText()
+        {
+            return "No";
         }
 
         @NotNull
@@ -1247,7 +1259,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             StringBuilder html = new StringBuilder();
             html.append("Experiment: ").append(_experimentAnnotations.getTitle());
             html.append("<br><br>");
-            html.append("The experiment has already been copied by ").append(_journal.getName());
+            html.append("This experiment has already been copied by ").append(_journal.getName());
             html.append(". If you click OK the existing copy on ").append(_journal.getName()).append(" will be deleted and a request will be sent to make a new copy.");
             html.append("<br/>");
             html.append("Are you sure you want to continue?");
@@ -1287,7 +1299,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             try
             {
                 MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
-                m.setSubject("Request to republish an experiment(ID: "+ _experimentAnnotations.getId() + ") on Panorama");
+                m.setSubject(String.format("Request to republish an experiment on Panorama (ID: %s)", _experimentAnnotations.getId()));
                 StringBuilder text = new StringBuilder("You have received a request to republish an experiment on Panorama.\n\n");
                 text.append("Experiment ID: ").append(_experimentAnnotations.getId()).append("\n\n");
                 text.append("The current journal folder is: \n").append(journalFolderUrl);
