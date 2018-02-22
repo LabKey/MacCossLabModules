@@ -204,9 +204,9 @@
                     xtype: 'checkbox',
                     fieldLabel: "Keep Private",
                     hidden: false,
-                    checked: false,
+                    checked: true,
                     name: 'keepPrivate',
-                    boxLabel: 'Check this box to keep your data on Panorama Public private. A read-only reviewer account will be provided.'
+                    boxLabel: 'Check this box to keep your data on Panorama Public private. Reviewer account details will be provided.'
                 }
             ],
             buttonAlign: 'left',
