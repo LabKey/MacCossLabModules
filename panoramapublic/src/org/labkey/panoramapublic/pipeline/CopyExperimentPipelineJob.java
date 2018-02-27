@@ -54,13 +54,14 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
         _journal = journal;
         _description = "Copying experiment:  " + experiment.getTitle();
 
-        // Ensure local directory for the source
-        String baseLogFileName = "Experiment_" + experiment.getExperimentId() + ".log";
-        PipeRoot sourceRoot = PipelineService.get().findPipelineRoot(experiment.getContainer());
-        if (null == sourceRoot)
-            throw new NotFoundException("Cannot find source pipeline root.");
-        LocalDirectory localDirectory = LocalDirectory.create(sourceRoot, TargetedMSModule.NAME, baseLogFileName,
-                !sourceRoot.isCloudRoot() ? FileUtil.pathToString(sourceRoot.getRootNioPath()) : FileUtil.getTempDirectory().getPath());
+        // Ensure local directory for the target
+        String baseLogFileName = "Experiment_" + experiment.getExperimentId();
+        PipeRoot targetRoot = PipelineService.get().findPipelineRoot(getContainer()); // Target container is where the 'export' directory will get written
+        if (null == targetRoot)
+            throw new NotFoundException("Cannot find target pipeline root.");
+
+        LocalDirectory localDirectory = LocalDirectory.create(targetRoot, TargetedMSModule.NAME, baseLogFileName,
+                !targetRoot.isCloudRoot() ? targetRoot.getRootPath().getAbsolutePath() : FileUtil.getTempDirectory().getPath());
         setLocalDirectory(localDirectory);
         setLogFile(localDirectory.determineLogFile());
 
