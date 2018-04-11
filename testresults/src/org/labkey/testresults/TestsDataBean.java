@@ -457,7 +457,7 @@ public class TestsDataBean
                 allPassPointsMap.get(i).add(location);
             }
         }
-        StatsService service = ServiceRegistry.get().getService(StatsService.class);
+        StatsService service = StatsService.get();
         for (Map.Entry<Integer, List<Double>> entry : allPassPointsMap.entrySet())
         {
             double total = 0;
@@ -583,7 +583,7 @@ public class TestsDataBean
                     {
                         leak2bytes[i] = o2.getValue().get(i).getBytes();
                     }
-                    StatsService service = ServiceRegistry.get().getService(StatsService.class);
+                    StatsService service = StatsService.get();
                     MathStat l1 = service.getStats(leak1bytes);
                     MathStat l2 = service.getStats(leak2bytes);
                     return (int) (l1.getMean() - l2.getMean());
@@ -646,7 +646,7 @@ public class TestsDataBean
     */
     public Map<String, double[]> getAvgMinMaxTableData(boolean isStatRun) {
         Map<String, double[]> map = new HashMap<>();
-        StatsService service = ServiceRegistry.get().getService(StatsService.class);
+        StatsService service = StatsService.get();
 
         // Calculate durations
         TestsDataBean runsBean;

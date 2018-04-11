@@ -48,7 +48,7 @@
     if(endDate == null)
         endDate = df.format(today);
 
-    StatsService service = ServiceRegistry.get().getService(StatsService.class);
+    StatsService service = StatsService.get();
     JSONObject trendsJson = null;
     if(data != null && data.getRuns().length > 0) {
         trendsJson = data.getTrends();

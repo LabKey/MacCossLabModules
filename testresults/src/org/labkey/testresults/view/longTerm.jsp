@@ -64,7 +64,7 @@
     JSONObject runCountPerDayJson = data.getRunsPerDayJson();
     //TODO figure out run count for date range selected...
 
-    StatsService service = ServiceRegistry.get().getService(StatsService.class);
+    StatsService service = StatsService.get();
 %>
 <div id="duration" class="c3chart" style="width:700px; height:400px"></div>
 <div id="passes" class="c3chart" style="width:700px; height:400px"></div>

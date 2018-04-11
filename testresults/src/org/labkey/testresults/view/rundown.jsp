@@ -50,7 +50,7 @@
     // Calculates Mean, Min, Max table
     Map<String, List<TestFailDetail>> topFailures = data.getTopFailures(10, true); // top 10 failures
     Map<String, List<TestLeakDetail>> topLeaks = data.getTopLeaks(10, true); // top 10 leaks
-    StatsService service = ServiceRegistry.get().getService(StatsService.class);
+    StatsService service = StatsService.get();
 
     Map<String, Map<String, Double>> languageBreakdown = data.getLanguageBreakdown(topFailures); // test name mapped to language and percents
     Map<String, List<TestFailDetail>> todaysFailures = data.getFailedTestsByDate(selectedDate, true);

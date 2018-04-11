@@ -230,7 +230,7 @@ public class SkylineToolsStoreController extends SpringActionController
 
     public static String getLocalPath(Container c)
     {
-        String localPath = ServiceRegistry.get().getService(FileContentService.class).getFileRoot(c)
+        String localPath = FileContentService.get().getFileRoot(c)
                 + File.separator;
         if (new File(localPath + "@files").exists())
             localPath += "@files" + File.separator;
