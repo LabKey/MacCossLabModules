@@ -737,7 +737,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
     private static String generateRandomUrl(int length)
     {
-        ShortURLService shortUrlService = ServiceRegistry.get().getService(ShortURLService.class);
+        ShortURLService shortUrlService = ShortURLService.get();
         while(true)
         {
             String random = RandomStringUtils.randomAlphanumeric(length);
@@ -853,7 +853,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
         protected void assignShortCopyUrl(PublishExperimentForm form)
         {
-            ShortURLService shortUrlService = ServiceRegistry.get().getService(ShortURLService.class);
+            ShortURLService shortUrlService = ShortURLService.get();
             String baseUrl = form.getShortAccessUrl() + "_";
             while(true)
             {
@@ -882,7 +882,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
         private void validateShortUrl(String shortUrl, Errors errors)
         {
-            ShortURLService shortUrlService = ServiceRegistry.get(ShortURLService.class);
+            ShortURLService shortUrlService = ShortURLService.get();
             try
             {
                 shortUrl = shortUrlService.validateShortURL(shortUrl);
