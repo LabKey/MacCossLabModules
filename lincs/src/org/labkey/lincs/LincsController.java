@@ -139,7 +139,7 @@ public class LincsController extends SpringActionController
             }
 
             // Get the TargetedMS run.
-            TargetedMSService service = ServiceRegistry.get().getService(TargetedMSService.class);
+            TargetedMSService service = TargetedMSService.get();
 
             if (service == null)
             {
@@ -503,7 +503,7 @@ public class LincsController extends SpringActionController
 
         private List<File> getGCTFiles(Container container, String[] experimentTypes, BindException errors)
         {
-            TargetedMSService service = ServiceRegistry.get().getService(TargetedMSService.class);
+            TargetedMSService service = TargetedMSService.get();
 
             if (service == null)
             {
@@ -792,7 +792,7 @@ public class LincsController extends SpringActionController
 
     private static List<SelectedAnnotation> getReplicateAnnotationNameValues(User user, Container container)
     {
-        TargetedMSService service = ServiceRegistry.get().getService(TargetedMSService.class);
+        TargetedMSService service = TargetedMSService.get();
 
         if (service == null)
         {
@@ -900,7 +900,7 @@ public class LincsController extends SpringActionController
             }
 
             // Get a list of runs in the folder
-            TargetedMSService service = ServiceRegistry.get().getService(TargetedMSService.class);
+            TargetedMSService service = TargetedMSService.get();
             List<ITargetedMSRun> runs = service.getRuns(getContainer());
 
             // Get the location of the GCT folder
