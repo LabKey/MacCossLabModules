@@ -257,7 +257,7 @@ public class JournalManager
         ShortURLRecord shortAccessUrlRecord = sourceJournalExp.getShortAccessUrl();
         ActionURL targetUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(targetExperiment.getContainer());
 
-        ShortURLService shortURLService = ServiceRegistry.get(ShortURLService.class);
+        ShortURLService shortURLService = ShortURLService.get();
         shortAccessUrlRecord = shortURLService.saveShortURL(shortAccessUrlRecord.getShortURL(), targetUrl, user);
 
         sourceJournalExp.setShortAccessUrl(shortAccessUrlRecord);
@@ -392,7 +392,7 @@ public class JournalManager
 
     private static ShortURLRecord saveShortURL(ActionURL longURL, String shortUrl, Group journalGroup, User user) throws ValidationException
     {
-        ShortURLService shortUrlService = ServiceRegistry.get(ShortURLService.class);
+        ShortURLService shortUrlService = ShortURLService.get();
         ShortURLRecord shortAccessURLRecord;
         try
         {
@@ -451,7 +451,7 @@ public class JournalManager
 
     static void tryDeleteShortUrl(ShortURLRecord shortUrl, User user)
     {
-        ShortURLService shortURLService = ServiceRegistry.get(ShortURLService.class);
+        ShortURLService shortURLService = ShortURLService.get();
         try
         {
             shortURLService.deleteShortURL(shortUrl, user);
@@ -475,7 +475,7 @@ public class JournalManager
 
         Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
 
-        ShortURLService shortURLService = ServiceRegistry.get(ShortURLService.class);
+        ShortURLService shortURLService = ShortURLService.get();
         if (!shortAccessUrl.equalsIgnoreCase(oldAccessUrl.getShortURL()))
         {
             // Save the new short access URL
