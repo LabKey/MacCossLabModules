@@ -33,6 +33,7 @@ import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DataRegion;
 import org.labkey.api.data.DbScope;
+import org.labkey.api.data.NormalContainerType;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.jsp.FormPage;
 import org.labkey.api.module.DefaultFolderType;
@@ -66,7 +67,6 @@ import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.roles.ProjectAdminRole;
-import org.labkey.api.services.ServiceRegistry;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.util.MailHelper;
@@ -245,7 +245,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             try (DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
             {
                 // Create the project.
-                Container container = ContainerManager.createContainer(ContainerManager.getRoot(), form.getProjectName(), null, null, Container.TYPE.normal, getUser());
+                Container container = ContainerManager.createContainer(ContainerManager.getRoot(), form.getProjectName(), null, null, NormalContainerType.NAME, getUser());
                 // Set the folder type to "Targeted MS".
                 FolderType type = FolderTypeManager.get().getFolderType(TargetedMSFolderType.NAME);
                 container.setFolderType(type, getUser());
@@ -565,7 +565,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
 
             // Create the new target container.
-            Container target = ContainerManager.createContainer(parentContainer, destinationFolder, null, null, Container.TYPE.normal, getUser());
+            Container target = ContainerManager.createContainer(parentContainer, destinationFolder, null, null, NormalContainerType.NAME, getUser());
 
             try{
                 PipeRoot root = PipelineService.get().findPipelineRoot(target);
