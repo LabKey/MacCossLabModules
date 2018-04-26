@@ -87,7 +87,7 @@ public class LincsController extends SpringActionController
     @RequiresPermission(ReadPermission.class)
     public class BeginAction extends SimpleViewAction
     {
-        public ModelAndView getView(Object o, BindException errors) throws Exception
+        public ModelAndView getView(Object o, BindException errors)
         {
             return new JspView("/org/labkey/lincs/view/hello.jsp");
         }
@@ -392,7 +392,7 @@ public class LincsController extends SpringActionController
         }
 
         @Override
-        public ModelAndView getView(CustomGCTForm customGCTForm, boolean reshow, BindException errors) throws Exception
+        public ModelAndView getView(CustomGCTForm customGCTForm, boolean reshow, BindException errors)
         {
             if(customGCTForm.getCustomGctBean() != null)
             {
@@ -421,7 +421,7 @@ public class LincsController extends SpringActionController
         }
 
         @Override
-        public boolean handlePost(CustomGCTForm customGCTForm, BindException errors) throws Exception
+        public boolean handlePost(CustomGCTForm customGCTForm, BindException errors)
         {
             // Get the replicate annotation values from the form
             List<SelectedAnnotation> annotations = customGCTForm.getSelectedAnnotationValues();
@@ -889,7 +889,7 @@ public class LincsController extends SpringActionController
     public class GetLincsStatusAction extends ApiAction
     {
         @Override
-        public Object execute(Object o, BindException errors) throws Exception
+        public Object execute(Object o, BindException errors)
         {
             ApiSimpleResponse response = new ApiSimpleResponse();
             // Make sure the LINCS module is enabled in the folder
