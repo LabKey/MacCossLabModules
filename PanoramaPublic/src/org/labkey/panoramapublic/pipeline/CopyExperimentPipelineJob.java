@@ -47,7 +47,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     private final Journal _journal;
     private final String _description;
 
-    public CopyExperimentPipelineJob(ViewBackgroundInfo info, PipeRoot root, ExperimentAnnotations experiment, Journal journal) throws IOException
+    public CopyExperimentPipelineJob(ViewBackgroundInfo info, PipeRoot root, ExperimentAnnotations experiment, Journal journal)
     {
         super(CopyExperimentPipelineProvider.NAME, info, root);
         _experimentAnnotations = experiment;
