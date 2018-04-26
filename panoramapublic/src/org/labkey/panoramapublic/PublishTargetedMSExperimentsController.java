@@ -136,7 +136,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     public static class JournalGroupsAdminViewAction extends SimpleViewAction
     {
         @Override
-        public ModelAndView getView(Object o, BindException errors) throws Exception
+        public ModelAndView getView(Object o, BindException errors)
         {
             QuerySettings qSettings = new QuerySettings(getViewContext(), "Journals", "Journal");
             QueryView qView = new QueryView(new TargetedMSSchema(getUser(), getContainer()), qSettings, null);
@@ -184,7 +184,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
 
         @Override
-        public ModelAndView getView(CreateJournalGroupForm form, boolean reshow, BindException errors) throws Exception
+        public ModelAndView getView(CreateJournalGroupForm form, boolean reshow, BindException errors)
         {
             JspView view = new JspView<>("/org/labkey/targetedms/view/publish/createJournalGroup.jsp", form, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
@@ -193,7 +193,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
 
         @Override
-        public boolean handlePost(CreateJournalGroupForm form, BindException errors) throws Exception
+        public boolean handlePost(CreateJournalGroupForm form, BindException errors)
         {
             // Validate the group name.
             String message = UserManager.validGroupName(form.getGroupName(), PrincipalType.GROUP);
@@ -345,13 +345,13 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     public static class DeleteJournalGroupAction extends ConfirmAction<JournalForm>
     {
         @Override
-        public ModelAndView getConfirmView(JournalForm form, BindException errors) throws Exception
+        public ModelAndView getConfirmView(JournalForm form, BindException errors)
         {
             return FormPage.getView(PublishTargetedMSExperimentsController.class, form, "view/publish/deleteJournal.jsp");
         }
 
         @Override
-        public boolean handlePost(JournalForm form, BindException errors) throws Exception
+        public boolean handlePost(JournalForm form, BindException errors)
         {
             Journal journal = form.lookupJournal();
 
@@ -396,7 +396,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     public static class JournalGroupDetailsAction extends SimpleViewAction<JournalForm>
     {
         @Override
-        public ModelAndView getView(JournalForm form, BindException errors) throws Exception
+        public ModelAndView getView(JournalForm form, BindException errors)
         {
             Journal journal = form.lookupJournal();
             if(journal == null)
@@ -501,7 +501,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
 
         @Override
-        public ModelAndView getView(CopyExperimentForm form, boolean reshow, BindException errors) throws Exception
+        public ModelAndView getView(CopyExperimentForm form, boolean reshow, BindException errors)
         {
             validateAction(form);
 
@@ -511,7 +511,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             return view;
         }
 
-        private void validateAction(CopyExperimentForm form) throws ServletException
+        private void validateAction(CopyExperimentForm form)
         {
             _experiment = form.lookupExperiment();
             if(_experiment == null)
@@ -535,7 +535,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
 
         @Override
-        public boolean handlePost(CopyExperimentForm form, BindException errors) throws Exception
+        public boolean handlePost(CopyExperimentForm form, BindException errors)
         {
             validateAction(form);
 
@@ -688,7 +688,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
 
         @Override
-        public ModelAndView getView(PublishExperimentForm form, BindException errors) throws Exception
+        public ModelAndView getView(PublishExperimentForm form, BindException errors)
         {
             ExperimentAnnotations exptAnnotations = form.lookupExperiment();
             if(exptAnnotations == null)
@@ -786,7 +786,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
         }
 
-        public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors) throws Exception
+        public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
             String journal = _journal.getName();
             StringBuilder html = new StringBuilder();
@@ -1065,7 +1065,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
         }
 
-        public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors) throws Exception
+        public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
             StringBuilder html = new StringBuilder();
             String journal = _journal.getName();
@@ -1183,7 +1183,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     public static class DeleteJournalExperimentAction extends JournalExperimentAction
     {
         @Override
-        public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors) throws Exception
+        public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
             StringBuilder html = new StringBuilder();
             html.append("Are you sure you want to cancel your submission request to ").append(_journal.getName());
@@ -1196,7 +1196,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
 
         @Override
-        public boolean handlePost(PublishExperimentForm form, BindException errors) throws Exception
+        public boolean handlePost(PublishExperimentForm form, BindException errors)
         {
             JournalManager.deleteJournalAccess(_experimentAnnotations, _journal, getUser());
             sendDeleteNotification(_experimentAnnotations, _journal, getUser(), getContainer());
@@ -1254,7 +1254,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         private JournalExperiment _journalExperiment;
 
         @Override
-        public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors) throws Exception
+        public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
             StringBuilder html = new StringBuilder();
             html.append("Experiment: ").append(_experimentAnnotations.getTitle());
