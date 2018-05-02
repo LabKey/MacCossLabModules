@@ -32,8 +32,4 @@ public interface CopyExperimentJobSupport
     Journal getJournal();
 
     File getExportDir();
-
-    File getImportDir();
-
-    String getExportZipFileName();
 }

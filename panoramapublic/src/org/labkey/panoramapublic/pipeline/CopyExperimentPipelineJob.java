@@ -119,17 +119,4 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     {
         return new File(getLocalDirectory().getLocalDirectoryFile(), PipelineService.EXPORT_DIR);
     }
-
-    @Override
-    public File getImportDir()
-    {
-        PipeRoot pipelineRoot = getPipeRoot();
-        return pipelineRoot.resolvePath(PipelineService.UNZIP_DIR);
-    }
-
-    @Override
-    public String getExportZipFileName()
-    {
-        return "experiment_" + _experimentAnnotations.getExperimentId() + ".folder.zip";
-    }
 }
