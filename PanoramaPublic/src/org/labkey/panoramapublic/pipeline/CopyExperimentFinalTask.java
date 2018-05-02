@@ -15,13 +15,17 @@
  */
 package org.labkey.targetedms.pipeline;
 
+import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
+import org.labkey.api.exp.api.ExpData;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentService;
+import org.labkey.api.files.FileContentService;
+import org.labkey.api.files.view.FilesWebPart;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
@@ -40,18 +44,26 @@ import org.labkey.api.security.roles.ReaderRole;
 import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.util.FileType;
+import org.labkey.api.util.FileUtil;
+import org.labkey.api.view.Portal;
+import org.labkey.targetedms.TargetedMSController;
 import org.labkey.targetedms.TargetedMSManager;
 import org.labkey.targetedms.model.ExperimentAnnotations;
 import org.labkey.targetedms.model.JournalExperiment;
 import org.labkey.targetedms.query.ExperimentAnnotationsManager;
 import org.labkey.targetedms.query.JournalManager;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
+
+import static org.labkey.targetedms.TargetedMSController.FolderSetupAction.RAW_FILES_TAB;
 
 /**
  * User: vsharma
@@ -84,7 +96,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return new RecordedActionSet();
     }
 
-    public static void finishUp(PipelineJob job, CopyExperimentJobSupport jobSupport) throws Exception
+    private void finishUp(PipelineJob job, CopyExperimentJobSupport jobSupport) throws Exception
     {
         // Get the experiment that was just created in the target folder as part of the folder import.
         Container container = job.getContainer();
@@ -166,8 +178,114 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             }
             SecurityPolicyManager.savePolicy(newPolicy);
 
+            FileContentService service = FileContentService.get();
+            if(service != null)
+            {
+                // If there is a "Raw Data" tab in the folder and/or one of its subfolders, fix the configuration of the
+                // Files webpart in the tab.
+                updateRawDataTabConfig(target, service, user);
+
+                // DataFileUrl in exp.data and FilePathRoot in exp.experimentRun point to locations in the 'export' directory.
+                // We are now copying all files from the source container to the target container file root. Update the paths
+                // to point to locations in the target container file root, and delete the 'export' directory
+                if(updateDataPaths(target, service, user, job.getLogger()))
+                {
+                    // Delete the 'export' directory
+                    // 'export' directory is written to a local temp location if the target container is cloud-based,
+                    // and gets deleted after the pipeline job finishes successfully.
+                    if(!service.isCloudRoot(target))
+                    {
+                        File exportdir = jobSupport.getExportDir();
+                        if (exportdir.exists() && !FileUtil.deleteDir(exportdir))
+                        {
+                            job.getLogger().warn("Failed to delete export directory: " + exportdir);
+                        }
+                    }
+                }
+                else
+                {
+                    throw new PipelineJobException("Unable to update all data file paths.");
+                }
+            }
+
             transaction.commit();
         }
+    }
+
+    private boolean updateDataPaths(Container target, FileContentService service, User user, Logger logger)
+    {
+        List<ExpRun> allRuns = getAllExpRuns(target);
+
+        for(ExpRun run: allRuns)
+        {
+            Path fileRootPath = service.getFileRootPath(run.getContainer(), FileContentService.ContentType.files);
+            if(fileRootPath == null || !Files.exists(fileRootPath))
+            {
+                logger.error("File root path for container " + run.getContainer().getPath() + " does not exist: " + fileRootPath);
+                return false;
+            }
+
+            List<? extends ExpData> allData = run.getAllDataUsedByRun();
+            if(allData.size() > 0)
+            {
+                ExpData data = allData.get(0); // We only have one ExpData (sky.zip) per ExpRun.
+                String fileName = FileUtil.getFileName(data.getFilePath());
+                Path newDataPath = fileRootPath.resolve(fileName);
+                if(Files.exists(newDataPath))
+                {
+                    data.setDataFileURI(newDataPath.toUri());
+                    data.save(user);
+                    run.setFilePathRootPath(fileRootPath);
+                    run.save(user);
+                }
+                else
+                {
+                    logger.error("Data path does not exist: " + newDataPath);
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private void updateRawDataTabConfig(Container c, FileContentService service, User user)
+    {
+        Set<Container> children = ContainerManager.getAllChildren(c); // Includes parent
+        for(Container child: children)
+        {
+            updateRawDataTab(child, service, user);
+        }
+    }
+
+    private void updateRawDataTab(Container c, FileContentService service, User user)
+    {
+        List<Portal.WebPart> rawDataTabParts = Portal.getParts(c, RAW_FILES_TAB);
+        if(rawDataTabParts.size() == 0)
+        {
+            return; // Nothing to do if there is no "Raw Data" tab.
+        }
+        for(Portal.WebPart wp: rawDataTabParts)
+        {
+            if(FilesWebPart.PART_NAME.equals(wp.getName()))
+            {
+                TargetedMSController.configureRawDataTab(wp, c, service);
+                Portal.updatePart(user, wp);
+            }
+        }
+    }
+
+    private List<ExpRun> getAllExpRuns(Container container)
+    {
+        Set<Container> children = ContainerManager.getAllChildren(container);
+        ExperimentService expService = ExperimentService.get();
+        List<ExpRun> allRuns = new ArrayList<>();
+
+        for(Container child: children)
+        {
+            List<? extends ExpRun> runs = expService.getExpRuns(child, null, null);
+            allRuns.addAll(runs);
+        }
+        return allRuns;
     }
 
     private static int[] getAllExpRunRowIdsInSubfolders(Container container)
