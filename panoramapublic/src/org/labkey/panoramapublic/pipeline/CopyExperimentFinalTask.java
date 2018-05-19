@@ -31,6 +31,7 @@ import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
 import org.labkey.api.pipeline.RecordedActionSet;
+import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.RoleAssignment;
@@ -212,7 +213,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         }
     }
 
-    private boolean updateDataPaths(Container target, FileContentService service, User user, Logger logger)
+    private boolean updateDataPaths(Container target, FileContentService service, User user, Logger logger) throws BatchValidationException
     {
         List<ExpRun> allRuns = getAllExpRuns(target);
 
