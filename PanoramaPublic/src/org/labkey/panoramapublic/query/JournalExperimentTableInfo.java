@@ -21,7 +21,6 @@ import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
-import org.labkey.api.data.SQLFragment;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
@@ -44,9 +43,9 @@ import java.util.Set;
 public class JournalExperimentTableInfo extends TargetedMSTable
 {
 
-    public JournalExperimentTableInfo(final TargetedMSSchema schema, Container container, SQLFragment sql)
+    public JournalExperimentTableInfo(final TargetedMSSchema schema, Container container)
     {
-        super(TargetedMSManager.getTableInfoJournalExperiment(), schema, sql);
+        super(TargetedMSManager.getTableInfoJournalExperiment(), schema, TargetedMSSchema.ContainerJoinType.ExperimentAnnotationsFK);
 
         ColumnInfo editColumn = wrapColumn("Edit", getRealTable().getColumn("ExperimentAnnotationsId"));
         editColumn.setLabel("");
