@@ -89,6 +89,13 @@ public class JournalManager
         return new TableSelector(TargetedMSManager.getTableInfoJournal()).getObject(journalId, Journal.class);
     }
 
+    public static boolean isJournalProject(Container project)
+    {
+        return new TableSelector(TargetedMSManager.getTableInfoJournal(),
+                new SimpleFilter(FieldKey.fromParts("project"), project),
+                null).exists();
+    }
+
     public static List<Journal> getJournalsForExperiment(int expAnnotationsId)
     {
         SQLFragment sql = new SQLFragment("SELECT j.* FROM ");
