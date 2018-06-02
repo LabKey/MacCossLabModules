@@ -1,0 +1,223 @@
+/**
+ * Created by Yuval Boss yuval (at) uw.edu | 4/4/16
+ */
+/* Filter container properties */
+#filterContainer {
+    width:100%;
+    float:left;
+    margin-top:10px;
+    border-bottom:1px solid #ccc;
+    font:14px 'Raleway', sans-serif;
+    padding-bottom:15px;
+}
+
+#filtericon {
+    width:30px;
+    height:30px;
+    margin:5px;
+    float:left;
+}
+#filterContainer h1 {
+    font:18px 'Raleway', sans-serif;
+    color:#000;
+    font-weight:600;
+    margin:0;
+    padding:0;
+    margin-top:20px;
+    margin-left:5px;
+    clear: right;
+}
+#filterContainer h2 {
+    font:16px 'Raleway', sans-serif;
+    color:#333300;
+    font-weight:600;
+    margin:0;
+    clear: right;
+}
+.filterBox {
+    float:left;
+    min-width:200px;
+    padding:10px 10px 10px 10px;
+    border-left: 1px solid #ccc;
+    min-height:100px;
+}
+.filterBox p {
+    margin:2px;
+    margin-top:10px;
+}
+#filterContainer option, select, input[type=text] {
+    font-family: 'Raleway', sans-serif;
+    font-size: 10pt;
+    display: inline-block;
+}
+#pepListBox {
+    float:left;
+    min-width:200px;
+    padding:10px 10px 10px 0px;
+    min-height:100px;
+}
+#pepListBox ul {
+    list-style-type: none;
+    margin:0;
+    padding:0;
+    overflow-y:scroll;
+    overflow-x:hidden;
+    direction:rtl;
+    display:block;
+    float:left;
+    max-height: 200px;
+}
+
+#pepListBox li{
+    font:13px 'Raleway', sans-serif;
+    text-decoration: none;
+    padding:0px 15px;
+    margin: 0px;
+    list-style-type: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+    direction:ltr;
+}
+.slider-range{
+    width:200px;
+    margin-top:10px;
+    margin-left:2px;
+}
+
+.slider-range .ui-slider-handle {
+    width:6px !important;
+    height:15px !important;
+    margin-left:-1px !important;
+}
+.ui-slider  {
+    height: 6px !important;
+}
+#filteredPeptideCount {
+    font:12px 'Raleway', sans-serif;
+    font-weight:600;
+
+}
+green {
+    color: green;
+}
+
+#protein {
+    margin-top:50px;
+}
+#peptide {
+    display: inline-block;
+    margin: 0 auto;
+    margin-top:20px;
+}
+.aminoCircle {
+    fill: #EBD755;
+    stroke:#FFF;
+}
+.varianceResource {
+    padding-top:10px;
+    padding-bottom:10px;
+    padding-left:5px;
+    padding-right:5px;
+    margin:0;
+}
+.protein_sequence {
+    fill: #365C63;
+}
+.protein_label_text {
+    font-weight: 600;
+}
+.highlight_peptide {
+    fill: #EBD755;
+}
+.highlight_peptide_bounds {
+    fill: #000;
+}
+.highlight_peptide_bounds_text {
+    font-weight: 200;
+    font-size:12px;
+    line-height: 12px;
+}
+
+
+#updateButton {
+    -moz-box-shadow:inset 0px 1px 0px 0px #ffffff;
+    -webkit-box-shadow:inset 0px 1px 0px 0px #ffffff;
+    box-shadow:inset 0px 1px 0px 0px #ffffff;
+    background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #ffffff), color-stop(1, #f6f6f6));
+    background:-moz-linear-gradient(top, #ffffff 5%, #f6f6f6 100%);
+    background:-webkit-linear-gradient(top, #ffffff 5%, #f6f6f6 100%);
+    background:-o-linear-gradient(top, #ffffff 5%, #f6f6f6 100%);
+    background:-ms-linear-gradient(top, #ffffff 5%, #f6f6f6 100%);
+    background:linear-gradient(to bottom, #ffffff 5%, #f6f6f6 100%);
+    filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffffff', endColorstr='#f6f6f6',GradientType=0);
+    background-color:#ffffff;
+    -moz-border-radius:4px;
+    -webkit-border-radius:4px;
+    border-radius:4px;
+    border:1px solid #dcdcdc;
+    display:inline-block;
+    cursor:pointer;
+    color:#666666;
+    font-size:12px;
+    font-weight:bold;
+    padding:6px 10px;
+    text-decoration:none;
+    text-shadow:0px 1px 0px #ffffff;
+}
+#updateButton:hover {
+    background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #f6f6f6), color-stop(1, #ffffff));
+    background:-moz-linear-gradient(top, #f6f6f6 5%, #ffffff 100%);
+    background:-webkit-linear-gradient(top, #f6f6f6 5%, #ffffff 100%);
+    background:-o-linear-gradient(top, #f6f6f6 5%, #ffffff 100%);
+    background:-ms-linear-gradient(top, #f6f6f6 5%, #ffffff 100%);
+    background:linear-gradient(to bottom, #f6f6f6 5%, #ffffff 100%);
+    filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#f6f6f6', endColorstr='#ffffff',GradientType=0);
+    background-color:#f6f6f6;
+}
+#updateButton:active {
+    top:1px;
+}
+#chartInfoTooltip {
+    position:relative;
+    float:right;
+    padding-top:40px;
+    margin-right:40px;
+}
+
+.filterLegend {
+    float:right;
+    position:relative;
+    right:-17px;
+    top:70px;
+}
+
+.ui-tooltip {
+    background: white;
+    border: 2px solid white;
+    padding: 10px 20px;
+    color: black;
+    border-radius: 20px;
+    font:14px 'Raleway', sans-serif;
+    font-weight:600;
+    box-shadow: 0 0 7px black;
+    border-radius: 2px;
+}
+.ui-tooltip strong{
+    font:14px 'Open Sans', sans-serif;
+    font-weight:600;
+}
+
+.linkimagecontainer img {
+    float:left;
+    padding: 30px 10px 0px 0px;
+    height:20px;
+}
+
+.linkimagecontainer {
+    float:left;
+    background: #fff;
+    margin-left:10px;
+    z-index: 10;
+}

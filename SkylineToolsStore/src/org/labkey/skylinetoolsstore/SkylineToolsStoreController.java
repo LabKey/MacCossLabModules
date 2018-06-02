@@ -372,7 +372,13 @@ public class SkylineToolsStoreController extends SpringActionController
         HashSet<String> users = new HashSet<>();
         for (RoleAssignment assignment : tool.lookupContainer().getPolicy().getAssignments())
             if (Arrays.asList(roles).contains(assignment.getRole()))
-                users.add(UserManager.getUser(assignment.getUserId()).getEmail());
+            {
+                User user = UserManager.getUser(assignment.getUserId());
+                if(user != null && user.getEmail() != null)
+                {
+                    users.add(user.getEmail());
+                }
+            }
         return new ArrayList<>(users);
     }
 
