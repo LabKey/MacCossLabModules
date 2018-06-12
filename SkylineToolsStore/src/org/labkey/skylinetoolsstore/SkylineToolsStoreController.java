@@ -29,6 +29,7 @@ import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
+import org.labkey.api.data.NormalContainerType;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.FolderTypeManager;
 import org.labkey.api.module.ModuleLoader;
@@ -94,6 +95,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.net.URLDecoder;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -225,19 +228,15 @@ public class SkylineToolsStoreController extends SpringActionController
 
     public static File makeFile(Container c, String filename)
     {
-        return new File(getLocalPath(c) + FileUtil.makeLegalName(filename));
+        return new File(getLocalPath(c), FileUtil.makeLegalName(filename));
     }
 
-    public static String getLocalPath(Container c)
+    public static File getLocalPath(Container c)
     {
-        String localPath = FileContentService.get().getFileRoot(c)
-                + File.separator;
-        if (new File(localPath + "@files").exists())
-            localPath += "@files" + File.separator;
-        return localPath;
+        return FileContentService.get().getFileRootPath(c, FileContentService.ContentType.files).toFile();
     }
 
-    protected Container makeContainer(Container parent, String folderName, List<User> users, Role role)
+    protected Container makeContainer(Container parent, String folderName, List<User> users, Role role) throws IOException
     {
         StringBuilder sb = new StringBuilder();
         if (!Container.isLegalName(folderName, false, sb))
@@ -246,8 +245,14 @@ public class SkylineToolsStoreController extends SpringActionController
         if (parent.hasChild(folderName))
             return null;
 
-        Container c = ContainerManager.createContainer(parent, folderName, null, null, Container.TYPE.normal, getUser());
+        Container c = ContainerManager.createContainer(parent, folderName, null, null, NormalContainerType.NAME, getUser());
         c.setFolderType(FolderTypeManager.get().getFolderType("Collaboration"), getUser());
+
+        Path fileRoot = FileContentService.get().getFileRootPath(c, FileContentService.ContentType.files);
+        if(!Files.exists(fileRoot))
+        {
+            Files.createDirectories(fileRoot);
+        }
 
         // Make folder readable by all site users and guests, so that they can access the zip file/icon
         MutableSecurityPolicy policy = new MutableSecurityPolicy(c);
@@ -403,7 +408,7 @@ public class SkylineToolsStoreController extends SpringActionController
     public static HashSet<String> getSupplementaryFileBasenames(SkylineTool tool)
     {
         HashSet<String> suppFiles = new HashSet();
-        File localToolDir = new File(getLocalPath(tool.lookupContainer()));
+        File localToolDir = getLocalPath(tool.lookupContainer());
         for (String suppFile : localToolDir.list())
         {
             final String basename = new File(suppFile).getName();
