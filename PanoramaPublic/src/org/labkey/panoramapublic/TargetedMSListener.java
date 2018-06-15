@@ -67,6 +67,9 @@ public class TargetedMSListener implements ExperimentListener, ContainerManager.
         // Clean up Guide Sets
         new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoGuideSet() + " WHERE Container = ?", c);
 
+        // Clean up any orphaned iRT scales
+        TargetedMSManager.deleteiRTscales(c);
+
         // Clean up AutoQCPing
         new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoAutoQCPing() + " WHERE Container = ?", c);
 
