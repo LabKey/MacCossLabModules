@@ -21,7 +21,6 @@ import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.module.DefaultModule;
 import org.labkey.api.module.ModuleContext;
-import org.labkey.api.security.User;
 import org.labkey.api.view.BaseWebPartFactory;
 import org.labkey.api.view.Portal;
 import org.labkey.api.view.ViewContext;
@@ -94,7 +93,7 @@ public class SkylineToolsStoreModule extends DefaultModule
 
     @Override
     @NotNull
-    public Collection<String> getSummary(Container c, User user)
+    public Collection<String> getSummary(Container c)
     {
         SkylineTool[] tools = SkylineToolsStoreManager.get().getTools(c);
         if (tools != null && tools.length > 0)
