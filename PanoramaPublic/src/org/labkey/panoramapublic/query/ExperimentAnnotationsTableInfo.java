@@ -15,8 +15,11 @@
  */
 package org.labkey.targetedms.query;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.labkey.api.collections.NamedObjectList;
 import org.labkey.api.data.ColumnInfo;
+import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
 import org.labkey.api.data.DataColumn;
@@ -32,9 +35,20 @@ import org.labkey.api.query.DetailsURL;
 import org.labkey.api.query.ExprColumn;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
+import org.labkey.api.query.UserIdForeignKey;
+import org.labkey.api.query.UserIdRenderer;
 import org.labkey.api.query.UserSchema;
+import org.labkey.api.security.RoleAssignment;
 import org.labkey.api.security.User;
+import org.labkey.api.security.UserManager;
+import org.labkey.api.security.UserPrincipal;
+import org.labkey.api.security.permissions.Permission;
+import org.labkey.api.security.roles.FolderAdminRole;
+import org.labkey.api.security.roles.ProjectAdminRole;
+import org.labkey.api.security.roles.Role;
+import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.SimpleNamedObject;
 import org.labkey.api.view.ActionURL;
 import org.labkey.targetedms.TargetedMSController;
 import org.labkey.targetedms.TargetedMSManager;
@@ -52,7 +66,7 @@ import java.util.Set;
  * Date: 12/19/13
  * Time: 2:29 PM
  */
-public class ExperimentAnnotationsTableInfo extends FilteredTable
+public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSchema>
 {
 
     public ExperimentAnnotationsTableInfo(final TargetedMSSchema schema, User user)
@@ -60,7 +74,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
         this(TargetedMSManager.getTableInfoExperimentAnnotations(), schema, user);
     }
 
-    public ExperimentAnnotationsTableInfo(TableInfo tableInfo, UserSchema schema, User user)
+    public ExperimentAnnotationsTableInfo(TableInfo tableInfo, TargetedMSSchema schema, User user)
     {
         super(tableInfo, schema, new ContainerFilter.CurrentAndSubfolders(user));
 
@@ -172,6 +186,11 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
         });
         addColumn(shareCol);
 
+        ExperimentUserForeignKey.initColumn(getColumn("LabHead"));
+
+        ColumnInfo submitterCol = ExperimentUserForeignKey.initColumn(getColumn("Submitter"));
+        submitterCol.setUserEditable(false);
+
         SQLFragment runCountSQL = new SQLFragment("(SELECT COUNT(r.ExperimentRunId) FROM ");
         runCountSQL.append(ExperimentService.get().getTinfoRunList(), "r");
         runCountSQL.append(" WHERE r.ExperimentId = ");
@@ -186,8 +205,9 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
         visibleColumns.add(FieldKey.fromParts("Organism"));
         visibleColumns.add(FieldKey.fromParts("Instrument"));
         visibleColumns.add(FieldKey.fromParts("SpikeIn"));
-        visibleColumns.add(FieldKey.fromParts("Citation"));
         visibleColumns.add(FieldKey.fromParts("Runs"));
+        visibleColumns.add(FieldKey.fromParts("Keywords"));
+        visibleColumns.add(FieldKey.fromParts("Citation"));
 
         setDefaultVisibleColumns(visibleColumns);
     }
@@ -196,6 +216,95 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable
     public String getName()
     {
         return TargetedMSSchema.TABLE_EXPERIMENT_ANNOTATIONS;
+    }
+
+    @Override
+    public boolean hasPermission(@NotNull UserPrincipal user, @NotNull Class<? extends Permission> perm)
+    {
+        return getContainer().hasPermission(user, perm);
+    }
+
+    public static class ExperimentUserForeignKey extends UserIdForeignKey
+    {
+        static public ColumnInfo initColumn(ColumnInfo column)
+        {
+            column.setFk(new ExperimentUserForeignKey(column.getParentTable().getUserSchema()));
+            column.setDisplayColumnFactory(colInfo -> new ExperimentUserDisplayColumn(colInfo));
+            return column;
+        }
+
+        public ExperimentUserForeignKey(UserSchema userSchema)
+        {
+            super(userSchema);
+        }
+
+        @Override
+        public NamedObjectList getSelectList(RenderContext ctx)
+        {
+            NamedObjectList objectList = new NamedObjectList();
+            Container container = ctx.getContainer();
+            if(container != null)
+            {
+                addUsers(objectList, container, RoleManager.getRole(FolderAdminRole.class));
+                if(!container.isProject())
+                {
+                    addUsers(objectList, container.getProject(), RoleManager.getRole(ProjectAdminRole.class));
+                }
+            }
+            return objectList;
+        }
+
+        private void addUsers(NamedObjectList objectList, Container container, Role adminRole)
+        {
+            Set<RoleAssignment> roles = container.getPolicy().getAssignments();
+            for(RoleAssignment role: roles)
+            {
+                if (role.getRole().equals(adminRole))
+                {
+                    User u = UserManager.getUser(role.getUserId());
+                    if (u != null)
+                    {
+                        String displayName = getUserDisplayName(u);
+                        objectList.put(new SimpleNamedObject(String.valueOf(u.getUserId()), displayName));
+                    }
+                }
+            }
+        }
+    }
+
+    public static class ExperimentUserDisplayColumn extends UserIdRenderer
+    {
+        public ExperimentUserDisplayColumn(ColumnInfo col)
+        {
+            super(col);
+        }
+
+        @Override
+        public @NotNull String getFormattedValue(RenderContext ctx)
+        {
+            Integer userId = ctx.get(getColumnInfo().getFieldKey(), Integer.class);
+            String userDisplayName = null;
+            if(userId != null)
+            {
+                userDisplayName = getUserDisplayName(UserManager.getUser(userId));
+            }
+            return userDisplayName == null ? super.getFormattedValue(ctx) : userDisplayName;
+        }
+    }
+
+    private static String getUserDisplayName(User u)
+    {
+        if(u == null)
+        {
+            return null;
+        }
+
+        String displayName = u.getDisplayName(null);
+        if(!StringUtils.isBlank(u.getFullName()))
+        {
+            displayName = u.getFullName() + " (" + displayName + ")";
+        }
+        return displayName;
     }
 
     public static  class PublicationLinkDisplayColumn extends DataColumn

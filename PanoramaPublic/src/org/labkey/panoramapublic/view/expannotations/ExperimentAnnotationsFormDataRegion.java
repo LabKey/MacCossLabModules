@@ -25,6 +25,8 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.ViewContext;
 import org.labkey.targetedms.TargetedMSController;
 import org.labkey.targetedms.TargetedMSManager;
+import org.labkey.targetedms.TargetedMSSchema;
+import org.labkey.targetedms.query.ExperimentAnnotationsTableInfo;
 
 /**
  * User: vsharma
@@ -37,7 +39,8 @@ public class ExperimentAnnotationsFormDataRegion extends DataRegion
     {
         super();
 
-        addColumns(TargetedMSManager.getTableInfoExperimentAnnotations(), "Id,Title,Organism,Instrument,SpikeIn,Abstract,ExperimentDescription,SampleDescription, Citation,PublicationLink,");
+        addColumns(new ExperimentAnnotationsTableInfo(new TargetedMSSchema(viewContext.getUser(), viewContext.getContainer()), viewContext.getUser()),
+                "Id,Title,Organism,Instrument,SpikeIn,Abstract,ExperimentDescription,SampleDescription, Keywords, LabHead, LabHeadAffiliation, Submitter, SubmitterAffiliation, Citation,PublicationLink,");
 
         DisplayColumn idCol = getDisplayColumn("Id");
         idCol.setVisible(false);

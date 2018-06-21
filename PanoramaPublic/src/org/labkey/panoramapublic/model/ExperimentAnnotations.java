@@ -18,6 +18,8 @@ package org.labkey.targetedms.model;
 import org.labkey.api.data.Container;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExperimentService;
+import org.labkey.api.security.User;
+import org.labkey.api.security.UserManager;
 import org.labkey.api.view.ShortURLRecord;
 
 import java.util.Date;
@@ -54,6 +56,13 @@ public class ExperimentAnnotations
     // in the JournalExperiment table.  But we lose the link if the source experiment gets deleted.
     private ShortURLRecord _shortUrl;
 
+    private String _keywords;
+    private Integer _labHead;
+    private String _labHeadAffiliation;
+    private Integer _submitter;
+    private String _submitterAffiliation;
+    private String _pxid;
+
 
     public ExperimentAnnotations() {}
 
@@ -69,6 +78,12 @@ public class ExperimentAnnotations
         _abstract = experiment.getAbstract();
         _publicationLink = experiment.getPublicationLink();
         _includeSubfolders = experiment.isIncludeSubfolders();
+        _keywords = experiment.getKeywords();
+        _labHead = experiment.getLabHead();
+        _submitter = experiment.getSubmitter();
+        _labHeadAffiliation = experiment.getLabHeadAffiliation();
+        _submitterAffiliation = experiment.getSubmitterAffiliation();
+        _pxid = experiment.getPxid();
     }
 
     public int getId()
@@ -268,5 +283,75 @@ public class ExperimentAnnotations
     public void setShortUrl(ShortURLRecord shortAccessUrl)
     {
         _shortUrl = shortAccessUrl;
+    }
+
+    public String getKeywords()
+    {
+        return _keywords;
+    }
+
+    public void setKeywords(String keywords)
+    {
+        _keywords = keywords;
+    }
+
+    public Integer getLabHead()
+    {
+        return _labHead;
+    }
+
+    public void setLabHead(Integer labHead)
+    {
+        _labHead = labHead;
+    }
+
+    public User getLabHeadUser()
+    {
+        return _labHead != null ? UserManager.getUser(_labHead) : null;
+    }
+
+    public String getLabHeadAffiliation()
+    {
+        return _labHeadAffiliation;
+    }
+
+    public void setLabHeadAffiliation(String labHeadAffiliation)
+    {
+        _labHeadAffiliation = labHeadAffiliation;
+    }
+
+    public Integer getSubmitter()
+    {
+        return _submitter;
+    }
+
+    public User getSubmitterUser()
+    {
+        return _submitter != null ? UserManager.getUser(_submitter) : null;
+    }
+
+    public void setSubmitter(Integer submitter)
+    {
+        _submitter = submitter;
+    }
+
+    public String getSubmitterAffiliation()
+    {
+        return _submitterAffiliation;
+    }
+
+    public void setSubmitterAffiliation(String submitterAffiliation)
+    {
+        _submitterAffiliation = submitterAffiliation;
+    }
+
+    public String getPxid()
+    {
+        return _pxid;
+    }
+
+    public void setPxid(String pxid)
+    {
+        _pxid = pxid;
     }
 }

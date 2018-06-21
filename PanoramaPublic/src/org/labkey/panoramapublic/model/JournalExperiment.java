@@ -34,6 +34,8 @@ public class JournalExperiment
     private Date _created;
     private int _createdBy;
     private Date _copied;
+    private boolean _keepPrivate;
+    private boolean pxidRequested;
 
     public int getJournalId()
     {
@@ -103,5 +105,25 @@ public class JournalExperiment
     public void setCopied(Date copied)
     {
         _copied = copied;
+    }
+
+    public boolean isKeepPrivate()
+    {
+        return _keepPrivate;
+    }
+
+    public void setKeepPrivate(boolean keepPrivate)
+    {
+        _keepPrivate = keepPrivate;
+    }
+
+    public boolean isPxidRequested()
+    {
+        return pxidRequested;
+    }
+
+    public void setPxidRequested(boolean pxidRequested)
+    {
+        this.pxidRequested = pxidRequested;
     }
 }
