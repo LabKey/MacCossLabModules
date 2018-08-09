@@ -2,10 +2,17 @@
  * Created by Yuval Boss yuval (at) uw.edu | 4/4/16
  */
 /* Filter container properties */
+body {
+    background-color: white;
+}
+#PassportTab {
+    background-color: white;
+}
+
 #filterContainer {
     width:100%;
     float:left;
-    margin-top:10px;
+    padding-top:10px;
     border-bottom:1px solid #ccc;
     font:14px 'Raleway', sans-serif;
     padding-bottom:15px;
@@ -105,6 +112,8 @@ green {
 
 #protein {
     margin-top:50px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ccc;
 }
 #peptide {
     display: inline-block;
@@ -125,6 +134,7 @@ green {
 .protein_sequence {
     fill: #365C63;
 }
+
 .protein_label_text {
     font-weight: 600;
 }
@@ -221,3 +231,4 @@ green {
     margin-left:10px;
     z-index: 10;
 }
+

@@ -1,10 +1,24 @@
 package org.labkey.passport.model;
 
+import org.labkey.api.data.Container;
+
 import java.util.Date;
 
 public class IFile
 {
     String fileName;
+
+    public Container getContainer()
+    {
+        return container;
+    }
+
+    public void setContainer(Container container)
+    {
+        this.container = container;
+    }
+
+    Container container;
 
     public int getRunId()
     {
@@ -17,6 +31,18 @@ public class IFile
     }
 
     private int runId;
+
+    public int getPepGroupId()
+    {
+        return pepGroupId;
+    }
+
+    public void setPepGroupId(int pepGroupId)
+    {
+        this.pepGroupId = pepGroupId;
+    }
+
+    private int pepGroupId;
 
     public Date getCreatedDate()
     {

@@ -16,6 +16,7 @@
     padding-right: 10px;
     float:left;
     width: 100%;
+    background-color:#FFF;
 }
 #ajaxloading {
     margin-left:auto;
@@ -59,6 +60,7 @@
     padding-left:10px;
     vertical-align: text-bottom;
     font-style: italic;
+    line-height:80%;
 }
 #basicproteininfo ul {
     float:left;
@@ -201,19 +203,16 @@
     float:right;
     margin-right:40px;
 }
-.ptm-text {
-    background-color:yellow;
+.feature-aa {
+    background-color:lightgray;
     font-size:12px !important;
     font-family: monospace ;
     font-weight:400 !important;
     /*cursor: pointer;*/
 }
-.non-variation {
-    background-color:lightskyblue;
-}
 
 /* needs importants to override JQuery css */
-.ptm-text-tooltip {
+.feature-aa-tooltip {
     background: #666;
     color: white;
     border: none;
@@ -226,10 +225,19 @@
     border:1px solid #b6b6b6 !important;
     border-radius: 0 !important;
 }
-
+#featuresList {
+    list-style-type: none;
+    margin:0;
+    padding:0;
+    overflow-y:scroll;
+    overflow-x:hidden;
+    display:block;
+    float:left;
+    max-height: 200px;
+}
 #selectedPeptideChromatogramContainer {
     padding-bottom:5px;
-    max-width:250px;
+    max-width:500px;
     height:400px;
     display:block;
     margin-left:auto;
@@ -237,6 +245,12 @@
     position:relative;
     margin-top:25px;
 }
+
+#selectedPeptideChromatogramContainer img {
+    max-width:250px;
+   float:left;
+}
+
 #selectedPeptideChromatogramContainer span
 {
     color:#808080;
@@ -244,27 +258,31 @@
     display:block;
     float:right;
 }
-
-#changecontrols {
-    width:100%;
-    text-align: center;
-}
-#changecontrols img {
-    width: 24px;
-    height:24px;
-}
-#changecontrols img{
-    width:26px;
-    height:26px;
-    cursor:pointer;
-    opacity:.7;
-}
 #peptideinfo {
     display:block;
     min-height:70px;
-    width:250px;
+    width:500px;
     padding-top:10px;
     margin-left:auto;
     margin-right: auto;
 }
 
+.external-link-icon {
+    width: 10px;
+    height: 10px;
+    float: left;
+    margin-left: 3px;
+}
+
+.peptide_label_text {
+    font-weight: 300;
+    font-size:10px;
+}
+
+.peptide_sequence {
+    fill: #ccc;
+    stroke: black;
+}
+.projectObject {
+    height: 20px;
+}

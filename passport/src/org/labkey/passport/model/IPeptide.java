@@ -3,32 +3,80 @@ package org.labkey.passport.model;
 public class IPeptide
 {
     private String sequence;
+    private String peptideModifiedSequence;
     private int startIndex;
     private int endIndex;
     private int proteinId;
     private int panoramaPeptideId;
     private double beforeIntensity;
-    private double beforeGlobalStandardArea;
+    private double beforeTotalArea;
     private double afterIntensity;
-    private double afterGlobalStandardArea;
+    private double afterTotalArea;
     private int precursorbeforeid;
+    private int precursorafterid;
+    private double beforeSumArea;
+    private double afterSumArea;
 
-    public double getBeforeGlobalStandardArea()
+    public double getBeforeSumArea()
     {
-        return beforeGlobalStandardArea;
+        return beforeSumArea;
     }
 
-    public void setBeforeGlobalStandardArea(double beforeGlobalStandardArea) {
-        this.beforeGlobalStandardArea = beforeGlobalStandardArea;
-    }
-
-    public double getAfterGlobalStandardArea()
+    public void setBeforeSumArea(double beforeSumArea)
     {
-        return afterGlobalStandardArea;
+        this.beforeSumArea = beforeSumArea;
     }
 
-    public void setAfterGlobalStandardArea(double afterGlobalStandardArea) {
-        this.afterGlobalStandardArea = afterGlobalStandardArea;
+    public double getAfterSumArea()
+    {
+        return afterSumArea;
+    }
+
+    public void setAfterSumArea(double afterSumArea)
+    {
+        this.afterSumArea = afterSumArea;
+    }
+
+
+    public int getPrecursorafterid()
+    {
+        return precursorafterid;
+    }
+
+    public void setPrecursorafterid(int precursorafterid)
+    {
+        this.precursorafterid = precursorafterid;
+    }
+
+
+    public double getBeforeTotalArea()
+    {
+        return beforeTotalArea;
+    }
+
+    public void setBeforeTotalArea(double beforeTotalArea)
+    {
+        this.beforeTotalArea = beforeTotalArea;
+    }
+
+    public double getAfterTotalArea()
+    {
+        return afterTotalArea;
+    }
+
+    public void setAfterTotalArea(double afterTotalArea)
+    {
+        this.afterTotalArea = afterTotalArea;
+    }
+
+    public String getPeptideModifiedSequence()
+    {
+        return peptideModifiedSequence;
+    }
+
+    public void setPeptideModifiedSequence(String peptideModifiedSequence)
+    {
+        this.peptideModifiedSequence = peptideModifiedSequence;
     }
 
     public int getPrecursorbeforeid()

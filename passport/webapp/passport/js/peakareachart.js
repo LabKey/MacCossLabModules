@@ -69,36 +69,9 @@ peakareachart = {
     selectPeptide: function selectPeptide(p) {
         if(p == null)
             return;
-        if(selectPeptide.ChromatogramId != null && selectPeptide.ChromatogramId == p.ChromatogramId)
-            return;
-        var oldPeptide =  selectedPeptide;
-        selectedPeptide = p;
-        var dataIndexOfPeptide = 0; // not sequence index, but index in array of peptides
-        for(dataIndexOfPeptide; dataIndexOfPeptide < barChartData.length; dataIndexOfPeptide++) {
-            if (barChartData[dataIndexOfPeptide] === selectedPeptide)
-                break;
-        }
-
-        // sets panorama chromatogram to that of the newly selected peptide
-        if(selectedPeptide["ChromatogramId"] == null) {
-            $('#selectedPeptideChromatogram').attr("src", "");
-            $('#selectedPeptideLink').hide();
-        } else {
-            $('#selectedPeptideLink').show();
-            $('#selectedPeptideChromatogram').attr("src", chomatogramUrl+"id="+selectedPeptide["ChromatogramId"]+"&chartWidth=250&chartHeight=400&syncY=false&syncX=false")
-        }
-        // sets panorama peptide link
-        $('#selectedPeptideLink').attr("href", showPeptideUrl + "id=" + selectedPeptide.PeptideId)
-        // sets basic peptide info (Seq, location, length, etc..
-        $('#peptideinfo').empty();
-        var totalPeakAreaWithCommas = selectedPeptide["Before Incubation"].toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        $('#peptideinfo').append('<span style="font-weight:600">Sequence:</span> <span style="font-family: monospace;">' + selectedPeptide.Sequence + "</span><br />" +
-                                '<span style="font-weight:600">Location:</span> <span style="font-family: monospace;">[' + selectedPeptide.StartIndex +","+ selectedPeptide.EndIndex + "]</span> <br />" +
-                                '<span style="font-weight:600">Length:</span> <span style="font-family: monospace;">' + selectedPeptide.Sequence.length+ "</span> <br />" +
-                                '<span style="font-weight:600">Total Peak Area:</span> <span style="font-family: monospace;">' + totalPeakAreaWithCommas + "</span> ");
-
-        // bar chart
         // order is VERY important here so be careful and make sure changes don't break anything
+        var oldPeptide = protein.oldPeptide;
+        var selectedPeptide = protein.selectedPeptide;
         if(oldPeptide != null) {
             $("#group-"+ oldPeptide.Sequence).find(".left-bar").css("fill","#8a89a6");
             $("#group-"+ oldPeptide.Sequence).find(".right-bar").css("fill","#a05d56");
@@ -116,24 +89,19 @@ peakareachart = {
 
             $('.'+selectedPeptide.Sequence+'-text').css("background-color","#ddd");
         }
-        // scroll in ul
-        var liIndex = $("li").index($('.'+selectedPeptide.Sequence+'-text'));
-        $('#livepeptidelist').scrollTop(0)
-        var pos = $('#livePeptideList li:nth-child('+liIndex+')').position();
-        if (pos != null) {
-            $('#livepeptidelist').scrollTop(0).scrollTop(pos.top);
-        }
+        var selectedPeptide = protein.getSelectedPeptide();
         peakareachart.paintPeptide(selectedPeptide);
         peakareachart.highlightPeptide(selectedPeptide.StartIndex, selectedPeptide.Sequence);
     },
-    draw: function draw(peakAreaDiv, proteinBarDiv, parentWidth) {
+    draw: function (peakAreaDiv, proteinBarDiv, parentWidth) {
         var margin = {top: 20, right: 100, bottom: 60, left: 100},
             width = parentWidth - margin.left - margin.right,
             height = 400 - margin.top - margin.bottom;
 
         plotProtein(protein.sequence);
         plotBarChart();
-        peakareachart.selectPeptide(selectedPeptide);
+        protein.selectPeptide(protein.selectedPeptide);
+        peakareachart.selectPeptide(protein.selectedPeptide);
 
         function plotProtein(sequence) {
             d3.select("#protein").selectAll("svg").remove();
@@ -250,7 +218,8 @@ peakareachart = {
                 })
                 .on("click", function (p) {
                     if(p.Enabled) {
-                        peakareachart.selectPeptide(p)
+                        protein.selectPeptide(p);
+                        peakareachart.selectPeptide(p);
                     }
                 })
                 .on("mouseover", function (d) {
@@ -259,7 +228,7 @@ peakareachart = {
                         this.childNodes[1].style.fill = "#66221B";
                     }
                 }).on('mouseout', function (d) {
-                    if(d.Enabled && (selectedPeptide == null || d.Sequence != selectedPeptide.Sequence)) {
+                    if(d.Enabled && (protein.selectedPeptide == null || d.Sequence != protein.selectedPeptide.Sequence)) {
                         this.childNodes[0].style.fill = "#8a89a6";
                         this.childNodes[1].style.fill = "#a05d56";
                     }
@@ -372,15 +341,17 @@ peakareachart = {
                 .selectAll('.tick')
                 .data(barChartData)
                 .on("click", function (p) {
-                    if(p.Enabled)
-                        peakareachart.selectPeptide(p)
+                    if(p.Enabled) {
+                        protein.selectPeptide(p);
+                        peakareachart.selectPeptide(p);
+                    }
                 }).on('mouseout', function (d) {
 
             });
 
         }
     }
-}
+};
 
 
 

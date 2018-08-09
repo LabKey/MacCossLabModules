@@ -7,7 +7,7 @@
 <%@ page import="org.labkey.passport.model.IKeyword" %>
 <%@ page import="java.util.ArrayList" %>
 <%@ page import="java.util.List" %>
-<%@ page import="org.labkey.passport.model.IFeature" %>
+<%@ page import="java.text.SimpleDateFormat" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
@@ -15,21 +15,30 @@
     JspView<?> me = (JspView<?>) HttpView.currentView();
     IProtein protein = (IProtein)me.getModelBean();
     final String contextPath = AppProps.getInstance().getContextPath();
-%>
+    if(protein == null) {%>
+        Sorry the page you are looking for could not be found.
+    <%} else {%>
 <!--START IMPORTS-->
 
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
 <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
 <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
 <script src="<%=h(contextPath)%>/passport/js/d3.v3.js"></script>
+<script src="<%=h(contextPath)%>/passport/js/util.js"></script>
+<script src="<%=h(contextPath)%>/passport/js/settings.js"></script>
 <script src="<%=h(contextPath)%>/passport/js/protein.js"></script>
 <script src="<%=h(contextPath)%>/passport/js/peakareachart.js"></script>
+<script src="<%=h(contextPath)%>/passport/js/project.js"></script>
+<script src="<%=h(contextPath)%>/passport/js/proteinbar.js"></script>
 <script type="text/javascript">
     LABKEY.requiresCss("/passport/css/protein.css");
     LABKEY.requiresCss("/passport/css/peakareachart.css");
 </script>
 <script>
-    var protein = <%=protein.getJSON().toString(2)%>
+    var proteinJSON = <%=protein.getJSON().toString(2)%>
+    document.addEventListener("DOMContentLoaded", function() {
+        protein.initialize();
+    });
     var chomatogramUrl = "<%=h(new ActionURL("targetedms", "precursorChromatogramChart", getContainer()))%>";
     var showPeptideUrl = "<%=h(new ActionURL("targetedms", "showPeptide", getContainer()))%>";
 </script>
@@ -39,10 +48,10 @@
 <!-- PROTEIN INFO HEADER START -->
 <div id="passportContainer">
     <div id="basicproteininfo">
-        <h2><%=h(protein.getName())%>
+        <h2 id="proteinName"><%=h(protein.getName())%>
             <a href="<%=h(new ActionURL("targetedms", "downloadDocument", getContainer()))%>runId=<%=h(protein.getFile().getRunId())%>">
-                <img src="<%=h(contextPath)%>/passport/img/download.jpg" style="width:40x; height:20px; margin-left:5px;" alt="Download Skyline dataset" title="Download Skyline dataset from PanoramaWeb.org">
-            </a><sub title="month/day/year">Data Uploaded: <%=h(protein.getFile().getCreatedDate())%></sub>
+                <img src="<%=h(contextPath)%>/passport/img/download.png" style="width:30x; height:30px; margin-left:5px;" alt="Download Skyline dataset" title="Download Skyline dataset from PanoramaWeb.org">
+            </a><sub title="month/day/year" id="dataUploaded">Data Uploaded: <%=h(new SimpleDateFormat("MM-dd-yyyy").format(protein.getFile().getCreatedDate()))%></sub>
         </h2>
         <p id="apiLinks">Sources:&nbsp;<a href="<%=h(new ActionURL("targetedms", "showProtein", getContainer()))%>id=<%=h(protein.getPepGroupId())%>">Panorama</a> &#8759; <a href="http://www.uniprot.org/uniprot/<%=h(protein.getAccession())%>">Uniprot</a></p>
         <ul style="max-width:300px;"><!-- Color Scheme: http://paletton.com/#uid=72X0X0kCyk3sipxvvmIKxgXRodf-->
@@ -68,9 +77,7 @@
             <li style="border-left: 6px solid #A07200">
                 <span title="Biological process">Biological process:&nbsp;</span><br/>
                 <%for(int i = 0; i < biologicalProcesses.size(); i++){%>
-                <a href="http://www.uniprot.org/keywords/<%=h(biologicalProcesses.get(i).id)%>" target="_blank"><%=h(biologicalProcesses.get(i).label)%></a>
-                <%if(i!= biologicalProcesses.size()-1) {%>, <%}%>
-                <%}%>
+                <a href="http://www.uniprot.org/keywords/<%=h(biologicalProcesses.get(i).id)%>" target="_blank"><%=h(biologicalProcesses.get(i).label)%></a><%if(i!= biologicalProcesses.size()-1) {%>,&nbsp;<%}%><%}%>
             </li>
             <%}%>
             <%if(molecularFunctions.size() > 0) {%>
@@ -127,7 +134,7 @@
         </ul>
     </div>
 <!-- PROTEIN INFO HEADER END -->
-
+<%if(protein.getPep() != null && protein.getPep().length != 0) {%>
 <!-- FILTER OPTIONS START -->
     <div id="filterContainer"><img src="<%=h(contextPath)%>/passport/img/filtericon.png" id="filtericon"/>
         <h1>Filter Options</h1>
@@ -159,15 +166,41 @@
         <div id="pepListBox">
             <ul id="livepeptidelist"></ul>
         </div>
-        <div class="filterBox">
-            <h2>SNPs:</h2>
-            <p>Coming soon</p>
-        </div>
-        <div class="filterBox">
-            <h2>PTMs:</h2>
-            <label for="showFeatures">Show features:&nbsp;</label>
-            <input id="showFeatures" type="checkbox" name="showFeatures" readonly="readonly" style="border:0; color:#A01C00; font-weight:bold;"/>
-        </div>
+        <%if(protein.getFeatures() != null && protein.getFeatures().length > 0) {%>
+            <div class="filterBox" style="margin-left:10px; padding-left:20px;">
+                <h2>Features:</h2>
+                <input id="showFeatures" type="checkbox" name="showFeatures" readonly="readonly" style="border:0; color:#A01C00; font-weight:bold;"/>
+                <label for="showFeatures">-&nbsp;Select All</label>
+                <br/>
+                <ul id="featuresList"></ul>
+            </div>
+        <%}%>
+        <%--<%if(protein.getProjects() != null && protein.getProjects().length > 0) {%>--%>
+            <%--<div class="filterBox">--%>
+                <%--<h2>PanoramaPublic Projects:</h2>--%>
+                <%--<%IProject[] projects = protein.getProjects();--%>
+                    <%--Map<String, List<IProject>> containerMap = new HashMap<>();--%>
+
+            <%--for(int i = 0; i < projects.length; i++)--%>
+            <%--{--%>
+                <%--if (!containerMap.containsKey(projects[i].getContainer().getId()))--%>
+                    <%--containerMap.put(projects[i].getContainer().getId(), new ArrayList<>());--%>
+                <%--containerMap.get(projects[i].getContainer().getId()).add(projects[i]);--%>
+            <%--}%>--%>
+            <%--<%for (String key :--%>
+                    <%--containerMap.keySet()){--%>
+                <%--List<IProject> files = containerMap.get(key);--%>
+                <%--Container c = files.get(0).getContainer();--%>
+            <%--%><h5 style="margin: 0; float:left;"><%=h(c.getName())%></h5>--%>
+                <%--<a href="<%=h(new ActionURL("targetedms", "showPrecursorList", c))%>id=<%=h(files.get(0).getRunId())%>" style="font-size: 12px;">--%>
+                    <%--<img src="<%=h(contextPath)%>/passport/img/external-link.png" class="external-link-icon" title="Show Project"/>--%>
+                <%--</a><br/><%--%>
+                <%--for(IProject file: files) {%>--%>
+                <%--&nbsp;&nbsp;&nbsp;<a href="<%=h(new ActionURL("targetedms", "showProtein", c))%>id=<%=h(file.getPeptideGroupId())%>" title="Show Protein in Project" style="font-size: 12px;"><%=h(file.getFileName())%></a><br/>--%>
+                <%--<%}--%>
+            <%--}%>--%>
+            <%--</div>--%>
+        <%--<%}%>--%>
         <button id="formreset" type="button">Reset</button>
     </div>
 <!-- FILTER OPTIONS END -->
@@ -176,12 +209,28 @@
     <div id="peptide"></div>
     <div id="protein"></div>
 <!-- CHART END -->
+    <%--<%--%>
+    <%--IProject[] projects = protein.getProjects();--%>
+    <%--if (projects != null && projects.length > 0) {%>--%>
+        <%--<div id="projects">--%>
+            <%--<center><h2>PanoramaPublic Projects for <%=h(protein.getName())%></h2></center>--%>
+            <%--<%--%>
+                <%--for(int i = 0; i < projects.length; i++) {%>--%>
+            <%--<div id="project<%=h(projects[i].getRunId())%>" class="projectObject">--%>
+                <%--<input type="checkbox" style="float:left;" name="name" checked="true" value="<%=h(projects[i].getRunId())%>" id="checkboxproject<%=h(projects[i].getRunId())%>">--%>
+            <%--</div>--%>
+            <%--<%}%>--%>
+        <%--</div>--%>
+    <%--<%}%>--%>
+
     <div id="selectedPeptideChromatogramContainer">
-        <img id="selectedPeptideChromatogram" src="" alt="Chromatogram not available for the selected peptide"/>
+        <img id="selectedPeptideChromatogramBefore" src="" alt="Chromatogram not available for the selected peptide"/>
+        <img id="selectedPeptideChromatogramAfter" src="" alt="Chromatogram not available for the selected peptide"/>
         <span>Source:&nbsp;<a id="selectedPeptideLink" href="" title="View peptide on PanoramaWeb">PanoramaWeb</a></span>
     </div>
     <div id="peptideinfo"></div>
 </div>
+<%}%>
 <%} else {
     // PROTEIN DOES NOT EXIST - SHOW ERROR MESSAGE
     ViewContext viewContext = getViewContext();
@@ -191,4 +240,5 @@
 <%}%>
 
 
+<%}%>
 

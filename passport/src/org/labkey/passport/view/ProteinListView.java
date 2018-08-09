@@ -3,6 +3,7 @@ package org.labkey.passport.view;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.ButtonBar;
 import org.labkey.api.data.ContainerFilter;
+import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.SimpleDisplayColumn;
 import org.labkey.api.data.UrlColumn;
 import org.labkey.api.query.QueryService;
@@ -38,7 +39,6 @@ public class ProteinListView extends QueryView
 
     public static ProteinListView createView(ViewContext model)
     {
-//        UserSchema schema = new PassportSchema(model.getUser(), model.getContainer());
         UserSchema schema = QueryService.get().getUserSchema(model.getUser(), model.getContainer(), "targetedms");
         QuerySettings querySettings = new QuerySettings(model, "Passport_proteins", "Passport_proteins");
         ProteinListView view = new ProteinListView(schema, querySettings, null);
@@ -53,7 +53,6 @@ public class ProteinListView extends QueryView
     protected void setupDataView(DataView ret)
     {
         super.setupDataView(ret);
-
         ActionURL url = new ActionURL(PassportController.ProteinAction.class, getContainer());
         url.addParameter("accession", "${accession}");
         SimpleDisplayColumn urlColumn = new UrlColumn(url.toString(), "PASSPORT VIEW");
@@ -62,6 +61,7 @@ public class ProteinListView extends QueryView
         ActionURL urlDownload = new ActionURL("targetedms", "downloadDocument", getContainer());
         urlDownload.addParameter("runId", "${runid}");
         SimpleDisplayColumn urlColumnDownload = new UrlColumn(urlDownload.toString(), "Download");
+        urlColumnDownload.setName("Skyline"); // TODO check if works
         ret.getDataRegion().addDisplayColumn(10, urlColumnDownload);
         ret.getDataRegion().removeColumns("runid");
     }

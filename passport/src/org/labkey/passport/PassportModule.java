@@ -19,20 +19,23 @@ package org.labkey.passport;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
-import org.labkey.api.data.DbSchema;
-import org.labkey.api.module.DefaultModule;
 import org.labkey.api.module.ModuleContext;
+import org.labkey.api.module.SpringModule;
+import org.labkey.api.query.QueryView;
+import org.labkey.api.view.BaseWebPartFactory;
+import org.labkey.api.view.Portal;
+import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartFactory;
-import org.labkey.passport.view.PassportWebPart;
+import org.labkey.api.view.WebPartView;
+import org.labkey.passport.view.ProteinListView;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 
-public class PassportModule extends DefaultModule
+public class PassportModule extends SpringModule
 {
     public static final String CONTROLLER_NAME = "passport";
-    public static final WebPartFactory _passportFactory = new PassportWebPart();
 
     @Override
     public String getName()
@@ -54,9 +57,18 @@ public class PassportModule extends DefaultModule
 
     @Override
     @NotNull
-    protected Collection<WebPartFactory> createWebPartFactories()
-    {
-        return Collections.singletonList(_passportFactory);
+    protected Collection<WebPartFactory> createWebPartFactories() {
+        BaseWebPartFactory paretoPlotFactory = new BaseWebPartFactory("Passport")
+        {
+            public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
+            {
+                QueryView v =  ProteinListView.createView(portalCtx);
+                v.setTitle("Passport");
+                v.setFrame(WebPartView.FrameType.PORTAL);
+                return v;
+            }
+        };
+        return Collections.singletonList(paretoPlotFactory);
     }
 
     @Override
@@ -66,7 +78,7 @@ public class PassportModule extends DefaultModule
     }
 
     @Override
-    public void doStartup(ModuleContext moduleContext)
+    protected void startupAfterSpringConfig(ModuleContext moduleContext)
     {
         // add a container listener so we'll know when our container is deleted:
         ContainerManager.addContainerListener(new PassportContainerListener());
@@ -85,5 +97,4 @@ public class PassportModule extends DefaultModule
     {
         return Collections.singleton("passport");
     }
-
 }
