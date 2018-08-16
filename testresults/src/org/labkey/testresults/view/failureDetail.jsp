@@ -110,7 +110,7 @@
                 Duration: <%=h(run.getDuration())%> <br />
                 OS: <%=h(run.getOs())%> <br />
                 Post Time: <%=h(run.getPostTime())%> <br />
-                Rev: <%=h(run.getRevision())%> <br />
+                Rev: <%=h(run.getRevisionFull())%> <br />
                 Run Failures: <%=h(run.getFailures().length)%>
                 </a></p>
             </td>

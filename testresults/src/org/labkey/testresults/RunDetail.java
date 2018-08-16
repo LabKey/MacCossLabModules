@@ -40,6 +40,7 @@ public class RunDetail implements Comparable<RunDetail>
     private Date posttime;
     private Date timestamp;
     private int revision; // revision of skyline SVN at time of post
+    private String gitHash;
     private boolean flagged; // if true then is not displayed in charts
     private String os; // operating system
     private Container container;
@@ -62,14 +63,15 @@ public class RunDetail implements Comparable<RunDetail>
 
     }
 
-    public RunDetail(int userid, int duration, Date posttime, Date timestamp, String os, int revision, Container container, boolean flagged, byte[] xml,
-                     byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem, byte[] log) {
+    public RunDetail(int userid, int duration, Date posttime, Date timestamp, String os, int revision, String gitHash, Container container, boolean flagged,
+                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem, byte[] log) {
         this.userid = userid;
         this.username = null;
         this.duration = duration;
         this.posttime = posttime;
         this.os = os;
         this.revision = revision;
+        this.gitHash = gitHash;
         this.container = container;
         this.failures = new TestFailDetail[0];
         this.passes = new TestPassDetail[0];
@@ -84,9 +86,9 @@ public class RunDetail implements Comparable<RunDetail>
         this.averagemem = averagemem;
         this.log = log;
     }
-    public RunDetail(int userid, String username, int duration, Date posttime, Date timestamp, String os, int revision, Container container, boolean flagged, byte[] xml,
-                     byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem) {
-        this(userid, duration, posttime, timestamp, os, revision, container, flagged, xml, pointsummary, passedtests, failedtests, leakedtests, averagemem, new byte[0]);
+    public RunDetail(int userid, String username, int duration, Date posttime, Date timestamp, String os, int revision, String gitHash, Container container, boolean flagged,
+                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem) {
+        this(userid, duration, posttime, timestamp, os, revision, gitHash, container, flagged, xml, pointsummary, passedtests, failedtests, leakedtests, averagemem, new byte[0]);
         this.username = username;
     }
 
@@ -108,6 +110,20 @@ public class RunDetail implements Comparable<RunDetail>
     public void setRevision(int revision)
     {
         this.revision = revision;
+    }
+
+    public String getGitHash() { return gitHash; }
+
+    public void setGitHash(String gitHash) { this.gitHash = gitHash; }
+
+    public String getRevisionFull() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getRevision());
+        if (gitHash != null && !gitHash.isEmpty()) {
+            sb.append('.');
+            sb.append(gitHash);
+        }
+        return sb.toString();
     }
 
     public String getOs()

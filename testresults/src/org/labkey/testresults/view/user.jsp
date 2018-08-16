@@ -192,7 +192,7 @@
                 <td><%=h(run.getFailedtests())%></td>
                 <td><%=h(run.getLeakedtests())%></td>
                 <td><%=h(run.getOs())%></td>
-                <td><%=h(run.getRevision())%></td>
+                <td><%=h(run.getRevisionFull())%></td>
                 <td><a class="trainset" runId="<%=h(run.getId())%>" runTrained="<%=h(run.isTrainRun())%>">
                     <%=h((run.isTrainRun()) ? "Remove from training set" : "Add to training set")%>
                 </a></td>

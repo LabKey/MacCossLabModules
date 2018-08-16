@@ -1024,6 +1024,7 @@ public class TestResultsController extends SpringActionController
                 if(postTime == null)
                     postTime = new Date();
                 int revision = Integer.parseInt(docElement.getAttribute("revision"));
+                String gitHash = docElement.getAttribute("git_hash");
 
                 // Get log
                 String log = null;
@@ -1136,8 +1137,8 @@ public class TestResultsController extends SpringActionController
                 if(log != null)
                     compressedLog = compressString(log);
 
-                RunDetail run = new RunDetail(userid, duration, postTime, xmlTimestamp, os, revision, getViewContext().getContainer(), false, compressedXML,
-                        pointSummary, passes.size(), failures.size(), leaks.size(), avgMemory, compressedLog); //TODO change date AND USERID
+                RunDetail run = new RunDetail(userid, duration, postTime, xmlTimestamp, os, revision, gitHash, getViewContext().getContainer(), false,
+                        compressedXML, pointSummary, passes.size(), failures.size(), leaks.size(), avgMemory, compressedLog); //TODO change date AND USERID
                 // stores test run in database and gets the id(foreign key)
                 run = Table.insert(null, TestResultsSchema.getInstance().getTableInfoTestRuns(), run);
                 int runId = run.getId();
@@ -1295,6 +1296,7 @@ public class TestResultsController extends SpringActionController
             run.setFlagged(rs.getBoolean("flagged"));
             run.setOs(rs.getString("os"));
             run.setRevision(rs.getInt("revision"));
+            run.setGitHash(rs.getString("gitHash"));
             run.setContainer(ContainerManager.getForId(rs.getString("container")));
             run.setTrainRun(rs.getBoolean("traindata"));
             byte[] ptSummary = rs.getBytes("pointsummary");

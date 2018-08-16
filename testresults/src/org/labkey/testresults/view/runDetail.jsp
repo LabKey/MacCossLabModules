@@ -80,7 +80,7 @@
     <p>Run Id: <%=h(run.getId())%> <br />
     User : <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>user=<%=h(run.getUsername())%>"><%=h(run.getUserName())%></a> <br />
     OS: <%=h(run.getOs())%>   <br />
-    Revision: <%=h(run.getRevision())%>  <br />
+    Revision: <%=h(run.getRevisionFull())%>  <br />
     Passed Tests : <%=h(run.getPasses().length)%> <br />
     Failures : <%=h(failures.length)%> <br />
     Leaks : <%=h(leaks.length)%> <br />
