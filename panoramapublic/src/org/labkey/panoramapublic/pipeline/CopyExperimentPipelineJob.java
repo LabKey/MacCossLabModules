@@ -15,6 +15,8 @@
  */
 package org.labkey.targetedms.pipeline;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.labkey.api.pipeline.LocalDirectory;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
@@ -47,6 +49,15 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     private final Journal _journal;
     private final String _description;
 
+    @JsonCreator
+    protected CopyExperimentPipelineJob(@JsonProperty("_experimentAnnotations") ExperimentAnnotations experiment, @JsonProperty("_journal") Journal journal, @JsonProperty("_description") String description)
+    {
+        super();
+        _experimentAnnotations = experiment;
+        _journal = journal;
+        _description = description;
+    }
+
     public CopyExperimentPipelineJob(ViewBackgroundInfo info, PipeRoot root, ExperimentAnnotations experiment, Journal journal)
     {
         super(CopyExperimentPipelineProvider.NAME, info, root);
@@ -67,6 +78,12 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
 
         header("Copying experiment \"" + experiment.getTitle() + "\" from folder "
                 + experiment.getContainer().getPath() + " to " + getContainer().getPath());
+    }
+
+    @Override
+    public boolean hasJacksonSerialization()
+    {
+        return true;
     }
 
     public ActionURL getStatusHref()
