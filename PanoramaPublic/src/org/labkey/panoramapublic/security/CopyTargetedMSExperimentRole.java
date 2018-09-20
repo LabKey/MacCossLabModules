@@ -32,9 +32,9 @@ public class CopyTargetedMSExperimentRole extends AbstractRole
                 ReadPermission.class,
                 FolderExportPermission.class
         );
+        excludeGuests();
     }
 
-    // This role should not be displayed in a permissions management interface.
     @Override
     public boolean isAssignable()
     {
