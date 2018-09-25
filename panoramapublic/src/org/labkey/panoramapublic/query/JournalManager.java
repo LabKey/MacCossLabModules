@@ -477,10 +477,8 @@ public class JournalManager
         }
     }
 
-    public static void updateJournalExperimentUrls(ExperimentAnnotations expAnnotations, Journal journal, String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException
+    public static void updateJournalExperimentUrls(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException
     {
-        JournalExperiment je = getJournalExperiment(expAnnotations, journal);
-
         ShortURLRecord oldAccessUrl = je.getShortAccessUrl();
         ShortURLRecord oldCopyUrl = je.getShortCopyUrl();
 

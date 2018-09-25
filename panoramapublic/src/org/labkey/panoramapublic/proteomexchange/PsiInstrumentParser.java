@@ -113,7 +113,7 @@ public class PsiInstrumentParser
         private final String _description;
         private final String _vendor;
 
-        private PsiInstrument(String id, String name, String description, String vendor)
+        PsiInstrument(String id, String name, String description, String vendor)
         {
             _id = id;
             _name = name;

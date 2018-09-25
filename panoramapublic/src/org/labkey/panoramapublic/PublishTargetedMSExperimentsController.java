@@ -725,19 +725,27 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 throw new NotFoundException("Could not find experiment with id " + form.getId());
             }
 
-            return getPublishFormView(form, exptAnnotations, errors, !form.isUpdate());
+            return getPublishFormView(form, exptAnnotations, errors);
         }
     }
 
     private static final int RANDOM_URL_SIZE = 6;
-    private static JspView getPublishFormView(PublishExperimentForm form, ExperimentAnnotations exptAnnotations, BindException errors, boolean newForm)
+    private static JspView getPublishFormView(PublishExperimentForm form, ExperimentAnnotations exptAnnotations, BindException errors)
     {
         PublishExperimentFormBean bean = new PublishExperimentFormBean();
         bean.setForm(form);
         bean.setJournalList(JournalManager.getJournals());
         bean.setExperimentAnnotations(exptAnnotations);
 
-        if(newForm)
+        JournalExperiment journalExperiment = JournalManager.getJournalExperiment(exptAnnotations.getId(), form.getJournalId());
+        if(journalExperiment != null)
+        {
+            form.setShortAccessUrl(journalExperiment.getShortAccessUrl().getShortURL());
+            form.setJournalId(journalExperiment.getJournalId());
+            form.setKeepPrivate(journalExperiment.isKeepPrivate());
+            form.setGetPxid(journalExperiment.isKeepPrivate());
+        }
+        else if(form.getShortAccessUrl() == null)
         {
             form.setShortAccessUrl(generateRandomUrl(RANDOM_URL_SIZE));
             List<Journal> journals = JournalManager.getJournals();
@@ -746,16 +754,6 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 throw new NotFoundException("Could not find any journals.");
             }
             form.setJournalId(journals.get(0).getId()); // This is "Panorama Public" on panoramaweb.org
-        }
-        else
-        {
-            JournalExperiment journalExperiment = JournalManager.getJournalExperiment(exptAnnotations.getId(), form.getJournalId());
-            if(journalExperiment == null)
-            {
-                throw new NotFoundException("Could not find an entry in JournalExperiment for experiment ID " + exptAnnotations.getId() + " and journal ID " + form.getJournalId());
-            }
-            form.setShortAccessUrl(journalExperiment.getShortAccessUrl().getShortURL());
-            form.setJournalId(journalExperiment.getJournalId());
         }
 
         JspView view = new JspView("/org/labkey/targetedms/view/publish/publishExperimentForm.jsp", bean, errors);
@@ -826,24 +824,13 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
             else
             {
-                String journal = _journal.getName();
-                StringBuilder html = new StringBuilder();
-                html.append("You are giving access to ").append(PageFlowUtil.filter(journal)).append(" to make a copy of your data. ");
-                if (form.isKeepPrivate())
-                {
-                    html.append("Your data on ").append(PageFlowUtil.filter(journal)).append(" will be kept private and a reviewer account will be provided to you. ");
-                }
-                else
-                {
-                    html.append("Your data on ").append(PageFlowUtil.filter(journal)).append(" will be made public. ");
-                }
-                if(form.isGetPxid())
-                {
-                    html.append("<br>A ProteomeXchange ID will be requested for your data.<br>");
-                }
-                html.append("<br>Are you sure you want to continue?");
-                HtmlView view = new HtmlView(html.toString());
-                view.setTitle("Submission Request to " + journal);
+                PublishExperimentConfirmBean bean = new PublishExperimentConfirmBean();
+                bean.setExperimentAnnotations(_experimentAnnotations);
+                bean.setJournal(_journal);
+                bean.setForm(form);
+
+                JspView<PublishExperimentConfirmBean> view = new JspView<PublishExperimentConfirmBean>("/org/labkey/targetedms/view/publish/confirmSubmit.jsp", bean, errors);
+                view.setTitle("Submission Request to " + _journal.getName());
                 return view;
             }
         }
@@ -873,7 +860,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
         public ModelAndView getFailView(PublishExperimentForm form, BindException errors)
         {
-            return getPublishFormView(form, _experimentAnnotations, errors, !form.isUpdate());
+            return getPublishFormView(form, _experimentAnnotations, errors);
         }
 
         @Override
@@ -953,6 +940,14 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         {
             return TargetedMSController.getViewExperimentDetailsURL(form.getId(), getContainer());
         }
+
+        @Override
+        public URLHelper getCancelUrl()
+        {
+            ActionURL url = getViewContext().getActionURL().clone();
+            url = url.setAction(ViewPublishExperimentFormAction.class); // keep parameters same, change action class.
+            return url;
+        }
     }
 
     public static final class PublishExperimentFormBean
@@ -992,14 +987,54 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
     }
 
+    public static final class PublishExperimentConfirmBean
+    {
+        private PublishExperimentForm _form;
+        private ExperimentAnnotations _experimentAnnotations;
+        private Journal _journal;
+
+        public PublishExperimentForm getForm()
+        {
+            return _form;
+        }
+
+        public void setForm(PublishExperimentForm form)
+        {
+            _form = form;
+        }
+
+        public ExperimentAnnotations getExperimentAnnotations()
+        {
+            return _experimentAnnotations;
+        }
+
+        public void setExperimentAnnotations(ExperimentAnnotations experimentAnnotations)
+        {
+            _experimentAnnotations = experimentAnnotations;
+        }
+
+        public Journal getJournal()
+        {
+            return _journal;
+        }
+
+        public void setJournal(Journal journal)
+        {
+            _journal = journal;
+        }
+    }
+
     public static class PublishExperimentForm extends PreSubmissionCheckForm
     {
         private int _journalId;
         private String _shortAccessUrl;
         private String _shortCopyUrl;
-        private boolean _update = false;
-        private boolean _keepPrivate = false;
-        private boolean _getPxid = true;
+        private boolean _update;
+        private boolean _keepPrivate;
+        private boolean _getPxid;
+        private String _labHeadName;
+        private String _labHeadAffiliation;
+        private String _labHeadEmail;
 
         public int getJournalId()
         {
@@ -1070,6 +1105,36 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         {
             _getPxid = getPxid;
         }
+
+        public String getLabHeadName()
+        {
+            return _labHeadName;
+        }
+
+        public void setLabHeadName(String labHeadName)
+        {
+            _labHeadName = labHeadName;
+        }
+
+        public String getLabHeadAffiliation()
+        {
+            return _labHeadAffiliation;
+        }
+
+        public void setLabHeadAffiliation(String labHeadAffiliation)
+        {
+            _labHeadAffiliation = labHeadAffiliation;
+        }
+
+        public String getLabHeadEmail()
+        {
+            return _labHeadEmail;
+        }
+
+        public void setLabHeadEmail(String labHeadEmail)
+        {
+            _labHeadEmail = labHeadEmail;
+        }
     }
     // ------------------------------------------------------------------------
     // END Action for publishing an experiment (provide copy access to a journal)
@@ -1126,40 +1191,37 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
-            StringBuilder html = new StringBuilder();
-            String journal = _journal.getName();
-            html.append("Are you sure you want to update your submission request to " + PageFlowUtil.filter(journal) + "? ");
-            html.append("<br><br>");
-            html.append("The new short access link is: " + AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + "/" + form.getShortAccessUrl() + ShortURLRecord.URL_SUFFIX);
-            if(form.isKeepPrivate())
-            {
-                html.append("<br>Your data on ").append(PageFlowUtil.filter(journal)).append(" will be kept private and a reviewer account will be provided to you. ");
-            }
-            else
-            {
-                html.append("<br>Your data on ").append(PageFlowUtil.filter(journal)).append(" will be made public. ");
-            }
-            if(form.isGetPxid())
-            {
-                html.append("<br>A ProteomeXchange ID will be requested for your data.");
-            }
+            PublishExperimentConfirmBean bean = new PublishExperimentConfirmBean();
+            bean.setExperimentAnnotations(_experimentAnnotations);
+            bean.setJournal(_journal);
+            bean.setForm(form);
 
-            HtmlView view = new HtmlView(html.toString());
-            view.setTitle("Update Submission Request to " + journal);
+            JspView<PublishExperimentConfirmBean> view = new JspView<>("/org/labkey/targetedms/view/publish/confirmSubmit.jsp", bean, errors);
+            view.setTitle("Update Submission Request to " + _journal.getName());
             return view;
         }
 
         @Override
         public boolean handlePost(PublishExperimentForm form, BindException errors) throws Exception
         {
+            _journalExperiment.setKeepPrivate(form.isKeepPrivate());
+            _journalExperiment.setPxidRequested(form.isGetPxid());
             if(!_journalExperiment.getShortAccessUrl().getShortURL().equalsIgnoreCase(form.getShortAccessUrl()))
             {
                 // Change the short copy URL to match the access URL.
                 assignShortCopyUrl(form);
 
-            try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
+                try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
                 {
-                    JournalManager.updateJournalExperimentUrls(_experimentAnnotations, _journal, form.getShortAccessUrl(), form.getShortCopyUrl(), getUser());
+                    JournalManager.updateJournalExperimentUrls(_experimentAnnotations, _journal, _journalExperiment, form.getShortAccessUrl(), form.getShortCopyUrl(), getUser());
+                    transaction.commit();
+                }
+            }
+            else
+            {
+                try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
+                {
+                    JournalManager.updateJournalExperiment(_journalExperiment, getUser());
                     transaction.commit();
                 }
             }
@@ -1184,7 +1246,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
             m.setSubject(String.format("Access to copy an experiment on Panorama (ID: %s)%s", exptAnnotations.getId(), (updated ? " (**UPDATED**)" : "")));
 
-            StringBuilder text = new StringBuilder("You have been given access to copy an experiment on Panorama.\n\n");
+            StringBuilder text = new StringBuilder("You have been given access to copy an experiment on Panorama" + (updated ? " (**UPDATED**)" : "") +".\n\n");
             text.append("ExperimentID: ").append(exptAnnotations.getId());
             text.append("\n\n");
             String containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(exptAnnotations.getContainer()).getURIString();
@@ -1196,7 +1258,11 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             text.append(journalExperiment.getShortCopyUrl().renderShortURL()).append("\n\n");
             if(form.isGetPxid())
             {
-                text.append("\n***Get ProteomeXchange ID\n\n");
+                text.append("\n***Get ProteomeXchange ID");
+                text.append("\nLab Head: ").append(form.getLabHeadName());
+                text.append("\nEmail: ").append(form.getLabHeadEmail());
+                text.append("\nAffiliation: ").append(form.getLabHeadAffiliation());
+                text.append("\n\n");
             }
             if(form.isKeepPrivate())
             {
@@ -1537,7 +1603,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             if(expAnnot == null)
             {
                 errors.reject(ERROR_MSG, "No experiment found in for Id " + form.getId());
-                return null;
+                return new SimpleErrorView(errors);
             }
 
             if(!expAnnot.getContainer().equals(getContainer()))
@@ -1718,6 +1784,9 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         private String _pxUserName;
         private String _pxPassword;
         private String _changeLog;
+        private String _labHeadName;
+        private String _labHeadEmail;
+        private String _labHeadAffiliation;
 
         public boolean getPeerReviewed()
         {
@@ -1787,6 +1856,36 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         public void setChangeLog(String changeLog)
         {
             _changeLog = changeLog;
+        }
+
+        public String getLabHeadName()
+        {
+            return _labHeadName;
+        }
+
+        public void setLabHeadName(String labHeadName)
+        {
+            _labHeadName = labHeadName;
+        }
+
+        public String getLabHeadEmail()
+        {
+            return _labHeadEmail;
+        }
+
+        public void setLabHeadEmail(String labHeadEmail)
+        {
+            _labHeadEmail = labHeadEmail;
+        }
+
+        public String getLabHeadAffiliation()
+        {
+            return _labHeadAffiliation;
+        }
+
+        public void setLabHeadAffiliation(String labHeadAffiliation)
+        {
+            _labHeadAffiliation = labHeadAffiliation;
         }
     }
 
@@ -2064,8 +2163,15 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
     public static ActionURL getPublishExperimentURL(int experimentAnnotationsId, Container container)
     {
+        return getPublishExperimentURL(experimentAnnotationsId, container, true, true);
+    }
+
+    public static ActionURL getPublishExperimentURL(int experimentAnnotationsId, Container container, boolean keepPrivate, boolean getPxId)
+    {
         ActionURL result = new ActionURL(ViewPublishExperimentFormAction.class, container);
         result.addParameter("id", experimentAnnotationsId);
+        result.addParameter("keepPrivate", keepPrivate);
+        result.addParameter("getPxid", getPxId);
         return result;
     }
 

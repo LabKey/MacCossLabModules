@@ -21,9 +21,7 @@ import org.labkey.api.security.User;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.targetedms.PublishTargetedMSExperimentsController;
 import org.labkey.targetedms.model.ExperimentAnnotations;
-import org.xml.sax.SAXException;
 
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
@@ -34,7 +32,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -203,10 +200,6 @@ public class PxXmlWriter extends PxWriter
                 throw new PxException("Error writing keywords.", e);
             }
         }
-        else
-        {
-            throw new PxException("No keywords found.");
-        }
     }
 
     void writePublicationList(ExperimentAnnotations expAnnotations, PublishTargetedMSExperimentsController.PxExportForm form) throws PxException
@@ -258,7 +251,7 @@ public class PxXmlWriter extends PxWriter
         }
     }
 
-    void writeContactList(ExperimentAnnotations expAnnotations) throws PxException
+    void writeContactList(ExperimentAnnotations expAnnotations, PublishTargetedMSExperimentsController.PxExportForm form) throws PxException
     {
         /*
         <ContactList>
@@ -276,31 +269,53 @@ public class PxXmlWriter extends PxWriter
             </Contact>
         </ContactList>
          */
+        Element list = new Element("ContactList");
         User labHead = expAnnotations.getLabHeadUser();
+        String labHeadAffiliation = expAnnotations.getLabHeadAffiliation();
         if(labHead == null)
         {
-            throw new PxException("Could not find a lab head for the experiment.");
+            // Use submitter details if a lab head was not saved with the experiment details.
+            labHead = expAnnotations.getSubmitterUser();
+            labHeadAffiliation = expAnnotations.getSubmitterAffiliation();
         }
-        User submitter = expAnnotations.getSubmitterUser();
-        if(submitter == null)
+        String labHeadName = labHead != null ? labHead.getFullName() : null;
+        String labHeadEmail = labHead != null ? labHead.getEmail() : null;
+        // Check if there is a form override
+        if(!StringUtils.isBlank(form.getLabHeadName()))
         {
-            throw new PxException("Could not get a submitter for the experiment.");
+            labHeadName = form.getLabHeadName();
+            labHeadEmail = form.getLabHeadEmail();
+            labHeadAffiliation = form.getLabHeadAffiliation();
         }
-        Element list = new Element("ContactList");
+
         Element labHeadEl = new Element("Contact");
         labHeadEl.setAttributes(Collections.singletonList(new Attribute("id", "lab_head")));
         labHeadEl.addChild(new CvParamElement("MS", "MS:1002332", "lab head"));
-        labHeadEl.addChild(new CvParamElement("MS", "MS:1000586", "contact name", labHead.getFullName()));
-        labHeadEl.addChild(new CvParamElement("MS", "MS:1000589", "contact email", labHead.getEmail()));
-
-        Element submitterEl = new Element("Contact");
-        submitterEl.setAttributes(Collections.singletonList(new Attribute("id", "dataset_submitter")));
-        submitterEl.addChild(new CvParamElement("MS", "MS:1002037", "dataset submitter"));
-        submitterEl.addChild(new CvParamElement("MS", "MS:1000586", "contact name", submitter.getFullName()));
-        submitterEl.addChild(new CvParamElement("MS", "MS:1000589", "contact email", submitter.getEmail()));
-
+        labHeadEl.addChild(new CvParamElement("MS", "MS:1000586", "contact name", labHeadName));
+        if(!StringUtils.isBlank(labHeadEmail))
+        {
+            labHeadEl.addChild(new CvParamElement("MS", "MS:1000589", "contact email", labHeadEmail));
+        }
+        if(!StringUtils.isBlank(labHeadAffiliation))
+        {
+            labHeadEl.addChild(new CvParamElement("MS", "MS:1000590", "contact affiliation", labHeadAffiliation));
+        }
         list.addChild(labHeadEl);
-        list.addChild(submitterEl);
+
+        User submitter = expAnnotations.getSubmitterUser();
+        if(submitter != null)
+        {
+            Element submitterEl = new Element("Contact");
+            submitterEl.setAttributes(Collections.singletonList(new Attribute("id", "dataset_submitter")));
+            submitterEl.addChild(new CvParamElement("MS", "MS:1002037", "dataset submitter"));
+            submitterEl.addChild(new CvParamElement("MS", "MS:1000586", "contact name", submitter.getFullName()));
+            submitterEl.addChild(new CvParamElement("MS", "MS:1000589", "contact email", submitter.getEmail()));
+            if(!StringUtils.isBlank(expAnnotations.getSubmitterAffiliation()))
+            {
+                submitterEl.addChild(new CvParamElement("MS", "MS:1000590", "contact affiliation", expAnnotations.getSubmitterAffiliation()));
+            }
+            list.addChild(submitterEl);
+        }
 
         try
         {
@@ -335,16 +350,13 @@ public class PxXmlWriter extends PxWriter
         Set<String> seen = new HashSet<>();
         for(ExperimentModificationGetter.PxModification mod: mods)
         {
-            if(!mod.hasUnimodId())
-            {
-                throw new PxException("No UNIMOD ID found for " + mod.getName());
-            }
-            if(seen.contains(mod.getUnimodId()))
+            if(seen.contains(mod.getName()))
             {
                 continue;
             }
-            seen.add(mod.getUnimodId());
-            mod_list.addChild(new CvParamElement("UNIMOD", mod.getUnimodId(), mod.getName()));
+            seen.add(mod.getName());
+            String unimodId = mod.hasUnimodId() ? mod.getUnimodId() : "NO_UNIMOD_ID";
+            mod_list.addChild(new CvParamElement("UNIMOD", unimodId, mod.getName()));
         }
 
         try
@@ -374,14 +386,12 @@ public class PxXmlWriter extends PxWriter
         {
             PsiInstrumentParser.PsiInstrument instrument = parser.getInstrument(instrumentName);
 
-            if(instrument != null)
+            if(instrument == null)
             {
-                instrument_list.addChild(getInstrumentElement(instrument, i++));
+                instrument = new PsiInstrumentParser.PsiInstrument("NO_PSI_ID", instrumentName, null, null);
             }
-            else
-            {
-                throw new PxException("Could not find a PSI ID for instrument " + instrumentName);
-            }
+
+            instrument_list.addChild(getInstrumentElement(instrument, i++));
         }
         try
         {
@@ -430,22 +440,20 @@ public class PxXmlWriter extends PxWriter
         for(String orgName: organisms.keySet())
         {
             Integer taxid = organisms.get(orgName);
-            String sciName;
-            if(taxid == null)
-            {
-                throw new PxException("Could not find a taxonomy id for " + orgName);
-            }
-            else
+            String sciName = orgName;
+            if(taxid != null)
             {
                 sciName = sciNameMap.get(taxid);
                 if(StringUtils.isBlank(sciName))
                 {
-                    throw new PxException("Could not find a scientific name through NCBI lookup for taxId " + taxid + ", organism " + orgName);
+                    sciName = orgName;
                 }
             }
+
+            String taxIdStr = taxid == null ? "NO_TAX_ID" : String.valueOf(taxid);
             Element sp = new Element("Species");
             sp.addChild(new CvParamElement("MS", "MS:1001469", "taxonomy: scientific name", sciName));
-            sp.addChild(new CvParamElement("MS", "MS:1001467", "taxonomy: NCBI TaxID", String.valueOf(taxid)));
+            sp.addChild(new CvParamElement("MS", "MS:1001467", "taxonomy: NCBI TaxID", taxIdStr));
 
             sp_list.addChild(sp);
         }
@@ -539,12 +547,7 @@ public class PxXmlWriter extends PxWriter
         el.setAttributes(attributes);
 
         Element desc = new Element("Description");
-        String abs = annotations.getAbstract();
-        if(StringUtils.isBlank(abs) || abs.length() < SubmissionDataValidator.MIN_ABSTRACT_LENGTH)
-        {
-            throw new PxException("An abstract of at least 50 characters is required.");
-        }
-        desc.setText(abs);
+        desc.setText(annotations.getAbstract());
         el.addChild(desc);
 
 

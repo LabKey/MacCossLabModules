@@ -85,26 +85,12 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
         setDetailsURL(new DetailsURL(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer())));
 
         ColumnInfo citationCol = getColumn(FieldKey.fromParts("Citation"));
-        citationCol.setDisplayColumnFactory(new DisplayColumnFactory()
-        {
-            @Override
-            public DisplayColumn createRenderer(ColumnInfo colInfo)
-            {
-                return new PublicationLinkDisplayColumn(colInfo);
-            }
-        });
+        citationCol.setDisplayColumnFactory(colInfo -> new PublicationLinkDisplayColumn(colInfo));
         citationCol.setURLTargetWindow("_blank");
         citationCol.setLabel("Publication");
 
         ColumnInfo spikeInColumn = getColumn(FieldKey.fromParts("SpikeIn"));
-        spikeInColumn.setDisplayColumnFactory(new DisplayColumnFactory()
-        {
-            @Override
-            public DisplayColumn createRenderer(ColumnInfo colInfo)
-            {
-                return new YesNoDisplayColumn(colInfo);
-            }
-        });
+        spikeInColumn.setDisplayColumnFactory(colInfo -> new YesNoDisplayColumn(colInfo));
 
         ColumnInfo titleCol =  getColumn(FieldKey.fromParts("Title"));
         titleCol.setDisplayColumnFactory(new DisplayColumnFactory()
@@ -189,16 +175,19 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
         });
         addColumn(shareCol);
 
-        ExperimentUserForeignKey.initColumn(getColumn("LabHead"));
+        ColumnInfo labHeadCol = ExperimentUserForeignKey.initColumn(getColumn("LabHead"));
+        labHeadCol.setDescription("A lab head is required for submitting data to ProteomeXchange.");
 
         ColumnInfo submitterCol = ExperimentUserForeignKey.initColumn(getColumn("Submitter"));
-        submitterCol.setUserEditable(getUserSchema().getUser().isInSiteAdminGroup() ? true : false);
+        // submitterCol.setUserEditable(getUserSchema().getUser().isInSiteAdminGroup() ? true : false);
 
         ColumnInfo instrCol = getColumn("Instrument");
         instrCol.setDisplayColumnFactory(colInfo -> new AutoCompleteColumn(colInfo, new ActionURL(PublishTargetedMSExperimentsController.CompleteInstrumentAction.class, getContainer()), true, "Enter Instrument"));
+        instrCol.setDescription("One or more instruments are required for submitting data to ProteomeXchange.");
 
         ColumnInfo organismCol = getColumn("Organism");
         organismCol.setDisplayColumnFactory(colInfo -> new OrganismColumn(colInfo, new ActionURL(PublishTargetedMSExperimentsController.CompleteOrganismAction.class, getContainer()), false, "Enter Organism"));
+        organismCol.setDescription("One or more organisms are required for submitting data to ProteomeXchange.");
 
         SQLFragment runCountSQL = new SQLFragment("(SELECT COUNT(r.ExperimentRunId) FROM ");
         runCountSQL.append(ExperimentService.get().getTinfoRunList(), "r");
@@ -444,19 +433,23 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
             String renderId = "input-picker-div-" + UniqueID.getRequestScopedUID(HttpView.currentRequest());
             StringBuilder sb = new StringBuilder();
 
-            sb.append("<script src=\"//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js\"></script>\n");
             sb.append("<script type=\"text/javascript\">");
-            sb.append("LABKEY.requiresCss(\"/TargetedMS/css/bootstrap-tagsinput.css\");\n");
-            sb.append("LABKEY.requiresCss(\"/TargetedMS/css/typeahead-examples.css\");\n");
-            sb.append("LABKEY.requiresScript([\"/TargetedMS/js/typeahead.bundle.js\", \"/TargetedMS/js/bootstrap-tagsinput.min.js\", \"/TargetedMS/js/autocomplete.js\"], function() {\n");
+            sb.append("LABKEY.requiresScript([\"/TargetedMS/js/ExpAnnotAutoComplete.js\"], function() {\n");
+            sb.append("Ext4.onReady(function(){\n");
             sb.append("    initAutoComplete(").append(_autoCompletionUrl).append(", '").append(renderId).append("', ").append(_prefetch ? "true": "false").append(");\n");
-            sb.append("});\n");
-
+            sb.append("});});\n");
             sb.append("</script>\n");
-            sb.append("<div style=\"margin-top:5px;\" id=\"").append(renderId).append("\" class=\"scrollable-dropdown-menu\"><input type=\"text\" \" class=\"form-control typeahead\" placeholder=\"" + _placeholderText + "\" name=\"" + name + "\" value=\"" + valueString + "\"></div>");
-            sb.append("<div style=\"font-size:11px\">Type 3 or more letters to see a drop-down list of matching options.</div>");
+            sb.append("<div style=\"margin-top:5px;\" id=\"").append(renderId).append("\" class=\"scrollable-dropdown-menu\">");
+            sb.append("<input type=\"text\" class=\"tags\" placeholder=\"" + _placeholderText + "\" name=\"" + name + "\" value=\"" + valueString + "\">");
+            sb.append("</div>");
+            sb.append("<div style=\"font-size:11px\">").append(PageFlowUtil.filter(getHelpText(), true, false)).append("</div>");
 
             out.write(sb.toString());
+        }
+
+        String getHelpText()
+        {
+            return "Type 3 or more letters to see a drop-down list of matching options. Only entries selected from the list will be saved.";
         }
     }
 
@@ -480,6 +473,14 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
             {
                 super.renderGridCellContents(ctx, out);
             }
+        }
+
+        @Override
+        String getHelpText()
+        {
+            return "Type 3 or more letters to see a drop-down list of matching options. It may take a few seconds to populate the list.\n"
+                    + "The list displays up to 20 matching options. Continue typing to refine the list.\n"
+                    + "Only entries selected from the list will be saved.";
         }
     }
 }

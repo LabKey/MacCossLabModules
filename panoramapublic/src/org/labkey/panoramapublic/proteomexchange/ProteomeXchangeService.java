@@ -89,6 +89,10 @@ public class ProteomeXchangeService
         {
             builder.addTextBody("test", "yes");
         }
+        else
+        {
+            builder.addTextBody("test", "no");
+        }
         builder.addTextBody("verbose",  "yes");
         return builder;
     }

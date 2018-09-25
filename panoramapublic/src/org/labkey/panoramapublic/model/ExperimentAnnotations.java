@@ -24,7 +24,6 @@ import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.view.ShortURLRecord;
 
-import javax.validation.constraints.Null;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -391,19 +390,22 @@ public class ExperimentAnnotations
     @Nullable
     public String getLabHeadName()
     {
-        User labHead = getLabHeadUser();
-        if (labHead != null)
+        return getUserName(getLabHeadUser());
+    }
+
+    public static String getUserName(User user)
+    {
+       if (user != null)
         {
-            String name = labHead.getFullName();
+            String name = user.getFullName();
             if (StringUtils.isBlank(name))
             {
-                name = labHead.getDisplayName(null);
+                name = user.getDisplayName(null);
             }
             return name;
         }
         return null;
     }
-
 
     public String getLabHeadAffiliation()
     {
@@ -423,6 +425,12 @@ public class ExperimentAnnotations
     public User getSubmitterUser()
     {
         return _submitter != null ? UserManager.getUser(_submitter) : null;
+    }
+
+    @Nullable
+    public String getSubmitterName()
+    {
+        return getUserName(getSubmitterUser());
     }
 
     public void setSubmitter(Integer submitter)

@@ -44,9 +44,9 @@
     ExperimentAnnotations expAnnotations = bean.getExperimentAnnotations();
 
     ActionURL rawFilesUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer(), TargetedMSController.FolderSetupAction.RAW_FILES_TAB);
-    ActionURL formUrl = new ActionURL(PublishTargetedMSExperimentsController.ViewPublishExperimentFormAction.class, getContainer());
-    formUrl.addParameter("id", expAnnotations.getId());
-    formUrl.addParameter("pxidRequested", false);
+    ActionURL formUrl = PublishTargetedMSExperimentsController.getPublishExperimentURL(expAnnotations.getId(), getContainer(),
+            true,  // keep private.
+            false); // don't request a PX ID.
     ActionURL editUrl = TargetedMSController.getEditExperimentDetailsURL(getContainer(), expAnnotations.getId(),
             TargetedMSController.getViewExperimentDetailsURL(expAnnotations.getId(), getContainer()));
 
@@ -56,20 +56,21 @@
     The following information is required for getting a ProteomeXchange ID for your submission. <span style="margin-left:10px;"><%=textLink("Continue Without ProteomeXchange ID", formUrl)%></span>
 
     <% if(bean.hasMissingMetadata()) { %>
-    <div style="margin-top:10px;margin-bottom:10px;">
-        Missing experiment metadata <span style="margin-left:10px;"><%=textLink("Update Experiment Metadata", editUrl)%></span>
+    <div style="margin-top:10px;margin-bottom:20px;">
+        <span style="font-weight:bold;">Missing experiment metadata:</span>
         <ul>
             <%for(String missing: bean.getMissingMetadata()) {%>
             <li><%=h(missing)%></li>
             <%}%>
         </ul>
+        <%=button("Update Experiment Metadata").href(editUrl).build()%>
     </div>
     <%}%>
 
     <% if(bean.hasInvalidModifications()) { %>
-    <div style="margin-top:10px;margin-bottom:10px;">
-        The following modifications do not have a Unimod ID. Please update the modification information in the Skyline document and re-upload.</span>
-        <table class="table-condensed table-striped table-bordered" style="margin-top:10px;">
+    <div style="margin-top:10px;margin-bottom:20px;">
+        <span style="font-weight:bold;">The following modifications do not have a Unimod ID:</span>
+        <table class="table-condensed table-striped table-bordered" style="margin-top:1px; margin-bottom:2px;">
             <thead>
             <tr>
                 <th>Skyline Document</th>
@@ -90,13 +91,15 @@
             </tr>
             <%}%>
         </table>
+        Please choose from a list of Unimod modifications in Skyline and re-upload your document.
+        If you do not find your modifications in Skyline's list of Unimod modifications please contact the Skyline / Panorama team.
     </div>
     <%}%>
 
     <% if(bean.hasMissingRawFiles()) { %>
-    <div style="margin-top:10px;margin-bottom:10px;">
-        Missing raw data <span style="margin-left:10px;"> <%=textLink("Upload Raw Data", rawFilesUrl)%></span>
-        <table class="table-condensed table-striped table-bordered" style="margin-top:10px;">
+    <div style="margin-top:10px;">
+        <span style="font-weight:bold;">Missing raw data:</span>
+        <table class="table-condensed table-striped table-bordered" style="margin-top:1px; margin-bottom:5px;">
             <thead>
             <tr>
             <th>Skyline Document</th>
@@ -120,6 +123,7 @@
             <%}%>
             </tbody>
         </table>
+        <%=button("Upload Raw Data").href(rawFilesUrl).build()%> <span>(Drag and drop to the files browser in the Raw Data tab to upload files)</span>
     </div>
     <%}%>
 

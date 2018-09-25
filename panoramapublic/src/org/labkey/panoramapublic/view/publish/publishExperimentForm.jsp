@@ -64,6 +64,7 @@
     String cancelUrl = TargetedMSController.getViewExperimentDetailsURL(bean.getForm().getId(), getContainer()).getLocalURIString();
 
     boolean siteAdmin = getUser().isInSiteAdminGroup();
+    boolean getLabHeadUserInfo = form.isGetPxid() && expAnnotations.getLabHeadUser() == null;
 %>
 
 <div id="publishExperimentForm"></div>
@@ -75,7 +76,6 @@
         <li><%=h(folder.getPath())%></li>
     <%}%>
     </ul>
-
 </div>
 
 <style>
@@ -90,6 +90,10 @@
     div.urlMsg
     {
         margin: 5px 0 15px 0;
+    }
+    .red
+    {
+        color: red;
     }
 </style>
 <script type="text/javascript">
@@ -206,7 +210,7 @@
                     xtype: 'checkbox',
                     fieldLabel: "Keep Private",
                     hidden: false,
-                    checked: true,
+                    checked: <%=form.isKeepPrivate()%>,
                     name: 'keepPrivate',
                     boxLabel: 'Check this box to keep your data on Panorama Public private. Reviewer account details will be provided.'
                 },
@@ -214,9 +218,35 @@
                     xtype: 'checkbox',
                     fieldLabel: "Get ProteomeXchange ID",
                     hidden: <%=!siteAdmin%>,
-                    checked: true,
-                    name: 'pxidRequested',
+                    checked: <%=form.isGetPxid()%>,
+                    name: 'getPxid',
                     boxLabel: 'Check this box to get a ProteomeXchange ID for your data.'
+                },
+                {
+                    xtype: 'textfield',
+                    fieldLabel: "Lab Head Name",
+                    hidden: <%=!getLabHeadUserInfo%>,
+                    name: 'labHeadName',
+                    value: <%=q(form.getLabHeadName())%>,
+                    afterBodyEl: '<div class="helpMsg red">Please enter a lab head name to submit to ProteomeXchange. If a name is not entered the name of the submitter will be used.</div>',
+                    msgTarget : 'side',
+                    inputWidth: '200',
+                },
+                {
+                    xtype: 'textfield',
+                    fieldLabel: "Lab Head Email",
+                    hidden: <%=!getLabHeadUserInfo%>,
+                    name: 'labHeadEmail',
+                    value: <%=q(form.getLabHeadEmail())%>,
+                    inputWidth: '200',
+                },
+                {
+                    xtype: 'textfield',
+                    fieldLabel: "Lab Head Affiliation",
+                    hidden: <%=!getLabHeadUserInfo%>,
+                    name: 'labHeadAffiliation',
+                    value: <%=q(form.getLabHeadAffiliation())%>,
+                    inputWidth: '200',
                 },
                 {
                     xtype: 'checkbox',

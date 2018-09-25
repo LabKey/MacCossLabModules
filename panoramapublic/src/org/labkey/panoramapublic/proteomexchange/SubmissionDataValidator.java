@@ -15,6 +15,7 @@
  */
 package org.labkey.targetedms.proteomexchange;
 
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.labkey.api.data.Container;
@@ -129,13 +130,13 @@ public class SubmissionDataValidator
         {
             errors.add("Keywords are required.");
         }
-        if(expAnnot.getLabHead() == null)
-        {
-            errors.add("Lab head is required.");
-        }
         if(expAnnot.getSubmitter() == null)
         {
             errors.add("Submitter is required.");
+        }
+        if(expAnnot.getSubmitterAffiliation() == null)
+        {
+            errors.add("Submitter affiliation is required.");
         }
 
         if(StringUtils.isBlank(expAnnot.getAbstract()))
@@ -168,6 +169,7 @@ public class SubmissionDataValidator
     {
         List<String> instruments = expAnnot.getInstruments();
         PsiInstrumentParser parser = new PsiInstrumentParser();
+        Set<String> notFound = new HashSet<>();
         for(String instrumentName: instruments)
         {
             PsiInstrumentParser.PsiInstrument instrument = null;
@@ -183,8 +185,15 @@ public class SubmissionDataValidator
 
             if(instrument == null)
             {
-                errors.add("Unrecognized instrument " + instrumentName);
+                notFound.add(instrumentName);
             }
+        }
+        if(notFound.size() > 0)
+        {
+            StringBuilder err = new StringBuilder("Unrecognized instrument");
+            err.append(notFound.size() > 1 ? "s: " : ": ");
+            err.append(StringUtils.join(notFound, ','));
+            errors.add(err.toString());
         }
     }
 
@@ -192,12 +201,20 @@ public class SubmissionDataValidator
     {
         Map<String, Integer> organisms = expAnnot.getOrganismAndTaxId();
 
+        Set<String> notFound = new HashSet<>();
         for(String orgName: organisms.keySet())
         {
             if(organisms.get(orgName) == null)
             {
-                errors.add("No taxonomy ID found for " + orgName);
+                notFound.add(orgName);
             }
+        }
+        if(notFound.size() > 0)
+        {
+            StringBuilder err = new StringBuilder("No taxonomy ID found for organism");
+            err.append(notFound.size() > 1 ? "s: " : ": ");
+            err.append(StringUtils.join(notFound, ','));
+            errors.add(err.toString());
         }
     }
 
@@ -232,7 +249,7 @@ public class SubmissionDataValidator
                 continue;
             }
 
-            String fileName = new File(filePath).getName();
+            String fileName = FilenameUtils.getName(filePath);
 
             if(!Files.exists(rawFilesDir) || !findInDirectoryTree(rawFilesDir, fileName, rootExpContainer))
             {
@@ -255,7 +272,7 @@ public class SubmissionDataValidator
             List<String> missingInRoot = new ArrayList<>();
             for(String filePath: missingFiles)
             {
-                String fileName = new File(filePath).getName();
+                String fileName = FilenameUtils.getName(filePath);
                 if(!findInDirectoryTree(rawFilesDir, fileName, rootExpContainer))
                 {
                     missingInRoot.add(fileName);
@@ -273,7 +290,7 @@ public class SubmissionDataValidator
 
     private static String getFilePath(String filePath)
     {
-        // Remove sample name form multi injection files.
+        // Remove sample name from multi injection files.
         // Example: D:\Data\CPTAC_Study9s\Site52_041009_Study9S_Phase-I.wiff|Site52_STUDY9S_PHASEI_6ProtMix_QC_07|6
         int idx = filePath.indexOf('|');
         return (idx == -1) ? filePath : filePath.substring(0, idx);

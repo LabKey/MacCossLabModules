@@ -191,17 +191,21 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writeContactList(ExperimentAnnotations experimentAnnotations)
+    void writeContactList(ExperimentAnnotations experimentAnnotations, PublishTargetedMSExperimentsController.PxExportForm form)
     {
         HtmlList contactList = new HtmlList();
 
         User labHead = experimentAnnotations.getLabHeadUser();
-        boolean contactErr = labHead == null;
-        contactList.addItem("Lab head name", labHead == null ? "NO LAB HEAD" : labHead.getFullName(), contactErr);
-        contactList.addItem("Lab head email", labHead == null ? "NO EMAIL" : labHead.getEmail(), contactErr);
-        if(experimentAnnotations.getLabHeadAffiliation() != null)
+        String labHeadName = labHead != null ? labHead.getFullName() : form.getLabHeadName();
+        String labHeadEmail = labHead != null ? labHead.getEmail() : form.getLabHeadEmail();
+        String labHeadAffiliation = labHead != null ? experimentAnnotations.getLabHeadAffiliation() : form.getLabHeadAffiliation();
+
+        boolean contactErr = StringUtils.isBlank(labHeadName);
+        contactList.addItem("Lab head name", StringUtils.isBlank(labHeadName) ? "NO LAB HEAD. Submitter details will be used." : labHeadName, contactErr);
+        contactList.addItem("Lab head email", StringUtils.isBlank(labHeadEmail) ? "NO EMAIL" : labHeadEmail, contactErr);
+        if(!StringUtils.isBlank(labHeadAffiliation))
         {
-            contactList.addItem("Lab head affiliation", experimentAnnotations.getLabHeadAffiliation(), false);
+            contactList.addItem("Lab head affiliation", labHeadAffiliation, false);
         }
 
         User submitter = experimentAnnotations.getSubmitterUser();
