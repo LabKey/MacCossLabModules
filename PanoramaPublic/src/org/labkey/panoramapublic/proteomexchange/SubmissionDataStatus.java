@@ -15,6 +15,7 @@
  */
 package org.labkey.targetedms.proteomexchange;
 
+import org.apache.commons.io.FilenameUtils;
 import org.labkey.targetedms.model.ExperimentAnnotations;
 
 import java.util.ArrayList;
@@ -88,7 +89,7 @@ public class SubmissionDataStatus
             Set<String> fileNames = new HashSet<>(pathsFromSameSkyDocs.size());
             for(String filePath: pathsFromSameSkyDocs)
             {
-                fileNames.add(new java.io.File(filePath).getName());
+                fileNames.add(FilenameUtils.getName(filePath));
             }
             MissingRawData missing = new MissingRawData(skydocs, fileNames);
             missingData.add(missing);

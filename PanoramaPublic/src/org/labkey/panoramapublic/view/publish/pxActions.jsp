@@ -100,13 +100,24 @@
                     name: 'publicationReference'
                 },
                 {
-                    xtype: 'checkbox',
-                    fieldLabel: 'Use PX Test DB',
-                    name: 'testDatabase',
-                    checked: <%=bean.isTestDatabase()%>,
-                    value: <%=bean.isTestDatabase()%>,
-                    afterBodyEl: '<span style="font-size: 0.75em;margin-left:5px;">Check to use the ProteomeXchange test database.</span>',
-                    msgTarget : 'side'
+                    xtype: 'textfield',
+                    fieldLabel: 'Lab Head',
+                    name: 'labHeadName'
+                },
+                {
+                    xtype: 'textfield',
+                    fieldLabel: 'Lab Head Email',
+                    name: 'labHeadEmail'
+                },
+                {
+                    xtype: 'textfield',
+                    fieldLabel: 'Lab Head Affiliation',
+                    name: 'labHeadAffiliation'
+                },
+                {
+                    xtype: 'textfield',
+                    fieldLabel: 'PX Change Log',
+                    name: 'changeLog'
                 },
                 {
                     xtype: 'textfield',
@@ -119,9 +130,13 @@
                     name: 'pxPassword'
                 },
                 {
-                    xtype: 'textfield',
-                    fieldLabel: 'PX Change Log',
-                    name: 'changeLog'
+                    xtype: 'checkbox',
+                    fieldLabel: 'Use PX Test DB',
+                    name: 'testDatabase',
+                    checked: <%=bean.isTestDatabase()%>,
+                    value: <%=bean.isTestDatabase()%>,
+                    afterBodyEl: '<span style="font-size: 0.75em;margin-left:5px;">Check to use the ProteomeXchange test database.</span>',
+                    msgTarget : 'side'
                 }
             ],
             buttonAlign: 'left',

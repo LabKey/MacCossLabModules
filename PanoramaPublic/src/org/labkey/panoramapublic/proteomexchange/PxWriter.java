@@ -48,7 +48,7 @@ public abstract class PxWriter
             writeSpeciesList(expAnnotations);
             writeInstrumentList(expAnnotations);
             writeModificationList(expAnnotations);
-            writeContactList(expAnnotations);
+            writeContactList(expAnnotations, bean.getForm());
             writePublicationList(expAnnotations, bean.getForm());
             writeKeywordList(expAnnotations);
             writeDatasetLinkList(accessUrl);
@@ -90,7 +90,7 @@ public abstract class PxWriter
     abstract void writeSpeciesList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeInstrumentList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeModificationList(ExperimentAnnotations experimentAnnotations) throws PxException;
-    abstract void writeContactList(ExperimentAnnotations experimentAnnotationsn) throws PxException;
+    abstract void writeContactList(ExperimentAnnotations experimentAnnotationsn, PublishTargetedMSExperimentsController.PxExportForm form) throws PxException;
     abstract void writePublicationList(ExperimentAnnotations experimentAnnotations, PublishTargetedMSExperimentsController.PxExportForm form) throws PxException;
     abstract void writeKeywordList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeDatasetLinkList(ShortURLRecord accessUrl) throws PxException;
