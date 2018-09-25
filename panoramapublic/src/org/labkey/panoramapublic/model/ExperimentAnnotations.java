@@ -15,6 +15,8 @@
  */
 package org.labkey.targetedms.model;
 
+import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExperimentService;
@@ -22,7 +24,15 @@ import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.view.ShortURLRecord;
 
+import javax.validation.constraints.Null;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * User: vsharma
@@ -63,6 +73,7 @@ public class ExperimentAnnotations
     private String _submitterAffiliation;
     private String _pxid;
 
+    private static Pattern taxIdPattern = Pattern.compile("(.*)\\(taxid:(\\d+)\\)");
 
     public ExperimentAnnotations() {}
 
@@ -160,6 +171,57 @@ public class ExperimentAnnotations
         return _organism;
     }
 
+    @Nullable
+    public String getOrganismsNoTaxId()
+    {
+        return getOrganismsNoTaxId(getOrganism());
+    }
+
+    @Nullable
+    public static String getOrganismsNoTaxId(String organismStr)
+    {
+        if(StringUtils.isBlank(organismStr))
+        {
+            return null;
+        }
+
+        String[] orgs = organismStr.split(",");
+        for(int i = 0; i < orgs.length; i++)
+        {
+           String org = orgs[i];
+           org = org.replaceAll(" \\(taxid:\\d+\\)", "");
+           orgs[i] = org.trim();
+        }
+        return StringUtils.join(orgs, ", ");
+    }
+
+    public Map<String, Integer> getOrganismAndTaxId()
+    {
+        if(StringUtils.isBlank(_organism))
+        {
+            return Collections.emptyMap();
+        }
+
+        Map<String, Integer> orgTaxIdMap = new HashMap<>();
+        String[] orgs = StringUtils.split(_organism,",");
+        for(String org: orgs)
+        {
+            org = org.trim();
+            Matcher match = taxIdPattern.matcher(org);
+            if(match.matches())
+            {
+                String name = match.group(1).trim();
+                String taxid = match.group(2).trim();
+                orgTaxIdMap.put(name, Integer.parseInt(taxid));
+            }
+            else
+            {
+                orgTaxIdMap.put(org, null);
+            }
+        }
+        return orgTaxIdMap;
+    }
+
     public void setOrganism(String organism)
     {
         _organism = organism;
@@ -168,6 +230,22 @@ public class ExperimentAnnotations
     public String getInstrument()
     {
         return _instrument;
+    }
+
+    public List<String> getInstruments()
+    {
+        if(StringUtils.isBlank(_instrument))
+        {
+            return Collections.emptyList();
+        }
+
+        List<String> instruments = new ArrayList<>();
+        String[] tokens = StringUtils.split(_instrument, ",");
+        for(String token: tokens)
+        {
+            instruments.add(token.trim());
+        }
+        return instruments;
     }
 
     public void setInstrument(String instrument)
@@ -310,6 +388,23 @@ public class ExperimentAnnotations
         return _labHead != null ? UserManager.getUser(_labHead) : null;
     }
 
+    @Nullable
+    public String getLabHeadName()
+    {
+        User labHead = getLabHeadUser();
+        if (labHead != null)
+        {
+            String name = labHead.getFullName();
+            if (StringUtils.isBlank(name))
+            {
+                name = labHead.getDisplayName(null);
+            }
+            return name;
+        }
+        return null;
+    }
+
+
     public String getLabHeadAffiliation()
     {
         return _labHeadAffiliation;
@@ -353,5 +448,14 @@ public class ExperimentAnnotations
     public void setPxid(String pxid)
     {
         _pxid = pxid;
+    }
+
+    public boolean isPublished()
+    {
+        if(!StringUtils.isBlank(_publicationLink) && !StringUtils.isBlank(_citation))
+        {
+            return true;
+        }
+        return false;
     }
 }

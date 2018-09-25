@@ -15,21 +15,21 @@
  * limitations under the License.
  */
 %>
-<%@ page import="org.labkey.targetedms.model.ExperimentAnnotations" %>
-<%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.api.view.HttpView" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
-<%@ page import="org.labkey.targetedms.TargetedMSController" %>
-<%@ page import="org.labkey.api.security.permissions.InsertPermission" %>
-<%@ page import="org.labkey.targetedms.PublishTargetedMSExperimentsController" %>
-<%@ page import="org.labkey.api.data.Container" %>
-<%@ page import="java.text.SimpleDateFormat" %>
-<%@ page import="org.labkey.targetedms.query.JournalManager" %>
 <%@ page import="org.apache.commons.lang3.StringUtils" %>
+<%@ page import="org.labkey.api.data.Container" %>
+<%@ page import="org.labkey.api.security.permissions.InsertPermission" %>
+<%@ page import="org.labkey.api.view.ActionURL" %>
+<%@ page import="org.labkey.api.view.HttpView" %>
+<%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.api.view.ShortURLRecord" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
+<%@ page import="org.labkey.targetedms.PublishTargetedMSExperimentsController" %>
+<%@ page import="org.labkey.targetedms.TargetedMSController" %>
+<%@ page import="org.labkey.targetedms.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.targetedms.model.Journal" %>
 <%@ page import="org.labkey.targetedms.model.JournalExperiment" %>
-<%@ page import="org.labkey.api.view.ShortURLRecord" %>
+<%@ page import="org.labkey.targetedms.query.JournalManager" %>
+<%@ page import="java.text.SimpleDateFormat" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -52,7 +52,7 @@
             TargetedMSController.getViewExperimentDetailsURL(annot.getId(), getContainer()));
     ActionURL deleteUrl = TargetedMSController.getDeleteExperimentURL(getContainer(), annot.getId(), getContainer().getStartURL(getUser()));
 
-    ActionURL publishUrl = PublishTargetedMSExperimentsController.getPublishExperimentURL(annot.getId(), getContainer());
+    ActionURL publishUrl = PublishTargetedMSExperimentsController.getPrePublishExperimentCheckURL(annot.getId(), getContainer());
     Container experimentContainer = annot.getContainer();
     final boolean canEdit = (!annot.isJournalCopy() || getUser().isSiteAdmin()) && experimentContainer.hasPermission(getUser(), InsertPermission.class);
     // User needs to be the folder admin to publish an experiment.
@@ -185,6 +185,7 @@
     <a style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(experimentDetailsUrl)%>">[More Details...]</a>
     <%}%>
 </div>
+
 <br/>
 <% if(!StringUtils.isBlank(accessUrl)) {%>
     <div class="link">
@@ -203,9 +204,22 @@
 <%if(annot.getCitation() == null && annot.getPublicationLink() != null){%>
     <div class="link"><strong><br />[<a href="<%=h(annot.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
 <%}%>
+<%if(annot.getPxid() != null){%>
+    <div class="link">
+        <strong>ProteomeXchange ID: </strong> <a href="http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=<%=h(annot.getPxid())%>" target="_blank"><%=h(annot.getPxid())%></a>
+    </div>
+<%}%>
+
+<%if(getUser().isInSiteAdminGroup()) {
+    ActionURL pxActionsUrl = new ActionURL(PublishTargetedMSExperimentsController.GetPxActionsAction.class, getContainer());
+    pxActionsUrl.addParameter("id", annot.getId());
+%>
+<br/><div><%=textLink("ProteomeXchange Actions", pxActionsUrl)%></div>
+<%}%>
+
 <ul>
     <%if(annot.getOrganism() != null){%>
- <li><strong>Organism:</strong> <%=h(annot.getOrganism())%></li>
+ <li><strong>Organism:</strong> <%=h(annot.getOrganismsNoTaxId())%></li>
     <%}%>
     <%if(annot.getInstrument() != null){%>
  <li><strong>Instrument:</strong> <%=h(annot.getInstrument())%></li>
@@ -214,6 +228,16 @@
  <li><strong>SpikeIn:</strong>
      <%=annot.getSpikeIn() ? "Yes" : "No"%>
  </li>
+    <%}%>
+    <%if(annot.getKeywords() != null){%>
+    <li><strong>Keywords:</strong>
+        <%=h(annot.getKeywords())%>
+    </li>
+    <%}%>
+    <%if(annot.getLabHead() != null){%>
+    <li><strong>Lab head:</strong>
+        <%=annot.getLabHeadName()%>
+    </li>
     <%}%>
 </ul>
     <%if(annot.getAbstract() != null){%>

@@ -20,6 +20,7 @@ import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.SimpleFilter;
+import org.labkey.api.data.SqlExecutor;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
@@ -367,5 +368,30 @@ public class ExperimentAnnotationsManager
             expAnnot.setShortUrl(null);
             Table.update(user, tInfo, expAnnot, expAnnot.getId());
         }
+    }
+
+    public static List<TargetedMSRun> getTargetedMSRuns(ExperimentAnnotations expAnnotations)
+    {
+        List<TargetedMSRun> runs = new ArrayList<>();
+        ExpExperiment exp = ExperimentService.get().getExpExperiment(expAnnotations.getExperimentId());
+        if(exp != null)
+        {
+            List<? extends ExpRun> expRuns = exp.getRuns();
+            for (ExpRun run : expRuns)
+            {
+                TargetedMSRun tRun = TargetedMSManager.getRunByLsid(run.getLSID(), run.getContainer());
+                if (run != null)
+                {
+                    runs.add(tRun);
+                }
+            }
+        }
+        return runs;
+    }
+
+    public static void updatePxId(ExperimentAnnotations expAnnotations, String pxId)
+    {
+        new SqlExecutor(TargetedMSManager.getSchema()).execute("UPDATE " + TargetedMSManager.getTableInfoExperimentAnnotations() +
+                        " SET pxId = ? WHERE Id = ?", pxId, expAnnotations.getId());
     }
 }

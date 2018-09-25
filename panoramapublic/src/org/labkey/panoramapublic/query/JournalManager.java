@@ -226,13 +226,16 @@ public class JournalManager
         Table.delete(TargetedMSManager.getTableInfoJournal(), new SimpleFilter(FieldKey.fromParts("id"), journal.getId()));
     }
 
-    public static JournalExperiment saveJournalExperiment(Journal journal, ExperimentAnnotations experiment, ShortURLRecord shortAccessUrl, ShortURLRecord shortCopyUrl, User user)
+    public static JournalExperiment saveJournalExperiment(Journal journal, ExperimentAnnotations experiment, ShortURLRecord shortAccessUrl, ShortURLRecord shortCopyUrl,
+                                                          boolean getPxid, boolean keepPrivate, User user)
     {
         JournalExperiment je = new JournalExperiment();
         je.setJournalId(journal.getId());
         je.setExperimentAnnotationsId(experiment.getId());
         je.setShortAccessUrl(shortAccessUrl);
         je.setShortCopyUrl(shortCopyUrl);
+        je.setPxidRequested(getPxid);
+        je.setKeepPrivate(keepPrivate);
         Table.insert(user, TargetedMSManager.getTableInfoJournalExperiment(), je);
         return je;
     }
@@ -280,11 +283,11 @@ public class JournalManager
     }
 
     public static JournalExperiment addJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal,
-                                        String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException
+                                                     String shortAccessUrl, String shortCopyUrl, boolean getPxid, boolean keepPrivate, User user) throws ValidationException
     {
         try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
         {
-            JournalExperiment je = setupJournalAccess(exptAnnotations, journal, shortAccessUrl, shortCopyUrl, user);
+            JournalExperiment je = setupJournalAccess(exptAnnotations, journal, shortAccessUrl, shortCopyUrl, getPxid, keepPrivate, user);
 
             transaction.commit();
 
@@ -292,7 +295,7 @@ public class JournalManager
         }
     }
 
-    private static JournalExperiment setupJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal, String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException
+    private static JournalExperiment setupJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal, String shortAccessUrl, String shortCopyUrl, boolean getPxid, boolean keepPrivate, User user) throws ValidationException
     {
         Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
 
@@ -311,6 +314,8 @@ public class JournalManager
         JournalExperiment je = JournalManager.saveJournalExperiment(journal, exptAnnotations,
                                                                     accessUrlRecord,
                                                                     copyUrlRecord,
+                                                                    getPxid,
+                                                                    keepPrivate,
                                                                     user);
         return je;
     }

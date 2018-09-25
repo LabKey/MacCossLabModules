@@ -25,6 +25,7 @@
 <%@ page import="org.labkey.targetedms.model.Journal" %>
 <%@ page import="org.labkey.api.security.roles.RoleManager" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
+<%@ page import="org.labkey.api.data.Container" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -41,11 +42,25 @@
     PublishTargetedMSExperimentsController.CopyExperimentForm bean = me.getModelBean();
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
     Journal journal = bean.lookupJournal();
-    String selectedFolder = bean.getDestParentContainerId() == null ? "Please select a destination folder..." : String.valueOf(bean.getDestParentContainerId());
+    String selectedFolder = "Please select a destination folder...";
+    if(bean.getDestParentContainerId() != null)
+    {
+        Container destParent = ContainerManager.getForRowId(bean.getDestParentContainerId());
+        if(destParent != null)
+        {
+            selectedFolder = destParent.getName();
+        }
+    }
+
+    ActionURL pxActionsUrl = new ActionURL(PublishTargetedMSExperimentsController.GetPxActionsAction.class, getContainer());
+    pxActionsUrl.addParameter("id", expAnnot.getId());
 %>
 
 
 <div id="copyExperimentForm"></div>
+<div>
+    <%=textLink("ProteomeXchange Actions", pxActionsUrl)%>
+</div>
 
 <script type="text/javascript">
 
