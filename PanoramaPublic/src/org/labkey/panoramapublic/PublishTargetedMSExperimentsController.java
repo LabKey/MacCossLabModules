@@ -19,10 +19,15 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
+import org.labkey.api.action.ApiAction;
+import org.labkey.api.action.ApiResponse;
+import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.ConfirmAction;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabKeyError;
 import org.labkey.api.action.SimpleErrorView;
+import org.labkey.api.action.SimpleStreamAction;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
 import org.labkey.api.data.ActionButton;
@@ -35,6 +40,7 @@ import org.labkey.api.data.DataRegion;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.NormalContainerType;
 import org.labkey.api.data.SimpleFilter;
+import org.labkey.api.files.FileContentService;
 import org.labkey.api.jsp.FormPage;
 import org.labkey.api.module.DefaultFolderType;
 import org.labkey.api.module.FolderType;
@@ -42,6 +48,7 @@ import org.labkey.api.module.FolderTypeManager;
 import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.module.ModuleProperty;
+import org.labkey.api.pipeline.LocalDirectory;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.PipelineStatusUrls;
@@ -66,14 +73,17 @@ import org.labkey.api.security.permissions.AbstractActionPermissionTest;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.InsertPermission;
+import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
+import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.TestContext;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.view.AjaxCompletion;
 import org.labkey.api.view.DetailsView;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.HttpView;
@@ -81,6 +91,7 @@ import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.api.view.Portal;
+import org.labkey.api.view.RedirectException;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.api.view.ShortURLService;
 import org.labkey.api.view.UnauthorizedException;
@@ -92,6 +103,15 @@ import org.labkey.targetedms.model.ExperimentAnnotations;
 import org.labkey.targetedms.model.Journal;
 import org.labkey.targetedms.model.JournalExperiment;
 import org.labkey.targetedms.pipeline.CopyExperimentPipelineJob;
+import org.labkey.targetedms.proteomexchange.NcbiUtils;
+import org.labkey.targetedms.proteomexchange.ProteomeXchangeService;
+import org.labkey.targetedms.proteomexchange.ProteomeXchangeServiceException;
+import org.labkey.targetedms.proteomexchange.PsiInstrumentParser;
+import org.labkey.targetedms.proteomexchange.PxException;
+import org.labkey.targetedms.proteomexchange.PxHtmlWriter;
+import org.labkey.targetedms.proteomexchange.PxXmlWriter;
+import org.labkey.targetedms.proteomexchange.SubmissionDataStatus;
+import org.labkey.targetedms.proteomexchange.SubmissionDataValidator;
 import org.labkey.targetedms.query.ExperimentAnnotationsManager;
 import org.labkey.targetedms.query.JournalManager;
 import org.labkey.targetedms.view.expannotations.TargetedMSExperimentsWebPart;
@@ -100,11 +120,17 @@ import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.Controller;
 
-import javax.servlet.ServletException;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * User: vsharma
@@ -598,7 +624,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
     }
 
-    public static class CopyExperimentForm extends IdForm
+    public static class CopyExperimentForm extends ExperimentIdForm
     {
         private int _journalId;
         private String _destContainerName;
@@ -612,11 +638,6 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         public void setJournalId(int journalId)
         {
             _journalId = journalId;
-        }
-
-        public ExperimentAnnotations lookupExperiment()
-        {
-            return ExperimentAnnotationsManager.get(getId());
         }
 
         public Journal lookupJournal()
@@ -668,6 +689,14 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             // Bad or missing returnUrl -- go to expeirment annotation details
             Container c = HttpView.currentContext().getContainer();
             return TargetedMSController.getViewExperimentDetailsURL(getId(), c);
+        }
+    }
+
+    public static class ExperimentIdForm extends IdForm
+    {
+        public ExperimentAnnotations lookupExperiment()
+        {
+            return ExperimentAnnotationsManager.get(getId());
         }
     }
 
@@ -788,21 +817,35 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
-            String journal = _journal.getName();
-            StringBuilder html = new StringBuilder();
-            html.append("You are giving access to ").append(journal).append(" to make a copy of your data. ");
-            if(form.isKeepPrivate())
+            if(form.isGetPxid() && (!SubmissionDataValidator.isValid(_experimentAnnotations, form.isSkipMetaDataCheck(), form.isSkipRawDataCheck(), form.isSkipModCheck())))
             {
-                html.append("Your data on ").append(journal).append(" will be kept private and a reviewer account will be provided to you. ");
+                ActionURL redirectUrl = new ActionURL(PreSubmissionCheckAction.class, _experimentAnnotations.getContainer());
+                redirectUrl.addParameter("id", _experimentAnnotations.getId());
+                throw new RedirectException(redirectUrl);
             }
+
             else
             {
-                html.append("Your data on ").append(journal).append(" will be made public. ");
+                String journal = _journal.getName();
+                StringBuilder html = new StringBuilder();
+                html.append("You are giving access to ").append(PageFlowUtil.filter(journal)).append(" to make a copy of your data. ");
+                if (form.isKeepPrivate())
+                {
+                    html.append("Your data on ").append(PageFlowUtil.filter(journal)).append(" will be kept private and a reviewer account will be provided to you. ");
+                }
+                else
+                {
+                    html.append("Your data on ").append(PageFlowUtil.filter(journal)).append(" will be made public. ");
+                }
+                if(form.isGetPxid())
+                {
+                    html.append("<br>A ProteomeXchange ID will be requested for your data.<br>");
+                }
+                html.append("<br>Are you sure you want to continue?");
+                HtmlView view = new HtmlView(html.toString());
+                view.setTitle("Submission Request to " + journal);
+                return view;
             }
-            html.append("Are you sure you want to continue?");
-            HtmlView view = new HtmlView(html.toString());
-            view.setTitle("Submission Request to " + journal);
-            return view;
         }
 
         public ModelAndView getSuccessView(PublishExperimentForm form)
@@ -810,12 +853,17 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             String journal = _journal.getName();
             ActionURL returnUrl = TargetedMSController.getViewExperimentDetailsURL(_experimentAnnotations.getId(), getContainer());
             StringBuilder html = new StringBuilder();
-            html.append("Thank you for submitting your data to ").append(journal).append("!");
-            html.append(" We will send you a confirmation email once your data has been copied to ").append(journal).append(". This can take up to a week.");
+            html.append("Thank you for submitting your data to ").append(PageFlowUtil.filter(journal)).append("!");
+            html.append(" We will send you a confirmation email once your data has been copied. This can take up to a week.");
             if(form.isKeepPrivate())
             {
-                html.append(" Your data on ").append(journal).append(" will be kept private and reviewer account details will be included in the confirmation email. ");
+                html.append("<br>Your data on ").append(PageFlowUtil.filter(journal)).append(" will be kept private and reviewer account details will be included in the confirmation email. ");
             }
+            if(form.isGetPxid())
+            {
+                html.append("<br>A ProteomeXchange ID will be requested for your data and included in the confirmation email.");
+            }
+
             html.append("<br><br>");
             html.append("<a href=" + returnUrl.getEncodedLocalURIString() + "><span class=\"labkey-button\">Back to Experiment Details</span></a>");
             HtmlView view = new HtmlView(html.toString());
@@ -825,7 +873,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
         public ModelAndView getFailView(PublishExperimentForm form, BindException errors)
         {
-            return getPublishFormView(form, _experimentAnnotations, errors, false);
+            return getPublishFormView(form, _experimentAnnotations, errors, !form.isUpdate());
         }
 
         @Override
@@ -837,7 +885,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             JournalExperiment je;
             try
             {
-                je = JournalManager.addJournalAccess(_experimentAnnotations, _journal, form.getShortAccessUrl(), form.getShortCopyUrl(), getUser());
+                je = JournalManager.addJournalAccess(_experimentAnnotations, _journal, form.getShortAccessUrl(), form.getShortCopyUrl(), form.isGetPxid(), form.isKeepPrivate(), getUser());
             }
             catch(ValidationException | UnauthorizedException  e)
             {
@@ -944,13 +992,14 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
     }
 
-    public static class PublishExperimentForm extends IdForm
+    public static class PublishExperimentForm extends PreSubmissionCheckForm
     {
         private int _journalId;
         private String _shortAccessUrl;
         private String _shortCopyUrl;
         private boolean _update = false;
         private boolean _keepPrivate = false;
+        private boolean _getPxid = true;
 
         public int getJournalId()
         {
@@ -1011,6 +1060,16 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         {
             _keepPrivate = keepPrivate;
         }
+
+        public boolean isGetPxid()
+        {
+            return _getPxid;
+        }
+
+        public void setGetPxid(boolean getPxid)
+        {
+            _getPxid = getPxid;
+        }
     }
     // ------------------------------------------------------------------------
     // END Action for publishing an experiment (provide copy access to a journal)
@@ -1069,17 +1128,20 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         {
             StringBuilder html = new StringBuilder();
             String journal = _journal.getName();
-            html.append("Are you sure you want to update your submission request to " + journal + "? ");
+            html.append("Are you sure you want to update your submission request to " + PageFlowUtil.filter(journal) + "? ");
             html.append("<br><br>");
             html.append("The new short access link is: " + AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + "/" + form.getShortAccessUrl() + ShortURLRecord.URL_SUFFIX);
-            html.append("<br>");
             if(form.isKeepPrivate())
             {
-                html.append("Your data on ").append(journal).append(" will be kept private and a reviewer account will be provided to you. ");
+                html.append("<br>Your data on ").append(PageFlowUtil.filter(journal)).append(" will be kept private and a reviewer account will be provided to you. ");
             }
             else
             {
-                html.append("Your data on ").append(journal).append(" will be made public. ");
+                html.append("<br>Your data on ").append(PageFlowUtil.filter(journal)).append(" will be made public. ");
+            }
+            if(form.isGetPxid())
+            {
+                html.append("<br>A ProteomeXchange ID will be requested for your data.");
             }
 
             HtmlView view = new HtmlView(html.toString());
@@ -1132,6 +1194,10 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             text.append("\n\n");
             text.append("Use the following link to copy the data:\n");
             text.append(journalExperiment.getShortCopyUrl().renderShortURL()).append("\n\n");
+            if(form.isGetPxid())
+            {
+                text.append("\n***Get ProteomeXchange ID\n\n");
+            }
             if(form.isKeepPrivate())
             {
                 text.append("\n");
@@ -1261,7 +1327,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             html.append("<br><br>");
             html.append("This experiment has already been copied by ").append(_journal.getName());
             html.append(". If you click OK the existing copy on ").append(_journal.getName()).append(" will be deleted and a request will be sent to make a new copy.");
-            html.append("<br/>");
+            html.append("<br>");
             html.append("Are you sure you want to continue?");
             HtmlView view = new HtmlView(html.toString());
             view.setTitle("Resubmit to " + _journal.getName());
@@ -1311,6 +1377,14 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 text.append("\n\n");
                 text.append("Use the following link to copy the data:\n");
                 text.append(_journalExperiment.getShortCopyUrl().renderShortURL()).append("\n\n");
+                if(_journalExperiment.isPxidRequested())
+                {
+                    text.append("\n***A ProteomeXchangeID is requested.\n\n");
+                }
+                if(_journalExperiment.isKeepPrivate())
+                {
+                    text.append("\n***A reviewer account is requested\n\n");
+                }
                 text.append("Thank you,\n\nPanorama team");
                 m.setText(text.toString());
                 MailHelper.send(m, getUser(), getContainer());
@@ -1379,6 +1453,607 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
     }
 
+    @RequiresPermission(ReadPermission.class)
+    public static class CompleteInstrumentAction extends ApiAction<CompletionFieldForm>
+    {
+        @Override
+        public ApiResponse execute(CompletionFieldForm completionForm, BindException errors) throws Exception
+        {
+            ApiSimpleResponse response = new ApiSimpleResponse();
+            List<JSONObject> completions = new ArrayList<>();
+
+            List<PsiInstrumentParser.PsiInstrument> instruments = new ArrayList<>();
+            try
+            {
+                instruments = PsiInstrumentParser.getInstruments();
+            }
+            catch (PxException e)
+            {
+                errors.addError(new LabKeyError("Error reading instrument names from file. " + e.getMessage()));
+                LOG.error("Error reading instrument names from file.", e);
+            }
+            for (PsiInstrumentParser.PsiInstrument instrument : instruments)
+            {
+                completions.add(new AjaxCompletion(instrument.getDisplayName(), instrument.getName()).toJSON());
+            }
+
+            response.put("completions", completions);
+
+            return response;
+        }
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public static class CompleteOrganismAction extends ApiAction<CompletionFieldForm>
+    {
+        @Override
+        public ApiResponse execute(CompletionFieldForm completionForm, BindException errors) throws Exception
+        {
+            ApiSimpleResponse response = new ApiSimpleResponse();
+            List<JSONObject> completions = new ArrayList<>();
+
+            try
+            {
+                if(!StringUtils.isBlank(completionForm.getToken()))
+                {
+                    completions = NcbiUtils.getCompletions(completionForm.getToken());
+                    LOG.info("found " + completions.size() + " matches from NCBI for query string " + PageFlowUtil.encodeURIComponent(completionForm.getToken()));
+                }
+            }
+            catch(Exception e)
+            {
+                errors.addError(new LabKeyError("Error getting organisms from NCBI. " + e.getMessage()));
+                LOG.error("Error getting organisms from NCBI .", e);
+            }
+
+            response.put("completions", completions);
+            return response;
+        }
+    }
+
+    public static class CompletionFieldForm
+    {
+        private String _token;
+
+        public String getToken()
+        {
+            return _token == null ? "" : _token;
+        }
+
+        public void setToken(String substring)
+        {
+            _token = substring;
+        }
+    }
+
+
+    @RequiresPermission(AdminPermission.class)
+    public static class PreSubmissionCheckAction extends SimpleViewAction<PreSubmissionCheckForm>
+    {
+        @Override
+        public ModelAndView getView(PreSubmissionCheckForm form, BindException errors) throws Exception
+        {
+            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(form.getId());
+            if(expAnnot == null)
+            {
+                errors.reject(ERROR_MSG, "No experiment found in for Id " + form.getId());
+                return null;
+            }
+
+            if(!expAnnot.getContainer().equals(getContainer()))
+            {
+                ActionURL url = getViewContext().getActionURL().clone();
+                url.setContainer(expAnnot.getContainer());
+                throw new RedirectException(url);
+            }
+
+            SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(expAnnot, form.isSkipMetaDataCheck(), form.isSkipRawDataCheck(), form.isSkipModCheck());
+            if(status.isValid())
+            {
+                throw new RedirectException(getPublishExperimentURL(expAnnot.getId(), getContainer()));
+            }
+            else
+            {
+                JspView view = new JspView("/org/labkey/targetedms/view/publish/missingExperimentInfo.jsp", status, errors);
+                view.setFrame(WebPartView.FrameType.PORTAL);
+                view.setTitle("Missing Information in Submission Request");
+                return view;
+            }
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return null;
+        }
+    }
+
+    public static class PreSubmissionCheckForm extends IdForm
+    {
+        private boolean _skipRawDataCheck;
+        private boolean _skipMetaDataCheck;
+        private boolean _skipModCheck;
+        private boolean _skipAllChecks;
+
+        public boolean isSkipRawDataCheck()
+        {
+            return _skipAllChecks || _skipRawDataCheck;
+        }
+
+        public void setSkipRawDataCheck(boolean skipRawDataCheck)
+        {
+            _skipRawDataCheck = skipRawDataCheck;
+        }
+
+        public boolean isSkipMetaDataCheck()
+        {
+            return _skipAllChecks || _skipMetaDataCheck;
+        }
+
+        public void setSkipMetaDataCheck(boolean skipMetaDataCheck)
+        {
+            _skipMetaDataCheck = skipMetaDataCheck;
+        }
+
+        public boolean isSkipModCheck()
+        {
+            return _skipAllChecks || _skipModCheck;
+        }
+
+        public void setSkipModCheck(boolean skipModCheck)
+        {
+            _skipModCheck = skipModCheck;
+        }
+
+        public boolean isSkipAllChecks()
+        {
+            return _skipAllChecks;
+        }
+
+        public void setSkipAllChecks(boolean skipAllChecks)
+        {
+            _skipAllChecks = skipAllChecks;
+        }
+    }
+    // ------------------------------------------------------------------------
+    // BEGIN Actions for ProteomeXchange
+    // ------------------------------------------------------------------------
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class GetPxActionsAction extends SimpleViewAction<PxExportForm>
+    {
+        @Override
+        public ModelAndView getView(PxExportForm form, BindException errors) throws Exception
+        {
+            if(form.getId() <= 0)
+            {
+                errors.reject(ERROR_MSG, "Invalid experiment annotations ID found in request " + form.getId());
+                return new SimpleErrorView(errors);
+            }
+
+            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(form.getId());
+            if(expAnnot == null)
+            {
+                errors.reject(ERROR_MSG,"Cannot find experiment with ID " + form.getId());
+                return new SimpleErrorView(errors);
+            }
+            if(!StringUtils.isBlank(expAnnot.getPublicationLink()) && !StringUtils.isBlank(expAnnot.getCitation()))
+            {
+                form.setPeerReviewed(true);
+            }
+
+            form.setTestDatabase(true);
+            JspView view = new JspView<>("/org/labkey/targetedms/view/publish/pxActions.jsp", form, errors);
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            view.setTitle("ProteomeXchange Actions");
+            return view;
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return null;
+        }
+    }
+
+    public static class PxExperimentAnnotations
+    {
+        private final ExperimentAnnotations _experimentAnnotations;
+        private final PxExportForm _form;
+
+        public PxExperimentAnnotations(ExperimentAnnotations experimentAnnotations, PxExportForm form)
+        {
+            _experimentAnnotations = experimentAnnotations;
+            _form = form;
+        }
+
+        public ExperimentAnnotations getExperimentAnnotations()
+        {
+            return _experimentAnnotations;
+        }
+
+        public PxExportForm getForm()
+        {
+            return _form;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class ExportPxXmlAction extends SimpleStreamAction<PxExportForm>
+    {
+        @Override
+        public void render(PxExportForm form, BindException errors, PrintWriter out) throws Exception
+        {
+            int experimentId = form.getId();
+            if(experimentId <= 0)
+            {
+                out.write("Invalid experiment Id found in request: " + experimentId);
+                return;
+            }
+
+            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(experimentId);
+            if(expAnnot == null)
+            {
+                out.write("Cannot find experiment with ID " + experimentId);
+                return;
+            }
+
+            if(!expAnnot.getContainer().equals(getContainer()))
+            {
+                ActionURL redirect = getViewContext().cloneActionURL();
+                redirect.setContainer(expAnnot.getContainer());
+                throw new RedirectException(redirect);
+            }
+
+            PxXmlWriter annWriter = new PxXmlWriter(out);
+            annWriter.write(new PxExperimentAnnotations(expAnnot, form));
+        }
+    }
+
+    public static class PxExportForm extends ExperimentIdForm
+    {
+        private boolean _peerReviewed;
+        private String _publicationId;
+        private String _publicationReference;
+        private boolean _testDatabase;
+        private String _pxUserName;
+        private String _pxPassword;
+        private String _changeLog;
+
+        public boolean getPeerReviewed()
+        {
+            return _peerReviewed;
+        }
+
+        public void setPeerReviewed(boolean peerReviewed)
+        {
+            _peerReviewed = peerReviewed;
+        }
+
+        public String getPublicationId()
+        {
+            return _publicationId;
+        }
+
+        public void setPublicationId(String publicationId)
+        {
+            _publicationId = publicationId;
+        }
+
+        public String getPublicationReference()
+        {
+            return _publicationReference;
+        }
+
+        public void setPublicationReference(String publicationReference)
+        {
+            _publicationReference = publicationReference;
+        }
+
+        public boolean isTestDatabase()
+        {
+            return _testDatabase;
+        }
+
+        public void setTestDatabase(boolean testDatabase)
+        {
+            _testDatabase = testDatabase;
+        }
+
+        public String getPxUserName()
+        {
+            return _pxUserName;
+        }
+
+        public void setPxUserName(String pxUserName)
+        {
+            _pxUserName = pxUserName;
+        }
+
+        public String getPxPassword()
+        {
+            return _pxPassword;
+        }
+
+        public void setPxPassword(String pxPassword)
+        {
+            _pxPassword = pxPassword;
+        }
+
+        public String getChangeLog()
+        {
+            return _changeLog;
+        }
+
+        public void setChangeLog(String changeLog)
+        {
+            _changeLog = changeLog;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public abstract static class PxServiceMethodAction <FormType extends PxExportForm> extends SimpleViewAction<FormType>
+    {
+        public PxServiceMethodAction(Class<FormType> formClass)
+        {
+            super(formClass);
+        }
+
+        @Override
+        public ModelAndView getView(FormType form, BindException errors) throws Exception
+        {
+            int experimentId = form.getId();
+            if(experimentId <= 0)
+            {
+                errors.reject(ERROR_MSG, "Invalid experiment Id found in request: " + experimentId);
+                return new SimpleErrorView(errors, true);
+            }
+
+            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(experimentId);
+            if(expAnnot == null)
+            {
+                errors.reject(ERROR_MSG, "Cannot find experiment with ID " + experimentId);
+                return new SimpleErrorView(errors, true);
+            }
+
+            String pxUser = form.getPxUserName();
+            if(StringUtils.isBlank(pxUser))
+            {
+                errors.reject(ERROR_MSG, "ProteomeXchange username cannot be blank.");
+            }
+            String pxPassword = form.getPxPassword();
+            if(StringUtils.isBlank(pxPassword))
+            {
+                errors.reject(ERROR_MSG, "ProteomeXchange password cannot be blank.");
+            }
+
+            if(errors.hasErrors())
+            {
+                return new SimpleErrorView(errors, true);
+            }
+
+            return getHtmlView(expAnnot, form, pxUser, pxPassword);
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root;
+        }
+
+        protected File writePxXmlFile(ExperimentAnnotations expAnnot, FormType form) throws PxException
+        {
+            File xml = getLocalFile(getContainer(), "px.xml");
+            // Generate the PX XML
+            PxXmlWriter annWriter;
+            try (OutputStream out = new FileOutputStream(xml))
+            {
+                annWriter = new PxXmlWriter(out);
+                annWriter.write(new PxExperimentAnnotations(expAnnot, form));
+            }
+            catch (IOException e)
+            {
+                throw new PxException("Error writing PX XML file.", e);
+            }
+            return xml;
+        }
+
+        public abstract HtmlView getHtmlView(ExperimentAnnotations expAnnot, FormType form, String pxUser, String pxPassword) throws PxException, ProteomeXchangeServiceException;
+    }
+
+    private static File getLocalFile(Container container, String fileName) throws PxException
+    {
+        java.nio.file.Path fileRoot = FileContentService.get().getFileRootPath(container, FileContentService.ContentType.files);
+        if(fileRoot == null)
+        {
+            throw new PxException("Error writing PX XML.  Could not find file root for container " + container);
+        }
+        if (FileUtil.hasCloudScheme(fileRoot))
+        {
+            PipeRoot root = PipelineService.get().getPipelineRootSetting(container);
+            if (root != null)
+            {
+                LocalDirectory localDirectory = LocalDirectory.create(root, TargetedMSModule.NAME);
+                return new File(localDirectory.getLocalDirectoryFile(), fileName);
+            }
+            else
+            {
+                throw new PxException("Error writing PX XML.  Pipeline root not found for container " + container);
+            }
+        }
+        else
+        {
+            return fileRoot.resolve(fileName).toFile();
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class ValidatePxXmlAction extends PxServiceMethodAction<PxExportForm>
+    {
+        public ValidatePxXmlAction()
+        {
+            super(PxExportForm.class);
+        }
+
+        @Override
+        public HtmlView getHtmlView(ExperimentAnnotations expAnnot, PxExportForm form, String pxUser, String pxPassword) throws PxException, ProteomeXchangeServiceException
+        {
+            File xml = writePxXmlFile(expAnnot, form);
+            String response = ProteomeXchangeService.validatePxXml(xml, form.isTestDatabase(), pxUser, pxPassword);
+            StringBuilder html = new StringBuilder();
+            html.append("<p>PX XML has been created at ").append(PageFlowUtil.filter(xml.getPath())).append(".</p>");
+            html.append("<p>Sent request to validate XML.</p>");
+            html.append("<p>Response was: </p>");
+            html.append("<p style=\"white-space: pre-wrap;\">").append(PageFlowUtil.filter(response)).append("</p>");
+            return new HtmlView(html.toString());
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class SubmitPxXmlAction extends PxServiceMethodAction<PxExportForm>
+    {
+        public SubmitPxXmlAction()
+        {
+            super(PxExportForm.class);
+        }
+
+        @Override
+        public HtmlView getHtmlView(ExperimentAnnotations expAnnot, PxExportForm form, String pxUser, String pxPassword) throws PxException, ProteomeXchangeServiceException
+        {
+            File xml = writePxXmlFile(expAnnot, form);
+            String response = ProteomeXchangeService.submitPxXml(xml, form.isTestDatabase(), pxUser, pxPassword);
+            StringBuilder html = new StringBuilder();
+            html.append("<p>PX XML has been created at ").append(PageFlowUtil.filter(xml.getPath())).append(".</p>");
+            html.append("<p>Submitted XML to ProteomeXchange.</p>");
+            html.append("<p>Response was: </p>");
+            html.append("<p style=\"white-space: pre-wrap;\">").append(PageFlowUtil.filter(response)).append("</p>");
+            return new HtmlView(html.toString());
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class UpdatePxXmlAction extends SubmitPxXmlAction
+    {
+        @Override
+        public void validate(PxExportForm form, BindException errors)
+        {
+            if(StringUtils.isBlank(form.getChangeLog()))
+            {
+                errors.reject(ERROR_MSG, "Change log cannot be empty.");
+            }
+            super.validate(form, errors);
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class SavePxIdAction extends PxServiceMethodAction<SavePxIdForm>
+    {
+        private static final Pattern PXID = Pattern.compile("identifier=(PX[DT]\\d{6})");
+
+        public SavePxIdAction()
+        {
+            super(SavePxIdForm.class);
+        }
+
+        @Override
+        public HtmlView getHtmlView(ExperimentAnnotations expAnnot, SavePxIdForm form, String pxUser, String pxPassword) throws PxException, ProteomeXchangeServiceException
+        {
+            StringBuilder html = new StringBuilder();
+            if(expAnnot.getPxid() != null && !form.isOverride())
+            {
+                html.append("Experiment ID ").append(expAnnot.getId()).append(" is associated with PX ID ").append(expAnnot.getPxid()).append(".");
+                html.append("<div style=\"margin-top:20px;\">");
+                ActionURL overrideUrl = getViewContext().getActionURL().clone();
+                overrideUrl.addParameter("id", expAnnot.getId()).addParameter("override", true).addParameter("testDatabase", form.isTestDatabase());
+                html.append(PageFlowUtil.button("Generate New PX ID").href(overrideUrl).addClass("primary"));
+                html.append("</div>");
+            }
+            else
+            {
+                String response = ProteomeXchangeService.getPxId(form.isTestDatabase(), pxUser, pxPassword);
+
+                html.append("Response from PX Server:");
+                html.append("<div style=\"white-space: pre-wrap;margin:10px 0px 10px 0px;\">").append(PageFlowUtil.filter(response)).append("</div>");
+
+                Matcher match = PXID.matcher(response);
+                if(match.find())
+                {
+                    String pxid = match.group(1);
+
+                    // Save the PX ID with the experiment.
+                    expAnnot.setPxid(pxid);
+                    ExperimentAnnotationsManager.updatePxId(expAnnot, pxid);
+
+                    html.append("<p>");
+                    html.append("PX ID: ").append("<span style=\"font-weight-bold;color:red;\">").append(pxid).append("</span> saved for experiment ").append(expAnnot.getId());
+                    html.append("</p>");
+                }
+                else
+                {
+                    html.append("<p>");
+                    html.append("<span style=\"font-weight-bold;color:red;\"> ERROR getting PX ID.</span>");
+                    html.append("</p>");
+                }
+            }
+
+            html.append("<br>");
+            html.append(PageFlowUtil.textLink("Back to PX Actions", new ActionURL(GetPxActionsAction.class, getContainer()).addParameter("id", expAnnot.getId())));
+            return new HtmlView(html.toString());
+        }
+    }
+
+    public static class SavePxIdForm extends PxExportForm
+    {
+        private boolean _override;
+
+        public boolean isOverride()
+        {
+            return _override;
+        }
+
+        public void setOverride(boolean override)
+        {
+            _override = override;
+        }
+    }
+
+    @RequiresPermission(AdminPermission.class)
+    public static class PxXmlSummaryAction extends SimpleViewAction<PxExportForm>
+    {
+        @Override
+        public ModelAndView getView(PxExportForm form, BindException errors) throws Exception
+        {
+            int experimentId = form.getId();
+            if(experimentId <= 0)
+            {
+                errors.reject(ERROR_MSG, "Invalid experiment Id found in request: " + experimentId);
+                return new SimpleErrorView(errors, true);
+            }
+
+            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(experimentId);
+            if(expAnnot == null)
+            {
+                errors.reject(ERROR_MSG, "Cannot find experiment with ID " + experimentId);
+                return new SimpleErrorView(errors, true);
+            }
+
+            StringBuilder summaryHtml = new StringBuilder();
+            PxHtmlWriter writer = new PxHtmlWriter(summaryHtml);
+            writer.write(new PxExperimentAnnotations(expAnnot, form));
+
+            return new HtmlView(summaryHtml.toString());
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root;
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // END Actions for ProteomeXchange
+    // ------------------------------------------------------------------------
+
     public static ActionURL getCopyExperimentURL(int experimentAnnotationsId, int journalId, Container container)
     {
         ActionURL result = new ActionURL(PublishTargetedMSExperimentsController.CopyExperimentAction.class, container);
@@ -1390,6 +2065,13 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     public static ActionURL getPublishExperimentURL(int experimentAnnotationsId, Container container)
     {
         ActionURL result = new ActionURL(ViewPublishExperimentFormAction.class, container);
+        result.addParameter("id", experimentAnnotationsId);
+        return result;
+    }
+
+    public static ActionURL getPrePublishExperimentCheckURL(int experimentAnnotationsId, Container container)
+    {
+        ActionURL result = new ActionURL(PreSubmissionCheckAction.class, container);
         result.addParameter("id", experimentAnnotationsId);
         return result;
     }
@@ -1416,13 +2098,21 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 new PublishExperimentAction(),
                 new UpdateJournalExperimentAction(),
                 new DeleteJournalExperimentAction(),
-                new RepublishJournalExperimentAction()
+                new RepublishJournalExperimentAction(),
+                new PxXmlSummaryAction(),
+                new PreSubmissionCheckAction()
             );
 
             // @RequiresPermission(AdminOperationsPermission.class)
             assertForAdminOperationsPermission(user,
                 new CreateJournalGroupAction(),
-                new DeleteJournalGroupAction()
+                new DeleteJournalGroupAction(),
+                new GetPxActionsAction(),
+                new ExportPxXmlAction(),
+                new ValidatePxXmlAction(),
+                new SavePxIdAction(),
+                new SubmitPxXmlAction(),
+                new UpdatePxXmlAction()
             );
 
             // @AdminConsoleAction

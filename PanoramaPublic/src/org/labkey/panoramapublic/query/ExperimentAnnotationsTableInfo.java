@@ -49,7 +49,10 @@ import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.SimpleNamedObject;
+import org.labkey.api.util.UniqueID;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.view.HttpView;
+import org.labkey.targetedms.PublishTargetedMSExperimentsController;
 import org.labkey.targetedms.TargetedMSController;
 import org.labkey.targetedms.TargetedMSManager;
 import org.labkey.targetedms.TargetedMSSchema;
@@ -189,7 +192,13 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
         ExperimentUserForeignKey.initColumn(getColumn("LabHead"));
 
         ColumnInfo submitterCol = ExperimentUserForeignKey.initColumn(getColumn("Submitter"));
-        submitterCol.setUserEditable(false);
+        submitterCol.setUserEditable(getUserSchema().getUser().isInSiteAdminGroup() ? true : false);
+
+        ColumnInfo instrCol = getColumn("Instrument");
+        instrCol.setDisplayColumnFactory(colInfo -> new AutoCompleteColumn(colInfo, new ActionURL(PublishTargetedMSExperimentsController.CompleteInstrumentAction.class, getContainer()), true, "Enter Instrument"));
+
+        ColumnInfo organismCol = getColumn("Organism");
+        organismCol.setDisplayColumnFactory(colInfo -> new OrganismColumn(colInfo, new ActionURL(PublishTargetedMSExperimentsController.CompleteOrganismAction.class, getContainer()), false, "Enter Organism"));
 
         SQLFragment runCountSQL = new SQLFragment("(SELECT COUNT(r.ExperimentRunId) FROM ");
         runCountSQL.append(ExperimentService.get().getTinfoRunList(), "r");
@@ -208,6 +217,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
         visibleColumns.add(FieldKey.fromParts("Runs"));
         visibleColumns.add(FieldKey.fromParts("Keywords"));
         visibleColumns.add(FieldKey.fromParts("Citation"));
+        visibleColumns.add(FieldKey.fromParts("pxid"));
 
         setDefaultVisibleColumns(visibleColumns);
     }
@@ -226,22 +236,35 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
 
     public static class ExperimentUserForeignKey extends UserIdForeignKey
     {
+        private FieldKey _fieldKey;
+
         static public ColumnInfo initColumn(ColumnInfo column)
         {
-            column.setFk(new ExperimentUserForeignKey(column.getParentTable().getUserSchema()));
+            column.setFk(new ExperimentUserForeignKey(column.getParentTable().getUserSchema(), column.getFieldKey()));
             column.setDisplayColumnFactory(colInfo -> new ExperimentUserDisplayColumn(colInfo));
             return column;
         }
 
-        public ExperimentUserForeignKey(UserSchema userSchema)
+        public ExperimentUserForeignKey(UserSchema userSchema, FieldKey fieldKey)
         {
             super(userSchema);
+            _fieldKey = fieldKey;
         }
 
         @Override
         public NamedObjectList getSelectList(RenderContext ctx)
         {
             NamedObjectList objectList = new NamedObjectList();
+
+            // If there is an existing value in this column include that in the list
+            if(_fieldKey != null)
+            {
+                Integer userId = ctx.get(_fieldKey, Integer.class);
+                if (userId != null)
+                {
+                    addUser(objectList, userId);
+                }
+            }
             Container container = ctx.getContainer();
             if(container != null)
             {
@@ -261,13 +284,18 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
             {
                 if (role.getRole().equals(adminRole))
                 {
-                    User u = UserManager.getUser(role.getUserId());
-                    if (u != null)
-                    {
-                        String displayName = getUserDisplayName(u);
-                        objectList.put(new SimpleNamedObject(String.valueOf(u.getUserId()), displayName));
-                    }
+                    addUser(objectList, role.getUserId());
                 }
+            }
+        }
+
+        private void addUser(NamedObjectList objectList, Integer userId)
+        {
+            User u = UserManager.getUser(userId);
+            if (u != null)
+            {
+                String displayName = getUserDisplayName(u);
+                objectList.put(new SimpleNamedObject(String.valueOf(u.getUserId()), displayName));
             }
         }
     }
@@ -389,6 +417,69 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
         public String getFormattedValue(RenderContext ctx)
         {
             return h(getValue(ctx));
+        }
+    }
+
+    private static class AutoCompleteColumn extends DataColumn
+    {
+        private String _autoCompletionUrl;
+        private boolean _prefetch;
+        private String _placeholderText;
+
+        public AutoCompleteColumn(ColumnInfo col, ActionURL autocompletionUrl, boolean prefetch, String placeHolderText)
+        {
+            super(col);
+            _autoCompletionUrl = autocompletionUrl.getLocalURIString() + (!prefetch ? "token=%QUERY" : "");
+            _autoCompletionUrl = PageFlowUtil.jsString(_autoCompletionUrl);
+            _prefetch = prefetch;
+            _placeholderText = placeHolderText;
+        }
+
+        @Override
+        public void renderInputHtml(RenderContext ctx, Writer out, Object value) throws IOException
+        {
+            String name = getFormFieldName(ctx);
+            String valueString = value == null ? "" : value.toString();
+
+            String renderId = "input-picker-div-" + UniqueID.getRequestScopedUID(HttpView.currentRequest());
+            StringBuilder sb = new StringBuilder();
+
+            sb.append("<script src=\"//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js\"></script>\n");
+            sb.append("<script type=\"text/javascript\">");
+            sb.append("LABKEY.requiresCss(\"/TargetedMS/css/bootstrap-tagsinput.css\");\n");
+            sb.append("LABKEY.requiresCss(\"/TargetedMS/css/typeahead-examples.css\");\n");
+            sb.append("LABKEY.requiresScript([\"/TargetedMS/js/typeahead.bundle.js\", \"/TargetedMS/js/bootstrap-tagsinput.min.js\", \"/TargetedMS/js/autocomplete.js\"], function() {\n");
+            sb.append("    initAutoComplete(").append(_autoCompletionUrl).append(", '").append(renderId).append("', ").append(_prefetch ? "true": "false").append(");\n");
+            sb.append("});\n");
+
+            sb.append("</script>\n");
+            sb.append("<div style=\"margin-top:5px;\" id=\"").append(renderId).append("\" class=\"scrollable-dropdown-menu\"><input type=\"text\" \" class=\"form-control typeahead\" placeholder=\"" + _placeholderText + "\" name=\"" + name + "\" value=\"" + valueString + "\"></div>");
+            sb.append("<div style=\"font-size:11px\">Type 3 or more letters to see a drop-down list of matching options.</div>");
+
+            out.write(sb.toString());
+        }
+    }
+
+    private static class OrganismColumn extends AutoCompleteColumn
+    {
+
+        public OrganismColumn(ColumnInfo col, ActionURL autocompletionUrl, boolean prefetch, String placeHolderText)
+        {
+            super(col, autocompletionUrl, prefetch, placeHolderText);
+        }
+
+        @Override
+        public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+        {
+            String organismsStr = ctx.get(getColumnInfo().getFieldKey(), String.class);
+            if(!StringUtils.isBlank(organismsStr))
+            {
+                out.write(PageFlowUtil.filter(ExperimentAnnotations.getOrganismsNoTaxId(organismsStr)));
+            }
+            else
+            {
+                super.renderGridCellContents(ctx, out);
+            }
         }
     }
 }

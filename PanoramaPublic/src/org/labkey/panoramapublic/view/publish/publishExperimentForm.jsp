@@ -62,6 +62,8 @@
     String submitUrl = isUpdate ? new ActionURL(PublishTargetedMSExperimentsController.UpdateJournalExperimentAction.class, getContainer()).getLocalURIString() :
             new ActionURL(PublishTargetedMSExperimentsController.PublishExperimentAction.class, getContainer()).getLocalURIString();
     String cancelUrl = TargetedMSController.getViewExperimentDetailsURL(bean.getForm().getId(), getContainer()).getLocalURIString();
+
+    boolean siteAdmin = getUser().isInSiteAdminGroup();
 %>
 
 <div id="publishExperimentForm"></div>
@@ -207,11 +209,41 @@
                     checked: true,
                     name: 'keepPrivate',
                     boxLabel: 'Check this box to keep your data on Panorama Public private. Reviewer account details will be provided.'
+                },
+                {
+                    xtype: 'checkbox',
+                    fieldLabel: "Get ProteomeXchange ID",
+                    hidden: <%=!siteAdmin%>,
+                    checked: true,
+                    name: 'pxidRequested',
+                    boxLabel: 'Check this box to get a ProteomeXchange ID for your data.'
+                },
+                {
+                    xtype: 'checkbox',
+                    fieldLabel: "Skip Raw Data Check",
+                    hidden: <%=!siteAdmin%>,
+                    checked: false,
+                    name: 'skipRawDataCheck'
+                },
+                {
+                    xtype: 'checkbox',
+                    fieldLabel: "Skip Meta Data Check",
+                    hidden: <%=!siteAdmin%>,
+                    checked: false,
+                    name: 'skipMetaDataCheck'
+                },
+                {
+                    xtype: 'checkbox',
+                    fieldLabel: "Skip Modifications Check",
+                    hidden: <%=!siteAdmin%>,
+                    checked: false,
+                    name: 'skipModCheck'
                 }
             ],
             buttonAlign: 'left',
             buttons: [{
                 text: <%=q(publishButtonText)%>,
+                cls: 'labkey-button primary',
                 handler: function() {
                     var values = form.getForm().getValues();
                     console.log(values);
@@ -224,6 +256,7 @@
                 },
                 {
                     text: 'Cancel',
+                    cls: 'labkey-button',
                     hrefTarget: '_self',
                     href: <%=q(cancelUrl)%>
                 }]
