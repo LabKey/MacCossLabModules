@@ -28,7 +28,6 @@ import org.labkey.targetedms.parser.SampleFile;
 import org.labkey.targetedms.query.ExperimentAnnotationsManager;
 import org.labkey.targetedms.query.ReplicateManager;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -249,7 +248,7 @@ public class SubmissionDataValidator
                 continue;
             }
 
-            String fileName = FilenameUtils.getName(filePath);
+            String fileName = getSampleFileName(filePath);
 
             if(!Files.exists(rawFilesDir) || !findInDirectoryTree(rawFilesDir, fileName, rootExpContainer))
             {
@@ -272,7 +271,7 @@ public class SubmissionDataValidator
             List<String> missingInRoot = new ArrayList<>();
             for(String filePath: missingFiles)
             {
-                String fileName = FilenameUtils.getName(filePath);
+                String fileName = getSampleFileName(filePath);
                 if(!findInDirectoryTree(rawFilesDir, fileName, rootExpContainer))
                 {
                     missingInRoot.add(fileName);
@@ -286,6 +285,17 @@ public class SubmissionDataValidator
         }
 
         return missingFiles;
+    }
+
+    static String getSampleFileName(String filePath)
+    {
+        String fileName = FilenameUtils.getName(filePath);
+        if(fileName != null && fileName.indexOf('?') != -1)
+        {
+            // Example: 2017_July_10_bivalves_292.raw?centroid_ms2=true.  Return just the filename.
+            fileName = fileName.substring(0, fileName.indexOf('?'));
+        }
+        return fileName;
     }
 
     private static String getFilePath(String filePath)
