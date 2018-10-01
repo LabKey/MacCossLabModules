@@ -89,7 +89,7 @@ public class SubmissionDataStatus
             Set<String> fileNames = new HashSet<>(pathsFromSameSkyDocs.size());
             for(String filePath: pathsFromSameSkyDocs)
             {
-                fileNames.add(FilenameUtils.getName(filePath));
+                fileNames.add(SubmissionDataValidator.getSampleFileName(filePath));
             }
             MissingRawData missing = new MissingRawData(skydocs, fileNames);
             missingData.add(missing);
