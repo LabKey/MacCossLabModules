@@ -16,6 +16,8 @@
 package org.labkey.targetedms.security;
 
 import org.labkey.api.admin.FolderExportPermission;
+import org.labkey.api.security.SecurableResource;
+import org.labkey.api.security.SecurityPolicy;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.security.roles.AbstractRole;
 
@@ -36,8 +38,8 @@ public class CopyTargetedMSExperimentRole extends AbstractRole
     }
 
     @Override
-    public boolean isAssignable()
+    public boolean isApplicable(SecurityPolicy policy, SecurableResource resource)
     {
-        return false;
+        return false; // Do not show in the permission UI
     }
 }
