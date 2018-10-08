@@ -368,7 +368,7 @@ public class JournalManager
                 }
             }
         }
-        newPolicy.addRoleAssignment(journalGroup, CopyTargetedMSExperimentRole.class);
+        newPolicy.addRoleAssignment(journalGroup, CopyTargetedMSExperimentRole.class, false);
         SecurityPolicyManager.savePolicy(newPolicy);
     }
 
