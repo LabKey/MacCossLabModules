@@ -80,12 +80,6 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
                 + experiment.getContainer().getPath() + " to " + getContainer().getPath());
     }
 
-    @Override
-    public boolean hasJacksonSerialization()
-    {
-        return true;
-    }
-
     public ActionURL getStatusHref()
     {
         if (getContainer() != null)
