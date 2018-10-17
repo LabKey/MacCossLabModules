@@ -227,9 +227,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             }
 
             List<? extends ExpData> allData = run.getAllDataUsedByRun();
-            if(allData.size() > 0)
+            for(ExpData data: allData)
             {
-                ExpData data = allData.get(0); // We only have one ExpData (sky.zip) per ExpRun.
                 String fileName = FileUtil.getFileName(data.getFilePath());
                 Path newDataPath = fileRootPath.resolve(fileName);
                 if(Files.exists(newDataPath))
