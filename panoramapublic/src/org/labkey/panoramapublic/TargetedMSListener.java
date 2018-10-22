@@ -27,6 +27,7 @@ import org.labkey.api.view.ShortURLService;
 import org.labkey.targetedms.model.ExperimentAnnotations;
 import org.labkey.targetedms.model.Journal;
 import org.labkey.targetedms.model.JournalExperiment;
+import org.labkey.targetedms.parser.blib.BlibSpectrumReader;
 import org.labkey.targetedms.query.ExperimentAnnotationsManager;
 import org.labkey.targetedms.query.JournalManager;
 
@@ -80,6 +81,8 @@ public class TargetedMSListener implements ExperimentListener, ContainerManager.
 
         // Clean up Metric Configurations
         new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoQCMetricConfiguration() + " WHERE Container = ?", c);
+
+        BlibSpectrumReader.clearBlibCache(c);
     }
 
     @Override
