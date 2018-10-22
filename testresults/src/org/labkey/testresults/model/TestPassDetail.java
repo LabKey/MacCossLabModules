@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.testresults;
+package org.labkey.testresults.model;
 
 import java.util.Date;
 
@@ -32,13 +32,17 @@ public class TestPassDetail implements Comparable<TestPassDetail>
     private int duration;
     private double managedMemory;
     private double totalMemory;
+    private double committedMemory;
+    private int userAndGDIHandles;
+    private int handles;
     private Date timestamp;
 
     public TestPassDetail() {
 
     }
 
-    public TestPassDetail(int testRunId, int pass, int testId, String testName, String language, int duration, double managedMemory, double totalMemory, Date timestamp) {
+    public TestPassDetail(int testRunId, int pass, int testId, String testName, String language, int duration,
+                          double managedMemory, double totalMemory, double committedMemory, int userGdiHandles, int handles, Date timestamp) {
         this.testRunId = testRunId;
         this.pass = pass;
         this.testId = testId;
@@ -47,6 +51,9 @@ public class TestPassDetail implements Comparable<TestPassDetail>
         this.duration = duration;
         this.managedMemory = managedMemory;
         this.totalMemory = totalMemory;
+        this.committedMemory = committedMemory;
+        this.userAndGDIHandles = userGdiHandles;
+        this.handles = handles;
         this.timestamp = timestamp;
     }
 
@@ -90,8 +97,7 @@ public class TestPassDetail implements Comparable<TestPassDetail>
         this.testName = testName;
     }
 
-    public String getLanguage()
-    {
+    public String getLanguage() {
         if(language == null)
             return "unknown";  // standard display value so that null values aren't ignored as that would skew data..
         return language;
@@ -144,14 +150,42 @@ public class TestPassDetail implements Comparable<TestPassDetail>
 
     public Date getTimestamp()
     {
-        if(timestamp == null)
-            return null;
         return timestamp;
     }
 
     public void setTimestamp(Date timestamp)
     {
         this.timestamp = timestamp;
+    }
+
+    public double getCommittedMemory()
+    {
+        return committedMemory;
+    }
+
+    public void setCommittedMemory(double committedMemory)
+    {
+        this.committedMemory = committedMemory;
+    }
+
+    public int getUserAndGDIHandles()
+    {
+        return userAndGDIHandles;
+    }
+
+    public void setUserAndGDIHandles(int userAndGDIHandles)
+    {
+        this.userAndGDIHandles = userAndGDIHandles;
+    }
+
+    public int getHandles()
+    {
+        return handles;
+    }
+
+    public void setHandles(int handles)
+    {
+        this.handles = handles;
     }
 
     public int compareTo(TestPassDetail o2) {

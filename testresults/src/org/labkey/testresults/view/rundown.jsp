@@ -2,23 +2,23 @@
 <%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.data.statistics.MathStat" %>
 <%@ page import="org.labkey.api.data.statistics.StatsService" %>
-<%@ page import="org.labkey.api.services.ServiceRegistry" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.testresults.RunDetail" %>
-<%@ page import="org.labkey.testresults.TestFailDetail" %>
-<%@ page import="org.labkey.testresults.TestLeakDetail" %>
 <%@ page import="org.labkey.testresults.TestResultsController" %>
-<%@ page import="org.labkey.testresults.TestsDataBean" %>
-<%@ page import="org.labkey.testresults.User" %>
+<%@ page import="org.labkey.testresults.model.RunDetail" %>
+<%@ page import="org.labkey.testresults.model.TestFailDetail" %>
+<%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
+<%@ page import="org.labkey.testresults.model.User" %>
+<%@ page import="org.labkey.testresults.view.RunDownBean" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="java.util.Date" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
+<%@ page import="org.labkey.testresults.model.BackgroundColor" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
@@ -27,7 +27,7 @@
      * Date: 1/14/2015
      */
     JspView<?> me = (JspView<?>)HttpView.currentView();
-    TestsDataBean data = (TestsDataBean)me.getModelBean();
+    RunDownBean data = (RunDownBean)me.getModelBean();
     final String contextPath = AppProps.getInstance().getContextPath();
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
 
@@ -49,12 +49,12 @@
     User[] missingUsers = data.getMissingUsers(data.getRunsByDate(selectedDate, false));
     // Calculates Mean, Min, Max table
     Map<String, List<TestFailDetail>> topFailures = data.getTopFailures(10, true); // top 10 failures
-    Map<String, List<TestLeakDetail>> topLeaks = data.getTopLeaks(10, true); // top 10 leaks
+    Map<String, List<TestMemoryLeakDetail>> topLeaks = data.getTopLeaks(10, true); // top 10 leaks
     StatsService service = StatsService.get();
 
     Map<String, Map<String, Double>> languageBreakdown = data.getLanguageBreakdown(topFailures); // test name mapped to language and percents
     Map<String, List<TestFailDetail>> todaysFailures = data.getFailedTestsByDate(selectedDate, true);
-    Map<String, List<TestLeakDetail>> todaysLeaks = data.getLeaksByDate(selectedDate, true);
+    Map<String, List<TestMemoryLeakDetail>> todaysLeaks = data.getLeaksByDate(selectedDate, true);
     JSONObject memoryChartData = data.getTodaysCompactMemoryJson(selectedDate);
     JSONObject trendsJson = data.getTrends();
     Container c = getViewContext().getContainer();
@@ -80,6 +80,7 @@
         <li><a href="<%=h(new ActionURL(TestResultsController.LongTermAction.class, c))%>" style="color:#fff;">-Long Term</a></li>
         <li><a href="<%=h(new ActionURL(TestResultsController.ShowFlaggedAction.class, c))%>" style="color:#fff;">-Flags</a></li>
         <li><a href="<%=h(new ActionURL(TestResultsController.TrainingDataViewAction.class, c))%>" style="color:#fff;">-Training Data</a></li>
+        <li><a href="<%=h(new ActionURL(TestResultsController.ErrorFilesAction.class, c))%>" style="color:#fff;">-Posting Errors</a></li>
         <li><a href="https://skyline.gs.washington.edu/labkey/project/home/issues/begin.view?" target="_blank" title="Report bugs/Request features.  Use 'TestResults' as area when creating new issue" style="color:#fff;">-Issues</a></li>
         <img src="<%=h(contextPath)%>/TestResults/img/uw.png" id="uw">
         <span id="stats">0 runs to show</span>
@@ -125,50 +126,52 @@
                     <%
                     int passes =  run.getPassedtests();
                     int failures = run.getFailedtests();
-                    int leaks = run.getLeakedtests();
+                    int testmemoryleaks = run.getLeakedtests();
                     boolean isGoodRun = true;
                     boolean highlightPasses = false;
-                    String color="#00cc00;";
+                    String color= BackgroundColor.pass.toString();
                     String title= "Within 2 standard deviations of training data. ";
-                    // ERROR: duration < 540, failures or leaks count > 0, more then 3 standard deviations away
+                    // ERROR: duration < 540, failures or testmemoryleaks count > 0, more then 3 standard deviations away
                     // WARNING: Between 2 and 3 standard deviations away
                     // PASS: within 2 standard deviations away as well as not an ERROR or a WARNING
                     int errorCount = errorRuns;
-                    if(isGoodRun && (u.getMeanmemory() == 0d || u.getMeantestsrun() == 0d)) {  // IF NO TRAINING DATA FOR USER
-                        color="#cccccc;";
-                        title = "No training data for " + u.getUsername();
+                    if(isGoodRun && (u.getMeanmemory() == 0d || u.getMeantestsrun() == 0d || !u.isActive())) {  // IF NO TRAINING DATA FOR USER or INACTIVE
+                        color=BackgroundColor.unknown.toString();
+                        title = (u.getMeanmemory() == 0d || u.getMeantestsrun() == 0d)
+                            ? "No training data for " + u.getUsername()
+                            : "Deactivated " + u.getUsername();
                         isGoodRun = false;
                     }
                     if(isGoodRun && (!u.fitsMemoryTrainingData(run.getAverageMemory(), 3) || !u.fitsRunCountTrainingData(run.getPassedtests(), 3))) {
-                        color="#ff0000;";
+                        color=BackgroundColor.error.toString();
                         isGoodRun = false;
                         highlightPasses = true;
                         title = "Outside 3 standard deviations of training data";
                         errorRuns++;
                     }
                     if(isGoodRun && (!u.fitsMemoryTrainingData(run.getAverageMemory(), 2) || !u.fitsRunCountTrainingData(run.getPassedtests(), 2))) {
-                        color="#ffa500";
+                        color=BackgroundColor.warn.toString();
                         title="Between 2 and 3 standard deviations of training data";
                         isGoodRun = false;
                         highlightPasses = true;
                         warningRuns++;
                     }
-                    if(run.getDuration()< 540) {
-                        color="#ff0000;";
+                    if(run.getDuration() < 539) {   // 1 minute tolerance
+                        color=BackgroundColor.error.toString();
                         isGoodRun = false;
-                        title = "Duration not 540 minutes. ";
+                        title = "Duration less than 540 minutes. ";
                         if(errorCount == errorRuns)
                             errorRuns++;
                     }
                     if(run.getFailures().length > 0) {
-                        color="#ff0000;";
+                        color=BackgroundColor.error.toString();
                         isGoodRun = false;
                         title += "One or more tests failed. ";
                         if(errorCount == errorRuns)
                             errorRuns++;
                     }
-                    if( run.getLeaks().length > 0) {
-                        color="#ff0000;";
+                    if(run.getTestmemoryleaks().length > 0) {
+                        color=BackgroundColor.error.toString();
                         isGoodRun = false;
                         title += "Leaks were detected.";
                         if(errorCount == errorRuns)
@@ -185,13 +188,13 @@
                     </td>
                     <td style="font-size:11px;" data-sort-value="<%=h(run.getPostTime().getTime())%>"><%=h(dfMDHM.format(run.getPostTime()))%></td>
                     <td ><%=h(run.getDuration())%><%if(run.hasHang()){%> <img style="width:16px; height:16px;" src='<%=h(contextPath)%>/TestResults/img/hangicon.png'><%}%>
-                        <%if(run.getDuration()< 540) {%><img src='<%=h(contextPath)%>/TestResults/img/fail.png'><%}%></td>
+                        <%if(run.getDuration()< 539) {%><img src='<%=h(contextPath)%>/TestResults/img/fail.png'><%}%></td>
                     <td><%=h(passes)%>
                         <%if(highlightPasses) {%><img src='<%=h(contextPath)%>/TestResults/img/fail.png'><%}%></td>
                     <td><%=h(failures)%>
                         <%if(run.getFailures().length > 0) {%><img src='<%=h(contextPath)%>/TestResults/img/fail.png'><%}%></td>
-                    <td><%=h(leaks)%>
-                        <%if(run.getLeaks().length > 0) {%><img src='<%=h(contextPath)%>/TestResults/img/fail.png'><%}%></td>
+                    <td><%=h(testmemoryleaks)%>
+                        <%if(run.getTestmemoryleaks().length > 0) {%><img src='<%=h(contextPath)%>/TestResults/img/fail.png'><%}%></td>
                     <td><a runid="<%=h(run.getId())%>" train="<%=h((run.isTrainRun()) ? "false" : "true")%>" class="traindata"><%=h((run.isTrainRun()) ? "Untrain" : "Train")%></a></td>
                 </tr>
                 <%}}
@@ -199,16 +202,14 @@
                 <%
                     for(User user: missingUsers) {%>
                         <tr>
-                            <td style="background:red;"><%=h(user.getUsername())%></td>
-                            <td style="background:red;">MISSING RUN</td>
-                            <td style="background:red;"></td>
-                            <td style="background:red;"></td>
-                            <td style="background:red;"></td>
-                            <td style="background:red;"></td>
-                            <td style="background:red;"></td>
+                            <td style="background:<%=BackgroundColor.error%>;"><%=h(user.getUsername())%></td>
+                            <td style="background:<%=BackgroundColor.error%>;">MISSING RUN</td>
+                            <% for (int i = 0; i < 5; i++) { %>
+                            <td style="<%=BackgroundColor.error%>;"></td>
+                            <% } %>
                         </tr>
-                    <%}
-                    }%>
+                <%  }
+                }%>
                 </tbody>
             </table>
 
@@ -218,7 +219,7 @@
                     <td style="width:200px; overflow:hidden; padding:0px;">Fail: <img src='<%=h(contextPath)%>/TestResults/img/fail.png'> | Leak: <img src='<%=h(contextPath)%>/TestResults/img/leak.png'></td>
                     <%for(User user: statRunUserMap.keySet()){
                         for(RunDetail run: statRunUserMap.get(user)) {
-                            if(run.getFailures().length == 0 && run.getLeaks().length ==0) continue;%>
+                            if(run.getFailures().length == 0 && run.getTestmemoryleaks().length ==0) continue;%>
                     <td style="max-width:60px; width:60px; overflow:hidden; text-overflow: ellipsis; padding:0px;" title="<%=h(user.getUsername())%>"><%=h(user.getUsername()) + "("+run.getId()+")"%></td>
                     <%}
                     }%>
@@ -228,10 +229,10 @@
                 <!--Adds Failures to grid-->
                 <%for(Map.Entry<String, List<TestFailDetail>> entry : todaysFailures.entrySet()) {%>
                 <tr>
-                    <td style="width:200px; max-width:200px;  overflow:hidden; text-overflow: ellipsis; padding:0px;"><a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>viewType=&failedTest=<%=h(entry.getKey())%>" target="_blank"><%=h(entry.getKey())%></a></td>
+                    <td style="width:200px; max-width:200px;  overflow:hidden; text-overflow: ellipsis; padding:0px;"><a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>end=<%=h(df.format(selectedDate))%>&failedTest=<%=h(entry.getKey())%>" target="_blank"><%=h(entry.getKey())%></a></td>
                     <%for(User user: statRunUserMap.keySet()){
                         for(RunDetail run: statRunUserMap.get(user)){
-                            if(run.getFailures().length == 0 && run.getLeaks().length ==0) continue;%>
+                            if(run.getFailures().length == 0 && run.getTestmemoryleaks().length ==0) continue;%>
                     <td class="highlightrun highlighttd-<%=h(run.getId())%>" style="width:60px; overflow:hidden; padding:0px;"><%
                     TestFailDetail matchingFail = null;
 
@@ -251,16 +252,16 @@
                 </tr>
                 <%}%>
                 <!--Adds Leaks to grid-->
-                <%for(Map.Entry<String, List<TestLeakDetail>> entry : todaysLeaks.entrySet()) {%>
+                <%for(Map.Entry<String, List<TestMemoryLeakDetail>> entry : todaysLeaks.entrySet()) {%>
                 <tr>
                     <td style="max-width:200px; overflow:hidden; padding:0px;"><%=h(entry.getKey())%></td>
                     <%for(User user: statRunUserMap.keySet()){
                         for(RunDetail run: statRunUserMap.get(user)){
-                            if(run.getFailures().length == 0 && run.getLeaks().length ==0) continue;%>
+                            if(run.getFailures().length == 0 && run.getTestmemoryleaks().length ==0) continue;%>
                     <td  class="highlightrun highlighttd-<%=h(run.getId())%>"  style="width:60px; padding:0px;"><%
-                        TestLeakDetail matchingLeak = null;
+                        TestMemoryLeakDetail matchingLeak = null;
 
-                        for(TestLeakDetail leak: entry.getValue()){
+                        for(TestMemoryLeakDetail leak: entry.getValue()){
                             if(leak.getTestRunId() ==run.getId()) {
                                 matchingLeak = leak; }
                         }
@@ -297,7 +298,7 @@
             </center>
             <script type="text/javascript">
                 $('#viewType').on('change', function() {
-                    window.location.href = "<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>&viewType=" + this.value;
+                    window.location.href = "<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>&viewType=" + this.value +"&end=<%=h(df.format(selectedDate))%>";
                 });
             </script>
             <!--Bar Graphs for average over past week-->
@@ -311,7 +312,7 @@
         <br />
         <br />
 
-        <!--Basic test run information about duration, # of passses, # of failurs, and # of leaks-->
+        <!--Basic test run information about duration, # of passses, # of failurs, and # of testmemoryleaks-->
         <div class="centeredContent">
         <%if(topFailures.size() > 0){%>
             <!--Top Failures, occurences, and language pie chart table-->
@@ -326,7 +327,7 @@
                 for(String key: topFailures.keySet()) {
                 %>
                 <tr>
-                    <td><a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>failedTest=<%=h(key)%>&viewType=<%=viewType%>" target="_blank"><%=h(key)%></a></td>
+                    <td><a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>failedTest=<%=h(key)%>&end=<%=h(df.format(selectedDate))%>&viewType=<%=viewType%>" target="_blank"><%=h(key)%></a></td>
                     <td><%=h(topFailures.get(key).size())%></td>
                     <td>
                         <div id="<%=key%>" class="c3chart" style="width:120px; height:120px;"></div>

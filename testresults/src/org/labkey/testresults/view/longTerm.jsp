@@ -7,8 +7,8 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.testresults.TestResultsController" %>
-<%@ page import="org.labkey.testresults.TestsDataBean" %>
 <%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
+<%@ page import="org.labkey.testresults.view.LongTermBean" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
@@ -17,7 +17,7 @@
      * Date: 1/14/2015
      */
     JspView<?> me = (JspView<?>) HttpView.currentView();
-    TestsDataBean data = (TestsDataBean)me.getModelBean();
+    LongTermBean data = (LongTermBean)me.getModelBean();
     final String contextPath = AppProps.getInstance().getContextPath();
     String viewType = data.getViewType();
     Container c = getContainer();
@@ -30,6 +30,7 @@
         <li><a href="<%=h(new ActionURL(TestResultsController.LongTermAction.class, c))%>" style="color:#fff;">-Long Term</a></li>
         <li><a href="<%=h(new ActionURL(TestResultsController.ShowFlaggedAction.class, c))%>" style="color:#fff;">-Flags</a></li>
         <li><a href="<%=h(new ActionURL(TestResultsController.TrainingDataViewAction.class, c))%>" style="color:#fff;">-Training Data</a></li>
+        <li><a href="<%=h(new ActionURL(TestResultsController.ErrorFilesAction.class, c))%>" style="color:#fff;">-Posting Errors</a></li>
         <li><a href="https://skyline.gs.washington.edu/labkey/project/home/issues/begin.view?" target="_blank" title="Report bugs/Request features.  Use 'TestResults' as area when creating new issue" style="color:#fff;">-Issues</a></li>
         <img src="<%=h(contextPath)%>/TestResults/img/uw.png" id="uw">
     </ul>

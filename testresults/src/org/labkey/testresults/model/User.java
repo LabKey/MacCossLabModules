@@ -1,4 +1,4 @@
-package org.labkey.testresults;
+package org.labkey.testresults.model;
 
 import org.labkey.api.data.Container;
 

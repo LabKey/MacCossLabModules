@@ -45,42 +45,44 @@ public class TestResultsSchema
         return DbSchema.get("testresults");
     }
 
-    public TableInfo getTableInfoTestRuns()
+    public static TableInfo getTableInfoTestRuns()
     {
         return getSchema().getTable("testruns");
     }
 
-    public TableInfo getTableInfoUser()
+    public static TableInfo getTableInfoUser()
     {
         return getSchema().getTable("user");
     }
 
-    public TableInfo getTableInfoUserData()
+    public static TableInfo getTableInfoUserData()
     {
         return getSchema().getTable("userdata");
     }
 
-    public TableInfo getTableInfoTrain()
+    public static TableInfo getTableInfoTrain()
     {
         return getSchema().getTable("trainruns");
     }
 
-    public TableInfo getTableInfoTestLeaks()
+    public static TableInfo getTableInfoMemoryLeaks()
     {
-        return getSchema().getTable("testleaks");
+        return getSchema().getTable("memoryleaks");
     }
 
-    public TableInfo getTableInfoTestPasses()
+    public static TableInfo getTableInfoHandleLeaks() { return getSchema().getTable("handleleaks"); }
+
+    public static TableInfo getTableInfoTestPasses()
     {
         return getSchema().getTable("testpasses");
     }
 
-    public TableInfo getTableInfoTestFails()
+    public static TableInfo getTableInfoTestFails()
     {
         return getSchema().getTable("testfails");
     }
 
-    public SqlDialect getSqlDialect()
+    public static SqlDialect getSqlDialect()
     {
         return getSchema().getSqlDialect();
     }

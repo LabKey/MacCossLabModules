@@ -12,6 +12,13 @@ import org.labkey.api.util.MimeMap;
 import org.labkey.api.util.Pair;
 import org.labkey.api.util.Path;
 import org.labkey.api.view.ActionURL;
+import org.labkey.testresults.model.BackgroundColor;
+import org.labkey.testresults.model.RunDetail;
+import org.labkey.testresults.model.TestFailDetail;
+import org.labkey.testresults.model.TestMemoryLeakDetail;
+import org.labkey.testresults.model.TestMemoryLeakDetail;
+import org.labkey.testresults.model.User;
+import org.labkey.testresults.view.RunDownBean;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
@@ -44,6 +51,10 @@ public class SendTestResultsEmail implements org.quartz.Job
     public SendTestResultsEmail()
     {
 
+    }
+
+    private String getBackgroundStyle(BackgroundColor color) {
+        return "background-color:" + color + ";";
     }
 
     public Pair<String, String> getHTMLEmail(org.labkey.api.security.User from) {
@@ -83,9 +94,9 @@ public class SendTestResultsEmail implements org.quartz.Job
 
             User[] users = TestResultsController.getTrainingDataForContainer(container);
 
-            TestsDataBean data = new TestsDataBean(runs, users);
+            RunDownBean data = new RunDownBean(runs, users);
             Map<String, List<TestFailDetail>> todaysFailures = data.getFailedTestsByDate(new Date(), true);
-            Map<String, List<TestLeakDetail>> todaysLeaks = data.getLeaksByDate(new Date(), true);
+            Map<String, List<TestMemoryLeakDetail>> todaysLeaks = data.getLeaksByDate(new Date(), true);
             User[] missingUsers = data.getMissingUsers(data.getRuns());
             List<User> nightsUsers = new ArrayList<>();
             // build message as an HTML email message
@@ -118,37 +129,50 @@ public class SendTestResultsEmail implements org.quartz.Job
                         totalPasses += run.getPassedtests();
                         nightsUsers.add(u);
                         boolean isGoodRun = true;
-                        String style = "background-color:#3EC23E;";
+                        boolean highlightDuration = false, highlightRuns = false, highlightMemory = false;
+                        String style = getBackgroundStyle(BackgroundColor.pass);
                         // ERROR: duration < 540, failures or leaks count > 0, more then 3 standard deviations away
                         // WARNING: Between 2 and 3 standard deviations away
                         // PASS: within 2 standard deviations away as well as not an ERROR or a WARNING
                         int errorCount = errorRuns;
-                        if (isGoodRun && (u.getMeanmemory() == 0d || u.getMeantestsrun() == 0d))
-                        {  // IF NO TRAINING DATA FOR USER
-                            style = "background-color:#cccccc;";
+                        if (isGoodRun && (u.getMeanmemory() == 0d || u.getMeantestsrun() == 0d || !u.isActive()))
+                        {  // IF NO TRAINING DATA FOR USER or INACTIVE
+                            style = getBackgroundStyle(BackgroundColor.unknown);
                             isGoodRun = false;
                         }
-                        if (run.getDuration() < 540 || run.getFailures().length > 0 || run.getLeaks().length > 0)
+                        highlightDuration = run.getDuration() < 539;
+                        if (highlightDuration || run.getFailures().length > 0 || run.getTestmemoryleaks().length > 0)
                         {
-                            style = "background-color:#F24E4E;";
+                            style = getBackgroundStyle(BackgroundColor.error);
                             isGoodRun = false;
                             errorRuns++;
                         }
-                        if (isGoodRun && (!u.fitsMemoryTrainingData(run.getAverageMemory(), 3) || !u.fitsRunCountTrainingData(run.getPassedtests(), 3)))
+                        if (isGoodRun)
                         {
-                            style = "background-color:#F24E4E;";
-                            isGoodRun = false;
-                            if (errorCount == errorRuns)
-                                errorRuns++;
+                            highlightMemory = !u.fitsMemoryTrainingData(run.getAverageMemory(), 3);
+                            highlightRuns = !u.fitsRunCountTrainingData(run.getPassedtests(), 3);
+                            if (highlightMemory || highlightRuns)
+                            {
+                                style = getBackgroundStyle(BackgroundColor.error);
+                                isGoodRun = false;
+                                if (errorCount == errorRuns)
+                                    errorRuns++;
+                            }
+                            else
+                            {
+                                highlightMemory = !u.fitsMemoryTrainingData(run.getAverageMemory(), 2);
+                                highlightRuns = !u.fitsRunCountTrainingData(run.getPassedtests(), 2);
+                                if (highlightMemory || highlightRuns)
+                                {
+                                    style = getBackgroundStyle(BackgroundColor.warn);
+                                    isGoodRun = false;
+                                    warningRuns++;
+                                }
+                            }
                         }
-                        if (isGoodRun && (!u.fitsMemoryTrainingData(run.getAverageMemory(), 2) || !u.fitsRunCountTrainingData(run.getPassedtests(), 2)))
+                        if(isGoodRun && run.hasHang())
                         {
-                            style = "background-color:#F2C94E;";
-                            isGoodRun = false;
-                            warningRuns++;
-                        }
-                        if(isGoodRun && run.hasHang()) {
-                            style = "background-color:#F2C94E;";
+                            style = getBackgroundStyle(BackgroundColor.warn);
                             isGoodRun = false;
                             warningRuns++;
                         }
@@ -160,13 +184,13 @@ public class SendTestResultsEmail implements org.quartz.Job
                         message.append("\n<td style=\"" + style + " padding: 6px;\"><a href=\"" +
                                 "http://skyline.ms" + new ActionURL(TestResultsController.ShowRunAction.class, container) + "runId=" + run.getId()
                                 + "\" target=\"_blank\" style=\"text-decoration:none; font-weight:600; color:black;\">"
-                                + run.getUsername() + "</a></td>");
-                        message.append("\n<td style='padding: 6px;'>" + data.round(run.getAverageMemory(), 2) + "</td>");
-                        message.append("\n<td style='padding: 6px;'>" + run.getPassedtests() + "</td>");
+                                + run.getUserName() + "</a></td>");
+                        message.append("\n<td style='padding: 6px; " + (highlightMemory ? style : "") + "'>" + data.round(run.getAverageMemory(), 2) + "</td>");
+                        message.append("\n<td style='padding: 6px; " + (highlightRuns ? style : "") + "'>" + run.getPassedtests() + "</td>");
                         message.append("\n<td style='padding: 6px;'>" + run.getPostTime() + "</td>");
-                        message.append("\n<td style='padding: 6px;'>" + run.getDuration() + "</td>");
-                        message.append("\n<td style='padding: 6px; " + (run.getFailedtests() > 0 ? "color:red;" : "") + "'>" + run.getFailedtests() + "</td>");
-                        message.append("\n<td style='padding: 6px; " + (run.getLeakedtests() > 0 ? "color:red;" : "") + "'>" + run.getLeakedtests() + "</td>");
+                        message.append("\n<td style='padding: 6px; " + (highlightDuration ? style : "") + "'>" + run.getDuration() + "</td>");
+                        message.append("\n<td style='padding: 6px; " + (run.getFailedtests() > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getFailedtests() + "</td>");
+                        message.append("\n<td style='padding: 6px; " + (run.getLeakedtests() > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getLeakedtests() + "</td>");
                         message.append("</tr>");
                     }
                 }
@@ -180,13 +204,9 @@ public class SendTestResultsEmail implements org.quartz.Job
             for (User u : missingUsers)
             {
                 message.append("<tr style='border-bottom:1px solid grey;'>");
-                message.append("\n<td style=\"background-color:#F24E4E; padding: 6px;\">Missing " + u.getUsername() + "</td>");
-                message.append("\n<td style='background-color:#F24E4E; padding: 6px;'></td>");
-                message.append("\n<td style='background-color:#F24E4E; padding: 6px;'></td>");
-                message.append("\n<td style='background-color:#F24E4E; padding: 6px;'></td>");
-                message.append("\n<td style='background-color:#F24E4E; padding: 6px;'></td>");
-                message.append("\n<td style='background-color:#F24E4E; padding: 6px;'></td>");
-                message.append("\n<td style='background-color:#F24E4E; padding: 6px;'></td>");
+                message.append("\n<td style='" + getBackgroundStyle(BackgroundColor.error) + " padding: 6px;'>Missing " + u.getUsername() + "</td>");
+                for (int i = 0; i < 6; i++)
+                    message.append("\n<td style='" + getBackgroundStyle(BackgroundColor.error) + " padding: 6px;'></td>");
                 message.append("</tr>");
             }
             message.append("<tr style=\"float:right;\"><td></td><td></td><td></td><td></td><td></td><td></td><td>" + goodRuns + "/" + errorRuns + " (Pass/Fail)</td></tr>");
@@ -211,7 +231,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                             addUser = true;
                     }
                     if (addUser)
-                        message.append("\n<td style='max-width:60px; width:60px; overflow:hidden; text-overflow: ellipsis; padding:3px; border:1px solid #ccc;'>" + run.getUsername() + "</td>");
+                        message.append("\n<td style='max-width:60px; width:60px; overflow:hidden; text-overflow: ellipsis; padding:3px; border:1px solid #ccc;'>" + run.getUserName() + "</td>");
                     else
                         noFailLeakRuns.add(run.getId());
 
@@ -244,7 +264,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                     }
                     message.append("\n</tr>");
                 }
-                for (Map.Entry<String, List<TestLeakDetail>> entry : todaysLeaks.entrySet())
+                for (Map.Entry<String, List<TestMemoryLeakDetail>> entry : todaysLeaks.entrySet())
                 {
                     message.append("\n<tr>");
                     message.append("\n<td style='overflow:hidden; text-overflow: ellipsis; padding:3px; border:1px solid #ccc;'>" + entry.getKey() + "</td>");
@@ -253,9 +273,9 @@ public class SendTestResultsEmail implements org.quartz.Job
                         if (noFailLeakRuns.contains(run.getId()))
                             continue;
                         message.append("\n<td style='width:60px; overflow:hidden; padding:3px; border:1px solid #ccc;'>");
-                        TestLeakDetail matchingLeak = null;
+                        TestMemoryLeakDetail matchingLeak = null;
 
-                        for (TestLeakDetail leak : entry.getValue())
+                        for (TestMemoryLeakDetail leak : entry.getValue())
                         {
                             if (leak.getTestRunId() == run.getId())
                             {

@@ -15,6 +15,7 @@
  */
 package org.labkey.testresults;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.validator.routines.EmailValidator;
@@ -38,6 +39,7 @@ import org.labkey.api.data.SqlExecutor;
 import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableSelector;
+import org.labkey.api.files.FileContentService;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.RequiresNoPermission;
 import org.labkey.api.security.RequiresPermission;
@@ -46,11 +48,21 @@ import org.labkey.api.security.UserManager;
 import org.labkey.api.security.ValidEmail;
 import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.ReadPermission;
+import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.Pair;
-import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.ViewContext;
+import org.labkey.testresults.model.RunDetail;
+import org.labkey.testresults.model.TestFailDetail;
+import org.labkey.testresults.model.TestHandleLeakDetail;
+import org.labkey.testresults.model.TestMemoryLeakDetail;
+import org.labkey.testresults.model.TestMemoryLeakDetail;
+import org.labkey.testresults.model.TestPassDetail;
+import org.labkey.testresults.model.User;
+import org.labkey.testresults.view.LongTermBean;
+import org.labkey.testresults.view.RunDownBean;
+import org.labkey.testresults.view.TestsDataBean;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
@@ -60,9 +72,11 @@ import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.impl.StdSchedulerFactory;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartRequest;
+import org.springframework.web.multipart.commons.CommonsMultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -70,21 +84,22 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
+import javax.management.modelmbean.XMLParseException;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.StringReader;
-import java.text.DateFormat;
+import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -105,12 +120,15 @@ import static org.labkey.testresults.TestResultsModule.ViewType;
 public class TestResultsController extends SpringActionController
 {
     private static final Logger _log = Logger.getLogger(TestResultsController.class);
+    private static final SimpleDateFormat MDYFormat = new SimpleDateFormat("MM/dd/yyyy");
 
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(TestResultsController.class);
+
     public TestResultsController()
     {
         setActionResolver(_actionResolver);
     }
+
     public static final int POINT_RATIO = 30;
 
     /**
@@ -122,7 +140,7 @@ public class TestResultsController extends SpringActionController
 
         public ModelAndView getView(Object o, BindException errors) throws Exception
         {
-            TestsDataBean bean = getRunDownData(getUser(), getContainer(), getViewContext());
+            RunDownBean bean = getRunDownBean(getUser(), getContainer(), getViewContext());
             return new JspView("/org/labkey/testresults/view/rundown.jsp", bean);
         }
 
@@ -133,16 +151,16 @@ public class TestResultsController extends SpringActionController
     }
 
     // return TestDataBean specifically for rundown.jsp aka the home page of the module
-    public static TestsDataBean getRunDownData(org.labkey.api.security.User user, Container c, ViewContext viewContext) throws ParseException, IOException
+    public static RunDownBean getRunDownBean(org.labkey.api.security.User user, Container c, ViewContext viewContext) throws ParseException, IOException
     {
         String end = viewContext.getRequest().getParameter("end");
         String viewType = viewContext.getRequest().getParameter("viewType");
-        SimpleDateFormat formatter = new SimpleDateFormat("MM/dd/yyyy");
         boolean givenDate = end != null && !end.equals("");
         Date endDate = new Date();
         if(givenDate)
-            endDate = formatter.parse(end);
+            endDate = MDYFormat.parse(end);
 
+//        endDate = setDateToEightAM(endDate);
         Calendar cal = Calendar.getInstance();
         cal.setTime(endDate);
         cal.set(Calendar.HOUR_OF_DAY, 8);
@@ -173,7 +191,7 @@ public class TestResultsController extends SpringActionController
 
         // show blank page if no runs exist
         if(todaysRuns.size() == 0 && monthRuns.size() == 0)
-            return new TestsDataBean(new RunDetail[0]);
+            return new RunDownBean(new RunDetail[0], new User[0]);
 
         RunDetail[] today = todaysRuns.toArray(new RunDetail[todaysRuns.size()]);
         if(todaysRuns.size() > 0)
@@ -188,24 +206,33 @@ public class TestResultsController extends SpringActionController
         ensureRunDataCached(allRuns, false);
 
         User[] users = getTrainingDataForContainer(c);
-        return new TestsDataBean(allRuns, users, viewType, null, endDate);
+        return new RunDownBean(allRuns, users, viewType, null, endDate);
     }
 
     private static String getViewType(org.labkey.api.security.User u, String viewType, String defaultViewType, String groupName, Container c) {
         PropertyManager.PropertyMap m = PropertyManager.getWritableProperties(u, c, TR_VIEW, true);
         boolean isValidView = isValidViewType(viewType);
-        if(!m.containsKey(groupName)) {
-            if(isValidView)
-                m.put(groupName, viewType);
-            else
-                m.put(groupName, defaultViewType);
+        if(groupName == null) { // no group and don't store setring in writable props
+            if(isValidView) {
+                return viewType;
+            } else {
+                return defaultViewType;
+            }
         } else {
-            if(isValidView)
-                m.put(groupName, viewType);
-            else
-                viewType = m.get(groupName);
+            if(!m.containsKey(groupName)) {
+                if(isValidView)
+                    m.put(groupName, viewType);
+                else
+                    m.put(groupName, defaultViewType);
+            } else {
+                if(isValidView)
+                    m.put(groupName, viewType);
+                else
+                    viewType = m.get(groupName);
+            }
+            m.save();
         }
-        m.save();
+
         return viewType;
     }
 
@@ -223,7 +250,7 @@ public class TestResultsController extends SpringActionController
                 {
                     TestPassDetail[] passes = run.getPasses();
                     TestFailDetail[] failures = run.getFailures();
-                    TestLeakDetail[] leaks = run.getLeaks();
+                    TestMemoryLeakDetail[] leaks = run.getTestmemoryleaks();
                     if (passes == null)
                     {
                         passes = getPassesForRun(run);
@@ -275,36 +302,11 @@ public class TestResultsController extends SpringActionController
                     if(!keepObjData) {
                         run.setPasses(new TestPassDetail[0]);
                         run.setFailures(new TestFailDetail[0]);
-                        run.setLeaks(new TestLeakDetail[0]);
+                        run.setTestmemoryleaks(new TestMemoryLeakDetail[0]);
                     }
                 }
             }
             transaction.commit();
-        }
-    }
-
-
-    private static  void populatePassCounts(List<Integer> runIds, List<RunDetail> runs) {
-        SQLFragment sqlFragment = new SQLFragment();
-        sqlFragment.append("\tSELECT testpasses.testrunid, COUNT(*)\n" +
-                "    \tFROM testresults.testpasses\n" +
-                "    \tWHERE\n" +
-                "    \t(testrunid= ANY(?))\n" +
-                "    \tGROUP BY testrunid ;\n" +
-                "    \t;");
-        sqlFragment.add(runIds);
-        SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
-        Map<Integer, Integer> runPasses = new HashMap<>();
-        sqlSelector.forEach(rs -> runPasses.put(rs.getInt("testrunid"), rs.getInt("count")));
-        for(RunDetail run: runs) {
-            if(run.getPasses() == null || run.getPasses().length == 0) {
-                if(runPasses.get(run.getId()) != null) {
-                    int passCount = runPasses.get(run.getId());
-                    run.setPasses(new TestPassDetail[passCount]);
-                } else {
-                    run.setPasses(new TestPassDetail[0]);
-                }
-            }
         }
     }
 
@@ -340,7 +342,7 @@ public class TestResultsController extends SpringActionController
         {
             List<Integer> foundRuns = new ArrayList<>();
             SQLFragment sqlFragment = new SQLFragment();
-            sqlFragment.append("SELECT * FROM testresults.trainruns;");
+            sqlFragment.append("SELECT * FROM " + TestResultsSchema.getTableInfoTrain() + ";");
             SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
             sqlSelector.forEach(rs -> foundRuns.add(rs.getInt("runid")));
             SimpleFilter filter = new SimpleFilter();
@@ -373,7 +375,7 @@ public class TestResultsController extends SpringActionController
             boolean train = Boolean.parseBoolean(getViewContext().getRequest().getParameter("train"));
             List<Integer> foundRuns = new ArrayList<>();
             SQLFragment sqlFragment = new SQLFragment();
-            sqlFragment.append("SELECT * FROM testresults.trainruns ");
+            sqlFragment.append("SELECT * FROM " + TestResultsSchema.getTableInfoTrain() + " ");
             sqlFragment.append("WHERE runid = ?;");
             sqlFragment.add(rowId);
             SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
@@ -382,20 +384,17 @@ public class TestResultsController extends SpringActionController
             filter.addCondition(FieldKey.fromParts("id"), rowId);
             RunDetail[] details = new TableSelector(TestResultsSchema.getInstance().getTableInfoTestRuns(), filter, null).getArray(RunDetail.class);
             if(details.length == 0) {
-                rowId = -1;  // run Does not exist
+                return new ApiSimpleResponse("Success", false); // run Does not exist
             }
-            if(rowId == -1) {
+            if(train && foundRuns.size() > 0) {
                 return new ApiSimpleResponse("Success", false);
-            } else if(train && foundRuns.size() > 0) {
-                return new ApiSimpleResponse("Success", false);
-            }  else
-            {
+            }  else {
                 try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction())
                 {
                     if (train && foundRuns.size() == 0)
                     {
                         SQLFragment sqlFragmentInsert = new SQLFragment();
-                        sqlFragmentInsert.append("INSERT INTO testresults.trainruns (runid) VALUES (?);");
+                        sqlFragmentInsert.append("INSERT INTO " + TestResultsSchema.getTableInfoTrain() + " (runid) VALUES (?);");
                         sqlFragmentInsert.add(rowId);
                         new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentInsert);
                         somethingChanged = true;
@@ -403,7 +402,7 @@ public class TestResultsController extends SpringActionController
                     else if (!train && foundRuns.size() == 1)
                     {
                         SQLFragment sqlFragmentDelete = new SQLFragment();
-                        sqlFragmentDelete.append("DELETE FROM testresults.trainruns WHERE runid = ?;");
+                        sqlFragmentDelete.append("DELETE FROM " + TestResultsSchema.getTableInfoTrain() + " WHERE runid = ?;");
                         sqlFragmentDelete.add(rowId);
                         new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentDelete);
                         somethingChanged = true;
@@ -413,8 +412,8 @@ public class TestResultsController extends SpringActionController
                         // UPDATE USER TABLE CALCULATIONS
                         int userId = details[0].getUserid();
                         SQLFragment sqlFragmentUserRuns = new SQLFragment();
-                        sqlFragmentUserRuns.append("SELECT testruns.*, u.username, EXISTS(SELECT 1 FROM testresults.trainruns WHERE runid = testruns.id) AS traindata FROM testresults.testruns ");
-                        sqlFragmentUserRuns.append("JOIN testresults.user AS u ON testruns.userid = u.id ");
+                        sqlFragmentUserRuns.append("SELECT testruns.*, u.username, EXISTS(SELECT 1 FROM " + TestResultsSchema.getTableInfoTrain() + " WHERE runid = testruns.id) AS traindata FROM "+ TestResultsSchema.getTableInfoTestRuns() +" ");
+                        sqlFragmentUserRuns.append("JOIN "+ TestResultsSchema.getTableInfoUser() +" AS u ON testruns.userid = u.id ");
                         sqlFragmentUserRuns.append("WHERE userid = ?  ");
                         sqlFragmentUserRuns.add(userId);
                         RunDetail[] userRuns = executeGetRunsSQLFragment(sqlFragmentUserRuns, getContainer(), false, false);
@@ -426,7 +425,7 @@ public class TestResultsController extends SpringActionController
                         }
                         // See if training data for a user in a container exists first
                         SQLFragment containerUserExists = new SQLFragment();
-                        containerUserExists.append("SELECT id FROM testresults.userdata WHERE userid = ? AND container = ?;");
+                        containerUserExists.append("SELECT id FROM " + TestResultsSchema.getTableInfoUserData() + " WHERE userid = ? AND container = ?;");
                         containerUserExists.add(userId);
                         containerUserExists.add(getContainer().getEntityId());
                         SqlSelector selector = new SqlSelector(TestResultsSchema.getSchema(), containerUserExists);
@@ -435,19 +434,18 @@ public class TestResultsController extends SpringActionController
                             foundRowId = selector.getObject(Integer.class);
                         SQLFragment sqlFragmentUpdate = new SQLFragment();
                         if(foundRowId != 0) {
-                            sqlFragmentUpdate.append("UPDATE testresults.userdata SET ");
+                            sqlFragmentUpdate.append("UPDATE " + TestResultsSchema.getTableInfoUserData() + " SET ");
                             sqlFragmentUpdate.append("meantestsrun = ?, ");
                             sqlFragmentUpdate.append("meanmemory = ?, ");
                             sqlFragmentUpdate.append("stddevtestsrun = ?, ");
                             sqlFragmentUpdate.append("stddevmemory = ? ");
                             sqlFragmentUpdate.append("WHERE id = ? ");
                         } else {
-                            sqlFragmentUpdate.append("INSERT INTO testresults.userdata (userid, container, meantestsrun, meanmemory, stddevtestsrun, stddevmemory) ");
-                            sqlFragmentUpdate.append("VALUES(?, ?, ?,?,?,?);");
+                            sqlFragmentUpdate.append("INSERT INTO " + TestResultsSchema.getTableInfoUserData() + " (userid, container, meantestsrun, meanmemory, stddevtestsrun, stddevmemory) ");
+                            sqlFragmentUpdate.append("VALUES(?, ?, ?, ?, ?, ?);");
                             sqlFragmentUpdate.add(userId);
                             sqlFragmentUpdate.add(getContainer().getEntityId());
                         }
-
 
 
                         if(trendDataForUser.size() == 0) {
@@ -487,11 +485,11 @@ public class TestResultsController extends SpringActionController
 
     }
 
-   /**
-    * action to view user.jsp and all run details for user in date selection
-    * accepts a url parameter "user" which will be the user that the jsp displays runs for
-    * accepts url parameter "start" and "end" which will be the date range of selected runs for that user to display
-    */
+    /**
+     * action to view user.jsp and all run details for user in date selection
+     * accepts a url parameter "user" which will be the user that the jsp displays runs for
+     * accepts url parameter "start" and "end" which will be the date range of selected runs for that user to display
+     */
     @RequiresPermission(ReadPermission.class)
     public class ShowUserAction extends SimpleViewAction
     {
@@ -501,16 +499,14 @@ public class TestResultsController extends SpringActionController
             String start = getViewContext().getRequest().getParameter("start");
             String end = getViewContext().getRequest().getParameter("end");
             String userName = getViewContext().getRequest().getParameter("user");
-
-            SimpleDateFormat formatter = new SimpleDateFormat("MM/dd/yyyy");
             Date endDate = new Date();
             Date startDate;
             if(start == null)
                 startDate = DateUtils.addDays(new Date(), -6); // DEFUALT TO LAST WEEK's RUNS
             else
-                startDate = formatter.parse(start);
+                startDate = MDYFormat.parse(start);
             if(end != null)
-                endDate = DateUtils.addMilliseconds(DateUtils.ceiling(formatter.parse(end), Calendar.DATE), 0);
+                endDate = DateUtils.addMilliseconds(DateUtils.ceiling(MDYFormat.parse(end), Calendar.DATE), 0);
 
             RunDetail[] runs;
             // If no username specified show info summary for all users
@@ -524,7 +520,7 @@ public class TestResultsController extends SpringActionController
             }
             ensureRunDataCached(runs, false);
 
-            TestsDataBean bean = new TestsDataBean(runs);
+            TestsDataBean bean = new TestsDataBean(runs, new User[0]);
             return new JspView("/org/labkey/testresults/view/user.jsp", bean);
         }
 
@@ -535,10 +531,10 @@ public class TestResultsController extends SpringActionController
         }
     }
 
-   /**
-    * action to view runDetail.jsp (detail for a single run)
-    * accepts a url parameter "runId" which will be the run that the jsp displays the information of
-    */
+    /**
+     * action to view runDetail.jsp (detail for a single run)
+     * accepts a url parameter "runId" which will be the run that the jsp displays the information of
+     */
     @RequiresPermission(ReadPermission.class)
     public class ShowRunAction extends SimpleViewAction
     {
@@ -558,7 +554,7 @@ public class TestResultsController extends SpringActionController
 
             TestFailDetail[] fails = new TableSelector(TestResultsSchema.getInstance().getTableInfoTestFails(), filter, null).getArray(TestFailDetail.class);
             TestPassDetail[] passes = new TableSelector(TestResultsSchema.getInstance().getTableInfoTestPasses(), filter, null).getArray(TestPassDetail.class);
-            TestLeakDetail[] leaks = new TableSelector(TestResultsSchema.getInstance().getTableInfoTestLeaks(), filter, null).getArray(TestLeakDetail.class);
+            TestMemoryLeakDetail[] memoryLeaks = new TableSelector(TestResultsSchema.getInstance().getTableInfoMemoryLeaks(), filter, null).getArray(TestMemoryLeakDetail.class);
 
             SQLFragment sqlFragment = new SQLFragment();
             sqlFragment.append("SELECT testruns.*, u.username, EXISTS(SELECT 1 FROM testresults.trainruns WHERE runid = testruns.id) AS traindata FROM testresults.testruns ");
@@ -591,9 +587,9 @@ public class TestResultsController extends SpringActionController
                 Arrays.sort(passes);
             }
             run.setFailures(fails);
-            run.setLeaks(leaks);
+            run.setTestmemoryleaks(memoryLeaks);
             run.setPasses(passes);
-            TestsDataBean bean = new TestsDataBean(runs);
+            TestsDataBean bean = new TestsDataBean(runs, new User[0]);
             return new JspView("/org/labkey/testresults/view/runDetail.jsp", bean);
         }
 
@@ -604,41 +600,41 @@ public class TestResultsController extends SpringActionController
         }
     }
 
-   /**
-    * action to view longTerm.jsp
-    * accepts a url parameter "viewType" of either wk(week), mo(month), or yr(year) and defaults to month
-    */
+    /**
+     * action to view longTerm.jsp
+     * accepts a url parameter "viewType" of either wk(week), mo(month), or yr(year) and defaults to month
+     */
     @RequiresPermission(ReadPermission.class)
     public class LongTermAction extends SimpleViewAction
-   {
-       @Override
-       public ModelAndView getView(Object o, BindException errors) throws Exception
-       {
-           String viewType = getViewContext().getRequest().getParameter("viewType");
+    {
+        @Override
+        public ModelAndView getView(Object o, BindException errors) throws Exception
+        {
+            String viewType = getViewContext().getRequest().getParameter("viewType");
 
-           TestsDataBean bean = new TestsDataBean(new RunDetail[0]); // bean that will be handed to jsp
-           viewType = getViewType(getViewContext().getUser(), viewType, ViewType.YEAR, "longterm", getContainer());
-           Date startDate = getStartDate(viewType, ViewType.YEAR, new Date()); // defaults to month
-           bean.setViewType(viewType);
-           RunDetail[] runs = getRunsSinceDate(startDate, null, getContainer(), null, false, false);
-           bean.setRuns(runs);
+            LongTermBean bean = new LongTermBean(new RunDetail[0], new User[0]); // bean that will be handed to jsp
+            viewType = getViewType(getViewContext().getUser(), viewType, ViewType.YEAR, "longterm", getContainer());
+            Date startDate = getStartDate(viewType, ViewType.YEAR, new Date()); // defaults to month
+            bean.setViewType(viewType);
+            RunDetail[] runs = getRunsSinceDate(startDate, null, getContainer(), null, false, false);
+            bean.setRuns(runs);
 
-           SimpleFilter filter = new SimpleFilter();
-           filter.addClause(new CompareType.CompareClause(FieldKey.fromParts("timestamp"), CompareType.DATE_GTE, startDate));
-           Sort s = new Sort("testrunid");
-           TestFailDetail[] failures = new TableSelector(TestResultsSchema.getInstance().getTableInfoTestFails(), filter, s).getArray(TestFailDetail.class);
-           bean.setNonAssociatedFailures(failures);
+            SimpleFilter filter = new SimpleFilter();
+            filter.addClause(new CompareType.CompareClause(FieldKey.fromParts("timestamp"), CompareType.DATE_GTE, startDate));
+            Sort s = new Sort("testrunid");
+            TestFailDetail[] failures = new TableSelector(TestResultsSchema.getInstance().getTableInfoTestFails(), filter, s).getArray(TestFailDetail.class);
+            bean.setNonAssociatedFailures(failures);
 
-             ensureRunDataCached(runs, true);
-           return new JspView("/org/labkey/testresults/view/longTerm.jsp", bean);
-       }
+            ensureRunDataCached(runs, true);
+            return new JspView("/org/labkey/testresults/view/longTerm.jsp", bean);
+        }
 
-       @Override
-       public NavTree appendNavTrail(NavTree root)
-       {
-           return root;
-       }
-   }
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root;
+        }
+    }
 
     /**
      * action to view failureDetail.jsp
@@ -651,27 +647,44 @@ public class TestResultsController extends SpringActionController
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
         {
-            String failedTest = getViewContext().getRequest().getParameter("failedTest");
-            String viewType = getViewContext().getRequest().getParameter("viewType");
+            ViewContext vc = getViewContext();
+            String end = vc.getRequest().getParameter("end");
+            String failedTest = vc.getRequest().getParameter("failedTest");
+            String viewType = vc.getRequest().getParameter("viewType");
 
-            viewType = getViewType(getViewContext().getUser(), viewType, ViewType.DAY, "failures", getContainer());
-            Date startDate = getStartDate(viewType, ViewType.DAY, new Date()); // defaults to day
-            RunDetail[] runs = getRunsSinceDate(startDate, null, getContainer(), null, false, false);
+            boolean givenDate = end != null && !end.equals("");
+            Date endDate = new Date();
+            if(givenDate)
+                endDate = MDYFormat.parse(end);
+            endDate = setDateToEightAM(endDate);
+            viewType = getViewType(getViewContext().getUser(), viewType, ViewType.DAY, null, getContainer());
+            Date startDate = getStartDate(viewType, ViewType.DAY, endDate); // defaults to day
+            RunDetail[] runs = getRunsSinceDate(startDate, endDate, getContainer(), null, false, false);
             populateFailures(runs);
-
-            if(failedTest == null)
-                return new JspView("/org/labkey/testresults/view/failureDetail.jsp", runs);
+            TestsDataBean b = new TestsDataBean(runs, new User[0]);
+            b.setViewType(viewType);
+            b.setStartDate(startDate);
+            b.setEndDate(endDate);
+            if(failedTest == null || failedTest.equals(""))
+                return new JspView("/org/labkey/testresults/view/multiFailureDetail.jsp", b);
 
             List<RunDetail> failureRuns = new ArrayList<>();
             for(RunDetail run: runs) {
-                for(TestFailDetail fail: run.getFailures())
+                List<TestFailDetail> f = new ArrayList<>();
+                for(TestFailDetail fail: run.getFailures()) {
                     if(fail.getTestName().equals(failedTest)) {
-                        failureRuns.add(run);
-                        break;
+                        f.add(fail);
                     }
+                }
+                if(f.size() > 0) {
+                    run.setFailures(f.toArray(new TestFailDetail[f.size()]));
+                    failureRuns.add(run);
+                }
             }
-            TestsDataBean bean =  new TestsDataBean(failureRuns.toArray(new RunDetail[failureRuns.size()]));
+            TestsDataBean bean =  new TestsDataBean(failureRuns.toArray(new RunDetail[failureRuns.size()]), new User[0]);
             bean.setViewType(viewType);
+            bean.setStartDate(startDate);
+            bean.setEndDate(endDate);
             return new JspView("/org/labkey/testresults/view/failureDetail.jsp", bean);
         }
 
@@ -697,7 +710,7 @@ public class TestResultsController extends SpringActionController
             try (DbScope.Transaction transaction = TestResultsSchema.getInstance().getSchema().getScope().ensureTransaction()) {
                 Table.delete(TestResultsSchema.getInstance().getTableInfoTestFails(), filter); // delete failures
                 Table.delete(TestResultsSchema.getInstance().getTableInfoTestPasses(), filter); // delete passes
-                Table.delete(TestResultsSchema.getInstance().getTableInfoTestLeaks(), filter); // delete leaks
+                Table.delete(TestResultsSchema.getInstance().getTableInfoMemoryLeaks(), filter); // delete leaks
                 Table.delete(TestResultsSchema.getInstance().getTableInfoTestRuns(), rowId); // delete run last because of foreign key
                 transaction.commit();
             }
@@ -754,7 +767,7 @@ public class TestResultsController extends SpringActionController
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("flagged"), true);
             RunDetail[] details = new TableSelector(TestResultsSchema.getInstance().getTableInfoTestRuns(), filter, null).getArray(RunDetail.class);
-            return new JspView("/org/labkey/testresults/view/flagged.jsp", new TestsDataBean(details));
+            return new JspView("/org/labkey/testresults/view/flagged.jsp", new TestsDataBean(details, new User[0]));
         }
         @Override
         public NavTree appendNavTrail(NavTree root)
@@ -940,16 +953,12 @@ public class TestResultsController extends SpringActionController
      * action for posting test output as an xml file
      */
     @RequiresNoPermission
-    public class PostAction extends SimpleViewAction {
+    public class PostAction extends ApiAction {
 
         @Override
-        public ModelAndView getView(Object o, BindException errors) throws Exception
+        public Object execute(Object o, BindException errors) throws Exception
         {
-            String NA = "N/A";
-            _log.info("Handling SkylineNightly posted results");
-
             // DebugRequest(getViewContext().getRequest());
-
             if(!(getViewContext().getRequest() instanceof MultipartRequest))
             {
                 throw new Exception("Expected a request of type MultipartRequest got " + getViewContext().getRequest().getClass().toString());
@@ -982,6 +991,143 @@ public class TestResultsController extends SpringActionController
                 throw new Exception("xml_file not found in request");
             }
 
+            Map<String, Object> res = new HashMap<>();
+
+            // try to parse and store xml, if fails save xml file to server to attempt to re-post manually by user
+            try {
+                _log.info("Handling SkylineNightly posted results");
+                NIGHTLY_POSTER.ParseAndStoreXML(xml, getContainer());
+            } catch (Exception e) {
+                _log.info("XML failed to parse/store");
+                _log.info("Attempting to save file for a future post attempt");
+                res.put("Success", false);
+                res.put("Message", "Error Parsing XML attempting to save the XML file...   " + NIGHTLY_POSTER.SaveXML(file, getContainer()));
+                res.put("Exception", e + NIGHTLY_POSTER.getStackTraceText(e));
+                return new ApiSimpleResponse(res);
+            }
+
+            return new ApiSimpleResponse("Success", true);
+        }
+
+        private void DebugRequest(HttpServletRequest hsRequest)
+        {
+            _log.info("Request is " + hsRequest.getClass().toString());
+            _log.info("Content length is : "+ hsRequest.getContentLength());
+            _log.info("Content type: " + hsRequest.getContentType());
+            Enumeration<String> headerNames = hsRequest.getHeaderNames();
+            while(headerNames.hasMoreElements())
+            {
+                String headerName = headerNames.nextElement();
+                _log.info("Header " + headerName + ": " + hsRequest.getHeader(headerName));
+            }
+
+            if(hsRequest instanceof MultipartRequest)
+            {
+                MultipartRequest request = (MultipartRequest) hsRequest;
+                _log.info("Multi part content type for xml: " + request.getMultipartContentType("xml"));
+                _log.info("Multi part content type for xml_file: " + request.getMultipartContentType("xml_file"));
+            }
+        }
+    }
+
+
+    @RequiresPermission(ReadPermission.class)
+    public class ErrorFilesAction extends SimpleViewAction
+    {
+        @Override
+        public ModelAndView getView(Object o, BindException errors) throws Exception
+        {
+            File local = NIGHTLY_POSTER.getLocalPath(getContainer());
+            File[] files = local.listFiles();
+            return new JspView("/org/labkey/testresults/view/errorFiles.jsp", files);
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root;
+        }
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public class PostErrorFilesAction extends ApiAction
+    {
+        @Override
+        public Object execute(Object o, BindException errors)
+        {
+            Container c = getContainer();
+            File local = NIGHTLY_POSTER.getLocalPath(c);
+            File[] files = local.listFiles();
+            Map<String, String> res = new HashMap<>();
+            for(File f: files) {
+                if (f.getName().equals(".upload.log")) // LabKey system file
+                    continue;
+                try {
+                    String xml = FileUtils.readFileToString(f, Charset.defaultCharset());
+                    NIGHTLY_POSTER.ParseAndStoreXML(xml, c);
+                    f.delete();
+                    res.put(f.getName(), "Success!");
+                } catch (Exception e) {
+                    res.put(f.getName(), Arrays.toString(e.getStackTrace()));
+                }
+            }
+            return new ApiSimpleResponse(res);
+        }
+    }
+
+    public static class NIGHTLY_POSTER
+    {
+
+        // used for formatting timestamps in hh:mm format as they may roll over multiple days
+        public static Date addDays(Date date, int days)
+        {
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(date);
+            cal.add(Calendar.DATE, days); //minus number would decrement the days
+            return cal.getTime();
+        }
+
+        public static String getStackTraceText(Exception e)
+        {
+            StringBuilder sb = new StringBuilder();
+            for (StackTraceElement el : e.getStackTrace()) {
+                sb.append(el).append("\r\n");   // Use windows new lines to display correctly in NotePad
+            }
+            return sb.toString();
+        }
+        public static File getLocalPath(Container c)
+        {
+            return FileContentService.get().getFileRootPath(c, FileContentService.ContentType.files).toFile();
+        }
+
+        public static File makeFile(Container c, String filename)
+        {
+            return new File(getLocalPath(c), FileUtil.makeLegalName(filename));
+        }
+
+        private static String SaveXML(MultipartFile file, Container c) {
+            String fileName = ((CommonsMultipartFile) file).getFileItem().getName();
+            try
+            {
+                File f = makeFile(c, fileName);
+                if(f.exists()) {
+                    _log.info("A file by the name " + fileName + " is already stored.");
+                    return "File not saved - file already exists in file system.";
+                }
+                file.transferTo(f);
+            }
+            catch (IOException e)
+            {
+                _log.error("Failed to save " + fileName + ".");
+                e.printStackTrace();
+                return "Failed to save the file.";
+            }
+            return "File saved to system.";
+        }
+
+        private static void ParseAndStoreXML(String xml, Container c) throws Exception
+        {
+            String NA = "N/A";
 
             try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction()) {
 
@@ -1009,7 +1155,7 @@ public class TestResultsController extends SpringActionController
                     }
 
                 } else {
-                   userid = details[0].getId();
+                    userid = details[0].getId();
                 }
                 if(userid == -1)
                     throw new Exception("Issue with user/userid, may not be set");
@@ -1034,7 +1180,8 @@ public class TestResultsController extends SpringActionController
                     docElement.removeChild(logN); // remove log at the end so that it doesn't get stored with the xml
                 }
                 // Get leaks, failures, and passes
-                List<TestLeakDetail> leaks = new ArrayList<>();
+                List<TestMemoryLeakDetail> memoryLeaks = new ArrayList<>();
+                List<TestHandleLeakDetail> handleLeaks = new ArrayList<>();
                 List<TestFailDetail> failures = new ArrayList<>();
                 List<TestPassDetail> passes = new ArrayList<>();
                 // stores leaks in database
@@ -1042,8 +1189,17 @@ public class TestResultsController extends SpringActionController
                 NodeList nlLeak = ((Element) nListLeaks.item(0)).getElementsByTagName("leak");
                 for(int leakIndex = 0; leakIndex < nlLeak.getLength(); leakIndex++) {
                     Element elLeak = (Element) nlLeak.item(leakIndex);
-                    TestLeakDetail leak = new TestLeakDetail(0, elLeak.getAttribute("name"), Integer.parseInt(elLeak.getAttribute("bytes")));
-                    leaks.add(leak);
+                    String type = elLeak.getAttribute("type");
+                    if(elLeak.getAttribute("bytes") != "") { // process memory leak
+                        TestMemoryLeakDetail leak = new TestMemoryLeakDetail(0, elLeak.getAttribute("name"), type, (int)Float.parseFloat(elLeak.getAttribute("bytes")));
+                        memoryLeaks.add(leak);
+                    } else if(elLeak.getAttribute("handles") != "") { // process handle leak
+                        TestHandleLeakDetail leak = new TestHandleLeakDetail(0, elLeak.getAttribute("name"), type, Float.parseFloat(elLeak.getAttribute("handles")));
+                        handleLeaks .add(leak);
+                    } else {
+                        _log.error("Error parsing Leak " + elLeak.getAttribute("name") + ".");
+                        throw new XMLParseException();
+                    }
                 }
 
                 // parse passes
@@ -1055,7 +1211,7 @@ public class TestResultsController extends SpringActionController
                 for(int i = 0; i < nListPasses.getLength(); i++) {
                     NodeList nlTests = ((Element) nListPasses.item(i)).getElementsByTagName("test");
                     int passId = Integer.parseInt(((Element) nListPasses.item(i)).getAttribute("id"));
-                     for(int j = 0; j < nlTests.getLength(); j++) {
+                    for(int j = 0; j < nlTests.getLength(); j++) {
                         Element test = (Element) nlTests.item(j);
                         Date timestamp;
                         String ts = test.getAttribute("timestamp");
@@ -1065,7 +1221,7 @@ public class TestResultsController extends SpringActionController
                             timestamp = null;
                         }
                         // if "xmlTimestamp" is not a proper date assume it is in hh:mm format
-                         if(ts!=null && timestamp == null) {
+                        if(ts!=null && timestamp == null) {
                             int hour = new Integer(ts.split(":")[0]);
                             if(hour >= lastHour) {
                                 if (lastHour == 0)
@@ -1075,8 +1231,7 @@ public class TestResultsController extends SpringActionController
                                 timestampDay = addDays(timestampDay, 1);
                                 lastHour = hour;
                             }
-                            DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
-                            String originalDate = df.format(timestampDay);
+                            String originalDate = MDYFormat.format(timestampDay);
                             try {
                                 timestamp = new SimpleDateFormat("MM/dd/yyyy HH:mm").parse(originalDate + " " + ts);
                             } catch (IllegalArgumentException e) {
@@ -1085,10 +1240,23 @@ public class TestResultsController extends SpringActionController
                         }
                         if(test.getAttribute("duration").equals(NA) || test.getAttribute("managed").equals(NA) || test.getAttribute("total").equals(NA))
                             continue;
-                        TestPassDetail pass = new TestPassDetail(0, passId, Integer.parseInt(test.getAttribute("id")), test.getAttribute("name"),
-                                test.getAttribute("language"), Integer.parseInt(test.getAttribute("duration")), Double.parseDouble(test.getAttribute("managed")), Double.parseDouble(test.getAttribute("total")), timestamp);
-                         avgMemory += pass.getTotalMemory();
-                         passes.add(pass);
+                        String committedAttr = test.getAttribute("committed");
+                        String usergdiAttr = test.getAttribute("user_gdi");
+                        String handlesAttr = test.getAttribute("handles");
+                        TestPassDetail pass = new TestPassDetail(0, passId,
+                                Integer.parseInt(test.getAttribute("id")),
+                                test.getAttribute("name"),
+                                test.getAttribute("language"),
+                                Integer.parseInt(test.getAttribute("duration")),
+                                Double.parseDouble(test.getAttribute("managed")),
+                                Double.parseDouble(test.getAttribute("total")),
+                                // New leak tracking values
+                                StringUtils.hasText(committedAttr) ? Double.parseDouble(committedAttr) : 0,
+                                StringUtils.hasText(usergdiAttr) ? Integer.parseInt(usergdiAttr) : 0,
+                                StringUtils.hasText(handlesAttr) ? Integer.parseInt(handlesAttr) : 0,
+                                timestamp);
+                        avgMemory += pass.getTotalMemory();
+                        passes.add(pass);
                     }
                 }
                 if(passes.size() != 0)
@@ -1116,8 +1284,7 @@ public class TestResultsController extends SpringActionController
                             timestampDay = addDays(timestampDay, 1);
                             lastHour = hour;
                         }
-                        DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
-                        String originalDate = df.format(timestampDay);
+                        String originalDate = MDYFormat.format(timestampDay);
                         try {
                             timestamp = new SimpleDateFormat("MM/dd/yyyy HH:mm").parse(originalDate + " " + ts);
                         } catch (IllegalArgumentException e) {
@@ -1133,18 +1300,23 @@ public class TestResultsController extends SpringActionController
                 byte[] compressedXML = null;
                 byte[] compressedLog = null;
                 if(xml != null)
-                     compressString(docElement.toString());
+                    compressString(docElement.toString());
                 if(log != null)
                     compressedLog = compressString(log);
 
-                RunDetail run = new RunDetail(userid, duration, postTime, xmlTimestamp, os, revision, gitHash, getViewContext().getContainer(), false,
-                        compressedXML, pointSummary, passes.size(), failures.size(), leaks.size(), avgMemory, compressedLog); //TODO change date AND USERID
+                RunDetail run = new RunDetail(userid, duration, postTime, xmlTimestamp, os, revision, gitHash, c, false, compressedXML,
+                        pointSummary, passes.size(), failures.size(), memoryLeaks.size(), avgMemory, compressedLog); //TODO change date AND USERID
                 // stores test run in database and gets the id(foreign key)
                 run = Table.insert(null, TestResultsSchema.getInstance().getTableInfoTestRuns(), run);
                 int runId = run.getId();
-                for(TestLeakDetail leak : leaks) {
+
+                for(TestHandleLeakDetail leak : handleLeaks) {
                     leak.setTestRunId(runId);
-                    Table.insert(null, TestResultsSchema.getInstance().getTableInfoTestLeaks(), leak);
+                    Table.insert(null, TestResultsSchema.getInstance().getTableInfoHandleLeaks(), leak);
+                }
+                for(TestMemoryLeakDetail leak : memoryLeaks) {
+                    leak.setTestRunId(runId);
+                    Table.insert(null, TestResultsSchema.getInstance().getTableInfoMemoryLeaks(), leak);
                 }
                 for(TestFailDetail fail: failures) {
                     fail.setTestRunId(runId);
@@ -1157,14 +1329,13 @@ public class TestResultsController extends SpringActionController
 
                 transaction.commit();
             } catch (Exception e) {
-                _log.error("Error parsing xml", e);
+                _log.error("Error parsing xml");
                 // e.getStackTrace();
                 throw e;
             }
-            return null;
         }
 
-        private byte[] compressString(String s) {
+        private static byte[] compressString(String s) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             try {
                 OutputStream out = new GZIPOutputStream(baos);
@@ -1175,40 +1346,6 @@ public class TestResultsController extends SpringActionController
                 return new byte[0];
             }
             return baos.toByteArray();
-        }
-
-        private void DebugRequest(HttpServletRequest hsRequest)
-        {
-            _log.info("Request is " + hsRequest.getClass().toString());
-            _log.info("Content length is : "+ hsRequest.getContentLength());
-            _log.info("Content type: " + hsRequest.getContentType());
-            Enumeration<String> headerNames = hsRequest.getHeaderNames();
-            while(headerNames.hasMoreElements())
-            {
-                String headerName = headerNames.nextElement();
-                _log.info("Header " + headerName + ": " + hsRequest.getHeader(headerName));
-            }
-
-            if(hsRequest instanceof MultipartRequest)
-            {
-                MultipartRequest request = (MultipartRequest) hsRequest;
-                _log.info("Multi part content type for xml: " + request.getMultipartContentType("xml"));
-                _log.info("Multi part content type for xml_file: " + request.getMultipartContentType("xml_file"));
-            }
-        }
-
-        // used for formatting timestamps in hh:mm format as they may roll over multiple days
-        public Date addDays(Date date, int days)
-        {
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(date);
-            cal.add(Calendar.DATE, days); //minus number would decrement the days
-            return cal.getTime();
-        }
-        @Override
-        public NavTree appendNavTrail(NavTree root)
-        {
-            return root;
         }
     }
 
@@ -1259,8 +1396,8 @@ public class TestResultsController extends SpringActionController
             end = DateUtils.addDays(start, 1);
         }
         SQLFragment sqlFragment = new SQLFragment();
-        sqlFragment.append("SELECT testruns.*, u.username, EXISTS(SELECT 1 FROM testresults.trainruns WHERE runid = testruns.id) AS traindata ");
-        sqlFragment.append("FROM testresults.testruns ");
+        sqlFragment.append("SELECT testruns.*, u.username, EXISTS(SELECT 1 FROM "+TestResultsSchema.getTableInfoTrain()+" WHERE runid = testruns.id) AS traindata ");
+        sqlFragment.append("FROM "+TestResultsSchema.getTableInfoTestRuns()+" ");
         sqlFragment.append("JOIN testresults.user AS u ON testruns.userid = u.id ");
         sqlFragment.append("WHERE posttime >= ? ");
         sqlFragment.append("AND posttime < ? ");
@@ -1323,7 +1460,7 @@ public class TestResultsController extends SpringActionController
             return false;
         switch (ds) {
             case ViewType.DAY:
-               return true;
+                return true;
             case ViewType.WEEK:
                 return true;
             case ViewType.MONTH:
@@ -1404,12 +1541,12 @@ public class TestResultsController extends SpringActionController
         populateFailures(runs);
         return runs[0].getFailures();
     }
-    static TestLeakDetail[] getLeaksForRun(RunDetail run) {
+    static TestMemoryLeakDetail[] getLeaksForRun(RunDetail run) {
         if(run == null)
             return null;
         RunDetail[] runs = new RunDetail[]{run};
         populateLeaks(runs);
-        return runs[0].getLeaks();
+        return runs[0].getTestmemoryleaks();
     }
     /*
     * Given a set of run details this method queries and populates each RunDetail with corresponding
@@ -1448,6 +1585,9 @@ public class TestResultsController extends SpringActionController
             runIds.add(r.getId());
 
         SQLFragment sqlFragment = new SQLFragment();
+//        SimpleFilter filter = new SimpleFilter();
+//        filter.addCondition()
+//        TestPassDetail[] passes = new TableSelector(TestResultsSchema.getInstance().getTableInfoTestFails(), filter, null).getArray(TestPassDetail.class);
         sqlFragment.append(" SELECT * FROM testresults.testpasses WHERE id = ANY(SELECT MAX(id) FROM " +
                 "testresults.testpasses WHERE (testrunid = ANY(?)) GROUP BY testrunid);");
         sqlFragment.add(runIds);
@@ -1470,7 +1610,6 @@ public class TestResultsController extends SpringActionController
                     r.setPasses(new TestPassDetail[]{pass});
             }
         }
-
     }
 
     static void populateFailures(RunDetail[] runs) {
@@ -1503,26 +1642,36 @@ public class TestResultsController extends SpringActionController
     static void populateLeaks(RunDetail[] runs) {
         SimpleFilter filter = filterByRunId(runs);
 
-        TestLeakDetail[] leaks = new TableSelector(TestResultsSchema.getInstance().getTableInfoTestLeaks(), filter, null).getArray(TestLeakDetail.class);
-        Map<Integer, List<TestLeakDetail>> testLeakDetails = new HashMap<>();
+        TestHandleLeakDetail[] handleLeaks = new TableSelector(TestResultsSchema.getInstance().getTableInfoHandleLeaks(), filter, null).getArray(TestHandleLeakDetail.class);
+        TestMemoryLeakDetail[] memoryLeaks = new TableSelector(TestResultsSchema.getInstance().getTableInfoMemoryLeaks(), filter, null).getArray(TestMemoryLeakDetail.class);
+        Map<Integer, List<TestMemoryLeakDetail>> testLeakDetails = new HashMap<>();
 
-        for (TestLeakDetail leak : leaks) {
-            List<TestLeakDetail> list = testLeakDetails.get(leak.getTestRunId());
+        for (TestMemoryLeakDetail leak : memoryLeaks) {
+            List<TestMemoryLeakDetail> list = testLeakDetails.get(leak.getTestRunId());
             if (null == list) {
                 list = new ArrayList<>();
             }
             list.add(leak);
             testLeakDetails.put(leak.getTestRunId(), list);
         }
-        for (RunDetail run : runs)
-        {
+        for (RunDetail run : runs) {
             int runId = run.getId();
-            List<TestLeakDetail> leakList = testLeakDetails.get(runId);
+            List<TestMemoryLeakDetail> leakList = testLeakDetails.get(runId);
 
             if (leakList != null)
-                run.setLeaks(leakList.toArray(new TestLeakDetail[leakList.size()]));
+                run.setTestmemoryleaks(leakList.toArray(new TestMemoryLeakDetail[leakList.size()]));
             else
-                run.setLeaks(new TestLeakDetail[0]);
+                run.setTestmemoryleaks(new TestMemoryLeakDetail[0]);
         }
+    }
+
+    private static Date setDateToEightAM(Date d) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(d);
+        cal.set(Calendar.HOUR_OF_DAY, 8);
+        cal.set(Calendar.MINUTE, 1);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        return cal.getTime();
     }
 }

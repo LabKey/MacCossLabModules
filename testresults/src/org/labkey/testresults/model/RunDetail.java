@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.testresults;
+package org.labkey.testresults.model;
 
 import org.labkey.api.data.Container;
 import org.labkey.api.reader.Readers;
@@ -47,7 +47,7 @@ public class RunDetail implements Comparable<RunDetail>
     private boolean isTrainRun;
     private TestFailDetail[] failures; // all failures which resulted in this run
     private TestPassDetail[] passes; // all passes(successful tests runs) in this run
-    private TestLeakDetail[] leaks; // all leaks detected during this run
+    private TestMemoryLeakDetail[] testmemoryleaks; // all memory testmemoryleaks detected during this run
 
     private byte[] xml; // compressed xml
 
@@ -75,7 +75,7 @@ public class RunDetail implements Comparable<RunDetail>
         this.container = container;
         this.failures = new TestFailDetail[0];
         this.passes = new TestPassDetail[0];
-        this.leaks = new TestLeakDetail[0];
+        this.testmemoryleaks = new TestMemoryLeakDetail[0];
         this.flagged = flagged;
         this.timestamp = timestamp;
         this.xml = xml;
@@ -136,14 +136,14 @@ public class RunDetail implements Comparable<RunDetail>
         this.os = os;
     }
 
-    public TestLeakDetail[] getLeaks()
+    public TestMemoryLeakDetail[] getTestmemoryleaks()
     {
-        return leaks;
+        return testmemoryleaks;
     }
 
-    public void setLeaks(TestLeakDetail[] leaks)
+    public void setTestmemoryleaks(TestMemoryLeakDetail[] testmemoryleaks)
     {
-        this.leaks = leaks;
+        this.testmemoryleaks = testmemoryleaks;
     }
 
     public TestFailDetail[] getFailures()
@@ -331,16 +331,6 @@ public class RunDetail implements Comparable<RunDetail>
     public void setAveragemem(int averagemem)  { this.averagemem = averagemem; }
 
     public int getAveragemem() { return averagemem; }
-
-    public String getUsername()
-    {
-        return username;
-    }
-
-    public void setUsername(String username)
-    {
-        this.username = username;
-    }
 
     public double getAverageMemory() {
         if(averagemem != 0) {

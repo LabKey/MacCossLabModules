@@ -7,11 +7,11 @@
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.testresults.RunDetail" %>
+<%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.TestResultsController" %>
 <%@ page import="org.labkey.testresults.TestResultsSchema" %>
-<%@ page import="org.labkey.testresults.TestsDataBean" %>
-<%@ page import="org.labkey.testresults.User" %>
+<%@ page import="org.labkey.testresults.view.TestsDataBean" %>
+<%@ page import="org.labkey.testresults.model.User" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="java.util.ArrayList" %>
@@ -73,6 +73,7 @@
             <li><a href="<%=h(new ActionURL(TestResultsController.LongTermAction.class, c))%>" style="color:#fff;">-Long Term</a></li>
             <li><a href="<%=h(new ActionURL(TestResultsController.ShowFlaggedAction.class, c))%>" style="color:#fff;">-Flags</a></li>
             <li><a href="<%=h(new ActionURL(TestResultsController.TrainingDataViewAction.class, c))%>" style="color:#fff;">-Training Data</a></li>
+            <li><a href="<%=h(new ActionURL(TestResultsController.ErrorFilesAction.class, c))%>" style="color:#fff;">-Posting Errors</a></li>
             <li><a href="https://skyline.gs.washington.edu/labkey/project/home/issues/begin.view?" target="_blank" title="Report bugs/Request features.  Use 'TestResults' as area when creating new issue" style="color:#fff;">-Issues</a></li>
             <img src="<%=h(contextPath)%>/TestResults/img/uw.png" id="uw">
         </ul>
@@ -162,7 +163,7 @@
         <table  class="decoratedtable">
             <tr>
                 <td></td>
-                <%if(!showSingleUser){%><td>User<td/><%}%>
+                <%if(!showSingleUser){%><td>User</td><%}%>
                 <td>Date</td>
                 <td>Duration</td>
                 <td>Passes</td>
@@ -185,7 +186,7 @@
             %>
             <tr>
                 <td><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>">run details</a></td>
-                <%if(!showSingleUser){%><td><%=h(run.getUsername())%></td><%}%>
+                <%if(!showSingleUser){%><td><%=h(run.getUserName())%></td><%}%>
                 <td><%=h(df.format(run.getPostTime()))%></td>
                 <td><%=h(run.getDuration())%></td>
                 <td><%=h(run.getPassedtests())%></td>

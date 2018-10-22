@@ -29,7 +29,6 @@
     TestsDataBean data = (TestsDataBean)me.getModelBean();
     final String contextPath = AppProps.getInstance().getContextPath();
     String viewType = data.getViewType();
-    String failedTest = getViewContext().getRequest().getParameter("failedTest");
     Container c = getContainer();
     RunDetail[] runs = data.getStatRuns();
     if(runs.length > 1) {
@@ -43,11 +42,16 @@
         });
     }
     Map<String, List<TestFailDetail>> languageFailures = new TreeMap<>();
-    languageFailures.put(failedTest, Arrays.asList(data.getFailures()));
+    TestFailDetail[] fails = data.getFailures();
+    for(TestFailDetail f: fails) {
+        if(!languageFailures.containsKey(f.getTestName()))
+            languageFailures.put(f.getTestName(), new ArrayList<>());
+        languageFailures.get(f.getTestName()).add(f);
+    }
     Map<String, Map<String, Double>> languageBreakdown = data.getLanguageBreakdown(languageFailures);
+    List<String> users = new ArrayList<>();
 
-    DateFormat df = new SimpleDateFormat("MM/dd/YYYY HH:mm");
-    DateFormat dfEnd = new SimpleDateFormat("MM/dd/YYYY");
+    DateFormat df = new SimpleDateFormat("MM/dd HH:mm");
 %>
 
 <div id="menu">
@@ -65,12 +69,10 @@
 </div>
 <script type="text/javascript">
     LABKEY.requiresCss("/TestResults/css/style.css");
-    LABKEY.requiresCss("/TestResults/css/tablesorter-default.css");
 </script>
 <script src="<%=h(contextPath)%>/TestResults/js/d3.v3.js"></script>
 <script src="<%=h(contextPath)%>/TestResults/js/c3.min.js"></script>
 <script src="//code.jquery.com/jquery-1.10.2.js"></script>
-<script src="<%=h(contextPath)%>/TestResults/js/jquery.tablesorter.js"></script>
 <br />
 <form action="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>">
     View Type: <select name="viewType">
@@ -81,10 +83,6 @@
     <option id="yr" value="yr">Year</option>
     <option id="at" value="at">The Beginning of Time</option>
     </select>
-    <select name="failedTest" style="display:none;">
-        <option id="<%=h(failedTest)%>" value="<%=h(failedTest)%>"></option>
-    </select>
-    <input type="hidden" name="end" value="<%=dfEnd.format(data.getEndDate())%>" />
     <input type="submit" value="Submit">
 </form>
 <!-- Selects the View Type in the combobox -->
@@ -95,53 +93,43 @@
 <!-- main content of page -->
 <%if(data.getStatRuns().length > 0) { %>
 <div style="float:left;">
-    <h2><%=h(failedTest)%></h2>
+    <h2>All Failures</h2>
     <h4>Viewing data for: <%=h(df.format(data.getStartDate()))%> - <%=h(df.format(data.getEndDate()))%></h4>
     <h4>Total failures: <%=h(runs.length)%></h4>
+    <h4>Unique users: <%=h(users.size())%></h4>
 </div>
 <br />
 <!-- Bar & Pie chart containers -->
 <div id="failGraph" class="c3chart" style="width:700px; height:400px;"></div>
 <div id="piechart" class="c3chart" style="width:250px; height:250px;"></div>
-<table class="tablesorter-default tablesorter" id="failurestatstable" style="float:left; width: 100%;">
-    <thead>
-    <tr>
-        <th class="header headerSortDown">User</th>
-        <th class="header">Post Time</th>
-        <th class="header">Duration</th>
-        <th class="header">OS</th>
-        <th class="header">Rev</th>
-        <th class="header">Total Run Failures</th>
-        <th class="header">Hangs</th>
-        <th>StackTrace</th>
+
+<table class="decoratedtable" style="float:left;">
+    <tr style="height:20px;">
+    <th style="height:20px; padding:0;">Sorted by revision</th>
     </tr>
-    </thead>
-    <tbody>
-        <%
-            Map<Date, Integer> dates = new TreeMap<Date, Integer>();  // maps dates to count of failures per run
-            for(RunDetail run: runs) { %>
+    <%
+    Collections.reverse(Arrays.asList(runs)); // so most recent is on top
+    Map<Date, Integer> dates = new TreeMap<Date, Integer>();  // maps dates to count of failures per run
+    for(RunDetail run: runs) { %>
         <tr>
             <td>
-                <a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>">
-                    <%=h(run.getUserName())%>
-                </a>
+                <p style="width:200px;"><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>">
+                <%=h(run.getUserName())%> <br />
+                Duration: <%=h(run.getDuration())%> <br />
+                OS: <%=h(run.getOs())%> <br />
+                Post Time: <%=h(run.getPostTime())%> <br />
+                Rev: <%=h(run.getRevision())%> <br />
+                Run Failures: <%=h(run.getFailures().length)%>
+                </a></p>
             </td>
-            <td><%=h(df.format(run.getPostTime()))%></td>
-            <td><%=h(run.getDuration())%></td>
-            <td><%=h(run.getOs())%></td>
-            <td><%=h(run.getRevisionFull())%></td>
-            <td><%=h(run.getFailedtests())%></td>
-            <td><%=h(run.hasHang())%></td>
             <td>
                 <%  int failCounter = 0;
                     for(TestFailDetail fail: run.getFailures()) {
-                        if(fail.getTestName().equals(failedTest)) {
                             failCounter++; %>
-                <pre style="text-align: left; padding:10px;"
-                     class="pass-<%=h(fail.getPass())%>">Pass: <%=h(fail.getPass())%> Language: <%=h(fail.getLanguage())%> --- <%=h(fail.getStacktrace())%>
-                            </pre>
-                <%}
-                }%>
+                        <pre style="text-align: left; padding:10px;"
+                             class="pass-<%=h(fail.getPass())%>">Pass: <%=h(fail.getPass())%> Language: <%=h(fail.getLanguage())%> --- <%=h(fail.getStacktrace())%>
+                        </pre>
+                    <%}%>
                 <%
                     if(!dates.containsKey(run.getPostTime()))
                         dates.put(run.getPostTime(), 0);
@@ -151,9 +139,7 @@
             </td>
         </tr>
     <%}%>
-   </tbody>
 </table>
-
 
 <!-- Pie Chart -->
 <script type="text/javascript">
@@ -162,7 +148,7 @@
         data: {
             columns: [
                 <%
-                    Map<String, Double> lang =languageBreakdown.get(failedTest);
+                    Map<String, Double> lang =languageBreakdown.get("");
                    for(String l: lang.keySet()) {
                     Double percent = lang.get(l) * 100;
                 %>
@@ -203,7 +189,7 @@
         var avgFailures = failureJSON.avgFailures;
         if(dates.length >= 1)
             dates.unshift('x');
-        avgFailures.unshift("<%=h(failedTest)%> failures");
+        avgFailures.unshift("<%=h("")%> failures");
 
             var failTrendChart = c3.generate({
                 bindto: '#failGraph',
@@ -242,40 +228,3 @@
     </script>
 <%}%>
 <%}%>
-
-<script type="text/javascript">
-    /* Initialize sortable table */
-    $(document).ready(function()
-            {
-                $("#failurestatstable").tablesorter({
-                    widthFixed : true,
-                    resizable: true,
-                    widgets: ['zebra'],
-                    headers : {
-                        0: { sorter: "text" },
-                        1: { sorter: "shortDate" , dateFormat: "dd/mm/yyyy hh:mm"},
-                        2: { sorter: "digit" },
-                        3: { sorter: "text" },
-                        4: { sorter: "digit" },
-                        5: { sorter: "digit" },
-                        6: {sorter: "text"},
-                        7: {sorter: false}
-                    },
-                    cssAsc        : "headerSortUp",
-                    cssDesc       : "headerSortDown",
-                    ignoreCase: true,
-                    sortList: [
-                        [1, 1]
-//                        [2, 0]
-                    ],
-                    sortAppend: {
-                        0 : [[ 1, 'a' ]] // secondary sort by date ascending
-                    },
-                    theme: 'default'
-
-
-
-                });
-            }
-    );
-</script>

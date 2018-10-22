@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.testresults;
+package org.labkey.testresults.model;
 
 /**
  * User: Yuval Boss, yuval(at)uw.edu
@@ -22,17 +22,17 @@ package org.labkey.testresults;
 public class TestLeakDetail
 {
     private int testRunId;
-    private String testname;
-    private int bytes; // bytes leaked
-
+    private String testName;
+    private String type;
 
     public TestLeakDetail() {
 
     }
-    public TestLeakDetail(int testRunId, String name, int bytes) {
+
+    public TestLeakDetail(int testRunId, String name, String type) {
         this.testRunId = testRunId;
-        this.testname = name;
-        this.bytes = bytes;
+        this.testName = name;
+        this.type = type;
     }
 
     public int getTestRunId()
@@ -45,23 +45,23 @@ public class TestLeakDetail
         this.testRunId = testRunId;
     }
 
-    public int getBytes()
-    {
-        return bytes;
-    }
-
-    public void setBytes(int bytes)
-    {
-        this.bytes = bytes;
-    }
-
     public String getTestName()
     {
-        return testname;
+        return testName;
     }
 
     public void setTestName(String testname)
     {
-        this.testname = testname;
+        this.testName = testname;
+    }
+
+    public String getType()
+    {
+        return type;
+    }
+
+    public void setType(String type)
+    {
+        this.type = type;
     }
 }

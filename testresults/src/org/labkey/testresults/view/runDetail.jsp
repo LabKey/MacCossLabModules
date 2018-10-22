@@ -1,17 +1,18 @@
-<%@ page import="org.labkey.testresults.TestsDataBean" %>
+<%@ page import="org.labkey.testresults.view.TestsDataBean" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
-<%@ page import="org.labkey.testresults.RunDetail" %>
-<%@ page import="org.labkey.testresults.TestFailDetail" %>
-<%@ page import="org.labkey.testresults.TestLeakDetail" %>
+<%@ page import="org.labkey.testresults.model.RunDetail" %>
+<%@ page import="org.labkey.testresults.model.TestFailDetail" %>
+<%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.testresults.TestResultsController" %>
 <%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.testresults.TestPassDetail" %>
+<%@ page import="org.labkey.testresults.model.TestPassDetail" %>
 <%@ page import="java.util.Arrays" %>
+<%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
@@ -33,6 +34,7 @@
         <li><a href="<%=h(new ActionURL(TestResultsController.LongTermAction.class, c))%>" style="color:#fff;">-Long Term</a></li>
         <li><a href="<%=h(new ActionURL(TestResultsController.ShowFlaggedAction.class, c))%>" style="color:#fff;">-Flags</a></li>
         <li><a href="<%=h(new ActionURL(TestResultsController.TrainingDataViewAction.class, c))%>" style="color:#fff;">-Training Data</a></li>
+        <li><a href="<%=h(new ActionURL(TestResultsController.ErrorFilesAction.class, c))%>" style="color:#fff;">-Posting Errors</a></li>
         <li><a href="https://skyline.gs.washington.edu/labkey/project/home/issues/begin.view?" target="_blank" title="Report bugs/Request features.  Use 'TestResults' as area when creating new issue" style="color:#fff;">-Issues</a></li>
         <img src="<%=h(contextPath)%>/TestResults/img/uw.png" id="uw">
     </ul>
@@ -52,7 +54,7 @@
     RunDetail run = data.getRuns()[0];
     TestFailDetail[] failures = run.getFailures();
     Arrays.sort(failures); // sorts by timestamp
-    TestLeakDetail[] leaks = run.getLeaks();
+    TestMemoryLeakDetail[] testmemoryleaks = run.getTestmemoryleaks();
     TestPassDetail[] passes = run.getPasses();
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
     DateFormat dfMDHM = new SimpleDateFormat("MM/dd HH:mm");
@@ -78,12 +80,12 @@
         &nbsp;&nbsp;<button id="deleteRun">Delete Run</button>
     <br/><%if(hasHang){%> <span style="color:red;">(POSSIBLE HANG)</span> <%}%></h2>
     <p>Run Id: <%=h(run.getId())%> <br />
-    User : <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>user=<%=h(run.getUsername())%>"><%=h(run.getUserName())%></a> <br />
+    User : <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>user=<%=h(run.getUserName())%>"><%=h(run.getUserName())%></a> <br />
     OS: <%=h(run.getOs())%>   <br />
     Revision: <%=h(run.getRevisionFull())%>  <br />
     Passed Tests : <%=h(run.getPasses().length)%> <br />
     Failures : <%=h(failures.length)%> <br />
-    Leaks : <%=h(leaks.length)%> <br />
+    Leaks : <%=h(testmemoryleaks.length)%> <br />
         TimeStamp:  <%=h((run.getTimestamp() == null) ? "N/A" : run.getTimestamp())%><br >
         <a id="trainset">
             <%=h((run.isTrainRun()) ? "Remove from training set" : "Add to training set")%>
@@ -126,7 +128,7 @@
             }
         });
         $('#deleteRun').click(function(){
-            var c = confirm("Press 'Ok' to delete this run and all associated passes, leaks, and test failures.");
+            var c = confirm("Press 'Ok' to delete this run and all associated passes, testmemoryleaks, and test failures.");
             if (c == true) {
                 window.location.href = "<%=h(new ActionURL(TestResultsController.DeleteRunAction.class, c))%>" + "runId=<%=h(run.getId())%>";
             }
@@ -135,7 +137,7 @@
 </div>
 <!--Graph of memory usage using TestDataBean.getMemoryJson(int runId)-->
 <div id="memoryGraph"></div>
-<!--Table containing all failed tests & leaks-->
+<!--Table containing all failed tests & testmemoryleaks-->
 <table class="decoratedtable" style="float:left;">
     <tr>
         <td>Failed Tests</td>
@@ -153,7 +155,7 @@
 </table>
 <table class="decoratedtable" style="float:left;">
     <tr><td>Leaks</td><td>Bytes</td></tr>
-    <%for(TestLeakDetail l: leaks) {%>
+    <%for(TestMemoryLeakDetail l: testmemoryleaks) {%>
     <tr>
         <td><%=h(l.getTestName())%></td>
         <td><%=h(l.getBytes()/1000 + "kb")%></td>
