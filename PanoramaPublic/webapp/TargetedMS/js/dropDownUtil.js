@@ -12,7 +12,7 @@
  * * *
  */
 
-function viewExperimentDetails(obj, id, detailsPageURL)
+function viewExperimentDetails(obj, experimentContainer, id, detailsPageURL)
 {
     var abstract = null;
     var expDetails = null;
@@ -57,6 +57,10 @@ function viewExperimentDetails(obj, id, detailsPageURL)
 
     function verifyNewCol(object, type, rowNum)
     {
+        if(object.rowCount === 0)
+        {
+            return null;
+        }
         var results;
         if(object.rows[rowNum][type] != null)
         {
@@ -87,7 +91,8 @@ function viewExperimentDetails(obj, id, detailsPageURL)
         {
             var html = [];
 
-            html.push("<tr><td "+styles+"colspan='"+totalCols+"' class='openrow' id='openrow-"+id+"'>");
+            // Add another row for the details.  Make it hidden initially
+            html.push("<tr style='display: none;'><td "+styles+"colspan='"+totalCols+"' class='openrow' id='openrow-"+id+"'>");
             if(abstract != null)
             {
                 html.push("<div class='descriptionCols'><h1>Abstract</h1>"+abstract+"</div>");
@@ -96,7 +101,6 @@ function viewExperimentDetails(obj, id, detailsPageURL)
             {
                 html.push("<div class='descriptionCols'><h1>Experiment Description</h1>"+expDetails+"</div>");
             }
-            html.push("<a id='scrollto-"+id+"'></a>");
             if(sampleDetails != null)
             {
                 html.push("<div class='descriptionCols'><h1>Sample Description</h1>"+sampleDetails+"</div></td></tr>");
@@ -117,6 +121,7 @@ function viewExperimentDetails(obj, id, detailsPageURL)
         schemaName: 'targetedms',
         queryName: 'ExperimentAnnotations',
         success: onSuccess,
+        containerPath: experimentContainer,
         columns:['abstract', 'experimentdescription', 'sampledescription'],
         failure: onFailure,
         filterArray:[
@@ -138,20 +143,13 @@ function viewExperimentDetails(obj, id, detailsPageURL)
     function fadeIn()
     {
         currentRow.next().fadeIn(500)
-        $('html, body').animate({
-            scrollTop: $("#scrollto-"+id).offset().top
-        }, 800);
         $(obj).attr("active", "true");
         $('#expandcontract-'+id).attr('src', '/labkey/_images/minus.gif');
     }
 
     function fadeOut()
     {
-        var height = currentRow.next().css('height');
-        currentRow.next().fadeOut(500);
-        $('html, body').animate({
-            scrollTop: '-='+(height)+'px'
-        }, 500);
+        currentRow.next().fadeOut(200);
         $(obj).attr("active", "false");
         $('#expandcontract-'+id).attr('src', '/labkey/_images/plus.gif');
     }

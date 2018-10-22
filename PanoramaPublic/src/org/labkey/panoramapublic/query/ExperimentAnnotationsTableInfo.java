@@ -20,7 +20,6 @@ import org.jetbrains.annotations.NotNull;
 import org.labkey.api.collections.NamedObjectList;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
-import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
@@ -47,13 +46,14 @@ import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
+import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.SimpleNamedObject;
 import org.labkey.api.util.UniqueID;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HttpView;
+import org.labkey.api.view.template.ClientDependency;
 import org.labkey.targetedms.PublishTargetedMSExperimentsController;
-import org.labkey.targetedms.TargetedMSController;
 import org.labkey.targetedms.TargetedMSManager;
 import org.labkey.targetedms.TargetedMSSchema;
 import org.labkey.targetedms.model.ExperimentAnnotations;
@@ -72,14 +72,14 @@ import java.util.Set;
 public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSchema>
 {
 
-    public ExperimentAnnotationsTableInfo(final TargetedMSSchema schema, User user)
+    public ExperimentAnnotationsTableInfo(final TargetedMSSchema schema)
     {
-        this(TargetedMSManager.getTableInfoExperimentAnnotations(), schema, user);
+        this(TargetedMSManager.getTableInfoExperimentAnnotations(), schema);
     }
 
-    public ExperimentAnnotationsTableInfo(TableInfo tableInfo, TargetedMSSchema schema, User user)
+    public ExperimentAnnotationsTableInfo(TableInfo tableInfo, TargetedMSSchema schema)
     {
-        super(tableInfo, schema, new ContainerFilter.CurrentAndSubfolders(user));
+        super(tableInfo, schema);
 
         wrapAllColumns(true);
         setDetailsURL(new DetailsURL(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer())));
@@ -98,32 +98,40 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
             @Override
             public DisplayColumn createRenderer(ColumnInfo colInfo)
             {
-
                 return new DataColumn(colInfo, true)
                 {
-                    private boolean _renderedCSS = false;
+                    private FieldKey _containerKey = new FieldKey(getColumnInfo().getFieldKey().getParent(), "container");
+                    private FieldKey _idKey = new FieldKey(getColumnInfo().getFieldKey().getParent(), "id");
+
+                    @Override
+                    public @NotNull Set<ClientDependency> getClientDependencies()
+                    {
+                        return PageFlowUtil.set(
+                                ClientDependency.fromPath(AppProps.getInstance().getScheme() + "://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"),
+                                ClientDependency.fromPath("/TargetedMS/css/dropDown.css"),
+                                ClientDependency.fromPath("/TargetedMS/js/dropDownUtil.js"));
+                    }
 
                     @Override
                     public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
                     {
-                        int id = (Integer)ctx.get("id");
-                        if (!_renderedCSS)
+                        Integer id = ctx.get(_idKey, Integer.class);
+                        Container container = ctx.get(_containerKey, Container.class);
+                        if(id != null && container != null)
                         {
-                            out.write("<script type=\"text/javascript\">\n" +
-                                    "LABKEY.requiresCss(\"/TargetedMS/css/dropDown.css\");\n" +
-                                    "LABKEY.requiresScript(\"/TargetedMS/js/dropDownUtil.js\");\n" +
-                                    "</script>");
-                            out.write("\n<script src=\"//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js\"></script>\n");
-
-                            _renderedCSS = true;
+                            ActionURL detailsPage = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container); // experiment container
+                            out.write("<span active=\"false\" loaded=\"false\" onclick=\"viewExperimentDetails(this,'" + container.getPath() + "', '" + id + "','" + detailsPage + "')\"><img id=\"expandcontract-" + id + "\" src=\"/labkey/_images/plus.gif\">&nbsp;");
+                            out.write("</span>");
                         }
-
-                        ActionURL detailsPage = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer());
-                        TargetedMSController.getViewExperimentDetailsURL(id, getContainer());
-
-                        out.write("<span active=\"false\" loaded=\"false\" onclick=\"viewExperimentDetails(this,'" + id + "','" + detailsPage + "')\"><img id=\"expandcontract-" + id + "\" src=\"/labkey/_images/plus.gif\">&nbsp;");
-                        out.write("</span>");
                         super.renderGridCellContents(ctx, out);
+                    }
+
+                    @Override
+                    public void addQueryFieldKeys(Set<FieldKey> keys)
+                    {
+                        super.addQueryFieldKeys(keys);
+                        keys.add(_containerKey);
+                        keys.add(_idKey);
                     }
                 };
             }
@@ -135,7 +143,17 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
         ColumnInfo shareCol = wrapColumn("Share", getRealTable().getColumn("Id"));
         shareCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
         {
-            private boolean _renderedCSS = false;
+            @Override
+            public @NotNull Set<ClientDependency> getClientDependencies()
+            {
+                return PageFlowUtil.set(
+                        ClientDependency.fromPath("TargetedMS/css/ExperimentAnnotations.css"),
+                        ClientDependency.fromPath("hopscotch/css/hopscotch.min.css"),
+                        ClientDependency.fromPath("TargetedMS/js/ExperimentAnnotations.js"),
+                        ClientDependency.fromPath("TargetedMS/js/clipboard.min.js"),
+                        ClientDependency.fromPath("hopscotch/js/hopscotch.min.js")
+                        );
+            }
 
             @Override
             public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
@@ -152,19 +170,6 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
                 }
                 else
                 {
-                    if(!_renderedCSS)
-                    {
-                        out.write("<script type=\"text/javascript\">\n" +
-                                "LABKEY.requiresScript(\"TargetedMS/js/clipboard.min.js\");\n" +
-                                "LABKEY.requiresCss(\"/TargetedMS/css/ExperimentAnnotations.css\");\n" +
-                                "LABKEY.requiresScript(\"/TargetedMS/js/ExperimentAnnotations.js\");\n" +
-                                "LABKEY.requiresCss(\"hopscotch/css/hopscotch.min.css\");\n" +
-                                "LABKEY.requiresScript(\"hopscotch/js/hopscotch.min.js\");\n" +
-                                "</script>");
-
-                        _renderedCSS = true;
-                    }
-
                     String content = "<div><a class=\"button-small button-small-green\" style=\"margin:0px 5px 0px 2px;\""
                                      + "href=\"\" onclick=\"showShareLink(this, '" + PageFlowUtil.filter(accessUrl) + "');return false;\""
                                + ">Share</a>";
