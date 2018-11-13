@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2018 LabKey Corporation
+ *
+ * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+ */
 // Autocompletion for Organism and Instrument fields in the ExperimentAnnotations form.
 // Uses tagsinput (https://bootstrap-tagsinput.github.io/bootstrap-tagsinput/examples/)
 // and
