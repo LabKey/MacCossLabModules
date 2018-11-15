@@ -3,7 +3,7 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
-<%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
+<%@ page import="org.labkey.testresults.model.TestMemoryLeakDeail" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
@@ -54,7 +54,7 @@
     RunDetail run = data.getRuns()[0];
     TestFailDetail[] failures = run.getFailures();
     Arrays.sort(failures); // sorts by timestamp
-    TestMemoryLeakDetail[] testmemoryleaks = run.getTestmemoryleaks();
+    TestMemoryLeakDeail[] testmemoryleaks = run.getTestmemoryleaks();
     TestPassDetail[] passes = run.getPasses();
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
     DateFormat dfMDHM = new SimpleDateFormat("MM/dd HH:mm");
@@ -155,7 +155,7 @@
 </table>
 <table class="decoratedtable" style="float:left;">
     <tr><td>Leaks</td><td>Bytes</td></tr>
-    <%for(TestMemoryLeakDetail l: testmemoryleaks) {%>
+    <%for(TestMemoryLeakDeail l: testmemoryleaks) {%>
     <tr>
         <td><%=h(l.getTestName())%></td>
         <td><%=h(l.getBytes()/1000 + "kb")%></td>

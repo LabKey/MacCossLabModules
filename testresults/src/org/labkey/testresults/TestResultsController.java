@@ -55,9 +55,7 @@ import org.labkey.api.view.NavTree;
 import org.labkey.api.view.ViewContext;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestFailDetail;
-import org.labkey.testresults.model.TestHandleLeakDetail;
-import org.labkey.testresults.model.TestMemoryLeakDetail;
-import org.labkey.testresults.model.TestMemoryLeakDetail;
+import org.labkey.testresults.model.TestMemoryLeakDeail;
 import org.labkey.testresults.model.TestPassDetail;
 import org.labkey.testresults.model.User;
 import org.labkey.testresults.view.LongTermBean;
@@ -250,7 +248,7 @@ public class TestResultsController extends SpringActionController
                 {
                     TestPassDetail[] passes = run.getPasses();
                     TestFailDetail[] failures = run.getFailures();
-                    TestMemoryLeakDetail[] leaks = run.getTestmemoryleaks();
+                    TestMemoryLeakDeail[] leaks = run.getTestmemoryleaks();
                     if (passes == null)
                     {
                         passes = getPassesForRun(run);
@@ -302,7 +300,7 @@ public class TestResultsController extends SpringActionController
                     if(!keepObjData) {
                         run.setPasses(new TestPassDetail[0]);
                         run.setFailures(new TestFailDetail[0]);
-                        run.setTestmemoryleaks(new TestMemoryLeakDetail[0]);
+                        run.setTestmemoryleaks(new TestMemoryLeakDeail[0]);
                     }
                 }
             }
@@ -554,7 +552,7 @@ public class TestResultsController extends SpringActionController
 
             TestFailDetail[] fails = new TableSelector(TestResultsSchema.getInstance().getTableInfoTestFails(), filter, null).getArray(TestFailDetail.class);
             TestPassDetail[] passes = new TableSelector(TestResultsSchema.getInstance().getTableInfoTestPasses(), filter, null).getArray(TestPassDetail.class);
-            TestMemoryLeakDetail[] memoryLeaks = new TableSelector(TestResultsSchema.getInstance().getTableInfoMemoryLeaks(), filter, null).getArray(TestMemoryLeakDetail.class);
+            TestMemoryLeakDeail[] memoryLeaks = new TableSelector(TestResultsSchema.getInstance().getTableInfoMemoryLeaks(), filter, null).getArray(TestMemoryLeakDeail.class);
 
             SQLFragment sqlFragment = new SQLFragment();
             sqlFragment.append("SELECT testruns.*, u.username, EXISTS(SELECT 1 FROM testresults.trainruns WHERE runid = testruns.id) AS traindata FROM testresults.testruns ");
@@ -1002,7 +1000,7 @@ public class TestResultsController extends SpringActionController
                 _log.info("Attempting to save file for a future post attempt");
                 res.put("Success", false);
                 res.put("Message", "Error Parsing XML attempting to save the XML file...   " + NIGHTLY_POSTER.SaveXML(file, getContainer()));
-                res.put("Exception", e + NIGHTLY_POSTER.getStackTraceText(e));
+                res.put("Exception", e + Arrays.toString(e.getStackTrace()));
                 return new ApiSimpleResponse(res);
             }
 
@@ -1060,8 +1058,6 @@ public class TestResultsController extends SpringActionController
             File[] files = local.listFiles();
             Map<String, String> res = new HashMap<>();
             for(File f: files) {
-                if (f.getName().equals(".upload.log")) // LabKey system file
-                    continue;
                 try {
                     String xml = FileUtils.readFileToString(f, Charset.defaultCharset());
                     NIGHTLY_POSTER.ParseAndStoreXML(xml, c);
@@ -1087,14 +1083,6 @@ public class TestResultsController extends SpringActionController
             return cal.getTime();
         }
 
-        public static String getStackTraceText(Exception e)
-        {
-            StringBuilder sb = new StringBuilder();
-            for (StackTraceElement el : e.getStackTrace()) {
-                sb.append(el).append("\r\n");   // Use windows new lines to display correctly in NotePad
-            }
-            return sb.toString();
-        }
         public static File getLocalPath(Container c)
         {
             return FileContentService.get().getFileRootPath(c, FileContentService.ContentType.files).toFile();
@@ -1180,8 +1168,7 @@ public class TestResultsController extends SpringActionController
                     docElement.removeChild(logN); // remove log at the end so that it doesn't get stored with the xml
                 }
                 // Get leaks, failures, and passes
-                List<TestMemoryLeakDetail> memoryLeaks = new ArrayList<>();
-                List<TestHandleLeakDetail> handleLeaks = new ArrayList<>();
+                List<TestMemoryLeakDeail> memoryLeaks = new ArrayList<>();
                 List<TestFailDetail> failures = new ArrayList<>();
                 List<TestPassDetail> passes = new ArrayList<>();
                 // stores leaks in database
@@ -1189,17 +1176,10 @@ public class TestResultsController extends SpringActionController
                 NodeList nlLeak = ((Element) nListLeaks.item(0)).getElementsByTagName("leak");
                 for(int leakIndex = 0; leakIndex < nlLeak.getLength(); leakIndex++) {
                     Element elLeak = (Element) nlLeak.item(leakIndex);
-                    String type = elLeak.getAttribute("type");
-                    if(elLeak.getAttribute("bytes") != "") { // process memory leak
-                        TestMemoryLeakDetail leak = new TestMemoryLeakDetail(0, elLeak.getAttribute("name"), type, (int)Float.parseFloat(elLeak.getAttribute("bytes")));
-                        memoryLeaks.add(leak);
-                    } else if(elLeak.getAttribute("handles") != "") { // process handle leak
-                        TestHandleLeakDetail leak = new TestHandleLeakDetail(0, elLeak.getAttribute("name"), type, Float.parseFloat(elLeak.getAttribute("handles")));
-                        handleLeaks .add(leak);
-                    } else {
-                        _log.error("Error parsing Leak " + elLeak.getAttribute("name") + ".");
-                        throw new XMLParseException();
-                    }
+                    if(elLeak.getAttribute("bytes") == "")
+                        continue;
+                    TestMemoryLeakDeail leak = new TestMemoryLeakDeail(0, elLeak.getAttribute("name"), Integer.parseInt(elLeak.getAttribute("bytes")));
+                    memoryLeaks.add(leak);
                 }
 
                 // parse passes
@@ -1240,21 +1220,8 @@ public class TestResultsController extends SpringActionController
                         }
                         if(test.getAttribute("duration").equals(NA) || test.getAttribute("managed").equals(NA) || test.getAttribute("total").equals(NA))
                             continue;
-                        String committedAttr = test.getAttribute("committed");
-                        String usergdiAttr = test.getAttribute("user_gdi");
-                        String handlesAttr = test.getAttribute("handles");
-                        TestPassDetail pass = new TestPassDetail(0, passId,
-                                Integer.parseInt(test.getAttribute("id")),
-                                test.getAttribute("name"),
-                                test.getAttribute("language"),
-                                Integer.parseInt(test.getAttribute("duration")),
-                                Double.parseDouble(test.getAttribute("managed")),
-                                Double.parseDouble(test.getAttribute("total")),
-                                // New leak tracking values
-                                StringUtils.hasText(committedAttr) ? Double.parseDouble(committedAttr) : 0,
-                                StringUtils.hasText(usergdiAttr) ? Integer.parseInt(usergdiAttr) : 0,
-                                StringUtils.hasText(handlesAttr) ? Integer.parseInt(handlesAttr) : 0,
-                                timestamp);
+                        TestPassDetail pass = new TestPassDetail(0, passId, Integer.parseInt(test.getAttribute("id")), test.getAttribute("name"),
+                                test.getAttribute("language"), Integer.parseInt(test.getAttribute("duration")), Double.parseDouble(test.getAttribute("managed")), Double.parseDouble(test.getAttribute("total")), timestamp);
                         avgMemory += pass.getTotalMemory();
                         passes.add(pass);
                     }
@@ -1304,15 +1271,14 @@ public class TestResultsController extends SpringActionController
                 if(log != null)
                     compressedLog = compressString(log);
 
-                RunDetail run = new RunDetail(userid, duration, postTime, xmlTimestamp, os, revision, gitHash, c, false, compressedXML,
+                RunDetail run = new RunDetail(userid, duration, postTime, xmlTimestamp, os, revision, c, false, compressedXML,
                         pointSummary, passes.size(), failures.size(), memoryLeaks.size(), avgMemory, compressedLog); //TODO change date AND USERID
                 // stores test run in database and gets the id(foreign key)
                 run = Table.insert(null, TestResultsSchema.getInstance().getTableInfoTestRuns(), run);
                 int runId = run.getId();
-
-                for(TestHandleLeakDetail leak : handleLeaks) {
+                for(TestMemoryLeakDeail leak : memoryLeaks) {
                     leak.setTestRunId(runId);
-                    Table.insert(null, TestResultsSchema.getInstance().getTableInfoHandleLeaks(), leak);
+                    Table.insert(null, TestResultsSchema.getInstance().getTableInfoMemoryLeaks(), leak);
                 }
                 for(TestMemoryLeakDetail leak : memoryLeaks) {
                     leak.setTestRunId(runId);
@@ -1541,7 +1507,7 @@ public class TestResultsController extends SpringActionController
         populateFailures(runs);
         return runs[0].getFailures();
     }
-    static TestMemoryLeakDetail[] getLeaksForRun(RunDetail run) {
+    static TestMemoryLeakDeail[] getLeaksForRun(RunDetail run) {
         if(run == null)
             return null;
         RunDetail[] runs = new RunDetail[]{run};
@@ -1642,12 +1608,11 @@ public class TestResultsController extends SpringActionController
     static void populateLeaks(RunDetail[] runs) {
         SimpleFilter filter = filterByRunId(runs);
 
-        TestHandleLeakDetail[] handleLeaks = new TableSelector(TestResultsSchema.getInstance().getTableInfoHandleLeaks(), filter, null).getArray(TestHandleLeakDetail.class);
-        TestMemoryLeakDetail[] memoryLeaks = new TableSelector(TestResultsSchema.getInstance().getTableInfoMemoryLeaks(), filter, null).getArray(TestMemoryLeakDetail.class);
-        Map<Integer, List<TestMemoryLeakDetail>> testLeakDetails = new HashMap<>();
+        TestMemoryLeakDeail[] leaks = new TableSelector(TestResultsSchema.getInstance().getTableInfoMemoryLeaks(), filter, null).getArray(TestMemoryLeakDeail.class);
+        Map<Integer, List<TestMemoryLeakDeail>> testLeakDetails = new HashMap<>();
 
-        for (TestMemoryLeakDetail leak : memoryLeaks) {
-            List<TestMemoryLeakDetail> list = testLeakDetails.get(leak.getTestRunId());
+        for (TestMemoryLeakDeail leak : leaks) {
+            List<TestMemoryLeakDeail> list = testLeakDetails.get(leak.getTestRunId());
             if (null == list) {
                 list = new ArrayList<>();
             }
@@ -1656,12 +1621,12 @@ public class TestResultsController extends SpringActionController
         }
         for (RunDetail run : runs) {
             int runId = run.getId();
-            List<TestMemoryLeakDetail> leakList = testLeakDetails.get(runId);
+            List<TestMemoryLeakDeail> leakList = testLeakDetails.get(runId);
 
             if (leakList != null)
-                run.setTestmemoryleaks(leakList.toArray(new TestMemoryLeakDetail[leakList.size()]));
+                run.setTestmemoryleaks(leakList.toArray(new TestMemoryLeakDeail[leakList.size()]));
             else
-                run.setTestmemoryleaks(new TestMemoryLeakDetail[0]);
+                run.setTestmemoryleaks(new TestMemoryLeakDeail[0]);
         }
     }
 

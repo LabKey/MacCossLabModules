@@ -129,7 +129,7 @@
             <td><%=h(df.format(run.getPostTime()))%></td>
             <td><%=h(run.getDuration())%></td>
             <td><%=h(run.getOs())%></td>
-            <td><%=h(run.getRevisionFull())%></td>
+            <td><%=h(run.getRevision())%></td>
             <td><%=h(run.getFailedtests())%></td>
             <td><%=h(run.hasHang())%></td>
             <td>

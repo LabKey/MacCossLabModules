@@ -12,11 +12,9 @@ import org.labkey.api.util.MimeMap;
 import org.labkey.api.util.Pair;
 import org.labkey.api.util.Path;
 import org.labkey.api.view.ActionURL;
-import org.labkey.testresults.model.BackgroundColor;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestFailDetail;
-import org.labkey.testresults.model.TestMemoryLeakDetail;
-import org.labkey.testresults.model.TestMemoryLeakDetail;
+import org.labkey.testresults.model.TestMemoryLeakDeail;
 import org.labkey.testresults.model.User;
 import org.labkey.testresults.view.RunDownBean;
 import org.quartz.JobExecutionContext;
@@ -96,7 +94,7 @@ public class SendTestResultsEmail implements org.quartz.Job
 
             RunDownBean data = new RunDownBean(runs, users);
             Map<String, List<TestFailDetail>> todaysFailures = data.getFailedTestsByDate(new Date(), true);
-            Map<String, List<TestMemoryLeakDetail>> todaysLeaks = data.getLeaksByDate(new Date(), true);
+            Map<String, List<TestMemoryLeakDeail>> todaysLeaks = data.getLeaksByDate(new Date(), true);
             User[] missingUsers = data.getMissingUsers(data.getRuns());
             List<User> nightsUsers = new ArrayList<>();
             // build message as an HTML email message
@@ -140,8 +138,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                             style = getBackgroundStyle(BackgroundColor.unknown);
                             isGoodRun = false;
                         }
-                        highlightDuration = run.getDuration() < 539;
-                        if (highlightDuration || run.getFailures().length > 0 || run.getTestmemoryleaks().length > 0)
+                        if (run.getDuration() < 540 || run.getFailures().length > 0 || run.getTestmemoryleaks().length > 0)
                         {
                             style = getBackgroundStyle(BackgroundColor.error);
                             isGoodRun = false;
@@ -185,8 +182,8 @@ public class SendTestResultsEmail implements org.quartz.Job
                                 "http://skyline.ms" + new ActionURL(TestResultsController.ShowRunAction.class, container) + "runId=" + run.getId()
                                 + "\" target=\"_blank\" style=\"text-decoration:none; font-weight:600; color:black;\">"
                                 + run.getUserName() + "</a></td>");
-                        message.append("\n<td style='padding: 6px; " + (highlightMemory ? style : "") + "'>" + data.round(run.getAverageMemory(), 2) + "</td>");
-                        message.append("\n<td style='padding: 6px; " + (highlightRuns ? style : "") + "'>" + run.getPassedtests() + "</td>");
+                        message.append("\n<td style='padding: 6px;'>" + data.round(run.getAverageMemory(), 2) + "</td>");
+                        message.append("\n<td style='padding: 6px;'>" + run.getPassedtests() + "</td>");
                         message.append("\n<td style='padding: 6px;'>" + run.getPostTime() + "</td>");
                         message.append("\n<td style='padding: 6px; " + (highlightDuration ? style : "") + "'>" + run.getDuration() + "</td>");
                         message.append("\n<td style='padding: 6px; " + (run.getFailedtests() > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getFailedtests() + "</td>");
@@ -264,7 +261,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                     }
                     message.append("\n</tr>");
                 }
-                for (Map.Entry<String, List<TestMemoryLeakDetail>> entry : todaysLeaks.entrySet())
+                for (Map.Entry<String, List<TestMemoryLeakDeail>> entry : todaysLeaks.entrySet())
                 {
                     message.append("\n<tr>");
                     message.append("\n<td style='overflow:hidden; text-overflow: ellipsis; padding:3px; border:1px solid #ccc;'>" + entry.getKey() + "</td>");
@@ -273,9 +270,9 @@ public class SendTestResultsEmail implements org.quartz.Job
                         if (noFailLeakRuns.contains(run.getId()))
                             continue;
                         message.append("\n<td style='width:60px; overflow:hidden; padding:3px; border:1px solid #ccc;'>");
-                        TestMemoryLeakDetail matchingLeak = null;
+                        TestMemoryLeakDeail matchingLeak = null;
 
-                        for (TestMemoryLeakDetail leak : entry.getValue())
+                        for (TestMemoryLeakDeail leak : entry.getValue())
                         {
                             if (leak.getTestRunId() == run.getId())
                             {
