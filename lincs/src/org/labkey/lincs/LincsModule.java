@@ -19,8 +19,10 @@ package org.labkey.lincs;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
-import org.labkey.api.module.DefaultModule;
+import org.labkey.api.data.PropertyManager;
+import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.module.ModuleContext;
+import org.labkey.api.module.SpringModule;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.BaseWebPartFactory;
 import org.labkey.api.view.Portal;
@@ -33,7 +35,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 
-public class LincsModule extends DefaultModule
+public class LincsModule extends SpringModule
 {
     public static final String NAME = "LINCS";
 
@@ -85,16 +87,72 @@ public class LincsModule extends DefaultModule
     }
 
     @Override
-    public void doStartup(ModuleContext moduleContext)
+    protected void startupAfterSpringConfig(ModuleContext moduleContext)
     {
         // add a container listener so we'll know when our container is deleted:
         ContainerManager.addContainerListener(new LincsContainerListener());
-    }
 
+        ExperimentService service = ExperimentService.get();
+        service.addExperimentListener(new DocImportListenter());
+    }
     @Override
     @NotNull
     public Collection<String> getSummary(Container c)
     {
         return Collections.emptyList();
+    }
+
+    public static boolean processGctOnClueServer(Container container)
+    {
+        return getClueCredentials(container) != null;
+    }
+
+    public static ClueCredentials getClueCredentials(Container container)
+    {
+        PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(container, LincsController.LINCS_CLUE_CREDENTIALS, false);
+        if(map == null)
+        {
+            return null;
+        }
+        String clueServerUrl = map.get(LincsController.CLUE_SERVER_URI);
+        String clueApiKey = map.get(LincsController.CLUE_API_KEY);
+        if(clueServerUrl != null && clueApiKey != null)
+        {
+            return new ClueCredentials(clueServerUrl, clueApiKey);
+        }
+        return null;
+    }
+
+    public static class ClueCredentials
+    {
+        private final String _serverUrl;
+        private final String _apiKey;
+
+        public ClueCredentials(String serverUrl, String apiKey)
+        {
+            _serverUrl = serverUrl;
+            _apiKey = apiKey;
+        }
+
+        public String getServerUrl()
+        {
+            return _serverUrl;
+        }
+
+        public String getApiKey()
+        {
+            return _apiKey;
+        }
+    }
+
+    public enum LincsAssay
+    {
+        P100,
+        GCP
+    }
+
+    public enum LincsLevel
+    {
+        Two,Three,Four, Config
     }
 }

@@ -95,4 +95,10 @@ write.table(pa_ar_merged, file = fileOut, sep="\t", row.names=TRUE, col.names=FA
 
 # Write the processed GCT file
 ########## Processed GCT ##############################
-GCPprocessGCTMaster(repAnnot=replicateAnnotations, probeAnnot=peptideAnnotations, dataTable=areaRatios, outputFileName="${fileout:lincs.processed.gct}", log2=FALSE);
+remote = as.character(labkey.url.params$remote);
+print(paste("url param 'remote' is '", remote, "'", sep=""));
+if(is.null(remote) || is.na(nchar(remote)[1]) || (nchar(remote)[1] == 0))
+{
+    print(paste("generating processed gct locally", sep=""));
+    GCPprocessGCTMaster(repAnnot=replicateAnnotations, probeAnnot=peptideAnnotations, dataTable=areaRatios, outputFileName="${fileout:lincs.processed.gct}", log2=FALSE);
+}

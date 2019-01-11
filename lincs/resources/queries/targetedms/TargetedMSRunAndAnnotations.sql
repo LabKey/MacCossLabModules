@@ -21,6 +21,6 @@ runs.*,
 metadata.Label,
 metadata.Token
 FROM runs
-LEFT OUTER JOIN lincs.LincsMetadata AS metadata ON runs.FileName LIKE '%_' || metadata.Token || '_%';
+LEFT OUTER JOIN lincs.LincsMetadata AS metadata ON runs.FileName LIKE '%\_' || metadata.Token || '\_%' ESCAPE '\'
 WHERE runs.Status IS NULL
 

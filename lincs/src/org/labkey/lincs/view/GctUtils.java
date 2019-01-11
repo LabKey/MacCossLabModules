@@ -19,10 +19,9 @@ import org.labkey.lincs.Gct;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -36,15 +35,13 @@ public class GctUtils
 {
     private GctUtils() {}
 
-    public static Gct readGct(File inFile) throws IOException
+    public static Gct readGct(Path inFile) throws IOException
     {
-        BufferedReader reader = null;
-        try
+        try (BufferedReader reader = Files.newBufferedReader(inFile))
         {
             Gct gct = new Gct();
             int probeCount, replicateCount, probeAnnotationCount, replicateAnnotationCount;
 
-            reader = new BufferedReader(new FileReader(inFile));
             reader.readLine();  // GCT version number
 
             // Header with number of probes, replicates, replicate annotations, probe annotations
@@ -100,10 +97,6 @@ public class GctUtils
 
             return gct;
         }
-        finally
-        {
-            if(reader != null) try {reader.close();} catch(IOException ignored){}
-        }
     }
 
     private static String[] readNextLine(BufferedReader reader, int expectedColumns) throws IOException
@@ -121,12 +114,10 @@ public class GctUtils
         return tokens;
     }
 
-    public static void writeGct(Gct gct, File outFile) throws IOException
+    public static void writeGct(Gct gct, Path outFile) throws IOException
     {
-        BufferedWriter writer = null;
-        try
+        try (BufferedWriter writer = Files.newBufferedWriter(outFile))
         {
-            writer = new BufferedWriter(new FileWriter(outFile));
             writer.write("#1.3");
             writer.newLine();
             int probeAnnotationCount = gct.getProbeAnnotationCount();
@@ -208,16 +199,6 @@ public class GctUtils
                     writer.write(value == null ? "NA" : value);
                 }
                 writer.newLine();
-            }
-        }
-        finally
-        {
-            if (writer != null) try
-            {
-                writer.close();
-            }
-            catch (IOException ignored)
-            {
             }
         }
     }

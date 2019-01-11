@@ -15,10 +15,11 @@
  */
 package org.labkey.lincs;
 
+import org.labkey.api.util.FileUtil;
 import org.labkey.lincs.view.GctUtils;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,12 +33,12 @@ public class CustomGctBuilder
 {
     private final String[] multiValueProbeAnnotations = new String[] {"pr_probe_normalization_group", "pr_probe_suitability_manual"};
 
-    public Gct build(List<File> files, List<LincsController.SelectedAnnotation> selectedAnnotations,
+    public Gct build(List<Path> files, List<LincsController.SelectedAnnotation> selectedAnnotations,
                      Set<String> ignoredProbeAnnotations, Set<String> ignoredReplicateAnnotations) throws Gct.GctFileException
     {
         Gct customGct = new Gct();
 
-        for(File file: files)
+        for(Path file: files)
         {
             Gct gct;
             try
@@ -46,7 +47,7 @@ public class CustomGctBuilder
             }
             catch (IOException e)
             {
-                throw new Gct.GctFileException( "Error reading GCT file " + file.getName(), e);
+                throw new Gct.GctFileException( "Error reading GCT file " + FileUtil.getFileName(file), e);
             }
 
             // Add the replicates.
@@ -59,7 +60,7 @@ public class CustomGctBuilder
             }
 
             // Add the probes.
-            addProbes(gct, customGct, file.getName());
+            addProbes(gct, customGct, FileUtil.getFileName(file));
 
             // Add the area ratios.
             addAreaRatios(gct, customGct);

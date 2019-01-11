@@ -32,6 +32,7 @@ lincs/resources/web/lincs/lincs.css -text
 lincs/resources/web/lincs/lincs.js -text
 lincs/resources/web/lincs/p100_data_flow.png -text
 lincs/src/org/labkey/lincs/CustomGctBuilder.java -text
+lincs/src/org/labkey/lincs/DocImportListenter.java -text
 lincs/src/org/labkey/lincs/Gct.java -text
 lincs/src/org/labkey/lincs/LincsAnnotation.java -text
 lincs/src/org/labkey/lincs/LincsContainerListener.java -text
@@ -45,3 +46,4 @@ lincs/src/org/labkey/lincs/view/LincsDataView.java -text
 lincs/src/org/labkey/lincs/view/customGCTForm.jsp -text
 lincs/src/org/labkey/lincs/view/downloadCustomGCT.jsp -text
 lincs/src/org/labkey/lincs/view/hello.jsp -text
+lincs/src/org/labkey/lincs/view/manageClueCredentials.jsp -text

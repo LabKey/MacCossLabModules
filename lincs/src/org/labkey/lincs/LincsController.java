@@ -16,34 +16,37 @@
 
 package org.labkey.lincs;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.Nullable;
+import org.labkey.api.action.Action;
 import org.labkey.api.action.ApiAction;
+import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
+import org.labkey.api.action.ApiUsageException;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabKeyError;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.PropertyManager;
+import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.ModuleLoader;
-import org.labkey.api.pipeline.PipeRoot;
-import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.reports.Report;
 import org.labkey.api.reports.report.ModuleReportDescriptor;
 import org.labkey.api.reports.report.RReport;
 import org.labkey.api.reports.report.ReportDescriptor;
 import org.labkey.api.reports.report.view.ReportUtil;
 import org.labkey.api.resource.Resource;
+import org.labkey.api.security.ActionNames;
 import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.User;
+import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.ReadPermission;
-import org.labkey.api.services.ServiceRegistry;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.SkylineAnnotation;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
-import org.labkey.api.util.NetworkDrive;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
@@ -60,6 +63,9 @@ import org.springframework.web.servlet.ModelAndView;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,6 +76,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class LincsController extends SpringActionController
 {
@@ -143,7 +151,7 @@ public class LincsController extends SpringActionController
 
             if (service == null)
             {
-                errors.addError(new LabKeyError("Run with ID " + form.getRunId() + " was not found in the folder."));
+                errors.addError(new LabKeyError("Could not get an instance of TargetedMSService."));
                 return new SimpleErrorView(errors, false);
             }
 
@@ -151,15 +159,16 @@ public class LincsController extends SpringActionController
 
             if(run == null)
             {
-                errors.addError(new LabKeyError("Run with ID " + form.getRunId() + " was not found in the folder."));
+                errors.addError(new LabKeyError("Run with ID " + form.getRunId() + " was not found in the folder " + getContainer().getPath()));
                 return new SimpleErrorView(errors, false);
             }
 
             // If a GCT folder does not exist in this folder, create one
-            File gctDir = getGCTDir(getContainer());
-            if(!NetworkDrive.exists(gctDir))
+            Path gctDir = getGCTDir(getContainer());
+            if(!Files.exists(gctDir))
             {
-                if(!gctDir.mkdir())
+                Files.createDirectory(gctDir);
+                if(!Files.exists(gctDir))
                 {
                     errors.addError(new LabKeyError("Failed to create GCT directory '" + gctDir + "'."));
                     return new SimpleErrorView(errors, true);
@@ -168,9 +177,9 @@ public class LincsController extends SpringActionController
 
             // Get the name of the requested GCT file
             String outputFileBaseName = run.getBaseName();
-            File gct = new File(gctDir, outputFileBaseName + ".gct");
-            File processedGct = new File(gctDir, outputFileBaseName + ".processed.gct");
-            File downloadFile;
+            Path gct = gctDir.resolve(outputFileBaseName + ".gct");
+            Path processedGct = gctDir.resolve(outputFileBaseName + ".processed.gct");
+            Path downloadFile;
             if(form.isProcessed())
             {
                 downloadFile = processedGct;
@@ -196,39 +205,47 @@ public class LincsController extends SpringActionController
 
 
             // Check if the folder already contains the requested GCT file.
-            NetworkDrive.ensureDrive(gctDir.getPath());
-            if(form.getRunId() != 0)
+            boolean fileExits = false;
+            try (Stream<Path> paths = Files.list(gctDir))
             {
-                File[] files = gctDir.listFiles();
-                for(File file: files != null ? files : new File[0])
+                for (Path path : paths.collect(Collectors.toSet()))
                 {
-                    if(file.getName().equals(gct.getName()) || file.getName().equals(processedGct.getName()))
+                    if (FileUtil.getFileName(downloadFile).equals(FileUtil.getFileName(path)))
                     {
-                        if(form.isRerun() || FileUtils.isFileOlder(file, reportModificationDate)
-                                          || FileUtils.isFileOlder(file, runCreated))
-                        {
-                            // Delete the file if:
-                            // 1. This file was created before the last modified date on the R report
-                            // 2. The Skyline document was re-uploaded after the last GCT file was created
-                            // We run the report again for this run.
-                            file.delete();
-                        }
-                        else if(file.getName().equals(downloadFile.getName()))
-                        {
-                            if(!NetworkDrive.exists(downloadFile))
-                            {
-                                errors.addError(new LabKeyError("File " + downloadFile + " does not exist."));
-                                return new SimpleErrorView(errors, true);
-                            }
-                            // We found the requested GCT file.
-                            PageFlowUtil.streamFile(getViewContext().getResponse(), downloadFile, true);
-
-                            return null;
-                        }
+                        fileExits = true;
+                        break;
                     }
                 }
             }
-
+            if(fileExits)
+            {
+                Date lastModified = new Date(Files.getLastModifiedTime(downloadFile).toMillis());
+                if(form.isRerun() || lastModified.before(reportModificationDate)
+                                  || lastModified.before(runCreated))
+                {
+                    // Delete the file if:
+                    // 1. This file was created before the last modified date on the R report
+                    // 2. The Skyline document was re-uploaded after the last GCT file was created
+                    // We run the report again for this run. Delete both the .gct and .processed.gct files.
+                    if(Files.exists(gct))
+                    {
+                        Files.delete(gct);
+                    }
+                    if(Files.exists(processedGct))
+                    {
+                        Files.delete(processedGct);
+                    }
+                }
+                else
+                {
+                    // We found the requested GCT file.
+                    try (InputStream inputStream = Files.newInputStream(downloadFile))
+                    {
+                        PageFlowUtil.streamFile(getViewContext().getResponse(), Collections.emptyMap(), FileUtil.getFileName(downloadFile), inputStream, true);
+                    }
+                    return null;
+                }
+            }
 
             // Create a new ViewContext that will be used to initialize QuerySettings for getting input data file (labkey.data)
             ViewContext ctx = new ViewContext(getViewContext());
@@ -263,74 +280,213 @@ public class LincsController extends SpringActionController
 
             copyFiles(gctDir, outputFileBaseName, gct, processedGct, rreport.getReportDir(getContainer().getId()));
 
-            if(form.getRunId() != 0)
+
+            if(!Files.exists(downloadFile))
             {
-                if(!NetworkDrive.exists(downloadFile))
-                {
-                    errors.addError(new LabKeyError("File " + downloadFile + " does not exist."));
-                    return new SimpleErrorView(errors, true);
-                }
-                PageFlowUtil.streamFile(getViewContext().getResponse(), downloadFile, false);
+                errors.addError(new LabKeyError("File " + downloadFile + " does not exist."));
+                return new SimpleErrorView(errors, true);
+            }
+            try (InputStream inputStream = Files.newInputStream(downloadFile))
+            {
+                PageFlowUtil.streamFile(getViewContext().getResponse(), Collections.emptyMap(), FileUtil.getFileName(downloadFile), inputStream, true);
             }
 
             return null;
-        }
-
-        private void copyFiles(File gctDir, String outputFileBaseName, File gct, File processedGct, File reportDir) throws IOException
-        {
-            File[] reportDirFiles = reportDir.listFiles(new FilenameFilter()
-            {
-                @Override
-                public boolean accept(File dir, String name)
-                {
-                    return name.toLowerCase().endsWith(".txt")
-                            || name.toLowerCase().endsWith(".gct")
-                            || name.equals("script.Rout");
-                }
-            });
-
-            // The report should create two files: lincs.gct and lincs.processed.gct
-            // Copy both to the GCT folder
-            for(File file: reportDirFiles)
-            {
-                if(file.getName().toLowerCase().equals("lincs.gct"))
-                {
-                    FileUtil.copyFile(file, gct);
-                }
-                else if(file.getName().toLowerCase().equals("lincs.processed.gct"))
-                {
-                    FileUtil.copyFile(file, processedGct);
-                }
-                else if(file.getName().toLowerCase().equals("console.txt"))
-                {
-                    FileUtil.copyFile(file, new File(gctDir, outputFileBaseName + ".console.txt" ));
-                }
-                else if(file.getName().equals("script.Rout"))
-                {
-                    FileUtil.copyFile(file, new File(gctDir, outputFileBaseName + ".script.Rout" ));
-                }
-            }
         }
 
         public NavTree appendNavTrail(NavTree root)
         {
             return root;
         }
+    }
 
-        public Report getReport(GCTReportForm form)
+    private void copyFiles(Path gctDir, String outputFileBaseName, Path gct, @Nullable Path processedGct, File reportDir) throws IOException
+    {
+        // reportDir is a local directory under tomcat's temp directory
+        File[] reportDirFiles = reportDir.listFiles(new FilenameFilter()
         {
-            Report report = null;
-            String reportName = form.getReportName();
-
-            if (reportName != null)
+            @Override
+            public boolean accept(File dir, String name)
             {
-                String key = ReportUtil.getReportKey("targetedms", "GCT_input_peptidearearatio");
-                if (StringUtils.isBlank(key))
-                    key = reportName;
-                report = ReportUtil.getReportByName(getViewContext(), reportName, key);
+                return name.toLowerCase().endsWith(".txt")
+                        || name.toLowerCase().endsWith(".gct")
+                        || name.equals("script.Rout");
+            }
+        });
+
+        // The report should create two files: lincs.gct and lincs.processed.gct
+        // Copy both to the GCT folder
+        for(File file: reportDirFiles)
+        {
+            if(file.getName().toLowerCase().equals("lincs.gct"))
+            {
+                Files.copy(file.toPath(), gct);
+            }
+            else if(file.getName().toLowerCase().equals("lincs.processed.gct") && processedGct != null)
+            {
+                Files.copy(file.toPath(), processedGct);
+            }
+            else if(file.getName().toLowerCase().equals("console.txt"))
+            {
+                Files.copy(file.toPath(), gctDir.resolve(outputFileBaseName + ".console.txt" ));
+            }
+            else if(file.getName().equals("script.Rout"))
+            {
+                Files.copy(file.toPath(), gctDir.resolve(outputFileBaseName + ".script.Rout" ));
+            }
+        }
+    }
+
+    private Report getReport(GCTReportForm form)
+    {
+        Report report = null;
+        String reportName = form.getReportName();
+
+        if (reportName != null)
+        {
+            String key = ReportUtil.getReportKey("targetedms", "GCT_input_peptidearearatio");
+            if (StringUtils.isBlank(key))
+                key = reportName;
+            report = ReportUtil.getReportByName(getViewContext(), reportName, key);
+        }
+
+        return report;
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public class RunGCTReportApiAction extends ApiAction<GCTReportForm>
+    {
+        public ApiResponse execute(GCTReportForm form, BindException errors) throws Exception
+        {
+            if(form.getRunId() == 0)
+            {
+                throw new ApiUsageException("No run Id found in the request.");
             }
 
-            return report;
+            if (StringUtils.isBlank(form.getReportName()))
+            {
+                throw new ApiUsageException("No report name found in the request.");
+            }
+
+            Report report = getReport(form);
+
+            if(report == null)
+            {
+                throw new ApiUsageException("Could not find report with name " + form.getReportName());
+            }
+
+            if (!(report instanceof RReport))
+            {
+                throw new ApiUsageException("The specified report is not based upon an R script and therefore cannot be executed.");
+            }
+
+            // Get the TargetedMS run.
+            TargetedMSService service = TargetedMSService.get();
+
+            if (service == null)
+            {
+                throw new ApiUsageException("Could not get an instance of TargetedMSService.");
+            }
+
+            ITargetedMSRun run = service.getRun(form.getRunId(), getContainer());
+
+            if(run == null)
+            {
+                throw new ApiUsageException("Run with ID " + form.getRunId() + " was not found in the folder " + getContainer().getPath());
+            }
+
+            // If a GCT folder does not exist in this folder, create one
+            Path gctDir = getGCTDir(getContainer());
+            if(!Files.exists(gctDir))
+            {
+                Files.createDirectory(gctDir);
+                if(!Files.exists(gctDir))
+                {
+                    throw new ApiUsageException("Failed to create GCT directory '" + gctDir + "'.");
+                }
+            }
+
+            // Get the name of the requested GCT file
+            String outputFileBaseName = run.getBaseName();
+            Path downloadFile = gctDir.resolve(outputFileBaseName + ".gct");
+
+            // Check if the folder already contains the requested GCT file.
+            boolean fileExits = false;
+            try (Stream<Path> paths = Files.list(gctDir))
+            {
+                for (Path path : paths.collect(Collectors.toSet()))
+                {
+                    if (FileUtil.getFileName(downloadFile).equals(FileUtil.getFileName(path)))
+                    {
+                        fileExits = true;
+                        break;
+                    }
+                }
+            }
+            if(fileExits)
+            {
+                if (form.isRerun())
+                {
+                    Files.delete(downloadFile);
+                }
+                else
+                {
+                    try (InputStream inputStream = Files.newInputStream(downloadFile))
+                    {
+                        PageFlowUtil.streamFile(getViewContext().getResponse(), Collections.emptyMap(), FileUtil.getFileName(downloadFile), inputStream, true);
+                        return null;
+                    }
+                }
+            }
+
+            // Create a new ViewContext that will be used to initialize QuerySettings for getting input data file (labkey.data)
+            ViewContext ctx = new ViewContext(getViewContext());
+            ActionURL url = getViewContext().getActionURL();
+
+            MutablePropertyValues propertyValues = new MutablePropertyValues();
+            for (String key : url.getParameterMap().keySet())
+            {
+                propertyValues.addPropertyValue(key, url.getParameter(key));
+            }
+
+            // This is required so that the grid gets filtered by the given RunId.
+            propertyValues.addPropertyValue("GCT_input_peptidearearatio.RunId~eq", form.getRunId());
+            if(outputFileBaseName.contains("_QC_"))
+            {
+                // GCT_input_peptidearearatio is a parameterized query; parameter is "isotope".
+                // For QC files we want the medium/heavy ratio.
+                propertyValues.addPropertyValue("param.isotope", "medium");
+            }
+            ctx.setBindPropertyValues(propertyValues);
+            RReport rreport = (RReport)report;
+            try
+            {
+                // Execute the script
+                rreport.runScript(getViewContext(), new ArrayList<>(), rreport.createInputDataFile(ctx), null);
+            }
+            catch(Exception e)
+            {
+                copyFiles(gctDir, outputFileBaseName, downloadFile, null, rreport.getReportDir(getContainer().getId()));
+                throw new ApiUsageException("There was an error running the GCT R script.", e);
+            }
+
+            copyFiles(gctDir, outputFileBaseName, downloadFile, null, rreport.getReportDir(getContainer().getId()));
+
+            if(!Files.exists(downloadFile))
+            {
+                throw new ApiUsageException("File " + downloadFile + " does not exist.");
+            }
+            try (InputStream inputStream = Files.newInputStream(downloadFile))
+            {
+                PageFlowUtil.streamFile(getViewContext().getResponse(), Collections.emptyMap(), FileUtil.getFileName(downloadFile), inputStream, true);
+            }
+
+            return null;
+        }
+
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root;
         }
     }
 
@@ -427,7 +583,7 @@ public class LincsController extends SpringActionController
             List<SelectedAnnotation> annotations = customGCTForm.getSelectedAnnotationValues();
             // Get a list of GCT files that we want so use as input.
             String[] experimentTypes = customGCTForm.getExperimentTypes();
-            List<File> files = getGCTFiles(getContainer(), experimentTypes, errors);
+            List<Path> files = getGCTFiles(getContainer(), experimentTypes, errors);
             if(errors.hasErrors())
             {
                 return false;
@@ -450,13 +606,13 @@ public class LincsController extends SpringActionController
             return false;
         }
 
-        private GctBean writeCustomGCT(List<File> files, List<SelectedAnnotation> selectedAnnotations,
+        private GctBean writeCustomGCT(List<Path> files, List<SelectedAnnotation> selectedAnnotations,
                                     BindException errors)
         {
-            File gctDir = getGCTDir(getContainer());
-            if(!NetworkDrive.exists(gctDir))
+            Path gctDir = getGCTDir(getContainer());
+            if(!Files.exists(gctDir))
             {
-                errors.reject(ERROR_MSG, "GCT directory does not exist: " + gctDir.getPath());
+                errors.reject(ERROR_MSG, "GCT directory does not exist: " + FileUtil.getAbsolutePath(gctDir));
                 return null;
             }
 
@@ -479,14 +635,14 @@ public class LincsController extends SpringActionController
             }
 
             String gctFileName = FileUtil.makeFileNameWithTimestamp("CustomGCT", "gct");
-            File gctFile = new File(gctDir, gctFileName);
+            Path gctFile = gctDir.resolve(gctFileName);
             try
             {
                 GctUtils.writeGct(customGct, gctFile);
             }
             catch (Exception e)
             {
-                errors.reject(ERROR_MSG, "Error writing custom GCT file " + gctFile.getPath());
+                errors.reject(ERROR_MSG, "Error writing custom GCT file " + FileUtil.getAbsolutePath(gctFile));
                 errors.addError(new LabKeyError(e));
                 return null;
             }
@@ -501,7 +657,7 @@ public class LincsController extends SpringActionController
 
 
 
-        private List<File> getGCTFiles(Container container, String[] experimentTypes, BindException errors)
+        private List<Path> getGCTFiles(Container container, String[] experimentTypes, BindException errors)
         {
             TargetedMSService service = TargetedMSService.get();
 
@@ -512,12 +668,12 @@ public class LincsController extends SpringActionController
             }
 
             List<ITargetedMSRun> runs = service.getRuns(container);
-            List<File> gctFiles = new ArrayList<>();
+            List<Path> gctFiles = new ArrayList<>();
 
-            File gctDir = getGCTDir(getContainer());
-            if(!NetworkDrive.exists(gctDir))
+            Path gctDir = getGCTDir(getContainer());
+            if(!Files.exists(gctDir))
             {
-                errors.reject(ERROR_MSG, "GCT directory does not exist: " + gctDir.getPath());
+                errors.reject(ERROR_MSG, "GCT directory does not exist: " + FileUtil.getAbsolutePath(gctDir));
                 return Collections.emptyList();
             }
 
@@ -528,15 +684,15 @@ public class LincsController extends SpringActionController
                 {
                     continue;
                 }
-                File processedGct = new File(gctDir, outputFileBaseName + ".processed.gct");
-                if(NetworkDrive.exists(processedGct))
+                Path processedGct = gctDir.resolve(outputFileBaseName + ".processed.gct");
+                if(Files.exists(processedGct))
                 {
                     gctFiles.add(processedGct);
                 }
                 else
                 {
                     // TODO: Try to generate the GCT?
-                    errors.reject(ERROR_MSG, "GCT file does not exist: " + processedGct.getPath());
+                    errors.reject(ERROR_MSG, "GCT file does not exist: " + FileUtil.getAbsolutePath(processedGct));
                 }
             }
             return gctFiles;
@@ -664,18 +820,18 @@ public class LincsController extends SpringActionController
 
     public static class GctBean
     {
-        private File _gctFile;
+        private Path _gctFile;
         private int _probeCount;
         private int _replicateCount;
         private int _probeAnnotationCount;
         private int _replicateAnnotationCount;
 
-        public File getGctFile()
+        public Path getGctFile()
         {
             return _gctFile;
         }
 
-        public void setGctFile(File gctFile)
+        public void setGctFile(Path gctFile)
         {
             _gctFile = gctFile;
         }
@@ -730,17 +886,23 @@ public class LincsController extends SpringActionController
                 errors.reject(ERROR_MSG, "Request does not contain a fileName parameter");
                 return new SimpleErrorView(errors, false);
             }
-            PipeRoot root = PipelineService.get().getPipelineRootSetting(getContainer());
-            assert root != null;
-            File gctDir = new File(root.getRootPath(), "GCT");
-            File downloadFile = new File(gctDir, form.getFileName());
-            if(!NetworkDrive.exists(downloadFile))
+
+            Path gctDir = getGCTDir(getContainer());
+            Path downloadFile = gctDir.resolve(form.getFileName());
+            if(!Files.exists(downloadFile))
             {
                 errors.reject(ERROR_MSG, "File does not exist '" + form.getFileName() + "'.");
                 return new SimpleErrorView(errors, false);
             }
-            PageFlowUtil.streamFile(getViewContext().getResponse(), downloadFile, true);
-            downloadFile.delete();
+            try (InputStream inputStream = Files.newInputStream(downloadFile))
+            {
+                PageFlowUtil.streamFile(getViewContext().getResponse(), Collections.emptyMap(), FileUtil.getFileName(downloadFile), inputStream, true);
+            }
+            try
+            {
+                Files.delete(downloadFile);
+            }
+            catch(IOException ignored){}
             return null;
         }
 
@@ -876,11 +1038,11 @@ public class LincsController extends SpringActionController
         }
     }
 
-    private static File getGCTDir(Container container)
+    static Path getGCTDir(Container container)
     {
-        PipeRoot root = PipelineService.get().getPipelineRootSetting(container);
+        Path root = FileContentService.get().getFileRootPath(container, FileContentService.ContentType.files);
         assert root != null;
-        return new File(root.getRootPath(), GCT_DIR);
+        return root.resolve(GCT_DIR);
     }
 
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
@@ -904,7 +1066,7 @@ public class LincsController extends SpringActionController
             List<ITargetedMSRun> runs = service.getRuns(getContainer());
 
             // Get the location of the GCT folder
-            File gctDir = getGCTDir(getContainer());
+            Path gctDir = getGCTDir(getContainer());
 
 
             // For each run get return the date it was imported, along with the names and create dates on the .gct
@@ -916,22 +1078,38 @@ public class LincsController extends SpringActionController
                 data.put("skyline_doc", run.getBaseName());
                 data.put("skyline_doc_date", dateFormat.format(run.getCreated()));
 
-                if(gctDir.exists())
+                if(Files.exists(gctDir))
                 {
                     String outputFileBaseName = run.getBaseName();
-                    File gct = new File(gctDir, outputFileBaseName + ".gct");
-                    File processedGct = new File(gctDir, outputFileBaseName + ".processed.gct");
+                    Path gct = gctDir.resolve(outputFileBaseName + ".gct");
+                    Path processedGct = gctDir.resolve(outputFileBaseName + ".processed.gct");
 
-                    if(gct.exists())
+                    if(Files.exists(gct))
                     {
                         //data.put("gct", gct.getName());
-                        data.put("gct_date", dateFormat.format(gct.lastModified()));
+                        try
+                        {
+                            Date lastMod = new Date(Files.getLastModifiedTime(gct).toMillis());
+                            data.put("gct_date", dateFormat.format(lastMod));
+                        }
+                        catch (IOException e)
+                        {
+                            data.put("gct_date", "ERROR_GETTING_DATE");
+                        }
                     }
 
-                    if(processedGct.exists())
+                    if(Files.exists(processedGct))
                     {
                         //data.put("processed_gct", processedGct.getName());
-                        data.put("processed_gct_date", dateFormat.format(processedGct.lastModified()));
+                        try
+                        {
+                            Date lastMod = new Date(Files.getLastModifiedTime(gct).toMillis());
+                            data.put("processed_gct_date", dateFormat.format(lastMod));
+                        }
+                        catch (IOException e)
+                        {
+                            data.put("processed_gct_date", "ERROR_GETTING_DATE");
+                        }
                     }
                 }
 
@@ -943,15 +1121,15 @@ public class LincsController extends SpringActionController
         }
     }
 
-    public static LincsDataTable.LincsAssay getLincsAssayType(Container container)
+    public static LincsModule.LincsAssay getLincsAssayType(Container container)
     {
         if(isOrHasAncestor(container, LincsController.P100))
         {
-            return LincsDataTable.LincsAssay.P100;
+            return LincsModule.LincsAssay.P100;
         }
         else if(isOrHasAncestor(container, LincsController.GCP))
         {
-            return LincsDataTable.LincsAssay.GCP;
+            return LincsModule.LincsAssay.GCP;
         }
         return null;
     }
@@ -967,5 +1145,76 @@ public class LincsController extends SpringActionController
             return true;
         }
         return isOrHasAncestor(container.getParent(), name);
+    }
+
+    public static String LINCS_CLUE_CREDENTIALS = "Lincs Clue Server Credentials";
+    public static String CLUE_SERVER_URI = "serverUri";
+    public static String CLUE_API_KEY = "apiKey";
+
+    @RequiresPermission(AdminPermission.class)
+    @ActionNames("pspConfig")
+    public class ManageLincsClueCredentials extends FormViewAction<ClueCredentialsForm>
+    {
+        @Override
+        public void validateCommand(ClueCredentialsForm target, Errors errors) {}
+
+        @Override
+        public boolean handlePost(ClueCredentialsForm form, BindException errors)
+        {
+            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(getContainer(), LINCS_CLUE_CREDENTIALS, true);
+            map.put(CLUE_SERVER_URI, form.getServerUri());
+            map.put(CLUE_API_KEY, form.getApiKey());
+            map.save();
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(ClueCredentialsForm form)
+        {
+            return new ActionURL(ManageLincsClueCredentials.class, getContainer());
+        }
+
+        @Override
+        public ModelAndView getView(ClueCredentialsForm form, boolean reshow, BindException errors)
+        {
+            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(getContainer(), LINCS_CLUE_CREDENTIALS, false);
+            if(map != null)
+            {
+                form.setServerUri(map.get(CLUE_SERVER_URI));
+                form.setApiKey(map.get(CLUE_API_KEY));
+            }
+            return new JspView<>("/org/labkey/lincs/view/manageClueCredentials.jsp", form, errors);
+        }
+
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root;
+        }
+    }
+
+    public static class ClueCredentialsForm
+    {
+        private String _serverUri;
+        private String _apiKey;
+
+        public String getServerUri()
+        {
+            return _serverUri;
+        }
+
+        public void setServerUri(String serverUri)
+        {
+            _serverUri = serverUri;
+        }
+
+        public String getApiKey()
+        {
+            return _apiKey;
+        }
+
+        public void setApiKey(String apiKey)
+        {
+            _apiKey = apiKey;
+        }
     }
 }

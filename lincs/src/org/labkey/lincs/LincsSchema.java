@@ -79,7 +79,6 @@ public class LincsSchema extends UserSchema
         if (LincsDataTable.NAME.equalsIgnoreCase(name))
         {
             UserSchema schema = QueryService.get().getUserSchema(getUser(), getContainer(), "targetedms");
-            List<String> names = schema.getTableAndQueryNames(false);
             TableInfo tInfo = schema.getTable(LincsDataTable.PARENT_QUERY);
             return new LincsDataTable(tInfo, schema);
         }

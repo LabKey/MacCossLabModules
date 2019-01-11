@@ -21,6 +21,7 @@
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.lincs.LincsController" %>
 <%@ page import="java.util.List" %>
+<%@ page import="org.labkey.api.util.FileUtil" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -39,7 +40,7 @@
     LincsController.GctBean gctBean = form.getCustomGctBean();
 
     ActionURL downloadGctUrl = new ActionURL(LincsController.DownloadCustomGCTReportAction.class, getContainer());
-    String fileName = gctBean.getGctFile().getName();
+    String fileName = FileUtil.getFileName(gctBean.getGctFile());
     downloadGctUrl.addParameter("fileName", fileName);
 %>
 

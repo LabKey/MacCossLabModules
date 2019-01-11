@@ -129,6 +129,43 @@ getPeptideAnnotations <- function(folderPath){
   rownames(peptideAnnotations) <- peptideAnnotations$pr_id;
   peptideAnnotations <- peptideAnnotations[,-1];
 
+  # If the "pr_processing_params" annotation exists and its value contains something like "base_histone_normalization_mapping":["BI10052p","BI10052p","BI10108p","BI10109"]"
+  # we have to add an additional column, "pr_normalization_peptide_id", if it does not already exist.
+  # The value of this column will be determined by looking up the index for 'pr_uniprot_id' (e.g. 'P68431')
+  # in the static array base_histone_uniprots, and getting the value for that index in base_histome_normalization_mapping.
+  # This has to be done for each peptide
+  # Example:
+  # pr_processing_params       : 'base_histone_normalization_mapping:["BI10052p","BI10052p","BI10108p","BI10109"]'
+  # pr_uniprot_id              : 'P62805'  // index in base_histone_uniprots = 3;
+  # pr_normalization_peptide_id <- base_histone_uniprots[3]  // BI10108p
+   print("Mapping pr_normalization_peptide_id to base_histone_normalization_mapping");
+  base_histone_uniprots <- c("P68431","P84243","P62805","P0C0S8");
+  for(row in 1:nrow(peptideAnnotations))
+  {
+      # print(paste("before ", peptideAnnotations[row, "pr_normalization_peptide_id"]));
+      json <- peptideAnnotations[row, "pr_processing_params"];
+      if(!is.null(json))
+      {
+         prProcessingParams <- fromJSON(json[1]);
+         if(!is.null(prProcessingParams$base_histone_normalization_mapping))
+         {
+             pr_uniprot_id <- peptideAnnotations[row, "pr_uniprot_id"][1];
+             idx <- match(pr_uniprot_id, base_histone_uniprots);
+             mappedVal <- prProcessingParams$base_histone_normalization_mapping[idx];
+             if(is.na(mappedVal))
+             {
+                print(paste("Unable to map ", pr_uniprot_id, " at index ", idx));
+                print(prProcessingParams$base_histone_normalization_mapping);
+             }
+             else
+             {
+                peptideAnnotations[row, "pr_normalization_peptide_id"] <- mappedVal;
+             }
+         }
+      }
+      # print(paste("after ", peptideAnnotations[row, "pr_normalization_peptide_id"]));
+  }
+
   return (peptideAnnotations);
 }
 
