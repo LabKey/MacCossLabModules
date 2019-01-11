@@ -231,6 +231,13 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             {
                 String fileName = FileUtil.getFileName(data.getFilePath());
                 Path newDataPath = fileRootPath.resolve(fileName);
+                if(!Files.exists(newDataPath))
+                {
+                    // This may be the .skyd file which is inside the exploded parent directory
+                    String parentDir = FileUtil.getFileName(data.getFilePath().getParent());
+                    newDataPath = fileRootPath.resolve(parentDir) // Name of the exploded directory
+                                              .resolve(fileName); // Name of the file
+                }
                 if(Files.exists(newDataPath))
                 {
                     data.setDataFileURI(newDataPath.toUri());
