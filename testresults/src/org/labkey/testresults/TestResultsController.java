@@ -500,7 +500,7 @@ public class TestResultsController extends SpringActionController
             Date endDate = new Date();
             Date startDate;
             if(start == null)
-                startDate = DateUtils.addDays(new Date(), -6); // DEFUALT TO LAST WEEK's RUNS
+                startDate = DateUtils.addDays(new Date(), -6); // DEFAULT TO LAST WEEK's RUNS
             else
                 startDate = MDYFormat.parse(start);
             if(end != null)
