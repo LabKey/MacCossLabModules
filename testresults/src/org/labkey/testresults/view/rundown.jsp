@@ -9,7 +9,7 @@
 <%@ page import="org.labkey.testresults.TestResultsController" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
-<%@ page import="org.labkey.testresults.model.TestMemoryLeakDeail" %>
+<%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
 <%@ page import="org.labkey.testresults.model.User" %>
 <%@ page import="org.labkey.testresults.view.RunDownBean" %>
 <%@ page import="java.text.DateFormat" %>
@@ -49,12 +49,12 @@
     User[] missingUsers = data.getMissingUsers(data.getRunsByDate(selectedDate, false));
     // Calculates Mean, Min, Max table
     Map<String, List<TestFailDetail>> topFailures = data.getTopFailures(10, true); // top 10 failures
-    Map<String, List<TestMemoryLeakDeail>> topLeaks = data.getTopLeaks(10, true); // top 10 leaks
+    Map<String, List<TestMemoryLeakDetail>> topLeaks = data.getTopLeaks(10, true); // top 10 leaks
     StatsService service = StatsService.get();
 
     Map<String, Map<String, Double>> languageBreakdown = data.getLanguageBreakdown(topFailures); // test name mapped to language and percents
     Map<String, List<TestFailDetail>> todaysFailures = data.getFailedTestsByDate(selectedDate, true);
-    Map<String, List<TestMemoryLeakDeail>> todaysLeaks = data.getLeaksByDate(selectedDate, true);
+    Map<String, List<TestMemoryLeakDetail>> todaysLeaks = data.getLeaksByDate(selectedDate, true);
     JSONObject memoryChartData = data.getTodaysCompactMemoryJson(selectedDate);
     JSONObject trendsJson = data.getTrends();
     Container c = getViewContext().getContainer();
@@ -170,8 +170,8 @@
                         if(errorCount == errorRuns)
                             errorRuns++;
                     }
-                    if( run.getTestmemoryleaks().length > 0) {
-                        color="#ff0000;";
+                    if(run.getTestmemoryleaks().length > 0) {
+                        color=BackgroundColor.error.toString();
                         isGoodRun = false;
                         title += "Leaks were detected.";
                         if(errorCount == errorRuns)
@@ -252,16 +252,16 @@
                 </tr>
                 <%}%>
                 <!--Adds Leaks to grid-->
-                <%for(Map.Entry<String, List<TestMemoryLeakDeail>> entry : todaysLeaks.entrySet()) {%>
+                <%for(Map.Entry<String, List<TestMemoryLeakDetail>> entry : todaysLeaks.entrySet()) {%>
                 <tr>
                     <td style="max-width:200px; overflow:hidden; padding:0px;"><%=h(entry.getKey())%></td>
                     <%for(User user: statRunUserMap.keySet()){
                         for(RunDetail run: statRunUserMap.get(user)){
                             if(run.getFailures().length == 0 && run.getTestmemoryleaks().length ==0) continue;%>
                     <td  class="highlightrun highlighttd-<%=h(run.getId())%>"  style="width:60px; padding:0px;"><%
-                        TestMemoryLeakDeail matchingLeak = null;
+                        TestMemoryLeakDetail matchingLeak = null;
 
-                        for(TestMemoryLeakDeail leak: entry.getValue()){
+                        for(TestMemoryLeakDetail leak: entry.getValue()){
                             if(leak.getTestRunId() ==run.getId()) {
                                 matchingLeak = leak; }
                         }
