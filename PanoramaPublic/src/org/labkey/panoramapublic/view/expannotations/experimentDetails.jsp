@@ -210,7 +210,7 @@
     </div>
 <%}%>
 
-<%if(getUser().isInSiteAdminGroup()) {
+<%if(getUser().hasSiteAdminPermission()) {
     ActionURL pxActionsUrl = new ActionURL(PublishTargetedMSExperimentsController.GetPxActionsAction.class, getContainer());
     pxActionsUrl.addParameter("id", annot.getId());
 %>

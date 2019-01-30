@@ -63,7 +63,7 @@
             new ActionURL(PublishTargetedMSExperimentsController.PublishExperimentAction.class, getContainer()).getLocalURIString();
     String cancelUrl = TargetedMSController.getViewExperimentDetailsURL(bean.getForm().getId(), getContainer()).getLocalURIString();
 
-    boolean siteAdmin = getUser().isInSiteAdminGroup();
+    boolean siteAdmin = getUser().hasSiteAdminPermission();
     boolean getLabHeadUserInfo = form.isGetPxid() && expAnnotations.getLabHeadUser() == null;
 %>
 
