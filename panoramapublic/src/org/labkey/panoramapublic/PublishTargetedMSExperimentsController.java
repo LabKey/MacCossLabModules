@@ -2196,7 +2196,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         public void testActionPermissions()
         {
             User user = TestContext.get().getUser();
-            assertTrue(user.isInSiteAdminGroup());
+            assertTrue(user.hasSiteAdminPermission());
 
             // @RequiresPermission(AdminPermission.class)
             assertForAdminPermission(user,
