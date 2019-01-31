@@ -30,7 +30,9 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public class DocImportListenter implements ExperimentListener
@@ -108,7 +110,7 @@ public class DocImportListenter implements ExperimentListener
             return;
         }
 
-        ITargetedMSRun skylineRun = null;
+        ITargetedMSRun skylineRun;
         try
         {
             skylineRun = TargetedMSService.get().getRunByFileName(run.getName(), run.getContainer());
@@ -123,7 +125,6 @@ public class DocImportListenter implements ExperimentListener
         {
             _log.error("LINCS: Error sending POST request to " + clueServerUrl, e);
         }
-        return;
     }
 
     //@Override
@@ -207,47 +208,28 @@ public class DocImportListenter implements ExperimentListener
         json.put("name", run.getBaseName());
         String assayName = getAssayName(run.getContainer());
         json.put("assay", assayName);
-        json.put("level 2", getLevelJSON(run, 2, assayName));
-        json.put("level 3", getLevelJSON(run, 3, assayName));
-        json.put("level 4", getLevelJSON(run, 4, assayName));
-        json.put("config", getConfigJSON(run, assayName));
+        json.put("level 2", getLevelJSON(run, LincsModule.LincsLevel.Two, assayName));
+        json.put("level 3", getLevelJSON(run, LincsModule.LincsLevel.Three, assayName));
+        json.put("level 4", getLevelJSON(run, LincsModule.LincsLevel.Four, assayName));
+        json.put("config", getLevelJSON(run, LincsModule.LincsLevel.Config, assayName));
         return json;
     }
 
-    private JSONObject getLevelJSON(ITargetedMSRun run, int level, String assayName)
+    private JSONObject getLevelJSON(ITargetedMSRun run, LincsModule.LincsLevel level, String assayName)
     {
         JSONObject json = new JSONObject();
         JSONObject details = new JSONObject();
-        String method = level == 2 ? "GET" : "PUT";
-        String url = level == 2 ? getRunReportURL(run, assayName) : getWebDavUrl(run, level);
+        String method = level == LincsModule.LincsLevel.Two ? "GET" : "PUT";
+        String url = level == LincsModule.LincsLevel.Two ? getRunReportURL(run, assayName) : getWebDavUrl(run, level);
         details.put("url", url);
         details.put("method", method);
         json.put("panorama", details);
         return json;
     }
 
-    private JSONObject getConfigJSON(ITargetedMSRun run, String assayName)
+    private String getWebDavUrl(ITargetedMSRun run, LincsModule.LincsLevel level)
     {
-        JSONObject json = new JSONObject();
-        JSONObject details = new JSONObject();
-        String method = "PUT";
-        String url = getConfigWebDavUrl(run);
-        details.put("url", url);
-        details.put("method", method);
-        json.put("panorama", details);
-        return json;
-    }
-
-    private String getWebDavUrl(ITargetedMSRun run, int level)
-    {
-        String gctFile = run.getBaseName() + "_LVL" + level + ".gct";
-        Path path = WebdavService.getPath().append(run.getContainer().getParsedPath()).append(FileContentService.FILES_LINK).append("GCT").append(gctFile);
-        return ActionURL.getBaseServerURL() + path.encode();
-    }
-
-    private String getConfigWebDavUrl(ITargetedMSRun run)
-    {
-        String gctFile = run.getBaseName() + ".cfg";
+        String gctFile = run.getBaseName() + LincsModule.getExt(level);
         Path path = WebdavService.getPath().append(run.getContainer().getParsedPath()).append(FileContentService.FILES_LINK).append("GCT").append(gctFile);
         return ActionURL.getBaseServerURL() + path.encode();
     }
@@ -267,17 +249,14 @@ public class DocImportListenter implements ExperimentListener
         {
             return "";
         }
-        if(container.getName().equals("P100"))
+        switch (container.getName())
         {
-            return "P100";
-        }
-        else if(container.getName().equals("GCP"))
-        {
-            return "GCP";
-        }
-        else
-        {
-            return getAssayName(container.getParent());
+            case "P100":
+                return "P100";
+            case "GCP":
+                return "GCP";
+            default:
+                return getAssayName(container.getParent());
         }
     }
 
@@ -297,15 +276,15 @@ public class DocImportListenter implements ExperimentListener
             ITargetedMSRun tRun = TargetedMSService.get().getRunByFileName(run.getName(), run.getContainer());
             if(tRun != null)
             {
-                String baseName = tRun.getBaseName().toLowerCase();
+                String baseName = tRun.getBaseName();
+                Set<String> lincsFilesLowerCase = getLincsFilesLowerCase(c, baseName);
                 List<java.nio.file.Path> toDelete = new ArrayList<>();
+
                 try (Stream<java.nio.file.Path> paths = Files.list(gctDir))
                 {
                     paths.forEach(path -> {
                         String filename = FileUtil.getFileName(path).toLowerCase();
-                        int dots = (filename.endsWith(".processed.gct") || filename.endsWith(".console.txt") || filename.endsWith(".script.rout")) ? 2 : 1;
-                        filename = FileUtil.getBaseName(filename, dots);
-                        if (filename.equals(baseName))
+                        if (lincsFilesLowerCase.contains(filename))
                         {
                             toDelete.add(path);
                         }
@@ -329,5 +308,26 @@ public class DocImportListenter implements ExperimentListener
                 });
             }
         }
+    }
+
+    private Set<String> getLincsFilesLowerCase(Container c, String baseName)
+    {
+        Set<String> files = new HashSet<>();
+        boolean processOnClue = LincsModule.processGctOnClueServer(c);
+        baseName = baseName.toLowerCase();
+        files.add(baseName + LincsModule.getExt(LincsModule.LincsLevel.Two).toLowerCase());
+        if(processOnClue)
+        {
+            files.add(baseName + LincsModule.getExt(LincsModule.LincsLevel.Three).toLowerCase());
+            files.add(baseName + LincsModule.getExt(LincsModule.LincsLevel.Four).toLowerCase());
+            files.add(baseName + LincsModule.getExt(LincsModule.LincsLevel.Config).toLowerCase());
+        }
+        else
+        {
+            files.add(baseName + ".processed.gct");
+        }
+        files.add(baseName + ".console.txt");
+        files.add(baseName + ".script.rout");
+        return files;
     }
 }

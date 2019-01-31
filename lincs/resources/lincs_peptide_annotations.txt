@@ -26,3 +26,4 @@ pr_probe_normalization_group	false
 pr_probe_suitability_manual	false
 pr_uniprot_id	false
 UniprotAC	true
+pr_processing_params	true

@@ -31,7 +31,7 @@ import java.util.Set;
  */
 public class CustomGctBuilder
 {
-    private final String[] multiValueProbeAnnotations = new String[] {"pr_probe_normalization_group", "pr_probe_suitability_manual"};
+    private final String[] multiValueProbeAnnotations = new String[] {"pr_probe_normalization_group", "pr_probe_suitability_manual", "pr_normalization_peptide_id"};
 
     public Gct build(List<Path> files, List<LincsController.SelectedAnnotation> selectedAnnotations,
                      Set<String> ignoredProbeAnnotations, Set<String> ignoredReplicateAnnotations) throws Gct.GctFileException
@@ -60,7 +60,7 @@ public class CustomGctBuilder
             }
 
             // Add the probes.
-            addProbes(gct, customGct, FileUtil.getFileName(file));
+            addProbes(gct, customGct, FileUtil.getFileName(file), ignoredProbeAnnotations);
 
             // Add the area ratios.
             addAreaRatios(gct, customGct);
@@ -121,7 +121,7 @@ public class CustomGctBuilder
         }
     }
 
-    private void addProbes(Gct gct, Gct customGct, String fileName)
+    private void addProbes(Gct gct, Gct customGct, String fileName, Set<String> ignoredProbeAnnotations)
     {
         for(Gct.GctEntity probe: gct.getProbes())
         {
@@ -150,7 +150,7 @@ public class CustomGctBuilder
                     {
                         String newValue = annotation.getValue();
                         String oldValue = savedProbe.getAnnotationValue(annotationName);
-                        if (!oldValue.equals(newValue))
+                        if (!oldValue.equals(newValue) && !ignoredProbeAnnotations.contains(annotationName))
                         {
                             throw new Gct.GctFileException("Value of probe annotation " + annotationName + " is different in file " + fileName +
                                     ". Saved value is " + oldValue + ". Value in file is " + newValue);

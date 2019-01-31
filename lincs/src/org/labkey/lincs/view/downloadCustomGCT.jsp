@@ -56,7 +56,7 @@
         var container = LABKEY.ActionURL.getContainer();
         var assayType = container.indexOf("P100") !== -1 ? "P100" : "GCP";
         console.log("Initializing for <%=fileName%>");
-        var morpheusUrl = externalHeapmapViewerLink(container, '<%=fileName%>', "morpheusLink", assayType);
+        var morpheusUrl = externalHeatmapViewerLink(container, '<%=fileName%>', "morpheusLink", assayType);
         console.log("Morpheus URL: " + morpheusUrl);
     }
 

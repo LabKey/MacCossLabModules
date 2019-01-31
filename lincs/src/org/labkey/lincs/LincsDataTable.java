@@ -377,15 +377,7 @@ public class LincsDataTable extends FilteredTable
             }
 
             String downloadFileName = getBaseName(fileName);
-            if(getLevel() == LincsModule.LincsLevel.Three)
-            {
-                downloadFileName += "_LVL3";
-            }
-            else if(getLevel() == LincsModule.LincsLevel.Four)
-            {
-                downloadFileName += "_LVL4";
-            }
-            String extension = (getLevel() == LincsModule.LincsLevel.Config) ? ".cfg" : ".gct";
+            String extension = LincsModule.getExt(getLevel());
             downloadFileName = downloadFileName + extension;
             if(!Files.exists(getGctDir().resolve(downloadFileName)))
             {

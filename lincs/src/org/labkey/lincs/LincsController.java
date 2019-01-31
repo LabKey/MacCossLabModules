@@ -677,6 +677,8 @@ public class LincsController extends SpringActionController
                 return Collections.emptyList();
             }
 
+            boolean processOnClue = LincsModule.processGctOnClueServer(container);
+
             for(ITargetedMSRun run: runs)
             {
                 String outputFileBaseName = run.getBaseName();
@@ -684,7 +686,8 @@ public class LincsController extends SpringActionController
                 {
                     continue;
                 }
-                Path processedGct = gctDir.resolve(outputFileBaseName + ".processed.gct");
+                String ext = processOnClue ? LincsModule.getExt(LincsModule.LincsLevel.Four) : ".processed.gct";
+                Path processedGct = gctDir.resolve(outputFileBaseName + ext);
                 if(Files.exists(processedGct))
                 {
                     gctFiles.add(processedGct);

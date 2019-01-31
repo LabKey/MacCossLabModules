@@ -16,6 +16,7 @@
 
 package org.labkey.lincs;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
@@ -154,5 +155,21 @@ public class LincsModule extends SpringModule
     public enum LincsLevel
     {
         Two,Three,Four, Config
+    }
+
+    public static String getExt(LincsLevel level)
+    {
+        switch(level)
+        {
+            case Two:
+                return ".gct";
+            case Three:
+                return "_LVL3.gct";
+            case Four:
+                return "_LVL4.gct";
+            case Config:
+                return ".cfg";
+        }
+        return StringUtils.EMPTY;
     }
 }
