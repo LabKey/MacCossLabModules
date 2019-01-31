@@ -54,7 +54,7 @@
 
     ActionURL publishUrl = PublishTargetedMSExperimentsController.getPrePublishExperimentCheckURL(annot.getId(), getContainer());
     Container experimentContainer = annot.getContainer();
-    final boolean canEdit = (!annot.isJournalCopy() || getUser().isSiteAdmin()) && experimentContainer.hasPermission(getUser(), InsertPermission.class);
+    final boolean canEdit = (!annot.isJournalCopy() || getUser().hasSiteAdminPermission()) && experimentContainer.hasPermission(getUser(), InsertPermission.class);
     // User needs to be the folder admin to publish an experiment.
     final boolean canPublish = annotDetails.isCanPublish();
     final boolean showingFullDetails = annotDetails.isFullDetails();

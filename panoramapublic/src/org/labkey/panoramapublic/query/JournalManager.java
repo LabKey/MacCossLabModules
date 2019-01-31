@@ -180,7 +180,7 @@ public class JournalManager
 
     public static boolean userHasCopyAccess(ExperimentAnnotations experimentAnnotations, Journal journal, User user)
     {
-        if(user.isSiteAdmin())
+        if(user.hasSiteAdminPermission())
         {
             return true;
         }
