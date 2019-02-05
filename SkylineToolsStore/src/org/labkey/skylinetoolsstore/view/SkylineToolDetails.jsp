@@ -23,7 +23,7 @@
 <%
     JspView<?> me = (JspView<?>) HttpView.currentView();
     final SkylineTool tool = (SkylineTool)me.getModelBean();
-    final boolean admin = getUser().isSiteAdmin();
+    final boolean admin = getUser().hasSiteAdminPermission();
 
     final String contextPath = AppProps.getInstance().getContextPath();
     final String cssDir = contextPath + "/skylinetoolsstore/css/";

@@ -19,7 +19,7 @@
     final String updateTarget = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "updatetarget");
     final String toolOwners = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "toolowners");
 
-    final boolean admin = getUser().isSiteAdmin();
+    final boolean admin = getUser().hasSiteAdminPermission();
     final String autocompleteUsers = admin ? SkylineToolsStoreController.getUsersForAutocomplete() : "\"\"";
     pageContext.setAttribute("autocompleteUsers", autocompleteUsers);
 %>

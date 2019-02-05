@@ -728,7 +728,7 @@ public class SkylineToolsStoreController extends SpringActionController
                 else
                 {
                     // Editing existing rating
-                    if (rating.getCreatedBy() != user.getUserId() && !getUser().isSiteAdmin())
+                    if (rating.getCreatedBy() != user.getUserId() && !getUser().hasSiteAdminPermission())
                     {
                         throw new Exception();
                     }
@@ -774,7 +774,7 @@ public class SkylineToolsStoreController extends SpringActionController
             final Rating rating = RatingManager.get().getRatingById(id);
             if(rating != null)
             {
-                if (user == rating.getCreatedBy() || getUser().isSiteAdmin())
+                if (user == rating.getCreatedBy() || getUser().hasSiteAdminPermission())
                     RatingManager.get().deleteRating(id);
                 else
                     throw new Exception();

@@ -22,7 +22,7 @@
     JspView<?> me = (JspView<?>)HttpView.currentView();
     List<SkylineTool> tools = (List<SkylineTool>)me.getModelBean();
 
-    final boolean admin = getUser().isSiteAdmin();
+    final boolean admin = getUser().hasSiteAdminPermission();
     final boolean loggedIn = !getUser().isGuest();
 
     final String contextPath = AppProps.getInstance().getContextPath();
