@@ -23,7 +23,7 @@ import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabKeyError;
-import org.labkey.api.action.RedirectAction;
+import org.labkey.api.action.OldRedirectAction;
 import org.labkey.api.action.ReturnUrlForm;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
@@ -98,7 +98,7 @@ public class SignUpController extends SpringActionController
     }
 
    @RequiresSiteAdmin
-   public class AddPropertyAction extends RedirectAction<AddPropertyForm>
+   public class AddPropertyAction extends OldRedirectAction<AddPropertyForm>
    {
        @Override
        public URLHelper getSuccessURL(AddPropertyForm addPropertyForm)
@@ -135,7 +135,7 @@ public class SignUpController extends SpringActionController
    }
 
     @RequiresSiteAdmin
-    public class RemovePropertyAction extends RedirectAction<ContainerIdForm>
+    public class RemovePropertyAction extends OldRedirectAction<ContainerIdForm>
     {
         @Override
         public URLHelper getSuccessURL(ContainerIdForm containerIdForm)
@@ -167,7 +167,7 @@ public class SignUpController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class AddGroupChangeProperty extends RedirectAction<AddGroupChangeForm>
+    public class AddGroupChangeProperty extends OldRedirectAction<AddGroupChangeForm>
     {
         @Override
         public URLHelper getSuccessURL(AddGroupChangeForm containerIdForm)
@@ -203,7 +203,7 @@ public class SignUpController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class RemoveGroupChangeProperty extends RedirectAction<AddGroupChangeForm>
+    public class RemoveGroupChangeProperty extends OldRedirectAction<AddGroupChangeForm>
     {
         @Override
         public URLHelper getSuccessURL(AddGroupChangeForm containerIdForm)
