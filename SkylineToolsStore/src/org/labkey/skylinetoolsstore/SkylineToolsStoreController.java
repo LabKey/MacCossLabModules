@@ -21,8 +21,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.json.JSONObject;
 import org.labkey.api.action.NavTrailAction;
+import org.labkey.api.action.OldRedirectAction;
 import org.labkey.api.action.PermissionCheckable;
-import org.labkey.api.action.RedirectAction;
 import org.labkey.api.action.ReturnUrlForm;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
@@ -901,7 +901,7 @@ public class SkylineToolsStoreController extends SpringActionController
     }
 
     @RequiresLogin
-    public class DeleteAction extends RedirectAction<IdForm>
+    public class DeleteAction extends OldRedirectAction<IdForm>
     {
         @Override
         public URLHelper getSuccessURL(IdForm idForm)
