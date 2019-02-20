@@ -17,29 +17,45 @@
 package org.labkey.lincs;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.labkey.api.action.Action;
+import org.json.JSONObject;
 import org.labkey.api.action.ApiAction;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.ApiUsageException;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabKeyError;
+import org.labkey.api.action.OldRedirectAction;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.data.ActionButton;
+import org.labkey.api.data.ButtonBar;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.DataColumn;
+import org.labkey.api.data.DataRegion;
+import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.data.RenderContext;
+import org.labkey.api.data.SimpleDisplayColumn;
+import org.labkey.api.data.TableInfo;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.ModuleLoader;
+import org.labkey.api.pipeline.PipeRoot;
+import org.labkey.api.pipeline.PipelineJob;
+import org.labkey.api.pipeline.PipelineService;
+import org.labkey.api.pipeline.PipelineStatusFile;
+import org.labkey.api.pipeline.PipelineStatusUrls;
+import org.labkey.api.pipeline.PipelineUrls;
+import org.labkey.api.pipeline.PipelineValidationException;
+import org.labkey.api.query.FieldKey;
 import org.labkey.api.reports.Report;
-import org.labkey.api.reports.report.ModuleReportDescriptor;
 import org.labkey.api.reports.report.RReport;
-import org.labkey.api.reports.report.ReportDescriptor;
 import org.labkey.api.reports.report.view.ReportUtil;
-import org.labkey.api.resource.Resource;
 import org.labkey.api.security.ActionNames;
 import org.labkey.api.security.RequiresPermission;
+import org.labkey.api.security.RequiresSiteAdmin;
 import org.labkey.api.security.User;
 import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.ReadPermission;
@@ -50,10 +66,19 @@ import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.view.DetailsView;
+import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
+import org.labkey.api.view.VBox;
+import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartView;
+import org.labkey.lincs.psp.LincsPspException;
+import org.labkey.lincs.psp.LincsPspJob;
+import org.labkey.lincs.psp.LincsPspPipelineJob;
+import org.labkey.lincs.psp.LincsPspUtil;
+import org.labkey.lincs.psp.PspEndpoint;
 import org.labkey.lincs.view.GctUtils;
 import org.springframework.beans.MutablePropertyValues;
 import org.springframework.validation.BindException;
@@ -64,8 +89,10 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -189,20 +216,8 @@ public class LincsController extends SpringActionController
                 downloadFile = gct;
             }
 
-            // Get the last modified date on the report.
-            Date reportModificationDate = new Date();
-            ReportDescriptor descriptor = report.getDescriptor();
-            if(descriptor instanceof ModuleReportDescriptor)
-            {
-                Resource resource = ((ModuleReportDescriptor) descriptor).getSourceFile();
-                if(resource != null && resource.exists())
-                {
-                    reportModificationDate = new Date(resource.getLastModified());
-                }
-            }
             // Get the date when the run was imported
             Date runCreated = run.getCreated();
-
 
             // Check if the folder already contains the requested GCT file.
             boolean fileExits = false;
@@ -220,8 +235,7 @@ public class LincsController extends SpringActionController
             if(fileExits)
             {
                 Date lastModified = new Date(Files.getLastModifiedTime(downloadFile).toMillis());
-                if(form.isRerun() || lastModified.before(reportModificationDate)
-                                  || lastModified.before(runCreated))
+                if(form.isRerun() || lastModified.before(runCreated))
                 {
                     // Delete the file if:
                     // 1. This file was created before the last modified date on the R report
@@ -328,11 +342,11 @@ public class LincsController extends SpringActionController
             }
             else if(file.getName().toLowerCase().equals("console.txt"))
             {
-                Files.copy(file.toPath(), gctDir.resolve(outputFileBaseName + ".console.txt" ));
+                Files.copy(file.toPath(), gctDir.resolve(outputFileBaseName + ".console.txt" ), StandardCopyOption.REPLACE_EXISTING);
             }
             else if(file.getName().equals("script.Rout"))
             {
-                Files.copy(file.toPath(), gctDir.resolve(outputFileBaseName + ".script.Rout" ));
+                Files.copy(file.toPath(), gctDir.resolve(outputFileBaseName + ".script.Rout" ), StandardCopyOption.REPLACE_EXISTING);
             }
         }
     }
@@ -1218,6 +1232,364 @@ public class LincsController extends SpringActionController
         public void setApiKey(String apiKey)
         {
             _apiKey = apiKey;
+        }
+    }
+
+    @RequiresPermission(AdminPermission.class)
+    public class LincsPspJobDetailsAction extends SimpleViewAction<LincsPspJobForm>
+    {
+        public ModelAndView getView(LincsPspJobForm form, BindException errors)
+        {
+            int runId = form.getRunId();
+
+            LincsPspJob pspJob = LincsManager.get().getLincsPspJobForRun(runId);
+            if(pspJob == null)
+            {
+                errors.addError(new LabKeyError("Could not find a PSP job for runId: " + runId));
+                return new SimpleErrorView(errors);
+            }
+
+            VBox view = new VBox();
+
+            DataRegion dr = getPspJobDetailsDataRegion();
+
+            dr.addHiddenFormField("runId", String.valueOf(runId));
+            dr.addHiddenFormField("jobId", String.valueOf(pspJob.getId()));
+
+            ButtonBar buttonBar = new ButtonBar();
+            buttonBar.setStyle(ButtonBar.Style.separateButtons);
+
+            ActionURL statusUrl = new ActionURL(LincsPspJobStatusAction.class, getViewContext().getContainer());
+            ActionButton statusButton = new ActionButton(statusUrl, "Get Status");
+            statusButton.setActionType(ActionButton.Action.GET);
+            buttonBar.add(statusButton);
+
+            if (getUser().isInSiteAdminGroup())
+            {
+                ActionURL updateStatusUrl = new ActionURL(UpdatePspJobStatusAction.class, getViewContext().getContainer());
+                ActionButton updateButton = new ActionButton(updateStatusUrl, "Update Status");
+                updateButton.setActionType(ActionButton.Action.GET);
+                buttonBar.add(updateButton);
+
+                if(pspJob.canRetry() || pipelineJobError(pspJob))
+                {
+                    ActionURL url = new ActionURL(SubmitPspJobAction.class, getViewContext().getContainer());
+                    ActionButton resubmitJobButton = new ActionButton(url, "Re-submit");
+                    resubmitJobButton.setActionType(ActionButton.Action.GET);
+                    buttonBar.add(resubmitJobButton);
+                }
+            }
+
+            dr.setButtonBar(buttonBar);
+
+            DetailsView detailsView = new DetailsView(dr, pspJob.getId());
+            view.addView(detailsView);
+
+            if(pspJob.getPipelineJobId() != null && getUser().isInSiteAdminGroup())
+            {
+                ActionURL pipelineJobUrl = PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlDetails(getContainer(), pspJob.getPipelineJobId());
+                view.addView(new HtmlView(PageFlowUtil.textLink("View Pipeline Job. Status: " + PipelineService.get().getStatusFile(pspJob.getPipelineJobId()).getStatus(), pipelineJobUrl)));
+            }
+
+            view.setTitle("PSP Job Details");
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            return view;
+        }
+
+        private boolean pipelineJobError(LincsPspJob pspJob)
+        {
+            if(pspJob.getPipelineJobId() != null)
+            {
+                PipelineStatusFile status = PipelineService.get().getStatusFile(pspJob.getPipelineJobId());
+                return status != null && PipelineJob.TaskStatus.error.matches(status.getStatus());
+            }
+            return false;
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            if(root != null)
+            {
+                root.addChild("PSP Job Details");
+            }
+            return root;
+        }
+    }
+
+    @NotNull
+    private static DataRegion getPspJobDetailsDataRegion()
+    {
+        DataRegion dr = new DataRegion();
+        TableInfo tInfo = LincsManager.getTableInfoLincsPspJob();
+        dr.setColumns(tInfo.getColumns("Id", "Created", "CreatedBy", "Modified", "ModifiedBy", "Container", "PspJobId", "PspJobName", "RunId", "Status", "Error", "Progress", "Json"));
+
+        dr.getDisplayColumn("Progress").setVisible(false);
+        dr.getDisplayColumn("Json").setVisible(false);
+
+        DataColumn errCol = (DataColumn)dr.getDisplayColumn("Error");
+        errCol.setPreserveNewlines(true);
+
+        SimpleDisplayColumn jsonCol = new SimpleDisplayColumn(){
+
+            @Override
+            public void renderDetailsCellContents(RenderContext ctx, Writer out) throws IOException
+            {
+                String json = ctx.get(FieldKey.fromParts("Json"), String.class);
+                JSONObject jsonObj = new JSONObject(json);
+                out.write("<pre>" + PageFlowUtil.filter(jsonObj.toString(2)) + "</pre>");
+            }
+        };
+        jsonCol.setCaption("JSON:");
+
+        SimpleDisplayColumn progressCol = new SimpleDisplayColumn()
+        {
+            @Override
+            public Object getValue(RenderContext ctx)
+            {
+                Integer progress = ctx.get(FieldKey.fromParts("Progress"), Integer.class);
+                if(progress != null)
+                {
+                    String str = "";
+                    int i = progress.intValue();
+                    str = (i&1) == 1 ? "L2 done " : "";
+                    str += (i&2) == 2 ? "L3 done " : "";
+                    str += (i&4) == 4 ? "L4 done " : "";
+                    return str;
+                }
+                else
+                {
+                    return super.getValue(ctx);
+                }
+            }
+        };
+        progressCol.setCaption("PSP Progress:");
+
+        List<DisplayColumn> columns = dr.getDisplayColumns();
+        dr.addDisplayColumn(columns.size() - 2, progressCol);
+        dr.addDisplayColumn(jsonCol);
+        return dr;
+    }
+
+    @RequiresPermission(AdminPermission.class)
+    public class LincsPspJobStatusAction extends SimpleViewAction<LincsPspJobForm>
+    {
+        public ModelAndView getView(LincsPspJobForm form, BindException errors)
+        {
+            int jobId = form.getJobId();
+
+            LincsPspJob pspJob = LincsManager.get().getLincsPspJob(jobId);
+            if(pspJob == null)
+            {
+                errors.addError(new LabKeyError("Could not find a PSP job for id: " + jobId));
+                return new SimpleErrorView(errors);
+            }
+
+            if(pspJob.getPspJobId() == null)
+            {
+                errors.addError(new LabKeyError("PSP job Id is null. Cannot get status"));
+                return new SimpleErrorView(errors);
+            }
+
+            VBox view = new VBox();
+
+            PspEndpoint endpoint;
+            try
+            {
+                endpoint = LincsPspUtil.getPspEndpoint(getContainer());
+            }
+            catch (LincsPspException e)
+            {
+                errors.addError(new LabKeyError(e.getMessage()));
+                return new SimpleErrorView(errors);
+            }
+            String jsonStatus;
+            try
+            {
+                jsonStatus = LincsPspUtil.getJobStatusString(endpoint, pspJob);
+            }
+            catch (IOException e)
+            {
+                errors.addError(new LabKeyError("Error getting job status. Error was: " + e.getMessage()));
+                return new SimpleErrorView(errors);
+            }
+            catch (LincsPspException e)
+            {
+                errors.addError(new LabKeyError(e.getMessage()));
+                return new SimpleErrorView(errors);
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("<p>").append("Status for job: " + pspJob.getId() +", PSP job Id: ").append(PageFlowUtil.filter(pspJob.getPspJobId()))
+                    .append(", Run Id: ")
+                    .append(pspJob.getRunId()).append("</p>");
+            sb.append("<br>JSON Output:</br>");
+            sb.append("<p><pre>").append(PageFlowUtil.filter(jsonStatus)).append("</pre></p>");
+            view.addView(new HtmlView(sb.toString()));
+            view.setTitle("PSP job status");
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            return view;
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            if(root != null)
+            {
+                root.addChild("PSP Job Status");
+            }
+            return root;
+        }
+    }
+
+    @RequiresSiteAdmin
+    public class UpdatePspJobStatusAction extends OldRedirectAction<LincsPspJobForm>
+    {
+        private int _runId;
+        @Override
+        public URLHelper getSuccessURL(LincsPspJobForm lincsPspJobForm)
+        {
+            ActionURL url = new ActionURL(LincsPspJobDetailsAction.class, getContainer());
+            url.addParameter("runId", _runId);
+            return url;
+        }
+
+        @Override
+        public boolean doAction(LincsPspJobForm form, BindException errors)
+        {
+            int jobId = form.getJobId();
+            _runId = form.getRunId();
+
+            LincsPspJob pspJob = LincsManager.get().getLincsPspJob(jobId);
+            if(pspJob == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find a PSP job for id: " + jobId);
+                return false;
+            }
+
+            if(pspJob.getPspJobId() == null)
+            {
+                errors.reject(ERROR_MSG, "PSP job Id is null. Cannot update status");
+                return false;
+            }
+
+            PspEndpoint endpoint;
+            try
+            {
+                endpoint = LincsPspUtil.getPspEndpoint(getContainer());
+            }
+            catch (LincsPspException e)
+            {
+                errors.reject(ERROR_MSG, e.getMessage());
+                return false;
+            }
+
+            try
+            {
+                LincsPspUtil.updateJobStatus(endpoint, pspJob, getUser());
+            }
+            catch (IOException e)
+            {
+                errors.reject(ERROR_MSG, "Error updating job status. Error was: " + e.getMessage());
+                return false;
+            }
+            catch (LincsPspException e)
+            {
+                errors.reject(ERROR_MSG, e.getMessage());
+                return false;
+            }
+            return true;
+        }
+    }
+
+    public static class LincsPspJobForm
+    {
+        private int _runId;
+        private int _jobId; // id in the lincs.lincspspjob table
+
+        public int getRunId()
+        {
+            return _runId;
+        }
+
+        public void setRunId(int runId)
+        {
+            _runId = runId;
+        }
+
+        public int getJobId()
+        {
+            return _jobId;
+        }
+
+        public void setJobId(int jobId)
+        {
+            _jobId = jobId;
+        }
+    }
+
+    @RequiresSiteAdmin
+    public class SubmitPspJobAction extends OldRedirectAction<LincsPspJobForm>
+    {
+        @Override
+        public URLHelper getSuccessURL(LincsPspJobForm lincsPspJobForm)
+        {
+            return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
+        }
+
+        @Override
+        public boolean doAction(LincsPspJobForm form, BindException errors)
+        {
+            int runId = form.getRunId();
+            Container container = getContainer();
+
+            ITargetedMSRun skylineRun = TargetedMSService.get().getRun(runId, getContainer());
+            if(skylineRun == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find a targetedms run with id " + runId + " in container " + getContainer().getPath());
+                return false;
+            }
+
+            PipeRoot root = PipelineService.get().findPipelineRoot(getContainer());
+            if (root == null || !root.isValid())
+            {
+                errors.reject(ERROR_MSG, "No valid pipeline root found for " + container.getPath());
+                return false;
+            }
+
+            PspEndpoint pspEndpoint = null;
+            try
+            {
+                pspEndpoint = LincsPspUtil.getPspEndpoint(container);
+            }
+            catch(LincsPspException e)
+            {
+                errors.reject(ERROR_MSG, e.getMessage());
+                return false;
+            }
+
+            LincsManager lincsManager = LincsManager.get();
+
+            LincsPspJob oldPspJob = lincsManager.getLincsPspJobForRun(runId);
+            LincsPspJob newPspJob = lincsManager.saveNewLincsPspJob(skylineRun, getUser());
+
+            ViewBackgroundInfo info = new ViewBackgroundInfo(container, getUser(), null);
+            LincsPspPipelineJob job = new LincsPspPipelineJob(info, root, skylineRun, newPspJob, oldPspJob, pspEndpoint);
+            try
+            {
+                PipelineService.get().queueJob(job);
+            }
+            catch (PipelineValidationException e)
+            {
+                lincsManager.deleteLincsPspJob(newPspJob);
+                errors.reject(ERROR_MSG, e.getMessage());
+                return false;
+            }
+
+            int jobId = PipelineService.get().getJobId(getUser(), container, job.getJobGUID());
+            newPspJob.setPipelineJobId(jobId);
+            lincsManager.updatePipelineJobId(newPspJob);
+            return true;
         }
     }
 }

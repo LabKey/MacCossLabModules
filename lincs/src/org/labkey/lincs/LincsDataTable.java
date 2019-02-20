@@ -20,8 +20,6 @@ import org.jetbrains.annotations.NotNull;
 import org.labkey.api.analytics.AnalyticsService;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.DataColumn;
-import org.labkey.api.data.DisplayColumn;
-import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.pipeline.PipeRoot;
@@ -33,6 +31,7 @@ import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
+import org.labkey.lincs.psp.LincsPspJob;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -52,7 +51,7 @@ public class LincsDataTable extends FilteredTable
     public static final String PARENT_QUERY = "TargetedMSRunAndAnnotations";
     public static final String NAME = "LincsDataTable";
     public static final String PLATE_COL = "Plate";
-    private static Pattern plateRegex = Pattern.compile("^LINCS.*_(Plate\\d+[a-zA-Z]*)_.*\\.sky\\.zip$");
+    private static Pattern plateRegex = Pattern.compile("^LINCS.*_(Plate[a-zA-Z0-9]*)_.*\\.sky\\.zip$");
 
     public LincsDataTable(@NotNull TableInfo table, @NotNull UserSchema userSchema)
     {
@@ -65,14 +64,7 @@ public class LincsDataTable extends FilteredTable
 
         ColumnInfo plateCol = wrapColumn(PLATE_COL, getRealTable().getColumn(FieldKey.fromParts("Token")));
         addColumn(plateCol);
-        plateCol.setDisplayColumnFactory(new DisplayColumnFactory()
-        {
-            @Override
-            public DisplayColumn createRenderer(ColumnInfo colInfo)
-            {
-                return new PlateColumn(colInfo);
-            }
-        });
+        plateCol.setDisplayColumnFactory(colInfo -> new PlateColumn(colInfo));
 
         ColumnInfo level1Col =  wrapColumn("Level 1", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(level1Col);
@@ -138,6 +130,68 @@ public class LincsDataTable extends FilteredTable
             ColumnInfo cfgCol = wrapColumn("Config", getRealTable().getColumn(FieldKey.fromParts("FileName")));
             addColumn(cfgCol);
             cfgCol.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Config, gctDir, davUrl));
+
+            ColumnInfo pspJobCol = wrapColumn("PSP Job Status", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+            addColumn(pspJobCol);
+            pspJobCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
+            {
+                @Override
+                public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                {
+                    Integer runId = ctx.get(FieldKey.fromParts("Id"), Integer.class);
+                    if(runId == null)
+                    {
+                        out.write("NO_RUN_ID");
+                        return;
+                    }
+                    LincsPspJob pspJob = LincsManager.get().getLincsPspJobForRun(runId);
+                    if(pspJob == null)
+                    {
+                        out.write("PSP job not found for runId: " + runId);
+                        if(userSchema.getUser().isInSiteAdminGroup())
+                        {
+                            ActionURL url = new ActionURL(LincsController.SubmitPspJobAction.class, getContainer());
+                            url.addParameter("runId", runId);
+
+                            out.write(PageFlowUtil.textLink(" [Submit Job]", url));
+                        }
+                        return;
+                    }
+                    String text = pspJob.getStatus();
+                    if(StringUtils.isBlank(text))
+                    {
+                        if(pspJob.getPipelineJobId() != null)
+                        {
+                            text = "Pipeline Status: " + PipelineService.get().getStatusFile(pspJob.getPipelineJobId()).getStatus();
+                        }
+                        else
+                        {
+                            text = "Job Details";
+                        }
+                    }
+                    ActionURL url = new ActionURL(LincsController.LincsPspJobDetailsAction.class, getContainer());
+                    url.addParameter("runId", pspJob.getRunId());
+                    out.write(PageFlowUtil.textLink(text, url));
+                }
+
+                @Override
+                public boolean isSortable()
+                {
+                    return false;
+                }
+
+                @Override
+                public boolean isFilterable()
+                {
+                    return false;
+                }
+
+                @Override
+                public boolean isEditable()
+                {
+                    return false;
+                }
+            });
         }
 
         List<FieldKey> visibleColumns = new ArrayList<>();
@@ -379,7 +433,7 @@ public class LincsDataTable extends FilteredTable
             String downloadFileName = getBaseName(fileName);
             String extension = LincsModule.getExt(getLevel());
             downloadFileName = downloadFileName + extension;
-            if(!Files.exists(getGctDir().resolve(downloadFileName)))
+            if(!fileAvailable(runId, downloadFileName))
             {
                 out.write("NOT AVAILABLE");
                 return;
@@ -390,6 +444,28 @@ public class LincsDataTable extends FilteredTable
             String morpheusUrl = externalHeatmapViewerLink(downloadFileName, getAssayType(), getLevel());
             String downloadText = (getLevel() == LincsModule.LincsLevel.Config) ? "CFG" : "GCT";
             renderGridCell(out, analyticsScript, getGctDavUrlUnencoded(downloadFileName), getGctDavUrl(downloadFileName), downloadText, morpheusUrl);
+        }
+
+        private boolean fileAvailable(Integer runId, String downloadFileName)
+        {
+            LincsPspJob job = LincsManager.get().getLincsPspJobForRun(runId);
+            if(job != null)
+            {
+                if(getLevel() == LincsModule.LincsLevel.Two && job.isLevel2Done())
+                {
+                    return true; // L2 GCT files are generated on PanoramaWeb.
+                }
+                if(job.isJobCheckTimeoutError())
+                {
+                    return Files.exists(getGctDir().resolve(downloadFileName));
+                }
+                // L3 and L4 files are generated on PSP and are not uploaded to the server unless both steps complete without errors.
+                return job.isSuccess();
+            }
+            else
+            {
+                return Files.exists(getGctDir().resolve(downloadFileName));
+            }
         }
 
         String externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType, LincsModule.LincsLevel level)

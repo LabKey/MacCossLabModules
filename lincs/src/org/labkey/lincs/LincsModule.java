@@ -23,6 +23,7 @@ import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.module.ModuleContext;
+import org.labkey.api.module.ModuleProperty;
 import org.labkey.api.module.SpringModule;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.BaseWebPartFactory;
@@ -39,6 +40,19 @@ import java.util.Set;
 public class LincsModule extends SpringModule
 {
     public static final String NAME = "LINCS";
+    public static ModuleProperty PSP_JOB_NAME_SUFFIX_PROPERTY;
+    public static String PSP_JOB_NAME_SUFFIX = "PSP job name suffix";
+
+    private static String NO_SUFFIX = "";
+
+    public LincsModule()
+    {
+        PSP_JOB_NAME_SUFFIX_PROPERTY = new ModuleProperty(this, PSP_JOB_NAME_SUFFIX);
+        PSP_JOB_NAME_SUFFIX_PROPERTY.setDefaultValue(NO_SUFFIX);
+        PSP_JOB_NAME_SUFFIX_PROPERTY.setCanSetPerContainer(true);
+        PSP_JOB_NAME_SUFFIX_PROPERTY.setShowDescriptionInline(true);
+        addModuleProperty(PSP_JOB_NAME_SUFFIX_PROPERTY);
+    }
 
     @Override
     public String getName()
@@ -48,7 +62,7 @@ public class LincsModule extends SpringModule
 
     public double getVersion()
     {
-        return 18.30;
+        return 18.31;
     }
 
     @Override
@@ -154,7 +168,7 @@ public class LincsModule extends SpringModule
 
     public enum LincsLevel
     {
-        Two,Three,Four, Config
+        Two,Three,Four,Config
     }
 
     public static String getExt(LincsLevel level)

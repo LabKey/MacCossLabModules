@@ -18,21 +18,24 @@ package org.labkey.lincs;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.json.JSONObject;
 import org.labkey.api.collections.CaseInsensitiveHashSet;
+import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerForeignKey;
+import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.DbSchemaType;
 import org.labkey.api.data.DisplayColumn;
+import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.TableInfo;
-import org.labkey.api.data.UpdateColumn;
-import org.labkey.api.data.UpdateableTableInfo;
 import org.labkey.api.data.dialect.SqlDialect;
 import org.labkey.api.module.Module;
 import org.labkey.api.query.DefaultQueryUpdateService;
 import org.labkey.api.query.DefaultSchema;
+import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
-import org.labkey.api.query.QueryAction;
 import org.labkey.api.query.QuerySchema;
 import org.labkey.api.query.QueryService;
 import org.labkey.api.query.QuerySettings;
@@ -43,7 +46,6 @@ import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.security.permissions.Permission;
-import org.labkey.api.util.StringExpression;
 import org.labkey.api.view.ViewContext;
 import org.springframework.validation.BindException;
 
@@ -55,6 +57,10 @@ import java.util.Set;
 public class LincsSchema extends UserSchema
 {
     public static final String SCHEMA_NAME = "lincs";
+
+    // Tables
+    public static final String TABLE_LINCS_METADATA = "LincsMetadata";
+    public static final String TABLE_LINCS_PSP_JOB = "LincsPspJob";
 
     public static void register(Module module)
     {
@@ -81,6 +87,32 @@ public class LincsSchema extends UserSchema
             UserSchema schema = QueryService.get().getUserSchema(getUser(), getContainer(), "targetedms");
             TableInfo tInfo = schema.getTable(LincsDataTable.PARENT_QUERY);
             return new LincsDataTable(tInfo, schema);
+        }
+        if(TABLE_LINCS_PSP_JOB.equalsIgnoreCase(name))
+        {
+            FilteredTable<LincsSchema> result = new FilteredTable<>(getSchema().getTable(name), this);
+            result.wrapAllColumns(true);
+            ColumnInfo containerCol = result.getColumn(FieldKey.fromParts("Container"));
+            ContainerForeignKey.initColumn(containerCol, this);
+
+            ColumnInfo jsonCol = result.getColumn(FieldKey.fromParts("Json"));
+            jsonCol.setDisplayColumnFactory(new DisplayColumnFactory()
+            {
+                @Override
+                public DisplayColumn createRenderer(ColumnInfo colInfo)
+                {
+                    return new DataColumn(colInfo){
+                        @Override
+                        public void renderDetailsCellContents(RenderContext ctx, Writer out) throws IOException
+                        {
+                            String json = ctx.get(colInfo.getFieldKey(), String.class);
+                            JSONObject jsonObj = new JSONObject(json);
+                            out.write("<pre>" + jsonObj.toString(2) + "</pre>");
+                        }
+                    };
+                }
+            });
+            return result;
         }
         if (getTableNames().contains(name))
         {
@@ -109,7 +141,8 @@ public class LincsSchema extends UserSchema
     public Set<String> getTableNames()
     {
         CaseInsensitiveHashSet hs = new CaseInsensitiveHashSet();
-        hs.add("LincsMetadata");
+        hs.add(TABLE_LINCS_METADATA);
+        hs.add(TABLE_LINCS_PSP_JOB);
         return hs;
     }
 

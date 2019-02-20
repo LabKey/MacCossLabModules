@@ -43,4 +43,39 @@
             <column columnName="Label"/>
         </columns>
     </table>
+    <table tableDbType="TABLE" tableName="LincsPspJob">
+        <titleColumn>RunId</titleColumn>
+        <description>Contains a row for each job submitted to the Broad PSP server.</description>
+        <columns>
+            <column columnName="_ts">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Created"/>
+            <column columnName="CreatedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>Users</fkTable>
+                </fk>
+            </column>
+            <column columnName="Modified"/>
+            <column columnName="ModifiedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>Users</fkTable>
+                </fk>
+            </column>
+            <column columnName="Id"/>
+            <column columnName="Container"/>
+            <column columnName="RunId"/>
+            <column columnName="PipelineJobId"/>
+            <column columnName="PspJobId"/>
+            <column columnName="PspJobName"/>
+            <column columnName="Status"/>
+            <column columnName="Error"/>
+            <column columnName="Progress"/>
+            <column columnName="Json"/>
+        </columns>
+    </table>
 </tables>

@@ -1,33 +1,29 @@
 package org.labkey.lincs;
 
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
-import org.json.JSONObject;
 import org.labkey.api.data.Container;
 import org.labkey.api.exp.api.ExpProtocol;
 import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentListener;
-import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.ModuleLoader;
+import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobService;
+import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.PipelineStatusFile;
+import org.labkey.api.pipeline.PipelineValidationException;
 import org.labkey.api.security.User;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
-import org.labkey.api.util.Path;
-import org.labkey.api.view.ActionURL;
-import org.labkey.api.webdav.WebdavService;
+import org.labkey.api.view.ViewBackgroundInfo;
+import org.labkey.lincs.psp.LincsPspException;
+import org.labkey.lincs.psp.LincsPspJob;
+import org.labkey.lincs.psp.LincsPspPipelineJob;
+import org.labkey.lincs.psp.LincsPspUtil;
+import org.labkey.lincs.psp.PspEndpoint;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -81,182 +77,56 @@ public class DocImportListenter implements ExperimentListener
             return;
         }
 
-        String clueServerUrl = null;
-        String clueApiKey = null;
+        PspEndpoint pspEndpoint = null;
         try
         {
-            // Only run if the clue server credentials are set in the folder
-            LincsModule.ClueCredentials credentials = LincsModule.getClueCredentials(container);
-            if (credentials == null)
+            pspEndpoint = LincsPspUtil.getPspEndpoint(container);
+        }
+        catch(LincsPspException e)
+        {
+            if(e.noSavedPspConfig())
             {
-                _log.info("LINCS: Clue/PSP server credentials were not saved for this container. Skipping POST to Clue/PSP server.");
+                _log.info("LINCS: " + e.getMessage());
+            }
+            else
+            {
+                _log.error("LINCS: " + e.getMessage());
+            }
+            return;
+        }
+
+        ITargetedMSRun skylineRun = TargetedMSService.get().getRunByFileName(run.getName(), run.getContainer());
+        if(skylineRun == null)
+        {
+            _log.error("LINCS: Could not find a targetedms run with filename " + run.getName());
+        }
+
+        try{
+            PipeRoot root = PipelineService.get().findPipelineRoot(container);
+            if (root == null || !root.isValid())
+            {
+                _log.error("LINCS: No valid pipeline root found for " + container.getPath());
                 return;
             }
-            clueServerUrl = credentials.getServerUrl();
-            clueApiKey = credentials.getApiKey();
+            ViewBackgroundInfo info = new ViewBackgroundInfo(container, user, null);
+
+            LincsPspJob pspJob = LincsManager.get().saveNewLincsPspJob(skylineRun, user);
+
+            LincsPspPipelineJob job = new LincsPspPipelineJob(info, root, skylineRun, pspJob,null, pspEndpoint);
+            PipelineService.get().queueJob(job);
+
+            int jobId = PipelineService.get().getJobId(user, container, job.getJobGUID());
+            _log.info("LINCS: Queued job Id " + jobId +" for submitting POST request to PSP.");
+
+            pspJob.setPipelineJobId(jobId);
+            LincsManager.get().updatePipelineJobId(pspJob);
+        }
+        catch (PipelineValidationException e){
+            _log.error("LINCS: Could not queue pipeline job for submitting POST request to PSP.", e);
         }
         catch(Exception e)
         {
-            _log.error("LINCS: Error looking up Clue/PSP server credentials in container " + container.getPath(), e);
-        }
-        if(StringUtils.isBlank(clueServerUrl))
-        {
-            _log.error("LINCS: Could not find Clue/PSP server URL in saved properties.");
-            return;
-        }
-        if(StringUtils.isBlank(clueApiKey))
-        {
-            _log.error("LINCS: Could not find Clue/PSP API Key in the saved properties.");
-            return;
-        }
-
-        ITargetedMSRun skylineRun;
-        try
-        {
-            skylineRun = TargetedMSService.get().getRunByFileName(run.getName(), run.getContainer());
-            if(skylineRun == null)
-            {
-                _log.error("LINCS: Could not find a targetedms run with filename " + run.getName());
-            }
-            afterDocImport(skylineRun, clueServerUrl, clueApiKey, _log);
-            _log.info("Sent POST request to " + clueServerUrl);
-        }
-        catch(Exception e)
-        {
-            _log.error("LINCS: Error sending POST request to " + clueServerUrl, e);
-        }
-    }
-
-    //@Override
-    public void afterDocImport(ITargetedMSRun run, String clueUrl, String apiKey, Logger log) throws IOException
-    {
-        // Make a POST request
-        URL url = new URL(clueUrl);
-        JSONObject json = getJSON(run);
-        _log.info("Sending JSON:");
-        _log.info(json.toString(2));
-        byte[] postData = json.toString().getBytes(StandardCharsets.UTF_8);
-        int postDataLength = postData.length;
-
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-        try
-        {
-            conn.setDoOutput(true);
-            conn.setInstanceFollowRedirects(false);
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("user_key", apiKey);
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("charset", "utf-8");
-            conn.setRequestProperty("Content-Length", Integer.toString(postDataLength));
-            conn.setUseCaches(false);
-            try (DataOutputStream wr = new DataOutputStream(conn.getOutputStream()))
-            {
-                wr.write(postData);
-                wr.flush();
-            }
-
-            log.info("LINCS: Sending POST request to " + clueUrl);
-            int responseCode = conn.getResponseCode();
-            log.info("LINCS: Response code - " + responseCode);
-            String response;
-            try (InputStream in = conn.getInputStream())
-            {
-                response = IOUtils.toString(in, Charset.defaultCharset());
-                log.info("LINCS: Response from server: " + response);
-            }
-        }
-        finally
-        {
-            conn.disconnect();
-        }
-    }
-
-    private JSONObject getJSON(ITargetedMSRun run)
-    {
-        /*
-            {
-              "name": "LINCS_GCP_Plate58_annotated_minimized_2018-01-02_14-26-56",
-              "assay": "GCP",
-              "level 2": {
-                "panorama": {
-                    "url": "https://panoramaweb.org/lincs/LINCS-DCIC/GCP/runGCTReportApi.view?runId=30974&reportName=GCT%20File%20GCP",
-                    "http_method":"GET"
-                }
-              },
-              "level 3": {
-                "panorama": {
-                    "url": "https://panoramaweb.org/_webdav/LINCS-DCIC/GCP/%40files/GCT/LINCS_GCP_Plate58_annotated_minimized_2018-01-02_14-26-56_LVL3.gct",
-                    "http_method":"PUT"
-                }
-              },
-              "level 4": {
-                "panorama": {
-                    "url":  "https://panoramaweb.org/_webdav/LINCS-DCIC/GCP/%40files/GCT/LINCS_GCP_Plate58_annotated_minimized_2018-01-02_14-26-56_LVL4.gct",
-                    "http_method":"PUT"
-                 }
-              },
-              "config": {
-                "panorama": {
-                    "url":  "https://panoramaweb.org/_webdav/LINCS-DCIC/GCP/%40files/GCT/LINCS_GCP_Plate58_annotated_minimized_2018-01-02_14-26-56.cfg",
-                    "http_method":"PUT"
-                 }
-              }
-            }
-        */
-        JSONObject json = new JSONObject();
-        json.put("name", run.getBaseName());
-        String assayName = getAssayName(run.getContainer());
-        json.put("assay", assayName);
-        json.put("level 2", getLevelJSON(run, LincsModule.LincsLevel.Two, assayName));
-        json.put("level 3", getLevelJSON(run, LincsModule.LincsLevel.Three, assayName));
-        json.put("level 4", getLevelJSON(run, LincsModule.LincsLevel.Four, assayName));
-        json.put("config", getLevelJSON(run, LincsModule.LincsLevel.Config, assayName));
-        return json;
-    }
-
-    private JSONObject getLevelJSON(ITargetedMSRun run, LincsModule.LincsLevel level, String assayName)
-    {
-        JSONObject json = new JSONObject();
-        JSONObject details = new JSONObject();
-        String method = level == LincsModule.LincsLevel.Two ? "GET" : "PUT";
-        String url = level == LincsModule.LincsLevel.Two ? getRunReportURL(run, assayName) : getWebDavUrl(run, level);
-        details.put("url", url);
-        details.put("method", method);
-        json.put("panorama", details);
-        return json;
-    }
-
-    private String getWebDavUrl(ITargetedMSRun run, LincsModule.LincsLevel level)
-    {
-        String gctFile = run.getBaseName() + LincsModule.getExt(level);
-        Path path = WebdavService.getPath().append(run.getContainer().getParsedPath()).append(FileContentService.FILES_LINK).append("GCT").append(gctFile);
-        return ActionURL.getBaseServerURL() + path.encode();
-    }
-
-    private String getRunReportURL(ITargetedMSRun run, String assayName)
-    {
-        ActionURL url = new ActionURL(LincsController.RunGCTReportApiAction.class, run.getContainer());
-        url.addParameter("runId", run.getId());
-        url.addParameter("remote", true);
-        url.addParameter("reportName", assayName.equals("P100") ? "GCT File P100" : "GCT File GCP");
-        return url.getURIString();
-    }
-
-    private String getAssayName(Container container)
-    {
-        if(container.isRoot())
-        {
-            return "";
-        }
-        switch (container.getName())
-        {
-            case "P100":
-                return "P100";
-            case "GCP":
-                return "GCP";
-            default:
-                return getAssayName(container.getParent());
+            _log.error("LINCS: Error queueing pipeline job for submitting POST request to PSP.", e);
         }
     }
 
@@ -269,11 +139,18 @@ public class DocImportListenter implements ExperimentListener
         {
             return;
         }
+
+        ITargetedMSRun tRun = TargetedMSService.get().getRunByFileName(run.getName(), run.getContainer());
+        if(tRun != null)
+        {
+            // Delete saved entries in lincs.lincspspjob table for this runId
+            LincsManager.get().deleteLincsPspJobsForRun(tRun.getId());
+        }
+
         // Get the file root for the container
         java.nio.file.Path gctDir = LincsController.getGCTDir(c);
         if(Files.exists(gctDir))
         {
-            ITargetedMSRun tRun = TargetedMSService.get().getRunByFileName(run.getName(), run.getContainer());
             if(tRun != null)
             {
                 String baseName = tRun.getBaseName();

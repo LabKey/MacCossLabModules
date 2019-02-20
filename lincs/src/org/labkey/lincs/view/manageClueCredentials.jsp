@@ -6,7 +6,7 @@
 <%@ page extends="org.labkey.api.jsp.FormPage" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <p>
-    Manage LINCS Clue PSP Server credentials
+    Manage LINCS PSP Endpoint Config
 </p>
 <br>
 <%
@@ -16,7 +16,7 @@
 <labkey:form method="post">
     <table>
         <tr>
-            <td>Server:</td>
+            <td>URL:</td>
             <td><input type="text" name="serverUri" value="<%=form.getServerUri()%>"></td>
         </tr>
         <tr>

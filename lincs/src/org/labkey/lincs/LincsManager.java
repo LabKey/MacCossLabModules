@@ -18,14 +18,23 @@ package org.labkey.lincs;
 
 import org.apache.log4j.Logger;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.DbSchema;
+import org.labkey.api.data.DbSchemaType;
+import org.labkey.api.data.SimpleFilter;
+import org.labkey.api.data.Sort;
+import org.labkey.api.data.SqlExecutor;
+import org.labkey.api.data.Table;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleLoader;
+import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.QueryService;
 import org.labkey.api.resource.FileResource;
 import org.labkey.api.security.User;
+import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.util.Path;
+import org.labkey.lincs.psp.LincsPspJob;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -54,6 +63,11 @@ public class LincsManager
     public String getSchemaName()
     {
         return LincsSchema.SCHEMA_NAME;
+    }
+
+    public static DbSchema getSchema()
+    {
+        return DbSchema.get(LincsSchema.SCHEMA_NAME, DbSchemaType.Module);
     }
 
     public List<LincsAnnotation> getReplicateAnnotations(User user, Container container)
@@ -95,10 +109,8 @@ public class LincsManager
         Module module = ModuleLoader.getInstance().getModule(LincsModule.class);
         FileResource resource = (FileResource)module.getModuleResolver().lookup(Path.parse(filename));
         File txt = resource.getFile();
-        BufferedReader reader = null;
-        try
+        try (BufferedReader reader = new BufferedReader(new FileReader(txt)))
         {
-            reader = new BufferedReader(new FileReader(txt));
             String line = reader.readLine(); // Read header
             int nameCol = -1;
             int displayNameCol = -1;
@@ -132,9 +144,52 @@ public class LincsManager
             _log.error("Could not read file " + txt.getPath(), e);
             return Collections.emptyList();
         }
-        finally
-        {
-            if(reader != null) try {reader.close();} catch(IOException ignored) {}
-        }
+    }
+
+    public LincsPspJob saveNewLincsPspJob(ITargetedMSRun run, User user)
+    {
+        LincsPspJob job = new LincsPspJob(run.getContainer(), run.getId());
+        return Table.insert(user, getTableInfoLincsPspJob(), job);
+    }
+
+    public void updateLincsPspJob(LincsPspJob job, User user)
+    {
+        Table.update(user, getTableInfoLincsPspJob(), job, job.getId());
+    }
+
+    public void updatePipelineJobId(LincsPspJob job)
+    {
+        new SqlExecutor(getSchema()).execute("UPDATE " + getTableInfoLincsPspJob() + " SET PipelineJobId=? WHERE Id = ? AND PipelineJobId IS NULL",
+                job.getPipelineJobId(), job.getId());
+    }
+
+    public LincsPspJob getLincsPspJobForRun(int runId)
+    {
+        // Get the most recent PSP job details
+        Sort sort = new Sort();
+        sort.appendSortColumn(FieldKey.fromParts("Modified"), Sort.SortDirection.DESC, true);
+        TableSelector ts = new TableSelector(getTableInfoLincsPspJob(), new SimpleFilter(FieldKey.fromParts("RunId"), runId), sort);
+        ts.setMaxRows(1);
+        return ts.getObject(LincsPspJob.class);
+    }
+
+    public LincsPspJob getLincsPspJob(int id)
+    {
+        return new TableSelector(getTableInfoLincsPspJob(), new SimpleFilter(FieldKey.fromParts("Id"), id), null).getObject(LincsPspJob.class);
+    }
+
+    public void deleteLincsPspJobsForRun(int runId)
+    {
+        Table.delete(getTableInfoLincsPspJob(), new SimpleFilter(FieldKey.fromParts("runId"), runId));
+    }
+
+    public void deleteLincsPspJob(LincsPspJob job)
+    {
+        Table.delete(getTableInfoLincsPspJob(), new SimpleFilter(FieldKey.fromParts("Id"), job.getId()));
+    }
+
+    public static TableInfo getTableInfoLincsPspJob()
+    {
+        return getSchema().getTable(LincsSchema.TABLE_LINCS_PSP_JOB);
     }
 }
