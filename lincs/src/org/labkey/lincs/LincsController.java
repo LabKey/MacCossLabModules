@@ -24,9 +24,9 @@ import org.labkey.api.action.ApiAction;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.ApiUsageException;
+import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabKeyError;
-import org.labkey.api.action.OldRedirectAction;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
@@ -1268,14 +1268,14 @@ public class LincsController extends SpringActionController
             {
                 ActionURL updateStatusUrl = new ActionURL(UpdatePspJobStatusAction.class, getViewContext().getContainer());
                 ActionButton updateButton = new ActionButton(updateStatusUrl, "Update Status");
-                updateButton.setActionType(ActionButton.Action.GET);
+                updateButton.setActionType(ActionButton.Action.POST);
                 buttonBar.add(updateButton);
 
                 if(pspJob.canRetry() || pipelineJobError(pspJob))
                 {
                     ActionURL url = new ActionURL(SubmitPspJobAction.class, getViewContext().getContainer());
                     ActionButton resubmitJobButton = new ActionButton(url, "Re-submit");
-                    resubmitJobButton.setActionType(ActionButton.Action.GET);
+                    resubmitJobButton.setActionType(ActionButton.Action.POST);
                     buttonBar.add(resubmitJobButton);
                 }
             }
@@ -1443,19 +1443,17 @@ public class LincsController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class UpdatePspJobStatusAction extends OldRedirectAction<LincsPspJobForm>
+    public class UpdatePspJobStatusAction extends FormHandlerAction<LincsPspJobForm>
     {
         private int _runId;
+
         @Override
-        public URLHelper getSuccessURL(LincsPspJobForm lincsPspJobForm)
+        public void validateCommand(LincsPspJobForm target, Errors errors)
         {
-            ActionURL url = new ActionURL(LincsPspJobDetailsAction.class, getContainer());
-            url.addParameter("runId", _runId);
-            return url;
         }
 
         @Override
-        public boolean doAction(LincsPspJobForm form, BindException errors)
+        public boolean handlePost(LincsPspJobForm form, BindException errors)
         {
             int jobId = form.getJobId();
             _runId = form.getRunId();
@@ -1500,6 +1498,14 @@ public class LincsController extends SpringActionController
             }
             return true;
         }
+
+        @Override
+        public URLHelper getSuccessURL(LincsPspJobForm lincsPspJobForm)
+        {
+            ActionURL url = new ActionURL(LincsPspJobDetailsAction.class, getContainer());
+            url.addParameter("runId", _runId);
+            return url;
+        }
     }
 
     public static class LincsPspJobForm
@@ -1529,16 +1535,15 @@ public class LincsController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class SubmitPspJobAction extends OldRedirectAction<LincsPspJobForm>
+    public class SubmitPspJobAction extends FormHandlerAction<LincsPspJobForm>
     {
         @Override
-        public URLHelper getSuccessURL(LincsPspJobForm lincsPspJobForm)
+        public void validateCommand(LincsPspJobForm target, Errors errors)
         {
-            return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
         }
 
         @Override
-        public boolean doAction(LincsPspJobForm form, BindException errors)
+        public boolean handlePost(LincsPspJobForm form, BindException errors)
         {
             int runId = form.getRunId();
             Container container = getContainer();
@@ -1590,6 +1595,12 @@ public class LincsController extends SpringActionController
             newPspJob.setPipelineJobId(jobId);
             lincsManager.updatePipelineJobId(newPspJob);
             return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(LincsPspJobForm lincsPspJobForm)
+        {
+            return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
         }
     }
 }

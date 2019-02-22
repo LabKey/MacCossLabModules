@@ -29,6 +29,7 @@ import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.lincs.psp.LincsPspJob;
@@ -153,7 +154,7 @@ public class LincsDataTable extends FilteredTable
                             ActionURL url = new ActionURL(LincsController.SubmitPspJobAction.class, getContainer());
                             url.addParameter("runId", runId);
 
-                            out.write(PageFlowUtil.textLink(" [Submit Job]", url));
+                            out.write(new Link.LinkBuilder(" [Submit Job]").href(url).usePost().toString());
                         }
                         return;
                     }
