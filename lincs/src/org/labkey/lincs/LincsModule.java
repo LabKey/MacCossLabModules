@@ -62,7 +62,7 @@ public class LincsModule extends SpringModule
 
     public double getVersion()
     {
-        return 18.31;
+        return 19.10;
     }
 
     @Override
