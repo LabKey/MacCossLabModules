@@ -15,9 +15,11 @@ lincs/resources/reports/schemas/targetedms/GCT_input_peptidearearatio/LabKeyInpu
 lincs/resources/reports/schemas/targetedms/GCT_input_peptidearearatio/p100_processing.r -text
 lincs/resources/schemas/dbscripts/postgresql/lincs-17.20-17.30.sql -text
 lincs/resources/schemas/dbscripts/postgresql/lincs-18.30-18.31.sql -text
+lincs/resources/schemas/dbscripts/postgresql/lincs-18.30-19.10.sql -text
 lincs/resources/schemas/dbscripts/postgresql/obsolete/lincs-17.20-17.21.sql -text
 lincs/resources/schemas/dbscripts/sqlserver/lincs-17.20-17.30.sql -text
 lincs/resources/schemas/dbscripts/sqlserver/lincs-18.30-18.31.sql -text
+lincs/resources/schemas/dbscripts/sqlserver/lincs-18.30-19.10.sql -text
 lincs/resources/schemas/dbscripts/sqlserver/obsolete/lincs-17.20-17.21.sql -text
 lincs/resources/schemas/lincs.xml -text
 lincs/resources/views/CustomGCT.html -text
