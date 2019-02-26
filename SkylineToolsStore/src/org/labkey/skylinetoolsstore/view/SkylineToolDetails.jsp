@@ -727,7 +727,13 @@ a.banner-button-small{
         buttons: {
             Ok: function() {
                 setButtonsEnabled(false);
-                window.location = "<%= urlFor(SkylineToolsStoreController.DeleteAction.class).addParameter("id", tool.getRowId()) %>"
+                var url = "<%= urlFor(SkylineToolsStoreController.DeleteAction.class)%>";
+                var csrf = LABKEY.CSRF;
+                var form = $('<form action="' + url + '" method="post"> ' +
+                        '<input type="hidden" name="X-LABKEY-CSRF" value="' +  csrf + '" /> ' +
+                        '<input type="hidden" name="id" value="' + <%=tool.getRowId()%> + '" />' + '</form>');
+                $('body').append(form);
+                form.submit();
             },
             Cancel: function() {$(this).dialog("close");}
         }

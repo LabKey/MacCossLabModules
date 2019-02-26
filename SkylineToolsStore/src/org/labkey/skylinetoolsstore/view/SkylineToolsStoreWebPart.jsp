@@ -521,7 +521,8 @@
                 $(this).html("<p>Please wait...</p>");
                 var toolTable = $(this).data("toolTable");
                 $.post("<%= urlFor(SkylineToolsStoreController.DeleteAction.class) %>", {
-                    "id": toolTable.attr("data-toolId")
+                    "id": toolTable.attr("data-toolId"),
+                    "X-LABKEY-CSRF": LABKEY.CSRF
                 }).done(function() {
                     $("#delToolAllDlg").dialog("close");
                     toolTable.hide("explode");

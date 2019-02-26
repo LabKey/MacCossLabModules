@@ -20,8 +20,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.json.JSONObject;
+import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.NavTrailAction;
-import org.labkey.api.action.OldRedirectAction;
 import org.labkey.api.action.PermissionCheckable;
 import org.labkey.api.action.ReturnUrlForm;
 import org.labkey.api.action.SimpleErrorView;
@@ -332,7 +332,7 @@ public class SkylineToolsStoreController extends SpringActionController
             }
         });
 
-        return (SkylineTool[])toolList.toArray();
+        return toolList.toArray(new SkylineTool[0]);
     }
 
     public static String getUsersForAutocomplete()
@@ -901,7 +901,7 @@ public class SkylineToolsStoreController extends SpringActionController
     }
 
     @RequiresLogin
-    public class DeleteAction extends OldRedirectAction<IdForm>
+    public class DeleteAction extends FormHandlerAction<IdForm>
     {
         @Override
         public URLHelper getSuccessURL(IdForm idForm)
@@ -910,7 +910,7 @@ public class SkylineToolsStoreController extends SpringActionController
         }
 
         @Override
-        public boolean doAction(IdForm idForm, BindException errors) throws Exception
+        public boolean handlePost(IdForm idForm, BindException errors) throws Exception
         {
             final SkylineTool tool = SkylineToolsStoreManager.get().getTool(idForm.getId());
 
