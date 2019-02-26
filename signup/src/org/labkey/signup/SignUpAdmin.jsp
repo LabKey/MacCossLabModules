@@ -16,6 +16,7 @@
 <%@ page import="java.util.Set" %>
 <%@ page import="java.util.Arrays" %>
 <%@ page import="org.labkey.api.security.Group" %>
+<%@ page import="org.labkey.api.view.ActionURL" %>
 <%
     JspView<User> me = (JspView<User>) HttpView.currentView();
     User data = me.getModelBean();
@@ -73,13 +74,13 @@
     </tr>
 
     <%for(Container c:list) { // iterate through containers and display the ones that have been associated with a sign-up group.
-        PropertyManager.PropertyMap property = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, false);
+        PropertyManager.PropertyMap property = PropertyManager.getProperties(c, SignUpModule.SIGNUP_CATEGORY);
         if(property != null && property.get(SignUpModule.SIGNUP_GROUP_NAME) != null) {
         %>
             <tr>
                 <td><%=h(c.getPath())%></td>
                 <td><%=h(property.get(SignUpModule.SIGNUP_GROUP_NAME))%></td>
-                <td><a href="<%= h(buildURL(SignUpController.RemovePropertyAction.class, "containerId=" + c.getRowId()))%>">Remove</a></td>
+                <td><%=link("Remove", new ActionURL(SignUpController.RemovePropertyAction.class, getContainer()).addParameter("containerId", c.getRowId())).usePost()%></td>
             </tr>
         <%}
     }%>
@@ -129,7 +130,7 @@
         <tr>
             <td><%=h(SecurityManager.getGroup(Integer.parseInt(key)))%> (<%=h(key)%>)</td>
             <td><%=h(SecurityManager.getGroup(Integer.parseInt(rule)))%> (<%=h(rule)%>)</td>
-            <td><a href="<%= h(buildURL(SignUpController.RemoveGroupChangeProperty.class, "oldgroup=" + key + "&newgroup=" + rule))%>">Remove</a></td>
+            <td><%=link("Remove", new ActionURL(SignUpController.RemoveGroupChangeProperty.class, getContainer()).addParameters(Map.of("oldgroup", key, "newgroup", rule))).usePost()%></td>
         </tr>
         <%}}}%>
 </table>

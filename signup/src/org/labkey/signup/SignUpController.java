@@ -21,9 +21,9 @@ import org.apache.log4j.Logger;
 import org.labkey.api.action.ApiAction;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
+import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabKeyError;
-import org.labkey.api.action.OldRedirectAction;
 import org.labkey.api.action.ReturnUrlForm;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
@@ -98,7 +98,7 @@ public class SignUpController extends SpringActionController
     }
 
    @RequiresSiteAdmin
-   public class AddPropertyAction extends OldRedirectAction<AddPropertyForm>
+   public class AddPropertyAction extends FormHandlerAction<AddPropertyForm>
    {
        @Override
        public URLHelper getSuccessURL(AddPropertyForm addPropertyForm)
@@ -107,7 +107,7 @@ public class SignUpController extends SpringActionController
        }
 
        @Override
-       public boolean doAction(AddPropertyForm addPropertyForm, BindException errors) throws Exception
+       public boolean handlePost(AddPropertyForm addPropertyForm, BindException errors) throws Exception
        {
            Container c = ContainerManager.getForRowId(addPropertyForm.getContainerId());
            if(c == null)
@@ -135,7 +135,7 @@ public class SignUpController extends SpringActionController
    }
 
     @RequiresSiteAdmin
-    public class RemovePropertyAction extends OldRedirectAction<ContainerIdForm>
+    public class RemovePropertyAction extends FormHandlerAction<ContainerIdForm>
     {
         @Override
         public URLHelper getSuccessURL(ContainerIdForm containerIdForm)
@@ -144,7 +144,7 @@ public class SignUpController extends SpringActionController
         }
 
         @Override
-        public boolean doAction(ContainerIdForm containerIdForm, BindException errors) throws Exception
+        public boolean handlePost(ContainerIdForm containerIdForm, BindException errors) throws Exception
         {
             Container c = ContainerManager.getForRowId(containerIdForm.getContainerId());
             if(c == null)
@@ -167,7 +167,7 @@ public class SignUpController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class AddGroupChangeProperty extends OldRedirectAction<AddGroupChangeForm>
+    public class AddGroupChangeProperty extends FormHandlerAction<AddGroupChangeForm>
     {
         @Override
         public URLHelper getSuccessURL(AddGroupChangeForm containerIdForm)
@@ -176,7 +176,7 @@ public class SignUpController extends SpringActionController
         }
 
         @Override
-        public boolean doAction(AddGroupChangeForm addGroupChangeForm, BindException errors) throws Exception
+        public boolean handlePost(AddGroupChangeForm addGroupChangeForm, BindException errors) throws Exception
         {
             if((addGroupChangeForm.getOldgroup() == 0 || addGroupChangeForm.getNewgroup() == 0) || // if both groups have id=0
                     (addGroupChangeForm.getOldgroup() == addGroupChangeForm.getNewgroup())) // if both groups are the same
@@ -203,7 +203,7 @@ public class SignUpController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class RemoveGroupChangeProperty extends OldRedirectAction<AddGroupChangeForm>
+    public class RemoveGroupChangeProperty extends FormHandlerAction<AddGroupChangeForm>
     {
         @Override
         public URLHelper getSuccessURL(AddGroupChangeForm containerIdForm)
@@ -212,7 +212,7 @@ public class SignUpController extends SpringActionController
         }
 
         @Override
-        public boolean doAction(AddGroupChangeForm addGroupChangeForm, BindException errors) throws Exception
+        public boolean handlePost(AddGroupChangeForm addGroupChangeForm, BindException errors) throws Exception
         {
             int oldgroup = addGroupChangeForm.getOldgroup();
             int newgroup = addGroupChangeForm.getNewgroup();
