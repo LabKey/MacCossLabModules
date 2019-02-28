@@ -20,7 +20,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
-import org.labkey.api.action.ApiAction;
+import org.labkey.api.action.ReadOnlyApiAction;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.ApiUsageException;
@@ -368,7 +368,7 @@ public class LincsController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public class RunGCTReportApiAction extends ApiAction<GCTReportForm>
+    public class RunGCTReportApiAction extends ReadOnlyApiAction<GCTReportForm>
     {
         public ApiResponse execute(GCTReportForm form, BindException errors) throws Exception
         {
@@ -1065,7 +1065,7 @@ public class LincsController extends SpringActionController
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
 
     @RequiresPermission(ReadPermission.class)
-    public class GetLincsStatusAction extends ApiAction
+    public class GetLincsStatusAction extends ReadOnlyApiAction
     {
         @Override
         public Object execute(Object o, BindException errors)
