@@ -20,12 +20,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
-import org.labkey.api.action.ApiAction;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.ConfirmAction;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabKeyError;
+import org.labkey.api.action.ReadOnlyApiAction;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleStreamAction;
 import org.labkey.api.action.SimpleViewAction;
@@ -1520,7 +1520,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     }
 
     @RequiresPermission(ReadPermission.class)
-    public static class CompleteInstrumentAction extends ApiAction<CompletionFieldForm>
+    public static class CompleteInstrumentAction extends ReadOnlyApiAction<CompletionFieldForm>
     {
         @Override
         public ApiResponse execute(CompletionFieldForm completionForm, BindException errors) throws Exception
@@ -1550,7 +1550,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     }
 
     @RequiresPermission(ReadPermission.class)
-    public static class CompleteOrganismAction extends ApiAction<CompletionFieldForm>
+    public static class CompleteOrganismAction extends ReadOnlyApiAction<CompletionFieldForm>
     {
         @Override
         public ApiResponse execute(CompletionFieldForm completionForm, BindException errors) throws Exception
