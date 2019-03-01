@@ -21,7 +21,7 @@ import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
-import org.labkey.api.action.ApiAction;
+import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
@@ -366,7 +366,7 @@ public class TestResultsController extends SpringActionController
 
     // API endpoint for adding or removing a run for the training set needs parameters: runId=int&train=boolean
     @RequiresPermission(AdminPermission.class)
-    public class TrainRunAction extends ApiAction {
+    public class TrainRunAction extends MutatingApiAction {
         @Override
         public Object execute(Object o, BindException errors) throws Exception
         {
@@ -777,7 +777,7 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public static class SetEmailCronAction extends ApiAction {
+    public static class SetEmailCronAction extends MutatingApiAction {
         @Override
         public Object execute(Object o, BindException errors) throws Exception
         {
@@ -910,7 +910,7 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class SetUserActive extends ApiAction {
+    public class SetUserActive extends MutatingApiAction {
         @Override
         public Object execute(Object o, BindException errors) throws Exception
         {
@@ -953,7 +953,7 @@ public class TestResultsController extends SpringActionController
      * action for posting test output as an xml file
      */
     @RequiresNoPermission
-    public class PostAction extends ApiAction {
+    public class PostAction extends MutatingApiAction {
 
         @Override
         public Object execute(Object o, BindException errors) throws Exception
@@ -1050,7 +1050,7 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public class PostErrorFilesAction extends ApiAction
+    public class PostErrorFilesAction extends MutatingApiAction
     {
         @Override
         public Object execute(Object o, BindException errors)

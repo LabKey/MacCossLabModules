@@ -18,7 +18,8 @@ package org.labkey.signup;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
-import org.labkey.api.action.ApiAction;
+import org.labkey.api.action.ReadOnlyApiAction;
+import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.FormHandlerAction;
@@ -630,7 +631,7 @@ public class SignUpController extends SpringActionController
     }
 
     @RequiresLogin
-    public class ChangeGroupsApiAction extends ApiAction<AddGroupChangeForm>
+    public class ChangeGroupsApiAction extends MutatingApiAction<AddGroupChangeForm>
     {
         @Override
         public ApiResponse execute(AddGroupChangeForm addGroupChangeForm, BindException errors) throws Exception
@@ -678,7 +679,7 @@ public class SignUpController extends SpringActionController
     }
 
     @RequiresNoPermission
-    public class SignUpApiAction extends ApiAction<SignupForm>
+    public class SignUpApiAction extends MutatingApiAction<SignupForm>
     {
 
         @Override
