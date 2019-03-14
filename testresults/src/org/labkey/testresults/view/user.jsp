@@ -237,7 +237,8 @@
         var runId = this.getAttribute("runId");
         var isTrainRun = this.getAttribute("runTrained") == "true";
         var trainObj = this;
-        $.getJSON('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId='+runId+'&train='+!isTrainRun, function(data){
+        var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
+        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId='+runId+'&train='+!isTrainRun, csrf_header, function(data){
             if(data.Success) {
                 trainObj.setAttribute("runTrained", !isTrainRun);
                 if(!isTrainRun)
@@ -247,7 +248,7 @@
             } else {
                 alert(data);
             }
-        });
+        }, "json");
     })
 </script>
 <!--Javascript which uses c3 & d3js to paint charts with given trendJson data-->

@@ -193,14 +193,15 @@
 <!--Handels add/remove from training  data set-->
 <script>
     $('#trainset').click(function() {
-        $.getJSON('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId=<%=h(run.getId())%>&train=<%=h((run.isTrainRun()) ? "false" : "true")%>', function(data){
+        var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
+        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId=<%=h(run.getId())%>&train=<%=h((run.isTrainRun()) ? "false" : "true")%>', csrf_header, function(data){
             if(data.Success) {
                 <%run.setTrainRun(!run.isTrainRun());%>
                 location.reload();
             } else {
                 alert(data);
             }
-        });
+        }, "json");
     })
 
 </script>

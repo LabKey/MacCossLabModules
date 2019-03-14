@@ -547,13 +547,14 @@ $(function() {
     $('.traindata').click(function() {
         var runId = this.getAttribute('runid');
         var train = this.getAttribute('train');
-        $.getJSON('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId='+runId+'&train='+train, function(data){
+        var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
+        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId='+runId+'&train='+train, csrf_header, function(data){
             if(data.Success) {
                 location.reload();
             } else {
                 alert("Failure removing run. Contact Yuval")
             }
-        });
+        }, "json");
     })
 });
 </script>

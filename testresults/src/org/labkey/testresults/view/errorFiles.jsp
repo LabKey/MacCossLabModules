@@ -71,8 +71,9 @@
     $('.postBtn').click(function() {
         $('.text').text('');
         $.ajax({
-            type: "GET",
+            type: "POST",
             dataType: 'json',
+            data: {"X-LABKEY-CSRF": LABKEY.CSRF},
             url: "<%=h(new ActionURL(TestResultsController.PostErrorFilesAction.class, c))%>",
             success: function(data) {
                 $.each( data, function( key, value ) {

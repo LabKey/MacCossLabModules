@@ -154,65 +154,68 @@
     </table>
 </div>
 <script type="text/javascript">
+
+    var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
+
     $('.removedata').click(function() {
         var runId = this.getAttribute('runid');
-        $.getJSON('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId='+runId+'&train=false', function(data){
+        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId='+runId+'&train=false', csrf_header, function(data){
             if(data.Success) {
                 location.reload();
             } else {
                 alert("Failure removing run. Contact Yuval")
             }
-        });
+        }, "json");
     })
 
-    $.getJSON('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>', function(data){
+    $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>', csrf_header, function(data){
             $('#emailstatus').text(data.Response);
         if(data.Response == "false") {
             $("#email-cron-button").attr('value', 'Start');
             $("#email-cron-button").click(function() {
-                $.getJSON('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=start', function(data){
+                $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=start', csrf_header, function(data){
                     console.log(data);
                     $('#cron-message').text(data.Message);
                     location.reload();
-                })
+                }, "json")
             });
         } else {
             $("#email-cron-button").attr('value', 'Stop');
             $("#email-cron-button").click(function() {
-                $.getJSON('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=stop', function(data){
+                $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=stop', csrf_header, function(data){
                     console.log(data);
                     $('#cron-message').text(data.Message);
                     location.reload();
-                })
+                }, "json")
             });
         }
-    });
+    }, "json");
     $("#html-button").click(function() {
-        $.getJSON('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=<%=h(SendTestResultsEmail.TEST_GET_HTML_EMAIL)%>', function(data){
+        $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=<%=h(SendTestResultsEmail.TEST_GET_HTML_EMAIL)%>', csrf_header, function(data){
             console.log(data);
             $('#msg-container').html(data.HTML);
-        })
+        }, "json")
     });
     $("#send-button").click(function() {
-        $.getJSON('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>' + 'action=<%=h(SendTestResultsEmail.TEST_CUSTOM)%>&emailF='+$('#emailFrom').val()+'&emailT='+$('#emailTo').val(), function (data) {
+        $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>' + 'action=<%=h(SendTestResultsEmail.TEST_CUSTOM)%>&emailF='+$('#emailFrom').val()+'&emailT='+$('#emailTo').val(), csrf_header, function (data) {
             console.log(data);
             $('#send-email-msg').text(data.Message);
-        });
+        }, "json");
     });
 
     $('.deactivate-user').click(function(obj) {
         var userId = this.getAttribute("userid");
-        $.getJSON('<%=h(new ActionURL(TestResultsController.SetUserActive.class, c))%>'+'active=false&userId='+userId, function(data){
+        $.post('<%=h(new ActionURL(TestResultsController.SetUserActive.class, c))%>'+'active=false&userId='+userId, csrf_header, function(data){
             console.log(data);
             location.reload();
-        })
+        }, "json")
     });
 
     $('.activate-user').click(function(obj) {
         var userId = this.getAttribute("userid");
-        $.getJSON('<%=h(new ActionURL(TestResultsController.SetUserActive.class, c))%>'+'active=true&userId='+userId, function(data){
+        $.post('<%=h(new ActionURL(TestResultsController.SetUserActive.class, c))%>'+'active=true&userId='+userId, csrf_header, function(data){
             console.log(data);
             location.reload();
-        })
+        }, "json")
     });
 </script>
