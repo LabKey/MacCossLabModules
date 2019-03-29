@@ -63,8 +63,7 @@ public class TargetedMSListener implements ExperimentListener, ContainerManager.
 
         // Delete any runs that might have failed to fully import and therefore won't have a wrapper experiment run.
         // See issue 34752
-        TargetedMSManager.markAsDeleted(c, user);
-        TargetedMSManager.purgeDeletedRuns();
+        TargetedMSManager.deleteIncludingExperimentWrapper(c, user);
 
         // Clean up QC annotations
         new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoQCAnnotation() + " WHERE Container = ?", c);
