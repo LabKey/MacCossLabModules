@@ -457,7 +457,7 @@ public class Gct
         {
             if(_map.containsKey(key))
             {
-                throw new GctFileException("Value has already been added for " + key.toString());
+                throw new GctFileException("Value has already been added for " + key.toString() + ". Old value: " + _map.get(key) + "; New value: " + value);
             }
             _map.put(key, value);
         }

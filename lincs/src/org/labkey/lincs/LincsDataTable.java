@@ -18,6 +18,9 @@ package org.labkey.lincs;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.analytics.AnalyticsService;
+import org.labkey.api.cache.BlockingStringKeyCache;
+import org.labkey.api.cache.CacheLoader;
+import org.labkey.api.cache.CacheManager;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.RenderContext;
@@ -91,6 +94,17 @@ public class LincsDataTable extends FilteredTable
                 super.addQueryFieldKeys(keys);
             }
 
+            @Override
+            public boolean isSortable()
+            {
+                return false;
+            }
+
+            @Override
+            public boolean isFilterable()
+            {
+                return false;
+            }
         });
 
         ColumnInfo cellLineCol = getColumn(FieldKey.fromParts("CellLine"));
@@ -308,7 +322,14 @@ public class LincsDataTable extends FilteredTable
                 baseName += ".processed";
             }
             Path gct = gctDir.resolve(baseName + ".gct");
-            boolean gctExists = Files.exists(gct);
+            boolean gctExists = _gctCache.get(gct.toString(), gct);
+            if(!gctExists && Files.exists(gct))
+            {
+                // If a new Skyline document is uploaded, gctExists will be false if the GCT files have not been generated already.
+                // Update the entry in the cache if the file exists
+                _gctCache.put(gct.toString(), true);
+                gctExists = true;
+            }
 
             String analyticsScript = getAnalyticsScript("DownloadGCT", FileUtil.getFileName(gct), true);
 
@@ -545,4 +566,17 @@ public class LincsDataTable extends FilteredTable
             return getValue(ctx);
         }
     }
+
+    private static final CacheLoader<String, Boolean> _gctFileCacheLoader = (key, arg) ->
+    {
+        if (arg != null)
+        {
+            return Files.exists((Path) arg);
+        }
+        return Boolean.FALSE;
+    };
+
+    private static final BlockingStringKeyCache<Boolean> _gctCache =
+            new BlockingStringKeyCache<Boolean>(CacheManager.getStringKeyCache(1000, CacheManager.WEEK, "GctFileCache"), _gctFileCacheLoader);
+
 }

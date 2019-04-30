@@ -31,6 +31,6 @@ public class LincsPspException extends Exception
 
     public boolean noSavedPspConfig()
     {
-        return NO_PSP_CONFIG.equals(getMessage());
+        return getMessage() != null && getMessage().contains(NO_PSP_CONFIG);
     }
 }

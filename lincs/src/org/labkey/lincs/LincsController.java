@@ -643,7 +643,7 @@ public class LincsController extends SpringActionController
             }
             catch (Exception e)
             {
-                errors.reject(ERROR_MSG, e.getMessage());
+                errors.reject(ERROR_MSG, "Error building custom GCT.");
                 errors.addError(new LabKeyError(e));
                 return null;
             }
@@ -1047,6 +1047,13 @@ public class LincsController extends SpringActionController
         public Set<String> getValues()
         {
             return _values;
+        }
+
+        public List<String> getSortedValues()
+        {
+            List vals = new ArrayList(_values);
+            Collections.sort(vals);
+            return vals;
         }
 
         public boolean isAdvanced()

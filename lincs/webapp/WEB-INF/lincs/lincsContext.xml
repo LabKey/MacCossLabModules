@@ -7,7 +7,7 @@
         <property name="factoryImpls">
             <list>
                 <bean class="org.labkey.lincs.psp.LincsPspTask$Factory">
-                    <property name="location" value="webserver" />
+                    <property name="location" value="webserver-high-priority" />
                 </bean>
             </list>
         </property>

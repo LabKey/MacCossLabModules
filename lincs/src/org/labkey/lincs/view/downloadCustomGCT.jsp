@@ -76,7 +76,7 @@
         <%for(LincsController.SelectedAnnotation annotation: annotations) { %>
             <%=annotation.getDisplayName()%>:
             <%  String comma = "";
-                for(String value: annotation.getValues()) { %>
+                for(String value: annotation.getSortedValues()) { %>
                 <%=comma%><%=value%>
                 <%comma = ", ";%>
             <%}%>

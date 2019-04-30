@@ -15,6 +15,7 @@
  */
 package org.labkey.lincs;
 
+import org.apache.log4j.Logger;
 import org.labkey.api.util.FileUtil;
 import org.labkey.lincs.view.GctUtils;
 
@@ -33,6 +34,8 @@ public class CustomGctBuilder
 {
     private final String[] multiValueProbeAnnotations = new String[] {"pr_probe_normalization_group", "pr_probe_suitability_manual", "pr_normalization_peptide_id"};
 
+    private final static Logger _log = Logger.getLogger(CustomGctBuilder.class);
+
     public Gct build(List<Path> files, List<LincsController.SelectedAnnotation> selectedAnnotations,
                      Set<String> ignoredProbeAnnotations, Set<String> ignoredReplicateAnnotations) throws Gct.GctFileException
     {
@@ -40,6 +43,7 @@ public class CustomGctBuilder
 
         for(Path file: files)
         {
+            _log.info("LINCS custom GCT: reading file: " + file);
             Gct gct;
             try
             {
@@ -51,6 +55,7 @@ public class CustomGctBuilder
             }
 
             // Add the replicates.
+            _log.info("LINCS custom GCT: adding replicates.");
             int addedReplicates = addReplicates(gct, customGct, selectedAnnotations);
 
             if(addedReplicates == 0)
@@ -60,14 +65,16 @@ public class CustomGctBuilder
             }
 
             // Add the probes.
+            _log.info("LINCS custom GCT: adding probes.");
             addProbes(gct, customGct, FileUtil.getFileName(file), ignoredProbeAnnotations);
 
             // Add the area ratios.
+            _log.info("LINCS custom GCT: adding area ratios.");
             addAreaRatios(gct, customGct);
 
             // Record the values of multi-value probe annotations (pr_probe_normalization_group & pr_probe_suitability_manual)
+            _log.info("LINCS custom GCT: updating multi valued probe annotations.");
             updateMultiValueProbeAnnotations(gct, customGct);
-
         }
 
         customGct.setIgnoredProbeAnnotations(ignoredProbeAnnotations);

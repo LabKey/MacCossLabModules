@@ -105,7 +105,7 @@
 
         <%for(LincsController.SelectedAnnotation annot : annotations) { %>
             var storeData = [];
-            <%for (String value: annot.getValues()) { %>
+            <%for (String value: annot.getSortedValues()) { %>
                 storeData.push({'DisplayName': '<%=value%>',
                                 'NameValue': '<%=annot.getName()%>' + ":" + '<%=value%>'});
             <%}%>

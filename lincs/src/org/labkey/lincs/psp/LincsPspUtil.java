@@ -31,22 +31,26 @@ public class LincsPspUtil
 {
     public static PspEndpoint getPspEndpoint(Container container) throws LincsPspException
     {
-        String pspUrl;
-        String pspApiKey;
+        LincsModule.ClueCredentials credentials;
+        String pspUrl = null;
+        String pspApiKey = null;
         try
         {
             // Only run if the psp endpoint configuration has been saved in the container
-            LincsModule.ClueCredentials credentials = LincsModule.getClueCredentials(container);
-            if (credentials == null)
+            credentials = LincsModule.getClueCredentials(container);
+            if (credentials != null)
             {
-                throw new LincsPspException(LincsPspException.NO_PSP_CONFIG);
+                pspUrl = credentials.getServerUrl();
+                pspApiKey = credentials.getApiKey();
             }
-            pspUrl = credentials.getServerUrl();
-            pspApiKey = credentials.getApiKey();
         }
         catch(Exception e)
         {
             throw new LincsPspException("Error looking up PSP endpoint configuration in container " + container.getPath() + ". Error: " + e.getMessage(), e);
+        }
+        if(credentials == null)
+        {
+            throw new LincsPspException(LincsPspException.NO_PSP_CONFIG);
         }
         if(StringUtils.isBlank(pspUrl))
         {
