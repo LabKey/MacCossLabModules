@@ -92,7 +92,10 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
                 FolderArchiveDataTypes.GRID_VIEWS, // "Custom Grid Views",
                 FolderArchiveDataTypes.REPORTS_AND_CHARTS, // "Reports & Charts",
                 FolderArchiveDataTypes.WIKIS_AND_THEIR_ATTACHMENTS, // "Wikis and their attachments",
-                FolderArchiveDataTypes.CONTAINER_SPECIFIC_MODULE_PROPERTIES, // "Container specific module properties",
+                // DO NOT copy module properties.  Set the TargetedMS Folder Type property in CopyExperimentFinalTask instead.
+                // For properties such as SKIP_CHROMATOGRAM_IMPORT_PROPERTY we want the copied folders to inherit the values
+                // in the Panorama Public project.
+                // FolderArchiveDataTypes.CONTAINER_SPECIFIC_MODULE_PROPERTIES, // "Container specific module properties",
                 FolderArchiveDataTypes.EXPERIMENTS_AND_RUNS, // "Experiments and runs"
                 FolderArchiveDataTypes.LISTS, // "Lists"
                 FolderArchiveDataTypes.FILES  // "Files"
