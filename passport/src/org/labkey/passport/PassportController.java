@@ -19,6 +19,7 @@ package org.labkey.passport;
 import com.mchange.v2.sql.SqlUtils;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.data.BaseColumnInfo;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
@@ -356,7 +357,7 @@ public class PassportController extends SpringActionController
         TableInfo tinfo = schema.getTable("Passport_TotalPrecursorArea");
 
         SimpleFilter sf = new SimpleFilter();
-        sf.addCondition(new ColumnInfo("PepGroupId"), p.getPepGroupId());
+        sf.addCondition(new BaseColumnInfo("PepGroupId"), p.getPepGroupId());
 
         try{
             new TableSelector(tinfo,sf, null).forEachResults(pep -> {

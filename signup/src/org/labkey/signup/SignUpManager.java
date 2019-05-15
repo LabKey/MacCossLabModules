@@ -76,6 +76,7 @@ public class SignUpManager
 
     public void deleteUser(String email) throws SQLException
     {
-        Table.delete(getTableInfoTempUsers(), new SimpleFilter(FieldKey.fromParts("email"), email));
+        if (null != getTableInfoTempUsers())
+            Table.delete(getTableInfoTempUsers(), new SimpleFilter(FieldKey.fromParts("email"), email));
     }
 }

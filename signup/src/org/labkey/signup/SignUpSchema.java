@@ -83,9 +83,9 @@ public class SignUpSchema extends UserSchema
             FilteredTable<SignUpSchema> result = new FilteredTable<>(getSchema().getTable(name), this, ContainerFilter.CURRENT);
             result.wrapAllColumns(true);
             if(name.equals(TABLE_TEMP_USERS))
-                ContainerForeignKey.initColumn(result.getColumn(FieldKey.fromParts("Container")), this);
+                ContainerForeignKey.initColumn(result.getMutableColumn(FieldKey.fromParts("Container")), this);
 
-            ColumnInfo userIdCol = result.getColumn(FieldKey.fromParts("labkeyUserId"));
+            var userIdCol = result.getMutableColumn(FieldKey.fromParts("labkeyUserId"));
             userIdCol.setDisplayColumnFactory(new DisplayColumnFactory()
             {
                 @Override
@@ -100,8 +100,8 @@ public class SignUpSchema extends UserSchema
 
             if(name.equals(TABLE_MOVED_USERS))
             {
-                ColumnInfo oldgroup = result.getColumn(FieldKey.fromParts("oldgroup"));
-                ColumnInfo newgroup = result.getColumn(FieldKey.fromParts("newgroup"));
+                var oldgroup = result.getMutableColumn(FieldKey.fromParts("oldgroup"));
+                var newgroup = result.getMutableColumn(FieldKey.fromParts("newgroup"));
                 oldgroup.setDisplayColumnFactory(new DisplayColumnFactory()
                 {
                     @Override
@@ -135,7 +135,7 @@ public class SignUpSchema extends UserSchema
             }
 
             if(name.equals(TABLE_TEMP_USERS)) {
-                ColumnInfo confirmationUrlColumn = result.wrapColumn("ConfirmationURL", result.getRealTable().getColumn(FieldKey.fromParts("key")));
+                var confirmationUrlColumn = result.wrapColumn("ConfirmationURL", result.getRealTable().getColumn(FieldKey.fromParts("key")));
                 // confirmationUrlColumn.setHidden(true);
                 result.addColumn(confirmationUrlColumn);
                 confirmationUrlColumn.setDisplayColumnFactory(new DisplayColumnFactory()
