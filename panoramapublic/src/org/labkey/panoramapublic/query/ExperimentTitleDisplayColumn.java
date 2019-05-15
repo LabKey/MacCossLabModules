@@ -36,7 +36,7 @@ public class ExperimentTitleDisplayColumn extends ExprColumn
 
         setTextAlign("left");
         setFacetingBehaviorType(FacetingBehaviorType.ALWAYS_OFF);
-        setFk(new LookupForeignKey(new ActionURL(TargetedMSController.ShowExperimentAnnotationsAction.class, container),
+        setFk(new LookupForeignKey(table.getContainerFilter(), new ActionURL(TargetedMSController.ShowExperimentAnnotationsAction.class, container),
                 "id", "Id", "Title")
         {
             @Override
