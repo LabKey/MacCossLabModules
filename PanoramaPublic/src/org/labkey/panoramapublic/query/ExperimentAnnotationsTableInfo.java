@@ -18,8 +18,10 @@ package org.labkey.targetedms.query;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.collections.NamedObjectList;
+import org.labkey.api.data.BaseColumnInfo;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
@@ -72,27 +74,27 @@ import java.util.Set;
 public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSchema>
 {
 
-    public ExperimentAnnotationsTableInfo(final TargetedMSSchema schema)
+    public ExperimentAnnotationsTableInfo(final TargetedMSSchema schema, ContainerFilter cf)
     {
-        this(TargetedMSManager.getTableInfoExperimentAnnotations(), schema);
+        this(TargetedMSManager.getTableInfoExperimentAnnotations(), schema, cf);
     }
 
-    public ExperimentAnnotationsTableInfo(TableInfo tableInfo, TargetedMSSchema schema)
+    public ExperimentAnnotationsTableInfo(TableInfo tableInfo, TargetedMSSchema schema, ContainerFilter cf)
     {
-        super(tableInfo, schema);
+        super(tableInfo, schema, cf);
 
         wrapAllColumns(true);
         setDetailsURL(new DetailsURL(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer())));
 
-        ColumnInfo citationCol = getColumn(FieldKey.fromParts("Citation"));
+        var citationCol = getMutableColumn(FieldKey.fromParts("Citation"));
         citationCol.setDisplayColumnFactory(colInfo -> new PublicationLinkDisplayColumn(colInfo));
         citationCol.setURLTargetWindow("_blank");
         citationCol.setLabel("Publication");
 
-        ColumnInfo spikeInColumn = getColumn(FieldKey.fromParts("SpikeIn"));
+        var spikeInColumn = getMutableColumn(FieldKey.fromParts("SpikeIn"));
         spikeInColumn.setDisplayColumnFactory(colInfo -> new YesNoDisplayColumn(colInfo));
 
-        ColumnInfo titleCol =  getColumn(FieldKey.fromParts("Title"));
+        var titleCol = getMutableColumn(FieldKey.fromParts("Title"));
         titleCol.setDisplayColumnFactory(new DisplayColumnFactory()
         {
             @Override
@@ -137,10 +139,10 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
             }
         });
 
-        ColumnInfo containerCol = getColumn(FieldKey.fromParts("Container"));
+        var containerCol = getMutableColumn(FieldKey.fromParts("Container"));
         ContainerForeignKey.initColumn(containerCol, getUserSchema());
 
-        ColumnInfo shareCol = wrapColumn("Share", getRealTable().getColumn("Id"));
+        var shareCol = wrapColumn("Share", getRealTable().getColumn("Id"));
         shareCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
         {
             @Override
@@ -180,17 +182,17 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
         });
         addColumn(shareCol);
 
-        ColumnInfo labHeadCol = ExperimentUserForeignKey.initColumn(getColumn("LabHead"));
+        var labHeadCol = ExperimentUserForeignKey.initColumn(getColumn("LabHead"));
         labHeadCol.setDescription("A lab head is required for submitting data to ProteomeXchange.");
 
         ColumnInfo submitterCol = ExperimentUserForeignKey.initColumn(getColumn("Submitter"));
         // submitterCol.setUserEditable(getUserSchema().getUser().isInSiteAdminGroup() ? true : false);
 
-        ColumnInfo instrCol = getColumn("Instrument");
+        var instrCol = getMutableColumn("Instrument");
         instrCol.setDisplayColumnFactory(colInfo -> new AutoCompleteColumn(colInfo, new ActionURL(PublishTargetedMSExperimentsController.CompleteInstrumentAction.class, getContainer()), true, "Enter Instrument"));
         instrCol.setDescription("One or more instruments are required for submitting data to ProteomeXchange.");
 
-        ColumnInfo organismCol = getColumn("Organism");
+        var organismCol = getMutableColumn("Organism");
         organismCol.setDisplayColumnFactory(colInfo -> new OrganismColumn(colInfo, new ActionURL(PublishTargetedMSExperimentsController.CompleteOrganismAction.class, getContainer()), false, "Enter Organism"));
         organismCol.setDescription("One or more organisms are required for submitting data to ProteomeXchange.");
 
@@ -232,11 +234,11 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
     {
         private FieldKey _fieldKey;
 
-        static public ColumnInfo initColumn(ColumnInfo column)
+        static public BaseColumnInfo initColumn(ColumnInfo column)
         {
-            column.setFk(new ExperimentUserForeignKey(column.getParentTable().getUserSchema(), column.getFieldKey()));
-            column.setDisplayColumnFactory(colInfo -> new ExperimentUserDisplayColumn(colInfo));
-            return column;
+            ((BaseColumnInfo)column).setFk(new ExperimentUserForeignKey(column.getParentTable().getUserSchema(), column.getFieldKey()));
+            ((BaseColumnInfo)column).setDisplayColumnFactory(colInfo -> new ExperimentUserDisplayColumn(colInfo));
+            return (BaseColumnInfo)column;
         }
 
         public ExperimentUserForeignKey(UserSchema userSchema, FieldKey fieldKey)

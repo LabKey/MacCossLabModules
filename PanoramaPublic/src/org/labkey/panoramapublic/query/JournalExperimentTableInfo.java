@@ -17,6 +17,7 @@ package org.labkey.targetedms.query;
 
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
@@ -43,23 +44,23 @@ import java.util.Set;
 public class JournalExperimentTableInfo extends TargetedMSTable
 {
 
-    public JournalExperimentTableInfo(final TargetedMSSchema schema, Container container)
+    public JournalExperimentTableInfo(final TargetedMSSchema schema, ContainerFilter cf, Container container)
     {
-        super(TargetedMSManager.getTableInfoJournalExperiment(), schema, TargetedMSSchema.ContainerJoinType.ExperimentAnnotationsFK);
+        super(TargetedMSManager.getTableInfoJournalExperiment(), schema, cf, TargetedMSSchema.ContainerJoinType.ExperimentAnnotationsFK);
 
-        ColumnInfo editColumn = wrapColumn("Edit", getRealTable().getColumn("ExperimentAnnotationsId"));
+        var editColumn = wrapColumn("Edit", getRealTable().getColumn("ExperimentAnnotationsId"));
         editColumn.setLabel("");
         editColumn.setDisplayColumnFactory(new EditUrlDisplayColumnFactory(container));
         addColumn(editColumn);
 
-        ColumnInfo deleteColumn = wrapColumn("Delete", getRealTable().getColumn("ExperimentAnnotationsId"));
+        var deleteColumn = wrapColumn("Delete", getRealTable().getColumn("ExperimentAnnotationsId"));
         deleteColumn.setLabel("");
         deleteColumn.setDisplayColumnFactory(new DeleteUrlDisplayColumnFactory(container));
         addColumn(deleteColumn);
 
-        ColumnInfo accessUrlCol = getColumn(FieldKey.fromParts("ShortAccessUrl"));
+        var accessUrlCol = getMutableColumn(FieldKey.fromParts("ShortAccessUrl"));
         accessUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
-        ColumnInfo copyUrlCol = getColumn(FieldKey.fromParts("ShortCopyUrl"));
+        var copyUrlCol = getMutableColumn(FieldKey.fromParts("ShortCopyUrl"));
         copyUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
 
         List<FieldKey> columns = new ArrayList<>();

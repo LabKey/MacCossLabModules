@@ -39,7 +39,7 @@ public class ExperimentAnnotationsFormDataRegion extends DataRegion
     {
         super();
 
-        addColumns(new ExperimentAnnotationsTableInfo(new TargetedMSSchema(viewContext.getUser(), viewContext.getContainer())),
+        addColumns(new ExperimentAnnotationsTableInfo(new TargetedMSSchema(viewContext.getUser(), viewContext.getContainer()), null),
                 "Id,Title,Organism,Instrument,SpikeIn,Abstract,ExperimentDescription,SampleDescription, Keywords, LabHead, LabHeadAffiliation, Submitter, SubmitterAffiliation, Citation,PublicationLink,");
 
         DisplayColumn idCol = getDisplayColumn("Id");

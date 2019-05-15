@@ -168,7 +168,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             QueryView qView = new QueryView(new TargetedMSSchema(getUser(), getContainer()), qSettings, null);
             qView.setShowDetailsColumn(true);
             DetailsURL detailsUrl = new DetailsURL(new ActionURL(JournalGroupDetailsAction.class, getContainer()), Collections.singletonMap("id", "id"));
-            qView.setDetailsURL(detailsUrl.toString());
+            qView.setDetailsURL(detailsUrl);
             qView.setFrame(WebPartView.FrameType.NONE);
 
             VBox view = new VBox();
