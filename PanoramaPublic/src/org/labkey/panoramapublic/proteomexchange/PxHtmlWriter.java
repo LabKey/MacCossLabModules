@@ -24,6 +24,7 @@ import org.labkey.targetedms.PublishTargetedMSExperimentsController;
 import org.labkey.targetedms.model.ExperimentAnnotations;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -222,13 +223,24 @@ public class PxHtmlWriter extends PxWriter
     @Override
     void writePublicationList(ExperimentAnnotations experimentAnnotations, PublishTargetedMSExperimentsController.PxExportForm form)
     {
-
         HtmlList publicationList = new HtmlList();
-        if(!StringUtils.isBlank(form.getPublicationId()))
+        boolean hasPubmedId = !StringUtils.isBlank(form.getPublicationId());
+        if(form.getPeerReviewed() || hasPubmedId)
         {
-
-            publicationList.addItem("PMID", form.getPublicationId(), false);
-            publicationList.addItem("Reference", !StringUtils.isBlank(form.getPublicationId()) ? form.getPublicationReference() : experimentAnnotations.getCitation(), false);
+            if(hasPubmedId)
+            {
+                publicationList.addItem("PMID", form.getPublicationId(), false);
+            }
+            else
+            {
+                publicationList.addItem(null, "NO_PUBMED_ID", false);
+            }
+            String reference = form.getPublicationReference();
+            if(StringUtils.isBlank(reference))
+            {
+                reference = experimentAnnotations.getCitation();
+            }
+            publicationList.addItem("Reference", reference, false);
         }
         else
         {

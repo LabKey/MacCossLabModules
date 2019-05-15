@@ -315,8 +315,9 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         if(skydDataId == null)
         {
-            logger.error("Targetedms run " + tmsRun.getId() + " in container " + tmsRun.getContainer() + " does not have a skydDataId." );
-            return false;
+            // Document may not have a skydDataId, for example, if it does not have any imported replicates. So no .skyd file
+            logger.info("Targetedms run " + tmsRun.getId() + " in container " + tmsRun.getContainer() + " does not have a skydDataId." );
+            skydDataIncluded = true; // Set to true so we don't try to add it later
         }
 
         for(ExpData data: allData)
