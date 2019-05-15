@@ -22,6 +22,7 @@ import org.json.JSONObject;
 import org.labkey.api.collections.CaseInsensitiveHashSet;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DbSchema;
@@ -80,22 +81,22 @@ public class LincsSchema extends UserSchema
 
     @Nullable
     @Override
-    public TableInfo createTable(String name)
+    public TableInfo createTable(String name, ContainerFilter cf)
     {
         if (LincsDataTable.NAME.equalsIgnoreCase(name))
         {
             UserSchema schema = QueryService.get().getUserSchema(getUser(), getContainer(), "targetedms");
-            TableInfo tInfo = schema.getTable(LincsDataTable.PARENT_QUERY);
+            TableInfo tInfo = schema.getTable(LincsDataTable.PARENT_QUERY, cf);
             return new LincsDataTable(tInfo, schema);
         }
         if(TABLE_LINCS_PSP_JOB.equalsIgnoreCase(name))
         {
-            FilteredTable<LincsSchema> result = new FilteredTable<>(getSchema().getTable(name), this);
+            FilteredTable<LincsSchema> result = new FilteredTable<>(getSchema().getTable(name), this, cf);
             result.wrapAllColumns(true);
-            ColumnInfo containerCol = result.getColumn(FieldKey.fromParts("Container"));
+            var containerCol = result.getMutableColumn(FieldKey.fromParts("Container"));
             ContainerForeignKey.initColumn(containerCol, this);
 
-            ColumnInfo jsonCol = result.getColumn(FieldKey.fromParts("Json"));
+            var jsonCol = result.getMutableColumn(FieldKey.fromParts("Json"));
             jsonCol.setDisplayColumnFactory(new DisplayColumnFactory()
             {
                 @Override
@@ -116,7 +117,7 @@ public class LincsSchema extends UserSchema
         }
         if (getTableNames().contains(name))
         {
-            SimpleUserSchema.SimpleTable<LincsSchema> result = new SimpleUserSchema.SimpleTable<LincsSchema>(this, getSchema().getTable(name))
+            SimpleUserSchema.SimpleTable<LincsSchema> result = new SimpleUserSchema.SimpleTable<LincsSchema>(this, getSchema().getTable(name), cf)
             {
                 @Override
                 public boolean hasPermission(@NotNull UserPrincipal user, @NotNull Class<? extends Permission> perm)

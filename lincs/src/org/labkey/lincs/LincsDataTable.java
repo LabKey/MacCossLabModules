@@ -66,11 +66,11 @@ public class LincsDataTable extends FilteredTable
         PipeRoot root = PipelineService.get().getPipelineRootSetting(getContainer());
         assert root != null;
 
-        ColumnInfo plateCol = wrapColumn(PLATE_COL, getRealTable().getColumn(FieldKey.fromParts("Token")));
+        var plateCol = wrapColumn(PLATE_COL, getRealTable().getColumn(FieldKey.fromParts("Token")));
         addColumn(plateCol);
         plateCol.setDisplayColumnFactory(colInfo -> new PlateColumn(colInfo));
 
-        ColumnInfo level1Col =  wrapColumn("Level 1", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+        var level1Col =  wrapColumn("Level 1", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(level1Col);
         level1Col.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo){
             @Override
@@ -107,7 +107,7 @@ public class LincsDataTable extends FilteredTable
             }
         });
 
-        ColumnInfo cellLineCol = getColumn(FieldKey.fromParts("CellLine"));
+        var cellLineCol = getMutableColumn(FieldKey.fromParts("CellLine"));
         cellLineCol.setTextAlign("left");
 
         Path gctDir = root.getRootNioPath().resolve(LincsController.GCT_DIR);
@@ -119,34 +119,34 @@ public class LincsDataTable extends FilteredTable
         if(!processOnClue)
         {
 
-            ColumnInfo level2Col = wrapColumn("Level 2", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+            var level2Col = wrapColumn("Level 2", getRealTable().getColumn(FieldKey.fromParts("FileName")));
             addColumn(level2Col);
             level2Col.setDisplayColumnFactory(colInfo -> new GctColumn(colInfo, assayType, LincsModule.LincsLevel.Two, gctDir, davUrl));
 
-            ColumnInfo level4Col = wrapColumn("Level 4", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+            var level4Col = wrapColumn("Level 4", getRealTable().getColumn(FieldKey.fromParts("FileName")));
             addColumn(level4Col);
             level4Col.setDisplayColumnFactory(colInfo -> new GctColumn(colInfo, assayType, LincsModule.LincsLevel.Four, gctDir, davUrl));
 
         }
         else
         {
-            ColumnInfo level2Col = wrapColumn("Level 2", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+            var level2Col = wrapColumn("Level 2", getRealTable().getColumn(FieldKey.fromParts("FileName")));
             addColumn(level2Col);
             level2Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Two, gctDir, davUrl));
 
-            ColumnInfo level3Col = wrapColumn("Level 3", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+            var level3Col = wrapColumn("Level 3", getRealTable().getColumn(FieldKey.fromParts("FileName")));
             addColumn(level3Col);
             level3Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Three, gctDir, davUrl));
 
-            ColumnInfo level4Col = wrapColumn("Level 4", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+            var level4Col = wrapColumn("Level 4", getRealTable().getColumn(FieldKey.fromParts("FileName")));
             addColumn(level4Col);
             level4Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Four, gctDir, davUrl));
 
-            ColumnInfo cfgCol = wrapColumn("Config", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+            var cfgCol = wrapColumn("Config", getRealTable().getColumn(FieldKey.fromParts("FileName")));
             addColumn(cfgCol);
             cfgCol.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Config, gctDir, davUrl));
 
-            ColumnInfo pspJobCol = wrapColumn("PSP Job Status", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+            var pspJobCol = wrapColumn("PSP Job Status", getRealTable().getColumn(FieldKey.fromParts("FileName")));
             addColumn(pspJobCol);
             pspJobCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
             {
