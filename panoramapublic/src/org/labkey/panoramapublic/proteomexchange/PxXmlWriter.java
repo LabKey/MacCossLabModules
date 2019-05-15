@@ -222,13 +222,22 @@ public class PxXmlWriter extends PxWriter
          */
 
         Element publication_list = new Element("PublicationList");
-        if(!StringUtils.isBlank(form.getPublicationId()))
+        boolean hasPubmedId = !StringUtils.isBlank(form.getPublicationId());
+        if(hasPubmedId || form.getPeerReviewed())
         {
             Element publication = new Element("Publication");
-            publication.setAttributes(Collections.singletonList(new Attribute("id", "PMID" + form.getPublicationId())));
-            publication.addChild(new CvParamElement("MS", "MS:1000879", "PubMed identifier", form.getPublicationId()));
-            publication.addChild(new CvParamElement("MS", "MS:1002866", "Reference",
-                    !StringUtils.isBlank(form.getPublicationId()) ? form.getPublicationReference() : expAnnotations.getCitation()));
+            String id = hasPubmedId ? "PMID" + form.getPublicationId() : "pubmed_id_pending";
+            publication.setAttributes(Collections.singletonList(new Attribute("id", id)));
+            if(hasPubmedId)
+            {
+                publication.addChild(new CvParamElement("MS", "MS:1000879", "PubMed identifier", form.getPublicationId()));
+            }
+            String reference = form.getPublicationReference();
+            if(StringUtils.isBlank(reference))
+            {
+                reference = expAnnotations.getCitation();
+            }
+            publication.addChild(new CvParamElement("MS", "MS:1002866", "Reference", reference));
             publication_list.addChild(publication);
         }
         else
