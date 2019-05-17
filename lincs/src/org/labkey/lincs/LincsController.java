@@ -122,11 +122,13 @@ public class LincsController extends SpringActionController
     @RequiresPermission(ReadPermission.class)
     public class BeginAction extends SimpleViewAction
     {
+        @Override
         public ModelAndView getView(Object o, BindException errors)
         {
             return new JspView("/org/labkey/lincs/view/hello.jsp");
         }
 
+        @Override
         public NavTree appendNavTrail(NavTree root)
         {
             return root;
@@ -145,6 +147,7 @@ public class LincsController extends SpringActionController
     @RequiresPermission(ReadPermission.class)
     public class RunGCTReportAction extends SimpleViewAction<GCTReportForm>
     {
+        @Override
         public ModelAndView getView(GCTReportForm form, BindException errors) throws Exception
         {
             if(form.getRunId() == 0)
