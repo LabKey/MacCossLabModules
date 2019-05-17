@@ -90,6 +90,7 @@ public class JournalExperimentTableInfo extends TargetedMSTable
         {
             return new DataColumn(colInfo)
             {
+                @Override
                 public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
                 {
                     String experimentAnnotationsId = String.valueOf(ctx.get("ExperimentAnnotationsId"));
@@ -138,6 +139,7 @@ public class JournalExperimentTableInfo extends TargetedMSTable
         {
             return new DataColumn(colInfo)
             {
+                @Override
                 public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
                 {
                     String experimentAnnotationsId = String.valueOf(ctx.get("ExperimentAnnotationsId"));
