@@ -71,7 +71,7 @@ public class SignUpSchema extends UserSchema
 
     @Nullable
     @Override
-    public TableInfo createTable(String name)
+    public TableInfo createTable(String name, ContainerFilter containerFilter)
     {
         if (getTableNames().contains(name))
         {
@@ -79,57 +79,39 @@ public class SignUpSchema extends UserSchema
             {
                 return null;
             }
-
-            FilteredTable<SignUpSchema> result = new FilteredTable<>(getSchema().getTable(name), this, ContainerFilter.CURRENT);
+            FilteredTable<SignUpSchema> result = new FilteredTable<>(getSchema().getTable(name), this, containerFilter);
             result.wrapAllColumns(true);
             if(name.equals(TABLE_TEMP_USERS))
                 ContainerForeignKey.initColumn(result.getMutableColumn(FieldKey.fromParts("Container")), this);
 
             var userIdCol = result.getMutableColumn(FieldKey.fromParts("labkeyUserId"));
-            userIdCol.setDisplayColumnFactory(new DisplayColumnFactory()
-            {
-                @Override
-                public DisplayColumn createRenderer(ColumnInfo colInfo)
-                {
-                    DataColumn col = new DataColumn(colInfo);
-                    StringExpression strExpr = StringExpressionFactory.create(PageFlowUtil.urlProvider(UserUrls.class).getUserDetailsURL(getContainer(), null) + "userId=${labkeyUserId}");
-                    col.setURLExpression(strExpr);
-                    return col;
-                }
+            userIdCol.setDisplayColumnFactory(colInfo -> {
+                DataColumn col = new DataColumn(colInfo);
+                StringExpression strExpr = StringExpressionFactory.create(PageFlowUtil.urlProvider(UserUrls.class).getUserDetailsURL(getContainer(), null) + "userId=${labkeyUserId}");
+                col.setURLExpression(strExpr);
+                return col;
             });
 
             if(name.equals(TABLE_MOVED_USERS))
             {
                 var oldgroup = result.getMutableColumn(FieldKey.fromParts("oldgroup"));
                 var newgroup = result.getMutableColumn(FieldKey.fromParts("newgroup"));
-                oldgroup.setDisplayColumnFactory(new DisplayColumnFactory()
+                oldgroup.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
                 {
                     @Override
-                    public DisplayColumn createRenderer(ColumnInfo colInfo)
+                    public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
                     {
-                        return new DataColumn(colInfo)
-                        {
-                            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
-                            {
-                                Group old = org.labkey.api.security.SecurityManager.getGroup(Integer.parseInt(String.valueOf(ctx.get(FieldKey.fromParts("oldgroup")))));
-                                out.write(old.getName());
-                            }
-                        };
+                        Group old = org.labkey.api.security.SecurityManager.getGroup(Integer.parseInt(String.valueOf(ctx.get(FieldKey.fromParts("oldgroup")))));
+                        out.write(old.getName());
                     }
                 });
-                newgroup.setDisplayColumnFactory(new DisplayColumnFactory()
+                newgroup.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
                 {
                     @Override
-                    public DisplayColumn createRenderer(ColumnInfo colInfo)
+                    public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
                     {
-                        return new DataColumn(colInfo)
-                        {
-                            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
-                            {
-                                Group old = org.labkey.api.security.SecurityManager.getGroup(Integer.parseInt(String.valueOf(ctx.get(FieldKey.fromParts("newgroup")))));
-                                out.write(old.getName());
-                            }
-                        };
+                        Group old = org.labkey.api.security.SecurityManager.getGroup(Integer.parseInt(String.valueOf(ctx.get(FieldKey.fromParts("newgroup")))));
+                        out.write(old.getName());
                     }
                 });
             }
@@ -145,6 +127,7 @@ public class SignUpSchema extends UserSchema
                     {
                         return new DataColumn(colInfo)
                         {
+                            @Override
                             public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
                             {
                                 Container container = ContainerManager.getForId(String.valueOf(ctx.get(FieldKey.fromParts("Container"))));
@@ -175,6 +158,7 @@ public class SignUpSchema extends UserSchema
        return null;
     }
 
+    @Override
     public Set<String> getTableNames()
     {
         CaseInsensitiveHashSet hs = new CaseInsensitiveHashSet();

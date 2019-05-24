@@ -19,6 +19,7 @@ package org.labkey.passport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.query.QueryService;
@@ -37,7 +38,7 @@ public class PassportSchema extends UserSchema
     }
 
     @Override
-    public @Nullable TableInfo createTable(String name)
+    public @Nullable TableInfo createTable(String name, ContainerFilter cf)
     {
 //        if (name.equals("ProteinList"))
 //        {
