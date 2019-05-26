@@ -214,7 +214,7 @@
     ActionURL pxActionsUrl = new ActionURL(PublishTargetedMSExperimentsController.GetPxActionsAction.class, getContainer());
     pxActionsUrl.addParameter("id", annot.getId());
 %>
-<br/><div><%=textLink("ProteomeXchange Actions", pxActionsUrl)%></div>
+<br/><div><%=link("ProteomeXchange Actions", pxActionsUrl)%></div>
 <%}%>
 
 <ul>

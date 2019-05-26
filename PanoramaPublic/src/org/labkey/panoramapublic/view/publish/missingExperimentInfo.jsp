@@ -16,7 +16,6 @@
  */
 %>
 <%@ page import="org.labkey.api.portal.ProjectUrls" %>
-<%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
@@ -24,8 +23,8 @@
 <%@ page import="org.labkey.targetedms.PublishTargetedMSExperimentsController" %>
 <%@ page import="org.labkey.targetedms.TargetedMSController" %>
 <%@ page import="org.labkey.targetedms.model.ExperimentAnnotations" %>
-<%@ page import="org.labkey.targetedms.proteomexchange.SubmissionDataStatus" %>
 <%@ page import="org.labkey.targetedms.proteomexchange.ExperimentModificationGetter" %>
+<%@ page import="org.labkey.targetedms.proteomexchange.SubmissionDataStatus" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -43,7 +42,7 @@
 
     ExperimentAnnotations expAnnotations = bean.getExperimentAnnotations();
 
-    ActionURL rawFilesUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer(), TargetedMSController.FolderSetupAction.RAW_FILES_TAB);
+    ActionURL rawFilesUrl = urlProvider(ProjectUrls.class).getBeginURL(getContainer(), TargetedMSController.FolderSetupAction.RAW_FILES_TAB);
     ActionURL formUrl = PublishTargetedMSExperimentsController.getPublishExperimentURL(expAnnotations.getId(), getContainer(),
             true,  // keep private.
             false); // don't request a PX ID.
@@ -53,7 +52,7 @@
 %>
 
 <div style="margin: 30px 20px 20px 20px">
-    The following information is required for getting a ProteomeXchange ID for your submission. <span style="margin-left:10px;"><%=textLink("Continue Without ProteomeXchange ID", formUrl)%></span>
+    The following information is required for getting a ProteomeXchange ID for your submission. <span style="margin-left:10px;"><%=link("Continue Without ProteomeXchange ID", formUrl)%></span>
 
     <% if(bean.hasMissingMetadata()) { %>
     <div style="margin-top:10px;margin-bottom:20px;">
