@@ -59,7 +59,7 @@
 
 <div id="copyExperimentForm"></div>
 <div>
-    <%=textLink("ProteomeXchange Actions", pxActionsUrl)%>
+    <%=link("ProteomeXchange Actions", pxActionsUrl)%>
 </div>
 
 <script type="text/javascript">
