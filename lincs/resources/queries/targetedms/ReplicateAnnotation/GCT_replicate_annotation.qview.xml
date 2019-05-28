@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="ReplicateId/RunId/Id">
+            <properties>
+                <property name="columnTitle" value="RunId"/>
+            </properties>
+        </column>
+        <column name="ReplicateId/Id">
+            <properties>
+                <property name="columnTitle" value="ReplicateId"/>
+            </properties>
+        </column>
+        <column name="ReplicateId/Name">
+            <properties>
+                <property name="columnTitle" value="Replicate"/>
+            </properties>
+        </column>
+        <column name="Name"/>
+        <column name="Value"/>
+    </columns>
+</customView>

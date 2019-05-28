@@ -1,0 +1,44 @@
+table#skylinefiles
+{
+    border-collapse:collapse;
+}
+table#skylinefiles tbody tr:nth-child(even) {
+    background-color: #FFFFFF;
+}
+table#skylinefiles tbody tr:nth-child(odd) {
+    background-color: #F4F4F4;
+}
+
+table#skylinefiles  td
+{
+    border: 1px solid black;
+    padding: 10px;
+}
+table#skylinefiles th
+{
+    border: 1px solid black;
+    padding: 5px;
+}
+
+a.button, a.button:link, a.button:visited
+{
+    background-color: #126495;
+    border: 1px solid #AAAAAA;
+    border-radius: 5px;
+    color: #FFFFFF;
+    display: inline-block;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    margin-left: 5px;
+    margin-top: 0;
+    padding: 3px 10px 4px;
+    text-align: center;
+    text-decoration: none;
+    white-space: nowrap;
+}
+a.button:hover, a.button:active
+{
+    background-color: #FFFFFF;
+    color: #126495;
+}

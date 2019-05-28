@@ -1,0 +1,24 @@
+Name	Advanced	Ignored	DisplayName
+canonical_smiles	false	true	Canonical Smiles
+cell_id	false	false	Cell Id
+det_filename	true	false	File Name
+det_normalization_group_vector	true	false	Normalization Group Vector
+det_plate	false	false	Plate
+det_well	true	false	Well
+id	true	false	Id
+isomeric_smiles	false	true	Isomeric Smiles
+lsm_id	true	false	Lsm Id
+pert_batch_internal_compound_enumerator	true	false	Batch Internal Compound Enumerator
+pert_batch_internal_replicate	true	false	Batch Internal Replicate
+pert_desc	true	false	Perturbation Description
+pert_dose	true	false	Perturbation Dose
+pert_dose_unit	true	false	Perturbation Dose Unit
+pert_id	true	false	Perturbation Id
+pert_iname	false	false	Perturbation Name
+pert_time	true	false	Perturbation Time
+pert_time_unit	true	false	Perturbation Time Unit
+pert_type	false	false	Perturbation Type
+pert_vehicle	true	false	Perturbation Vehicle
+provenance_code	false	true	Provenance Code
+pubchem_cid	false	false	Pubchem Id
+cell_reprogrammed	true	false	Cell Reprogrammed

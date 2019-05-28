@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="PeptideId/PeptideGroupId/RunId/File/Id">
+            <properties>
+                <property name="columnTitle" value="RunId"/>
+            </properties>
+        </column>
+        <column name="PeptideId/Id">
+            <properties>
+                <property name="columnTitle" value="PeptideId"/>
+            </properties>
+        </column>
+        <column name="PeptideId/PeptideModifiedSequence">
+            <properties>
+                <property name="columnTitle" value="PeptideModifiedSequence"/>
+            </properties>
+        </column>
+        <column name="PeptideId/Sequence">
+            <properties>
+                <property name="columnTitle" value="PeptideSequence"/>
+            </properties>
+        </column>
+        <column name="PeptideId/PeptideGroupId/Label">
+            <properties>
+                <property name="columnTitle" value="ProteinName"/>
+            </properties>
+        </column>
+        <column name="Name"/>
+        <column name="Value"/>
+    </columns>
+</customView>
