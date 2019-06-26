@@ -46,6 +46,7 @@ import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ReaderRole;
 import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.view.Portal;
@@ -300,7 +301,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         {
             if(child.getActiveModules().contains(targetedMSModule))
             {
-                moduleProperty.saveValue(user, c, TargetedMSModule.FolderType.Experiment.toString());
+                moduleProperty.saveValue(user, c, TargetedMSService.FolderType.Experiment.toString());
             }
         }
     }
