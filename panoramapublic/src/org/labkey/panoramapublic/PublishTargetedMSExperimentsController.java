@@ -77,6 +77,7 @@ import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
@@ -278,7 +279,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 // Make this an "Experiment data" folder.
                 Module targetedMSModule = ModuleLoader.getInstance().getModule(TargetedMSModule.NAME);
                 ModuleProperty moduleProperty = targetedMSModule.getModuleProperties().get(TargetedMSModule.TARGETED_MS_FOLDER_TYPE);
-                moduleProperty.saveValue(getUser(), container, TargetedMSModule.FolderType.Experiment.toString());
+                moduleProperty.saveValue(getUser(), container, TargetedMSService.FolderType.Experiment.toString());
                 // Display only the "Targeted MS Experiment List" webpart.
                 Portal.WebPart webPart = Portal.getPortalPart(TargetedMSExperimentsWebPart.WEB_PART_NAME).createWebPart();
                 List<Portal.WebPart> newWebParts = Collections.singletonList(webPart);
@@ -785,8 +786,8 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             validateJournal(errors, _experimentAnnotations, _journal);
 
             // Cannot publish if this is not an "Experimental data" folder.
-            TargetedMSModule.FolderType folderType = TargetedMSModule.getFolderType(_experimentAnnotations.getContainer());
-            if(folderType != TargetedMSModule.FolderType.Experiment)
+            TargetedMSService.FolderType folderType = TargetedMSModule.getFolderType(_experimentAnnotations.getContainer());
+            if(folderType != TargetedMSService.FolderType.Experiment)
             {
                 errors.reject(ERROR_MSG,"Only Targeted MS folders of type \"Experimental data\" can be submitted to " + _journal.getName() + ".");
             }
