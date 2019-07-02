@@ -545,7 +545,7 @@ a.banner-button-small{
     {
         final String tableId2 = "table-" + rating.getRowId();
         final String reviewTitle = rating.getTitle();
-        final String review = h(rating.getReview()).replace("\r\n", "\n").replace("\n", "<br>");
+        final String review = h(rating.getReview()).toString();
         pageContext.setAttribute("review", review);
         pageContext.setAttribute("reviewEscaped", review.replace("&#039;", "\\'"));
         final Integer ratingValue = rating.getRating();
