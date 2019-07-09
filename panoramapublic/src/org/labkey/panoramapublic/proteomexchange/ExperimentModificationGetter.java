@@ -51,26 +51,26 @@ public class ExperimentModificationGetter
 
         for(TargetedMSRun run: runs)
         {
-            List<PeptideSettings.RunStructuralModification> smods = ModificationManager.getStructuralModificationsForRun(run.getId());
-            for(PeptideSettings.RunStructuralModification mod: smods)
+            List<PeptideSettings.StructuralModification> smods = ModificationManager.getStructuralModificationsUsedInRun(run.getId());
+            for(PeptideSettings.StructuralModification mod: smods)
             {
-                PxModification pxMod = strModMap.get(mod.getStructuralModId());
+                PxModification pxMod = strModMap.get(mod.getId());
                 if(pxMod == null)
                 {
                     pxMod = getStructuralUnimodMod(mod, uMods);
-                    strModMap.put(mod.getStructuralModId(), pxMod);
+                    strModMap.put(mod.getId(), pxMod);
                 }
                 pxMod.addSkylineDoc(run.getFileName());
             }
 
-            List<PeptideSettings.RunIsotopeModification> iMods = ModificationManager.getIsotopeModificationsForRun(run.getId());
-            for(PeptideSettings.RunIsotopeModification mod: iMods)
+            List<PeptideSettings.IsotopeModification> iMods = ModificationManager.getIsotopeModificationsUsedInRun(run.getId());
+            for(PeptideSettings.IsotopeModification mod: iMods)
             {
-                PxModification pxMod = isoModMap.get(mod.getIsotopeModId());
+                PxModification pxMod = isoModMap.get(mod.getId());
                 if(pxMod == null)
                 {
                     pxMod = getIsotopicUnimodMod(mod, uMods, expAnnot.getContainer());
-                    isoModMap.put(mod.getIsotopeModId(), pxMod);
+                    isoModMap.put(mod.getId(), pxMod);
                 }
                 pxMod.addSkylineDoc(run.getFileName());
             }
