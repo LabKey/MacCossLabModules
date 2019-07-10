@@ -100,6 +100,16 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
         return PipelineJobService.get().getTaskPipeline(new TaskId(CopyExperimentPipelineJob.class));
     }
 
+    @Override
+    protected void finallyCleanUpLocalDirectory()
+   {
+       // Wait until the final task is complete before deleting anything from the temp export location
+       if (getActiveTaskId() == null)
+       {
+           super.finallyCleanUpLocalDirectory();
+       }
+   }
+
     public static File getLogFileFor(PipeRoot root, ExperimentAnnotations experimentAnnotations) throws IOException
     {
         File rootDir = root.getLogDirectory();
