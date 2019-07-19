@@ -337,11 +337,11 @@ public class LincsController extends SpringActionController
         {
             if(file.getName().toLowerCase().equals("lincs.gct"))
             {
-                Files.copy(file.toPath(), gct);
+                Files.copy(file.toPath(), gct, StandardCopyOption.REPLACE_EXISTING);
             }
             else if(file.getName().toLowerCase().equals("lincs.processed.gct") && processedGct != null)
             {
-                Files.copy(file.toPath(), processedGct);
+                Files.copy(file.toPath(), processedGct, StandardCopyOption.REPLACE_EXISTING);
             }
             else if(file.getName().toLowerCase().equals("console.txt"))
             {
