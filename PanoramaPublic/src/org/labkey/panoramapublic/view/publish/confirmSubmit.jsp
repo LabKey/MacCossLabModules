@@ -98,6 +98,10 @@
         </ul>
         <br>
     <% } %>
+    <div style="font-weight:bold;font-style:italic;margin-top:10px;">
+        Data submitted to Panorama Public will be available under the <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0 license</a> once it is made public.
+        If you would like to make your data available under a different license please contact the PanoramaWeb team at panorama@proteinms.net.
+    </div>
 <br>
     Are you sure you want to continue?
 </div>
