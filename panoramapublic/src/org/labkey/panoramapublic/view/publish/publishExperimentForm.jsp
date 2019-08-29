@@ -68,6 +68,12 @@
 %>
 
 <div id="publishExperimentForm"></div>
+
+<div style="font-weight:bold;font-style:italic;">
+    Data submitted to Panorama Public will be available under the <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0 license</a> once it is made public.
+    If you would like to make your data available under a different license please contact the PanoramaWeb team at panorama@proteinms.net.
+</div>
+
 <div style="margin: 30px 20px 20px 20px">
     By submitting the experiment you are granting access to <%=journalName%> to copy data as well as any
     wiki pages, custom views, custom queries, lists and R reports in the following folders:
