@@ -374,7 +374,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public ModelAndView getConfirmView(JournalForm form, BindException errors)
         {
-            return FormPage.getView(PublishTargetedMSExperimentsController.class, form, "view/publish/deleteJournal.jsp");
+            return FormPage.getView("/org/labkey/targetedms/view/publish/deleteJournal.jsp", form);
         }
 
         @Override
