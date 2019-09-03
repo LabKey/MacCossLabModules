@@ -104,7 +104,7 @@ public class JournalExperimentTableInfo extends TargetedMSTable
                     {
                         _url.replaceParameter("id", experimentAnnotationsId);
                         _url.replaceParameter("journalId", journalId);
-                        out.write(PageFlowUtil.textLink(_linkText, _url));
+                        out.write(PageFlowUtil.link(_linkText).href(_url).toString());
                     }
                 }
 
@@ -149,14 +149,14 @@ public class JournalExperimentTableInfo extends TargetedMSTable
                         // Show the reset link if the experiment has already been copied by a journal
                         _resetUrl.replaceParameter("id", experimentAnnotationsId);
                         _resetUrl.replaceParameter("journalId", journalId);
-                        out.write(PageFlowUtil.textLink(_republishLinkText, _resetUrl));
+                        out.write(PageFlowUtil.link(_republishLinkText).href(_resetUrl).toString());
                     }
                     else
                     {
                         // Otherwise show the edit link
                         _editUrl.replaceParameter("id", experimentAnnotationsId);
                         _editUrl.replaceParameter("journalId", journalId);
-                        out.write(PageFlowUtil.textLink(_editLinkText, _editUrl));
+                        out.write(PageFlowUtil.link(_editLinkText).href(_editUrl).toString());
                     }
                 }
 

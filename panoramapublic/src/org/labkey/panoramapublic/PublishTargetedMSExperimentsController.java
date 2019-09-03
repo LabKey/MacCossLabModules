@@ -2096,7 +2096,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
 
             html.append("<br>");
-            html.append(PageFlowUtil.textLink("Back to PX Actions", new ActionURL(GetPxActionsAction.class, getContainer()).addParameter("id", expAnnot.getId())));
+            html.append(PageFlowUtil.link("Back to PX Actions").href(new ActionURL(GetPxActionsAction.class, getContainer()).addParameter("id", expAnnot.getId())));
             return new HtmlView(html.toString());
         }
     }
