@@ -68,7 +68,7 @@ public class LincsDataTable extends FilteredTable
 
         var plateCol = wrapColumn(PLATE_COL, getRealTable().getColumn(FieldKey.fromParts("Token")));
         addColumn(plateCol);
-        plateCol.setDisplayColumnFactory(colInfo -> new PlateColumn(colInfo));
+        plateCol.setDisplayColumnFactory(PlateColumn::new);
 
         var level1Col =  wrapColumn("Level 1", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(level1Col);
@@ -80,7 +80,7 @@ public class LincsDataTable extends FilteredTable
                 Integer runId = ctx.get(FieldKey.fromParts("Id"), Integer.class);
                 downloadUrl.addParameter("runId", runId);
                 out.write("<nobr>");
-                out.write(PageFlowUtil.iconLink("fa fa-download", "Download", downloadUrl.getEncodedLocalURIString(), null, null, null));
+                out.write(PageFlowUtil.iconLink("fa fa-download", "Download").href(downloadUrl).toString());
                 ActionURL docDetailsUrl = new ActionURL("targetedms", "ShowPrecursorList", getContainer());
                 docDetailsUrl.addParameter("id", runId);
                 out.write("&nbsp;<a href=\"" + docDetailsUrl.getEncodedLocalURIString() + "\">Skyline</a>");
@@ -186,7 +186,7 @@ public class LincsDataTable extends FilteredTable
                     }
                     ActionURL url = new ActionURL(LincsController.LincsPspJobDetailsAction.class, getContainer());
                     url.addParameter("runId", pspJob.getRunId());
-                    out.write(PageFlowUtil.textLink(text, url));
+                    out.write(PageFlowUtil.link(text).href(url).toString());
                 }
 
                 @Override
@@ -354,7 +354,7 @@ public class LincsDataTable extends FilteredTable
         {
             out.write("<nobr>&nbsp;");
             // Do not HTML encode links given to PageFlowUtil.iconLink
-            out.write(PageFlowUtil.iconLink("fa fa-download", "Download", downloadUrl, analyticsScript, null, null));
+            out.write(PageFlowUtil.iconLink("fa fa-download", "Download").href(downloadUrl).onClick(analyticsScript).toString());
             out.write("&nbsp;");
             String onclickEvt = StringUtils.isBlank(analyticsScript) ? "" : "onclick=\"" + analyticsScript + "\"";
             out.write("<a " + onclickEvt + " href=\"" + downloadUrlEncoded + "\">" + downloadText + "</a>&nbsp;");
