@@ -1298,7 +1298,7 @@ public class LincsController extends SpringActionController
             if(pspJob.getPipelineJobId() != null && getUser().isInSiteAdminGroup())
             {
                 ActionURL pipelineJobUrl = PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlDetails(getContainer(), pspJob.getPipelineJobId());
-                view.addView(new HtmlView(PageFlowUtil.textLink("View Pipeline Job. Status: " + PipelineService.get().getStatusFile(pspJob.getPipelineJobId()).getStatus(), pipelineJobUrl)));
+                view.addView(new HtmlView(PageFlowUtil.link("View Pipeline Job. Status: " + PipelineService.get().getStatusFile(pspJob.getPipelineJobId()).getStatus()).href(pipelineJobUrl).toString()));
             }
 
             view.setTitle("PSP Job Details");
