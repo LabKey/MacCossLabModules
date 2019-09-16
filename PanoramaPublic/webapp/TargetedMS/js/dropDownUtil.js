@@ -12,7 +12,9 @@
  * * *
  */
 
-function viewExperimentDetails(obj, experimentContainer, id, detailsPageURL)
++function($){
+
+viewExperimentDetails = function (obj, experimentContainer, id, detailsPageURL)
 {
     var abstract = null;
     var expDetails = null;
@@ -154,5 +156,6 @@ function viewExperimentDetails(obj, experimentContainer, id, detailsPageURL)
         $('#expandcontract-'+id).attr('src', '/labkey/_images/plus.gif');
     }
 }
+}(jQuery);
 
 

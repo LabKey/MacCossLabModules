@@ -7,7 +7,9 @@
 // Uses tagsinput (https://bootstrap-tagsinput.github.io/bootstrap-tagsinput/examples/)
 // and
 // typeahead (https://github.com/twitter/typeahead.js, http://twitter.github.io/typeahead.js/examples/)
-function initAutoComplete(url, renderId, prefetch)
++function($){
+
+initAutoComplete = function (url, renderId, prefetch)
 {
     var completionStore = createStore(url, prefetch);
     createInputElement(renderId, completionStore, !prefetch);
@@ -130,3 +132,4 @@ function createInputElement(renderId, store, showDefaults)
         };
     });
 }
+}(jQuery);

@@ -3,7 +3,8 @@
  *
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
-function showShareLink(el, link)
++function($){
+showShareLink = function (el, link)
 {
     var imgUrl = LABKEY.contextPath + "/TargetedMS/images/clippy.png";
     var content = '<div><input type="text" id="accessUrlInput" class="shareLink" value="' + link + '" size=55"/>';
@@ -38,3 +39,4 @@ function showShareLink(el, link)
 
     return false;
 }
+}(jQuery);
