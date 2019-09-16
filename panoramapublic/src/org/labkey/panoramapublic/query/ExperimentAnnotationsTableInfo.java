@@ -109,7 +109,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
                     public @NotNull Set<ClientDependency> getClientDependencies()
                     {
                         return PageFlowUtil.set(
-                                ClientDependency.fromPath(AppProps.getInstance().getScheme() + "://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"),
+                                ClientDependency.fromPath("internal/jQuery"),
                                 ClientDependency.fromPath("/TargetedMS/css/dropDown.css"),
                                 ClientDependency.fromPath("/TargetedMS/js/dropDownUtil.js"));
                     }

@@ -36,6 +36,7 @@
     public void addClientDependencies(ClientDependencies dependencies)
     {
         dependencies.add("Ext4");
+        dependencies.add("internal/jQuery");
         dependencies.add("TargetedMS/js/clipboard.min.js");
         dependencies.add("TargetedMS/js/ExperimentAnnotations.js");
         dependencies.add("TargetedMS/css/ExperimentAnnotations.css");
@@ -256,13 +257,13 @@
 
 </div>
 
-<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
 <script type="text/javascript">
 
     var SHOW_MORE_TEXT = "[Show more]";
     var SHOW_LESS_TEXT = "[Show less]";
     var MAX_CHARS = 500;
 
++function($){
     function showLess(element)
     {
         var text = element.html();
@@ -300,5 +301,6 @@
             $(this).prev().toggle();
         });
     });
+}(jQuery);
 
 </script>
