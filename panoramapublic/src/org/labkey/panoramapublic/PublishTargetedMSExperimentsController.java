@@ -621,7 +621,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public NavTree appendNavTrail(NavTree root)
         {
-            return null;
+            return root.addChild("Copy Experiment");
         }
     }
 
@@ -714,7 +714,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public NavTree appendNavTrail(NavTree root)
         {
-            return null;
+            return root.addChild("Experiment Submission Form");
         }
 
         @Override
@@ -825,6 +825,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
             else
             {
+                setTitle("Confirm Submission Request");
                 PublishExperimentConfirmBean bean = new PublishExperimentConfirmBean();
                 bean.setExperimentAnnotations(_experimentAnnotations);
                 bean.setJournal(_journal);
@@ -838,6 +839,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
         public ModelAndView getSuccessView(PublishExperimentForm form)
         {
+            setTitle("Submitted");
             String journal = _journal.getName();
             ActionURL returnUrl = TargetedMSController.getViewExperimentDetailsURL(_experimentAnnotations.getId(), getContainer());
             StringBuilder html = new StringBuilder();
@@ -1192,6 +1194,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
+            setTitle("Confirm Submission Update");
             PublishExperimentConfirmBean bean = new PublishExperimentConfirmBean();
             bean.setExperimentAnnotations(_experimentAnnotations);
             bean.setJournal(_journal);
@@ -1318,6 +1321,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
+            setTitle("Confirm Delete Submission");
             StringBuilder html = new StringBuilder();
             html.append("Are you sure you want to cancel your submission request to ").append(_journal.getName());
             html.append("?");
@@ -1389,6 +1393,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
+            setTitle("Confirm Resubmit Experiment");
             StringBuilder html = new StringBuilder();
             html.append("Experiment: ").append(_experimentAnnotations.getTitle());
             html.append("<br><br>");
@@ -1631,7 +1636,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public NavTree appendNavTrail(NavTree root)
         {
-            return null;
+            return root.addChild("Pre-submission Check");
         }
     }
 
@@ -1718,7 +1723,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public NavTree appendNavTrail(NavTree root)
         {
-            return null;
+            return root.addChild("ProteomeXchange Actions");
         }
     }
 
@@ -1934,12 +1939,6 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             return getHtmlView(expAnnot, form, pxUser, pxPassword);
         }
 
-        @Override
-        public NavTree appendNavTrail(NavTree root)
-        {
-            return root;
-        }
-
         protected File writePxXmlFile(ExperimentAnnotations expAnnot, FormType form) throws PxException
         {
             File xml = getLocalFile(getContainer(), "px.xml");
@@ -2006,6 +2005,11 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             html.append("<p style=\"white-space: pre-wrap;\">").append(PageFlowUtil.filter(response)).append("</p>");
             return new HtmlView(html.toString());
         }
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root.addChild("Validate ProteomeXchange XML");
+        }
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
@@ -2027,6 +2031,12 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             html.append("<p>Response was: </p>");
             html.append("<p style=\"white-space: pre-wrap;\">").append(PageFlowUtil.filter(response)).append("</p>");
             return new HtmlView(html.toString());
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root.addChild("Submit ProteomeXchange XML");
         }
     }
 
@@ -2099,6 +2109,11 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             html.append(PageFlowUtil.link("Back to PX Actions").href(new ActionURL(GetPxActionsAction.class, getContainer()).addParameter("id", expAnnot.getId())));
             return new HtmlView(html.toString());
         }
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root.addChild("Save ProteomeXchange ID");
+        }
     }
 
     public static class SavePxIdForm extends PxExportForm
@@ -2146,7 +2161,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public NavTree appendNavTrail(NavTree root)
         {
-            return root;
+            return root.addChild("Summary of ProteomeXchange Information");
         }
     }
 

@@ -467,13 +467,17 @@ public class JournalManager
         {
             shortURLService.deleteShortURL(shortUrl, user);
         }
+        // Log infos not errors. If this shortUrl is still associated with an experiment in a Panorama Public project
+        // TargetedMSListener.canDelete(ShortURLRecord shortUrl) will returns errors, and the url will not be deleted.
+        // The url is eventually deleted, but the errors logged could cause the PanoramaPublicTest to fail while trying to
+        // delete the Panorama Public project if it still contains an experiment.
         catch(UnauthorizedException e)
         {
-            LOG.error("User " + user.getEmail() + " (" + user.getUserId() + ") is not authorized to delete the shortUrlL: " + shortUrl.getShortURL(), e);
+            LOG.info("User " + user.getEmail() + " (" + user.getUserId() + ") is not authorized to delete the shortUrl: " + shortUrl.getShortURL() + ". Error was: " + e.getMessage());
         }
         catch(ValidationException e)
         {
-            LOG.error("Cannot delete the shortUrl: " + shortUrl.getShortURL(), e);
+            LOG.info("Cannot delete the shortUrl: " + shortUrl.getShortURL() + ". Error was: " + e.getMessage());
         }
     }
 
