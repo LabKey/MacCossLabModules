@@ -78,12 +78,12 @@ public class LincsDataTable extends FilteredTable
             {
                 ActionURL downloadUrl = new ActionURL("targetedms", "DownloadDocument", getContainer());
                 Integer runId = ctx.get(FieldKey.fromParts("Id"), Integer.class);
-                downloadUrl.addParameter("runId", runId);
+                downloadUrl.addParameter("id", runId);
                 out.write("<nobr>");
-                out.write(PageFlowUtil.iconLink("fa fa-download", "Download", downloadUrl.getEncodedLocalURIString(), null, null, null));
+                out.write(new Link.LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl).toString());
                 ActionURL docDetailsUrl = new ActionURL("targetedms", "ShowPrecursorList", getContainer());
                 docDetailsUrl.addParameter("id", runId);
-                out.write("&nbsp;<a href=\"" + docDetailsUrl.getEncodedLocalURIString() + "\">Skyline</a>");
+                out.write("&nbsp;" + new Link.LinkBuilder("Skyline").href(docDetailsUrl).clearClasses().toString());
                 out.write("</nobr>");
             }
 
