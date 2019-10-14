@@ -59,7 +59,7 @@ public class ProteinListView extends QueryView
         ret.getDataRegion().addDisplayColumn(0, urlColumn);
 
         ActionURL urlDownload = new ActionURL("targetedms", "downloadDocument", getContainer());
-        urlDownload.addParameter("runId", "${runid}");
+        urlDownload.addParameter("id", "${runid}");
         SimpleDisplayColumn urlColumnDownload = new UrlColumn(urlDownload.toString(), "Download");
         urlColumnDownload.setName("Skyline"); // TODO check if works
         ret.getDataRegion().addDisplayColumn(10, urlColumnDownload);

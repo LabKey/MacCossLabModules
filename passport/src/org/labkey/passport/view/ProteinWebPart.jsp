@@ -49,7 +49,7 @@
 <div id="passportContainer">
     <div id="basicproteininfo">
         <h2 id="proteinName"><%=h(protein.getName())%>
-            <a href="<%=h(new ActionURL("targetedms", "downloadDocument", getContainer()))%>runId=<%=h(protein.getFile().getRunId())%>">
+            <a href="<%=h(new ActionURL("targetedms", "downloadDocument", getContainer()))%>id=<%=h(protein.getFile().getRunId())%>">
                 <img src="<%=h(contextPath)%>/passport/img/download.png" style="width:30x; height:30px; margin-left:5px;" alt="Download Skyline dataset" title="Download Skyline dataset from PanoramaWeb.org">
             </a><sub title="month/day/year" id="dataUploaded">Data Uploaded: <%=h(new SimpleDateFormat("MM-dd-yyyy").format(protein.getFile().getCreatedDate()))%></sub>
         </h2>
