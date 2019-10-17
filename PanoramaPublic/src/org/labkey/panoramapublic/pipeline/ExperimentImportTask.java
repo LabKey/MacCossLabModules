@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.pipeline;
+package org.labkey.panoramapublic.pipeline;
 
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.admin.FolderImportContext;

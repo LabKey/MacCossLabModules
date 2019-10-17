@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.query;
+package org.labkey.panoramapublic.query;
 
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
@@ -30,13 +30,12 @@ import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
 import org.labkey.api.security.permissions.InsertPermission;
+import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.util.GUID;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.api.view.ShortURLRecord;
-import org.labkey.targetedms.TargetedMSManager;
-import org.labkey.targetedms.TargetedMSRun;
-import org.labkey.targetedms.model.ExperimentAnnotations;
-
+import org.labkey.panoramapublic.PanoramaPublicManager;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -56,12 +55,12 @@ public class ExperimentAnnotationsManager
 
     public static ExperimentAnnotations get(int experimentAnnotationsId)
     {
-        return new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(),null, null).getObject(experimentAnnotationsId, ExperimentAnnotations.class);
+        return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),null, null).getObject(experimentAnnotationsId, ExperimentAnnotations.class);
     }
 
     public static ExperimentAnnotations getForExperiment(int experimentId)
     {
-        return new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(),
+        return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),
                 new SimpleFilter(FieldKey.fromParts("ExperimentId"), experimentId), null).getObject(ExperimentAnnotations.class);
     }
 
@@ -77,12 +76,12 @@ public class ExperimentAnnotationsManager
             }
             else
             {
-                toReturn = Table.update(user, TargetedMSManager.getTableInfoExperimentAnnotations(), annotations, annotations.getId());
+                toReturn = Table.update(user, PanoramaPublicManager.getTableInfoExperimentAnnotations(), annotations, annotations.getId());
             }
         }
         else
         {
-            toReturn = Table.insert(user, TargetedMSManager.getTableInfoExperimentAnnotations(), annotations);
+            toReturn = Table.insert(user, PanoramaPublicManager.getTableInfoExperimentAnnotations(), annotations);
         }
         return toReturn;
     }
@@ -115,7 +114,7 @@ public class ExperimentAnnotationsManager
             rowIds[i++] = rowId;
         }
 
-        try(DbScope.Transaction transaction = TargetedMSManager.getSchema().getScope().ensureTransaction())
+        try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
         {
             removeRunIds(experiment, rowIds, user);
 
@@ -135,7 +134,7 @@ public class ExperimentAnnotationsManager
             ExpRun run = expService.getExpRun(rowId);
             if(run != null)
             {
-                TargetedMSRun tmsRun = TargetedMSManager.getRunByLsid(run.getLSID(), run.getContainer());
+                ITargetedMSRun tmsRun = PanoramaPublicManager.getRunByLsid(run.getLSID(), run.getContainer());
                 if(tmsRun != null)
                 {
                     experiment.removeRun(user, run);
@@ -182,7 +181,7 @@ public class ExperimentAnnotationsManager
             rowIds[i++] = run.getRowId();
         }
 
-        try(DbScope.Transaction transaction = TargetedMSManager.getSchema().getScope().ensureTransaction())
+        try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
         {
             addSelectedRunsToExperiment(experiment, rowIds, user);
 
@@ -201,7 +200,7 @@ public class ExperimentAnnotationsManager
             ExpRun run = ExperimentService.get().getExpRun(rowId);
             if (run != null)
             {
-                TargetedMSRun tmsRun = TargetedMSManager.getRunByLsid(run.getLSID(), run.getContainer());
+                ITargetedMSRun tmsRun = PanoramaPublicManager.getRunByLsid(run.getLSID(), run.getContainer());
                 validateRun(tmsRun, experiment.getContainer());
 
                 if(tmsRun != null)
@@ -213,7 +212,7 @@ public class ExperimentAnnotationsManager
         experiment.addRuns(user, runs.toArray(new ExpRun[runs.size()]));
     }
 
-    private static void validateRun(TargetedMSRun run, Container c)
+    private static void validateRun(ITargetedMSRun run, Container c)
     {
         Container container = run.getContainer();
 
@@ -251,7 +250,7 @@ public class ExperimentAnnotationsManager
         // If any journal were given access to this experiment, remove the access and delete entries from the JournalExperiment table.
         JournalManager.beforeDeleteTargetedMSExperiment(expAnnotations, user);
 
-        Table.delete(TargetedMSManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());
+        Table.delete(PanoramaPublicManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());
 
         if(expAnnotations.isJournalCopy() && expAnnotations.getShortUrl() != null)
         {
@@ -268,9 +267,9 @@ public class ExperimentAnnotationsManager
     {
         SimpleFilter filter = new SimpleFilter();
         ContainerFilter containerFilter = new ContainerFilter.CurrentAndSubfolders(user);
-        filter.addCondition(containerFilter.createFilterClause(TargetedMSManager.getSchema(), FieldKey.fromParts("Container"), container));
+        filter.addCondition(containerFilter.createFilterClause(PanoramaPublicManager.getSchema(), FieldKey.fromParts("Container"), container));
 
-        return new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(), filter, null).getArrayList(ExperimentAnnotations.class);
+        return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(), filter, null).getArrayList(ExperimentAnnotations.class);
     }
 
     /**
@@ -308,7 +307,7 @@ public class ExperimentAnnotationsManager
     private static ExperimentAnnotations get(Container container)
     {
         SimpleFilter filter = container != null ? SimpleFilter.createContainerFilter(container) : null;
-        List<ExperimentAnnotations> expAnnotations = new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(),
+        List<ExperimentAnnotations> expAnnotations = new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),
                 filter, null).getArrayList(ExperimentAnnotations.class);
         if(expAnnotations.size() > 0)
         {
@@ -341,7 +340,7 @@ public class ExperimentAnnotationsManager
         SimpleFilter filter = new SimpleFilter();
         filter.addInClause(FieldKey.fromParts("Container"), subfolderIds);
 
-        List<ExperimentAnnotations> expAnnotations = new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(),
+        List<ExperimentAnnotations> expAnnotations = new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),
                 filter, null).getArrayList(ExperimentAnnotations.class);
 
         return expAnnotations.size() > 0;
@@ -351,7 +350,7 @@ public class ExperimentAnnotationsManager
     {
         SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("shortUrl"), shortUrl);
         // There should be at most 1 record associated with a shortURL in the ExperimentAnnotations table.
-        return new TableSelector(TargetedMSManager.getTableInfoExperimentAnnotations(),
+        return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),
                 filter, null).getObject(ExperimentAnnotations.class);
     }
 
@@ -359,7 +358,7 @@ public class ExperimentAnnotationsManager
     {
         SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("sourceExperimentId"), sourceExperimentId);
         filter.addCondition(FieldKey.fromParts("shortUrl"), shortAccessUrl);
-        TableInfo tInfo = TargetedMSManager.getTableInfoExperimentAnnotations();
+        TableInfo tInfo = PanoramaPublicManager.getTableInfoExperimentAnnotations();
 
         ExperimentAnnotations expAnnot = new TableSelector(tInfo, filter, null).getObject(ExperimentAnnotations.class);
 
@@ -370,16 +369,16 @@ public class ExperimentAnnotationsManager
         }
     }
 
-    public static List<TargetedMSRun> getTargetedMSRuns(ExperimentAnnotations expAnnotations)
+    public static List<ITargetedMSRun> getTargetedMSRuns(ExperimentAnnotations expAnnotations)
     {
-        List<TargetedMSRun> runs = new ArrayList<>();
+        List<ITargetedMSRun> runs = new ArrayList<>();
         ExpExperiment exp = ExperimentService.get().getExpExperiment(expAnnotations.getExperimentId());
         if(exp != null)
         {
             List<? extends ExpRun> expRuns = exp.getRuns();
             for (ExpRun run : expRuns)
             {
-                TargetedMSRun tRun = TargetedMSManager.getRunByLsid(run.getLSID(), run.getContainer());
+                ITargetedMSRun tRun = PanoramaPublicManager.getRunByLsid(run.getLSID(), run.getContainer());
                 if (run != null)
                 {
                     runs.add(tRun);
@@ -391,7 +390,7 @@ public class ExperimentAnnotationsManager
 
     public static void updatePxId(ExperimentAnnotations expAnnotations, String pxId)
     {
-        new SqlExecutor(TargetedMSManager.getSchema()).execute("UPDATE " + TargetedMSManager.getTableInfoExperimentAnnotations() +
+        new SqlExecutor(PanoramaPublicManager.getSchema()).execute("UPDATE " + PanoramaPublicManager.getTableInfoExperimentAnnotations() +
                         " SET pxId = ? WHERE Id = ?", pxId, expAnnotations.getId());
     }
 }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.pipeline;
+package org.labkey.panoramapublic.pipeline;
 
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -26,8 +26,6 @@ import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.files.view.FilesWebPart;
-import org.labkey.api.module.ModuleLoader;
-import org.labkey.api.module.ModuleProperty;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
@@ -46,18 +44,16 @@ import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ReaderRole;
 import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
-import org.labkey.api.targetedms.TargetedMSService;
+import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.view.Portal;
-import org.labkey.targetedms.TargetedMSController;
-import org.labkey.targetedms.TargetedMSManager;
-import org.labkey.targetedms.TargetedMSModule;
-import org.labkey.targetedms.TargetedMSRun;
-import org.labkey.targetedms.model.ExperimentAnnotations;
-import org.labkey.targetedms.model.JournalExperiment;
-import org.labkey.targetedms.query.ExperimentAnnotationsManager;
-import org.labkey.targetedms.query.JournalManager;
+import org.labkey.panoramapublic.PanoramaPublicController;
+import org.labkey.panoramapublic.PanoramaPublicManager;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+import org.labkey.panoramapublic.query.JournalManager;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -68,9 +64,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
-
-import static org.labkey.targetedms.TargetedMSController.FolderSetupAction.RAW_FILES_TAB;
-import static org.labkey.targetedms.TargetedMSModule.TARGETED_MS_FOLDER_TYPE;
 
 /**
  * User: vsharma
@@ -123,7 +116,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         int[] runRowIdsInSubfolders = getAllExpRunRowIdsInSubfolders(container);
 
         Logger log = job.getLogger();
-        try(DbScope.Transaction transaction = TargetedMSManager.getSchema().getScope().ensureTransaction())
+        try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
         {
             if(runRowIdsInSubfolders.length > 0)
             {
@@ -244,7 +237,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             List<ExpData> allData = new ArrayList<>(run.getAllDataUsedByRun());
 
-            TargetedMSRun tmsRun = TargetedMSManager.getRunByLsid(run.getLSID(), run.getContainer());
+            ITargetedMSRun tmsRun = PanoramaPublicManager.getRunByLsid(run.getLSID(), run.getContainer());
             if(tmsRun == null)
             {
                 logger.error("Could not find a targetedms run for exprun: " + run.getLSID() + " in container " + run.getContainer());
@@ -293,20 +286,14 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
     private void updateFolderType(Container c, User user)
     {
-        TargetedMSModule targetedMSModule = ModuleLoader.getInstance().getModule(TargetedMSModule.class);
-        ModuleProperty moduleProperty = targetedMSModule.getModuleProperties().get(TARGETED_MS_FOLDER_TYPE);
-
         Set<Container> children = ContainerManager.getAllChildren(c); // Includes parent
         for(Container child: children)
         {
-            if(child.getActiveModules().contains(targetedMSModule))
-            {
-                moduleProperty.saveValue(user, c, TargetedMSService.FolderType.Experiment.toString());
-            }
+            PanoramaPublicManager.makePanoramaExperimentalDataFolder(c, user);
         }
     }
 
-    private boolean addMissingDatas(List<ExpData> allData, TargetedMSRun tmsRun, Logger logger)
+    private boolean addMissingDatas(List<ExpData> allData, ITargetedMSRun tmsRun, Logger logger)
     {
         Integer skyZipDataId = tmsRun.getDataId();
         boolean skyZipDataIncluded = false;
@@ -370,7 +357,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
     private void updateRawDataTab(Container c, FileContentService service, User user)
     {
-        List<Portal.WebPart> rawDataTabParts = Portal.getParts(c, RAW_FILES_TAB);
+        List<Portal.WebPart> rawDataTabParts = Portal.getParts(c, PanoramaPublicManager.getRawDataTabName());
         if(rawDataTabParts.size() == 0)
         {
             return; // Nothing to do if there is no "Raw Data" tab.
@@ -379,7 +366,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         {
             if(FilesWebPart.PART_NAME.equals(wp.getName()))
             {
-                TargetedMSController.configureRawDataTab(wp, c, service);
+                // TODO:  Do we need this?
+                PanoramaPublicController.configureRawDataTab(wp, c, service);
                 Portal.updatePart(user, wp);
             }
         }

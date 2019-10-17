@@ -20,12 +20,12 @@
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.targetedms.PublishTargetedMSExperimentsController" %>
-<%@ page import="org.labkey.targetedms.model.ExperimentAnnotations" %>
-<%@ page import="org.labkey.targetedms.model.Journal" %>
 <%@ page import="org.labkey.api.security.roles.RoleManager" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.api.data.Container" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
+<%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -38,8 +38,8 @@
 %>
 
 <%
-    JspView<PublishTargetedMSExperimentsController.CopyExperimentForm> me = (JspView<PublishTargetedMSExperimentsController.CopyExperimentForm>) HttpView.currentView();
-    PublishTargetedMSExperimentsController.CopyExperimentForm bean = me.getModelBean();
+    JspView<PanoramaPublicController.CopyExperimentForm> me = (JspView<PanoramaPublicController.CopyExperimentForm>) HttpView.currentView();
+    PanoramaPublicController.CopyExperimentForm bean = me.getModelBean();
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
     Journal journal = bean.lookupJournal();
     String selectedFolder = "Please select a destination folder...";
@@ -52,7 +52,7 @@
         }
     }
 
-    ActionURL pxActionsUrl = new ActionURL(PublishTargetedMSExperimentsController.GetPxActionsAction.class, getContainer());
+    ActionURL pxActionsUrl = new ActionURL(PanoramaPublicController.GetPxActionsAction.class, getContainer());
     pxActionsUrl.addParameter("id", expAnnot.getId());
 %>
 
@@ -163,7 +163,7 @@
                 handler: function() {
                     var values = form.getForm().getValues();
                     form.submit({
-                        url: <%=q(new ActionURL(PublishTargetedMSExperimentsController.CopyExperimentAction.class, getContainer()).getLocalURIString())%>,
+                        url: <%=q(new ActionURL(PanoramaPublicController.CopyExperimentAction.class, getContainer()).getLocalURIString())%>,
                         method: 'POST',
                         params: values
                     });

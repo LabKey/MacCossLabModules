@@ -13,18 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.proteomexchange;
+package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.labkey.api.security.User;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ShortURLRecord;
-import org.labkey.targetedms.PublishTargetedMSExperimentsController;
-import org.labkey.targetedms.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.PanoramaPublicController;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +40,7 @@ public class PxHtmlWriter extends PxWriter
         _output = out;
     }
 
-    public void write(PublishTargetedMSExperimentsController.PxExperimentAnnotations bean) throws PxException
+    public void write(PanoramaPublicController.PxExperimentAnnotations bean) throws PxException
     {
         _usePxTestDb = bean.getForm().isTestDatabase();
         super.write(bean);
@@ -69,7 +68,7 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writeChangeLog(PublishTargetedMSExperimentsController.PxExportForm form)
+    void writeChangeLog(PanoramaPublicController.PxExportForm form)
     {
         if(!StringUtils.isBlank(form.getChangeLog()))
         {
@@ -78,7 +77,7 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writeDatasetSummary(ExperimentAnnotations expAnnotations, PublishTargetedMSExperimentsController.PxExportForm form)
+    void writeDatasetSummary(ExperimentAnnotations expAnnotations, PanoramaPublicController.PxExportForm form)
     {
         tr("Description", expAnnotations.getAbstract());
         tr("Review Level", (form.getPeerReviewed() || expAnnotations.isPublished()) ? "Peer Reviewed" : "Not Peer Reviewed");
@@ -192,7 +191,7 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writeContactList(ExperimentAnnotations experimentAnnotations, PublishTargetedMSExperimentsController.PxExportForm form)
+    void writeContactList(ExperimentAnnotations experimentAnnotations, PanoramaPublicController.PxExportForm form)
     {
         HtmlList contactList = new HtmlList();
 
@@ -221,7 +220,7 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writePublicationList(ExperimentAnnotations experimentAnnotations, PublishTargetedMSExperimentsController.PxExportForm form)
+    void writePublicationList(ExperimentAnnotations experimentAnnotations, PanoramaPublicController.PxExportForm form)
     {
         HtmlList publicationList = new HtmlList();
         boolean hasPubmedId = !StringUtils.isBlank(form.getPublicationId());

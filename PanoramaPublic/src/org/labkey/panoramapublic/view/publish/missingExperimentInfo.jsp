@@ -20,11 +20,11 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.targetedms.PublishTargetedMSExperimentsController" %>
-<%@ page import="org.labkey.targetedms.TargetedMSController" %>
-<%@ page import="org.labkey.targetedms.model.ExperimentAnnotations" %>
-<%@ page import="org.labkey.targetedms.proteomexchange.ExperimentModificationGetter" %>
-<%@ page import="org.labkey.targetedms.proteomexchange.SubmissionDataStatus" %>
+<%@ page import="org.labkey.panoramapublic.proteomexchange.SubmissionDataStatus" %>
+<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicManager" %>
+<%@ page import="org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -42,12 +42,12 @@
 
     ExperimentAnnotations expAnnotations = bean.getExperimentAnnotations();
 
-    ActionURL rawFilesUrl = urlProvider(ProjectUrls.class).getBeginURL(getContainer(), TargetedMSController.FolderSetupAction.RAW_FILES_TAB);
-    ActionURL formUrl = PublishTargetedMSExperimentsController.getPublishExperimentURL(expAnnotations.getId(), getContainer(),
+    ActionURL rawFilesUrl = PanoramaPublicManager.getRawDataTabUrl(getContainer());
+    ActionURL formUrl = PanoramaPublicController.getPublishExperimentURL(expAnnotations.getId(), getContainer(),
             true,  // keep private.
             false); // don't request a PX ID.
-    ActionURL editUrl = TargetedMSController.getEditExperimentDetailsURL(getContainer(), expAnnotations.getId(),
-            TargetedMSController.getViewExperimentDetailsURL(expAnnotations.getId(), getContainer()));
+    ActionURL editUrl = PanoramaPublicController.getEditExperimentDetailsURL(getContainer(), expAnnotations.getId(),
+            PanoramaPublicController.getViewExperimentDetailsURL(expAnnotations.getId(), getContainer()));
 
 %>
 

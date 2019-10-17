@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.security;
+package org.labkey.panoramapublic.security;
 
 import org.labkey.api.admin.FolderExportPermission;
 import org.labkey.api.security.SecurableResource;

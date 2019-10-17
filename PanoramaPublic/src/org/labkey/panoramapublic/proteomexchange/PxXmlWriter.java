@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.proteomexchange;
+package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.security.User;
 import org.labkey.api.view.ShortURLRecord;
-import org.labkey.targetedms.PublishTargetedMSExperimentsController;
-import org.labkey.targetedms.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.PanoramaPublicController;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -124,7 +124,7 @@ public class PxXmlWriter extends PxWriter
     }
 
     @Override
-    void writeChangeLog(PublishTargetedMSExperimentsController.PxExportForm form) throws PxException
+    void writeChangeLog(PanoramaPublicController.PxExportForm form) throws PxException
     {
         if(!StringUtils.isBlank(form.getChangeLog()))
         {
@@ -202,7 +202,7 @@ public class PxXmlWriter extends PxWriter
         }
     }
 
-    void writePublicationList(ExperimentAnnotations expAnnotations, PublishTargetedMSExperimentsController.PxExportForm form) throws PxException
+    void writePublicationList(ExperimentAnnotations expAnnotations, PanoramaPublicController.PxExportForm form) throws PxException
     {
         /*
         <PublicationList>
@@ -260,7 +260,7 @@ public class PxXmlWriter extends PxWriter
         }
     }
 
-    void writeContactList(ExperimentAnnotations expAnnotations, PublishTargetedMSExperimentsController.PxExportForm form) throws PxException
+    void writeContactList(ExperimentAnnotations expAnnotations, PanoramaPublicController.PxExportForm form) throws PxException
     {
         /*
         <ContactList>
@@ -545,7 +545,7 @@ public class PxXmlWriter extends PxWriter
         return el;
     }
 
-    void writeDatasetSummary(ExperimentAnnotations annotations, PublishTargetedMSExperimentsController.PxExportForm form) throws PxException
+    void writeDatasetSummary(ExperimentAnnotations annotations, PanoramaPublicController.PxExportForm form) throws PxException
     {
         Element el = new Element("DatasetSummary");
         List<Attribute> attributes = new ArrayList<>(3);

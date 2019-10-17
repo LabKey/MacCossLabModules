@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.view.expannotations;
+package org.labkey.panoramapublic.view.expannotations;
 
 import org.labkey.api.data.Container;
 import org.labkey.api.data.SQLFragment;
@@ -26,10 +26,9 @@ import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.VBox;
 import org.labkey.api.view.ViewContext;
-import org.labkey.targetedms.TargetedMSController;
-import org.labkey.targetedms.model.ExperimentAnnotations;
-import org.labkey.targetedms.query.ExperimentAnnotationsManager;
-import org.labkey.targetedms.view.TargetedMsRunListView;
+import org.labkey.panoramapublic.PanoramaPublicController;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
 /**
  * User: vsharma
@@ -51,7 +50,7 @@ public class TargetedMSExperimentWebPart extends VBox
             // There is no experiment defined in this container, or in a parent container that is configured
             // to include subfolders.
             StringBuilder html = new StringBuilder("<div>This folder does not contain an experiment.</div>");
-            ActionURL url = new ActionURL(TargetedMSController.ShowNewExperimentAnnotationFormAction.class, container);
+            ActionURL url = new ActionURL(PanoramaPublicController.ShowNewExperimentAnnotationFormAction.class, container);
             html.append("<div style=\"margin-top: 20px;\">");
             html.append("<a href=\"").append(url).append("\">Create New Experiment</a>");
             html.append("</div>");
@@ -61,17 +60,17 @@ public class TargetedMSExperimentWebPart extends VBox
         else if(expAnnotations.getContainer().equals(container))
         {
             // There is already an experiment defined in this container.
-            TargetedMSController.ExperimentAnnotationsDetails experimentDetails = new TargetedMSController.ExperimentAnnotationsDetails(getViewContext().getUser(), expAnnotations, false);
-            JspView<TargetedMSController.ExperimentAnnotationsDetails> view = new JspView<>("/org/labkey/targetedms/view/expannotations/experimentDetails.jsp", experimentDetails);
+            PanoramaPublicController.ExperimentAnnotationsDetails experimentDetails = new PanoramaPublicController.ExperimentAnnotationsDetails(getViewContext().getUser(), expAnnotations, false);
+            JspView<PanoramaPublicController.ExperimentAnnotationsDetails> view = new JspView<>("/org/labkey/panoramapublic/view/expannotations/experimentDetails.jsp", experimentDetails);
             addView(view);
-            ActionURL url = TargetedMSController.getViewExperimentDetailsURL(expAnnotations.getId(), container);
+            ActionURL url = PanoramaPublicController.getViewExperimentDetailsURL(expAnnotations.getId(), container);
             setTitleHref(url);
         }
         else
         {
             // There is an experiment defined in a parent container that is configured to include subfolders.
             StringBuilder html = new StringBuilder("<div>A parent folder contains an experiment that includes data in this folder.</div>");
-            ActionURL url = TargetedMSController.getViewExperimentDetailsURL(expAnnotations.getId(), container);
+            ActionURL url = PanoramaPublicController.getViewExperimentDetailsURL(expAnnotations.getId(), container);
             html.append("<div style=\"margin-top: 20px;\">");
             html.append("<a href=\"").append(url.getEncodedLocalURIString()).append("\">View Experiment Details</a>");
             html.append("</div>");

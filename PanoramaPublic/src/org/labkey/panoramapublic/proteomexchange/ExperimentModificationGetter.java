@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.proteomexchange;
+package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 import org.labkey.api.data.Container;
+import org.labkey.api.targetedms.IModification;
+import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.util.JunitUtil;
-import org.labkey.targetedms.TargetedMSRun;
-import org.labkey.targetedms.model.ExperimentAnnotations;
-import org.labkey.targetedms.parser.PeptideSettings;
-import org.labkey.targetedms.query.ExperimentAnnotationsManager;
-import org.labkey.targetedms.query.ModificationManager;
+import org.labkey.panoramapublic.PanoramaPublicManager;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,17 +42,17 @@ public class ExperimentModificationGetter
 
     public static List<PxModification> getModifications(ExperimentAnnotations expAnnot)
     {
-        List<TargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(expAnnot);
+        List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(expAnnot);
 
         Map<Integer, PxModification> strModMap = new HashMap<>();
         Map<Integer, PxModification> isoModMap = new HashMap<>();
 
         UnimodModifications uMods = getUnimodMods(); // Read the UNIMOD modifications
 
-        for(TargetedMSRun run: runs)
+        for(ITargetedMSRun run: runs)
         {
-            List<PeptideSettings.StructuralModification> smods = ModificationManager.getStructuralModificationsUsedInRun(run.getId());
-            for(PeptideSettings.StructuralModification mod: smods)
+            List<? extends IModification.IStructuralModification> smods = PanoramaPublicManager.getStructuralModificationsUsedInRun(run.getId());
+            for(IModification.IStructuralModification mod: smods)
             {
                 PxModification pxMod = strModMap.get(mod.getId());
                 if(pxMod == null)
@@ -63,8 +63,8 @@ public class ExperimentModificationGetter
                 pxMod.addSkylineDoc(run.getFileName());
             }
 
-            List<PeptideSettings.IsotopeModification> iMods = ModificationManager.getIsotopeModificationsUsedInRun(run.getId());
-            for(PeptideSettings.IsotopeModification mod: iMods)
+            List<? extends IModification.IIsotopeModification> iMods = PanoramaPublicManager.getIsotopeModificationsUsedInRun(run.getId());
+            for(IModification.IIsotopeModification mod: iMods)
             {
                 PxModification pxMod = isoModMap.get(mod.getId());
                 if(pxMod == null)
@@ -81,7 +81,7 @@ public class ExperimentModificationGetter
         return allMods;
     }
 
-    private static String[] modSites(PeptideSettings.Modification mod)
+    private static String[] modSites(IModification mod)
     {
         if(mod.getAminoAcid() == null)
         {
@@ -91,7 +91,7 @@ public class ExperimentModificationGetter
         return mod.getAminoAcid().replaceAll("\\s", "").split(",");
     }
 
-    public static PxModification getStructuralUnimodMod(PeptideSettings.Modification mod, UnimodModifications uMods)
+    public static PxModification getStructuralUnimodMod(IModification mod, UnimodModifications uMods)
     {
         UnimodModification uMod = null;
         if(mod.getUnimodId() != null)
@@ -112,7 +112,7 @@ public class ExperimentModificationGetter
         return uMod == null ? new PxModification(null, mod.getName(), mod.getName()) : new PxModification(uMod.getId(), uMod.getName(), mod.getName());
     }
 
-    private static PxModification getIsotopicUnimodMod(PeptideSettings.IsotopeModification mod, UnimodModifications uMods, Container container)
+    private static PxModification getIsotopicUnimodMod(IModification.IIsotopeModification mod, UnimodModifications uMods, Container container)
     {
         UnimodModification uMod = null;
         if(mod.getUnimodId() != null)
@@ -121,18 +121,19 @@ public class ExperimentModificationGetter
         }
         else
         {
+            String formula = null;
             if(StringUtils.isBlank(mod.getFormula()))
             {
                 try
                 {
-                    buildIsotopeModFormula(mod, uMods);
+                    formula = buildIsotopeModFormula(mod, uMods);
                 }
                 catch (PxException e)
                 {
                     LOG.error("Error building formula for isotopic mod (" + mod.getName() + ") in container " + container, e);
                 }
             }
-            String normFormula = UnimodModification.normalizeFormula(mod.getFormula());
+            String normFormula = UnimodModification.normalizeFormula(formula);
             if(normFormula != null)
             {
                 String[] sites = modSites(mod);
@@ -144,12 +145,12 @@ public class ExperimentModificationGetter
         return uMod == null ? new PxModification(null, mod.getName(), mod.getName()) : new PxModification(uMod.getId(), uMod.getName(), mod.getName());
     }
 
-    private static void buildIsotopeModFormula(PeptideSettings.IsotopeModification mod, UnimodModifications uMods) throws PxException
+    private static String buildIsotopeModFormula(IModification.IIsotopeModification mod, UnimodModifications uMods) throws PxException
     {
         String aminoAcids = mod.getAminoAcid();
         if(StringUtils.isBlank(aminoAcids))
         {
-            return;
+            return null;
         }
 
         // On PanoramaWeb we do not have any isotopic modifications with multiple amino amods as targets.  But Skyline allows it
@@ -171,7 +172,7 @@ public class ExperimentModificationGetter
                 throw new PxException("Multiple amino acids found for isotopic modification (" + mod.getName() +"). Formulae do not match.");
             }
         }
-        mod.setFormula(formula);
+        return formula;
     }
 
     public static UnimodModifications getUnimodMods()
@@ -243,7 +244,7 @@ public class ExperimentModificationGetter
         public void testStructuralMods() throws IOException
         {
             // Modifications in Panorama Public that do not have a UNIMOD ID.
-            List<PeptideSettings.Modification> mods = new ArrayList<>();
+            List<Modification> mods = new ArrayList<>();
             mods.add(createMod("unsaturated tryptophandione (W)", "OO-HHHH", "W", null));
             mods.add(createMod("oxidation (H)", "O", "H", null));
             mods.add(createMod("acetylation", "C2H2O1", "K", null));
@@ -365,7 +366,7 @@ public class ExperimentModificationGetter
 
             int notFound = 0;
             int total = 0;
-            for(PeptideSettings.Modification mod: mods)
+            for(Modification mod: mods)
             {
                 PxModification pxMod = getStructuralUnimodMod(mod, uMods);
 //                if(!pxMod.hasUnimodId())
@@ -402,7 +403,7 @@ public class ExperimentModificationGetter
         public void testIsotopicMods() throws IOException
         {
             // Modifications in Panorama Public that do not have a UNIMOD ID.
-            List<PeptideSettings.IsotopeModification> mods = new ArrayList<>();
+            List<IsotopeModification> mods = new ArrayList<>();
             mods.add(createisotopicMod("all N15",null,null,null,false,false,true,false));
             mods.add(createisotopicMod("13C V",null,"V",null,false,true,false,false));
             mods.add(createisotopicMod("Label:13C(6)15N(2) (K)",null,"K",null,false,true,true,false));
@@ -468,7 +469,7 @@ public class ExperimentModificationGetter
 
             int notFound = 0;
             int total = 0;
-            for(PeptideSettings.IsotopeModification mod: mods)
+            for(IsotopeModification mod: mods)
             {
                 PxModification pxMod = getIsotopicUnimodMod(mod, uMods, null);
 //                if(!pxMod.hasUnimodId())
@@ -495,9 +496,9 @@ public class ExperimentModificationGetter
 //            System.out.println("TOTAL " + total + ", NOT FOUND: " + notFound);
         }
 
-        private PeptideSettings.Modification createMod(String name, String formula, String sites, String terminus)
+        private Modification createMod(String name, String formula, String sites, String terminus)
         {
-            PeptideSettings.Modification mod = new PeptideSettings.Modification();
+            Modification mod = new Modification();
             mod.setFormula(formula);
             mod.setTerminus(terminus);
             mod.setAminoAcid(sites);
@@ -505,10 +506,10 @@ public class ExperimentModificationGetter
             return mod;
         }
 
-        private PeptideSettings.IsotopeModification createisotopicMod(String name, String formula, String sites, String terminus,
+        private IsotopeModification createisotopicMod(String name, String formula, String sites, String terminus,
                                                                       boolean label2h, boolean label13c, boolean label15n, boolean label18o)
         {
-            PeptideSettings.IsotopeModification mod = new PeptideSettings.IsotopeModification();
+            IsotopeModification mod = new IsotopeModification();
             mod.setFormula(formula);
             mod.setTerminus(terminus);
             mod.setAminoAcid(sites);
@@ -518,6 +519,147 @@ public class ExperimentModificationGetter
             mod.setLabel15N(label15n);
             mod.setLabel18O(label18o);
             return mod;
+        }
+    }
+
+    static class Modification implements IModification
+    {
+        private int _id;
+        private String _name;
+        private String _aminoAcid;
+        private String _terminus;
+        private String _formula;
+        private Double _massDiffMono;
+        private Double _massDiffAvg;
+        private Integer _unimodId;
+
+        @Override
+        public int getId()
+        {
+            return _id;
+        }
+
+        public void setId(int id)
+        {
+            _id = id;
+        }
+
+        public String getName()
+        {
+            return _name;
+        }
+
+        public void setName(String name)
+        {
+            _name = name;
+        }
+
+        public String getAminoAcid()
+        {
+            return _aminoAcid;
+        }
+
+        public void setAminoAcid(String aminoAcid)
+        {
+            _aminoAcid = aminoAcid;
+        }
+
+        public String getTerminus()
+        {
+            return _terminus;
+        }
+
+        public void setTerminus(String terminus)
+        {
+            _terminus = terminus;
+        }
+
+        public String getFormula()
+        {
+            return _formula;
+        }
+
+        public void setFormula(String formula)
+        {
+            _formula = formula;
+        }
+
+        public Double getMassDiffMono()
+        {
+            return _massDiffMono;
+        }
+
+        public void setMassDiffMono(Double massDiffMono)
+        {
+            _massDiffMono = massDiffMono;
+        }
+
+        public Double getMassDiffAvg()
+        {
+            return _massDiffAvg;
+        }
+
+        public void setMassDiffAvg(Double massDiffAvg)
+        {
+            _massDiffAvg = massDiffAvg;
+        }
+
+        public Integer getUnimodId()
+        {
+            return _unimodId;
+        }
+
+        public void setUnimodId(Integer unimodId)
+        {
+            _unimodId = unimodId;
+        }
+    }
+
+    static class IsotopeModification extends Modification implements IModification.IIsotopeModification
+    {
+        private Boolean _label13C;
+        private Boolean _label15N;
+        private Boolean _label18O;
+        private Boolean _label2H;
+
+        public Boolean getLabel13C()
+        {
+            return _label13C;
+        }
+
+        public void setLabel13C(Boolean label13C)
+        {
+            _label13C = label13C;
+        }
+
+        public Boolean getLabel15N()
+        {
+            return _label15N;
+        }
+
+        public void setLabel15N(Boolean label15N)
+        {
+            _label15N = label15N;
+        }
+
+        public Boolean getLabel18O()
+        {
+            return _label18O;
+        }
+
+        public void setLabel18O(Boolean label18O)
+        {
+            _label18O = label18O;
+        }
+
+        public Boolean getLabel2H()
+        {
+            return _label2H;
+        }
+
+        public void setLabel2H(Boolean label2H)
+        {
+            _label2H = label2H;
         }
     }
 }

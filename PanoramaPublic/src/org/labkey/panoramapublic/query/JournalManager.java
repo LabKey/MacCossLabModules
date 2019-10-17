@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.query;
+package org.labkey.panoramapublic.query;
 
 import org.apache.log4j.Logger;
 import org.labkey.api.admin.FolderExportPermission;
@@ -48,12 +48,12 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.api.view.ShortURLService;
 import org.labkey.api.view.UnauthorizedException;
-import org.labkey.targetedms.PublishTargetedMSExperimentsController;
-import org.labkey.targetedms.TargetedMSManager;
-import org.labkey.targetedms.model.ExperimentAnnotations;
-import org.labkey.targetedms.model.Journal;
-import org.labkey.targetedms.model.JournalExperiment;
-import org.labkey.targetedms.security.CopyTargetedMSExperimentRole;
+import org.labkey.panoramapublic.PanoramaPublicController;
+import org.labkey.panoramapublic.PanoramaPublicManager;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.Journal;
+import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -73,24 +73,24 @@ public class JournalManager
 
     public static List<Journal> getJournals()
     {
-        return new TableSelector(TargetedMSManager.getTableInfoJournal()).getArrayList(Journal.class);
+        return new TableSelector(PanoramaPublicManager.getTableInfoJournal()).getArrayList(Journal.class);
     }
 
     public static Journal getJournal(String name)
     {
-        return new TableSelector(TargetedMSManager.getTableInfoJournal(),
+        return new TableSelector(PanoramaPublicManager.getTableInfoJournal(),
                                  new SimpleFilter(FieldKey.fromParts("Name"), name),
                                  null).getObject(Journal.class);
     }
 
     public static Journal getJournal(int journalId)
     {
-        return new TableSelector(TargetedMSManager.getTableInfoJournal()).getObject(journalId, Journal.class);
+        return new TableSelector(PanoramaPublicManager.getTableInfoJournal()).getObject(journalId, Journal.class);
     }
 
     public static boolean isJournalProject(Container project)
     {
-        return new TableSelector(TargetedMSManager.getTableInfoJournal(),
+        return new TableSelector(PanoramaPublicManager.getTableInfoJournal(),
                 new SimpleFilter(FieldKey.fromParts("project"), project),
                 null).exists();
     }
@@ -98,29 +98,29 @@ public class JournalManager
     public static List<Journal> getJournalsForExperiment(int expAnnotationsId)
     {
         SQLFragment sql = new SQLFragment("SELECT j.* FROM ");
-        sql.append(TargetedMSManager.getTableInfoJournal(), "j");
+        sql.append(PanoramaPublicManager.getTableInfoJournal(), "j");
         sql.append(" , ");
-        sql.append(TargetedMSManager.getTableInfoJournalExperiment(), "je");
+        sql.append(PanoramaPublicManager.getTableInfoJournalExperiment(), "je");
         sql.append(" WHERE ");
         sql.append(" j.Id = je.JournalId ");
         sql.append(" AND je.ExperimentAnnotationsId = ? ");
         sql.add(expAnnotationsId);
 
-        return new SqlSelector(TargetedMSManager.getSchema(), sql).getArrayList(Journal.class);
+        return new SqlSelector(PanoramaPublicManager.getSchema(), sql).getArrayList(Journal.class);
     }
 
     private static List<ExperimentAnnotations> getExperimentsForJournal(int journalId)
     {
         SQLFragment sql = new SQLFragment("SELECT e.* FROM ");
-        sql.append(TargetedMSManager.getTableInfoExperimentAnnotations(), "e");
+        sql.append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "e");
         sql.append(" , ");
-        sql.append(TargetedMSManager.getTableInfoJournalExperiment(), "je");
+        sql.append(PanoramaPublicManager.getTableInfoJournalExperiment(), "je");
         sql.append(" WHERE ");
         sql.append(" e.Id = je.ExperimentAnnotationsId ");
         sql.append(" AND je.JournalId = ? ");
         sql.add(journalId);
 
-        return new SqlSelector(TargetedMSManager.getSchema(), sql).getArrayList(ExperimentAnnotations.class);
+        return new SqlSelector(PanoramaPublicManager.getSchema(), sql).getArrayList(ExperimentAnnotations.class);
     }
 
     public static JournalExperiment getJournalExperiment(int experimentAnnotationsId, int journalId)
@@ -128,7 +128,7 @@ public class JournalManager
         SimpleFilter filter = new SimpleFilter();
         filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
         filter.addCondition(FieldKey.fromParts("JournalId"), journalId);
-        return new TableSelector(TargetedMSManager.getTableInfoJournalExperiment(), filter, null).getObject(JournalExperiment.class);
+        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, null).getObject(JournalExperiment.class);
     }
 
     private static List<JournalExperiment> getJournalExperiments(int experimentAnnotationsId)
@@ -137,7 +137,7 @@ public class JournalManager
         filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
         Sort sort = new Sort();
         sort.appendSortColumn(FieldKey.fromParts("Created"), Sort.SortDirection.DESC, true);
-        return new TableSelector(TargetedMSManager.getTableInfoJournalExperiment(), filter, sort).getArrayList(JournalExperiment.class);
+        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, sort).getArrayList(JournalExperiment.class);
     }
 
     public static JournalExperiment getLastPublishedRecord(int experimentAnnotationsId)
@@ -175,7 +175,7 @@ public class JournalManager
 
         SimpleFilter filter = new SimpleFilter();
         filter.addClause(or);
-        return new TableSelector(TargetedMSManager.getTableInfoJournalExperiment(), filter, null).getArrayList(JournalExperiment.class);
+        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, null).getArrayList(JournalExperiment.class);
     }
 
     public static boolean userHasCopyAccess(ExperimentAnnotations experimentAnnotations, Journal journal, User user)
@@ -199,7 +199,7 @@ public class JournalManager
 
     public static void saveJournal(Journal journal, User user)
     {
-        Table.insert(user, TargetedMSManager.getTableInfoJournal(), journal);
+        Table.insert(user, PanoramaPublicManager.getTableInfoJournal(), journal);
     }
 
     public static void beforeDeleteTargetedMSExperiment(ExperimentAnnotations expAnnotations, User user)
@@ -220,10 +220,10 @@ public class JournalManager
         {
             removeJournalAccess(expAnnotation, journal, user);
         }
-        Table.delete(TargetedMSManager.getTableInfoJournalExperiment(),
+        Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(),
                 new SimpleFilter(FieldKey.fromParts("journalId"), journal.getId()));
 
-        Table.delete(TargetedMSManager.getTableInfoJournal(), new SimpleFilter(FieldKey.fromParts("id"), journal.getId()));
+        Table.delete(PanoramaPublicManager.getTableInfoJournal(), new SimpleFilter(FieldKey.fromParts("id"), journal.getId()));
     }
 
     public static JournalExperiment saveJournalExperiment(Journal journal, ExperimentAnnotations experiment, ShortURLRecord shortAccessUrl, ShortURLRecord shortCopyUrl,
@@ -236,7 +236,7 @@ public class JournalManager
         je.setShortCopyUrl(shortCopyUrl);
         je.setPxidRequested(getPxid);
         je.setKeepPrivate(keepPrivate);
-        Table.insert(user, TargetedMSManager.getTableInfoJournalExperiment(), je);
+        Table.insert(user, PanoramaPublicManager.getTableInfoJournalExperiment(), je);
         return je;
     }
 
@@ -245,7 +245,7 @@ public class JournalManager
         Map<String, Object> pkVals = new HashMap<>();
         pkVals.put("experimentAnnotationsId", journalExperiment.getExperimentAnnotationsId());
         pkVals.put("journalId", journalExperiment.getJournalId());
-        Table.update(user, TargetedMSManager.getTableInfoJournalExperiment(), journalExperiment, pkVals);
+        Table.update(user, PanoramaPublicManager.getTableInfoJournalExperiment(), journalExperiment, pkVals);
     }
 
     public static boolean journalHasAccess(Journal journal, ExperimentAnnotations experiment)
@@ -254,7 +254,7 @@ public class JournalManager
         filter.addCondition(FieldKey.fromParts("JournalId"), journal.getId());
         filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experiment.getId());
 
-        Integer journalId = new TableSelector(TargetedMSManager.getTableInfoJournalExperiment(),
+        Integer journalId = new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(),
                 Collections.singleton("JournalId"),
                 filter, null).getObject(Integer.class);
 
@@ -274,7 +274,7 @@ public class JournalManager
         Map<String, Integer> pkVals = new HashMap<>();
         pkVals.put("JournalId", sourceJournalExp.getJournalId());
         pkVals.put("ExperimentAnnotationsId", sourceJournalExp.getExperimentAnnotationsId());
-        Table.update(user, TargetedMSManager.getTableInfoJournalExperiment(), sourceJournalExp, pkVals);
+        Table.update(user, PanoramaPublicManager.getTableInfoJournalExperiment(), sourceJournalExp, pkVals);
     }
 
     public static JournalExperiment getJournalExperiment(ExperimentAnnotations experiment, Journal journal)
@@ -307,7 +307,7 @@ public class JournalManager
         ShortURLRecord accessUrlRecord = saveShortURL(accessUrl, shortAccessUrl, journalGroup, user);
 
         // Save the short copy URL.
-        ActionURL copyUrl = PublishTargetedMSExperimentsController.getCopyExperimentURL(exptAnnotations.getId(), journal.getId(), exptAnnotations.getContainer());
+        ActionURL copyUrl = PanoramaPublicController.getCopyExperimentURL(exptAnnotations.getId(), journal.getId(), exptAnnotations.getContainer());
         ShortURLRecord copyUrlRecord = saveShortURL(copyUrl, shortCopyUrl, null, user);
 
         // Add an entry in the targetedms.JournalExperiment table.
@@ -427,7 +427,7 @@ public class JournalManager
 
     public static void deleteJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal, User user)
     {
-        try(DbScope.Transaction transaction = TargetedMSManager.getSchema().getScope().ensureTransaction())
+        try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
         {
             removeJournalAccess(exptAnnotations, journal, user);
 
@@ -442,7 +442,7 @@ public class JournalManager
         SimpleFilter filter = new SimpleFilter();
         filter.addCondition(FieldKey.fromParts("JournalId"), journal.getId());
         filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId());
-        Table.delete(TargetedMSManager.getTableInfoJournalExperiment(), filter);
+        Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(), filter);
 
         // Try to delete the short copy URL. Since we just deleted the entry in table JournalExperiment
         // that references this URL we should not get a foreign key constraint error.
@@ -500,7 +500,7 @@ public class JournalManager
         if (!shortCopyUrl.equalsIgnoreCase(oldCopyUrl.getShortURL()))
         {
             // Save the new short copy URL.
-            ActionURL copyUrl = PublishTargetedMSExperimentsController.getCopyExperimentURL(expAnnotations.getId(), journal.getId(), expAnnotations.getContainer());
+            ActionURL copyUrl = PanoramaPublicController.getCopyExperimentURL(expAnnotations.getId(), journal.getId(), expAnnotations.getContainer());
             ShortURLRecord copyUrlRecord = saveShortURL(copyUrl, shortCopyUrl, null, user);
             je.setShortCopyUrl(copyUrlRecord);
 
@@ -526,7 +526,7 @@ public class JournalManager
         {
             // Journals are only associated with 'project' containers
             SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("Project"), c.getEntityId());
-            Journal journal = new TableSelector(TargetedMSManager.getTableInfoJournal(), filter, null).getObject(Journal.class);
+            Journal journal = new TableSelector(PanoramaPublicManager.getTableInfoJournal(), filter, null).getObject(Journal.class);
             if (journal != null)
             {
                 delete(journal, user);

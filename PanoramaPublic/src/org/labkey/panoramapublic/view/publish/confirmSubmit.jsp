@@ -21,8 +21,8 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.targetedms.PublishTargetedMSExperimentsController" %>
-<%@ page import="org.labkey.targetedms.model.ExperimentAnnotations" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -35,9 +35,9 @@
 
 <labkey:errors/>
 <%
-    JspView<PublishTargetedMSExperimentsController.PublishExperimentConfirmBean> me = (JspView<PublishTargetedMSExperimentsController.PublishExperimentConfirmBean>) HttpView.currentView();
-    PublishTargetedMSExperimentsController.PublishExperimentConfirmBean bean = me.getModelBean();
-    PublishTargetedMSExperimentsController.PublishExperimentForm form = bean.getForm();
+    JspView<PanoramaPublicController.PublishExperimentConfirmBean> me = (JspView<PanoramaPublicController.PublishExperimentConfirmBean>) HttpView.currentView();
+    PanoramaPublicController.PublishExperimentConfirmBean bean = me.getModelBean();
+    PanoramaPublicController.PublishExperimentForm form = bean.getForm();
 
     ExperimentAnnotations expAnnotations = bean.getExperimentAnnotations();
 

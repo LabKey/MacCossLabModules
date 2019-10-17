@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.pipeline;
+package org.labkey.panoramapublic.pipeline;
 
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -33,7 +33,7 @@ import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.writer.FileSystemFile;
-import org.labkey.targetedms.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.io.File;
 import java.util.Collections;
