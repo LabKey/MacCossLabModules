@@ -22,13 +22,12 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.ShortURLRecord" %>
-<%@ page import="org.labkey.targetedms.PublishTargetedMSExperimentsController" %>
-<%@ page import="org.labkey.targetedms.TargetedMSController" %>
-<%@ page import="org.labkey.targetedms.model.ExperimentAnnotations" %>
-<%@ page import="org.labkey.targetedms.model.Journal" %>
-<%@ page import="org.labkey.targetedms.query.ExperimentAnnotationsManager" %>
 <%@ page import="java.util.Set" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.model.Journal" %>
+<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
+<%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -41,9 +40,9 @@
 
 <labkey:errors/>
 <%
-    JspView<PublishTargetedMSExperimentsController.PublishExperimentFormBean> me = (JspView<PublishTargetedMSExperimentsController.PublishExperimentFormBean>) HttpView.currentView();
-    PublishTargetedMSExperimentsController.PublishExperimentFormBean bean = me.getModelBean();
-    PublishTargetedMSExperimentsController.PublishExperimentForm form = bean.getForm();
+    JspView<PanoramaPublicController.PublishExperimentFormBean> me = (JspView<PanoramaPublicController.PublishExperimentFormBean>) HttpView.currentView();
+    PanoramaPublicController.PublishExperimentFormBean bean = me.getModelBean();
+    PanoramaPublicController.PublishExperimentForm form = bean.getForm();
 
     String shortAccessUrl = StringUtils.trimToEmpty(form.getShortAccessUrl());
 
@@ -59,9 +58,9 @@
 
     boolean isUpdate = bean.getForm().isUpdate();
     String publishButtonText = isUpdate ? "Update" : "Submit";
-    String submitUrl = isUpdate ? new ActionURL(PublishTargetedMSExperimentsController.UpdateJournalExperimentAction.class, getContainer()).getLocalURIString() :
-            new ActionURL(PublishTargetedMSExperimentsController.PublishExperimentAction.class, getContainer()).getLocalURIString();
-    String cancelUrl = TargetedMSController.getViewExperimentDetailsURL(bean.getForm().getId(), getContainer()).getLocalURIString();
+    String submitUrl = isUpdate ? new ActionURL(PanoramaPublicController.UpdateJournalExperimentAction.class, getContainer()).getLocalURIString() :
+            new ActionURL(PanoramaPublicController.PublishExperimentAction.class, getContainer()).getLocalURIString();
+    String cancelUrl = PanoramaPublicController.getViewExperimentDetailsURL(bean.getForm().getId(), getContainer()).getLocalURIString();
 
     boolean siteAdmin = getUser().hasSiteAdminPermission();
     boolean getLabHeadUserInfo = form.isGetPxid() && expAnnotations.getLabHeadUser() == null;

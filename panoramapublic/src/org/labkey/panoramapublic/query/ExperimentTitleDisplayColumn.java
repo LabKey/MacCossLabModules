@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.query;
+package org.labkey.panoramapublic.query;
 
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
@@ -25,8 +25,8 @@ import org.labkey.api.gwt.client.FacetingBehaviorType;
 import org.labkey.api.query.ExprColumn;
 import org.labkey.api.query.LookupForeignKey;
 import org.labkey.api.view.ActionURL;
-import org.labkey.targetedms.TargetedMSController;
-import org.labkey.targetedms.TargetedMSManager;
+import org.labkey.panoramapublic.PanoramaPublicController;
+import org.labkey.panoramapublic.PanoramaPublicManager;
 
 public class ExperimentTitleDisplayColumn extends ExprColumn
 {
@@ -36,13 +36,13 @@ public class ExperimentTitleDisplayColumn extends ExprColumn
 
         setTextAlign("left");
         setFacetingBehaviorType(FacetingBehaviorType.ALWAYS_OFF);
-        setFk(new LookupForeignKey(table.getContainerFilter(), new ActionURL(TargetedMSController.ShowExperimentAnnotationsAction.class, container),
+        setFk(new LookupForeignKey(table.getContainerFilter(), new ActionURL(PanoramaPublicController.ShowExperimentAnnotationsAction.class, container),
                 "id", "Id", "Title")
         {
             @Override
             public @Nullable TableInfo getLookupTableInfo()
             {
-                return TargetedMSManager.getTableInfoExperimentAnnotations();
+                return PanoramaPublicManager.getTableInfoExperimentAnnotations();
             }
         });
     }
@@ -52,7 +52,7 @@ public class ExperimentTitleDisplayColumn extends ExprColumn
         ExperimentService service = ExperimentService.get();
         SQLFragment sql = new SQLFragment();
         sql.append(" (SELECT expannot.Id FROM ");
-        sql.append(TargetedMSManager.getTableInfoExperimentAnnotations(), "expannot");
+        sql.append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "expannot");
         sql.append(" INNER JOIN ");
         sql.append(service.getTinfoRunList(), "rlist");
         sql.append(" ON ");
@@ -62,7 +62,7 @@ public class ExperimentTitleDisplayColumn extends ExprColumn
         sql.append(" ON ");
         sql.append("exprun.rowId = rlist.experimentRunId");
         sql.append(" INNER JOIN ");
-        sql.append(TargetedMSManager.getTableInfoRuns(), runsTableAlias);
+        sql.append(PanoramaPublicManager.getTableInfoRuns(), runsTableAlias);
         sql.append(" ON ");
         sql.append(runsTableAlias + ".experimentRunLsid = exprun.lsid");
         sql.append(whereSql);

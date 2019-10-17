@@ -23,13 +23,12 @@
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.ShortURLRecord" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.targetedms.PublishTargetedMSExperimentsController" %>
-<%@ page import="org.labkey.targetedms.TargetedMSController" %>
-<%@ page import="org.labkey.targetedms.model.ExperimentAnnotations" %>
-<%@ page import="org.labkey.targetedms.model.Journal" %>
-<%@ page import="org.labkey.targetedms.model.JournalExperiment" %>
-<%@ page import="org.labkey.targetedms.query.JournalManager" %>
 <%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
+<%@ page import="org.labkey.panoramapublic.model.Journal" %>
+<%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
+<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -37,30 +36,30 @@
     {
         dependencies.add("Ext4");
         dependencies.add("internal/jQuery");
-        dependencies.add("TargetedMS/js/clipboard.min.js");
-        dependencies.add("TargetedMS/js/ExperimentAnnotations.js");
-        dependencies.add("TargetedMS/css/ExperimentAnnotations.css");
+        dependencies.add("PanoramaPublic/js/clipboard.min.js");
+        dependencies.add("PanoramaPublic/js/ExperimentAnnotations.js");
+        dependencies.add("PanoramaPublic/css/ExperimentAnnotations.css");
         dependencies.add("hopscotch/js/hopscotch.min.js");
         dependencies.add("hopscotch/css/hopscotch.min.css");
     }
 %>
 
 <%
-    JspView<TargetedMSController.ExperimentAnnotationsDetails> me = (JspView<TargetedMSController.ExperimentAnnotationsDetails>) HttpView.currentView();
-    TargetedMSController.ExperimentAnnotationsDetails annotDetails = me.getModelBean();
+    JspView<PanoramaPublicController.ExperimentAnnotationsDetails> me = (JspView<PanoramaPublicController.ExperimentAnnotationsDetails>) HttpView.currentView();
+    PanoramaPublicController.ExperimentAnnotationsDetails annotDetails = me.getModelBean();
     ExperimentAnnotations annot = annotDetails.getExperimentAnnotations();
-    ActionURL editUrl = TargetedMSController.getEditExperimentDetailsURL(getContainer(), annot.getId(),
-            TargetedMSController.getViewExperimentDetailsURL(annot.getId(), getContainer()));
-    ActionURL deleteUrl = TargetedMSController.getDeleteExperimentURL(getContainer(), annot.getId(), getContainer().getStartURL(getUser()));
+    ActionURL editUrl = PanoramaPublicController.getEditExperimentDetailsURL(getContainer(), annot.getId(),
+            PanoramaPublicController.getViewExperimentDetailsURL(annot.getId(), getContainer()));
+    ActionURL deleteUrl = PanoramaPublicController.getDeleteExperimentURL(getContainer(), annot.getId(), getContainer().getStartURL(getUser()));
 
-    ActionURL publishUrl = PublishTargetedMSExperimentsController.getPrePublishExperimentCheckURL(annot.getId(), getContainer());
+    ActionURL publishUrl = PanoramaPublicController.getPrePublishExperimentCheckURL(annot.getId(), getContainer());
     Container experimentContainer = annot.getContainer();
     final boolean canEdit = (!annot.isJournalCopy() || getUser().hasSiteAdminPermission()) && experimentContainer.hasPermission(getUser(), InsertPermission.class);
     // User needs to be the folder admin to publish an experiment.
     final boolean canPublish = annotDetails.isCanPublish();
     final boolean showingFullDetails = annotDetails.isFullDetails();
 
-    ActionURL experimentDetailsUrl = new ActionURL(TargetedMSController.ShowExperimentAnnotationsAction.class, getContainer());
+    ActionURL experimentDetailsUrl = new ActionURL(PanoramaPublicController.ShowExperimentAnnotationsAction.class, getContainer());
     experimentDetailsUrl.addParameter("id", annot.getId());
 
     Journal journal = null;
@@ -77,7 +76,7 @@
         if(!journalCopyPending)
         {
             publishButtonText = "Resubmit";
-            publishUrl = PublishTargetedMSExperimentsController.getRePublishExperimentURL(annot.getId(), je.getJournalId(), getContainer());
+            publishUrl = PanoramaPublicController.getRePublishExperimentURL(annot.getId(), je.getJournalId(), getContainer());
         }
     }
     String accessUrl = accessUrlRecord == null ? null : accessUrlRecord.renderShortURL();
@@ -212,7 +211,7 @@
 <%}%>
 
 <%if(getUser().hasSiteAdminPermission()) {
-    ActionURL pxActionsUrl = new ActionURL(PublishTargetedMSExperimentsController.GetPxActionsAction.class, getContainer());
+    ActionURL pxActionsUrl = new ActionURL(PanoramaPublicController.GetPxActionsAction.class, getContainer());
     pxActionsUrl.addParameter("id", annot.getId());
 %>
 <br/><div><%=link("ProteomeXchange Actions", pxActionsUrl)%></div>

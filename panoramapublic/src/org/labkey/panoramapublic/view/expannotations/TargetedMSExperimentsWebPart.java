@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.view.expannotations;
+package org.labkey.panoramapublic.view.expannotations;
 
 import org.labkey.api.data.ActionButton;
 import org.labkey.api.data.ButtonBar;
@@ -25,8 +25,8 @@ import org.labkey.api.security.permissions.DeletePermission;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.DataView;
 import org.labkey.api.view.ViewContext;
-import org.labkey.targetedms.TargetedMSController;
-import org.labkey.targetedms.TargetedMSSchema;
+import org.labkey.panoramapublic.PanoramaPublicController;
+import org.labkey.panoramapublic.PanoramaPublicSchema;
 
 /**
  * User: vsharma
@@ -39,7 +39,7 @@ public class TargetedMSExperimentsWebPart extends QueryView
 
     public TargetedMSExperimentsWebPart(ViewContext portalCtx)
     {
-        super(new TargetedMSSchema(portalCtx.getUser(), portalCtx.getContainer()));
+        super(new PanoramaPublicSchema(portalCtx.getUser(), portalCtx.getContainer()));
 
         setTitle(WEB_PART_NAME);
 
@@ -59,7 +59,7 @@ public class TargetedMSExperimentsWebPart extends QueryView
 
     private QuerySettings createQuerySettings(ViewContext portalCtx, String dataRegionName)
     {
-        QuerySettings settings = getSchema().getSettings(portalCtx, dataRegionName, TargetedMSSchema.TABLE_EXPERIMENT_ANNOTATIONS);
+        QuerySettings settings = getSchema().getSettings(portalCtx, dataRegionName, PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS);
         if(settings.getContainerFilterName() == null)
         {
             settings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
@@ -70,7 +70,7 @@ public class TargetedMSExperimentsWebPart extends QueryView
     protected void populateButtonBar(DataView view, ButtonBar bb)
     {
         super.populateButtonBar(view, bb);
-        ActionURL deleteExpAnnotUrl = new ActionURL(TargetedMSController.DeleteSelectedExperimentAnnotationsAction.class, getContainer());
+        ActionURL deleteExpAnnotUrl = new ActionURL(PanoramaPublicController.DeleteSelectedExperimentAnnotationsAction.class, getContainer());
         ActionButton deleteExperimentAnnotation = new ActionButton(deleteExpAnnotUrl, "Delete");
         deleteExperimentAnnotation.setActionType(ActionButton.Action.GET);
         deleteExperimentAnnotation.setDisplayPermission(DeletePermission.class);

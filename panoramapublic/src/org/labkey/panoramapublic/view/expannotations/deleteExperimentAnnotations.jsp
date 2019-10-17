@@ -1,3 +1,6 @@
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
+<%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
 <%
 /*
  * Copyright (c) 2014-2019 LabKey Corporation
@@ -15,13 +18,10 @@
  * limitations under the License.
  */
 %>
-<%@ page import="org.labkey.targetedms.TargetedMSController" %>
-<%@ page import="org.labkey.targetedms.model.ExperimentAnnotations" %>
-<%@ page import="org.labkey.targetedms.query.ExperimentAnnotationsManager" %>
 <%@ page extends="org.labkey.api.jsp.FormPage" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%
-    TargetedMSController.SelectedExperimentIds deleteForm = (TargetedMSController.SelectedExperimentIds) __form;
+    PanoramaPublicController.SelectedExperimentIds deleteForm = (PanoramaPublicController.SelectedExperimentIds) __form;
     int[] experimentAnnotationIds = deleteForm.getIds();
 %>
 <p>Are you sure you want to delete the following

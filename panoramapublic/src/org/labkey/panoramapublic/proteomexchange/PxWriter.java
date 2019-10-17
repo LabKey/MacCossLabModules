@@ -13,21 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.proteomexchange;
+package org.labkey.panoramapublic.proteomexchange;
 
 import org.labkey.api.view.ShortURLRecord;
-import org.labkey.targetedms.PublishTargetedMSExperimentsController;
-import org.labkey.targetedms.model.ExperimentAnnotations;
-import org.labkey.targetedms.model.Journal;
-import org.labkey.targetedms.model.JournalExperiment;
-import org.labkey.targetedms.query.JournalManager;
+import org.labkey.panoramapublic.PanoramaPublicController;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.Journal;
+import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.query.JournalManager;
 
 import java.util.List;
 import java.util.Map;
 
 public abstract class PxWriter
 {
-    public void write(PublishTargetedMSExperimentsController.PxExperimentAnnotations bean) throws PxException
+    public void write(PanoramaPublicController.PxExperimentAnnotations bean) throws PxException
     {
         ExperimentAnnotations expAnnotations = bean.getExperimentAnnotations();
         ShortURLRecord accessUrl = expAnnotations.getShortUrl();
@@ -83,15 +83,15 @@ public abstract class PxWriter
     abstract void begin(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void end() throws PxException;
     abstract void close() throws PxException;
-    abstract void writeChangeLog(PublishTargetedMSExperimentsController.PxExportForm form) throws PxException;
-    abstract void writeDatasetSummary(ExperimentAnnotations expAnnotations, PublishTargetedMSExperimentsController.PxExportForm form) throws PxException;
+    abstract void writeChangeLog(PanoramaPublicController.PxExportForm form) throws PxException;
+    abstract void writeDatasetSummary(ExperimentAnnotations expAnnotations, PanoramaPublicController.PxExportForm form) throws PxException;
     abstract void writeDatasetIdentifierList(String pxId, ShortURLRecord accessUrl) throws PxException;
     abstract void writeDatasetOriginList() throws PxException;
     abstract void writeSpeciesList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeInstrumentList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeModificationList(ExperimentAnnotations experimentAnnotations) throws PxException;
-    abstract void writeContactList(ExperimentAnnotations experimentAnnotationsn, PublishTargetedMSExperimentsController.PxExportForm form) throws PxException;
-    abstract void writePublicationList(ExperimentAnnotations experimentAnnotations, PublishTargetedMSExperimentsController.PxExportForm form) throws PxException;
+    abstract void writeContactList(ExperimentAnnotations experimentAnnotationsn, PanoramaPublicController.PxExportForm form) throws PxException;
+    abstract void writePublicationList(ExperimentAnnotations experimentAnnotations, PanoramaPublicController.PxExportForm form) throws PxException;
     abstract void writeKeywordList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeDatasetLinkList(ShortURLRecord accessUrl) throws PxException;
 

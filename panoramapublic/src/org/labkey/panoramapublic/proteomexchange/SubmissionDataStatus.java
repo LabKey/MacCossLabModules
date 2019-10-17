@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.proteomexchange;
+package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.io.FilenameUtils;
-import org.labkey.targetedms.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.util.ArrayList;
 import java.util.Collections;

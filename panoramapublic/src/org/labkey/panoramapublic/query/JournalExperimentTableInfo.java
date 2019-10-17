@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.query;
+package org.labkey.panoramapublic.query;
 
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
@@ -25,9 +25,9 @@ import org.labkey.api.data.RenderContext;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
-import org.labkey.targetedms.PublishTargetedMSExperimentsController;
-import org.labkey.targetedms.TargetedMSManager;
-import org.labkey.targetedms.TargetedMSSchema;
+import org.labkey.panoramapublic.PanoramaPublicManager;
+import org.labkey.panoramapublic.PanoramaPublicSchema;
+import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.targetedms.view.publish.ShortUrlDisplayColumnFactory;
 
 import java.io.IOException;
@@ -44,9 +44,9 @@ import java.util.Set;
 public class JournalExperimentTableInfo extends TargetedMSTable
 {
 
-    public JournalExperimentTableInfo(final TargetedMSSchema schema, ContainerFilter cf, Container container)
+    public JournalExperimentTableInfo(final PanoramaPublicSchema schema, ContainerFilter cf, Container container)
     {
-        super(TargetedMSManager.getTableInfoJournalExperiment(), schema, cf, TargetedMSSchema.ContainerJoinType.ExperimentAnnotationsFK);
+        super(PanoramaPublicManager.getTableInfoJournalExperiment(), schema, cf, PanoramaPublicSchema.ContainerJoinType.ExperimentAnnotationsFK);
 
         var editColumn = wrapColumn("Edit", getRealTable().getColumn("ExperimentAnnotationsId"));
         editColumn.setLabel("");
@@ -81,7 +81,7 @@ public class JournalExperimentTableInfo extends TargetedMSTable
 
         DeleteUrlDisplayColumnFactory(Container container)
         {
-            _url = new ActionURL(PublishTargetedMSExperimentsController.DeleteJournalExperimentAction.class, container);
+            _url = new ActionURL(PanoramaPublicController.DeleteJournalExperimentAction.class, container);
             _linkText = "Delete";
         }
 
@@ -127,10 +127,10 @@ public class JournalExperimentTableInfo extends TargetedMSTable
 
         EditUrlDisplayColumnFactory(Container container)
         {
-            _editUrl = new ActionURL(PublishTargetedMSExperimentsController.ViewPublishExperimentFormAction.class, container);
+            _editUrl = new ActionURL(PanoramaPublicController.ViewPublishExperimentFormAction.class, container);
             _editUrl.addParameter("update", true);
             _editLinkText = "Edit";
-            _resetUrl = new ActionURL(PublishTargetedMSExperimentsController.RepublishJournalExperimentAction.class, container);
+            _resetUrl = new ActionURL(PanoramaPublicController.RepublishJournalExperimentAction.class, container);
             _republishLinkText = "Resubmit";
         }
 

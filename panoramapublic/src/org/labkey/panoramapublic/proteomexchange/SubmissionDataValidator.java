@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.proteomexchange;
+package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -27,13 +27,11 @@ import org.labkey.api.data.TableSelector;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.query.FieldKey;
+import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.util.FileUtil;
-import org.labkey.targetedms.TargetedMSController;
-import org.labkey.targetedms.TargetedMSRun;
-import org.labkey.targetedms.model.ExperimentAnnotations;
-import org.labkey.targetedms.parser.SampleFile;
-import org.labkey.targetedms.query.ExperimentAnnotationsManager;
-import org.labkey.targetedms.query.ReplicateManager;
+import org.labkey.panoramapublic.PanoramaPublicManager;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -74,10 +72,10 @@ public class SubmissionDataValidator
     private static boolean rawDataUploaded(ExperimentAnnotations expAnnotations)
     {
         // Get a list of Skyline documents associated with this experiment
-        List<TargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(expAnnotations);
+        List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(expAnnotations);
 
         Set<String> existingRawFiles = new HashSet<>();
-        for(TargetedMSRun run: runs)
+        for(ITargetedMSRun run: runs)
         {
             List<String> missingFiles = getMissingFilesForRun(run, expAnnotations.getContainer(), existingRawFiles);
             if(missingFiles.size() > 0)
@@ -228,10 +226,10 @@ public class SubmissionDataValidator
     private static void getMissingRawFiles(ExperimentAnnotations expAnnotations, SubmissionDataStatus submissionStatus)
     {
         // Get a list of Skyline documents associated with this experiment
-        List<TargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(expAnnotations);
+        List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(expAnnotations);
 
         Set<String> existingRawFiles = new HashSet<>();
-        for(TargetedMSRun run: runs)
+        for(ITargetedMSRun run: runs)
         {
             List<String> missingFiles = getMissingFilesForRun(run, expAnnotations.getContainer(), existingRawFiles);
             for(String missingFile: missingFiles)
@@ -241,18 +239,18 @@ public class SubmissionDataValidator
         }
     }
 
-    private static List<String> getMissingFilesForRun(TargetedMSRun run, Container rootExpContainer, Set<String> existingRawFiles)
+    private static List<String> getMissingFilesForRun(ITargetedMSRun run, Container rootExpContainer, Set<String> existingRawFiles)
     {
         List<String> missingFiles = new ArrayList<>();
-        List<SampleFile> sampleFiles = ReplicateManager.getSampleFilesForRun(run.getId());
+        List<String> sampleFiles = PanoramaPublicManager.getSampleFilePathsForRun(run.getId());
 
         java.nio.file.Path rawFilesDir = getRawFilesDirPath(run.getContainer());
 
         ExperimentService expSvc = ExperimentService.get();
 
-        for(SampleFile sampleFile: sampleFiles)
+        for(String sampleFilePath: sampleFiles)
         {
-            String filePath = getFilePath(sampleFile.getFilePath());
+            String filePath = getFilePath(sampleFilePath);
             if(existingRawFiles.contains(filePath))
             {
                 continue;
@@ -359,7 +357,7 @@ public class SubmissionDataValidator
             java.nio.file.Path fileRoot = service.getFileRootPath(c, FileContentService.ContentType.files);
             if (fileRoot != null)
             {
-                return fileRoot.resolve(TargetedMSController.FolderSetupAction.RAW_FILE_DIR);
+                return fileRoot.resolve(PanoramaPublicManager.getRawFilesDir());
             }
         }
         return null;

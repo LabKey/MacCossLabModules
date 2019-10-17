@@ -15,13 +15,13 @@
  * limitations under the License.
  */
 %>
-<%@ page import="org.labkey.targetedms.PublishTargetedMSExperimentsController" %>
-<%@ page import="org.labkey.targetedms.model.Journal" %>
 <%@ page import="org.labkey.api.security.SecurityManager" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page extends="org.labkey.api.jsp.FormPage" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%
-    PublishTargetedMSExperimentsController.JournalForm form = (PublishTargetedMSExperimentsController.JournalForm) __form;
+    PanoramaPublicController.JournalForm form = (PanoramaPublicController.JournalForm) __form;
     Journal journal = form.lookupJournal();
 %>
 

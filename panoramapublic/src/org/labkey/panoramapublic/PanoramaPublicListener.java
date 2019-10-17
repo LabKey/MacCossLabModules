@@ -13,37 +13,45 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms;
+package org.labkey.panoramapublic;
 
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.SqlExecutor;
+import org.labkey.api.exp.api.ExpData;
 import org.labkey.api.exp.api.ExpExperiment;
+import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentListener;
+import org.labkey.api.exp.api.ExperimentService;
+import org.labkey.api.module.Module;
+import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.security.User;
+import org.labkey.api.targetedms.ITargetedMSRun;
+import org.labkey.api.targetedms.SkylineDocumentImportListener;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.api.view.ShortURLService;
-import org.labkey.targetedms.model.ExperimentAnnotations;
-import org.labkey.targetedms.model.Journal;
-import org.labkey.targetedms.model.JournalExperiment;
-import org.labkey.targetedms.parser.blib.BlibSpectrumReader;
-import org.labkey.targetedms.query.ExperimentAnnotationsManager;
-import org.labkey.targetedms.query.JournalManager;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.Journal;
+import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+import org.labkey.panoramapublic.query.JournalManager;
 
 import java.beans.PropertyChangeEvent;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * User: vsharma
  * Date: 8/22/2014
  * Time: 3:22 PM
  */
-public class TargetedMSListener implements ExperimentListener, ContainerManager.ContainerListener,
-        ShortURLService.ShortURLListener
+public class PanoramaPublicListener implements ExperimentListener, ContainerManager.ContainerListener,
+        ShortURLService.ShortURLListener, SkylineDocumentImportListener
 {
     @Override
     public void beforeExperimentDeleted(Container c, User user, ExpExperiment experiment)
@@ -54,38 +62,21 @@ public class TargetedMSListener implements ExperimentListener, ContainerManager.
     @Override
     public void containerCreated(Container c, User user)
     {
+        if(TargetedMSService.get().isPanoramaExperimentalDataFolder(c))
+        {
+            if(!c.getActiveModules().contains(PanoramaPublicModule.class))
+            {
+                Set<Module> modules = c.getActiveModules();
+                modules.add(ModuleLoader.getInstance().getModule(PanoramaPublicModule.class));
+                c.setActiveModules(modules);
+            }
+        }
     }
 
     @Override
     public void containerDeleted(Container c, User user)
     {
         JournalManager.deleteProjectJournal(c, user);
-
-        // Delete any runs that might have failed to fully import and therefore won't have a wrapper experiment run.
-        // See issue 34752
-        TargetedMSManager.deleteIncludingExperimentWrapper(c, user);
-
-        // Clean up QC annotations
-        new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoQCAnnotation() + " WHERE Container = ?", c);
-        new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoQCAnnotationType() + " WHERE Container = ?", c);
-
-        // Clean up Guide Sets
-        new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoGuideSet() + " WHERE Container = ?", c);
-
-        // Clean up any orphaned iRT scales
-        TargetedMSManager.deleteiRTscales(c);
-
-        // Clean up AutoQCPing
-        new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoAutoQCPing() + " WHERE Container = ?", c);
-
-        //Clean up QC enabled metrics
-        new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoQCEnabledMetrics() + " WHERE Container = ?", c);
-
-        // Clean up Metric Configurations
-        new SqlExecutor(TargetedMSManager.getSchema()).execute("DELETE FROM " + TargetedMSManager.getTableInfoQCMetricConfiguration() + " WHERE Container = ?", c);
-
-
-        BlibSpectrumReader.clearBlibCache(c);
     }
 
     @Override
@@ -136,5 +127,27 @@ public class TargetedMSListener implements ExperimentListener, ContainerManager.
             }
         }
         return Collections.emptyList();
+    }
+
+    @Override
+    public void onDocumentImport(Container container, User user, ITargetedMSRun run)
+    {
+        // Check if the PanoramaPublic module is enabled in this folder
+        if (!container.getActiveModules().contains(ModuleLoader.getInstance().getModule(PanoramaPublicModule.class)))
+        {
+            return;
+        }
+
+        // Check if an experiment is defined in the this folder, or if an experiment defined in a parent folder
+        // has been configured to include subfolders.
+        ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.getExperimentIncludesContainer(container);
+        if (expAnnotations != null)
+        {
+            ExpData expData = ExperimentService.get().getExpData(run.getDataId());
+            if(expData != null)
+            {
+                expAnnotations.getExperiment().addRuns(user, new ExpRun[] {expData.getRun()});
+            }
+        }
     }
 }

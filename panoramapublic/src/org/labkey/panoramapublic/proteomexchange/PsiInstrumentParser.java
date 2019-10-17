@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.proteomexchange;
+package org.labkey.panoramapublic.proteomexchange;
 
 import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.resource.FileResource;
 import org.labkey.api.util.Path;
-import org.labkey.targetedms.TargetedMSModule;
+import org.labkey.panoramapublic.PanoramaPublicModule;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -57,7 +57,7 @@ public class PsiInstrumentParser
 
     public static List<PsiInstrument> getInstruments() throws PxException
     {
-        Module module = ModuleLoader.getInstance().getModule(TargetedMSModule.class);
+        Module module = ModuleLoader.getInstance().getModule(PanoramaPublicModule.class);
         FileResource resource = (FileResource)module.getModuleResolver().lookup(Path.parse("psi-ms-PARSED.xml"));
         if(resource == null)
         {

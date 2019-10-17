@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.model;
+package org.labkey.panoramapublic.model;
 
 
 import org.labkey.api.view.ShortURLRecord;

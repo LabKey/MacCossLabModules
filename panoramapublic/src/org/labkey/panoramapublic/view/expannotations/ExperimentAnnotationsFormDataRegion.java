@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.view.expannotations;
+package org.labkey.panoramapublic.view.expannotations;
 
 import org.labkey.api.data.ActionButton;
 import org.labkey.api.data.ButtonBar;
@@ -23,10 +23,9 @@ import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.ViewContext;
-import org.labkey.targetedms.TargetedMSController;
-import org.labkey.targetedms.TargetedMSManager;
-import org.labkey.targetedms.TargetedMSSchema;
-import org.labkey.targetedms.query.ExperimentAnnotationsTableInfo;
+import org.labkey.panoramapublic.PanoramaPublicController;
+import org.labkey.panoramapublic.PanoramaPublicSchema;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsTableInfo;
 
 /**
  * User: vsharma
@@ -35,11 +34,11 @@ import org.labkey.targetedms.query.ExperimentAnnotationsTableInfo;
  */
 public class ExperimentAnnotationsFormDataRegion extends DataRegion
 {
-    public ExperimentAnnotationsFormDataRegion(ViewContext viewContext, TargetedMSController.ExperimentAnnotationsForm form, int mode)
+    public ExperimentAnnotationsFormDataRegion(ViewContext viewContext, PanoramaPublicController.ExperimentAnnotationsForm form, int mode)
     {
         super();
 
-        addColumns(new ExperimentAnnotationsTableInfo(new TargetedMSSchema(viewContext.getUser(), viewContext.getContainer()), null),
+        addColumns(new ExperimentAnnotationsTableInfo(new PanoramaPublicSchema(viewContext.getUser(), viewContext.getContainer()), null),
                 "Id,Title,Organism,Instrument,SpikeIn,Abstract,ExperimentDescription,SampleDescription, Keywords, LabHead, LabHeadAffiliation, Submitter, SubmitterAffiliation, Citation,PublicationLink,");
 
         DisplayColumn idCol = getDisplayColumn("Id");
@@ -54,7 +53,7 @@ public class ExperimentAnnotationsFormDataRegion extends DataRegion
         switch(mode)
         {
             case DataRegion.MODE_INSERT:
-                ActionURL submitUrl = new ActionURL(TargetedMSController.SaveNewExperimentAnnotationAction.class, viewContext.getContainer());
+                ActionURL submitUrl = new ActionURL(PanoramaPublicController.SaveNewExperimentAnnotationAction.class, viewContext.getContainer());
                 ActionButton insertButton = new ActionButton(submitUrl, "Submit");
                 insertButton.setDisplayPermission(InsertPermission.class);
                 insertButton.setActionType(ActionButton.Action.POST);
@@ -64,7 +63,7 @@ public class ExperimentAnnotationsFormDataRegion extends DataRegion
                 break;
 
             case DataRegion.MODE_UPDATE:
-                ActionURL updateUrl = new ActionURL(TargetedMSController.UpdateExperimentAnnotationsAction.class, viewContext.getContainer());
+                ActionURL updateUrl = new ActionURL(PanoramaPublicController.UpdateExperimentAnnotationsAction.class, viewContext.getContainer());
                 ActionButton updateButton = new ActionButton(updateUrl, "Update");
                 updateButton.setDisplayPermission(UpdatePermission.class);
                 updateButton.setActionType(ActionButton.Action.POST);

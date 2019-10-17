@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.query;
+package org.labkey.panoramapublic.query;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -55,10 +55,10 @@ import org.labkey.api.util.UniqueID;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HttpView;
 import org.labkey.api.view.template.ClientDependency;
-import org.labkey.targetedms.PublishTargetedMSExperimentsController;
-import org.labkey.targetedms.TargetedMSManager;
-import org.labkey.targetedms.TargetedMSSchema;
-import org.labkey.targetedms.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.PanoramaPublicManager;
+import org.labkey.panoramapublic.PanoramaPublicSchema;
+import org.labkey.panoramapublic.PanoramaPublicController;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -71,15 +71,15 @@ import java.util.Set;
  * Date: 12/19/13
  * Time: 2:29 PM
  */
-public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSchema>
+public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublicSchema>
 {
 
-    public ExperimentAnnotationsTableInfo(final TargetedMSSchema schema, ContainerFilter cf)
+    public ExperimentAnnotationsTableInfo(final PanoramaPublicSchema schema, ContainerFilter cf)
     {
-        this(TargetedMSManager.getTableInfoExperimentAnnotations(), schema, cf);
+        this(PanoramaPublicManager.getTableInfoExperimentAnnotations(), schema, cf);
     }
 
-    public ExperimentAnnotationsTableInfo(TableInfo tableInfo, TargetedMSSchema schema, ContainerFilter cf)
+    public ExperimentAnnotationsTableInfo(TableInfo tableInfo, PanoramaPublicSchema schema, ContainerFilter cf)
     {
         super(tableInfo, schema, cf);
 
@@ -110,8 +110,8 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
                     {
                         return PageFlowUtil.set(
                                 ClientDependency.fromPath("internal/jQuery"),
-                                ClientDependency.fromPath("/TargetedMS/css/dropDown.css"),
-                                ClientDependency.fromPath("/TargetedMS/js/dropDownUtil.js"));
+                                ClientDependency.fromPath("/PanoramaPublic/css/dropDown.css"),
+                                ClientDependency.fromPath("/PanoramaPublic/js/dropDownUtil.js"));
                     }
 
                     @Override
@@ -149,10 +149,10 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
             public @NotNull Set<ClientDependency> getClientDependencies()
             {
                 return PageFlowUtil.set(
-                        ClientDependency.fromPath("TargetedMS/css/ExperimentAnnotations.css"),
+                        ClientDependency.fromPath("PanoramaPublic/css/ExperimentAnnotations.css"),
                         ClientDependency.fromPath("hopscotch/css/hopscotch.min.css"),
-                        ClientDependency.fromPath("TargetedMS/js/ExperimentAnnotations.js"),
-                        ClientDependency.fromPath("TargetedMS/js/clipboard.min.js"),
+                        ClientDependency.fromPath("PanoramaPublic/js/ExperimentAnnotations.js"),
+                        ClientDependency.fromPath("PanoramaPublic/js/clipboard.min.js"),
                         ClientDependency.fromPath("hopscotch/js/hopscotch.min.js")
                         );
             }
@@ -189,11 +189,11 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
         // submitterCol.setUserEditable(getUserSchema().getUser().isInSiteAdminGroup() ? true : false);
 
         var instrCol = getMutableColumn("Instrument");
-        instrCol.setDisplayColumnFactory(colInfo -> new AutoCompleteColumn(colInfo, new ActionURL(PublishTargetedMSExperimentsController.CompleteInstrumentAction.class, getContainer()), true, "Enter Instrument"));
+        instrCol.setDisplayColumnFactory(colInfo -> new AutoCompleteColumn(colInfo, new ActionURL(PanoramaPublicController.CompleteInstrumentAction.class, getContainer()), true, "Enter Instrument"));
         instrCol.setDescription("One or more instruments are required for submitting data to ProteomeXchange.");
 
         var organismCol = getMutableColumn("Organism");
-        organismCol.setDisplayColumnFactory(colInfo -> new OrganismColumn(colInfo, new ActionURL(PublishTargetedMSExperimentsController.CompleteOrganismAction.class, getContainer()), false, "Enter Organism"));
+        organismCol.setDisplayColumnFactory(colInfo -> new OrganismColumn(colInfo, new ActionURL(PanoramaPublicController.CompleteOrganismAction.class, getContainer()), false, "Enter Organism"));
         organismCol.setDescription("One or more organisms are required for submitting data to ProteomeXchange.");
 
         SQLFragment runCountSQL = new SQLFragment("(SELECT COUNT(r.ExperimentRunId) FROM ");
@@ -221,7 +221,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
     @Override
     public String getName()
     {
-        return TargetedMSSchema.TABLE_EXPERIMENT_ANNOTATIONS;
+        return PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS;
     }
 
     @Override
@@ -441,7 +441,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<TargetedMSSche
             StringBuilder sb = new StringBuilder();
 
             sb.append("<script type=\"text/javascript\">");
-            sb.append("LABKEY.requiresScript([\"/TargetedMS/js/ExpAnnotAutoComplete.js\"], function() {\n");
+            sb.append("LABKEY.requiresScript([\"/PanoramaPublic/js/ExpAnnotAutoComplete.js\"], function() {\n");
             sb.append("Ext4.onReady(function(){\n");
             sb.append("    initAutoComplete(").append(_autoCompletionUrl).append(", '").append(renderId).append("', ").append(_prefetch ? "true": "false").append(");\n");
             sb.append("});});\n");

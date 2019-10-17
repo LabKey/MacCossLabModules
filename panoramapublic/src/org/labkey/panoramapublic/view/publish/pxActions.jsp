@@ -19,8 +19,8 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.targetedms.PublishTargetedMSExperimentsController" %>
-<%@ page import="org.labkey.targetedms.model.ExperimentAnnotations" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -33,14 +33,14 @@
 %>
 
 <%
-    JspView<PublishTargetedMSExperimentsController.PxExportForm> me = (JspView<PublishTargetedMSExperimentsController.PxExportForm>) HttpView.currentView();
-    PublishTargetedMSExperimentsController.PxExportForm bean = me.getModelBean();
+    JspView<PanoramaPublicController.PxExportForm> me = (JspView<PanoramaPublicController.PxExportForm>) HttpView.currentView();
+    PanoramaPublicController.PxExportForm bean = me.getModelBean();
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
 
-    ActionURL generateXmlUrl = new ActionURL(PublishTargetedMSExperimentsController.ExportPxXmlAction.class, getContainer());
+    ActionURL generateXmlUrl = new ActionURL(PanoramaPublicController.ExportPxXmlAction.class, getContainer());
     generateXmlUrl.addParameter("id", expAnnot.getId());
 
-    ActionURL validateXmlUrl = new ActionURL(PublishTargetedMSExperimentsController.ValidatePxXmlAction.class, getContainer());
+    ActionURL validateXmlUrl = new ActionURL(PanoramaPublicController.ValidatePxXmlAction.class, getContainer());
     validateXmlUrl.addParameter("id", expAnnot.getId());
 %>
 
@@ -147,7 +147,7 @@
                         handler: function() {
                             var values = form.getForm().getValues();
                             form.submit({
-                                url: <%=q(new ActionURL(PublishTargetedMSExperimentsController.PxXmlSummaryAction.class, getContainer()).getLocalURIString())%>,
+                                url: <%=q(new ActionURL(PanoramaPublicController.PxXmlSummaryAction.class, getContainer()).getLocalURIString())%>,
                                 method: 'POST',
                                 params: values
                             });
@@ -160,7 +160,7 @@
                         handler: function() {
                             var values = form.getForm().getValues();
                             form.submit({
-                                url: <%=q(new ActionURL(PublishTargetedMSExperimentsController.ExportPxXmlAction.class, getContainer()).getLocalURIString())%>,
+                                url: <%=q(new ActionURL(PanoramaPublicController.ExportPxXmlAction.class, getContainer()).getLocalURIString())%>,
                                 method: 'POST',
                                 params: values
                             });
@@ -173,7 +173,7 @@
                         handler: function() {
                             var values = form.getForm().getValues();
                             form.submit({
-                                url: <%=q(new ActionURL(PublishTargetedMSExperimentsController.ValidatePxXmlAction.class, getContainer()).getLocalURIString())%>,
+                                url: <%=q(new ActionURL(PanoramaPublicController.ValidatePxXmlAction.class, getContainer()).getLocalURIString())%>,
                                 method: 'POST',
                                 params: values
                             });
@@ -186,7 +186,7 @@
                         handler: function() {
                             var values = form.getForm().getValues();
                             form.submit({
-                                url: <%=q(new ActionURL(PublishTargetedMSExperimentsController.SavePxIdAction.class, getContainer()).getLocalURIString())%>,
+                                url: <%=q(new ActionURL(PanoramaPublicController.SavePxIdAction.class, getContainer()).getLocalURIString())%>,
                                 method: 'POST',
                                 params: values
                             });
@@ -199,7 +199,7 @@
                         handler: function() {
                             var values = form.getForm().getValues();
                             form.submit({
-                                url: <%=q(new ActionURL(PublishTargetedMSExperimentsController.SubmitPxXmlAction.class, getContainer()).getLocalURIString())%>,
+                                url: <%=q(new ActionURL(PanoramaPublicController.SubmitPxXmlAction.class, getContainer()).getLocalURIString())%>,
                                 method: 'POST',
                                 params: values
                             });
@@ -212,7 +212,7 @@
                         handler: function() {
                             var values = form.getForm().getValues();
                             form.submit({
-                                url: <%=q(new ActionURL(PublishTargetedMSExperimentsController.UpdatePxXmlAction.class, getContainer()).getLocalURIString())%>,
+                                url: <%=q(new ActionURL(PanoramaPublicController.UpdatePxXmlAction.class, getContainer()).getLocalURIString())%>,
                                 method: 'POST',
                                 params: values
                             });

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms.pipeline;
+package org.labkey.panoramapublic.pipeline;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -30,9 +30,9 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.api.view.ViewBackgroundInfo;
-import org.labkey.targetedms.TargetedMSModule;
-import org.labkey.targetedms.model.ExperimentAnnotations;
-import org.labkey.targetedms.model.Journal;
+import org.labkey.panoramapublic.PanoramaPublicModule;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.Journal;
 
 import java.io.File;
 import java.io.IOException;
@@ -71,7 +71,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
         if (null == targetRoot)
             throw new NotFoundException("Cannot find target pipeline root.");
 
-        LocalDirectory localDirectory = LocalDirectory.create(targetRoot, TargetedMSModule.NAME, baseLogFileName,
+        LocalDirectory localDirectory = LocalDirectory.create(targetRoot, PanoramaPublicModule.NAME, baseLogFileName,
                 !targetRoot.isCloudRoot() ? targetRoot.getRootPath().getAbsolutePath() : FileUtil.getTempDirectory().getPath());
         setLocalDirectory(localDirectory);
         setLogFile(localDirectory.determineLogFile());

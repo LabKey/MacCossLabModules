@@ -13,16 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.targetedms;
+package org.labkey.panoramapublic;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.ConfirmAction;
+import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabKeyError;
 import org.labkey.api.action.ReadOnlyApiAction;
@@ -31,16 +33,25 @@ import org.labkey.api.action.SimpleStreamAction;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
 import org.labkey.api.data.ActionButton;
+import org.labkey.api.data.BeanViewForm;
 import org.labkey.api.data.ButtonBar;
+import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DataRegion;
+import org.labkey.api.data.DataRegionSelection;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.NormalContainerType;
+import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
+import org.labkey.api.data.TableInfo;
+import org.labkey.api.exp.api.ExpExperiment;
+import org.labkey.api.exp.api.ExpRun;
+import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileContentService;
+import org.labkey.api.files.view.FilesWebPart;
 import org.labkey.api.jsp.FormPage;
 import org.labkey.api.module.DefaultFolderType;
 import org.labkey.api.module.FolderType;
@@ -56,6 +67,7 @@ import org.labkey.api.pipeline.PipelineValidationException;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.DetailsURL;
 import org.labkey.api.query.FieldKey;
+import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.QuerySettings;
 import org.labkey.api.query.QueryView;
 import org.labkey.api.query.ValidationException;
@@ -72,8 +84,10 @@ import org.labkey.api.security.UserManager;
 import org.labkey.api.security.permissions.AbstractActionPermissionTest;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.security.permissions.AdminPermission;
+import org.labkey.api.security.permissions.DeletePermission;
 import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.permissions.ReadPermission;
+import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
@@ -83,39 +97,27 @@ import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.TestContext;
 import org.labkey.api.util.URLHelper;
-import org.labkey.api.view.ActionURL;
-import org.labkey.api.view.AjaxCompletion;
-import org.labkey.api.view.DetailsView;
-import org.labkey.api.view.HtmlView;
-import org.labkey.api.view.HttpView;
-import org.labkey.api.view.JspView;
-import org.labkey.api.view.NavTree;
-import org.labkey.api.view.NotFoundException;
-import org.labkey.api.view.Portal;
-import org.labkey.api.view.RedirectException;
-import org.labkey.api.view.ShortURLRecord;
-import org.labkey.api.view.ShortURLService;
-import org.labkey.api.view.UnauthorizedException;
-import org.labkey.api.view.VBox;
-import org.labkey.api.view.ViewBackgroundInfo;
-import org.labkey.api.view.ViewForm;
-import org.labkey.api.view.WebPartView;
-import org.labkey.targetedms.model.ExperimentAnnotations;
-import org.labkey.targetedms.model.Journal;
-import org.labkey.targetedms.model.JournalExperiment;
-import org.labkey.targetedms.pipeline.CopyExperimentPipelineJob;
-import org.labkey.targetedms.proteomexchange.NcbiUtils;
-import org.labkey.targetedms.proteomexchange.ProteomeXchangeService;
-import org.labkey.targetedms.proteomexchange.ProteomeXchangeServiceException;
-import org.labkey.targetedms.proteomexchange.PsiInstrumentParser;
-import org.labkey.targetedms.proteomexchange.PxException;
-import org.labkey.targetedms.proteomexchange.PxHtmlWriter;
-import org.labkey.targetedms.proteomexchange.PxXmlWriter;
-import org.labkey.targetedms.proteomexchange.SubmissionDataStatus;
-import org.labkey.targetedms.proteomexchange.SubmissionDataValidator;
-import org.labkey.targetedms.query.ExperimentAnnotationsManager;
-import org.labkey.targetedms.query.JournalManager;
-import org.labkey.targetedms.view.expannotations.TargetedMSExperimentsWebPart;
+import org.labkey.api.view.*;
+import org.labkey.api.view.template.ClientDependency;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.Journal;
+import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
+import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
+import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
+import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
+import org.labkey.panoramapublic.proteomexchange.PsiInstrumentParser;
+import org.labkey.panoramapublic.proteomexchange.PxException;
+import org.labkey.panoramapublic.proteomexchange.PxHtmlWriter;
+import org.labkey.panoramapublic.proteomexchange.PxXmlWriter;
+import org.labkey.panoramapublic.proteomexchange.SubmissionDataStatus;
+import org.labkey.panoramapublic.proteomexchange.SubmissionDataValidator;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+import org.labkey.panoramapublic.query.JournalManager;
+import org.labkey.panoramapublic.view.PanoramaPublicRunListView;
+import org.labkey.panoramapublic.view.expannotations.ExperimentAnnotationsFormDataRegion;
+import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
+import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentsWebPart;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
@@ -127,6 +129,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Modifier;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -138,13 +142,35 @@ import java.util.regex.Pattern;
  * Date: 8/5/2014
  * Time: 8:39 AM
  */
-public class PublishTargetedMSExperimentsController extends SpringActionController
+public class PanoramaPublicController extends SpringActionController
 {
-    private static final Logger LOG = Logger.getLogger(PublishTargetedMSExperimentsController.class);
+    private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(PanoramaPublicController.class);
+    public static final String NAME = "panoramapublic";
+
+    public PanoramaPublicController()
+    {
+        setActionResolver(_actionResolver);
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public class BeginAction extends SimpleViewAction
+    {
+        public ModelAndView getView(Object o, BindException errors)
+        {
+            return new JspView("/org/labkey/panoramapublic/view/hello.jsp");
+        }
+
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root;
+        }
+    }
+
+    private static final Logger LOG = Logger.getLogger(PanoramaPublicController.class);
 
     public static Class[] getActions()
     {
-        Class[] innerClasses = PublishTargetedMSExperimentsController.class.getDeclaredClasses();
+        Class[] innerClasses = PanoramaPublicController.class.getDeclaredClasses();
         List<Class> actionClasses = new ArrayList<>();
         for (Class innerClass : innerClasses)
             if (Controller.class.isAssignableFrom(innerClass) && !Modifier.isAbstract(innerClass.getModifiers()))
@@ -166,20 +192,20 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         public ModelAndView getView(Object o, BindException errors)
         {
             QuerySettings qSettings = new QuerySettings(getViewContext(), "Journals", "Journal");
-            QueryView qView = new QueryView(new TargetedMSSchema(getUser(), getContainer()), qSettings, null);
+            QueryView qView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, null);
             qView.setShowDetailsColumn(true);
             DetailsURL detailsUrl = new DetailsURL(new ActionURL(JournalGroupDetailsAction.class, getContainer()), Collections.singletonMap("id", "id"));
             qView.setDetailsURL(detailsUrl);
             qView.setFrame(WebPartView.FrameType.NONE);
 
             VBox view = new VBox();
-            view.addView(new HtmlView("<div style=\"margin:5px;\">Journal groups are used in conjunction with the \"publication protocol\" implemented for the targetedms module. " +
+            view.addView(new HtmlView("<div style=\"margin:5px;\">Journal groups are used in conjunction with the \"publication protocol\" implemented for the panoramapublic module. " +
                     "The goal of the publication protocol is to provide a mechanism for journals to copy data associated with a manuscript from the author's  project " +
                     " on a Panorama server to the journal's project. " +
                     "Creating a new journal group via this admin console does the following:<ol>" +
                     "<li>Creates a project for the journal with the appropriate web parts added</li>" +
                     "<li>Creates a new security group for members of the journal</li>" +
-                    "<li>Create an entry in the Journal table of the targetedms schema that links the journal  to the project</li></ol></div>"));
+                    "<li>Create an entry in the Journal table of the panoramapublic schema that links the journal  to the project</li></ol></div>"));
 
             if (getContainer().hasPermission(getUser(), AdminOperationsPermission.class))
             {
@@ -213,7 +239,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public ModelAndView getView(CreateJournalGroupForm form, boolean reshow, BindException errors)
         {
-            JspView view = new JspView<>("/org/labkey/targetedms/view/publish/createJournalGroup.jsp", form, errors);
+            JspView view = new JspView<>("/org/labkey/panoramapublic/view/publish/createJournalGroup.jsp", form, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Create New Journal Group");
             return view;
@@ -273,12 +299,13 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             {
                 // Create the project.
                 Container container = ContainerManager.createContainer(ContainerManager.getRoot(), form.getProjectName(), null, null, NormalContainerType.NAME, getUser());
+                TargetedMSService tmsService = TargetedMSService.get();
                 // Set the folder type to "Targeted MS".
-                FolderType type = FolderTypeManager.get().getFolderType(TargetedMSFolderType.NAME);
+                FolderType type = FolderTypeManager.get().getFolderType(tmsService.getFolderTypeName());
                 container.setFolderType(type, getUser());
                 // Make this an "Experiment data" folder.
-                Module targetedMSModule = ModuleLoader.getInstance().getModule(TargetedMSModule.NAME);
-                ModuleProperty moduleProperty = targetedMSModule.getModuleProperties().get(TargetedMSModule.TARGETED_MS_FOLDER_TYPE);
+                Module targetedMSModule = ModuleLoader.getInstance().getModule(tmsService.getModuleName());
+                ModuleProperty moduleProperty = targetedMSModule.getModuleProperties().get(tmsService.getFolderTypePropertyName());
                 moduleProperty.saveValue(getUser(), container, TargetedMSService.FolderType.Experiment.toString());
                 // Display only the "Targeted MS Experiment List" webpart.
                 Portal.WebPart webPart = Portal.getPortalPart(TargetedMSExperimentsWebPart.WEB_PART_NAME).createWebPart();
@@ -374,7 +401,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public ModelAndView getConfirmView(JournalForm form, BindException errors)
         {
-            return FormPage.getView("/org/labkey/targetedms/view/publish/deleteJournal.jsp", form);
+            return FormPage.getView("/org/labkey/panoramapublic/view/publish/deleteJournal.jsp", form);
         }
 
         @Override
@@ -388,7 +415,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 return false;
             }
 
-            try(DbScope.Transaction transaction = TargetedMSManager.getSchema().getScope().ensureTransaction())
+            try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
             {
                 // Delete the journal.
                 JournalManager.delete(journal, getUser());
@@ -433,7 +460,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
 
             DataRegion journalDetails = new DataRegion();
-            journalDetails.setColumns(TargetedMSManager.getTableInfoJournal().getColumns("Name", "LabkeyGroupId", "Project", "Created", "CreatedBy"));
+            journalDetails.setColumns(PanoramaPublicManager.getTableInfoJournal().getColumns("Name", "LabkeyGroupId", "Project", "Created", "CreatedBy"));
 
             ButtonBar buttonBar = new ButtonBar();
             buttonBar.setStyle(ButtonBar.Style.separateButtons);
@@ -460,7 +487,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             qSettings.setFieldKeys(columns);
             qSettings.setBaseFilter(new SimpleFilter(FieldKey.fromParts("JournalId"), journal.getId()));
             qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
-            QueryView journalExperimentListView = new QueryView(new TargetedMSSchema(getUser(), getContainer()), qSettings, errors);
+            QueryView journalExperimentListView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, errors);
             // journalExperimentListView.setButtonBarPosition(DataRegion.ButtonBarPosition.NONE);
 
             VBox view = new VBox();
@@ -532,7 +559,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         {
             validateAction(form);
 
-            JspView view = new JspView("/org/labkey/targetedms/view/publish/copyExperimentForm.jsp", form, errors);
+            JspView view = new JspView("/org/labkey/panoramapublic/view/publish/copyExperimentForm.jsp", form, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Copy Targeted MS Experiment");
             return view;
@@ -546,7 +573,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 throw new NotFoundException("Could not find experiment with id " + form.getId());
             }
 
-            TargetedMSController.ensureCorrectContainer(getContainer(), _experiment.getContainer(), getViewContext());
+            PanoramaPublicController.ensureCorrectContainer(getContainer(), _experiment.getContainer(), getViewContext());
 
             _journal = form.lookupJournal();
             if(_journal == null)
@@ -689,7 +716,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
             // Bad or missing returnUrl -- go to expeirment annotation details
             Container c = HttpView.currentContext().getContainer();
-            return TargetedMSController.getViewExperimentDetailsURL(getId(), c);
+            return PanoramaPublicController.getViewExperimentDetailsURL(getId(), c);
         }
     }
 
@@ -757,7 +784,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             form.setJournalId(journals.get(0).getId()); // This is "Panorama Public" on panoramaweb.org
         }
 
-        JspView view = new JspView("/org/labkey/targetedms/view/publish/publishExperimentForm.jsp", bean, errors);
+        JspView view = new JspView("/org/labkey/panoramapublic/view/publish/publishExperimentForm.jsp", bean, errors);
         view.setFrame(WebPartView.FrameType.PORTAL);
         view.setTitle("Submission Request to " + form.lookupJournal().getName());
         return view;
@@ -786,7 +813,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             validateJournal(errors, _experimentAnnotations, _journal);
 
             // Cannot publish if this is not an "Experimental data" folder.
-            TargetedMSService.FolderType folderType = TargetedMSModule.getFolderType(_experimentAnnotations.getContainer());
+            TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(_experimentAnnotations.getContainer());
             if(folderType != TargetedMSService.FolderType.Experiment)
             {
                 errors.reject(ERROR_MSG,"Only Targeted MS folders of type \"Experimental data\" can be submitted to " + _journal.getName() + ".");
@@ -831,7 +858,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 bean.setJournal(_journal);
                 bean.setForm(form);
 
-                JspView<PublishExperimentConfirmBean> view = new JspView<PublishExperimentConfirmBean>("/org/labkey/targetedms/view/publish/confirmSubmit.jsp", bean, errors);
+                JspView<PublishExperimentConfirmBean> view = new JspView<PublishExperimentConfirmBean>("/org/labkey/panoramapublic/view/publish/confirmSubmit.jsp", bean, errors);
                 view.setTitle("Submission Request to " + _journal.getName());
                 return view;
             }
@@ -841,7 +868,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         {
             setTitle("Submitted");
             String journal = _journal.getName();
-            ActionURL returnUrl = TargetedMSController.getViewExperimentDetailsURL(_experimentAnnotations.getId(), getContainer());
+            ActionURL returnUrl = PanoramaPublicController.getViewExperimentDetailsURL(_experimentAnnotations.getId(), getContainer());
             StringBuilder html = new StringBuilder();
             html.append("Thank you for submitting your data to ").append(PageFlowUtil.filter(journal)).append("!");
             html.append(" We will send you a confirmation email once your data has been copied. This can take up to a week.");
@@ -941,7 +968,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public URLHelper getSuccessURL(PublishExperimentForm form)
         {
-            return TargetedMSController.getViewExperimentDetailsURL(form.getId(), getContainer());
+            return PanoramaPublicController.getViewExperimentDetailsURL(form.getId(), getContainer());
         }
 
         @Override
@@ -1145,7 +1172,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
 
 
     // ------------------------------------------------------------------------
-    // BEGIN Action for updating an entry in targetedms.JournalExperiment table
+    // BEGIN Action for updating an entry in panoramapublic.JournalExperiment table
     // ------------------------------------------------------------------------
     @RequiresPermission(AdminPermission.class)
     public static class UpdateJournalExperimentAction extends PublishExperimentAction
@@ -1200,7 +1227,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             bean.setJournal(_journal);
             bean.setForm(form);
 
-            JspView<PublishExperimentConfirmBean> view = new JspView<>("/org/labkey/targetedms/view/publish/confirmSubmit.jsp", bean, errors);
+            JspView<PublishExperimentConfirmBean> view = new JspView<>("/org/labkey/panoramapublic/view/publish/confirmSubmit.jsp", bean, errors);
             view.setTitle("Update Submission Request to " + _journal.getName());
             return view;
         }
@@ -1236,7 +1263,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         }
     }
     // ------------------------------------------------------------------------
-    // END Action for updating an entry in targetedms.JournalExperiment table
+    // END Action for updating an entry in panoramapublic.JournalExperiment table
     // ------------------------------------------------------------------------
 
     private static void sendNotification(PublishExperimentForm form, ExperimentAnnotations exptAnnotations, Journal journal, JournalExperiment journalExperiment,
@@ -1313,7 +1340,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     }
 
     // ------------------------------------------------------------------------
-    // BEGIN Action for deleting an entry in targetedms.JournalExperiment table.
+    // BEGIN Action for deleting an entry in panoramapublic.JournalExperiment table.
     // ------------------------------------------------------------------------
     @RequiresPermission(AdminPermission.class)
     public static class DeleteJournalExperimentAction extends JournalExperimentAction
@@ -1371,16 +1398,16 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public URLHelper getSuccessURL(PublishExperimentForm publishExperimentForm)
         {
-            return TargetedMSController.getViewExperimentDetailsURL(publishExperimentForm.getId(), getContainer());
+            return PanoramaPublicController.getViewExperimentDetailsURL(publishExperimentForm.getId(), getContainer());
         }
     }
 
     // ------------------------------------------------------------------------
-    // END Action for deleting an entry in targetedms.JournalExperiment table.
+    // END Action for deleting an entry in panoramapublic.JournalExperiment table.
     // ------------------------------------------------------------------------
 
     // ------------------------------------------------------------------------
-    // BEGIN Action for resetting an entry in targetedms.JournalExperiment table
+    // BEGIN Action for resetting an entry in panoramapublic.JournalExperiment table
     //       -- Set 'Copied' column to null.
     //       -- Give journal copy privilege again.
     //       -- Reset access URL to point to the author's data
@@ -1412,7 +1439,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             // Remember the existing location of the copy in the journal's project
             String journalFolderUrl = AppProps.getInstance().getBaseServerUrl() +  _journalExperiment.getShortAccessUrl().getFullURL();
 
-            try(DbScope.Transaction transaction = TargetedMSManager.getSchema().getScope().ensureTransaction())
+            try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
             {
                 Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(_journal.getLabkeyGroupId());
                 JournalManager.addJournalPermissions(_experimentAnnotations, journalGroup, getUser());
@@ -1483,12 +1510,12 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
         @Override
         public URLHelper getSuccessURL(PublishExperimentForm publishExperimentForm)
         {
-            return TargetedMSController.getViewExperimentDetailsURL(publishExperimentForm.getId(), getContainer());
+            return PanoramaPublicController.getViewExperimentDetailsURL(publishExperimentForm.getId(), getContainer());
         }
     }
 
     // ------------------------------------------------------------------------
-    // END Action for resetting an entry in targetedms.JournalExperiment table
+    // END Action for resetting an entry in panoramapublic.JournalExperiment table
     // ------------------------------------------------------------------------
 
     @RequiresPermission(AdminPermission.class)
@@ -1508,7 +1535,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
                 errors.reject(ERROR_MSG,"Could not find experiment with Id " + form.getId());
             }
 
-            TargetedMSController.ensureCorrectContainer(getContainer(), _experimentAnnotations.getContainer(), getViewContext());
+            ensureCorrectContainer(getContainer(), _experimentAnnotations.getContainer(), getViewContext());
 
             _journal = form.lookupJournal();
             if(_journal == null)
@@ -1626,7 +1653,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
             else
             {
-                JspView view = new JspView("/org/labkey/targetedms/view/publish/missingExperimentInfo.jsp", status, errors);
+                JspView view = new JspView("/org/labkey/panoramapublic/view/publish/missingExperimentInfo.jsp", status, errors);
                 view.setFrame(WebPartView.FrameType.PORTAL);
                 view.setTitle("Missing Information in Submission Request");
                 return view;
@@ -1714,7 +1741,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             }
 
             form.setTestDatabase(true);
-            JspView view = new JspView<>("/org/labkey/targetedms/view/publish/pxActions.jsp", form, errors);
+            JspView view = new JspView<>("/org/labkey/panoramapublic/view/publish/pxActions.jsp", form, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("ProteomeXchange Actions");
             return view;
@@ -1971,7 +1998,7 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
             PipeRoot root = PipelineService.get().getPipelineRootSetting(container);
             if (root != null)
             {
-                LocalDirectory localDirectory = LocalDirectory.create(root, TargetedMSModule.NAME);
+                LocalDirectory localDirectory = LocalDirectory.create(root, PanoramaPublicModule.NAME);
                 return new File(localDirectory.getLocalDirectoryFile(), fileName);
             }
             else
@@ -2169,9 +2196,802 @@ public class PublishTargetedMSExperimentsController extends SpringActionControll
     // END Actions for ProteomeXchange
     // ------------------------------------------------------------------------
 
+    // ------------------------------------------------------------------------
+    // BEGIN Experiment annotation actions
+    // ------------------------------------------------------------------------
+    private static final String ADD_SELECTED_RUNS = "addSelectedRuns";
+    private static final String SUBMITTER = "submitter";
+
+    @RequiresPermission(InsertPermission.class)
+    public class ShowNewExperimentAnnotationFormAction extends SimpleViewAction<NewExperimentAnnotationsForm>
+    {
+
+        @Override
+        public ModelAndView getView(NewExperimentAnnotationsForm form, BindException errors)
+        {
+            DataRegion drg = createNewTargetedMsExperimentDataRegion(form, getViewContext());
+            InsertView view = new InsertView(drg, errors);
+            addExperimentViewDependencies(view);
+            view.setTitle(TargetedMSExperimentWebPart.WEB_PART_NAME);
+            view.setInitialValue(SUBMITTER, getUser().getUserId());
+            return view;
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root.addChild("Create Targeted MS Experiment");
+        }
+    }
+
+    @RequiresPermission(InsertPermission.class)
+    public class SaveNewExperimentAnnotationAction extends FormViewAction<NewExperimentAnnotationsForm>
+    {
+        private ExperimentAnnotations _expAnnot;
+
+        @Override
+        public void validateCommand(NewExperimentAnnotationsForm target, Errors errors)
+        {
+        }
+
+        @Override
+        public ModelAndView getView(NewExperimentAnnotationsForm form, boolean reshow, BindException errors)
+        {
+            // We are here either because handlePost failed or there were errors in the form (e.g. missing required values)
+            ExperimentAnnotations expAnnot = form.getBean();
+
+            if (expAnnot.getTitle() == null || expAnnot.getTitle().trim().length() == 0)
+            {
+                errors.reject(ERROR_MSG, "You must specify a title for the experiment");
+            }
+
+            DataRegion drg = createNewTargetedMsExperimentDataRegion(form, getViewContext());
+            InsertView view = new InsertView(drg, errors);
+            addExperimentViewDependencies(view);
+            view.setTitle(TargetedMSExperimentWebPart.WEB_PART_NAME);
+            if(reshow)
+            {
+                view.setInitialValues(ViewServlet.adaptParameterMap(form.getRequest().getParameterMap()));
+            }
+            return view;
+        }
+
+        @Override
+        public boolean handlePost(NewExperimentAnnotationsForm form, BindException errors)
+        {
+            _expAnnot = form.getBean();
+
+            if(ExperimentAnnotationsManager.getExperimentIncludesContainer(getContainer()) != null)
+            {
+                errors.reject(ERROR_MSG, "Failed to create new experiment.  Data in this folder is already part of an experiment.");
+                return false;
+            }
+
+            if (!StringUtils.isBlank(_expAnnot.getPublicationLink()))
+            {
+                UrlValidator urlValidator = new UrlValidator(new String[]{"http", "https"});
+                if (!urlValidator.isValid(form.getBean().getPublicationLink()))
+                {
+                    errors.reject(ERROR_MSG, "Publication Link does not appear to be valid. Links should begin with either http or https.");
+                    return false;
+                }
+            }
+
+            // These two values are not set automatically in the form.  They have to be set explicitly.
+            form.setAddSelectedRuns("true".equals(getViewContext().getRequest().getParameter(ADD_SELECTED_RUNS)));
+            form.setDataRegionSelectionKey(getViewContext().getRequest().getParameter(DataRegionSelection.DATA_REGION_SELECTION_KEY));
+
+
+
+            if (errors.getErrorCount() == 0)
+            {
+
+                try (DbScope.Transaction transaction = ExperimentService.get().ensureTransaction())
+                {
+                    // Create a new experiment
+                    ExpExperiment experiment = ExperimentService.get().createExpExperiment(getContainer(), makeExpExperimentName(_expAnnot.getTitle()));
+                    ensureUniqueLSID(experiment);
+                    experiment.save(getUser());
+
+                    // Create a new entry in panoramapublic.experimentannotations
+                    _expAnnot.setExperimentId(experiment.getRowId());
+                    _expAnnot.setContainer(experiment.getContainer());
+                    _expAnnot = ExperimentAnnotationsManager.save(_expAnnot, getUser());
+
+                    // Add all runs in the folder
+                    List<? extends ExpRun> runsInFolder = ExperimentService.get().getExpRuns(getContainer(), null, null);
+                    int[] runIds = new int[runsInFolder.size()];
+                    int i = 0;
+                    for(ExpRun run: runsInFolder)
+                    {
+                        runIds[i++] = run.getRowId();
+                    }
+                    ExperimentAnnotationsManager.addSelectedRunsToExperiment(experiment, runIds, getUser());
+
+                    transaction.commit();
+                }
+
+                return true;
+            }
+            return false;
+        }
+
+        private String makeExpExperimentName(String name)
+        {
+            ColumnInfo nameCol = ExperimentService.get().getTinfoExperiment().getColumn(FieldKey.fromParts("Name"));
+            if (nameCol != null)
+            {
+                // Truncate name to the max length allowed by Experiment.Name column.
+                int maxNameLen = nameCol.getScale();
+                if (name != null && name.length() > maxNameLen)
+                {
+                    String ellipsis = "...";
+                    return name.substring(0, maxNameLen - ellipsis.length()) + ellipsis;
+                }
+            }
+
+            return name;
+        }
+
+        private void ensureUniqueLSID(ExpExperiment experiment)
+        {
+            String lsid = ExperimentService.get().generateLSID(experiment.getContainer(), ExpExperiment.class, experiment.getName());
+            int suffix = 1;
+            while(ExperimentService.get().getExpExperiment(lsid) != null)
+            {
+                String name = experiment.getName() + "_" + suffix++;
+                lsid =  ExperimentService.get().generateLSID(experiment.getContainer(), ExpExperiment.class, name);
+            }
+            experiment.setLSID(lsid);
+        }
+
+        @Override
+        public URLHelper getSuccessURL(NewExperimentAnnotationsForm form)
+        {
+            if(_expAnnot != null && _expAnnot.getId() > 0)
+            {
+                return getViewExperimentDetailsURL(_expAnnot.getId(), getContainer());
+            }
+            else
+                return form.getReturnURLHelper();
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root.addChild("Create Targeted MS Experiment");
+        }
+    }
+
+    public static DataRegion createNewTargetedMsExperimentDataRegion(NewExperimentAnnotationsForm form, ViewContext viewContext)
+    {
+        DataRegion drg = new ExperimentAnnotationsFormDataRegion(viewContext, form, DataRegion.MODE_INSERT);
+
+        drg.addHiddenFormField(ActionURL.Param.returnUrl, viewContext.getRequest().getParameter(ActionURL.Param.returnUrl.name()));
+        drg.addHiddenFormField(ADD_SELECTED_RUNS, Boolean.toString("true".equals(viewContext.getRequest().getParameter(ADD_SELECTED_RUNS))));
+
+        for (String rowId : DataRegionSelection.getSelected(viewContext, false))
+        {
+            drg.addHiddenFormField(DataRegion.SELECT_CHECKBOX_NAME, rowId);
+        }
+        drg.addHiddenFormField(DataRegionSelection.DATA_REGION_SELECTION_KEY, viewContext.getRequest().getParameter(DataRegionSelection.DATA_REGION_SELECTION_KEY));
+
+        // drg.addHiddenFormField(SUBMITTER, String.valueOf(viewContext.getUser().getUserId()));
+        return drg;
+    }
+
+    public static class NewExperimentAnnotationsForm extends ExperimentAnnotationsForm implements DataRegionSelection.DataSelectionKeyForm
+    {
+        private boolean _addSelectedRuns;
+        private String _dataRegionSelectionKey;
+
+        public boolean isAddSelectedRuns()
+        {
+            return _addSelectedRuns;
+        }
+
+        public void setAddSelectedRuns(boolean addSelectedRuns)
+        {
+            _addSelectedRuns = addSelectedRuns;
+        }
+
+        public String getDataRegionSelectionKey()
+        {
+            return _dataRegionSelectionKey;
+        }
+
+        public void setDataRegionSelectionKey(String dataRegionSelectionKey)
+        {
+            _dataRegionSelectionKey = dataRegionSelectionKey;
+        }
+    }
+
+    public static class ExperimentAnnotationsForm extends BeanViewForm<ExperimentAnnotations>
+    {
+        public ExperimentAnnotationsForm()
+        {
+            super(ExperimentAnnotations.class, PanoramaPublicManager.getTableInfoExperimentAnnotations());
+        }
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public class ShowExperimentAnnotationsAction extends SimpleViewAction<ViewExperimentAnnotationsForm>
+    {
+        @Override
+        public ModelAndView getView(final ViewExperimentAnnotationsForm form, BindException errors)
+        {
+            ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.get(form.getId());
+            if (exptAnnotations == null)
+            {
+                throw new NotFoundException("Could not find experiment annotations with ID " + form.getId());
+            }
+
+            ExpExperiment experiment = exptAnnotations.getExperiment();
+            if(experiment == null)
+            {
+                throw new NotFoundException("Could not find the base experiment experimentAnnotations with ID " + exptAnnotations.getId());
+            }
+
+            // Check container
+            ensureCorrectContainer(getContainer(), exptAnnotations.getContainer(), getViewContext());
+
+
+            // Experiment details
+            ExperimentAnnotationsDetails exptDetails = new ExperimentAnnotationsDetails(getUser(), exptAnnotations, true);
+            JspView<ExperimentAnnotationsDetails> experimentDetailsView = new JspView<>("/org/labkey/panoramapublic/view/expannotations/experimentDetails.jsp", exptDetails);
+            VBox result = new VBox(experimentDetailsView);
+            experimentDetailsView.setFrame(WebPartView.FrameType.PORTAL);
+            experimentDetailsView.setTitle("Experiment Details");
+
+            // List of runs in the experiment.
+//            TargetedMsRunListView.ViewType viewType = exptAnnotations.isJournalCopy() ? TargetedMsRunListView.ViewType.EXPERIMENT_VIEW :
+//                    TargetedMsRunListView.ViewType.EDITABLE_EXPERIMENT_VIEW;
+            PanoramaPublicRunListView runListView = PanoramaPublicRunListView.createView(getViewContext(), exptAnnotations);
+            TableInfo tinfo = runListView.getTable();
+            if(tinfo instanceof FilteredTable)
+            {
+                SQLFragment sql = new SQLFragment();
+
+                sql.append("lsid IN (SELECT run.lsid FROM ");
+                sql.append(ExperimentService.get().getTinfoExperimentRun(), "run").append(", ");
+                sql.append(ExperimentService.get().getTinfoRunList(), "runlist").append(" ");
+                sql.append("WHERE runlist.experimentId = ? AND runlist.experimentRunId = run.rowid) ");
+                sql.add(experiment.getRowId());
+                ((FilteredTable) tinfo).addCondition(sql);
+            }
+            result.addView(runListView);
+
+            // List of journals have been provided access to this experiment.
+            List<Journal> journals = JournalManager.getJournalsForExperiment(exptAnnotations.getId());
+            if(journals.size() > 0)
+            {
+                QuerySettings qSettings = new QuerySettings(getViewContext(), "Journals", "JournalExperiment");
+                qSettings.setBaseFilter(new SimpleFilter(FieldKey.fromParts("ExperimentAnnotationsId"), exptAnnotations.getId()));
+                QueryView journalListView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, errors);
+                journalListView.setShowRecordSelectors(false);
+                journalListView.setButtonBarPosition(DataRegion.ButtonBarPosition.TOP);
+                journalListView.disableContainerFilterSelection();
+                journalListView.setShowExportButtons(false);
+                journalListView.setShowPagination(false);
+                journalListView.setPrintView(false);
+                VBox journalsBox = new VBox();
+                journalsBox.setTitle("Submission");
+                journalsBox.setFrame(WebPartView.FrameType.PORTAL);
+                journalsBox.addView(journalListView);
+                result.addView(journalsBox);
+            }
+            return result;
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root.addChild("Targeted MS Experiment Details");
+        }
+
+    }
+
+    public static class ExperimentAnnotationsDetails
+    {
+        private ExperimentAnnotations _experimentAnnotations;
+        JournalExperiment _lastPublishedRecord;
+        private boolean _fullDetails = false;
+        private boolean _canPublish = false;
+
+        public ExperimentAnnotationsDetails(){}
+        public ExperimentAnnotationsDetails(User user, ExperimentAnnotations exptAnnotations, boolean fullDetails)
+        {
+            _experimentAnnotations = exptAnnotations;
+            _fullDetails = fullDetails;
+
+            Container c = _experimentAnnotations.getContainer();
+            TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(c);
+            if(folderType == TargetedMSService.FolderType.Experiment)
+            {
+                _lastPublishedRecord = JournalManager.getLastPublishedRecord(_experimentAnnotations.getId());
+
+                // User needs to be the folder admin to publish an experiment.
+                _canPublish = !_experimentAnnotations.isJournalCopy() && c.hasPermission(user, AdminPermission.class);
+            }
+        }
+        public ExperimentAnnotations getExperimentAnnotations()
+        {
+            return _experimentAnnotations;
+        }
+
+        public void setExperimentAnnotations(ExperimentAnnotations experimentAnnotations)
+        {
+            _experimentAnnotations = experimentAnnotations;
+        }
+
+        public boolean isFullDetails()
+        {
+            return _fullDetails;
+        }
+
+        public void setFullDetails(boolean fullDetails)
+        {
+            _fullDetails = fullDetails;
+        }
+
+        public boolean isCanPublish()
+        {
+            return _canPublish;
+        }
+
+        public void setCanPublish(boolean canPublish)
+        {
+            _canPublish = canPublish;
+        }
+
+        public JournalExperiment getLastPublishedRecord()
+        {
+            return _lastPublishedRecord;
+        }
+
+        public void setLastPublishedRecord(JournalExperiment lastPublishedRecord)
+        {
+            _lastPublishedRecord = lastPublishedRecord;
+        }
+    }
+
+    public static class ViewExperimentAnnotationsForm
+    {
+        private int _id;
+
+        public int getId()
+        {
+            return _id;
+        }
+
+        public void setId(int id)
+        {
+            _id = id;
+        }
+    }
+
+    public static void ensureCorrectContainer(Container requestContainer, Container expAnnotContainer, ViewContext viewContext)
+    {
+        if (!requestContainer.equals(expAnnotContainer))
+        {
+            ActionURL url = viewContext.cloneActionURL();
+            url.setContainer(expAnnotContainer);
+            throw new RedirectException(url);
+        }
+    }
+
+    @RequiresPermission(UpdatePermission.class)
+    public class ShowUpdateExperimentAnnotationsAction extends SimpleViewAction<ExperimentAnnotationsForm>
+    {
+        public ModelAndView getView(ExperimentAnnotationsForm form, BindException errors)
+        {
+            form.refreshFromDb();
+            ExperimentAnnotations experimentAnnotations = form.getBean();
+            if(experimentAnnotations == null)
+            {
+                throw new NotFoundException("Could not find requested experiment annotations");
+            }
+            ensureCorrectContainer(getContainer(), experimentAnnotations.getContainer(), getViewContext());
+
+            UpdateView view = new UpdateView(new ExperimentAnnotationsFormDataRegion(getViewContext(), form, DataRegion.MODE_UPDATE), form, errors);
+            addExperimentViewDependencies(view);
+
+            view.setTitle(TargetedMSExperimentWebPart.WEB_PART_NAME);
+            return view;
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root.addChild("Update Targeted MS Experiment Details");
+        }
+    }
+
+    private void addExperimentViewDependencies(DataView view)
+    {
+        view.addClientDependency(ClientDependency.fromPath("Ext4"));
+        view.addClientDependency(ClientDependency.fromPath("internal/jQuery"));
+        view.addClientDependency(ClientDependency.fromPath("/PanoramaPublic/css/bootstrap-tagsinput.css"));
+        view.addClientDependency(ClientDependency.fromPath("PanoramaPublic/js/bootstrap-tagsinput.min.js"));
+        view.addClientDependency(ClientDependency.fromPath("/PanoramaPublic/css/typeahead-examples.css"));
+        view.addClientDependency(ClientDependency.fromPath("/PanoramaPublic/js/typeahead.bundle.min.js"));
+    }
+
+    @RequiresPermission(UpdatePermission.class)
+    public class UpdateExperimentAnnotationsAction extends FormViewAction<ExperimentAnnotationsForm>
+    {
+        private int _experimentAnnotationsId;
+        public void validateCommand(ExperimentAnnotationsForm target, Errors errors)
+        {}
+
+        @Override
+        public ModelAndView getView(ExperimentAnnotationsForm form, boolean reshow, BindException errors)
+        {
+            UpdateView view = new UpdateView(new ExperimentAnnotationsFormDataRegion(getViewContext(), form, DataRegion.MODE_UPDATE), form, errors);
+            view.setTitle(TargetedMSExperimentWebPart.WEB_PART_NAME);
+            return view;
+        }
+
+        public boolean handlePost(ExperimentAnnotationsForm form, BindException errors) throws Exception
+        {
+            _experimentAnnotationsId = form.getBean().getId();
+            ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.get(_experimentAnnotationsId);
+            if (exptAnnotations == null)
+            {
+                throw new NotFoundException("Could not find experiment with ID " + _experimentAnnotationsId);
+            }
+
+            // Check container
+            ensureCorrectContainer(getContainer(), exptAnnotations.getContainer(), getViewContext());
+
+            if(!StringUtils.isBlank(form.getBean().getPublicationLink()))
+            {
+                UrlValidator urlValidator = new UrlValidator(new String[] {"http", "https"});
+                if(!urlValidator.isValid(form.getBean().getPublicationLink()))
+                {
+                    errors.reject(ERROR_MSG, "Publication Link does not appear to be valid. Links should begin with either http or https.");
+                    return false;
+                }
+            }
+
+            form.doUpdate();
+            return true;
+        }
+
+        public ActionURL getSuccessURL(ExperimentAnnotationsForm form)
+        {
+            return getViewExperimentDetailsURL(_experimentAnnotationsId, getContainer());
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root.addChild("Update Targeted MS Experiment");
+        }
+    }
+
+    @RequiresPermission(DeletePermission.class)
+    public class DeleteSelectedExperimentAnnotationsAction extends ConfirmAction<SelectedIdsForm>
+    {
+        @Override
+        public ModelAndView getConfirmView(SelectedIdsForm deleteForm, BindException errors)
+        {
+            setTitle("Confirm Delete Experiments");
+            return FormPage.getView("/org/labkey/panoramapublic/view/expannotations/deleteExperimentAnnotations.jsp", deleteForm);
+        }
+
+        @Override
+        public boolean handlePost(SelectedIdsForm deleteForm, BindException errors)
+        {
+            return deleteExperimentAnnotations(errors, deleteForm.getIds(), getUser());
+        }
+
+        @Override
+        public void validateCommand(SelectedIdsForm deleteForm, Errors errors)
+        {
+            return;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(SelectedIdsForm deleteExperimentAnnotationForm)
+        {
+            return getContainer().getStartURL(getUser());
+        }
+    }
+
+    private static boolean deleteExperimentAnnotations(BindException errors, int[] experimentAnnotationIds, User user)
+    {
+        ExperimentAnnotations[] experimentAnnotations = new ExperimentAnnotations[experimentAnnotationIds.length];
+        int i = 0;
+        for(int experimentAnnotationId: experimentAnnotationIds)
+        {
+            ExperimentAnnotations exp = ExperimentAnnotationsManager.get(experimentAnnotationId);
+            Container container = exp.getContainer();
+            if(!container.hasPermission(user, DeletePermission.class))
+            {
+                errors.reject(ERROR_MSG, "You do not have permissions to delete experiments in folder " + container.getPath());
+            }
+            experimentAnnotations[i++] = exp;
+        }
+
+        if(!errors.hasErrors())
+        {
+            ExperimentService experimentService = ExperimentService.get();
+            for(ExperimentAnnotations experiment: experimentAnnotations)
+            {
+                experimentService.deleteExpExperimentByRowId(experiment.getContainer(), user, experiment.getExperimentId());
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public static class SelectedIdsForm extends ViewForm implements DataRegionSelection.DataSelectionKeyForm, SelectedExperimentIds
+    {
+        private String _dataRegionSelectionKey;
+
+        public int[] getIds()
+        {
+            return PageFlowUtil.toInts(DataRegionSelection.getSelected(getViewContext(), getDataRegionSelectionKey(), false));
+        }
+
+        public String getDataRegionSelectionKey()
+        {
+            return _dataRegionSelectionKey;
+        }
+
+        public void setDataRegionSelectionKey(String dataRegionSelectionKey)
+        {
+            _dataRegionSelectionKey = dataRegionSelectionKey;
+        }
+    }
+
+    public static interface SelectedExperimentIds
+    {
+        public int[] getIds();
+    }
+
+    public static class DeleteExperimentAnnotationsForm extends ExperimentAnnotationsForm implements SelectedExperimentIds
+    {
+        public int[] getIds()
+        {
+            return new int[]{this.getBean().getId()};
+        }
+    }
+
+    @RequiresPermission(DeletePermission.class)
+    public class DeleteExperimentAnnotationsAction extends ConfirmAction<DeleteExperimentAnnotationsForm>
+    {
+        @Override
+        public ModelAndView getConfirmView(DeleteExperimentAnnotationsForm deleteForm, BindException errors)
+        {
+            setTitle("Confirm Delete Experiment");
+            return FormPage.getView("/org/labkey/panoramapublic/view/expannotations/deleteExperimentAnnotations.jsp", deleteForm);
+        }
+
+        public boolean handlePost(DeleteExperimentAnnotationsForm form, BindException errors)
+        {
+            int _experimentAnnotationsId = form.getBean().getId();
+            ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.get(_experimentAnnotationsId);
+            if (exptAnnotations == null)
+            {
+                throw new NotFoundException("Could not find experiment with ID " + _experimentAnnotationsId);
+            }
+
+            // Check container
+            ensureCorrectContainer(getContainer(), exptAnnotations.getContainer(), getViewContext());
+
+            return deleteExperimentAnnotations(errors, form.getIds(), getUser());
+        }
+
+        @Override
+        public void validateCommand(DeleteExperimentAnnotationsForm deleteForm, Errors errors)
+        {
+            return;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(DeleteExperimentAnnotationsForm deleteExperimentAnnotationForm)
+        {
+            return getContainer().getStartURL(getUser());
+        }
+    }
+
+    @RequiresPermission(InsertPermission.class)
+    public class IncludeSubFoldersInExperimentAction extends FormHandlerAction<ExperimentForm>
+    {
+        private ExperimentAnnotations _expAnnot;
+
+        public void validateCommand(ExperimentForm form, Errors errors)
+        {
+        }
+
+        public boolean handlePost(ExperimentForm form, BindException errors)
+        {
+            _expAnnot = form.lookupExperiment();
+            if(_expAnnot == null)
+            {
+                errors.reject(ERROR_MSG, "Failed to lookup experiment annotations with ID " + form.getId());
+                return false;
+            }
+
+            ExpExperiment experiment = _expAnnot.getExperiment();
+            if(experiment == null)
+            {
+                errors.reject(ERROR_MSG, "Failed to lookup base experiment for experimentAnnotations with ID " + _expAnnot.getTitle());
+                return false;
+            }
+
+            ensureCorrectContainer(getContainer(), experiment.getContainer(), getViewContext());
+
+            if(!experiment.getContainer().hasPermission(getUser(), InsertPermission.class))
+            {
+                errors.reject(ERROR_MSG, "User does not have permissions to perform the requested action.");
+                return false;
+            }
+
+            if(ExperimentAnnotationsManager.hasExperimentsInSubfolders(_expAnnot.getContainer(), getUser()))
+            {
+                errors.reject(ERROR_MSG, "At least one of the subfolders contains an experiment. Cannot add subfolder data to this experiment.");
+                return false;
+            }
+
+            ExperimentAnnotationsManager.includeSubfoldersInExperiment(_expAnnot, getUser());
+            return true;
+        }
+
+        public ActionURL getSuccessURL(ExperimentForm form)
+        {
+            return getViewExperimentDetailsURL(_expAnnot.getId(), getContainer());
+        }
+    }
+
+    @RequiresPermission(InsertPermission.class)
+    public class ExcludeSubFoldersInExperimentAction extends FormHandlerAction<ExperimentForm>
+    {
+        private ExperimentAnnotations _expAnnot;
+
+        public void validateCommand(ExperimentForm form, Errors errors)
+        {
+        }
+
+        public boolean handlePost(ExperimentForm form, BindException errors)
+        {
+            _expAnnot = form.lookupExperiment();
+            if(_expAnnot == null)
+            {
+                errors.reject(ERROR_MSG, "Failed to lookup experiment annotations with ID " + form.getId());
+                return false;
+            }
+
+            ExpExperiment experiment = _expAnnot.getExperiment();
+            if(experiment == null)
+            {
+                errors.reject(ERROR_MSG, "Failed to lookup base experiment for experimentAnnotations with ID " + _expAnnot.getTitle());
+                return false;
+            }
+
+            ensureCorrectContainer(getContainer(), experiment.getContainer(), getViewContext());
+
+            if(!experiment.getContainer().hasPermission(getUser(), InsertPermission.class))
+            {
+                errors.reject(ERROR_MSG, "User does not have permissions to perform the requested action.");
+                return false;
+            }
+
+            ExperimentAnnotationsManager.excludeSubfoldersFromExperiment(_expAnnot, getUser());
+
+            return true;
+        }
+
+        public ActionURL getSuccessURL(ExperimentForm form)
+        {
+            return getViewExperimentDetailsURL(_expAnnot.getId(), getContainer());
+        }
+    }
+
+    public static class ExperimentForm
+    {
+        private Integer _id;
+
+        public Integer getId()
+        {
+            return _id;
+        }
+
+        public void setId(Integer id)
+        {
+            _id = id;
+        }
+
+        public ExperimentAnnotations lookupExperiment()
+        {
+            return getId() == null ? null : ExperimentAnnotationsManager.get(getId());
+        }
+    }
+
+    public static void configureRawDataTab(Portal.WebPart webPart, Container c, FileContentService service)
+    {
+        if (null != service)
+        {
+            Path fileRoot = service.getFileRootPath(c, FileContentService.ContentType.files);
+            if (fileRoot != null)
+            {
+                Path rawFileDir = fileRoot.resolve(TargetedMSService.get().getRawFilesDir());
+                if (!Files.exists(rawFileDir))
+                {
+                    try
+                    {
+                        Files.createDirectories(rawFileDir);
+                    }
+                    catch (IOException e)
+                    {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+
+            String fileRootString = FileContentService.FILES_LINK + "/" + TargetedMSService.get().getRawFilesDir() + "/";
+            webPart.setProperty(FilesWebPart.FILE_ROOT_PROPERTY_NAME, fileRootString);
+        }
+    }
+
+    public static ActionURL getEditExperimentDetailsURL(Container c, int experimentAnnotationsId, URLHelper returnURL)
+    {
+        ActionURL url = new ActionURL(ShowUpdateExperimentAnnotationsAction.class, c);
+        url.addParameter("id", experimentAnnotationsId);  // The name of the parameter is important. This is used to populate the TableViewForm (refreshFromDb())
+        if(returnURL != null)
+        {
+            url.addReturnURL(returnURL);
+        }
+        return url;
+    }
+
+    public static ActionURL getDeleteExperimentURL(Container c, int experimentAnnotationsId, URLHelper returnURL)
+    {
+        ActionURL url = new ActionURL(DeleteExperimentAnnotationsAction.class, c);
+        url.addParameter("id", experimentAnnotationsId);
+        if(returnURL != null)
+        {
+            url.addReturnURL(returnURL);
+        }
+        return url;
+    }
+
+    public static ActionURL getIncludeSubfoldersInExperimentURL(int experimentAnnotationsId, Container container, URLHelper returnURL)
+    {
+        ActionURL result = new ActionURL(IncludeSubFoldersInExperimentAction.class, container);
+        if (returnURL != null)
+        {
+            result.addParameter(ActionURL.Param.returnUrl, returnURL.getLocalURIString());
+        }
+        result.addParameter("id", experimentAnnotationsId);
+        return result;
+    }
+
+    public static ActionURL getExcludeSubfoldersInExperimentURL(int experimentAnnotationsId, Container container, URLHelper returnURL)
+    {
+        ActionURL result = new ActionURL(ExcludeSubFoldersInExperimentAction.class, container);
+        if (returnURL != null)
+        {
+            result.addParameter(ActionURL.Param.returnUrl, returnURL.getLocalURIString());
+        }
+        result.addParameter("id", experimentAnnotationsId);
+        return result;
+    }
+
+    public static ActionURL getViewExperimentDetailsURL(int experimentAnnotationsId, Container container)
+    {
+        ActionURL result = new ActionURL(PanoramaPublicController.ShowExperimentAnnotationsAction.class, container);
+        result.addParameter("id", experimentAnnotationsId);
+        return result;
+    }
+    // ------------------------------------------------------------------------
+    // END Actions to create, delete, edit and view experiment annotations.
+    // ------------------------------------------------------------------------
     public static ActionURL getCopyExperimentURL(int experimentAnnotationsId, int journalId, Container container)
     {
-        ActionURL result = new ActionURL(PublishTargetedMSExperimentsController.CopyExperimentAction.class, container);
+        ActionURL result = new ActionURL(PanoramaPublicController.CopyExperimentAction.class, container);
         result.addParameter("id", experimentAnnotationsId);
         result.addParameter("journalId", journalId);
         return result;
