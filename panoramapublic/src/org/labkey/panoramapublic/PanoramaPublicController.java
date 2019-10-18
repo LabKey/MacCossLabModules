@@ -32,6 +32,8 @@ import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleStreamAction;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.audit.AuditLogService;
+import org.labkey.api.audit.provider.GroupAuditProvider;
 import org.labkey.api.data.ActionButton;
 import org.labkey.api.data.BeanViewForm;
 import org.labkey.api.data.ButtonBar;
@@ -133,7 +135,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -299,6 +303,12 @@ public class PanoramaPublicController extends SpringActionController
             {
                 // Create the project.
                 Container container = ContainerManager.createContainer(ContainerManager.getRoot(), form.getProjectName(), null, null, NormalContainerType.NAME, getUser());
+
+                // Enable the PanoramaPublic module in this project folder
+                Set<Module> activeModules = new HashSet<>(container.getActiveModules());
+                activeModules.add(ModuleLoader.getInstance().getModule(PanoramaPublicModule.class));
+                container.setActiveModules(activeModules);
+
                 TargetedMSService tmsService = TargetedMSService.get();
                 // Set the folder type to "Targeted MS".
                 FolderType type = FolderTypeManager.get().getFolderType(tmsService.getFolderTypeName());
@@ -314,8 +324,8 @@ public class PanoramaPublicController extends SpringActionController
                 Portal.saveParts(container, Portal.DEFAULT_PORTAL_PAGE_ID, newWebParts); // this will remove the TARGETED_MS_SETUP
 
                 // Add the permissions group
-                // TODO: put in audit log as in CreateGroupAction?
                 Group group = SecurityManager.createGroup(container, form.getGroupName());
+                writeToAuditLog(group);
 
                 // Assign project admin role to the group.
                 MutableSecurityPolicy policy = new MutableSecurityPolicy(SecurityPolicyManager.getPolicy(container));
@@ -333,6 +343,13 @@ public class PanoramaPublicController extends SpringActionController
             }
 
             return true;
+        }
+
+        private void writeToAuditLog(Group newGroup)
+        {
+            GroupAuditProvider.GroupAuditEvent event = new GroupAuditProvider.GroupAuditEvent(getContainer().getId(), "A new security group named " + newGroup.getName() + " was created by the " + PanoramaPublicModule.NAME + " module.");
+            event.setGroup(newGroup.getUserId());
+            AuditLogService.get().addEvent(getUser(), event);
         }
 
         @Override
@@ -2918,21 +2935,14 @@ public class PanoramaPublicController extends SpringActionController
             if (fileRoot != null)
             {
                 Path rawFileDir = fileRoot.resolve(TargetedMSService.get().getRawFilesDir());
-                if (!Files.exists(rawFileDir))
+                if (Files.exists(rawFileDir))
                 {
-                    try
-                    {
-                        Files.createDirectories(rawFileDir);
-                    }
-                    catch (IOException e)
-                    {
-                        throw new RuntimeException(e);
-                    }
+                    // TODO:  Not sure this is required. This seems to already be set to @files/RawFiles.  In S3 folders, however,
+                    // the "Customize Files" UI does not have any folder selected as "File Root".  But there are no errors.
+                    String fileRootString = FileContentService.FILES_LINK + "/" + TargetedMSService.get().getRawFilesDir() + "/";
+                    webPart.setProperty(FilesWebPart.FILE_ROOT_PROPERTY_NAME, fileRootString);
                 }
             }
-
-            String fileRootString = FileContentService.FILES_LINK + "/" + TargetedMSService.get().getRawFilesDir() + "/";
-            webPart.setProperty(FilesWebPart.FILE_ROOT_PROPERTY_NAME, fileRootString);
         }
     }
 

@@ -96,7 +96,9 @@ public class PanoramaPublicModule extends SpringModule
         ShortURLService shortUrlService = ShortURLService.get();
         shortUrlService.addListener(listener);
 
-        TargetedMSService.get().registerSkylineDocumentImportListener(listener);
+        TargetedMSService tmsService = TargetedMSService.get();
+        tmsService.registerSkylineDocumentImportListener(listener);
+        tmsService.registerTargetedMSFolderTypeListener(listener);
 
         // TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // ProteinService proteinService = ProteinService.get();

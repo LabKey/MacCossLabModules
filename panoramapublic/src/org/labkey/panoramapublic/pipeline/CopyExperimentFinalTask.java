@@ -289,7 +289,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         Set<Container> children = ContainerManager.getAllChildren(c); // Includes parent
         for(Container child: children)
         {
-            PanoramaPublicManager.makePanoramaExperimentalDataFolder(c, user);
+            PanoramaPublicManager.makePanoramaExperimentalDataFolder(child, user);
         }
     }
 
@@ -366,7 +366,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         {
             if(FilesWebPart.PART_NAME.equals(wp.getName()))
             {
-                // TODO:  Do we need this?
                 PanoramaPublicController.configureRawDataTab(wp, c, service);
                 Portal.updatePart(user, wp);
             }

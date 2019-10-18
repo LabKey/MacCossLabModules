@@ -18,7 +18,6 @@ package org.labkey.panoramapublic;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
-import org.labkey.api.data.SqlExecutor;
 import org.labkey.api.exp.api.ExpData;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExpRun;
@@ -29,7 +28,7 @@ import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.security.User;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.SkylineDocumentImportListener;
-import org.labkey.api.targetedms.TargetedMSService;
+import org.labkey.api.targetedms.TargetedMSFolderTypeListener;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.api.view.ShortURLService;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
@@ -42,6 +41,7 @@ import java.beans.PropertyChangeEvent;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -50,27 +50,21 @@ import java.util.Set;
  * Date: 8/22/2014
  * Time: 3:22 PM
  */
-public class PanoramaPublicListener implements ExperimentListener, ContainerManager.ContainerListener,
-        ShortURLService.ShortURLListener, SkylineDocumentImportListener
+public class PanoramaPublicListener implements ExperimentListener, ContainerManager.ContainerListener, ShortURLService.ShortURLListener,
+        SkylineDocumentImportListener, TargetedMSFolderTypeListener
 {
+    // ExperimentListener
     @Override
     public void beforeExperimentDeleted(Container c, User user, ExpExperiment experiment)
     {
         ExperimentAnnotationsManager.beforeDeleteExpExperiment(experiment, user);
     }
 
+    // ContainerListener
     @Override
     public void containerCreated(Container c, User user)
     {
-        if(TargetedMSService.get().isPanoramaExperimentalDataFolder(c))
-        {
-            if(!c.getActiveModules().contains(PanoramaPublicModule.class))
-            {
-                Set<Module> modules = c.getActiveModules();
-                modules.add(ModuleLoader.getInstance().getModule(PanoramaPublicModule.class));
-                c.setActiveModules(modules);
-            }
-        }
+
     }
 
     @Override
@@ -84,9 +78,8 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     {
     }
 
-    @NotNull
     @Override
-    public Collection<String> canMove(Container c, Container newParent, User user)
+    public @NotNull Collection<String> canMove(Container c, Container newParent, User user)
     {
         return Collections.emptyList();
     }
@@ -96,6 +89,7 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     {
     }
 
+    // ShortURLListener
     @NotNull
     @Override
     public List<String> canDelete(ShortURLRecord shortUrl)
@@ -129,6 +123,7 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
         return Collections.emptyList();
     }
 
+    // SkylineDocumentImportListener
     @Override
     public void onDocumentImport(Container container, User user, ITargetedMSRun run)
     {
@@ -148,6 +143,18 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
             {
                 expAnnotations.getExperiment().addRuns(user, new ExpRun[] {expData.getRun()});
             }
+        }
+    }
+
+    // TargetedMSFolderTypeListener
+    @Override
+    public void folderCreated(Container c, User user)
+    {
+        if(!c.getActiveModules().contains(ModuleLoader.getInstance().getModule(PanoramaPublicModule.class)))
+        {
+            Set<Module> modules = new HashSet<>(c.getActiveModules());
+            modules.add(ModuleLoader.getInstance().getModule(PanoramaPublicModule.class));
+            c.setActiveModules(modules);
         }
     }
 }
