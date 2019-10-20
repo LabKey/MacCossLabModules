@@ -120,7 +120,7 @@ viewExperimentDetails = function (obj, experimentContainer, id, detailsPageURL)
     {
     //AJAX query on request of viewExperimentDetails(..)
     LABKEY.Query.selectRows({
-        schemaName: 'targetedms',
+        schemaName: 'panoramapublic',
         queryName: 'ExperimentAnnotations',
         success: onSuccess,
         containerPath: experimentContainer,

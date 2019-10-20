@@ -6,7 +6,7 @@
 +function($){
 showShareLink = function (el, link)
 {
-    var imgUrl = LABKEY.contextPath + "/TargetedMS/images/clippy.png";
+    var imgUrl = LABKEY.contextPath + "/PanoramaPublic/images/clippy.png";
     var content = '<div><input type="text" id="accessUrlInput" class="shareLink" value="' + link + '" size=55"/>';
     content += '<img height="20" alt="Copy to clipboard" id="copyShareLink" class="copyShareLink" ';
     content += 'data-clipboard-text="' + link + '" src="' + imgUrl + '"></img>';
