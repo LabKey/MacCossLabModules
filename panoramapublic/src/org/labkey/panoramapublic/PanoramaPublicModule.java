@@ -36,6 +36,7 @@ import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartFactory;
 import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
+import org.labkey.panoramapublic.proteomexchange.SubmissionDataValidator;
 import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentsWebPart;
@@ -161,6 +162,7 @@ public class PanoramaPublicModule extends SpringModule
     {
         Set<Class> set = new HashSet<>();
         set.add(PanoramaPublicController.TestCase.class);
+        set.add(SubmissionDataValidator.TestCase.class);
         return set;
 
     }
