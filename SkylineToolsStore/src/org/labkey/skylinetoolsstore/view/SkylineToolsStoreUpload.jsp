@@ -21,7 +21,7 @@
 
     final boolean admin = getUser().hasSiteAdminPermission();
     final String autocompleteUsers = admin ? SkylineToolsStoreController.getUsersForAutocomplete() : "\"\"";
-    pageContext.setAttribute("autocompleteUsers", autocompleteUsers);
+    String users = SkylineToolsStoreController.getUsersForAutocomplete();
 %>
 
 <form action="<%= h(urlFor(SkylineToolsStoreController.InsertAction.class)) %>" enctype="multipart/form-data" method="post">
@@ -51,6 +51,6 @@
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
 
 <script>
-    autocomplete($("#toolOwners"), ${autocompleteUsers});
+    autocomplete($("#toolOwners"), <%=users%>);
     initJqueryUiImages("<%= h(imgDir + "jquery-ui") %>");
 </script>
