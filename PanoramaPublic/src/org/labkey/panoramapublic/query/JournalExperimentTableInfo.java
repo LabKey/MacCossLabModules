@@ -28,7 +28,7 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.PanoramaPublicController;
-import org.labkey.targetedms.view.publish.ShortUrlDisplayColumnFactory;
+import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
 import java.io.IOException;
 import java.io.Writer;

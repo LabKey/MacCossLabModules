@@ -121,8 +121,8 @@ public class ExperimentModificationGetter
         }
         else
         {
-            String formula = null;
-            if(StringUtils.isBlank(mod.getFormula()))
+            String formula = mod.getFormula();
+            if(StringUtils.isBlank(formula))
             {
                 try
                 {
@@ -395,8 +395,8 @@ public class ExperimentModificationGetter
             {
                 root = new File(System.getProperty("user.dir"));
             }
-            // return new File(root, "/customModules/targetedms/webapp/TargetedMS/unimod/unimod_NO_NAMESPACE.xml");
-            return new File(root, "/customModules/targetedms/resources/unimod_NO_NAMESPACE.xml");
+            // /modules/MacCossLabModules/PanoramaPublic/resources/unimod_NO_NAMESPACE.xml
+            return new File(root, "resources/unimod_NO_NAMESPACE.xml");
         }
 
         @Test

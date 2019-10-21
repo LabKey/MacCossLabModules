@@ -127,8 +127,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 ExperimentAnnotationsManager.addSelectedRunsToExperiment(experiment, runRowIdsInSubfolders, user);
             }
 
-            // Create a new entry in targetedms.ExperimentAnnotations and link it to the new experiment created during folder import.
-            log.info("Creating a new TargetedMS experiment entry in targetedms.ExperimentAnnotations.");
+            // Create a new entry in panoramapublic.ExperimentAnnotations and link it to the new experiment created during folder import.
+            log.info("Creating a new TargetedMS experiment entry in panoramapublic.ExperimentAnnotations.");
             ExperimentAnnotations sourceExperiment = jobSupport.getExpAnnotations();
             JournalExperiment jExperiment = JournalManager.getJournalExperiment(sourceExperiment, jobSupport.getJournal());
 
