@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 INSERT INTO panoramapublic.experimentannotations SELECT * FROM targetedms.experimentannotations;
+-- Update the PrimaryKey sequence
+SELECT SETVAL('panoramapublic.experimentannotations_id_seq', (SELECT MAX(id)+1 FROM panoramapublic.experimentannotations), false);
+
 INSERT INTO panoramapublic.journal SELECT * FROM targetedms.journal;
+-- Update the PrimaryKey sequence
+SELECT SETVAL('panoramapublic.journal_id_seq', (SELECT MAX(id)+1 FROM panoramapublic.journal), false);
+
 INSERT INTO panoramapublic.journalexperiment SELECT * FROM targetedms.journalExperiment;
 
