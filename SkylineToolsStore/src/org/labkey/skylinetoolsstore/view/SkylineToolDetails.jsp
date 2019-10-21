@@ -31,7 +31,6 @@
     final String jsDir = contextPath + "/skylinetoolsstore/js/";
 
     final String autocompleteUsers = admin ? SkylineToolsStoreController.getUsersForAutocomplete() : "\"\"";
-    pageContext.setAttribute("autocompleteUsers", autocompleteUsers);
 
     // Get supporting files in map <url, icon url>
     HashMap<String, String> suppFiles = SkylineToolsStoreController.getSupplementaryFiles(tool);
@@ -854,6 +853,6 @@ a.banner-button-small{
         $('#sliderover').css('width', value * 20);
     }
 
-    autocomplete($("#toolOwners"), ${autocompleteUsers});
+    autocomplete($("#toolOwners"), <%=autocompleteUsers%>);
     initJqueryUiImages("<%= h(imgDir + "jquery-ui") %>");
 </script>
