@@ -310,7 +310,7 @@ public class JournalManager
         ActionURL copyUrl = PanoramaPublicController.getCopyExperimentURL(exptAnnotations.getId(), journal.getId(), exptAnnotations.getContainer());
         ShortURLRecord copyUrlRecord = saveShortURL(copyUrl, shortCopyUrl, null, user);
 
-        // Add an entry in the targetedms.JournalExperiment table.
+        // Add an entry in the panoramapublic.JournalExperiment table.
         JournalExperiment je = JournalManager.saveJournalExperiment(journal, exptAnnotations,
                                                                     accessUrlRecord,
                                                                     copyUrlRecord,
