@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd">
+
+    <bean id="panoramapublicPipelineRegistry" class="org.labkey.api.pipeline.TaskPipelineRegistrar">
+        <property name="factoryImpls">
+            <list>
+                <bean class="org.labkey.panoramapublic.pipeline.ExperimentExportTask$Factory">
+                    <property name="location" value="webserver" />
+                </bean>
+                <bean class="org.labkey.panoramapublic.pipeline.ExperimentImportTask$Factory">
+                    <property name="location" value="webserver" />
+                </bean>
+                <bean class="org.labkey.panoramapublic.pipeline.CopyExperimentFinalTask$Factory">
+                    <property name="location" value="webserver" />
+                </bean>
+            </list>
+        </property>
+
+        <property name="pipelines">
+            <list>
+                <bean class="org.labkey.api.pipeline.TaskPipelineSettings">
+                    <constructor-arg type="java.lang.Class" value="org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob"/>
+                    <property name="taskProgressionSpec">
+                        <list>
+                            <bean id="exportTask" class="org.labkey.api.pipeline.TaskId">
+                                <constructor-arg><value type="java.lang.Class">org.labkey.panoramapublic.pipeline.ExperimentExportTask</value></constructor-arg>
+                            </bean>
+                            <bean id="importTask" class="org.labkey.api.pipeline.TaskId">
+                                <constructor-arg><value type="java.lang.Class">org.labkey.panoramapublic.pipeline.ExperimentImportTask</value></constructor-arg>
+                            </bean>
+                            <bean id="finalTask" class="org.labkey.api.pipeline.TaskId">
+                                <constructor-arg><value type="java.lang.Class">org.labkey.panoramapublic.pipeline.CopyExperimentFinalTask</value></constructor-arg>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+            </list>
+        </property>
+    </bean>
+</beans>

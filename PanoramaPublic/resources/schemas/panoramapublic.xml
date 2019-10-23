@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+
+ * Copyright (c) 2019 LabKey Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+
+ -->
+<tables xsi:schemaLocation="http://labkey.org/data/xml ..\..\..\..\schemas\tableInfo.xsd"
+        xmlns="http://labkey.org/data/xml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <table tableName="ExperimentAnnotations" tableDbType="TABLE">
+        <titleColumn>Title</titleColumn>
+        <columns>
+            <column columnName="_ts">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Id">
+                <description>Contains a unique id for this targeted MS experiment</description>
+            </column>
+            <column columnName="Container">
+                <columnTitle>Folder</columnTitle>
+                <isReadOnly>false</isReadOnly>
+                <fk>
+                    <fkColumnName>EntityId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>containers</fkTable>
+                </fk>
+                <description>Folder or project in which this targeted MS experiment was created</description>
+            </column>
+            <column columnName="Created"/>
+            <column columnName="CreatedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+            <column columnName="Modified"/>
+            <column columnName="ModifiedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+            <column columnName="Title">
+                <description>Title for this targeted MS experiment</description>
+                <nullable>false</nullable>
+                <inputRows>2</inputRows>
+            </column>
+            <column columnName="Organism">
+                <description>Name of the organism studied in the experiment</description>
+            </column>
+            <column columnName="Instrument">
+                <description>Mass Spectrometry Instrument on which the data were acquired</description>
+            </column>
+            <column columnName="SpikeIn">
+                <description>Spike-in experiment</description>
+            </column>
+            <column columnName="ExperimentDescription">
+                <description>Details about the experiment</description>
+            </column>
+            <column columnName="SampleDescription">
+                <description>Details about the biological sample used in the experiment.</description>
+            </column>
+            <column columnName="Abstract"/>
+            <column columnName="Citation">
+                <inputRows>2</inputRows>
+            </column>
+            <column columnName="PublicationLink">
+                <inputRows>2</inputRows>
+            </column>
+            <column columnName="ExperimentId">
+                <fk>
+                    <fkColumnName>RowId</fkColumnName>
+                    <fkDbSchema>exp</fkDbSchema>
+                    <fkTable>Experiment</fkTable>
+                </fk>
+            </column>
+            <column columnName="JournalCopy">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="IncludeSubfolders">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="SourceExperimentId"/>
+            <column columnName="SourceExperimentPath"/>
+            <column columnName="ShortUrl"/>
+            <column columnName="Keywords"/>
+            <column columnName="LabHead">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+            <column columnName="LabHeadAffiliation"/>
+            <column columnName="Submitter">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+            <column columnName="SubmitterAffiliation"/>
+            <column columnName="pxid">
+                <columnTitle>PX ID</columnTitle>
+            </column>
+        </columns>
+    </table>
+
+    <table tableName="Journal" tableDbType="TABLE">
+        <titleColumn>Name</titleColumn>
+        <columns>
+            <column columnName="_ts">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Created">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="CreatedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Modified">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="ModifiedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Id">
+                <description>Contains a unique id for this Journal.</description>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Name">
+                <description>Name of this journal.</description>
+                <nullable>false</nullable>
+                <url>org.labkey.panoramapublic.PanoramaPublicController$JournalGroupDetailsAction.class?id=${Id}</url>
+            </column>
+            <column columnName="LabkeyGroupId">
+                <columnTitle>Security Group</columnTitle>
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>Principals</fkTable>
+                </fk>
+            </column>
+            <column columnName="Project">
+                <fk>
+                    <fkColumnName>EntityId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>Containers</fkTable>
+                </fk>
+            </column>
+        </columns>
+    </table>
+
+    <table tableName="JournalExperiment" tableDbType="TABLE">
+        <columns>
+            <column columnName="_ts">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Created"/>
+            <column columnName="CreatedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+            <column columnName="JournalId">
+                <columnTitle>Target</columnTitle>
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>Journal</fkTable>
+                </fk>
+            </column>
+            <column columnName="ExperimentAnnotationsId">
+                <columnTitle>Experiment</columnTitle>
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>ExperimentAnnotations</fkTable>
+                </fk>
+                <url>/panoramapublic/showExperimentAnnotations.view?id=${ExperimentAnnotationsId}</url>
+            </column>
+            <column columnName="ShortAccessURL">
+                <columnTitle>Access Link</columnTitle>
+                <fk>
+                    <fkColumnName>EntityId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>ShortUrl</fkTable>
+                </fk>
+            </column>
+            <column columnName="ShortCopyURL">
+                <columnTitle>Copy Link</columnTitle>
+                <fk>
+                    <fkColumnName>EntityId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>ShortUrl</fkTable>
+                </fk>
+            </column>
+            <column columnName="Copied"/>
+            <column columnName="KeepPrivate"/>
+            <column columnName="PxidRequested"/>
+        </columns>
+    </table>
+
+</tables>
