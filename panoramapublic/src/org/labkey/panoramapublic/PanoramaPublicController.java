@@ -156,34 +156,7 @@ public class PanoramaPublicController extends SpringActionController
         setActionResolver(_actionResolver);
     }
 
-    @RequiresPermission(ReadPermission.class)
-    public class BeginAction extends SimpleViewAction
-    {
-        public ModelAndView getView(Object o, BindException errors)
-        {
-            return new JspView("/org/labkey/panoramapublic/view/hello.jsp");
-        }
-
-        public NavTree appendNavTrail(NavTree root)
-        {
-            return root;
-        }
-    }
-
     private static final Logger LOG = Logger.getLogger(PanoramaPublicController.class);
-
-    public static Class[] getActions()
-    {
-        Class[] innerClasses = PanoramaPublicController.class.getDeclaredClasses();
-        List<Class> actionClasses = new ArrayList<>();
-        for (Class innerClass : innerClasses)
-            if (Controller.class.isAssignableFrom(innerClass) && !Modifier.isAbstract(innerClass.getModifiers()))
-                actionClasses.add(innerClass);
-
-        Class[] toReturn = new Class[actionClasses.size()];
-        return actionClasses.toArray(toReturn);
-    }
-
 
     // ------------------------------------------------------------------------
     // BEGIN Actions for journal groups.
@@ -309,13 +282,12 @@ public class PanoramaPublicController extends SpringActionController
                 activeModules.add(ModuleLoader.getInstance().getModule(PanoramaPublicModule.class));
                 container.setActiveModules(activeModules);
 
-                TargetedMSService tmsService = TargetedMSService.get();
                 // Set the folder type to "Targeted MS".
-                FolderType type = FolderTypeManager.get().getFolderType(tmsService.getFolderTypeName());
+                FolderType type = FolderTypeManager.get().getFolderType(TargetedMSService.FOLDER_TYPE_NAME);
                 container.setFolderType(type, getUser());
                 // Make this an "Experiment data" folder.
-                Module targetedMSModule = ModuleLoader.getInstance().getModule(tmsService.getModuleName());
-                ModuleProperty moduleProperty = targetedMSModule.getModuleProperties().get(tmsService.getFolderTypePropertyName());
+                Module targetedMSModule = ModuleLoader.getInstance().getModule(TargetedMSService.MODULE_NAME);
+                ModuleProperty moduleProperty = targetedMSModule.getModuleProperties().get(TargetedMSService.FOLDER_TYPE_PROP_NAME);
                 moduleProperty.saveValue(getUser(), container, TargetedMSService.FolderType.Experiment.toString());
                 // Display only the "Targeted MS Experiment List" webpart.
                 Portal.WebPart webPart = Portal.getPortalPart(TargetedMSExperimentsWebPart.WEB_PART_NAME).createWebPart();
@@ -2934,12 +2906,12 @@ public class PanoramaPublicController extends SpringActionController
             Path fileRoot = service.getFileRootPath(c, FileContentService.ContentType.files);
             if (fileRoot != null)
             {
-                Path rawFileDir = fileRoot.resolve(TargetedMSService.get().getRawFilesDir());
+                Path rawFileDir = fileRoot.resolve(TargetedMSService.RAW_FILES_DIR);
                 if (Files.exists(rawFileDir))
                 {
                     // TODO:  Not sure this is required. This seems to already be set to @files/RawFiles.  In S3 folders, however,
                     // the "Customize Files" UI does not have any folder selected as "File Root".  But there are no errors.
-                    String fileRootString = FileContentService.FILES_LINK + "/" + TargetedMSService.get().getRawFilesDir() + "/";
+                    String fileRootString = FileContentService.FILES_LINK + "/" + TargetedMSService.RAW_FILES_DIR + "/";
                     webPart.setProperty(FilesWebPart.FILE_ROOT_PROPERTY_NAME, fileRootString);
                 }
             }

@@ -22,7 +22,6 @@ import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.DbSchemaType;
-import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.dialect.SqlDialect;
 import org.labkey.api.module.Module;
@@ -34,7 +33,6 @@ import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsTableInfo;
 import org.labkey.panoramapublic.query.JournalExperimentTableInfo;
-import org.labkey.panoramapublic.query.TargetedMSTable;
 
 import java.util.Set;
 
@@ -82,7 +80,7 @@ public class PanoramaPublicSchema extends UserSchema
         }
         if (TABLE_JOURNAL_EXPERIMENT.equalsIgnoreCase(name))
         {
-            return new JournalExperimentTableInfo(this, cf, getContainer());
+            return new JournalExperimentTableInfo(this, cf);
         }
 
         if (TABLE_JOURNAL.equalsIgnoreCase(name))
@@ -105,36 +103,5 @@ public class PanoramaPublicSchema extends UserSchema
         hs.add(TABLE_EXPERIMENT_ANNOTATIONS);
 
         return hs;
-    }
-    public enum ContainerJoinType
-    {
-        ExperimentAnnotationsFK
-                {
-                    @Override
-                    public SQLFragment getSQL()
-                    {
-                        return makeInnerJoin(PanoramaPublicManager.getTableInfoExperimentAnnotations(),
-                                TargetedMSTable.CONTAINER_COL_TABLE_ALIAS, "ExperimentAnnotationsId");
-                    }
-
-                    @Override
-                    public FieldKey getContainerFieldKey()
-                    {
-                        return FieldKey.fromParts("ExperimentAnnotationsId", "Container");
-                    }
-                };
-        public abstract SQLFragment getSQL();
-        public abstract FieldKey getContainerFieldKey();
-    }
-    private static SQLFragment makeInnerJoin(TableInfo table, String alias, String colRight)
-    {
-        SQLFragment sql = new SQLFragment("INNER JOIN ");
-        sql.append(table, alias);
-        sql.append(" ON ( ");
-        sql.append(alias).append(".id");
-        sql.append(" = ");
-        sql.append(colRight);
-        sql.append(" ) ");
-        return sql;
     }
 }
