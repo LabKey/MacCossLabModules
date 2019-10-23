@@ -22,8 +22,8 @@ import org.junit.Test;
 import org.labkey.api.data.Container;
 import org.labkey.api.targetedms.IModification;
 import org.labkey.api.targetedms.ITargetedMSRun;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.JunitUtil;
-import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
@@ -51,7 +51,7 @@ public class ExperimentModificationGetter
 
         for(ITargetedMSRun run: runs)
         {
-            List<? extends IModification.IStructuralModification> smods = PanoramaPublicManager.getStructuralModificationsUsedInRun(run.getId());
+            List<? extends IModification.IStructuralModification> smods = TargetedMSService.get().getStructuralModificationsUsedInRun(run.getId());
             for(IModification.IStructuralModification mod: smods)
             {
                 PxModification pxMod = strModMap.get(mod.getId());
@@ -63,7 +63,7 @@ public class ExperimentModificationGetter
                 pxMod.addSkylineDoc(run.getFileName());
             }
 
-            List<? extends IModification.IIsotopeModification> iMods = PanoramaPublicManager.getIsotopeModificationsUsedInRun(run.getId());
+            List<? extends IModification.IIsotopeModification> iMods = TargetedMSService.get().getIsotopeModificationsUsedInRun(run.getId());
             for(IModification.IIsotopeModification mod: iMods)
             {
                 PxModification pxMod = isoModMap.get(mod.getId());

@@ -15,6 +15,7 @@
  */
 package org.labkey.panoramapublic.query;
 
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
@@ -22,7 +23,9 @@ import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
+import org.labkey.api.data.SQLFragment;
 import org.labkey.api.query.FieldKey;
+import org.labkey.api.query.FilteredTable;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.panoramapublic.PanoramaPublicManager;
@@ -41,21 +44,22 @@ import java.util.Set;
  * Date: 9/12/2014
  * Time: 4:07 PM
  */
-public class JournalExperimentTableInfo extends TargetedMSTable
+public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSchema>
 {
-
-    public JournalExperimentTableInfo(final PanoramaPublicSchema schema, ContainerFilter cf, Container container)
+    public JournalExperimentTableInfo(final PanoramaPublicSchema schema, ContainerFilter cf)
     {
-        super(PanoramaPublicManager.getTableInfoJournalExperiment(), schema, cf, PanoramaPublicSchema.ContainerJoinType.ExperimentAnnotationsFK);
+        super(PanoramaPublicManager.getTableInfoJournalExperiment(), schema, cf);
+
+        wrapAllColumns(true);
 
         var editColumn = wrapColumn("Edit", getRealTable().getColumn("ExperimentAnnotationsId"));
         editColumn.setLabel("");
-        editColumn.setDisplayColumnFactory(new EditUrlDisplayColumnFactory(container));
+        editColumn.setDisplayColumnFactory(new EditUrlDisplayColumnFactory(getContainer()));
         addColumn(editColumn);
 
         var deleteColumn = wrapColumn("Delete", getRealTable().getColumn("ExperimentAnnotationsId"));
         deleteColumn.setLabel("");
-        deleteColumn.setDisplayColumnFactory(new DeleteUrlDisplayColumnFactory(container));
+        deleteColumn.setDisplayColumnFactory(new DeleteUrlDisplayColumnFactory(getContainer()));
         addColumn(deleteColumn);
 
         var accessUrlCol = getMutableColumn(FieldKey.fromParts("ShortAccessUrl"));
@@ -72,6 +76,41 @@ public class JournalExperimentTableInfo extends TargetedMSTable
         columns.add(FieldKey.fromParts("Edit"));
         columns.add(FieldKey.fromParts("Delete"));
         setDefaultVisibleColumns(columns);
+    }
+
+    @Override
+    protected void applyContainerFilter(ContainerFilter filter)
+    {
+        // Don't apply the container filter normally, let us apply it in our wrapper around the normally generated SQL
+    }
+
+    @Override
+    @NotNull
+    public SQLFragment getFromSQL(String alias)
+    {
+        SQLFragment sql = new SQLFragment("(SELECT X.* FROM ");
+        sql.append(super.getFromSQL("X"));
+        sql.append(" ");
+
+        if (getContainerFilter() != ContainerFilter.EVERYTHING)
+        {
+            SQLFragment joinToExpAnnotSql = new SQLFragment("INNER JOIN ");
+            joinToExpAnnotSql.append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "exp");
+            joinToExpAnnotSql.append(" ON ( ");
+            joinToExpAnnotSql.append("exp.id");
+            joinToExpAnnotSql.append(" = ");
+            joinToExpAnnotSql.append("ExperimentAnnotationsId");
+            joinToExpAnnotSql.append(" ) ");
+
+            sql.append(joinToExpAnnotSql);
+
+            sql.append(" WHERE ");
+            sql.append(getContainerFilter().getSQLFragment(getSchema(), new SQLFragment("exp.Container"), getContainer()));
+        }
+        sql.append(") ");
+        sql.append(alias);
+
+        return sql;
     }
 
     public static class DeleteUrlDisplayColumnFactory implements DisplayColumnFactory

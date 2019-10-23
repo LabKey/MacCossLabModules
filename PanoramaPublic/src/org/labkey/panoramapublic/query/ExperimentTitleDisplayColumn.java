@@ -24,6 +24,7 @@ import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.gwt.client.FacetingBehaviorType;
 import org.labkey.api.query.ExprColumn;
 import org.labkey.api.query.LookupForeignKey;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.view.ActionURL;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
@@ -62,12 +63,11 @@ public class ExperimentTitleDisplayColumn extends ExprColumn
         sql.append(" ON ");
         sql.append("exprun.rowId = rlist.experimentRunId");
         sql.append(" INNER JOIN ");
-        sql.append(PanoramaPublicManager.getTableInfoRuns(), runsTableAlias);
+        sql.append(TargetedMSService.get().getTableInfoRuns(), runsTableAlias);
         sql.append(" ON ");
         sql.append(runsTableAlias + ".experimentRunLsid = exprun.lsid");
         sql.append(whereSql);
         sql.append(") ");
         return sql;
     }
-
 }

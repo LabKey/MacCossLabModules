@@ -28,8 +28,8 @@ import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.targetedms.ITargetedMSRun;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
-import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
@@ -242,7 +242,7 @@ public class SubmissionDataValidator
     private static List<String> getMissingFilesForRun(ITargetedMSRun run, Container rootExpContainer, Set<String> existingRawFiles)
     {
         List<String> missingFiles = new ArrayList<>();
-        List<String> sampleFiles = PanoramaPublicManager.getSampleFilePathsForRun(run.getId());
+        List<String> sampleFiles = TargetedMSService.get().getSampleFilePaths(run.getId());
 
         java.nio.file.Path rawFilesDir = getRawFilesDirPath(run.getContainer());
 
@@ -357,7 +357,7 @@ public class SubmissionDataValidator
             java.nio.file.Path fileRoot = service.getFileRootPath(c, FileContentService.ContentType.files);
             if (fileRoot != null)
             {
-                return fileRoot.resolve(PanoramaPublicManager.getRawFilesDir());
+                return fileRoot.resolve(TargetedMSService.RAW_FILES_DIR);
             }
         }
         return null;

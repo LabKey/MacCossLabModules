@@ -45,6 +45,7 @@ import org.labkey.api.security.roles.ReaderRole;
 import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.targetedms.ITargetedMSRun;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.view.Portal;
@@ -357,7 +358,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
     private void updateRawDataTab(Container c, FileContentService service, User user)
     {
-        List<Portal.WebPart> rawDataTabParts = Portal.getParts(c, PanoramaPublicManager.getRawDataTabName());
+        List<Portal.WebPart> rawDataTabParts = Portal.getParts(c, TargetedMSService.RAW_FILES_TAB);
         if(rawDataTabParts.size() == 0)
         {
             return; // Nothing to do if there is no "Raw Data" tab.

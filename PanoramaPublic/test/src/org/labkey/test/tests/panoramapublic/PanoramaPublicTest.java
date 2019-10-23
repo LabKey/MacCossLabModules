@@ -12,6 +12,7 @@ import org.labkey.test.categories.MS2;
 import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.components.CustomizeView;
 import org.labkey.test.pages.InsertPage;
+import org.labkey.test.tests.targetedms.TargetedMSTest;
 import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.PortalHelper;
