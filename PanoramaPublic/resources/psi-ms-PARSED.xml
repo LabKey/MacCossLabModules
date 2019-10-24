@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<instruments>
+    <instrument id="MS:1002278" name="Pegasus III" vendor="LECO" description="LECO nominal mass resolution time-of-flight GC mass spectrometer."/>
+    <instrument id="MS:1001802" name="Citius HRT" vendor="LECO" description="LECO high resolution time-of-flight LC mass spectrometer."/>
+    <instrument id="MS:1001801" name="Pegasus HRT" vendor="LECO" description="LECO high resolution time-of-flight GC mass spectrometer."/>
+    <instrument id="MS:1001804" name="TruTOF" vendor="LECO" description="LECO bench-top GC time-of-flight mass spectrometer."/>
+    <instrument id="MS:1001803" name="Pegasus" vendor="LECO" description="LECO GC time-of-flight mass spectrometer."/>
+    <instrument id="MS:1002719" name="Pegasus BT" vendor="LECO" description="LECO bench-top GC time-of-flight mass spectrometer."/>
+    <instrument id="MS:1001945" name="Pegasus 4D" vendor="LECO" description="LECO nominal mass resolution time-of-flight GCxGC mass spectrometer."/>
+    <instrument id="MS:1000182" name="OMEGA-2001" vendor="IonSpec" description="IonSpec OMEGA-2001 MS."/>
+    <instrument id="MS:1000181" name="OMEGA" vendor="IonSpec" description="IonSpec OMEGA MS."/>
+    <instrument id="MS:1000200" name="ultima" vendor="IonSpec" description="IonSpec Ultima MS."/>
+    <instrument id="MS:1000162" name="HiRes ESI" vendor="IonSpec" description="IonSpec HiResESI MS."/>
+    <instrument id="MS:1000163" name="HiRes MALDI" vendor="IonSpec" description="IonSpec HiResMALDI MS."/>
+    <instrument id="MS:1000158" name="explorer" vendor="IonSpec" description="IonSpec Explorer MS."/>
+    <instrument id="MS:1001549" name="solariX" vendor="Bruker Daltonics solarix series" description="Bruker Daltonics' solariX: ESI, MALDI, Qh-FT_ICR."/>
+    <instrument id="MS:1000695" name="apex ultra" vendor="Bruker Daltonics apex series" description="Bruker Daltonics' apex ultra: ESI, MALDI, Nanospray, APCI, APPI, Qh-FT_ICR."/>
+    <instrument id="MS:1000142" name="apex Q" vendor="Bruker Daltonics apex series" description="Bruker Daltonics' apex Q: ESI, MALDI, Nanospray, APCI, APPI, Qh-FT_ICR."/>
+    <instrument id="MS:1000141" name="apex IV" vendor="Bruker Daltonics apex series" description="Bruker Daltonics' apex IV: ESI, MALDI, Nanospray, APCI, APPI, Qh-FT_ICR."/>
+    <instrument id="MS:1002279" name="maXis 4G" vendor="Bruker Daltonics maXis series" description="Bruker Daltonics' maXis 4G: ESI Q-TOF, Nanospray, APCI, APPI, GC-APCI, CaptiveSpray."/>
+    <instrument id="MS:1001541" name="maXis" vendor="Bruker Daltonics maXis series" description="Bruker Daltonics' maXis: ESI Q-TOF, Nanospray, APCI, APPI."/>
+    <instrument id="MS:1003004" name="maXis II" vendor="Bruker Daltonics maXis series" description="Bruker Daltonics' maXis II."/>
+    <instrument id="MS:1001540" name="micrOTOF II" vendor="Bruker Daltonics micrOTOF series" description="Bruker Daltonics' micrOTOF II: ESI TOF, Nanospray, APCI, APPI."/>
+    <instrument id="MS:1002299" name="micrOTOF-Q III" vendor="Bruker Daltonics micrOTOF series" description="Bruker Daltonics' micrOTOF-Q III: ESI Q-TOF, Nanospray, APCI, APPI, GC-APCI, CaptiveSpray."/>
+    <instrument id="MS:1002667" name="impact HD" vendor="Bruker Daltonics micrOTOF series" description="Bruker Daltonics' impact HD."/>
+    <instrument id="MS:1002666" name="impact II" vendor="Bruker Daltonics micrOTOF series" description="Bruker Daltonics' impact II."/>
+    <instrument id="MS:1000704" name="micrOTOF-Q II" vendor="Bruker Daltonics micrOTOF series" description="Bruker Daltonics' micrOTOF-Q II: ESI Q-TOF, Nanospray, APCI, APPI."/>
+    <instrument id="MS:1000703" name="micrOTOF-Q" vendor="Bruker Daltonics micrOTOF series" description="Bruker Daltonics' micrOTOF-Q: ESI Q-TOF, Nanospray, APCI, APPI."/>
+    <instrument id="MS:1002280" name="compact" vendor="Bruker Daltonics micrOTOF series" description="Bruker Daltonics' compact: ESI Q-TOF, Nanospray, APCI, APPI, GC-APCI, CaptiveSpray."/>
+    <instrument id="MS:1000702" name="micrOTOF" vendor="Bruker Daltonics micrOTOF series" description="Bruker Daltonics' micrOTOF: ESI TOF, APCI, APPI."/>
+    <instrument id="MS:1000178" name="microTOF LC" vendor="Bruker Daltonics micrOTOF series" description="Bruker Daltonics' microTOF LC: ESI TOF, Nanospray, APCI, APPI."/>
+    <instrument id="MS:1002077" name="impact" vendor="Bruker Daltonics micrOTOF series" description="Bruker Daltonics' impact: ESI Q-TOF, Nanospray, APCI, APPI, GC-APCI, CaptiveSpray."/>
+    <instrument id="MS:1001537" name="BioTOF" vendor="Bruker Daltonics BioTOF series" description="Bruker Daltonics' BioTOF: ESI TOF."/>
+    <instrument id="MS:1001538" name="BioTOF III" vendor="Bruker Daltonics BioTOF series" description="Bruker Daltonics' BioTOF III: ESI TOF."/>
+    <instrument id="MS:1001539" name="UltroTOF-Q" vendor="Bruker Daltonics BioTOF series" description="Bruker Daltonics' UltroTOF-Q: ESI Q-TOF (MALDI optional)."/>
+    <instrument id="MS:1000151" name="BioTOF II" vendor="Bruker Daltonics BioTOF series" description="Bruker Daltonics' BioTOF II: ESI TOF."/>
+    <instrument id="MS:1000152" name="BioTOF-Q" vendor="Bruker Daltonics BioTOF series" description="Bruker Daltonics' BioTOF-Q: ESI Q-TOF."/>
+    <instrument id="MS:1001553" name="autoflex II TOF/TOF" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' autoflex II TOF/TOF: MALDI TOF."/>
+    <instrument id="MS:1001554" name="autoflex III TOF/TOF smartbeam" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' autoflex III TOF/TOF smartbeam: MALDI TOF."/>
+    <instrument id="MS:1001555" name="autoflex" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' autoflex: MALDI TOF."/>
+    <instrument id="MS:1001543" name="microflex LRF" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' microflex LRF: MALDI TOF."/>
+    <instrument id="MS:1001544" name="ultrafleXtreme" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' ultrafleXtreme: MALDI TOF."/>
+    <instrument id="MS:1000148" name="autoflex II" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' autoflex II: MALDI TOF."/>
+    <instrument id="MS:1001550" name="microflex II" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' microflex II: MALDI TOF."/>
+    <instrument id="MS:1000705" name="ultraflex III TOF/TOF" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' ultraflex III TOF/TOF: MALDI TOF."/>
+    <instrument id="MS:1000149" name="autoflex TOF/TOF" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' autoflex TOF/TOF MS: MALDI TOF."/>
+    <instrument id="MS:1000701" name="microflex LT" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' microflex LT: MALDI TOF."/>
+    <instrument id="MS:1000177" name="microflex" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' microflex: MALDI TOF."/>
+    <instrument id="MS:1000183" name="OmniFlex" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' OmniFlex: MALDI TOF."/>
+    <instrument id="MS:1000696" name="autoflex III smartbeam" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' autoflex III smartbeam: MALDI TOF."/>
+    <instrument id="MS:1000201" name="ultraflex" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' ultraflex: MALDI TOF."/>
+    <instrument id="MS:1000202" name="ultraflex TOF/TOF" vendor="Bruker Daltonics flex series" description="Bruker Daltonics' ultraflex TOF/TOF: MALDI TOF."/>
+    <instrument id="MS:1000157" name="esquire 6000" vendor="Bruker Daltonics esquire series" description="Bruker Daltonics' esquire 6000: linear ion trap, ESI, MALDI, Nanospray, APCI, APPI."/>
+    <instrument id="MS:1000156" name="esquire 4000" vendor="Bruker Daltonics esquire series" description="Bruker Daltonics' esquire 4000: linear ion trap, ESI, MALDI, Nanospray, APCI, APPI."/>
+    <instrument id="MS:1002298" name="EVOQ Qube" vendor="Bruker Daltonics EVOQ series" description="Bruker Daltonics' EVOQ Qube: LC-triple quadrupole."/>
+    <instrument id="MS:1002297" name="EVOQ Elite" vendor="Bruker Daltonics EVOQ series" description="Bruker Daltonics' EVOQ Elite: LC-triple quadrupole."/>
+    <instrument id="MS:1002295" name="SCION SQ" vendor="Bruker Daltonics SCION series" description="Bruker Daltonics' SCION SQ: GC-single quadrupole."/>
+    <instrument id="MS:1002296" name="SCION TQ" vendor="Bruker Daltonics SCION series" description="Bruker Daltonics' SCION TQ: GC-triple quadrupole."/>
+    <instrument id="MS:1000700" name="HCTultra ETD II" vendor="Bruker Daltonics HCT Series" description="Bruker Daltonics' HCTultra ETD II: ESI Q-TOF, Nanospray, APCI, APPI, ETD."/>
+    <instrument id="MS:1000699" name="HCTultra PTM" vendor="Bruker Daltonics HCT Series" description="Bruker Daltonics' HCTultra PTM: ESI TOF, Nanospray, APCI, APPI, PTR."/>
+    <instrument id="MS:1000698" name="HCTultra" vendor="Bruker Daltonics HCT Series" description="Bruker Daltonics' HCTultra: ESI TOF, Nanospray, APCI, APPI."/>
+    <instrument id="MS:1000161" name="HCTplus" vendor="Bruker Daltonics HCT Series" description="Bruker Daltonics' HCTplus: ESI Q-TOF, Nanospray, APCI, APPI."/>
+    <instrument id="MS:1000160" name="HCT" vendor="Bruker Daltonics HCT Series" description="Bruker Daltonics' HCT: ESI Q-TOF, Nanospray, APCI, APPI."/>
+    <instrument id="MS:1002300" name="amaZon Speed ETD" vendor="Bruker Daltonics amaZon series" description="Bruker Daltonics' amaZon Speed ETD: ESI quadrupole ion trap, Nanospray, APCI, APPI, ETD, PTR, GC-APCI, CaptiveSpray."/>
+    <instrument id="MS:1001546" name="amaZon X" vendor="Bruker Daltonics amaZon series" description="Bruker Daltonics' amaZon X: ESI quadrupole ion trap, APCI, APPI, ETD, PTR."/>
+    <instrument id="MS:1002301" name="amaZon Speed" vendor="Bruker Daltonics amaZon series" description="Bruker Daltonics' amaZon ETD: ESI quadrupole ion trap, Nanospray, APCI, APPI, GC-APCI, CaptiveSpray."/>
+    <instrument id="MS:1001542" name="amaZon ETD" vendor="Bruker Daltonics amaZon series" description="Bruker Daltonics' amaZon ETD: ESI quadrupole ion trap, Nanospray, APCI, APPI, ETD, PTR."/>
+    <instrument id="MS:1003005" name="timsTOF Pro" vendor="Bruker Daltonics" description="Bruker Daltonics' timsTOF Pro."/>
+    <instrument id="MS:1000195" name="SymBiot XVI" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX SymBiot XVI MS."/>
+    <instrument id="MS:1002587" name="API 165" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX API 165 MS."/>
+    <instrument id="MS:1002586" name="API 100LC" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX API 100LC MS."/>
+    <instrument id="MS:1002589" name="API 350" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX API 350 MS."/>
+    <instrument id="MS:1002588" name="API 300" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX API 300 MS."/>
+    <instrument id="MS:1002584" name="TripleTOF 5600+" vendor="SCIEX" description="SCIEX TripleTOF 5600+ time-of-flight mass spectrometer."/>
+    <instrument id="MS:1000651" name="3200 QTRAP" vendor="SCIEX" description="SCIEX or Applied Biosystems|MDS SCIEX QTRAP 3200."/>
+    <instrument id="MS:1000652" name="4800 Plus MALDI TOF/TOF" vendor="SCIEX" description="SCIEX or Applied Biosystems|MDS SCIEX 4800 Plus MALDI TOF-TOF Analyzer."/>
+    <instrument id="MS:1002582" name="QTRAP 6500+" vendor="SCIEX" description="SCIEX QTRAP 6500+."/>
+    <instrument id="MS:1002585" name="API 100" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX API 100 MS."/>
+    <instrument id="MS:1000653" name="API 3200" vendor="SCIEX" description="SCIEX or Applied Biosystems|MDS SCIEX API 3200 MS."/>
+    <instrument id="MS:1002583" name="TripleTOF 4600" vendor="SCIEX" description="SCIEX TripleTOF 4600 time-of-flight mass spectrometer."/>
+    <instrument id="MS:1002580" name="QTRAP 4500" vendor="SCIEX" description="SCIEX QTRAP 4500."/>
+    <instrument id="MS:1002581" name="QTRAP 6500" vendor="SCIEX" description="SCIEX QTRAP 6500."/>
+    <instrument id="MS:1000190" name="QSTAR" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX QSTAR MS."/>
+    <instrument id="MS:1002533" name="TripleTOF 6600" vendor="SCIEX" description="SCIEX TripleTOF 6600, a quadrupole - quadrupole - time-of-flight mass spectrometer."/>
+    <instrument id="MS:1000194" name="SymBiot I" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX SymBiot I MS."/>
+    <instrument id="MS:1001482" name="5800 TOF/TOF" vendor="SCIEX" description="SCIEX 5800 TOF-TOF Analyzer."/>
+    <instrument id="MS:1000932" name="TripleTOF 5600" vendor="SCIEX" description="SCIEX TripleTOF 5600, a quadrupole - quadrupole - time-of-flight mass spectrometer."/>
+    <instrument id="MS:1000931" name="QTRAP 5500" vendor="SCIEX" description="Applied Biosystems|MDS SCIEX QTRAP 5500."/>
+    <instrument id="MS:1000654" name="API 5000" vendor="SCIEX" description="SCIEX or Applied Biosystems|MDS SCIEX API 5000 MS."/>
+    <instrument id="MS:1000655" name="QSTAR Elite" vendor="SCIEX" description="SCIEX or Applied Biosystems|MDS SCIEX QSTAR Elite."/>
+    <instrument id="MS:1000656" name="QSTAR Pulsar" vendor="SCIEX" description="Applied Biosystems|MDS SCIEX QSTAR Pulsar."/>
+    <instrument id="MS:1000657" name="QSTAR XL" vendor="SCIEX" description="Applied Biosystems|MDS SCIEX QSTAR XL."/>
+    <instrument id="MS:1002594" name="Triple Quad 6500" vendor="SCIEX" description="SCIEX Triple Quad 6500."/>
+    <instrument id="MS:1002579" name="3500 QTRAP" vendor="SCIEX" description="SCIEX 3500 QTRAP."/>
+    <instrument id="MS:1002593" name="Triple Quad 5500" vendor="SCIEX" description="SCIEX Triple Quad 5500."/>
+    <instrument id="MS:1002674" name="X500R QTOF" vendor="SCIEX" description="SCIEX X500R QTOF, a quadrupole - quadrupole - time-of-flight mass spectrometer."/>
+    <instrument id="MS:1002595" name="Triple Quad 6500+" vendor="SCIEX" description="SCIEX Triple Quad 6500+."/>
+    <instrument id="MS:1000186" name="proteomics solution 1" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX Proteomics Solution 1 MS."/>
+    <instrument id="MS:1000187" name="Q TRAP" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX Q TRAP MS."/>
+    <instrument id="MS:1002591" name="Triple Quad 3500" vendor="SCIEX" description="SCIEX Triple Quad 3500."/>
+    <instrument id="MS:1002592" name="Triple Quad 4500" vendor="SCIEX" description="SCIEX Triple Quad 4500."/>
+    <instrument id="MS:1002590" name="API 365" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX API 365 MS."/>
+    <instrument id="MS:1000145" name="API 2000" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX API 2000 MS."/>
+    <instrument id="MS:1000144" name="API 150EX Prep" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX API 150EX Prep MS."/>
+    <instrument id="MS:1000147" name="API 4000" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX API 4000 MS."/>
+    <instrument id="MS:1000139" name="4000 QTRAP" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX Q 4000 TRAP MS."/>
+    <instrument id="MS:1000146" name="API 3000" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX API 3000 MS."/>
+    <instrument id="MS:1000143" name="API 150EX" vendor="SCIEX" description="Applied Biosystems/MDS SCIEX API 150EX MS."/>
+    <instrument id="MS:1002578" name="2500 QTRAP" vendor="SCIEX" description="SCIEX 2500 QTRAP."/>
+    <instrument id="MS:1002577" name="2000 QTRAP" vendor="SCIEX" description="SCIEX 2000 QTRAP."/>
+    <instrument id="MS:1000488" name="Hitachi instrument model" vendor="instrument model" description="Hitachi instrument model."/>
+    <instrument id="MS:1002277" name="AutoSpec Premier" vendor="Waters" description="Waters AutoSpec Premier magnetic sector instrument."/>
+    <instrument id="MS:1002275" name="Xevo G2-S Tof" vendor="Waters" description="Waters oa-ToF based Xevo G2-S Tof."/>
+    <instrument id="MS:1002276" name="Xevo G2-S QTof" vendor="Waters" description="Waters oa-ToF based Xevo G2-S QTof."/>
+    <instrument id="MS:1002274" name="SQ Detector 2" vendor="Waters" description="Waters quadrupole based SQ Detector 2."/>
+    <instrument id="MS:1000192" name="Quattro Ultima" vendor="Waters" description="Waters (triple) quadrupole based Ultima."/>
+    <instrument id="MS:1000632" name="Q-Tof Premier" vendor="Waters" description="Waters oa-ToF based Q-Tof Premier."/>
+    <instrument id="MS:1000191" name="quattro micro" vendor="Waters" description="Waters (triple) quadrupole based micro."/>
+    <instrument id="MS:1000188" name="Q-Tof micro" vendor="Waters" description="Waters oa-ToF based Q-Tof micro."/>
+    <instrument id="MS:1001791" name="Xevo TQD" vendor="Waters" description="Waters quadrupole based Xevo TQD."/>
+    <instrument id="MS:1001792" name="Xevo TQ-S" vendor="Waters" description="Waters quadrupole based Xevo TQ-S."/>
+    <instrument id="MS:1000184" name="Platform ICP" vendor="Waters" description="Waters Platform ICP MS."/>
+    <instrument id="MS:1001790" name="Xevo TQ MS" vendor="Waters" description="Waters quadrupole based Xevo TQ MS."/>
+    <instrument id="MS:1000189" name="Q-Tof Ultima" vendor="Waters" description="Waters oa-ToF based Q-Tof Ultima."/>
+    <instrument id="MS:1000180" name="NG-5400" vendor="Waters" description="Waters NG-5400 MS."/>
+    <instrument id="MS:1002731" name="Xevo TQ-S micro" vendor="Waters" description="Waters Corporation Xevo TQ-S micro triple quadrupole mass spectrometer."/>
+    <instrument id="MS:1002730" name="Xevo TQ-XS" vendor="Waters" description="Waters Corporation Xevo TQ-XS triple quadrupole mass spectrometer."/>
+    <instrument id="MS:1001786" name="3100" vendor="Waters" description="Waters quadrupole based 3100."/>
+    <instrument id="MS:1001787" name="Acquity SQD" vendor="Waters" description="Waters quadrupole based Acquity SQD."/>
+    <instrument id="MS:1001784" name="Xevo G2 Tof" vendor="Waters" description="Waters oa-ToF based Xevo G2 Tof."/>
+    <instrument id="MS:1001785" name="Xevo Q-Tof" vendor="Waters" description="Waters oa-ToF based Xevo Q-Tof."/>
+    <instrument id="MS:1001789" name="Quattro micro GC" vendor="Waters" description="Waters (triple) quadrupole based Quattro micro GC."/>
+    <instrument id="MS:1001788" name="Acquity TQD" vendor="Waters" description="Waters quadrupole based Acquity TQD."/>
+    <instrument id="MS:1000170" name="M@LDI L" vendor="Waters" description="Waters oa-ToF based MALDI L."/>
+    <instrument id="MS:1001782" name="Synapt MS" vendor="Waters" description="Waters oa-ToF based Synapt MS."/>
+    <instrument id="MS:1000171" name="M@LDI LR" vendor="Waters" description="Waters oa-ToF based MALDI LR."/>
+    <instrument id="MS:1001783" name="Xevo G2 Q-Tof" vendor="Waters" description="Waters oa-ToF based Xevo G2 Q-Tof."/>
+    <instrument id="MS:1001781" name="Synapt HDMS" vendor="Waters" description="Waters oa-ToF based Synapt HDMS."/>
+    <instrument id="MS:1001780" name="Synapt G2-S MS" vendor="Waters" description="Waters oa-ToF based Synapt G2-S MS."/>
+    <instrument id="MS:1001761" name="ACQUITY UPLC" vendor="Waters" description="Waters LC-system ACQUITY UPLC."/>
+    <instrument id="MS:1002726" name="SYNAPT G2-Si" vendor="Waters" description="Waters Corporation SYNAPT G2-Si orthogonal acceleration time-of-flight mass spectrometer."/>
+    <instrument id="MS:1000150" name="Auto Spec Ultima NT" vendor="Waters" description="Waters magnetic sector based AutoSpec Ultima NT MS."/>
+    <instrument id="MS:1000159" name="GCT" vendor="Waters" description="Waters oa-ToF based GCT."/>
+    <instrument id="MS:1001764" name="ACQUITY UPLC I-Class" vendor="Waters" description="Waters LC-system ACQUITY UPLC I-Class."/>
+    <instrument id="MS:1001765" name="ACQUITY UPLC Systems with 2D Technology" vendor="Waters" description="Waters LC-system ACQUITY UPLC Systems with 2D Technology."/>
+    <instrument id="MS:1001763" name="ACQUITY UPLC H-Class Bio" vendor="Waters" description="Waters LC-system ACQUITY UPLC H-Class Bio."/>
+    <instrument id="MS:1001762" name="ACQUITY UPLC H-Class" vendor="Waters" description="Waters LC-system ACQUITY UPLC H-Class."/>
+    <instrument id="MS:1001768" name="nanoACQUITY UPLC with HDX Technology" vendor="Waters" description="Waters LC-system nanoACQUITY UPLC with HDX Technology."/>
+    <instrument id="MS:1001769" name="TRIZAIC UPLC nanoTile" vendor="Waters" description="Waters LC-system TRIZAIC UPLC nanoTile."/>
+    <instrument id="MS:1001766" name="nanoACQUITY UPLC" vendor="Waters" description="Waters LC-system nanoACQUITY UPLC."/>
+    <instrument id="MS:1001767" name="nanoACQUITY UPLC System with 1D Technology" vendor="Waters" description="Waters LC-system nanoACQUITY UPLC System with 1D Technology."/>
+    <instrument id="MS:1001779" name="Synapt G2-S HDMS" vendor="Waters" description="Waters oa-ToF based Synapt G2-S HDMS."/>
+    <instrument id="MS:1001777" name="Synapt G2 HDMS" vendor="Waters" description="Waters oa-ToF based Synapt G2 HDMS."/>
+    <instrument id="MS:1001778" name="Synapt G2 MS" vendor="Waters" description="Waters oa-ToF based Synapt G2 MS."/>
+    <instrument id="MS:1001775" name="MALDI Synapt HDMS" vendor="Waters" description="Waters oa-ToF based MALDI Synapt HDMS."/>
+    <instrument id="MS:1001776" name="MALDI Synapt MS" vendor="Waters" description="Waters oa-ToF based MALDI Synapt MS."/>
+    <instrument id="MS:1001773" name="MALDI Synapt G2-S HDMS" vendor="Waters" description="Waters oa-ToF based MALDI Synapt G2 MS."/>
+    <instrument id="MS:1001774" name="MALDI Synapt G2-S MS" vendor="Waters" description="Waters oa-ToF based MALDI Synapt G2-S MS."/>
+    <instrument id="MS:1000166" name="IsoProbe T" vendor="Waters" description="Waters IsoProbe T MS."/>
+    <instrument id="MS:1001772" name="MALDI Synapt G2 MS" vendor="Waters" description="Waters oa-ToF based MALDI Synapt G2 MS."/>
+    <instrument id="MS:1002729" name="Xevo G2 XS Tof" vendor="Waters" description="Waters Corporation Xevo G2 XS Tof orthogonal acceleration time-of-flight mass spectrometer."/>
+    <instrument id="MS:1000165" name="IsoProbe" vendor="Waters" description="Waters IsoProbe MS."/>
+    <instrument id="MS:1001771" name="MALDI Synapt G2 HDMS" vendor="Waters" description="Waters oa-ToF based MALDI Synapt G2 HDMS."/>
+    <instrument id="MS:1000164" name="IsoPrime" vendor="Waters" description="Waters IsoPrime MS."/>
+    <instrument id="MS:1001770" name="GCT Premier" vendor="Waters" description="Waters oa-ToF based GCT Premier."/>
+    <instrument id="MS:1002728" name="Vion IMS QTof" vendor="Waters" description="Waters Corporation Vion IMS QTof orthogonal acceleration time-of-flight mass spectrometer."/>
+    <instrument id="MS:1002727" name="MALDI SYNAPT G2-Si" vendor="Waters" description="Waters Corporation MALDI SYNAPT G2-Si orthogonal acceleration time-of-flight mass spectrometer."/>
+    <instrument id="MS:1000491" name="Dionex instrument model" vendor="instrument model" description="Dionex instrument model."/>
+    <instrument id="MS:1003000" name="LCMS-8050" vendor="Shimadzu Scientific Instruments" description="Shimadzu Scientific Instruments LCMS-8050 MS."/>
+    <instrument id="MS:1002999" name="LCMS-8060" vendor="Shimadzu Scientific Instruments" description="Shimadzu Scientific Instruments LCMS-8060 MS."/>
+    <instrument id="MS:1002998" name="LCMS-9030" vendor="Shimadzu Scientific Instruments" description="Shimadzu Scientific Instruments LCMS-9030 Q-TOF MS."/>
+    <instrument id="MS:1000605" name="LCMS-2010EV" vendor="Shimadzu Scientific Instruments" description="Shimadzu Scientific Instruments LCMS-2010EV MS."/>
+    <instrument id="MS:1003001" name="LCMS-8045" vendor="Shimadzu Scientific Instruments" description="Shimadzu Scientific Instruments LCMS-8045 MS."/>
+    <instrument id="MS:1000604" name="LCMS-IT-TOF" vendor="Shimadzu Scientific Instruments" description="Shimadzu Scientific Instruments LCMS-IT-TOF MS."/>
+    <instrument id="MS:1003002" name="LCMS-8040" vendor="Shimadzu Scientific Instruments" description="Shimadzu Scientific Instruments LCMS-8040 MS."/>
+    <instrument id="MS:1000606" name="LCMS-2010A" vendor="Shimadzu Scientific Instruments" description="Shimadzu Scientific Instruments LCMS-2010A MS."/>
+    <instrument id="MS:1003003" name="LCMS-2020" vendor="Shimadzu Scientific Instruments" description="Shimadzu Scientific Instruments LCMS-2020."/>
+    <instrument id="MS:1002382" name="Shimadzu MALDI-7090" vendor="Shimadzu MALDI-TOF" description="Shimadzu MALDI-7090: MALDI-TOF-TOF."/>
+    <instrument id="MS:1000607" name="AXIMA CFR MALDI-TOF" vendor="Shimadzu MALDI-TOF" description="Shimadzu Biotech AXIMA CFR MALDI-TOF MS."/>
+    <instrument id="MS:1000608" name="AXIMA-QIT" vendor="Shimadzu MALDI-TOF" description="Shimadzu Biotech AXIMA-QIT MS."/>
+    <instrument id="MS:1000609" name="AXIMA-CFR plus" vendor="Shimadzu MALDI-TOF" description="Shimadzu Biotech AXIMA-CFR plus MS."/>
+    <instrument id="MS:1000611" name="AXIMA Confidence MALDI-TOF" vendor="Shimadzu MALDI-TOF" description="Shimadzu Biotech AXIMA Confidence MALDI-TOF (curved field reflectron) MS."/>
+    <instrument id="MS:1000610" name="AXIMA Performance MALDI-TOF/TOF" vendor="Shimadzu MALDI-TOF" description="Shimadzu Biotech AXIMA Performance MALDI-TOF/TOF MS."/>
+    <instrument id="MS:1000612" name="AXIMA Assurance Linear MALDI-TOF" vendor="Shimadzu MALDI-TOF" description="Shimadzu Biotech AXIMA Assurance Linear MALDI-TOF MS."/>
+    <instrument id="MS:1000492" name="Thermo Electron instrument model" vendor="Thermo Fisher Scientific" description="Thermo Electron Corporation instrument model."/>
+    <instrument id="MS:1000750" name="TSQ" vendor="Finnigan MAT" description="ThermoFinnigan TSQ MS."/>
+    <instrument id="MS:1000748" name="SSQ 7000" vendor="Finnigan MAT" description="ThermoFinnigan SSQ 7000 MS."/>
+    <instrument id="MS:1000749" name="TSQ 7000" vendor="Finnigan MAT" description="ThermoFinnigan TSQ 7000 MS."/>
+    <instrument id="MS:1000175" name="MAT95XP" vendor="Finnigan MAT" description="ThermoFinnigan MAT95XP MS."/>
+    <instrument id="MS:1000176" name="MAT95XP Trap" vendor="Finnigan MAT" description="ThermoFinnigan MAT95XP Trap MS."/>
+    <instrument id="MS:1000174" name="MAT900XP Trap" vendor="Finnigan MAT" description="ThermoFinnigan MAT900XP Trap MS."/>
+    <instrument id="MS:1000173" name="MAT900XP" vendor="Finnigan MAT" description="ThermoFinnigan MAT900XP MS."/>
+    <instrument id="MS:1000172" name="MAT253" vendor="Finnigan MAT" description="ThermoFinnigan MAT253 MS."/>
+    <instrument id="MS:1000448" name="LTQ FT" vendor="Thermo Scientific" description="Finnigan LTQ FT MS."/>
+    <instrument id="MS:1000641" name="DSQ II" vendor="Thermo Scientific" description="Thermo Scientific DSQ II GC-MS."/>
+    <instrument id="MS:1000449" name="LTQ Orbitrap" vendor="Thermo Scientific" description="Finnigan LTQ Orbitrap MS."/>
+    <instrument id="MS:1000640" name="DFS" vendor="Thermo Scientific" description="Thermo Scientific DFS HR GC-MS."/>
+    <instrument id="MS:1003029" name="Orbitrap Eclipse" vendor="Thermo Scientific" description="Thermo Scientific Orbitrap Eclipse mass spectrometer with Tribrid architecture consisting of quadrupole mass filter, linear ion trap and Orbitrap mass analyzers."/>
+    <instrument id="MS:1002874" name="TSQ Altis" vendor="Thermo Scientific" description="Thermo Scientific TSQ Altis Triple Quadrupole MS."/>
+    <instrument id="MS:1000447" name="LTQ" vendor="Thermo Scientific" description="Finnigan LTQ MS."/>
+    <instrument id="MS:1002835" name="LTQ Orbitrap Classic" vendor="Thermo Scientific" description="Thermo Fisher Scientific LTQ Orbitrap Classic."/>
+    <instrument id="MS:1001908" name="ISQ" vendor="Thermo Scientific" description="Thermo Scientific ISQ single quadrupole MS with the ExtractraBrite source."/>
+    <instrument id="MS:1001909" name="Velos Plus" vendor="Thermo Scientific" description="Thermo Scientific second generation Velos."/>
+    <instrument id="MS:1001742" name="LTQ Orbitrap Velos" vendor="Thermo Scientific" description="Finnigan LTQ Orbitrap Velos MS."/>
+    <instrument id="MS:1000648" name="GC IsoLink" vendor="Thermo Scientific" description="Thermo Scientific GC IsoLink Isotope Ratio MS."/>
+    <instrument id="MS:1002876" name="TSQ 9000" vendor="Thermo Scientific" description="Thermo Scientific TSQ 9000 Triple Quadrupole MS."/>
+    <instrument id="MS:1000649" name="Exactive" vendor="Thermo Scientific" description="Thermo Scientific Exactive MS."/>
+    <instrument id="MS:1002523" name="Q Exactive HF" vendor="Thermo Scientific" description="Thermo Scientific Q Exactive."/>
+    <instrument id="MS:1000646" name="Element 2" vendor="Thermo Scientific" description="Thermo Scientific Element 2 HR-ICP-MS."/>
+    <instrument id="MS:1002526" name="Exactive Plus" vendor="Thermo Scientific" description="Thermo Scientific Exactive Plus MS."/>
+    <instrument id="MS:1002875" name="TSQ Quantis" vendor="Thermo Scientific" description="Thermo Scientific TSQ Quantis Triple Quadrupole MS."/>
+    <instrument id="MS:1000647" name="Element GD" vendor="Thermo Scientific" description="Thermo Scientific Element GD Glow Discharge MS."/>
+    <instrument id="MS:1002525" name="TSQ 8000 Evo" vendor="Thermo Scientific" description="Thermo Scientific TSQ 8000 Evo MS."/>
+    <instrument id="MS:1002877" name="Q Exactive HF-X" vendor="Thermo Scientific" description="Thermo Scientific Q Exactive HF-X Hybrid Quadrupole Orbitrap MS."/>
+    <instrument id="MS:1000644" name="TSQ Quantum Access" vendor="Thermo Scientific" description="Thermo Scientific TSQ Quantum Access MS."/>
+    <instrument id="MS:1000645" name="Element XR" vendor="Thermo Scientific" description="Thermo Scientific Element XR HR-ICP-MS."/>
+    <instrument id="MS:1003028" name="Orbitrap Exploris 480" vendor="Thermo Scientific" description="Thermo Scientific Orbitrap Exploris 480 Quadrupole Orbitrap MS."/>
+    <instrument id="MS:1000642" name="MALDI LTQ XL" vendor="Thermo Scientific" description="Thermo Scientific MALDI LTQ XL MS."/>
+    <instrument id="MS:1000643" name="MALDI LTQ Orbitrap" vendor="Thermo Scientific" description="Thermo Scientific MALDI LTQ Orbitrap MS."/>
+    <instrument id="MS:1000637" name="ITQ 1100" vendor="Thermo Scientific" description="Thermo Scientific ITQ 1100 GC-MS."/>
+    <instrument id="MS:1000638" name="LTQ XL ETD" vendor="Thermo Scientific" description="Thermo Scientific LTQ XL MS with ETD."/>
+    <instrument id="MS:1000635" name="ITQ 700" vendor="Thermo Scientific" description="Thermo Scientific ITQ 700 GC-MS."/>
+    <instrument id="MS:1000636" name="ITQ 900" vendor="Thermo Scientific" description="Thermo Scientific ITQ 900 GC-MS."/>
+    <instrument id="MS:1000751" name="TSQ Quantum Ultra" vendor="Thermo Scientific" description="Thermo Scientific TSQ Quantum Ultra."/>
+    <instrument id="MS:1000639" name="LTQ Orbitrap XL ETD" vendor="Thermo Scientific" description="Thermo Scientific LTQ Orbitrap XL MS with ETD."/>
+    <instrument id="MS:1002634" name="Q Exactive Plus" vendor="Thermo Scientific" description="Thermo Scientific Q Exactive Plus."/>
+    <instrument id="MS:1001510" name="TSQ Vantage" vendor="Thermo Scientific" description="TSQ Vantage."/>
+    <instrument id="MS:1001910" name="LTQ Orbitrap Elite" vendor="Thermo Scientific" description="Thermo Scientific second generation Velos and Orbitrap."/>
+    <instrument id="MS:1000555" name="LTQ Orbitrap Discovery" vendor="Thermo Scientific" description="LTQ Orbitrap Discovery."/>
+    <instrument id="MS:1001911" name="Q Exactive" vendor="Thermo Scientific" description="Thermo Scientific Q Exactive."/>
+    <instrument id="MS:1000557" name="LTQ FT Ultra" vendor="Thermo Scientific" description="LTQ FT Ultra."/>
+    <instrument id="MS:1000556" name="LTQ Orbitrap XL" vendor="Thermo Scientific" description="LTQ Orbitrap XL."/>
+    <instrument id="MS:1000623" name="Accela PDA" vendor="Thermo Scientific" description="Accela PDA."/>
+    <instrument id="MS:1000622" name="Surveyor PDA" vendor="Thermo Scientific" description="Surveyor PDA."/>
+    <instrument id="MS:1002732" name="Orbitrap Fusion Lumos" vendor="Thermo Scientific" description="Thermo Scientific Orbitrap Fusion Lumos mass spectrometer with Tribrid architecture consisting of quadrupole mass filter, linear ion trap and Orbitrap mass analyzers."/>
+    <instrument id="MS:1000743" name="TSQ Quantum Ultra AM" vendor="Thermo Scientific" description="Thermo Scientific TSQ Quantum Ultra AM."/>
+    <instrument id="MS:1002416" name="Orbitrap Fusion" vendor="Thermo Scientific" description="Thermo Scientific Orbitrap Fusion."/>
+    <instrument id="MS:1002417" name="Orbitrap Fusion ETD" vendor="Thermo Scientific" description="Thermo Scientific Orbitrap Fusion with ETD."/>
+    <instrument id="MS:1002418" name="TSQ Quantiva" vendor="Thermo Scientific" description="Thermo Scientific TSQ Quantiva MS."/>
+    <instrument id="MS:1002419" name="TSQ Endura" vendor="Thermo Scientific" description="Thermo Scientific TSQ Endura MS."/>
+    <instrument id="MS:1000854" name="LTQ XL" vendor="Thermo Scientific" description="Thermo Scientific LTQ XL MS."/>
+    <instrument id="MS:1000856" name="LTQ Velos ETD" vendor="Thermo Scientific" description="Thermo Scientific LTQ Velos MS with ETD."/>
+    <instrument id="MS:1000855" name="LTQ Velos" vendor="Thermo Scientific" description="Thermo Scientific LTQ Velos MS."/>
+    <instrument id="MS:1000450" name="LXQ" vendor="Thermo Scientific" description="Finnigan LXQ MS."/>
+    <instrument id="MS:1000169" name="LCQ Deca XP Plus" vendor="Thermo Finnigan" description="ThermoFinnigan LCQ Deca XP Plus MS."/>
+    <instrument id="MS:1000168" name="LCQ Classic" vendor="Thermo Finnigan" description="ThermoFinnigan LCQ Classic MS."/>
+    <instrument id="MS:1000167" name="LCQ Advantage" vendor="Thermo Finnigan" description="ThermoFinnigan LCQ Advantage MS."/>
+    <instrument id="MS:1000153" name="DELTA plusAdvantage" vendor="Thermo Finnigan" description="ThermoFinnigan DELTA plusAdvantage MS."/>
+    <instrument id="MS:1000154" name="DELTAplusXP" vendor="Thermo Finnigan" description="ThermoFinnigan DELTAplusXP MS."/>
+    <instrument id="MS:1000197" name="TRACE DSQ" vendor="Thermo Finnigan" description="ThermoFinnigan TRACE DSQ MS."/>
+    <instrument id="MS:1000198" name="TRITON" vendor="Thermo Finnigan" description="ThermoFinnigan TRITON MS."/>
+    <instrument id="MS:1000554" name="LCQ Deca" vendor="Thermo Finnigan" description="ThermoFinnigan LCQ Deca."/>
+    <instrument id="MS:1000634" name="DSQ" vendor="Thermo Finnigan" description="ThermoFinnigan DSQ GC-MS."/>
+    <instrument id="MS:1000196" name="TEMPUS TOF" vendor="Thermo Finnigan" description="ThermoFinnigan TEMPUS TOF MS."/>
+    <instrument id="MS:1000179" name="neptune" vendor="Thermo Finnigan" description="ThermoFinnigan NEPTUNE MS."/>
+    <instrument id="MS:1000193" name="Surveyor MSQ" vendor="Thermo Finnigan" description="ThermoFinnigan Surveyor MSQ MS."/>
+    <instrument id="MS:1000558" name="GC Quantum" vendor="Thermo Finnigan" description="GC Quantum."/>
+    <instrument id="MS:1000578" name="LCQ Fleet" vendor="Thermo Finnigan" description="LCQ Fleet."/>
+    <instrument id="MS:1000185" name="PolarisQ" vendor="Thermo Finnigan" description="ThermoFinnigan PolarisQ MS."/>
+    <instrument id="MS:1000199" name="TSQ Quantum" vendor="Thermo Finnigan" description="ThermoFinnigan TSQ Quantum MS."/>
+    <instrument id="MS:1002799" name="6430 Triple Quadrupole LC/MS" vendor="Agilent" description="The 6430 Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with a Agilent triple quadrupole mass spectrometer."/>
+    <instrument id="MS:1002803" name="7000B Triple Quadrupole GC/MS" vendor="Agilent" description="The 7000B Quadrupole GC/MS system is a Agilent gas chromatography instrument combined with a Agilent triple quadrupole mass spectrometer."/>
+    <instrument id="MS:1002446" name="6490 Triple Quadrupole LC/MS" vendor="Agilent" description="The 6490 Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with a Agilent triple quadrupole mass spectrometer. It is similar to the 6420 but adds the Agilent iFunnel technology to increase sensitivity."/>
+    <instrument id="MS:1002798" name="6230B Time-of-Flight LC/MS" vendor="Agilent" description="The 6230B Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1002802" name="7000A Triple Quadrupole GC/MS" vendor="Agilent" description="The 7000A Quadrupole GC/MS system is a Agilent gas chromatography instrument combined with a Agilent triple quadrupole mass spectrometer."/>
+    <instrument id="MS:1002804" name="7800 Quadrupole ICP-MS" vendor="Agilent" description="The 7800 Quadrupole ICP-MS system is a Agilent inductively couple plasma instrument combined with a Agilent quadrupole mass spectrometer."/>
+    <instrument id="MS:1002805" name="8800 Triple Quadrupole ICP-MS" vendor="Agilent" description="The 8800 Quadrupole ICP-MS system is a Agilent inductively couple plasma instrument combined with a Agilent quadrupole mass spectrometer."/>
+    <instrument id="MS:1002795" name="6150 Quadrupole LC/MS" vendor="Agilent" description="The 6150 Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with a single quadrupole mass spectrometer from the 6100 Series of Agilent mass spectrometers."/>
+    <instrument id="MS:1002445" name="6460 Triple Quadrupole LC/MS" vendor="Agilent" description="The 6460 Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with a Agilent triple quadrupole mass spectrometer. It is similar to the 6420 but adds Agilent Jet Stream (AJS) technology to increase sensitivity."/>
+    <instrument id="MS:1002794" name="6120B Quadrupole LC/MS" vendor="Agilent" description="The 6120B Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with a single quadrupole mass spectrometer from the 6100 Series of Agilent mass spectrometers."/>
+    <instrument id="MS:1002797" name="6230A Time-of-Flight LC/MS" vendor="Agilent" description="The 6230A Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1002444" name="6420 Triple Quadrupole LC/MS" vendor="Agilent" description="The 6420 Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with a Agilent triple quadrupole mass spectrometer."/>
+    <instrument id="MS:1002796" name="6224 Time-of-Flight LC/MS" vendor="Agilent" description="The 6224 Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1000467" name="1200 series LC/MSD SL" vendor="Agilent" description="The 1200 Series LC/MSD SL ion trap belongs to the Agilent LC/MSD ion trap family. It provides fast polarity switching and multisignal data acquisition capabilities in a single run while also providing 5 stages of automated data dependent MS2 and 11 stages of manual MS2."/>
+    <instrument id="MS:1000469" name="6120A Quadrupole LC/MS" vendor="Agilent" description="The 6120A Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with a single quadrupole mass spectrometer from the 6100 Series of Agilent mass spectrometers. 6120 quadrupole mass spectrometer has m/z range of 10-1500, 2500 u/s scan speed and utilizes multiple signal acquisition."/>
+    <instrument id="MS:1000468" name="6110 Quadrupole LC/MS" vendor="Agilent" description="The 6110 Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with an entry level single quadrupole mass spectrometer from the 6100 Series of Agilent quadrupole mass spectrometers. 6110 Quadrupole mass spectrometer has m/z range of 10-1500 and 2500 u/s scan speed. It proves useful for wide range of SIM quantitative applications."/>
+    <instrument id="MS:1002801" name="6495B Triple Quadrupole LC/MS" vendor="Agilent" description="The 6495B Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with a Agilent triple quadrupole mass spectrometer."/>
+    <instrument id="MS:1002800" name="6495A Triple Quadrupole LC/MS" vendor="Agilent" description="The 6495A Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with a Agilent triple quadrupole mass spectrometer."/>
+    <instrument id="MS:1002792" name="6560 Q-TOF LC/MS" vendor="Agilent" description="The 6560 Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1002793" name="6570 Q-TOF LC/MS" vendor="Agilent" description="The 6570 Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1002790" name="6542 Q-TOF LC/MS" vendor="Agilent" description="The 6542 Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1002791" name="6545 Q-TOF LC/MS" vendor="Agilent" description="The 6545 Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1000677" name="6520A Quadrupole Time-of-Flight LC/MS" vendor="Agilent" description="The 6520A Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer. This time of flight mass spectrometer has a m/z range of 50-12000, mass accuracy of less than 2 ppm and resolution greater than 26,000 at m/z 2722. It has multiple ion sources and can be used with multimode ion sources."/>
+    <instrument id="MS:1000675" name="6220 Time-of-Flight LC/MS" vendor="Agilent" description="The 6220 Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer. This time of flight mass spectrometer has a m/z range of 50-12000, mass accuracy of less than 2 ppm and resolution greater than 13,000 at m/z 2722. It has multiple ion sources and can be used with multimode ion sources."/>
+    <instrument id="MS:1000676" name="6510 Quadrupole Time-of-Flight LC/MS" vendor="Agilent" description="The 6510 Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer. This time of flight mass spectrometer has a m/z range of 50-12000, mass accuracy of less than 2 ppm and resolution greater than 13,000 at m/z 2722. It has multiple ion sources and can be used with multimode ion sources."/>
+    <instrument id="MS:1000474" name="6320 Ion Trap LC/MS" vendor="Agilent" description="The 6320 Ion Trap LC/MS is a Agilent liquid chromatography instrument combined with a 6300 series Agilent ion trap. It has a mass range of 50-2200 between 0.6 to 0.25 resolution and mass range of 200-4000 with resolution of less than 3. The scan speed varies from 1650-27000 for the respective mass ranges."/>
+    <instrument id="MS:1002785" name="6520B Q-TOF LC/MS" vendor="Agilent" description="The 6520B Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1000473" name="6310 Ion Trap LC/MS" vendor="Agilent" description="The 6310 Ion Trap LC/MS is a Agilent liquid chromatography instrument combined with a 6300 series Agilent ion trap. It has a mass range of 50-2200 between 0.6 to 0.35 resolution and mass range of 200-4000 with resolution of 3-4. The scan speed varies from 1650-27000 for the respective mass ranges."/>
+    <instrument id="MS:1002786" name="6530A Q-TOF LC/MS" vendor="Agilent" description="The 6530A Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1000476" name="6340 Ion Trap LC/MS" vendor="Agilent" description="The 6340 Ion Trap LC/MS is a Agilent liquid chromatography instrument combined with a 6300 series Agilent ion trap. It has a mass range of 50-2200 between 0.6 to 0.25 resolution and mass range of 200-4000 with resolution of less than 3. The scan speed varies from 1650-27000 for the respective mass ranges."/>
+    <instrument id="MS:1002783" name="6550 iFunnel Q-TOF LC/MS" vendor="Agilent" description="The 6550 Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1000475" name="6330 Ion Trap LC/MS" vendor="Agilent" description="The 6330 Ion Trap LC/MS is a Agilent liquid chromatography instrument combined with a 6300 series Agilent ion trap. It has a mass range of 50-2200 between 0.6 to 0.25 resolution and mass range of 200-4000 with resolution of less than 3. The scan speed varies from 1650-27000 for the respective mass ranges."/>
+    <instrument id="MS:1002784" name="6550A iFunnel Q-TOF LC/MS" vendor="Agilent" description="The 6550A Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1000478" name="1200 series LC/MSD VL" vendor="Agilent" description="The LC/MSD VL ion trap is part of the family of Agilent ion trap mass spectrometers. It has ESI, APCI and APPI ion sources and is a useful ion trap when the amount of sample is not the limiting factor."/>
+    <instrument id="MS:1002788" name="6538 Q-TOF LC/MS" vendor="Agilent" description="The 6538 Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1000477" name="6410 Triple Quadrupole LC/MS" vendor="Agilent" description="The 6410 Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with a Agilent triple quadrupole mass spectrometer. Mass range of the mass spectrometer is 15-1650 m/z, resolution is at three settings of 0.7 u (unit), 1.2 u (wide) and 2.5 u (widest). The mass accuracy for 6410 mass spectrometer is 0.1 across the mass range. The collision cell is a hexapole with linear acceleration."/>
+    <instrument id="MS:1002787" name="6530B Q-TOF LC/MS" vendor="Agilent" description="The 6530B Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1002789" name="6540 Q-TOF LC/MS" vendor="Agilent" description="The 6540 Quadrupole Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer."/>
+    <instrument id="MS:1000471" name="6140 Quadrupole LC/MS" vendor="Agilent" description="The 6140 Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with a single quadrupole mass spectrometer from the 6100 Series of Agilent quadrupole mass spectrometers. 6140 Quadrupole mass spectrometer has m/z range of 10-1350, 2500 u/s scan speed in standard mode and 10000 u/s speed in fast-scan mode. It also uses multiple signal acquisition."/>
+    <instrument id="MS:1000472" name="6210 Time-of-Flight LC/MS" vendor="Agilent" description="The 6210 Time-of-Flight LC/MS is a Agilent liquid chromatography instrument combined with a Agilent time of flight mass spectrometer. This time of flight mass spectrometer has a m/z range of 50-12000, mass accuracy of less than 2 ppm and resolution greater than 13,000 at m/z 2722. It has multiple ion sources and can be used with multimode ion sources."/>
+    <instrument id="MS:1000470" name="6130 Quadrupole LC/MS" vendor="Agilent" description="The 6130 Quadrupole LC/MS system is a Agilent liquid chromatography instrument combined with a single quadrupole mass spectrometer from the 6100 series of Agilent mass spectrometers. The 6130 quadrupole mass spectrometer has m/z range of 2-3000, 2500 u/s scan speed in standard mode and 5250 u/s speed in fast-scan mode. It also uses multiple signal acquisition."/>
+    <instrument id="MS:1000658" name="4800 Proteomics Analyzer" vendor="Applied Biosystems" description="Applied Biosystems|MDS SCIEX 4800 Proteomics Analyzer."/>
+    <instrument id="MS:1000140" name="4700 Proteomics Analyzer" vendor="Applied Biosystems" description="Applied Biosystems/MDS SCIEX 4700 Proteomics Analyzer MS."/>
+    <instrument id="MS:1000203" name="Voyager-DE PRO" vendor="Applied Biosystems" description="Applied Biosystems/MDS SCIEX Voyager-DE PRO MS."/>
+    <instrument id="MS:1000204" name="Voyager-DE STR" vendor="Applied Biosystems" description="Applied Biosystems/MDS SCIEX Voyager-DE STR MS."/>
+</instruments>
