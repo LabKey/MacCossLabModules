@@ -24,31 +24,45 @@ import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.gwt.client.FacetingBehaviorType;
 import org.labkey.api.query.ExprColumn;
 import org.labkey.api.query.LookupForeignKey;
+import org.labkey.api.targetedms.SearchResultColumnInfo;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.view.ActionURL;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 
-public class ExperimentTitleDisplayColumn extends ExprColumn
+public class ExperimentTitleDisplayColumn
 {
-    public ExperimentTitleDisplayColumn(TableInfo table, Container container, SQLFragment whereSql, String runsTableAlias)
+    public static SearchResultColumnInfo getModSearchExpColInfo()
     {
-        super(table, "Experiment", colSql(whereSql, runsTableAlias), JdbcType.INTEGER);
+        SQLFragment sql = new SQLFragment();
+        sql.append(" INNER JOIN ").append(TargetedMSService.get().getTableInfoPeptideGroup(), "pg");
+        sql.append(" ON ").append("pg.runId = runs.id");
+        sql.append(" INNER JOIN ").append(TargetedMSService.get().getTableInfoGeneralMolecule(), "gm");
+        sql.append(" ON ").append("gm.peptideGroupId = pg.id");
+        sql.append(" WHERE gm.Id = ").append(ExprColumn.STR_TABLE_ALIAS).append(".generalMoleculeId");
 
-        setTextAlign("left");
-        setFacetingBehaviorType(FacetingBehaviorType.ALWAYS_OFF);
-        setFk(new LookupForeignKey(table.getContainerFilter(), new ActionURL(PanoramaPublicController.ShowExperimentAnnotationsAction.class, container),
-                "id", "Id", "Title")
-        {
-            @Override
-            public @Nullable TableInfo getLookupTableInfo()
-            {
-                return PanoramaPublicManager.getTableInfoExperimentAnnotations();
-            }
-        });
+        return getExperimentColInfo(sql);
     }
 
-    private static SQLFragment colSql(SQLFragment whereSql, String runsTableAlias)
+    public static SearchResultColumnInfo getPeptideSearchExpColInfo()
+    {
+        SQLFragment sql = new SQLFragment();
+        sql.append(" INNER JOIN ");
+        sql.append(TargetedMSService.get().getTableInfoPeptideGroup(), "pg");
+        sql.append(" ON ");
+        sql.append("pg.runId = runs.id");
+        sql.append(" WHERE pg.Id = ").append(ExprColumn.STR_TABLE_ALIAS).append(".peptideGroupId");
+
+        return getExperimentColInfo(sql);
+    }
+
+    public static SearchResultColumnInfo getProteinSearchExpColInfo()
+    {
+        SQLFragment sql = new SQLFragment(" WHERE runs.Id = ").append(ExprColumn.STR_TABLE_ALIAS).append(".runId");
+        return getExperimentColInfo(sql);
+    }
+
+    private static SQLFragment colSql(SQLFragment whereSql)
     {
         ExperimentService service = ExperimentService.get();
         SQLFragment sql = new SQLFragment();
@@ -63,11 +77,33 @@ public class ExperimentTitleDisplayColumn extends ExprColumn
         sql.append(" ON ");
         sql.append("exprun.rowId = rlist.experimentRunId");
         sql.append(" INNER JOIN ");
-        sql.append(TargetedMSService.get().getTableInfoRuns(), runsTableAlias);
+        sql.append(TargetedMSService.get().getTableInfoRuns(), "runs");
         sql.append(" ON ");
-        sql.append(runsTableAlias + ".experimentRunLsid = exprun.lsid");
+        sql.append("runs" + ".experimentRunLsid = exprun.lsid");
         sql.append(whereSql);
         sql.append(") ");
         return sql;
+    }
+
+    private static SearchResultColumnInfo getExperimentColInfo(SQLFragment whereSql)
+    {
+        return new SearchResultColumnInfo("Experiment", colSql(whereSql), JdbcType.INTEGER)
+        {
+            @Override
+            public void setupColumn(ExprColumn col, Container container)
+            {
+                col.setTextAlign("left");
+                col.setFacetingBehaviorType(FacetingBehaviorType.ALWAYS_OFF);
+                col.setFk(new LookupForeignKey(col.getParentTable().getContainerFilter(), new ActionURL(PanoramaPublicController.ShowExperimentAnnotationsAction.class, container),
+                        "id", "Id", "Title")
+                {
+                    @Override
+                    public @Nullable TableInfo getLookupTableInfo()
+                    {
+                        return PanoramaPublicManager.getTableInfoExperimentAnnotations();
+                    }
+                });
+            }
+        };
     }
 }
