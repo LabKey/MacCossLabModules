@@ -90,6 +90,12 @@ public class ExperimentTitleDisplayColumn
         return new SearchResultColumnInfo("Experiment", colSql(whereSql), JdbcType.INTEGER)
         {
             @Override
+            public boolean showInContainer(Container container)
+            {
+                return container.isProject() && JournalManager.isJournalProject(container);
+            }
+
+            @Override
             public void setupColumn(ExprColumn col, Container container)
             {
                 col.setTextAlign("left");
