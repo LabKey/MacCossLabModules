@@ -472,9 +472,9 @@
     toolOwners[<%= h(tool.getRowId()) %>] = "<%= h(toolOwners.get(tool.getRowId())) %>";
 <%
         }
-        pageContext.setAttribute("autocompleteUsers", SkylineToolsStoreController.getUsersForAutocomplete());
+        String users = SkylineToolsStoreController.getUsersForAutocomplete();
 %>
-    $(".toolOwners").each(function() {autocomplete($(this), ${autocompleteUsers});});
+    $(".toolOwners").each(function() {autocomplete($(this), <%=users%>);});
 
     function popToolOwners(id) {
         $('#updatetargetOwners').val(id);
