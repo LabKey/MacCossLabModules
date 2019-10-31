@@ -104,9 +104,9 @@ public class PanoramaPublicModule extends SpringModule
         tmsService.registerSkylineDocumentImportListener(listener);
         tmsService.registerTargetedMSFolderTypeListener(listener);
 
-        TargetedMSService.get().addModificationSearchResultColumn(ExperimentTitleDisplayColumn.getModSearchExpColInfo());
-        TargetedMSService.get().addPeptideSearchResultColumn(ExperimentTitleDisplayColumn.getPeptideSearchExpColInfo());
-        TargetedMSService.get().addProteinSearchResultColumn(ExperimentTitleDisplayColumn.getProteinSearchExpColInfo());
+        TargetedMSService.get().addModificationSearchResultCustomizer(ExperimentTitleDisplayColumn.getModSearchTableCustomizer());
+        TargetedMSService.get().addPeptideSearchResultCustomizers(ExperimentTitleDisplayColumn.getPeptideSearchTableCustomizer());
+        TargetedMSService.get().addProteinSearchResultCustomizer(ExperimentTitleDisplayColumn.getProteinSearchTableCustomizer());
     }
 
     @NotNull
