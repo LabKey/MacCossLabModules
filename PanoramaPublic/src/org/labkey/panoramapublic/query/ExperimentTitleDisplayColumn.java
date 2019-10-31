@@ -15,40 +15,60 @@
  */
 package org.labkey.panoramapublic.query;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.JdbcType;
 import org.labkey.api.data.SQLFragment;
+import org.labkey.api.data.TableCustomizer;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.gwt.client.FacetingBehaviorType;
 import org.labkey.api.query.ExprColumn;
+import org.labkey.api.query.FieldKey;
+import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.LookupForeignKey;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.view.ActionURL;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 
-public class ExperimentTitleDisplayColumn extends ExprColumn
-{
-    public ExperimentTitleDisplayColumn(TableInfo table, Container container, SQLFragment whereSql, String runsTableAlias)
-    {
-        super(table, "Experiment", colSql(whereSql, runsTableAlias), JdbcType.INTEGER);
+import java.util.ArrayList;
+import java.util.List;
 
-        setTextAlign("left");
-        setFacetingBehaviorType(FacetingBehaviorType.ALWAYS_OFF);
-        setFk(new LookupForeignKey(table.getContainerFilter(), new ActionURL(PanoramaPublicController.ShowExperimentAnnotationsAction.class, container),
-                "id", "Id", "Title")
-        {
-            @Override
-            public @Nullable TableInfo getLookupTableInfo()
-            {
-                return PanoramaPublicManager.getTableInfoExperimentAnnotations();
-            }
-        });
+public class ExperimentTitleDisplayColumn
+{
+    public static TableCustomizer getModSearchTableCustomizer()
+    {
+        SQLFragment sql = new SQLFragment();
+        sql.append(" INNER JOIN ").append(TargetedMSService.get().getTableInfoPeptideGroup(), "pg");
+        sql.append(" ON ").append("pg.runId = runs.id");
+        sql.append(" INNER JOIN ").append(TargetedMSService.get().getTableInfoGeneralMolecule(), "gm");
+        sql.append(" ON ").append("gm.peptideGroupId = pg.id");
+        sql.append(" WHERE gm.Id = ").append(ExprColumn.STR_TABLE_ALIAS).append(".generalMoleculeId");
+
+        return new SearchResultsCustomizer("Experiment", colSql(sql), JdbcType.INTEGER);
     }
 
-    private static SQLFragment colSql(SQLFragment whereSql, String runsTableAlias)
+    public static TableCustomizer getPeptideSearchTableCustomizer()
+    {
+        SQLFragment sql = new SQLFragment();
+        sql.append(" INNER JOIN ");
+        sql.append(TargetedMSService.get().getTableInfoPeptideGroup(), "pg");
+        sql.append(" ON ");
+        sql.append("pg.runId = runs.id");
+        sql.append(" WHERE pg.Id = ").append(ExprColumn.STR_TABLE_ALIAS).append(".peptideGroupId");
+
+        return new SearchResultsCustomizer("Experiment", colSql(sql), JdbcType.INTEGER);
+    }
+
+    public static TableCustomizer getProteinSearchTableCustomizer()
+    {
+        SQLFragment sql = new SQLFragment(" WHERE runs.Id = ").append(ExprColumn.STR_TABLE_ALIAS).append(".runId");
+        return new SearchResultsCustomizer("Experiment", colSql(sql), JdbcType.INTEGER);
+    }
+
+    private static SQLFragment colSql(SQLFragment whereSql)
     {
         ExperimentService service = ExperimentService.get();
         SQLFragment sql = new SQLFragment();
@@ -63,11 +83,70 @@ public class ExperimentTitleDisplayColumn extends ExprColumn
         sql.append(" ON ");
         sql.append("exprun.rowId = rlist.experimentRunId");
         sql.append(" INNER JOIN ");
-        sql.append(TargetedMSService.get().getTableInfoRuns(), runsTableAlias);
+        sql.append(TargetedMSService.get().getTableInfoRuns(), "runs");
         sql.append(" ON ");
-        sql.append(runsTableAlias + ".experimentRunLsid = exprun.lsid");
+        sql.append("runs" + ".experimentRunLsid = exprun.lsid");
         sql.append(whereSql);
         sql.append(") ");
         return sql;
+    }
+
+    public static class SearchResultsCustomizer implements TableCustomizer
+    {
+        private final SQLFragment _colSql;
+        private final String _name;
+        private final JdbcType _jdbcType;
+
+        public SearchResultsCustomizer(@NotNull String name, @NotNull SQLFragment colSql, @NotNull JdbcType jdbcType)
+        {
+            _colSql = colSql;
+            _name = name;
+            _jdbcType = jdbcType;
+        }
+
+        private FieldKey getFieldKey()
+        {
+            return FieldKey.fromParts(_name);
+        }
+
+        private ExprColumn createColumn(TableInfo table, Container container)
+        {
+            ExprColumn col = new ExprColumn(table, _name, _colSql, _jdbcType);
+            setupColumn(col, container);
+            return col;
+        }
+
+        private void setupColumn(ExprColumn col, Container container)
+        {
+            col.setTextAlign("left");
+            col.setFacetingBehaviorType(FacetingBehaviorType.ALWAYS_OFF);
+            col.setFk(new LookupForeignKey(col.getParentTable().getContainerFilter(), new ActionURL(PanoramaPublicController.ShowExperimentAnnotationsAction.class, container),
+                    "id", "Id", "Title")
+            {
+                @Override
+                public @Nullable TableInfo getLookupTableInfo()
+                {
+                    return PanoramaPublicManager.getTableInfoExperimentAnnotations();
+                }
+            });
+        }
+
+        @Override
+        public void customize(TableInfo tableInfo)
+        {
+            Container container = tableInfo.getUserSchema().getContainer();
+            if(!(container.isProject() && JournalManager.isJournalProject(container)))
+            {
+                return;
+            }
+            ExprColumn col = createColumn(tableInfo, container);
+            if(tableInfo instanceof FilteredTable)
+            {
+                ((FilteredTable)tableInfo).addColumn(col);
+                List<FieldKey> displayCols = new ArrayList<>(tableInfo.getDefaultVisibleColumns());
+                displayCols.add(0, getFieldKey());
+                tableInfo.setDefaultVisibleColumns(displayCols);
+            }
+        }
     }
 }
