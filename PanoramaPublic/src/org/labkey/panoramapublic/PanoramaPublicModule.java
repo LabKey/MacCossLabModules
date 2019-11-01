@@ -93,6 +93,9 @@ public class PanoramaPublicModule extends SpringModule
         ActionURL url = new ActionURL(PanoramaPublicController.JournalGroupsAdminViewAction.class, ContainerManager.getRoot());
         AdminConsole.addLink(AdminConsole.SettingsLinkType.Configuration, "panorama public", url, AdminPermission.class);
 
+        ActionURL addModuleLink = new ActionURL(PanoramaPublicController.AddPanoramaPublicModuleAction.class, ContainerManager.getRoot());
+        AdminConsole.addLink(AdminConsole.SettingsLinkType.Configuration, "Panorama Public - Add Module", addModuleLink, AdminPermission.class);
+
         PanoramaPublicListener listener = new PanoramaPublicListener();
         ExperimentService.get().addExperimentListener(listener);
         ContainerManager.addContainerListener(listener);
