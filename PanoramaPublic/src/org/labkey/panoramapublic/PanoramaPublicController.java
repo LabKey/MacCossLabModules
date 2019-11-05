@@ -63,8 +63,10 @@ import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.module.ModuleProperty;
 import org.labkey.api.pipeline.LocalDirectory;
 import org.labkey.api.pipeline.PipeRoot;
+import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.PipelineStatusUrls;
+import org.labkey.api.pipeline.PipelineUrls;
 import org.labkey.api.pipeline.PipelineValidationException;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.DetailsURL;
@@ -79,6 +81,7 @@ import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.PrincipalType;
 import org.labkey.api.security.RequiresLogin;
 import org.labkey.api.security.RequiresPermission;
+import org.labkey.api.security.RequiresSiteAdmin;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
@@ -94,6 +97,8 @@ import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.targetedms.TargetedMSService;
+import org.labkey.api.util.Button;
+import org.labkey.api.util.DOM;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
@@ -104,6 +109,7 @@ import org.labkey.api.view.template.ClientDependency;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.pipeline.AddPanoramaPublicModuleJob;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
 import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
@@ -138,6 +144,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static org.labkey.api.util.DOM.Attribute.method;
+import static org.labkey.api.util.DOM.Attribute.name;
+import static org.labkey.api.util.DOM.BR;
+import static org.labkey.api.util.DOM.DIV;
+import static org.labkey.api.util.DOM.LABEL;
+import static org.labkey.api.util.DOM.LK.CHECKBOX;
+import static org.labkey.api.util.DOM.LK.FORM;
+import static org.labkey.api.util.DOM.at;
 
 /**
  * User: vsharma
@@ -2915,6 +2930,70 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
     }
+
+    // ------------------------------------------------------------------------
+    // BEGIN Add the PanoramaPublic module to existing TargetedMS containers
+    // ------------------------------------------------------------------------
+    @RequiresSiteAdmin
+    public class AddPanoramaPublicModuleAction extends FormViewAction<AddPanoramaPublicModuleForm>
+    {
+        @Override
+        public void validateCommand(AddPanoramaPublicModuleForm target, Errors errors) {}
+
+        @Override
+        public ModelAndView getView(AddPanoramaPublicModuleForm form, boolean reshow, BindException errors)
+        {
+            return new HtmlView("Add PanoramaPublic Module",
+                                DIV("Add the PanoramaPublic module to all TargetedMS type containers under " + getContainer().getPath(),
+                                    FORM(
+                                            at(method, "POST"),
+                                            CHECKBOX(at(name, "dryRun")),
+                                            LABEL("Dry run"),
+                                            BR(),
+                                            new Button.ButtonBuilder("Start").submit(true).build()
+                                    )
+                                ));
+        }
+
+        @Override
+        public boolean handlePost(AddPanoramaPublicModuleForm form, BindException errors) throws Exception
+        {
+            PipelineJob job = new AddPanoramaPublicModuleJob(getViewBackgroundInfo(), PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()), form.isDryRun());
+            PipelineService.get().queueJob(job);
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(AddPanoramaPublicModuleForm form)
+        {
+            return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return root.addChild("Add Panorama Public Module");
+        }
+    }
+
+    private static class AddPanoramaPublicModuleForm
+    {
+        private boolean _dryRun;
+
+        public boolean isDryRun()
+        {
+            return _dryRun;
+        }
+
+        public void setDryRun(boolean dryRun)
+        {
+            _dryRun = dryRun;
+        }
+    }
+    // ------------------------------------------------------------------------
+    // END Add the PanoramaPublic module to all existing TargetedMS containers
+    // ------------------------------------------------------------------------
+
 
     public static ActionURL getEditExperimentDetailsURL(Container c, int experimentAnnotationsId, URLHelper returnURL)
     {
