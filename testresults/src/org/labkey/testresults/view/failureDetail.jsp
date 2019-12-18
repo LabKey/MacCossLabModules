@@ -18,6 +18,9 @@
 <%@ page import="org.json.JSONObject" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="java.util.concurrent.TimeUnit" %>
+<%@ page import="java.text.ParseException" %>
+<%@ page import="java.util.Calendar" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
@@ -72,26 +75,26 @@
 <script src="//code.jquery.com/jquery-1.10.2.js"></script>
 <script src="<%=h(contextPath)%>/TestResults/js/jquery.tablesorter.js"></script>
 <br />
+<%
+    String value = (request.getParameter("viewType"));
+    if (value == null) {
+        value = "firsttime";
+    }
+%>
 <form action="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>">
-    View Type: <select name="viewType">
-    <option disabled selected> -- select an option -- </option>
-    <option id="posttime" value="posttime">Day</option>
-    <option id="wk" value="wk">Week</option>
-    <option id="mo" value="mo">Month</option>
-    <option id="yr" value="yr">Year</option>
-    <option id="at" value="at">The Beginning of Time</option>
-    </select>
+    View Type: <select name="viewType" onchange="this.form.submit()">
+                    <option disabled value="firsttime" <%= (value.equals("firsttime")?"selected='selected'":"") %>> -- select an option -- </option>
+                    <option id="posttime" value="posttime"  <%= (value.equals("posttime")?"selected='selected'":"") %>>Day</option>
+                    <option id="wk" value="wk" <%= (value.equals("wk")?"selected='selected'":"") %> >Week</option>
+                    <option id="mo" value="mo" <%= (value.equals("mo")?"selected='selected'":"") %> >Month</option>
+                    <option id="yr" value="yr"  <%= (value.equals("yr")?"selected='selected'":"") %>>Year</option>
+                    <option id="at" value="at"  <%= (value.equals("at")?"selected='selected'":"") %>>The Beginning of Time</option>
+                </select>
     <select name="failedTest" style="display:none;">
         <option id="<%=h(failedTest)%>" value="<%=h(failedTest)%>"></option>
     </select>
     <input type="hidden" name="end" value="<%=dfEnd.format(data.getEndDate())%>" />
-    <input type="submit" value="Submit">
 </form>
-<!-- Selects the View Type in the combobox -->
-<script type="text/javascript">
-    document.getElementById("<%=h(viewType)%>").selected = "true";
-</script>
-
 <!-- main content of page -->
 <%if(data.getStatRuns().length > 0) { %>
 <div style="float:left;">
@@ -101,8 +104,11 @@
 </div>
 <br />
 <!-- Bar & Pie chart containers -->
-<div id="failGraph" class="c3chart" style="width:700px; height:400px;"></div>
-<div id="piechart" class="c3chart" style="width:250px; height:250px;"></div>
+<div style="display: flex; flex-direction: row;">
+    <div id="failGraph" class="c3chart" style="width:1600px; height:400px;"></div>
+    <div id="piechart" class="c3chart" style="width:250px; height:250px;"></div>
+</div>
+
 <table class="tablesorter-default tablesorter" id="failurestatstable" style="float:left; width: 100%;">
     <thead>
     <tr>
@@ -187,14 +193,50 @@
 <%
     JSONObject failureTrends = new JSONObject();
     // populate json with failure count for each date
+    var first = true;
     for(Map.Entry<Date, Integer> entry : dates.entrySet()) {
-        failureTrends.append("avgFailures", entry.getValue());
-        failureTrends.append("dates", entry.getKey().getTime());
+        if (!first) {
+            var contains = false;
+
+            int i = failureTrends.getJSONArray("dates").length() - 1;
+            String stringDate = failureTrends.getJSONArray("dates").get(i).toString();
+            Calendar calendar1 = Calendar.getInstance();
+            long milliseconds = Long.parseLong(stringDate);
+            calendar1.setTimeInMillis(milliseconds);
+
+            Calendar calendar2 = Calendar.getInstance();
+            calendar2.setTimeInMillis(entry.getKey().getTime());
+
+            pageContext.setAttribute("test", calendar2.get(Calendar.YEAR));
+
+
+            if (calendar1.get(Calendar.YEAR) == calendar2.get(Calendar.YEAR) &&
+                    calendar1.get(Calendar.MONTH) == calendar2.get(Calendar.MONTH) &&
+                    calendar1.get(Calendar.DAY_OF_MONTH) == calendar2.get(Calendar.DAY_OF_MONTH)) {
+                contains = true;
+            }
+            if (contains) {
+                int count = (int)failureTrends.getJSONArray("avgFailures").get(i) + 1;
+                failureTrends.remove(failureTrends.getJSONArray("avgFailures").get(i));
+                failureTrends.append("avgFailures", count);
+            }
+            else
+            {
+                failureTrends.append("avgFailures", entry.getValue());
+                failureTrends.append("dates", entry.getKey().getTime());
+            }
+        }
+        else {
+            failureTrends.append("avgFailures", entry.getValue());
+            failureTrends.append("dates", entry.getKey().getTime());
+            first = false;
+        }
     }
 %>
-<% if(failureTrends != null && failureTrends.size() > 0) {%>
+<% if(failureTrends.size() > 0) {%>
     <script type="text/javascript">
         var failureJSON = jQuery.parseJSON( <%= q(failureTrends.toString()) %> );
+        console.log(failureJSON)
         var dates = failureJSON.dates;
         for (var i = 0; i < dates.length; i++) {
             var d = new Date(dates[i]);
@@ -218,8 +260,31 @@
                         console.log("onclick", d.x, i);
                     }
                 },
+                size : {
+                  width: 1500
+                },
+
+                bar: {
+                  width: {
+                      <%if (value.equals("posttime")) {%>
+                        ratio: 1
+                      <%}%>
+                      <%if (value.equals("wk")) {%>
+                        ratio: .6
+                      <%}%>
+                      <%if (value.equals("mo")) {%>
+                        ratio: .4
+                      <%}%>
+                      <%if (value.equals("yr")) {%>
+                        ratio: .026
+                      <%}%>
+                      <%if (value.equals("at")) {%>
+                           ratio: .00004
+                      <%}%>
+                  }
+                },
                 subchart: {
-                    show: true,
+                    show: false,
                     size: {
                         height: 20
                     }
@@ -229,12 +294,12 @@
                         type: 'timeseries',
                         localtime: false,
                         tick: {
-                            rotate: 90,
-                            fit:true,
+                            rotate: 0,
+                            fit:false,
                             culling: {
                                 max: 8
                             },
-                            format: '%d/%m'
+                            format: '%m/%d'
                         }
                     }
                 }

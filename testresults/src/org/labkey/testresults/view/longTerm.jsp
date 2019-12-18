@@ -43,21 +43,15 @@
 <script src="//code.jquery.com/jquery-1.10.2.js"></script>
 <br />
 <form action="<%=h(new ActionURL(TestResultsController.LongTermAction.class, c))%>">
-    View Type: <select name="viewType">
-        <option disabled selected> -- select an option -- </option>
-        <option id="<%=h(ViewType.WEEK)%>" value="<%=h(ViewType.WEEK)%>">Week</option>
-        <option id="<%=h(ViewType.MONTH)%>" value="<%=h(ViewType.MONTH)%>">Month</option>
-    <option id="<%=h(ViewType.YEAR)%>" value="<%=h(ViewType.YEAR)%>">Year</option>
-    <option id="<%=h(ViewType.ALLTIME)%>" value="<%=h(ViewType.ALLTIME)%>">The Beginning of Time</option>
-</select>
-    <input type="submit" value="Submit">
+    View Type: <select name="viewType" onchange="this.form.submit()">
+                    <option disabled selected> -- select an option -- </option>
+                    <option id="<%=h(ViewType.WEEK)%>" value="<%=h(ViewType.WEEK)%>">Week</option>
+                    <option id="<%=h(ViewType.MONTH)%>" value="<%=h(ViewType.MONTH)%>">Month</option>
+                    <option id="<%=h(ViewType.YEAR)%>" value="<%=h(ViewType.YEAR)%>">Year</option>
+                    <option id="<%=h(ViewType.ALLTIME)%>" value="<%=h(ViewType.ALLTIME)%>">The Beginning of Time</option>
+                </select>
 </form>
-<!--If parameter "viewType" exists, will select that option in the dropdown-->
-<%if(viewType != null) {%>
-<script type="text/javascript">
-    document.getElementById("<%=h(viewType)%>").selected = "true";
-</script>
-<%}%>
+
 <%if(data != null) {%>
 <%
     JSONObject trendsJson = data.getTrends();

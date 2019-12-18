@@ -53,6 +53,7 @@ import org.labkey.api.util.Pair;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.ViewContext;
+import org.labkey.testresults.model.GlobalSettings;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestFailDetail;
 import org.labkey.testresults.model.TestHandleLeakDetail;
@@ -777,6 +778,66 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresSiteAdmin
+    public class ChangeBoundaries extends MutatingApiAction {
+        @Override
+        public Object execute(Object o, BindException errors) throws Exception
+        {
+            //error handling - must be numbers, and limits on the range
+            Map<String, String> res = new HashMap<>();
+
+            String warningBoundary = getViewContext().getRequest().getParameter("warningb");
+            String errorBoundary = getViewContext().getRequest().getParameter("errorb");
+
+            try {
+                int warningB = Integer.parseInt(warningBoundary);
+                int errorB = Integer.parseInt(errorBoundary);
+
+                if (warningB <=0 || errorB <= 0) {
+                    res.put("Message", "fail: the number must be positive");
+                    return new ApiSimpleResponse(res);
+                }
+
+                if (warningB  > errorB) {
+                    res.put("Message", "fail: the warning boundary must be less than the error boundary");
+                    return new ApiSimpleResponse(res);
+                }
+
+                if (warningB >=10 || errorB >=10) {
+                    res.put("Message", "fail: the number must be less than or equal to 10");
+                    return new ApiSimpleResponse(res);
+                }
+            }
+            catch (NumberFormatException nfe) {
+                res.put("Message", "fail: you need to input a number");
+                return new ApiSimpleResponse(res);
+            }
+
+            //edit database here and if this works
+            int warningB = Integer.parseInt(warningBoundary);
+            int errorB = Integer.parseInt(errorBoundary);
+            GlobalSettings settings = new GlobalSettings(warningB, errorB);
+            DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction();
+            SQLFragment sqlFragment = new SQLFragment();
+            sqlFragment.append("select exists(select 1 from " + TestResultsSchema.getTableInfoGlobalSettings() + ") ");
+            SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
+            List<Boolean> values = new ArrayList<>();
+            sqlSelector.forEach(rs -> values.add(rs.getBoolean(1)));
+
+            if (values.get(0)) {
+                SQLFragment sqlFragmentDelete = new SQLFragment();
+                sqlFragmentDelete.append("DELETE FROM " + TestResultsSchema.getTableInfoGlobalSettings());
+                new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentDelete);
+            }
+            SQLFragment sqlFragmentInsert = new SQLFragment();
+            sqlFragmentInsert.append("INSERT INTO " + TestResultsSchema.getTableInfoGlobalSettings() + " (warningb, errorb) VALUES (" + warningB + ", " + errorB +");");
+            new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentInsert);
+            transaction.commit();
+            res.put("Message", "success!");
+            return new ApiSimpleResponse(res);
+        }
+    }
+
+    @RequiresSiteAdmin
     public static class SetEmailCronAction extends MutatingApiAction {
         @Override
         public Object execute(Object o, BindException errors) throws Exception
@@ -1208,6 +1269,7 @@ public class TestResultsController extends SpringActionController
                 int lastHour = 0;
                 Date timestampDay = xmlTimestamp;
                 int avgMemory = 0;
+                double medianMem = 0;
                 for(int i = 0; i < nListPasses.getLength(); i++) {
                     NodeList nlTests = ((Element) nListPasses.item(i)).getElementsByTagName("test");
                     int passId = Integer.parseInt(((Element) nListPasses.item(i)).getAttribute("id"));
@@ -1259,8 +1321,18 @@ public class TestResultsController extends SpringActionController
                         passes.add(pass);
                     }
                 }
-                if(passes.size() != 0)
-                    avgMemory = avgMemory/passes.size();
+                if(passes.size() != 0) {
+                    avgMemory = 10;
+                    if (passes.size() > 1000) {
+                        medianMem = passes.get(passes.size()-500).getTotalMemory();
+                    }
+                    else if (passes.size() <1000 && passes.size() > 100) {
+                        medianMem = passes.get(passes.size()-50).getTotalMemory();
+                    }
+                    else {
+                        medianMem = passes.get(passes.size()-1).getTotalMemory();
+                    }
+                }
                 // stores failures in database
                 lastHour = startHour;
                 timestampDay = xmlTimestamp;
@@ -1305,7 +1377,7 @@ public class TestResultsController extends SpringActionController
                     compressedLog = compressString(log);
 
                 RunDetail run = new RunDetail(userid, duration, postTime, xmlTimestamp, os, revision, gitHash, c, false, compressedXML,
-                        pointSummary, passes.size(), failures.size(), memoryLeaks.size(), avgMemory, compressedLog); //TODO change date AND USERID
+                        pointSummary, passes.size(), failures.size(), memoryLeaks.size(), avgMemory, compressedLog, (int)medianMem); //TODO change date AND USERID
                 // stores test run in database and gets the id(foreign key)
                 run = Table.insert(null, TestResultsSchema.getInstance().getTableInfoTestRuns(), run);
                 int runId = run.getId();

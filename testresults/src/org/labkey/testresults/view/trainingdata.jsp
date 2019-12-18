@@ -12,6 +12,8 @@
 <%@ page import="java.util.List" %>
 <%@ page import="org.labkey.testresults.SendTestResultsEmail" %>
 <%@ page import="org.labkey.testresults.model.BackgroundColor" %>
+<%@ page import="org.labkey.testresults.model.GlobalSettings" %>
+<%@ page import="org.apache.tomcat.jni.Global" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     /**
@@ -25,6 +27,7 @@
     RunDetail[] runs = data.getRuns();
     Container c = getViewContext().getContainer();
     List<User> noRunsForUser = new ArrayList<User>();
+
 %>
 <script type="text/javascript">
     LABKEY.requiresCss("/TestResults/css/style.css");
@@ -46,7 +49,19 @@
             <img src="<%=h(contextPath)%>/TestResults/img/uw.png" id="uw">
         </ul>
     </div>
-    <table>
+    <%
+        String value = (request.getParameter("action"));
+        if (value == null) {
+            value = "firsttime";
+        }
+    %>
+    Actions: <select id="actionform" name="action" >
+                <option disabled value="firsttime" <%= (value.equals("firsttime")?"selected='selected'":"") %>> -- select an option -- </option>
+                <option id="email" value="email"  <%= (value.equals("email")?"selected='selected'":"") %>>Email Form</option>
+                <option id="error" value="error" <%= (value.equals("error")?"selected='selected'":"") %> >Error/Warning edits</option>
+            </select>
+
+    <table id="emailform">
         <tr>
             <td style="vertical-align: top; padding-right: 20px;">
                 <div style="font-weight:600;" title="testresults-setEmailCron.view?action={status|start|stop}">Email cron active: <span id="emailstatus" style="color:#247BA0;"></span>
@@ -67,19 +82,46 @@
                         </tr>
                     </table>
 
-                    <input type='button' value='Send' id='send-button' style="margin-left:20px;">
+
                     <div id="send-email-msg"></div>
                 </form>
             </td>
+            <td style="vertical-align: top; padding-right: 20px">
+                <div style="display: flex; flex-direction: column">
+                    <input type='button' value='Generate Email' id='html-button' style="margin-left:20px;">
+                    <input type='button' value='Send' id='send-button' style="margin-left:20px;">
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <table id="errorform">
+        <tr>
             <td style="vertical-align: top; padding-right: 20px;">
-                <input type='button' value='Generate Email' id='html-button' style="margin-left:20px;">
+                <form autocomplete="off">
+                    <table style="margin-top: 0px;">
+                        <tr>
+                            <td style="text-align: left;">Warning Boundary:</td>
+                            <td><input type="text" name="warningb" id="warningb" autocomplete="off"></td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left;">Error Boundary:</td>
+                            <td><input type="text" name="errorb" id="errorb" autocomplete="off"></td>
+                        </tr>
+                    </table>
+                    <div id="send-boundaries-msg"></div>
+                </form>
+            </td>
+            <td style="vertical-align: top; padding-right: 20px">
+                <div style="display: flex; flex-direction: column">
+                    <input type='button' value='submit' id='submit-button' style="margin-left:20px;">
+                </div>
             </td>
         </tr>
     </table>
 
 
     <div id="msg-container"></div>
-
     <table id="trainingdata">
         <tr style="border:none; font-weight:800;">
             <td style="border-left:1px solid #000; padding-left:5px;">Date</td>
@@ -88,67 +130,70 @@
             <td style="border-left:1px solid #000; padding-left:5px;">Failure Count</td>
             <td style="border-left:1px solid #000; padding-left:5px;">Mean Memory</td>
         </tr>
-    <%for(User user : users) {
-        if(user.getMeanmemory() == 0d && user.getMeantestsrun() == 0d){
-            noRunsForUser.add(user);
-            continue;
-        }
-        String color = BackgroundColor.unknown.toString();
-        if(user.isActive())
-            color = BackgroundColor.pass.toString();
-    %>
-        <tr  style="border:none;"><td></td></tr>
-        <tr style="border:none;">
-            <th colspan="6"  style="float:left; padding-top:5px; font-size:14px; width:200px; color:#000; background-color:<%=h(color)%>;"><%=h(user.getUsername())%></th>
-            <th>
-                <%if(user.isActive()){%>
-                    <input type='button' value='Deactivate user' class='deactivate-user' style="margin-left:5px;" userid="<%=user.getId()%>">
-                <%} else {%>
-                    <input type='button' value='Activate user' class='activate-user' style="margin-left:5px;" userid="<%=user.getId()%>">
-                <%}%>
-            </th>
-        </tr>
-        <%
-            for(RunDetail run : runs) {
-            if(run.getUserid() == user.getId()) {%>
-                <tr>
-                    <td style="border-left:1px solid #000; padding-left:5px;"><%=h(run.getPostTime())%></td>
-                    <td style="border-left:1px solid #000; padding-left:5px;"><%=h(run.getDuration())%></td>
-                    <td style="border-left:1px solid #000; padding-left:5px;"><%=h(run.getPassedtests())%></td>
-                    <td style="border-left:1px solid #000; padding-left:5px;"><%=h(run.getFailedtests())%></td>
-                    <td style="border-left:1px solid #000; padding-left:5px;"><%=h(run.getAverageMemory())%></td>
-                    <td style="border-left:1px solid #000; padding-left:5px;"><a runid="<%=h(run.getId())%>" class="removedata">Remove</a></td>
-                </tr>
-            <%}
-        }%>
-        <tr style="font-weight:600; font-size:10px;">
-            <td></td>
-            <td></td>
-            <td style="padding-left:0px;  color:#50514F;">
-                MeanTotalMem:<%=h(data.round(user.getMeanmemory(),2))%> mb&nbsp;||&nbsp;
-            </td>
-            <td style="color:#50514F;">
-                1StdDevMem:<%=h(data.round(user.getStddevmemory(),2))%> mb&nbsp;||&nbsp;
-            </td>
-            <td style="color:#50514F;">
+         <%for(User user : users) {%>
+            <%
+                if(user.getMeanmemory() == 0d && user.getMeantestsrun() == 0d){
+                    noRunsForUser.add(user);
+                    continue;
+                }
+                String color = BackgroundColor.unknown.toString();
+                if(user.isActive())
+                    color = BackgroundColor.pass.toString();
+            %>
 
-            MeanTestsRun:<%=h(data.round(user.getMeantestsrun(),2))%>&nbsp;||&nbsp;
-            </td>
-            <td style="color:#50514F;">
-            1StdDevTestsRun:<%=h(data.round(user.getStddevtestsrun(),2))%>
-            </td>
-        </tr>
-        <%}%>
-        <tr  style="border:none;">
-            <th colspan="6" style="float:left; padding-top:5px; font-size:14px; width:200px;">No Training Data --</th>
-        </tr>
+            <tr  style="border:none;"><td></td></tr>
+            <tr style="border:none;">
+                <th colspan="6"  style="float:left; padding-top:5px; font-size:14px; width:200px; color:#000; background-color:<%=h(color)%>;"><%=h(user.getUsername())%></th>
+                <th>
+                    <%if(user.isActive()){%>
+                    <input type='button' value='Deactivate user' class='deactivate-user' style="margin-left:5px;" userid="<%=user.getId()%>">
+                    <%} else {%>
+                    <input type='button' value='Activate user' class='activate-user' style="margin-left:5px;" userid="<%=user.getId()%>">
+                    <%}%>
+                </th>
+            </tr>
+            <%
+                for(RunDetail run : runs) {
+                    if(run.getUserid() == user.getId()) {%>
+            <tr>
+                <td style="border-left:1px solid #000; padding-left:5px;"><%=h(run.getPostTime())%></td>
+                <td style="border-left:1px solid #000; padding-left:5px;"><%=h(run.getDuration())%></td>
+                <td style="border-left:1px solid #000; padding-left:5px;"><%=h(run.getPassedtests())%></td>
+                <td style="border-left:1px solid #000; padding-left:5px;"><%=h(run.getFailedtests())%></td>
+                <td style="border-left:1px solid #000; padding-left:5px;"><%=h(run.getAverageMemory())%></td>
+                <td style="border-left:1px solid #000; padding-left:5px;"><a runid="<%=h(run.getId())%>" class="removedata">Remove</a></td>
+            </tr>
+            <%}
+            }%>
+            <tr style="font-weight:600; font-size:10px;">
+                <td></td>
+                <td></td>
+                <td style="padding-left:0px;  color:#50514F;">
+                    MeanTotalMem:<%=h(data.round(user.getMeanmemory(),2))%> mb&nbsp;||&nbsp;
+                </td>
+                <td style="color:#50514F;">
+                    1StdDevMem:<%=h(data.round(user.getStddevmemory(),2))%> mb&nbsp;||&nbsp;
+                </td>
+                <td style="color:#50514F;">
+                    MeanTestsRun:<%=h(data.round(user.getMeantestsrun(),2))%>&nbsp;||&nbsp;
+                </td>
+                <td style="color:#50514F;">
+                    1StdDevTestsRun:<%=h(data.round(user.getStddevtestsrun(),2))%>
+                </td>
+            </tr>
+            <%}%>
+            <tr  style="border:none;">
+                <th colspan="6" style="float:left; padding-top:5px; font-size:14px; width:200px;">No Training Data --</th>
+            </tr>
+        </table>
+    <table>
         <%for(User user : noRunsForUser) {%>
         <tr  style="border:none;">
-                <th colspan="6" style="float:left; padding-top:5px; font-size:11px; width:200px; color:#247BA0;">
-                    <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>user=<%=h(user.getUsername())%>">
-                        <%=h(user.getUsername())%>
-                    </a>
-                </th>
+            <th colspan="6" style="float:left; padding-top:5px; font-size:11px; width:200px; color:#247BA0;">
+                <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>user=<%=h(user.getUsername())%>">
+                    <%=h(user.getUsername())%>
+                </a>
+            </th>
         </tr>
         <%}%>
     </table>
@@ -191,6 +236,7 @@
         }
     }, "json");
     $("#html-button").click(function() {
+        console.log("test");
         $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=<%=h(SendTestResultsEmail.TEST_GET_HTML_EMAIL)%>', csrf_header, function(data){
             console.log(data);
             $('#msg-container').html(data.HTML);
@@ -200,6 +246,15 @@
         $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>' + 'action=<%=h(SendTestResultsEmail.TEST_CUSTOM)%>&emailF='+$('#emailFrom').val()+'&emailT='+$('#emailTo').val(), csrf_header, function (data) {
             console.log(data);
             $('#send-email-msg').text(data.Message);
+        }, "json");
+    });
+
+    $("#submit-button").click(function () {
+        //post to the backend
+        console.log("here");
+        $.post('<%=h(new ActionURL(TestResultsController.ChangeBoundaries.class, c))%>' + 'warningb='+$('#warningb').val()+'&errorb='+$('#errorb').val(), csrf_header, function (data) {
+            console.log("here2");
+            $('#send-boundaries-msg').text(data.Message);
         }, "json");
     });
 
@@ -218,4 +273,18 @@
             location.reload();
         }, "json")
     });
+
+    $("#actionform").change(function() {
+        $("#emailform").hide();
+        $("#errorform").hide();
+
+        if ($(this).val() == "email") {
+            $("#emailform").show();
+        }
+        else if ($(this).val() == "error") {
+            $("#errorform").show();
+        }
+    });
+
+    $("#actionform").trigger("change");
 </script>

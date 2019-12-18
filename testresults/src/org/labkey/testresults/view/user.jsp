@@ -1,4 +1,5 @@
 <%@ page import="org.json.JSONObject" %>
+<%@ page import="org.json.*" %>
 <%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.data.TableSelector" %>
 <%@ page import="org.labkey.api.data.statistics.StatsService" %>
@@ -24,7 +25,11 @@
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.Iterator" %>
 <%@ page import="java.util.TreeMap" %>
+<%@ page import="org.json.JSONArray" %>
+<%@ page import="java.util.Calendar" %>
+<%@ page import="org.labkey.testresults.view.RunDownBean" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+<%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
 <%
     /**
@@ -52,6 +57,7 @@
     JSONObject trendsJson = null;
     if(data != null && data.getRuns().length > 0) {
         trendsJson = data.getTrends();
+
     }
     Container c = getViewContext().getContainer();
 %>
@@ -78,6 +84,18 @@
             <img src="<%=h(contextPath)%>/TestResults/img/uw.png" id="uw">
         </ul>
     </div>
+    <form action="<%=h(new ActionURL(TestResultsController.PostAction.class, c))%>" method="post" enctype="multipart/form-data">
+        <labkey:csrf/>
+        <input type="file" name="xml_file">
+        <input type="submit" value="submit">
+    </form>
+
+    <button type="button" class="postBtn">Re-Post All</button>
+    <div id="loading" style="display: none;">
+        Loading...
+    </div>
+    <p class="text"></p>
+
     <br />
     <!--If data is not null (runs exist for user in selected date range)-->
     <%if(data != null && data.getRuns().length >= 0) {%>
@@ -125,7 +143,7 @@
         if(getViewContext().getRequest().getParameter("end") != null)
             headerDate += " - " + endDate; %>
         <p><%=h(headerDate)%></p>
-        <p><a id="dayView">DAY</a> | <a id="weekView">WEEK</a> | <a id="monthView">MONTH</a></p>
+        <p><a id="dayView" style="cursor:pointer;">DAY</a> | <a id="weekView" style="cursor:pointer;">WEEK</a> | <a id="monthView" style="cursor:pointer;">MONTH</a></p>
         <!--click functions for Day, Week, and Month views-->
         <script type="text/javascript">
             $( "#dayView" ).click(function() {
@@ -167,6 +185,7 @@
                 <td>Date</td>
                 <td>Duration</td>
                 <td>Passes</td>
+                <td>Memory</td>
                 <td>Failures</td>
                 <td>Leaks</td>
                 <td>OS</td>
@@ -175,6 +194,7 @@
             <%  RunDetail[] allRuns = data.getRuns();
                 TreeSet<RunDetail> sortedRuns = new TreeSet<>();
                 TreeMap<String, Integer> userFailCount = new TreeMap<>();
+
                 for(RunDetail r: allRuns)
                     sortedRuns.add(r);
                 NavigableSet<RunDetail> resort = sortedRuns.descendingSet();
@@ -184,21 +204,22 @@
                         userFailCount.put(key, 0);
                     userFailCount.put(key, userFailCount.get(key) + run.getFailedtests());
             %>
-            <tr>
-                <td><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>">run details</a></td>
-                <%if(!showSingleUser){%><td><%=h(run.getUserName())%></td><%}%>
-                <td><%=h(df.format(run.getPostTime()))%></td>
-                <td><%=h(run.getDuration())%></td>
-                <td><%=h(run.getPassedtests())%></td>
-                <td><%=h(run.getFailedtests())%></td>
-                <td><%=h(run.getLeakedtests())%></td>
-                <td><%=h(run.getOs())%></td>
-                <td><%=h(run.getRevisionFull())%></td>
-                <td><a class="trainset" runId="<%=h(run.getId())%>" runTrained="<%=h(run.isTrainRun())%>">
-                    <%=h((run.isTrainRun()) ? "Remove from training set" : "Add to training set")%>
-                </a></td>
-            </tr>
-            <%}%>
+                <tr>
+                    <td><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>">run details</a></td>
+                    <%if(!showSingleUser){%><td><%=h(run.getUserName())%></td><%}%>
+                    <td><%=h(df.format(run.getPostTime()))%></td>
+                    <td><%=h(run.getDuration())%></td>
+                    <td><%=h(run.getPassedtests())%></td>
+                    <td><%=h(run.getAveragemem())%></td>
+                    <td><%=h(run.getFailedtests())%></td>
+                    <td><%=h(run.getLeakedtests())%></td>
+                    <td><%=h(run.getOs())%></td>
+                    <td><%=h(run.getRevisionFull())%></td>
+                    <td><a class="trainset" runId="<%=h(run.getId())%>" runTrained="<%=h(run.isTrainRun())%>" style="cursor:pointer;">
+                        <%=h((run.isTrainRun()) ? "Remove from training set" : "Add to training set")%>
+                    </a></td>
+                </tr>
+                <%}%>
         </table>
         <table>
             <tr><td>Username</td><td>Failures</td></tr>
@@ -237,6 +258,7 @@
         var runId = this.getAttribute("runId");
         var isTrainRun = this.getAttribute("runTrained") == "true";
         var trainObj = this;
+        trainObj.innerHTML = "Loading...";
         var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
         $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId='+runId+'&train='+!isTrainRun, csrf_header, function(data){
             if(data.Success) {
@@ -256,7 +278,134 @@
 <script src="<%=h(contextPath)%>/TestResults/js/generateTrendCharts.js"></script>
 <script type="text/javascript">
     var trendsJson = jQuery.parseJSON( <%= q(trendsJson.toString()) %> );
+    //post request
+    console.log(trendsJson);
     generateTrendCharts(trendsJson, false);
 </script>
 <%}%>
+
+
+<%--<%--%>
+<%--    if(trendsJson != null) {%>--%>
+<%--<script>--%>
+<%--    var pointRatio = 30;--%>
+<%--    var jsonObject = jQuery.parseJSON( <%=q(trendsJson.toString())%>);--%>
+<%--    var sortedRunDetails = {};--%>
+<%--    for(var key in jsonObject["runs"]) {--%>
+<%--        sortedRunDetails[key] = jsonObject["runs"][key];--%>
+<%--    }--%>
+<%--    // start c3 chart generation--%>
+<%--    var memoryUsageChart = c3.generate({--%>
+<%--        bindto: '#memoryGraph',--%>
+<%--        size: {--%>
+<%--            height:350,--%>
+<%--            width: 1024--%>
+<%--        },--%>
+<%--        data: {--%>
+<%--            json: sortedRunDetails--%>
+<%--        },--%>
+<%--        point: {--%>
+<%--            show: false--%>
+<%--        },--%>
+<%--        axis : {--%>
+<%--            x : {--%>
+<%--                tick: {--%>
+<%--                    format: function (x) { return x*pointRatio; }--%>
+<%--                }--%>
+<%--            },--%>
+<%--            y : {--%>
+<%--                label: {--%>
+<%--                    text: 'Memory (MB)',--%>
+<%--                    position: 'outer-middle'--%>
+<%--                }--%>
+<%--            }--%>
+<%--        },--%>
+
+<%--        regions:--%>
+<%--                function(d) {--%>
+<%--                    var regions = [];--%>
+<%--                    var last = 0;--%>
+<%--                    for(key in jsonObject["passes"]) {--%>
+<%--                        regions.push({axis: 'x', start: last/pointRatio, end: jsonObject["passes"][key]/pointRatio, class: 'pass' + key});--%>
+<%--                        last = jsonObject["passes"][key] + 1;--%>
+<%--                    }--%>
+<%--                    regions.push({axis: 'x', start: last/pointRatio, class: 'pass' + regions.length});--%>
+<%--                    return regions;--%>
+<%--                }--%>
+<%--        ,--%>
+<%--        legend: {--%>
+<%--            item: {--%>
+<%--                onmouseout: function(d) {--%>
+<%--                    $('.highlightrun').children('td:not(:first-child), th').css('background','#fff');--%>
+<%--                    $('.highlightrun').css('background','#fff'); // for td (no children)--%>
+
+<%--                    // line hover effects--%>
+<%--                    d3.selectAll(".c3-line").style("opacity",1);--%>
+<%--                },--%>
+<%--                onmouseover: function (d) {--%>
+<%--                    var re = /.*id.(\d*)\)/;--%>
+<%--                    var m;--%>
+
+<%--                    if ((m = re.exec(d)) !== null) {--%>
+<%--                        if (m.index === re.lastIndex) {--%>
+<%--                            re.lastIndex++;--%>
+<%--                        }--%>
+<%--                    }--%>
+<%--                    var runId = m[1];--%>
+
+<%--                    // line hover effects--%>
+<%--                    d3.selectAll(".c3-line").style("opacity",0.2);--%>
+<%--                    var k = ".c3-line-"+ d.replace("(","-").replace(".","-").replace(")","-");--%>
+<%--                    //make the clicked bar opacity 1--%>
+<%--                    d3.selectAll(k).style("opacity",1)--%>
+
+<%--                    // highlight row/column with run--%>
+<%--                    $('.highlightrun').children('td:not(:first-child), th').css('background','#fff');--%>
+<%--                    $('.highlightrun').css('background','#fff'); // for td (no children)--%>
+<%--                    $('.highlighttr-' + runId).children('td:not(:first-child), th').css('background','#99ccff');--%>
+<%--                    $('.highlighttd-' + runId).css('background','#99ccff');--%>
+
+<%--                    var row = $('.highlighttr-' + runId);--%>
+<%--                    var parent = row.parent();--%>
+<%--                    var childPos = row.offset();--%>
+<%--                    var parentPos = parent.offset();--%>
+<%--                    var childOffset = {--%>
+<%--                        top: childPos.top - parent.offset().top,--%>
+<%--                        left: childPos.left - parentPos.left--%>
+<%--                    }--%>
+<%--                    if ($('.highlighttr-' + runId).length){--%>
+<%--                        parent.scrollTop(0);--%>
+<%--                        parent.scrollTop( childOffset.top - (parent.height()/2) );--%>
+<%--                    }--%>
+<%--                },--%>
+<%--                // click on legend item and get redirected to user page on the date of that run--%>
+<%--                onclick: function (d) {--%>
+<%--                    var re = /.*id.(\d*)\)/;--%>
+<%--                    var m;--%>
+
+<%--                    if ((m = re.exec(d)) !== null) {--%>
+<%--                        if (m.index === re.lastIndex) {--%>
+<%--                            re.lastIndex++;--%>
+<%--                        }--%>
+<%--                    }--%>
+<%--                    var id = m[1];--%>
+<%--                    window.open(--%>
+<%--                            '<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId='+ id,--%>
+<%--                            '_blank' // <- This is what makes it open in a new window.--%>
+<%--                    );--%>
+<%--                }--%>
+<%--            }--%>
+<%--        },--%>
+<%--        tooltip: {--%>
+<%--            format: {--%>
+<%--                title: function (d) { return 'Test #: ' + d*pointRatio; },--%>
+<%--                value: function (value, ratio, id) {--%>
+<%--                    return value + "MB";--%>
+<%--                }--%>
+<%--            }--%>
+<%--        }--%>
+
+<%--    });--%>
+<%--</script>--%>
+<%--<%}%>--%>
 

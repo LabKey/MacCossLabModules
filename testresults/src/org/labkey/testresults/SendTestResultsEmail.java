@@ -43,7 +43,7 @@ public class SendTestResultsEmail implements org.quartz.Job
 
     public interface DEFAULT_EMAIL {
         String RECIPIENT = "skyline-dev@proteinms.net";
-        String ADMIN_EMAIL = "yuval@uw.edu";
+        String ADMIN_EMAIL = "skyline@proteinms.net";
     }
 
     private static final Logger LOG = Logger.getLogger(SendTestResultsEmail.class);

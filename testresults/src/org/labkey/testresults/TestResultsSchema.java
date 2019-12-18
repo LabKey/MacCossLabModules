@@ -82,6 +82,11 @@ public class TestResultsSchema
         return getSchema().getTable("testfails");
     }
 
+    public static TableInfo getTableInfoGlobalSettings()
+    {
+        return getSchema().getTable("globalsettings");
+    }
+
     public static SqlDialect getSqlDialect()
     {
         return getSchema().getSqlDialect();

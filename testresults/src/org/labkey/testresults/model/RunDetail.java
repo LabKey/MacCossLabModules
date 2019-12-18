@@ -57,6 +57,7 @@ public class RunDetail implements Comparable<RunDetail>
     private int failedtests;
     private int leakedtests;
     private int averagemem;
+    private int medianmem;
 
     public RunDetail()
     {
@@ -64,7 +65,7 @@ public class RunDetail implements Comparable<RunDetail>
     }
 
     public RunDetail(int userid, int duration, Date posttime, Date timestamp, String os, int revision, String gitHash, Container container, boolean flagged,
-                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem, byte[] log) {
+                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem, byte[] log, int medianmem) {
         this.userid = userid;
         this.username = null;
         this.duration = duration;
@@ -85,10 +86,11 @@ public class RunDetail implements Comparable<RunDetail>
         this.leakedtests = leakedtests;
         this.averagemem = averagemem;
         this.log = log;
+        this.medianmem = medianmem;
     }
     public RunDetail(int userid, String username, int duration, Date posttime, Date timestamp, String os, int revision, String gitHash, Container container, boolean flagged,
-                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem) {
-        this(userid, duration, posttime, timestamp, os, revision, gitHash, container, flagged, xml, pointsummary, passedtests, failedtests, leakedtests, averagemem, new byte[0]);
+                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem, int medianmem) {
+        this(userid, duration, posttime, timestamp, os, revision, gitHash, container, flagged, xml, pointsummary, passedtests, failedtests, leakedtests, averagemem, new byte[0], medianmem);
         this.username = username;
     }
 
@@ -144,6 +146,13 @@ public class RunDetail implements Comparable<RunDetail>
     public void setTestmemoryleaks(TestMemoryLeakDetail[] testmemoryleaks)
     {
         this.testmemoryleaks = testmemoryleaks;
+    }
+
+    public void setMedianMem(int mem) { medianmem = mem;}
+
+    public int getMedianmem()
+    {
+        return medianmem;
     }
 
     public TestFailDetail[] getFailures()
@@ -342,6 +351,22 @@ public class RunDetail implements Comparable<RunDetail>
             total += pass.getTotalMemory();
         }
         return total/passes.length;
+    }
+
+    public double getMedian1000Memory() {
+        if(medianmem != 0) {
+            return medianmem;
+        } else if(passes == null || (passes.length > 0 && passes[0] == null))
+            return 0d;
+        if (passes.length > 1000) {
+            return passes[passes.length-500].getTotalMemory();
+        }
+        else if (passes.length < 1000 && passes.length>100){
+            return passes[passes.length-50].getTotalMemory();
+        }
+        else {
+            return passes[passes.length-1].getTotalMemory();
+        }
     }
 
     public boolean hasHang() {

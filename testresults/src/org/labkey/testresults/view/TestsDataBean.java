@@ -17,6 +17,7 @@ package org.labkey.testresults.view;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.labkey.testresults.model.GlobalSettings;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestMemoryLeakDetail;
 import org.labkey.testresults.model.User;
@@ -93,6 +94,7 @@ public class TestsDataBean
     {
         this.viewType = viewType;
     }
+
 
 
 
@@ -265,10 +267,20 @@ public class TestsDataBean
         }
 
         int size = dates.size();
+//        int[] total = new int[size];
+//        int z = 0;
+//        for (Map.Entry<Date, List<RunDetail>> entry : dates.entrySet()) {
+//            List<RunDetail> runs = entry.getValue();
+//            total[z] = size * (runs.size());
+//            z++;
+//        }
+
         double[] avgDuration = new double[size];
         double[] avgTestRuns = new double[size];
         int[] avgMemory = new int[size];
         double[] avgFailures = new double[size];
+        double[] medianMemory = new double[size];
+        ArrayList<Integer> store = new ArrayList<>();
         int i = 0;
         for(Map.Entry<Date, List<RunDetail>> entry : dates.entrySet()) {
             List<RunDetail> runs = entry.getValue();
@@ -276,16 +288,20 @@ public class TestsDataBean
             int failTotal = 0;
             int avgMemoryTotal = 0;
             int durationTotal = 0;
+            double medianMem = 0;
             for(RunDetail run: runs) {
                 passTotal += run.getPassedtests();
                 failTotal += run.getFailedtests();
                 durationTotal += run.getDuration();
                 avgMemoryTotal += run.getAverageMemory();
+                medianMem = run.getMedian1000Memory();
             }
             avgTestRuns[i] = round((double) passTotal/runs.size(),2);
             avgFailures[i] = round(((double)failTotal)/runs.size(),2);
             avgMemory[i] = avgMemoryTotal/runs.size();
             avgDuration[i] = round(((double)durationTotal)/runs.size(),2);
+            Collections.sort(store);
+            medianMemory[i] = medianMem;
             i++;
         }
         long[] milliSecondDates = new long[dates.size()];
@@ -300,6 +316,7 @@ public class TestsDataBean
         jo.put("avgMemory", avgMemory);
         jo.put("avgFailures", avgFailures);
         jo.put("avgTestRuns", avgTestRuns);
+        jo.put("medianMemory", medianMemory);
         jo.put("dates", milliSecondDates);
 
         return jo;

@@ -84,6 +84,7 @@
     OS: <%=h(run.getOs())%>   <br />
     Revision: <%=h(run.getRevisionFull())%>  <br />
     Passed Tests : <%=h(run.getPasses().length)%> <br />
+    Memory : <%=h(run.getAverageMemory())%> <br />
     Failures : <%=h(failures.length)%> <br />
     Leaks : <%=h(testmemoryleaks.length)%> <br />
         TimeStamp:  <%=h((run.getTimestamp() == null) ? "N/A" : run.getTimestamp())%><br >
