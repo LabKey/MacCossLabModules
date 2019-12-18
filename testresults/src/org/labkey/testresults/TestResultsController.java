@@ -274,6 +274,7 @@ public class TestResultsController extends SpringActionController
                         e.printStackTrace();
                     }
                     int avgMem = 0;
+                    int medianmem = 0;
                     if (passes.length != 0)
                     {
                         for (TestPassDetail pass : passes)
@@ -281,6 +282,15 @@ public class TestResultsController extends SpringActionController
                             avgMem += pass.getTotalMemory();
                         }
                         avgMem = avgMem / passes.length;
+                        if (passes.length > 1000) {
+                            medianmem = (int)passes[(passes.length-500)].getTotalMemory();
+                        }
+                        else if (passes.length < 1000 && passes.length>100){
+                            medianmem = (int)passes[(passes.length-50)].getTotalMemory();
+                        }
+                        else {
+                            medianmem = (int)passes[(passes.length)].getTotalMemory();
+                        }
                     }
 
                     run.setPointsummary(passSummary);
@@ -288,6 +298,7 @@ public class TestResultsController extends SpringActionController
                     run.setFailedtests(failures.length);
                     run.setLeakedtests(leaks.length);
                     run.setAveragemem(avgMem);
+                    run.setMedianmem(medianmem);
 
                     Map<String, Object> runMap = new HashMap<>();
                     runMap.put("pointsummary", new Parameter.TypedValue(passSummary, JdbcType.BINARY));
@@ -295,6 +306,7 @@ public class TestResultsController extends SpringActionController
                     runMap.put("failedtests", failures.length);
                     runMap.put("leakedtests", leaks.length);
                     runMap.put("averagemem", avgMem);
+                    runMap.put("medianmem", medianmem);
                     Table.update(null, TestResultsSchema.getInstance().getTableInfoTestRuns(), runMap, run.getId());
 
                     // Set all to empty array so that memory does not run out.

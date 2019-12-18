@@ -1,1 +1,1 @@
-ALTER TABLE testresults.testruns ADD medianmem INTEGER;
+ALTER TABLE testresults.testruns ADD medianmem INTEGER NOT NULL DEFAULT 0;

@@ -57,7 +57,7 @@ public class RunDetail implements Comparable<RunDetail>
     private int failedtests;
     private int leakedtests;
     private int averagemem;
-    private int medianmem;
+    private Integer medianmem;
 
     public RunDetail()
     {
@@ -148,12 +148,6 @@ public class RunDetail implements Comparable<RunDetail>
         this.testmemoryleaks = testmemoryleaks;
     }
 
-    public void setMedianMem(int mem) { medianmem = mem;}
-
-    public int getMedianmem()
-    {
-        return medianmem;
-    }
 
     public TestFailDetail[] getFailures()
     {
@@ -340,6 +334,14 @@ public class RunDetail implements Comparable<RunDetail>
     public void setAveragemem(int averagemem)  { this.averagemem = averagemem; }
 
     public int getAveragemem() { return averagemem; }
+
+    public void setMedianmem(int mem) { medianmem = mem;}
+
+    public int getMedianmem()
+    {
+        return medianmem;
+    }
+
 
     public double getAverageMemory() {
         if(averagemem != 0) {
