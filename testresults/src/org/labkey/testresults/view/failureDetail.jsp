@@ -241,10 +241,12 @@
         for (var i = 0; i < dates.length; i++) {
             var d = new Date(dates[i]);
             dates[i] = d;
+            console.log(d);
         }
         var avgFailures = failureJSON.avgFailures;
         if(dates.length >= 1)
             dates.unshift('x');
+        console.log(dates);
         avgFailures.unshift("<%=h(failedTest)%> failures");
 
             var failTrendChart = c3.generate({
@@ -294,6 +296,7 @@
                         type: 'timeseries',
                         localtime: false,
                         tick: {
+                            culling: true,
                             rotate: 0,
                             fit:false,
                             culling: {

@@ -4,6 +4,7 @@
 // <div id="memory" class="c3chart"></div>
 // <div id="failGraph" class="c3chart"></div>
 function generateTrendCharts(trendsJson, showSubChart) {
+    console.log("test");
     var dates = trendsJson.dates;
     for (var i = 0; i < dates.length; i++)
         dates[i] = new Date(dates[i]);
@@ -11,6 +12,7 @@ function generateTrendCharts(trendsJson, showSubChart) {
     var avgMemory = trendsJson.avgMemory;
     var avgTestRuns = trendsJson.avgTestRuns;
     var avgFailures = trendsJson.avgFailures;
+    var medianmem = trendsJson.medianMemory;
     var dateFormat = "%m/%d";
     if(showSubChart)
         dateFormat = "%m/%y"
@@ -20,6 +22,42 @@ function generateTrendCharts(trendsJson, showSubChart) {
         avgMemory.unshift("Average Memory");
         avgTestRuns.unshift("Average Test Runs");
         avgFailures.unshift("Average Failures");
+        medianmem.unshift("Median Memory");
+
+        var medianMemChart = c3.generate( {
+            bindto: '#medianmem',
+            padding : {
+                bottom: 25
+            },
+            data: {
+                x: 'x',
+                columns: [
+                    dates,
+                    medianmem
+                ],
+                colors : {
+                    'Median Memory (calculated from the last entries of a run)' : '#ffff00'
+                }
+            },
+
+            axis: {
+                x: {
+                    type: 'timeseries',
+                    localtime: false,
+                    tick: {
+                        rotate: 75,
+                        format: dateFormat
+                    }
+                },
+
+                y : {
+                    label: {
+                        text: 'Memory (MB)',
+                        position: 'outer-middle'
+                    }
+                }
+            }
+        });
 
         var durationTrendChart= c3.generate({
             bindto: '#duration',
@@ -168,10 +206,11 @@ function generateTrendCharts(trendsJson, showSubChart) {
             }
         });
     } else { // hide all divs containing bar charts because they have a fixed height given by .c3chart in ../img/style.css
-        $('#duration').css("display","none")
-        $('#passes').css("display","none")
-        $('#memory').css("display","none")
-        $('#failGraph').css("display","none")
+        $('#duration').css("display","none");
+        $('#passes').css("display","none");
+        $('#memory').css("display","none");
+        $('#failGraph').css("display","none");
+        $('#medianmem').css("display", "none");
     }
 }
 

@@ -339,9 +339,11 @@ public class RunDetail implements Comparable<RunDetail>
 
     public int getMedianmem()
     {
+        if (medianmem == null) {
+            return 0;
+        }
         return medianmem;
     }
-
 
     public double getAverageMemory() {
         if(averagemem != 0) {
@@ -356,7 +358,10 @@ public class RunDetail implements Comparable<RunDetail>
     }
 
     public double getMedian1000Memory() {
-        if(medianmem != 0) {
+        if (medianmem == null) {
+            return 0d;
+        }
+        else if(medianmem != 0) {
             return medianmem;
         } else if(passes == null || (passes.length > 0 && passes[0] == null))
             return 0d;

@@ -84,17 +84,10 @@
             <img src="<%=h(contextPath)%>/TestResults/img/uw.png" id="uw">
         </ul>
     </div>
-    <form action="<%=h(new ActionURL(TestResultsController.PostAction.class, c))%>" method="post" enctype="multipart/form-data">
-        <labkey:csrf/>
-        <input type="file" name="xml_file">
-        <input type="submit" value="submit">
-    </form>
-
-    <button type="button" class="postBtn">Re-Post All</button>
-    <div id="loading" style="display: none;">
-        Loading...
-    </div>
-    <p class="text"></p>
+<%--    <form action="<%=h(new ActionURL(TestResultsController.PostAction.class, c))%>" method="post" enctype="multipart/form-data">--%>
+<%--        <labkey:csrf/>--%>
+<%--        <input type="file" name="xml_file"><input type="submit" value="submit">This form is meant to parse and store xml files into the database--%>
+<%--    </form>--%>
 
     <br />
     <!--If data is not null (runs exist for user in selected date range)-->
@@ -169,9 +162,10 @@
         </script>
 
     </div>
+
     <%if(showSingleUser){%>
-        <div id="medianmem" class="c3chart"></div>
         <div class="centeredContent">
+            <div id="medianmem" class="c3chart"></div>
             <div id="duration" class="c3chart"></div>
             <div id="passes" class="c3chart"></div>
             <div id="memory" class="c3chart"></div>
@@ -280,7 +274,6 @@
 <script src="<%=h(contextPath)%>/TestResults/js/generateTrendCharts.js"></script>
 <script type="text/javascript">
     var trendsJson = jQuery.parseJSON( <%= q(trendsJson.toString()) %> );
-    //post request
     console.log(trendsJson);
     generateTrendCharts(trendsJson, false);
 </script>

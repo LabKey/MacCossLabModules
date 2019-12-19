@@ -267,13 +267,6 @@ public class TestsDataBean
         }
 
         int size = dates.size();
-//        int[] total = new int[size];
-//        int z = 0;
-//        for (Map.Entry<Date, List<RunDetail>> entry : dates.entrySet()) {
-//            List<RunDetail> runs = entry.getValue();
-//            total[z] = size * (runs.size());
-//            z++;
-//        }
 
         double[] avgDuration = new double[size];
         double[] avgTestRuns = new double[size];
