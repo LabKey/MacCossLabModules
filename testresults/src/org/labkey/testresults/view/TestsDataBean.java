@@ -286,12 +286,12 @@ public class TestsDataBean
                 passTotal += run.getPassedtests();
                 failTotal += run.getFailedtests();
                 durationTotal += run.getDuration();
-                avgMemoryTotal += run.getAverageMemory();
+                avgMemoryTotal = (int)run.getAverageMemory();
                 medianMem = run.getMedian1000Memory();
             }
-            avgTestRuns[i] = round((double) passTotal/runs.size(),2);
+            avgTestRuns[i] = round(((double)passTotal)/runs.size(),2);;
             avgFailures[i] = round(((double)failTotal)/runs.size(),2);
-            avgMemory[i] = avgMemoryTotal/runs.size();
+            avgMemory[i] = avgMemoryTotal;
             avgDuration[i] = round(((double)durationTotal)/runs.size(),2);
             Collections.sort(store);
             medianMemory[i] = medianMem;

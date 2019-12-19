@@ -277,19 +277,22 @@ public class TestResultsController extends SpringActionController
                     int medianmem = 0;
                     if (passes.length != 0)
                     {
-                        for (TestPassDetail pass : passes)
-                        {
-                            avgMem += pass.getTotalMemory();
-                        }
-                        avgMem = avgMem / passes.length;
+//                        for (TestPassDetail pass : passes)
+//                        {
+//                            avgMem += pass.getTotalMemory();
+//                        }
+//                        avgMem = avgMem / passes.length;
                         if (passes.length > 1000) {
                             medianmem = (int)passes[(passes.length-500)].getTotalMemory();
+                            avgMem = (int)passes[(passes.length-500)].getTotalMemory();
                         }
                         else if (passes.length < 1000 && passes.length>100){
                             medianmem = (int)passes[(passes.length-50)].getTotalMemory();
+                            avgMem = (int)passes[(passes.length-500)].getTotalMemory();
                         }
                         else {
                             medianmem = (int)passes[(passes.length)].getTotalMemory();
+                            avgMem = (int)passes[(passes.length-500)].getTotalMemory();
                         }
                     }
 
@@ -1334,15 +1337,17 @@ public class TestResultsController extends SpringActionController
                     }
                 }
                 if(passes.size() != 0) {
-                    avgMemory = 10;
                     if (passes.size() > 1000) {
                         medianMem = passes.get(passes.size()-500).getTotalMemory();
+                        avgMemory = (int)passes.get(passes.size()-500).getTotalMemory();
                     }
                     else if (passes.size() <1000 && passes.size() > 100) {
                         medianMem = passes.get(passes.size()-50).getTotalMemory();
+                        avgMemory = (int)passes.get(passes.size()-50).getTotalMemory();
                     }
                     else {
                         medianMem = passes.get(passes.size()-1).getTotalMemory();
+                        avgMemory = (int)passes.get(passes.size()-1).getTotalMemory();
                     }
                 }
                 // stores failures in database

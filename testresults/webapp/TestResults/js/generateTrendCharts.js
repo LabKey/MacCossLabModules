@@ -1,4 +1,5 @@
 // In order for script to work the following 4 divs must be included in the file which calls this must contain the following
+//<div id="medianmem" class="c3chart"></div>
 // <div id="duration" class="c3chart"></div>
 // <div id="passes" class="c3chart"></div>
 // <div id="memory" class="c3chart"></div>

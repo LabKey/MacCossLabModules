@@ -346,15 +346,28 @@ public class RunDetail implements Comparable<RunDetail>
     }
 
     public double getAverageMemory() {
+//        if(averagemem != 0) {
+//            return averagemem;
+//        } else if(passes == null || (passes.length > 0 && passes[0] == null))
+//            return 0d;
+//        double total = 0;
+//        for(TestPassDetail pass : passes) {
+//            total += pass.getTotalMemory();
+//        }
+//        return total/passes.length;
         if(averagemem != 0) {
             return averagemem;
         } else if(passes == null || (passes.length > 0 && passes[0] == null))
             return 0d;
-        double total = 0;
-        for(TestPassDetail pass : passes) {
-            total += pass.getTotalMemory();
+        if (passes.length > 1000) {
+            return passes[passes.length-500].getTotalMemory();
         }
-        return total/passes.length;
+        else if (passes.length < 1000 && passes.length>100){
+            return passes[passes.length-50].getTotalMemory();
+        }
+        else {
+            return passes[passes.length-1].getTotalMemory();
+        }
     }
 
     public double getMedian1000Memory() {

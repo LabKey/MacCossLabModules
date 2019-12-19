@@ -4,6 +4,7 @@ import org.apache.log4j.Logger;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.SQLFragment;
+import org.labkey.api.data.SqlSelector;
 import org.labkey.api.notification.EmailMessage;
 import org.labkey.api.notification.EmailService;
 import org.labkey.api.security.UserManager;
@@ -116,6 +117,24 @@ public class SendTestResultsEmail implements org.quartz.Job
                     "<td>Failures</td>" +
                     "<td>Leaks</td>" +
                     "</tr>");
+            SQLFragment sqlFragment2 = new SQLFragment();
+            sqlFragment2.append("select * from " + TestResultsSchema.getTableInfoGlobalSettings());
+            SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
+            List<Integer> values = new ArrayList<>();
+            sqlSelector.forEach(rs -> {
+                values.add(rs.getInt("warningb"));
+                values.add(rs.getInt("errorb"));
+            });
+            int warningBoundary = 2;
+            int errorBoundary = 3;
+
+            if (values.size() != 0) {
+                warningBoundary = values.get(0);
+                errorBoundary = values.get(1);
+            }
+
+
+
             int errorRuns = 0;
             int warningRuns = 0;
             int goodRuns = 0;
@@ -149,8 +168,8 @@ public class SendTestResultsEmail implements org.quartz.Job
                         }
                         if (isGoodRun)
                         {
-                            highlightMemory = !u.fitsMemoryTrainingData(run.getAverageMemory(), 3);
-                            highlightRuns = !u.fitsRunCountTrainingData(run.getPassedtests(), 3);
+                            highlightMemory = !u.fitsMemoryTrainingData(run.getAverageMemory(), errorBoundary);
+                            highlightRuns = !u.fitsRunCountTrainingData(run.getPassedtests(), errorBoundary);
                             if (highlightMemory || highlightRuns)
                             {
                                 style = getBackgroundStyle(BackgroundColor.error);
@@ -160,8 +179,8 @@ public class SendTestResultsEmail implements org.quartz.Job
                             }
                             else
                             {
-                                highlightMemory = !u.fitsMemoryTrainingData(run.getAverageMemory(), 2);
-                                highlightRuns = !u.fitsRunCountTrainingData(run.getPassedtests(), 2);
+                                highlightMemory = !u.fitsMemoryTrainingData(run.getAverageMemory(), warningBoundary);
+                                highlightRuns = !u.fitsRunCountTrainingData(run.getPassedtests(), warningBoundary);
                                 if (highlightMemory || highlightRuns)
                                 {
                                     style = getBackgroundStyle(BackgroundColor.warn);
