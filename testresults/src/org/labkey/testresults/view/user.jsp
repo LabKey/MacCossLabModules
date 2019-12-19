@@ -170,6 +170,7 @@
 
     </div>
     <%if(showSingleUser){%>
+        <div id="medianmem" class="c3chart"></div>
         <div class="centeredContent">
             <div id="duration" class="c3chart"></div>
             <div id="passes" class="c3chart"></div>

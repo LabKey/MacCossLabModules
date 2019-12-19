@@ -63,7 +63,7 @@ public class TestResultsModule extends DefaultModule
     @Override
     public double getVersion()
     {
-        return 13.38;
+        return 13.36;
     }
 
     @Override
