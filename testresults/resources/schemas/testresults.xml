@@ -16,5 +16,98 @@
  * limitations under the License.
 
  -->
-<ns:tables xsi:schemaLocation="http://labkey.org/data/xml ..\..\..\..\schemas\tableInfo.xsd" xmlns:ns="http://labkey.org/data/xml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-</ns:tables>
+<tables xsi:schemaLocation="http://labkey.org/data/xml ..\..\..\..\schemas\tableInfo.xsd"
+        xmlns="http://labkey.org/data/xml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <table tableName="testfails" tableDbType="TABLE">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="testrunid"/>
+            <column columnName="testname"/>
+            <column columnName="pass"/>
+            <column columnName="testid"/>
+            <column columnName="stacktrace"/>
+            <column columnName="language"/>
+            <column columnName="timestamp"/>
+        </columns>
+    </table>
+    <table tableName="userdata" tableDbType="TABLE">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="userid"/>
+            <column columnName="container"/>
+            <column columnName="meantestsrun"/>
+            <column columnName="meanmemory"/>
+            <column columnName="stddevtestsrun"/>
+            <column columnName="stddevmemory"/>
+        </columns>
+    </table>
+    <table tableName="trainruns" tableDbType="TABLE">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="runid"/>
+        </columns>
+    </table>
+    <table tableName="testruns" tableDbType="TABLE">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="duration"/>
+            <column columnName="posttime"/>
+            <column columnName="os"/>
+            <column columnName="revision"/>
+            <column columnName="container"/>
+            <column columnName="flagged"/>
+            <column columnName="timestamp"/>
+            <column columnName="userid"/>
+            <column columnName="xml"/>
+            <column columnName="pointsummary"/>
+            <column columnName="passedtests"/>
+            <column columnName="failedtests"/>
+            <column columnName="leakedtests"/>
+            <column columnName="averagemem"/>
+            <column columnName="log"/>
+            <column columnName="githash"/>
+        </columns>
+    </table>
+    <table tableName="handleleaks" tableDbType="TABLE">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="testrunid"/>
+            <column columnName="testname"/>
+            <column columnName="handles"/>
+            <column columnName="type"/>
+        </columns>
+    </table>
+    <table tableName="testpasses" tableDbType="TABLE">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="testrunid"/>
+            <column columnName="testname"/>
+            <column columnName="pass"/>
+            <column columnName="testid"/>
+            <column columnName="language"/>
+            <column columnName="managedmemory"/>
+            <column columnName="totalmemory"/>
+            <column columnName="duration"/>
+            <column columnName="timestamp"/>
+            <column columnName="userandgdihandles"/>
+            <column columnName="committedmemory"/>
+            <column columnName="handles"/>
+        </columns>
+    </table>
+    <table tableName="user" tableDbType="TABLE">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="username"/>
+            <column columnName="active"/>
+        </columns>
+    </table>
+    <table tableName="memoryleaks" tableDbType="TABLE">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="testrunid"/>
+            <column columnName="testname"/>
+            <column columnName="bytes"/>
+            <column columnName="type"/>
+        </columns>
+    </table>
+</tables>
