@@ -16,5 +16,21 @@
  * limitations under the License.
 
  -->
-<ns:tables xsi:schemaLocation="http://labkey.org/data/xml ..\..\..\..\schemas\tableInfo.xsd" xmlns:ns="http://labkey.org/data/xml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-</ns:tables>
+<tables xsi:schemaLocation="http://labkey.org/data/xml ..\..\..\..\schemas\tableInfo.xsd"
+        xmlns="http://labkey.org/data/xml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <table tableDbType="TABLE" tableName="keywords">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="keywordid"/>
+            <column columnName="keyword"/>
+            <column columnName="category"/>
+        </columns>
+    </table>
+    <table tableDbType="TABLE" tableName="keywordcategories">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="categoryid"/>
+            <column columnName="label"/>
+        </columns>
+    </table>
+</tables>
