@@ -16,6 +16,7 @@ import org.labkey.test.tests.targetedms.TargetedMSTest;
 import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.PortalHelper;
+import org.labkey.test.util.PostgresOnlyTest;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -25,7 +26,7 @@ import static org.junit.Assert.assertEquals;
 
 @Category({DailyB.class, MS2.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
-public class PanoramaPublicTest extends TargetedMSTest
+public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTest
 {
     private static final String SKY_FILE_1 = "MRMer.zip";
     private static final String SKY_FILE_2 = "smallmol_plus_peptides.sky.zip";
