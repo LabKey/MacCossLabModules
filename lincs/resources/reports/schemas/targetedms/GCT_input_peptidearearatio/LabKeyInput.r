@@ -19,8 +19,6 @@ require(reshape2)
 
 baseUrl <- function(){
   return(paste(labkey.url.base));
-  # return(paste("https://panoramaweb.org:8443/labkey/"));
-  # return (paste("http://localhost:8080/labkey"));
 }
 
 selectedReplicateIds <- vector('numeric');
