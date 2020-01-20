@@ -19,9 +19,7 @@ library(Rlabkey)
 require(reshape2)
 
 source("LabKeyInput.R");
-source("p100_processing.R");
 
-print("Updated 09/21/15 - 11:00PM");
 print("------------- URL Params ---------------");
 print(labkey.url.params);
 print("----------------------------------------");
@@ -91,13 +89,3 @@ write("#1.3", file=fileOut);
 write(paste(numPeptides, numReplicates, numPeptideAnnotations, numReplicateAnnotations, sep="\t"), file=fileOut, append=TRUE)
 write.table(headers, file = fileOut, sep="\t", row.names=TRUE, col.names=FALSE, quote=FALSE, append=TRUE);
 write.table(pa_ar_merged, file = fileOut, sep="\t", row.names=TRUE, col.names=FALSE, quote=FALSE, append=TRUE);
-
-# Write the processed GCT file
-########## Processed GCT ##############################
-remote = as.character(labkey.url.params$remote);
-print(paste("url param 'remote' is '", remote, "'", sep=""));
-if(is.null(remote) || is.na(nchar(remote)[1]) || (nchar(remote)[1] == 0))
-{
-    print(paste("generating processed gct locally", sep=""));
-    P100processGCTMaster(repAnnot=replicateAnnotations, probeAnnot=peptideAnnotations, dataTable=areaRatios, outputFileName="${fileout:lincs.processed.gct}", log2=FALSE);
-}
