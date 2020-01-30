@@ -41,6 +41,7 @@ public class LincsModule extends SpringModule
 {
     public static final String NAME = "LINCS";
     public static ModuleProperty PSP_JOB_NAME_SUFFIX_PROPERTY;
+    public static ModuleProperty LINCS_ASSAY_TYPE_PROPERTY;
     public static String PSP_JOB_NAME_SUFFIX = "PSP job name suffix";
 
     private static String NO_SUFFIX = "";
@@ -52,6 +53,11 @@ public class LincsModule extends SpringModule
         PSP_JOB_NAME_SUFFIX_PROPERTY.setCanSetPerContainer(true);
         PSP_JOB_NAME_SUFFIX_PROPERTY.setShowDescriptionInline(true);
         addModuleProperty(PSP_JOB_NAME_SUFFIX_PROPERTY);
+
+        LINCS_ASSAY_TYPE_PROPERTY = new ModuleProperty(this, "LINCS Assay Type");
+        LINCS_ASSAY_TYPE_PROPERTY.setCanSetPerContainer(true);
+        LINCS_ASSAY_TYPE_PROPERTY.setShowDescriptionInline(true);
+        addModuleProperty(LINCS_ASSAY_TYPE_PROPERTY);
     }
 
     @Override
@@ -117,11 +123,6 @@ public class LincsModule extends SpringModule
         return Collections.emptyList();
     }
 
-    public static boolean processGctOnClueServer(Container container)
-    {
-        return getClueCredentials(container) != null;
-    }
-
     public static ClueCredentials getClueCredentials(Container container)
     {
         PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(container, LincsController.LINCS_CLUE_CREDENTIALS, false);
@@ -162,8 +163,26 @@ public class LincsModule extends SpringModule
 
     public enum LincsAssay
     {
-        P100,
-        GCP
+        P100("GCT File P100"),
+        GCP("GCT File GCP");
+
+        private final String _reportName;  // Name of the R report that will be run to generate the L2 GCT for a Skyline document
+
+        LincsAssay(String reportName)
+        {
+            _reportName = reportName;
+        }
+
+        public String getReportName()
+        {
+            return _reportName;
+        }
+
+        public static String getReportName(String assayName)
+        {
+            LincsAssay assay = LincsAssay.valueOf(assayName);
+            return assay == null ? "Unknown Assay" : assay.getReportName();
+        }
     }
 
     public enum LincsLevel

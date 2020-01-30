@@ -18,7 +18,6 @@ package org.labkey.lincs;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
 import org.labkey.api.action.ReadOnlyApiAction;
 import org.labkey.api.action.ApiResponse;
@@ -135,189 +134,7 @@ public class LincsController extends SpringActionController
         }
     }
 
-    // ------------------------------------------------------------------------
-    // BEGIN Actions to run an R script to create GCT files.
-    // NOTE: This is used only in the LINCS project on daily.panoramaweb.org
-    // https://panoramaweb.org/labkey/project/LINCS/begin.view?
-    //
-    // This module contains an R script that writes out two GCT format files.  The first file
-    // is a straight-up GCT with no processing.  The second file is created after
-    // processing the data through Jake Jaffe's processing code (p100_processing.r).
-    // ------------------------------------------------------------------------
-    @RequiresPermission(ReadPermission.class)
-    public class RunGCTReportAction extends SimpleViewAction<GCTReportForm>
-    {
-        @Override
-        public ModelAndView getView(GCTReportForm form, BindException errors) throws Exception
-        {
-            if(form.getRunId() == 0)
-            {
-                errors.addError(new LabKeyError("No run Id found in the request."));
-                return new SimpleErrorView(errors, true);
-            }
-
-            if (StringUtils.isBlank(form.getReportName()))
-            {
-                errors.addError(new LabKeyError("No report name found in the request."));
-                return new SimpleErrorView(errors, true);
-            }
-
-            Report report = getReport(form);
-
-            if(report == null)
-            {
-                errors.addError(new LabKeyError("Could not find report with name " + form.getReportName()));
-                return new SimpleErrorView(errors, true);
-            }
-
-            if (!(report instanceof RReport))
-            {
-                errors.addError(new LabKeyError("The specified report is not based upon an R script and therefore cannot be executed."));
-                return new SimpleErrorView(errors, true);
-            }
-
-            // Get the TargetedMS run.
-            TargetedMSService service = TargetedMSService.get();
-
-            if (service == null)
-            {
-                errors.addError(new LabKeyError("Could not get an instance of TargetedMSService."));
-                return new SimpleErrorView(errors, false);
-            }
-
-            ITargetedMSRun run = service.getRun(form.getRunId(), getContainer());
-
-            if(run == null)
-            {
-                errors.addError(new LabKeyError("Run with ID " + form.getRunId() + " was not found in the folder " + getContainer().getPath()));
-                return new SimpleErrorView(errors, false);
-            }
-
-            // If a GCT folder does not exist in this folder, create one
-            Path gctDir = getGCTDir(getContainer());
-            if(!Files.exists(gctDir))
-            {
-                Files.createDirectory(gctDir);
-                if(!Files.exists(gctDir))
-                {
-                    errors.addError(new LabKeyError("Failed to create GCT directory '" + gctDir + "'."));
-                    return new SimpleErrorView(errors, true);
-                }
-            }
-
-            // Get the name of the requested GCT file
-            String outputFileBaseName = run.getBaseName();
-            Path gct = gctDir.resolve(outputFileBaseName + ".gct");
-            Path processedGct = gctDir.resolve(outputFileBaseName + ".processed.gct");
-            Path downloadFile;
-            if(form.isProcessed())
-            {
-                downloadFile = processedGct;
-            }
-            else
-            {
-                downloadFile = gct;
-            }
-
-            // Get the date when the run was imported
-            Date runCreated = run.getCreated();
-
-            // Check if the folder already contains the requested GCT file.
-            boolean fileExits = false;
-            try (Stream<Path> paths = Files.list(gctDir))
-            {
-                for (Path path : paths.collect(Collectors.toSet()))
-                {
-                    if (FileUtil.getFileName(downloadFile).equals(FileUtil.getFileName(path)))
-                    {
-                        fileExits = true;
-                        break;
-                    }
-                }
-            }
-            if(fileExits)
-            {
-                Date lastModified = new Date(Files.getLastModifiedTime(downloadFile).toMillis());
-                if(form.isRerun() || lastModified.before(runCreated))
-                {
-                    // Delete the file if:
-                    // 1. This file was created before the last modified date on the R report
-                    // 2. The Skyline document was re-uploaded after the last GCT file was created
-                    // We run the report again for this run. Delete both the .gct and .processed.gct files.
-                    if(Files.exists(gct))
-                    {
-                        Files.delete(gct);
-                    }
-                    if(Files.exists(processedGct))
-                    {
-                        Files.delete(processedGct);
-                    }
-                }
-                else
-                {
-                    // We found the requested GCT file.
-                    try (InputStream inputStream = Files.newInputStream(downloadFile))
-                    {
-                        PageFlowUtil.streamFile(getViewContext().getResponse(), Collections.emptyMap(), FileUtil.getFileName(downloadFile), inputStream, true);
-                    }
-                    return null;
-                }
-            }
-
-            // Create a new ViewContext that will be used to initialize QuerySettings for getting input data file (labkey.data)
-            ViewContext ctx = new ViewContext(getViewContext());
-            ActionURL url = getViewContext().getActionURL();
-            MutablePropertyValues propertyValues = new MutablePropertyValues();
-            for (String key : url.getParameterMap().keySet())
-            {
-                propertyValues.addPropertyValue(key, url.getParameter(key));
-            }
-            // This is required so that the grid gets filtered by the given RunId.
-            propertyValues.addPropertyValue("GCT_input_peptidearearatio.RunId~eq", form.getRunId());
-            if(outputFileBaseName.contains("_QC_"))
-            {
-                // GCT_input_peptidearearatio is a parameterized query; parameter is "isotope".
-                // For QC files we want the medium/heavy ratio.
-                propertyValues.addPropertyValue("param.isotope", "medium");
-            }
-            ctx.setBindPropertyValues(propertyValues);
-            RReport rreport = (RReport)report;
-            try
-            {
-                // Execute the script
-                rreport.runScript(getViewContext(), new ArrayList<>(), rreport.createInputDataFile(ctx), null);
-            }
-            catch(Exception e)
-            {
-                copyFiles(gctDir, outputFileBaseName, gct, processedGct, rreport.getReportDir(getContainer().getId()));
-                errors.addError(new LabKeyError("There was an error running the GCT R script."));
-                errors.addError(new LabKeyError(e));
-                return new SimpleErrorView(errors, true);
-            }
-
-            copyFiles(gctDir, outputFileBaseName, gct, processedGct, rreport.getReportDir(getContainer().getId()));
-
-
-            if(!Files.exists(downloadFile))
-            {
-                errors.addError(new LabKeyError("File " + downloadFile + " does not exist."));
-                return new SimpleErrorView(errors, true);
-            }
-            try (InputStream inputStream = Files.newInputStream(downloadFile))
-            {
-                PageFlowUtil.streamFile(getViewContext().getResponse(), Collections.emptyMap(), FileUtil.getFileName(downloadFile), inputStream, true);
-            }
-
-            return null;
-        }
-
-        public NavTree appendNavTrail(NavTree root)
-        {
-            return root;
-        }
-    }
-
-    private void copyFiles(Path gctDir, String outputFileBaseName, Path gct, @Nullable Path processedGct, File reportDir) throws IOException
+    private void copyFiles(Path gctDir, String outputFileBaseName, Path gct, File reportDir) throws IOException
     {
         // reportDir is a local directory under tomcat's temp directory
         File[] reportDirFiles = reportDir.listFiles(new FilenameFilter()
@@ -338,10 +155,6 @@ public class LincsController extends SpringActionController
             if(file.getName().toLowerCase().equals("lincs.gct"))
             {
                 Files.copy(file.toPath(), gct, StandardCopyOption.REPLACE_EXISTING);
-            }
-            else if(file.getName().toLowerCase().equals("lincs.processed.gct") && processedGct != null)
-            {
-                Files.copy(file.toPath(), processedGct, StandardCopyOption.REPLACE_EXISTING);
             }
             else if(file.getName().toLowerCase().equals("console.txt"))
             {
@@ -483,11 +296,11 @@ public class LincsController extends SpringActionController
             }
             catch(Exception e)
             {
-                copyFiles(gctDir, outputFileBaseName, downloadFile, null, rreport.getReportDir(getContainer().getId()));
+                copyFiles(gctDir, outputFileBaseName, downloadFile, rreport.getReportDir(getContainer().getId()));
                 throw new ApiUsageException("There was an error running the GCT R script.", e);
             }
 
-            copyFiles(gctDir, outputFileBaseName, downloadFile, null, rreport.getReportDir(getContainer().getId()));
+            copyFiles(gctDir, outputFileBaseName, downloadFile, rreport.getReportDir(getContainer().getId()));
 
             if(!Files.exists(downloadFile))
             {
@@ -694,8 +507,6 @@ public class LincsController extends SpringActionController
                 return Collections.emptyList();
             }
 
-            boolean processOnClue = LincsModule.processGctOnClueServer(container);
-
             for(ITargetedMSRun run: runs)
             {
                 String outputFileBaseName = run.getBaseName();
@@ -703,7 +514,7 @@ public class LincsController extends SpringActionController
                 {
                     continue;
                 }
-                String ext = processOnClue ? LincsModule.getExt(LincsModule.LincsLevel.Four) : ".processed.gct";
+                String ext = LincsModule.getExt(LincsModule.LincsLevel.Four);
                 Path processedGct = gctDir.resolve(outputFileBaseName + ext);
                 if(Files.exists(processedGct))
                 {
@@ -711,7 +522,6 @@ public class LincsController extends SpringActionController
                 }
                 else
                 {
-                    // TODO: Try to generate the GCT?
                     errors.reject(ERROR_MSG, "GCT file does not exist: " + FileUtil.getAbsolutePath(processedGct));
                 }
             }
@@ -1150,6 +960,21 @@ public class LincsController extends SpringActionController
 
     public static LincsModule.LincsAssay getLincsAssayType(Container container)
     {
+        LincsModule module = ModuleLoader.getInstance().getModule(LincsModule.class);
+        String assayType = module.LINCS_ASSAY_TYPE_PROPERTY.getEffectiveValue(container);
+        if(!StringUtils.isBlank(assayType))
+        {
+            if(P100.equals(assayType))
+            {
+                return LincsModule.LincsAssay.P100;
+            }
+            else if(GCP.equals(assayType))
+            {
+                return LincsModule.LincsAssay.GCP;
+            }
+        }
+
+        // If the module property is not set look for a container with the name of the assay in the container hierarchy.
         if(isOrHasAncestor(container, LincsController.P100))
         {
             return LincsModule.LincsAssay.P100;
@@ -1346,8 +1171,15 @@ public class LincsController extends SpringActionController
             public void renderDetailsCellContents(RenderContext ctx, Writer out) throws IOException
             {
                 String json = ctx.get(FieldKey.fromParts("Json"), String.class);
-                JSONObject jsonObj = new JSONObject(json);
-                out.write("<pre>" + PageFlowUtil.filter(jsonObj.toString(2)) + "</pre>");
+                if(!StringUtils.isBlank(json))
+                {
+                    JSONObject jsonObj = new JSONObject(json);
+                    out.write("<pre>" + PageFlowUtil.filter(jsonObj.toString(2)) + "</pre>");
+                }
+                else
+                {
+                    super.renderDetailsCellContents(ctx, out);
+                }
             }
         };
         jsonCol.setCaption("JSON:");
