@@ -114,100 +114,84 @@ public class LincsDataTable extends FilteredTable
         String davUrl = AppProps.getInstance().getBaseServerUrl() + root.getWebdavURL();
         LincsModule.LincsAssay assayType = LincsController.getLincsAssayType(getContainer());
 
-        boolean processOnClue = LincsModule.processGctOnClueServer(getContainer());
+        var level2Col = wrapColumn("Level 2", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+        addColumn(level2Col);
+        level2Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Two, gctDir, davUrl));
 
-        if(!processOnClue)
+        var level3Col = wrapColumn("Level 3", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+        addColumn(level3Col);
+        level3Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Three, gctDir, davUrl));
+
+        var level4Col = wrapColumn("Level 4", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+        addColumn(level4Col);
+        level4Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Four, gctDir, davUrl));
+
+        var cfgCol = wrapColumn("Config", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+        addColumn(cfgCol);
+        cfgCol.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Config, gctDir, davUrl));
+
+        var pspJobCol = wrapColumn("PSP Job Status", getRealTable().getColumn(FieldKey.fromParts("FileName")));
+        addColumn(pspJobCol);
+        pspJobCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
         {
-
-            var level2Col = wrapColumn("Level 2", getRealTable().getColumn(FieldKey.fromParts("FileName")));
-            addColumn(level2Col);
-            level2Col.setDisplayColumnFactory(colInfo -> new GctColumn(colInfo, assayType, LincsModule.LincsLevel.Two, gctDir, davUrl));
-
-            var level4Col = wrapColumn("Level 4", getRealTable().getColumn(FieldKey.fromParts("FileName")));
-            addColumn(level4Col);
-            level4Col.setDisplayColumnFactory(colInfo -> new GctColumn(colInfo, assayType, LincsModule.LincsLevel.Four, gctDir, davUrl));
-
-        }
-        else
-        {
-            var level2Col = wrapColumn("Level 2", getRealTable().getColumn(FieldKey.fromParts("FileName")));
-            addColumn(level2Col);
-            level2Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Two, gctDir, davUrl));
-
-            var level3Col = wrapColumn("Level 3", getRealTable().getColumn(FieldKey.fromParts("FileName")));
-            addColumn(level3Col);
-            level3Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Three, gctDir, davUrl));
-
-            var level4Col = wrapColumn("Level 4", getRealTable().getColumn(FieldKey.fromParts("FileName")));
-            addColumn(level4Col);
-            level4Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Four, gctDir, davUrl));
-
-            var cfgCol = wrapColumn("Config", getRealTable().getColumn(FieldKey.fromParts("FileName")));
-            addColumn(cfgCol);
-            cfgCol.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Config, gctDir, davUrl));
-
-            var pspJobCol = wrapColumn("PSP Job Status", getRealTable().getColumn(FieldKey.fromParts("FileName")));
-            addColumn(pspJobCol);
-            pspJobCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
+            @Override
+            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
             {
-                @Override
-                public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                Integer runId = ctx.get(FieldKey.fromParts("Id"), Integer.class);
+                if(runId == null)
                 {
-                    Integer runId = ctx.get(FieldKey.fromParts("Id"), Integer.class);
-                    if(runId == null)
+                    out.write("NO_RUN_ID");
+                    return;
+                }
+                LincsPspJob pspJob = LincsManager.get().getLincsPspJobForRun(runId);
+                if(pspJob == null)
+                {
+                    out.write("PSP job not found for runId: " + runId);
+                    if(userSchema.getUser().isInSiteAdminGroup())
                     {
-                        out.write("NO_RUN_ID");
-                        return;
+                        ActionURL url = new ActionURL(LincsController.SubmitPspJobAction.class, getContainer());
+                        url.addParameter("runId", runId);
+
+                        out.write(new Link.LinkBuilder(" [Submit Job]").href(url).usePost().toString());
                     }
-                    LincsPspJob pspJob = LincsManager.get().getLincsPspJobForRun(runId);
-                    if(pspJob == null)
+                    return;
+                }
+                String text = pspJob.getStatus();
+                if(StringUtils.isBlank(text))
+                {
+                    if(pspJob.getPipelineJobId() != null)
                     {
-                        out.write("PSP job not found for runId: " + runId);
-                        if(userSchema.getUser().isInSiteAdminGroup())
-                        {
-                            ActionURL url = new ActionURL(LincsController.SubmitPspJobAction.class, getContainer());
-                            url.addParameter("runId", runId);
-
-                            out.write(new Link.LinkBuilder(" [Submit Job]").href(url).usePost().toString());
-                        }
-                        return;
+                        text = "Pipeline Status: " + PipelineService.get().getStatusFile(pspJob.getPipelineJobId()).getStatus();
                     }
-                    String text = pspJob.getStatus();
-                    if(StringUtils.isBlank(text))
+                    else
                     {
-                        if(pspJob.getPipelineJobId() != null)
-                        {
-                            text = "Pipeline Status: " + PipelineService.get().getStatusFile(pspJob.getPipelineJobId()).getStatus();
-                        }
-                        else
-                        {
-                            text = "Job Details";
-                        }
+                        text = "Job Details";
                     }
-                    ActionURL url = new ActionURL(LincsController.LincsPspJobDetailsAction.class, getContainer());
-                    url.addParameter("runId", pspJob.getRunId());
-                    out.write(PageFlowUtil.link(text).href(url).toString());
                 }
+                ActionURL url = new ActionURL(LincsController.LincsPspJobDetailsAction.class, getContainer());
+                url.addParameter("runId", pspJob.getRunId());
+                out.write(PageFlowUtil.link(text).href(url).toString());
+            }
 
-                @Override
-                public boolean isSortable()
-                {
-                    return false;
-                }
+            @Override
+            public boolean isSortable()
+            {
+                return false;
+            }
 
-                @Override
-                public boolean isFilterable()
-                {
-                    return false;
-                }
+            @Override
+            public boolean isFilterable()
+            {
+                return false;
+            }
 
-                @Override
-                public boolean isEditable()
-                {
-                    return false;
-                }
-            });
-        }
+            @Override
+            public boolean isEditable()
+            {
+                return false;
+            }
+        });
+
 
         List<FieldKey> visibleColumns = new ArrayList<>();
         visibleColumns.add(FieldKey.fromParts("Plate"));
@@ -215,15 +199,9 @@ public class LincsDataTable extends FilteredTable
         visibleColumns.add(FieldKey.fromParts("CellLine"));
         visibleColumns.add(FieldKey.fromParts("Level 1"));
         visibleColumns.add(FieldKey.fromParts("Level 2"));
-        if(processOnClue)
-        {
-            visibleColumns.add(FieldKey.fromParts("Level 3"));
-        }
+        visibleColumns.add(FieldKey.fromParts("Level 3"));
         visibleColumns.add(FieldKey.fromParts("Level 4"));
-        if(processOnClue)
-        {
-            visibleColumns.add(FieldKey.fromParts("Config"));
-        }
+        visibleColumns.add(FieldKey.fromParts("Config"));
 
         setDefaultVisibleColumns(visibleColumns);
     }
@@ -239,14 +217,14 @@ public class LincsDataTable extends FilteredTable
             return FileUtil.getBaseName(fileName, 1);
     }
 
-    public class GctColumn extends DataColumn
+    public class GctColumnPSP extends DataColumn
     {
         private LincsModule.LincsAssay assayType;
         private LincsModule.LincsLevel level;
         private Path gctDir;
         private String davUrl;
 
-        public GctColumn(ColumnInfo col, LincsModule.LincsAssay assayType, LincsModule.LincsLevel level, Path gctDir, String davUrl)
+        public GctColumnPSP(ColumnInfo col, LincsModule.LincsAssay assayType, LincsModule.LincsLevel level, Path gctDir, String davUrl)
         {
             super(col);
             this.assayType = assayType;
@@ -255,22 +233,22 @@ public class LincsDataTable extends FilteredTable
             this.davUrl = davUrl;
         }
 
-        public LincsModule.LincsAssay getAssayType()
+        private LincsModule.LincsAssay getAssayType()
         {
             return assayType;
         }
 
-        public LincsModule.LincsLevel getLevel()
+        private LincsModule.LincsLevel getLevel()
         {
             return level;
         }
 
-        public Path getGctDir()
+        private Path getGctDir()
         {
             return gctDir;
         }
 
-        public String getDavUrl()
+        private String getDavUrl()
         {
             return davUrl;
         }
@@ -294,78 +272,7 @@ public class LincsDataTable extends FilteredTable
             return false;
         }
 
-        @Override
-        public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
-        {
-            if(assayType == null)
-            {
-                out.write("Unknown assay type");
-                return;
-            }
-            String fileName = ctx.get(getDisplayColumn().getFieldKey(), String.class);
-            if(fileName == null)
-            {
-                out.write("&nbsp");
-                return;
-            }
-
-            Integer runId = ctx.get(FieldKey.fromParts("Id"), Integer.class);
-            if(runId == null)
-            {
-                out.write("<NO_RUN_ID>");
-                return;
-            }
-
-            String baseName = getBaseName(fileName);
-            if(level == LincsModule.LincsLevel.Four)
-            {
-                baseName += ".processed";
-            }
-            Path gct = gctDir.resolve(baseName + ".gct");
-            boolean gctExists = _gctCache.get(gct.toString(), gct);
-            if(!gctExists && Files.exists(gct))
-            {
-                // If a new Skyline document is uploaded, gctExists will be false if the GCT files have not been generated already.
-                // Update the entry in the cache if the file exists
-                _gctCache.put(gct.toString(), true);
-                gctExists = true;
-            }
-
-            String analyticsScript = getAnalyticsScript("DownloadGCT", FileUtil.getFileName(gct), true);
-
-            ActionURL downloadGctUrl = new ActionURL(LincsController.RunGCTReportAction.class, getContainer());
-            downloadGctUrl.addParameter("runId", runId);
-            downloadGctUrl.addParameter("reportName", getGctReportName(assayType));
-            if(level == LincsModule.LincsLevel.Four)
-            {
-                downloadGctUrl.addParameter("processed", true);
-            }
-
-            String morpheusUrl = gctExists ? externalHeatmapViewerLink(FileUtil.getFileName(gct), assayType) : "";
-            renderGridCell(out, analyticsScript, downloadGctUrl, morpheusUrl);
-        }
-
-        private void renderGridCell(Writer out, String analyticsScript, ActionURL downloadGctUrl, String morpheusUrl) throws IOException
-        {
-            renderGridCell(out, analyticsScript, downloadGctUrl.getLocalURIString(), downloadGctUrl.getEncodedLocalURIString(), "GCT", morpheusUrl);
-        }
-
-        void renderGridCell(Writer out, String analyticsScript, String downloadUrl, String downloadUrlEncoded, String downloadText, String morpheusUrl) throws IOException
-        {
-            out.write("<nobr>&nbsp;");
-            // Do not HTML encode links given to PageFlowUtil.iconLink
-            out.write(PageFlowUtil.iconLink("fa fa-download", "Download").href(downloadUrl).onClick(analyticsScript).toString());
-            out.write("&nbsp;");
-            String onclickEvt = StringUtils.isBlank(analyticsScript) ? "" : "onclick=\"" + analyticsScript + "\"";
-            out.write("<a " + onclickEvt + " href=\"" + downloadUrlEncoded + "\">" + downloadText + "</a>&nbsp;");
-            if(morpheusUrl != null)
-            {
-                out.write("&nbsp;" + morpheusUrl + "&nbsp;");
-            }
-            out.write("</nobr>");
-        }
-
-        String getAnalyticsScript(String eventAction, String fileName, boolean addWaitTime)
+        private String getAnalyticsScript(String eventAction, String fileName, boolean addWaitTime)
         {
             if (!StringUtils.isBlank(AnalyticsService.getTrackingScript()))
             {
@@ -380,17 +287,7 @@ public class LincsDataTable extends FilteredTable
             return null;
         }
 
-        String getGctReportName(LincsModule.LincsAssay assayType)
-        {
-            switch (assayType)
-            {
-                case GCP: return "GCT File GCP";
-                case P100: return "GCT File P100";
-            }
-            return null;
-        }
-
-        String externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType)
+        private String externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType)
         {
             String gctFileUrl = davUrl + "GCT/" + PageFlowUtil.encodePath(fileName);
             String morpheusUrl = getMorpheusUrl(gctFileUrl, assayType);
@@ -402,7 +299,7 @@ public class LincsDataTable extends FilteredTable
             return "[&nbsp;<a target=\"_blank\" " + onclickEvt +  " href=\"" + morpheusUrl + "\">View in Morpheus</a> <img src=" + imgUrl + " width=\"13\", height=\"13\"/>&nbsp;]";
         }
 
-        String getMorpheusUrl(String gctFileUrl, LincsModule.LincsAssay assayType)
+        private String getMorpheusUrl(String gctFileUrl, LincsModule.LincsAssay assayType)
         {
             String morpheusJson = "{\"dataset\":\"" + gctFileUrl + "\",";
             if(assayType == LincsModule.LincsAssay.P100)
@@ -420,14 +317,6 @@ public class LincsDataTable extends FilteredTable
             String morpheusUrl= "http://www.broadinstitute.org/cancer/software/morpheus/?json=";
             morpheusUrl += PageFlowUtil.encodeURIComponent(morpheusJson);
             return morpheusUrl;
-        }
-    }
-
-    public class GctColumnPSP extends GctColumn
-    {
-        public GctColumnPSP(ColumnInfo col, LincsModule.LincsAssay assayType, LincsModule.LincsLevel level, Path gctDir, String davUrl)
-        {
-            super(col, assayType, level, gctDir, davUrl);
         }
 
         @Override
@@ -466,6 +355,20 @@ public class LincsDataTable extends FilteredTable
             String morpheusUrl = externalHeatmapViewerLink(downloadFileName, getAssayType(), getLevel());
             String downloadText = (getLevel() == LincsModule.LincsLevel.Config) ? "CFG" : "GCT";
             renderGridCell(out, analyticsScript, getGctDavUrlUnencoded(downloadFileName), getGctDavUrl(downloadFileName), downloadText, morpheusUrl);
+        }
+
+        private void renderGridCell(Writer out, String analyticsScript, String downloadUrl, String downloadUrlEncoded, String downloadText, String morpheusUrl) throws IOException
+        {
+            out.write("<nobr>&nbsp;");
+            out.write(new Link.LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl).onClick(analyticsScript).toString());
+            out.write("&nbsp;");
+            out.write(new Link.LinkBuilder(downloadText).href(downloadUrl).onClick(analyticsScript).clearClasses().toString());
+            out.write("&nbsp;");
+            if(morpheusUrl != null)
+            {
+                out.write("&nbsp;" + morpheusUrl + "&nbsp;");
+            }
+            out.write("</nobr>");
         }
 
         private boolean fileAvailable(Integer runId, String downloadFileName)
