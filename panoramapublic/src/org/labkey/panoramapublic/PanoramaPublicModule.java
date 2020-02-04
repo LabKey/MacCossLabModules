@@ -64,7 +64,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public double getVersion()
     {
-        return 19.22;
+        return 19.31;
     }
 
     @Override

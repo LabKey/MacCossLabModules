@@ -31,6 +31,7 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.PanoramaPublicController;
+import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
 import java.io.IOException;
@@ -67,6 +68,37 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
         var copyUrlCol = getMutableColumn(FieldKey.fromParts("ShortCopyUrl"));
         copyUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
 
+        var licenseCol = getMutableColumn(FieldKey.fromParts("DataLicense"));
+        licenseCol.setURLTargetWindow("_blank");
+        licenseCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo){
+            @Override
+            public Object getValue(RenderContext ctx)
+            {
+                return ctx.get(FieldKey.fromParts("DataLicense"), DataLicense.class);
+            }
+
+            @Override
+            public Object getDisplayValue(RenderContext ctx)
+            {
+                DataLicense license = (DataLicense) getValue(ctx);
+                return license != null ? license.getDisplayName() : super.getDisplayValue(ctx);
+            }
+
+            @Override
+            public @NotNull String getFormattedValue(RenderContext ctx)
+            {
+                DataLicense license = (DataLicense) getValue(ctx);
+                return license != null ? license.getDisplayName() : super.getFormattedHtml(ctx);
+            }
+
+            @Override
+            public String renderURL(RenderContext ctx)
+            {
+                DataLicense license = (DataLicense) getValue(ctx);
+                return license != null ? license.getUrl() : super.renderURL(ctx);
+            }
+        });
+
         List<FieldKey> columns = new ArrayList<>();
         columns.add(FieldKey.fromParts("CreatedBy"));
         columns.add(FieldKey.fromParts("Created"));
@@ -75,6 +107,7 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
         columns.add(FieldKey.fromParts("Copied"));
         columns.add(FieldKey.fromParts("Edit"));
         columns.add(FieldKey.fromParts("Delete"));
+        columns.add(FieldKey.fromParts("DataLicense"));
         setDefaultVisibleColumns(columns);
     }
 

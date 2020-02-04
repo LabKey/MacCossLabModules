@@ -22,7 +22,11 @@ import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
+import org.labkey.api.security.UserPrincipal;
+import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.view.ShortURLRecord;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+import org.labkey.panoramapublic.query.JournalManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -465,5 +469,21 @@ public class ExperimentAnnotations
             return true;
         }
         return false;
+    }
+
+    public boolean isPublic()
+    {
+        // If the container where this experiment lives is readable to site:guests then the data is public.
+        return getContainer().getPolicy().hasPermissions(UserManager.getGuestUser(), ReadPermission.class);
+    }
+
+    public DataLicense getDataLicense()
+    {
+        // Return a data license only if this experiment has been copied to Panorama Public (i.e is a "journalCopy").
+        if(!isJournalCopy() || getSourceExperimentId() == null)
+        {
+            return null;
+        }
+        return ExperimentAnnotationsManager.getLicenseSelectedForSubmission(getSourceExperimentId());
     }
 }

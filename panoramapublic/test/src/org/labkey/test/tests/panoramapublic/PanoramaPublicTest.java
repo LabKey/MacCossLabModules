@@ -119,9 +119,16 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         expListTable.ensureColumnPresent("Title");
         Assert.assertTrue(expListTable.getDataAsText(0,"Title").contains(TargetedMsExperimentInsertPage.EXP_TITLE));
         expListTable.ensureColumnPresent("Runs");
+        expListTable.ensureColumnPresent("Public"); // Column to indicate if the data is public or not
+        expListTable.ensureColumnPresent("Data License");
         assertEquals("2", expListTable.getDataAsText(0, "Runs"));
+        assertEquals("No", expListTable.getDataAsText(0, "Public"));
+        assertEquals("CC BY 4.0", expListTable.getDataAsText(0, "Data License"));
         clickAndWait(expListTable.link(0, "Title"));
-        assertTextPresentInThisOrder("Targeted MS Experiment", TargetedMsExperimentInsertPage.EXP_TITLE);
+        assertTextPresentInThisOrder("Targeted MS Experiment", // Webpart title
+                TargetedMsExperimentInsertPage.EXP_TITLE, // Title of the experiment
+                "Data License", "CC BY 4.0" // This is the default data license
+        );
     }
 
     @Override

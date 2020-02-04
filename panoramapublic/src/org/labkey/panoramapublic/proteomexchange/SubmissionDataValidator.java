@@ -48,6 +48,7 @@ import java.util.stream.Stream;
 public class SubmissionDataValidator
 {
     public static final int MIN_ABSTRACT_LENGTH = 50;
+    public static final int MIN_TITLE_LENGTH = 30;
 
     private static final Logger LOG = Logger.getLogger(SubmissionDataValidator.class);
 
@@ -86,7 +87,7 @@ public class SubmissionDataValidator
         return true;
     }
 
-    public static SubmissionDataStatus validateExperiment(ExperimentAnnotations expAnnot, boolean skipMetaDataCheck, boolean skipRawDataCheck, boolean skipModificationCheck) throws PxException
+    public static SubmissionDataStatus validateExperiment(ExperimentAnnotations expAnnot, boolean skipMetaDataCheck, boolean skipRawDataCheck, boolean skipModificationCheck)
     {
         SubmissionDataStatus status = new SubmissionDataStatus(expAnnot);
         if(!skipMetaDataCheck)
@@ -113,6 +114,15 @@ public class SubmissionDataValidator
     private static List<String> getMissingExperimentMetadataFields(ExperimentAnnotations expAnnot)
     {
         List<String> errors = new ArrayList<>();
+        if(StringUtils.isBlank(expAnnot.getTitle()))
+        {
+            errors.add("Title is required.");
+        }
+        else if(StringUtils.deleteWhitespace(expAnnot.getTitle()).length() < MIN_TITLE_LENGTH)
+        {
+            errors.add("Title should be at least " + MIN_TITLE_LENGTH + " characters.");
+        }
+
         if (StringUtils.isBlank(expAnnot.getOrganism()))
         {
             errors.add("Organism is required.");
