@@ -118,7 +118,7 @@ public class SubmissionDataValidator
         {
             errors.add("Title is required.");
         }
-        else if(StringUtils.deleteWhitespace(expAnnot.getTitle()).length() < MIN_TITLE_LENGTH)
+        else if(StringUtils.trim(expAnnot.getTitle()).length() < MIN_TITLE_LENGTH)
         {
             errors.add("Title should be at least " + MIN_TITLE_LENGTH + " characters.");
         }

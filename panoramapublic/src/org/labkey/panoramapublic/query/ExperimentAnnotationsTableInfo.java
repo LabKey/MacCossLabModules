@@ -161,7 +161,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
             {
                 // Get the ExperimentAnnotations record
-                Integer experimentAnnotationsId = ctx.get(FieldKey.fromParts(colInfo.getAlias()), Integer.class);
+                Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
                 ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
 
                 String accessUrl = JournalManager.getExperimentShortUrl(expAnnotations);
@@ -210,7 +210,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             @Override
             public Object getValue(RenderContext ctx)
             {
-                Integer experimentAnnotationsId = ctx.get(FieldKey.fromParts(colInfo.getAlias()), Integer.class);
+                Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
                 ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
                 if(expAnnotations != null)
                 {
@@ -228,6 +228,16 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             {
                 return (String)getValue(ctx);
             }
+            @Override
+            public Class getValueClass()
+            {
+                return String.class;
+            }
+            @Override
+            public Class getDisplayValueClass()
+            {
+                return String.class;
+            }
         });
         addColumn(isPublicCol);
 
@@ -238,7 +248,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             @Override
             public Object getValue(RenderContext ctx)
             {
-                Integer experimentAnnotationsId = ctx.get(FieldKey.fromParts(colInfo.getAlias()), Integer.class);
+                Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
                 ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
                 return expAnnotations != null ? expAnnotations.getDataLicense() : null;
             }
@@ -261,6 +271,16 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             {
                 DataLicense license = (DataLicense) getValue(ctx);
                 return license != null ? license.getUrl() : null;
+            }
+            @Override
+            public Class getValueClass()
+            {
+                return String.class;
+            }
+            @Override
+            public Class getDisplayValueClass()
+            {
+                return String.class;
             }
         });
         addColumn(licenseCol);
