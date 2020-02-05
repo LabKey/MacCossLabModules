@@ -29,6 +29,8 @@
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
+<%@ page import="org.labkey.api.util.Link" %>
+<%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -81,6 +83,7 @@
     }
     String accessUrl = accessUrlRecord == null ? null : accessUrlRecord.renderShortURL();
     String linkText = accessUrl == null ? null : (annot.isJournalCopy() ? "Link" : (journalCopyPending ? "Access link" : journal.getName() + " link"));
+    DataLicense license = annot.getDataLicense();
 %>
 <style>
  #title
@@ -194,7 +197,11 @@
        <a class="button-small button-small-green" style="margin:0px 5px 0px 2px;" href="" onclick="showShareLink(this, '<%=h(accessUrl)%>'); return false;">Share</a>
     </div>
  <% } %>
-
+<%if(license != null){%>
+<div class="link">
+    <strong>Data License: </strong> <%=license.getDisplayLinkHtml()%>
+</div>
+<%}%>
 <%if(annot.getCitation() != null && annot.getPublicationLink() != null){%>
     <div class="link"><%=h(annot.getCitation())%> <strong><br />[<a href="<%=h(annot.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
 <%}%>

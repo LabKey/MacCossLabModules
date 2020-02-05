@@ -224,6 +224,12 @@
             <column columnName="Copied"/>
             <column columnName="KeepPrivate"/>
             <column columnName="PxidRequested"/>
+            <column columnName="labHeadName"/>
+            <column columnName="labHeadEmail"/>
+            <column columnName="labHeadAffiliation"/>
+            <column columnName="DataLicense">
+                <columnTitle>License</columnTitle>
+            </column>
         </columns>
     </table>
 
