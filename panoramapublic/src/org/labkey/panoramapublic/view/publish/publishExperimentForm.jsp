@@ -28,6 +28,7 @@
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
+<%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -67,11 +68,6 @@
 %>
 
 <div id="publishExperimentForm"></div>
-
-<div style="font-weight:bold;font-style:italic;">
-    Data submitted to Panorama Public will be available under the <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0 license</a> once it is made public.
-    If you would like to make your data available under a different license please contact the PanoramaWeb team at panorama@proteinms.net.
-</div>
 
 <div style="margin: 30px 20px 20px 20px">
     By submitting the experiment you are granting access to <%=journalName%> to copy data as well as any
@@ -119,7 +115,7 @@
 
     Ext4.onReady(function(){
 
-        var journalStore = Ext4.create('Ext.data.Store', {
+        const journalStore = Ext4.create('Ext.data.Store', {
             fields: ['journalId','name'],
             data:   [
                 {"journalId": 0, "name": "Please select a target..."},
@@ -127,6 +123,14 @@
                 {"journalId":<%=j.getId()%>,"name":<%=q(j.getName())%>},
                 <%}%>
             ]
+        });
+
+        const dataLicenseStore = Ext4.create('Ext.data.Store', {
+            fields: ['enumName','title', 'url'],
+            data:   [<%for(DataLicense license: bean.getDataLicenseList()){%>
+                      {"enumName":<%=q(license.name())%>,"title":<%=q(license.getDisplayName())%>, "url": <%=q(license.getUrl())%>},
+                     <%}%>
+                    ]
         });
 
         var shortAccessUrlSpan;
@@ -252,6 +256,52 @@
                     name: 'labHeadAffiliation',
                     value: <%=q(form.getLabHeadAffiliation())%>,
                     inputWidth: '200',
+                },
+                {
+                    xtype: 'combobox',
+                    name: 'dataLicense',
+                    fieldLabel: 'Data License',
+                    queryMode: 'local',
+                    forceSelection: 'true',
+                    allowBlank: false,
+                    displayField: 'title',
+                    valueField: 'enumName',
+                    editable: false,
+                    inputValue: true,
+                    triggerAction: 'all',
+                    inputWidth: 200,
+                    store: dataLicenseStore,
+                    afterBodyEl: '<div style="font-weight:bold"><a id="panoramapublic_license_details_link" target="_blank">[License Details]</a></div>',
+                    msgTarget: 'side',
+                    value: <%=q(bean.getForm().getDataLicense())%>,
+                    listeners: {
+                        'afterrender': function(combo, eopts)
+                        {
+                            var licenseDetailsLink = Ext4.get("panoramapublic_license_details_link");
+                            if(licenseDetailsLink) {
+                                var licenseRecord = dataLicenseStore.findRecord('enumName', <%=q(bean.getForm().getDataLicense())%>);
+                                var licenseUrl = licenseRecord ? licenseRecord.data.url : null;
+                                licenseUrl ? licenseDetailsLink.dom.href = licenseUrl : licenseDetailsLink.setVisible(false);
+                            }
+                        },
+                        'select': function(combo, records, index)
+                        {
+                            var licenseDetailsLink = Ext4.get("panoramapublic_license_details_link");
+                            if(licenseDetailsLink)
+                            {
+                                var url = records[0].data.url;
+                                if(url)
+                                {
+                                    licenseDetailsLink.dom.href = url;
+                                    licenseDetailsLink.setVisible(true);
+                                }
+                                else {
+                                    licenseDetailsLink.dom.removeAttribute("href");
+                                    licenseDetailsLink.setVisible(false);
+                                }
+                            }
+                        }
+                    }
                 },
                 {
                     xtype: 'checkbox',

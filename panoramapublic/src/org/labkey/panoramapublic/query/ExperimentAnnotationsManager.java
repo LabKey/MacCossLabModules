@@ -35,7 +35,10 @@ import org.labkey.api.util.GUID;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.PanoramaPublicManager;
+import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.JournalExperiment;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -392,5 +395,12 @@ public class ExperimentAnnotationsManager
     {
         new SqlExecutor(PanoramaPublicManager.getSchema()).execute("UPDATE " + PanoramaPublicManager.getTableInfoExperimentAnnotations() +
                         " SET pxId = ? WHERE Id = ?", pxId, expAnnotations.getId());
+    }
+
+    public static DataLicense getLicenseSelectedForSubmission(Integer submittedExperimentId)
+    {
+        if(submittedExperimentId == null) return null;
+        JournalExperiment je = JournalManager.getLastPublishedRecord(submittedExperimentId);
+        return je != null ? je.getDataLicense() : null;
     }
 }

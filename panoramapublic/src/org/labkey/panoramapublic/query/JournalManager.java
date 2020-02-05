@@ -50,6 +50,7 @@ import org.labkey.api.view.ShortURLService;
 import org.labkey.api.view.UnauthorizedException;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
+import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
@@ -226,16 +227,8 @@ public class JournalManager
         Table.delete(PanoramaPublicManager.getTableInfoJournal(), new SimpleFilter(FieldKey.fromParts("id"), journal.getId()));
     }
 
-    public static JournalExperiment saveJournalExperiment(Journal journal, ExperimentAnnotations experiment, ShortURLRecord shortAccessUrl, ShortURLRecord shortCopyUrl,
-                                                          boolean getPxid, boolean keepPrivate, User user)
+    public static JournalExperiment saveJournalExperiment(JournalExperiment je, User user)
     {
-        JournalExperiment je = new JournalExperiment();
-        je.setJournalId(journal.getId());
-        je.setExperimentAnnotationsId(experiment.getId());
-        je.setShortAccessUrl(shortAccessUrl);
-        je.setShortCopyUrl(shortCopyUrl);
-        je.setPxidRequested(getPxid);
-        je.setKeepPrivate(keepPrivate);
         Table.insert(user, PanoramaPublicManager.getTableInfoJournalExperiment(), je);
         return je;
     }
@@ -282,12 +275,11 @@ public class JournalManager
         return getJournalExperiment(experiment.getId(), journal.getId());
     }
 
-    public static JournalExperiment addJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal,
-                                                     String shortAccessUrl, String shortCopyUrl, boolean getPxid, boolean keepPrivate, User user) throws ValidationException
+    public static JournalExperiment addJournalAccess(PanoramaPublicController.PanoramaPublicRequest request, User user) throws ValidationException
     {
         try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
         {
-            JournalExperiment je = setupJournalAccess(exptAnnotations, journal, shortAccessUrl, shortCopyUrl, getPxid, keepPrivate, user);
+            JournalExperiment je = setupJournalAccess(request, user);
 
             transaction.commit();
 
@@ -295,8 +287,11 @@ public class JournalManager
         }
     }
 
-    private static JournalExperiment setupJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal, String shortAccessUrl, String shortCopyUrl, boolean getPxid, boolean keepPrivate, User user) throws ValidationException
+    private static JournalExperiment setupJournalAccess(PanoramaPublicController.PanoramaPublicRequest request, User user) throws ValidationException
     {
+        Journal journal = request.getJournal();
+        ExperimentAnnotations exptAnnotations = request.getExperimentAnnotations();
+
         Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
 
         // Grant the journal group read and copy access to the source folder and subfolders
@@ -304,19 +299,26 @@ public class JournalManager
 
         // Save the short access URL
         ActionURL accessUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(exptAnnotations.getContainer());
-        ShortURLRecord accessUrlRecord = saveShortURL(accessUrl, shortAccessUrl, journalGroup, user);
+        ShortURLRecord accessUrlRecord = saveShortURL(accessUrl, request.getShortAccessUrl(), journalGroup, user);
 
         // Save the short copy URL.
         ActionURL copyUrl = PanoramaPublicController.getCopyExperimentURL(exptAnnotations.getId(), journal.getId(), exptAnnotations.getContainer());
-        ShortURLRecord copyUrlRecord = saveShortURL(copyUrl, shortCopyUrl, null, user);
+        ShortURLRecord copyUrlRecord = saveShortURL(copyUrl, request.getShortCopyUrl(), null, user);
 
         // Add an entry in the panoramapublic.JournalExperiment table.
-        JournalExperiment je = JournalManager.saveJournalExperiment(journal, exptAnnotations,
-                                                                    accessUrlRecord,
-                                                                    copyUrlRecord,
-                                                                    getPxid,
-                                                                    keepPrivate,
-                                                                    user);
+        JournalExperiment je = new JournalExperiment();
+        je.setJournalId(journal.getId());
+        je.setExperimentAnnotationsId(exptAnnotations.getId());
+        je.setShortAccessUrl(accessUrlRecord);
+        je.setShortCopyUrl(copyUrlRecord);
+        je.setPxidRequested(request.isGetPxid());
+        je.setKeepPrivate(request.isKeepPrivate());
+        je.setLabHeadName(request.getLabHeadName());
+        je.setLabHeadEmail(request.getLabHeadEmail());
+        je.setLabHeadAffiliation(request.getLabHeadAffiliation());
+        je.setDataLicense(DataLicense.resolveLicense(request.getDataLicense()));
+
+        je = JournalManager.saveJournalExperiment(je, user);
         return je;
     }
 
