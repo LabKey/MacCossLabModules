@@ -18,6 +18,7 @@ package org.labkey.lincs;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.PropertyManager;
@@ -66,7 +67,8 @@ public class LincsModule extends SpringModule
         return NAME;
     }
 
-    public double getVersion()
+    @Override
+    public @Nullable Double getSchemaVersion()
     {
         return 19.10;
     }
