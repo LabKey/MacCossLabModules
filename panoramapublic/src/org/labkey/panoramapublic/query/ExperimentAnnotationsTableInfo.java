@@ -57,6 +57,7 @@ import org.labkey.api.view.template.ClientDependency;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.PanoramaPublicController;
+import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.io.IOException;
@@ -160,7 +161,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
             {
                 // Get the ExperimentAnnotations record
-                Integer experimentAnnotationsId = ctx.get(FieldKey.fromParts(colInfo.getAlias()), Integer.class);
+                Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
                 ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
 
                 String accessUrl = JournalManager.getExperimentShortUrl(expAnnotations);
@@ -202,6 +203,87 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         runCountSQL.append(".ExperimentId)");
         ExprColumn runCountColumn = new ExprColumn(this, "Runs", runCountSQL, JdbcType.INTEGER);
         addColumn(runCountColumn);
+
+        var isPublicCol = wrapColumn("Public", getRealTable().getColumn("Id"));
+        isPublicCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
+        {
+            @Override
+            public Object getValue(RenderContext ctx)
+            {
+                Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
+                ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
+                if(expAnnotations != null)
+                {
+                    return expAnnotations.isPublic() ? "Yes" : "No";
+                }
+                return "Row not found in ExperimentAnnotations for id " + experimentAnnotationsId;
+            }
+            @Override
+            public Object getDisplayValue(RenderContext ctx)
+            {
+                return getValue(ctx);
+            }
+            @Override
+            public @NotNull String getFormattedValue(RenderContext ctx)
+            {
+                return (String)getValue(ctx);
+            }
+            @Override
+            public Class getValueClass()
+            {
+                return String.class;
+            }
+            @Override
+            public Class getDisplayValueClass()
+            {
+                return String.class;
+            }
+        });
+        addColumn(isPublicCol);
+
+        var licenseCol = wrapColumn("Data License", getRealTable().getColumn("Id"));
+        licenseCol.setURLTargetWindow("_blank");
+        licenseCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
+        {
+            @Override
+            public Object getValue(RenderContext ctx)
+            {
+                Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
+                ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
+                return expAnnotations != null ? expAnnotations.getDataLicense() : null;
+            }
+
+            @Override
+            public Object getDisplayValue(RenderContext ctx)
+            {
+                DataLicense license = (DataLicense) getValue(ctx);
+                return license != null ? license.getDisplayName() : "";
+            }
+
+            @Override
+            public @NotNull String getFormattedValue(RenderContext ctx)
+            {
+                return (String) getDisplayValue(ctx);
+            }
+
+            @Override
+            public String renderURL(RenderContext ctx)
+            {
+                DataLicense license = (DataLicense) getValue(ctx);
+                return license != null ? license.getUrl() : null;
+            }
+            @Override
+            public Class getValueClass()
+            {
+                return String.class;
+            }
+            @Override
+            public Class getDisplayValueClass()
+            {
+                return String.class;
+            }
+        });
+        addColumn(licenseCol);
 
         List<FieldKey> visibleColumns = new ArrayList<>();
         visibleColumns.add(FieldKey.fromParts("Share"));

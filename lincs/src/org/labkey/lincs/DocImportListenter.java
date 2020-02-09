@@ -200,19 +200,13 @@ public class DocImportListenter implements ExperimentListener
     private Set<String> getLincsFilesLowerCase(Container c, String baseName)
     {
         Set<String> files = new HashSet<>();
-        boolean processOnClue = LincsModule.processGctOnClueServer(c);
         baseName = baseName.toLowerCase();
         files.add(baseName + LincsModule.getExt(LincsModule.LincsLevel.Two).toLowerCase());
-        if(processOnClue)
-        {
-            files.add(baseName + LincsModule.getExt(LincsModule.LincsLevel.Three).toLowerCase());
-            files.add(baseName + LincsModule.getExt(LincsModule.LincsLevel.Four).toLowerCase());
-            files.add(baseName + LincsModule.getExt(LincsModule.LincsLevel.Config).toLowerCase());
-        }
-        else
-        {
-            files.add(baseName + ".processed.gct");
-        }
+
+        files.add(baseName + LincsModule.getExt(LincsModule.LincsLevel.Three).toLowerCase());
+        files.add(baseName + LincsModule.getExt(LincsModule.LincsLevel.Four).toLowerCase());
+        files.add(baseName + LincsModule.getExt(LincsModule.LincsLevel.Config).toLowerCase());
+
         files.add(baseName + ".console.txt");
         files.add(baseName + ".script.rout");
         return files;

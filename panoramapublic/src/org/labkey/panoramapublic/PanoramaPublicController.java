@@ -17,6 +17,7 @@ package org.labkey.panoramapublic;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -98,7 +99,6 @@ import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.Button;
-import org.labkey.api.util.DOM;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
@@ -106,6 +106,7 @@ import org.labkey.api.util.TestContext;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.*;
 import org.labkey.api.view.template.ClientDependency;
+import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
@@ -138,6 +139,7 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -755,7 +757,37 @@ public class PanoramaPublicController extends SpringActionController
                 throw new NotFoundException("Could not find experiment with id " + form.getId());
             }
 
+            populateForm(form, exptAnnotations);
             return getPublishFormView(form, exptAnnotations, errors);
+        }
+
+        private static void populateForm(PublishExperimentForm form, ExperimentAnnotations exptAnnotations)
+        {
+            JournalExperiment journalExperiment = JournalManager.getJournalExperiment(exptAnnotations.getId(), form.getJournalId());
+            if(journalExperiment != null)
+            {
+                form.setShortAccessUrl(journalExperiment.getShortAccessUrl().getShortURL());
+                form.setJournalId(journalExperiment.getJournalId());
+                form.setKeepPrivate(journalExperiment.isKeepPrivate());
+                form.setGetPxid(journalExperiment.isKeepPrivate());
+                form.setLabHeadName(journalExperiment.getLabHeadName());
+                form.setLabHeadEmail(journalExperiment.getLabHeadEmail());
+                form.setLabHeadAffiliation(journalExperiment.getLabHeadAffiliation());
+                DataLicense license = journalExperiment.getDataLicense();
+                form.setDataLicense(license == null ? DataLicense.defaultLicense().name() : license.name());
+            }
+            else if(form.getShortAccessUrl() == null)
+            {
+                form.setShortAccessUrl(generateRandomUrl(RANDOM_URL_SIZE));
+                List<Journal> journals = JournalManager.getJournals();
+                if (journals.size() == 0)
+                {
+                    throw new NotFoundException("Could not find any journals.");
+                }
+                form.setJournalId(journals.get(0).getId()); // This is "Panorama Public" on panoramaweb.org
+
+                form.setDataLicense(DataLicense.defaultLicense().name()); // CC BY 4.0 is default license
+            }
         }
     }
 
@@ -766,29 +798,11 @@ public class PanoramaPublicController extends SpringActionController
         bean.setForm(form);
         bean.setJournalList(JournalManager.getJournals());
         bean.setExperimentAnnotations(exptAnnotations);
-
-        JournalExperiment journalExperiment = JournalManager.getJournalExperiment(exptAnnotations.getId(), form.getJournalId());
-        if(journalExperiment != null)
-        {
-            form.setShortAccessUrl(journalExperiment.getShortAccessUrl().getShortURL());
-            form.setJournalId(journalExperiment.getJournalId());
-            form.setKeepPrivate(journalExperiment.isKeepPrivate());
-            form.setGetPxid(journalExperiment.isKeepPrivate());
-        }
-        else if(form.getShortAccessUrl() == null)
-        {
-            form.setShortAccessUrl(generateRandomUrl(RANDOM_URL_SIZE));
-            List<Journal> journals = JournalManager.getJournals();
-            if (journals.size() == 0)
-            {
-                throw new NotFoundException("Could not find any journals.");
-            }
-            form.setJournalId(journals.get(0).getId()); // This is "Panorama Public" on panoramaweb.org
-        }
+        bean.setDataLicenseList(Arrays.asList(DataLicense.values()));
 
         JspView view = new JspView("/org/labkey/panoramapublic/view/publish/publishExperimentForm.jsp", bean, errors);
         view.setFrame(WebPartView.FrameType.PORTAL);
-        view.setTitle("Submission Request to " + form.lookupJournal().getName());
+        view.setTitle((form.isUpdate() ? "Update" : "") + " Submission Request to " + form.lookupJournal().getName());
         return view;
     }
 
@@ -841,6 +855,31 @@ public class PanoramaPublicController extends SpringActionController
                             "The experiment you want to submit should be the only experiment defined in a folder and its subfolders.");
                 }
             }
+
+            // Check the lab head fields.  They should either all be blank or all filled
+            if(!((StringUtils.isBlank(form.getLabHeadName()) && StringUtils.isBlank(form.getLabHeadEmail()) && StringUtils.isBlank(form.getLabHeadAffiliation()))))
+            {
+                if(StringUtils.isBlank(form.getLabHeadName()))
+                {
+                    errors.reject(ERROR_MSG,"Please enter a Lab Head Name.");
+                }
+                if(StringUtils.isBlank(form.getLabHeadEmail()))
+                {
+                    errors.reject(ERROR_MSG,"Please enter a Lab Head Email");
+                }
+                else
+                {
+                    EmailValidator validator = EmailValidator.getInstance();
+                    if(!validator.isValid(form.getLabHeadEmail()))
+                    {
+                        errors.reject(ERROR_MSG,"Lab Head Email is invalid. Please enter a valid email address.");
+                    }
+                }
+                if(StringUtils.isBlank(form.getLabHeadAffiliation()))
+                {
+                    errors.reject(ERROR_MSG,"Please enter a Lab Head Affiliation");
+                }
+            }
         }
 
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
@@ -855,12 +894,12 @@ public class PanoramaPublicController extends SpringActionController
             else
             {
                 setTitle("Confirm Submission Request");
-                PublishExperimentConfirmBean bean = new PublishExperimentConfirmBean();
+                PanoramaPublicRequest bean = new PanoramaPublicRequest();
                 bean.setExperimentAnnotations(_experimentAnnotations);
                 bean.setJournal(_journal);
                 bean.setForm(form);
 
-                JspView<PublishExperimentConfirmBean> view = new JspView<PublishExperimentConfirmBean>("/org/labkey/panoramapublic/view/publish/confirmSubmit.jsp", bean, errors);
+                JspView<PanoramaPublicRequest> view = new JspView<PanoramaPublicRequest>("/org/labkey/panoramapublic/view/publish/confirmSubmit.jsp", bean, errors);
                 view.setTitle("Submission Request to " + _journal.getName());
                 return view;
             }
@@ -904,7 +943,7 @@ public class PanoramaPublicController extends SpringActionController
             JournalExperiment je;
             try
             {
-                je = JournalManager.addJournalAccess(_experimentAnnotations, _journal, form.getShortAccessUrl(), form.getShortCopyUrl(), form.isGetPxid(), form.isKeepPrivate(), getUser());
+                je = JournalManager.addJournalAccess(new PanoramaPublicRequest(_experimentAnnotations, _journal, form), getUser());
             }
             catch(ValidationException | UnauthorizedException  e)
             {
@@ -986,6 +1025,7 @@ public class PanoramaPublicController extends SpringActionController
     {
         private PublishExperimentForm _form;
         private List<Journal> _journalList;
+        private List<DataLicense> _dataLicenseList;
         private ExperimentAnnotations _experimentAnnotations;
 
         public PublishExperimentForm getForm()
@@ -1008,6 +1048,16 @@ public class PanoramaPublicController extends SpringActionController
             _journalList = journalList;
         }
 
+        public List<DataLicense> getDataLicenseList()
+        {
+            return _dataLicenseList;
+        }
+
+        public void setDataLicenseList(List<DataLicense> dataLicenseList)
+        {
+            _dataLicenseList = dataLicenseList;
+        }
+
         public ExperimentAnnotations getExperimentAnnotations()
         {
             return _experimentAnnotations;
@@ -1019,11 +1069,19 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    public static final class PublishExperimentConfirmBean
+    public static final class PanoramaPublicRequest
     {
         private PublishExperimentForm _form;
         private ExperimentAnnotations _experimentAnnotations;
         private Journal _journal;
+
+        public PanoramaPublicRequest(){}
+        public PanoramaPublicRequest(ExperimentAnnotations experimentAnnotations, Journal journal, PublishExperimentForm form)
+        {
+            _form = form;
+            _experimentAnnotations = experimentAnnotations;
+            _journal = journal;
+        }
 
         public PublishExperimentForm getForm()
         {
@@ -1054,6 +1112,42 @@ public class PanoramaPublicController extends SpringActionController
         {
             _journal = journal;
         }
+        public String getShortAccessUrl()
+        {
+            return _form.getShortAccessUrl();
+        }
+        public String getShortCopyUrl()
+        {
+            return _form.getShortCopyUrl();
+        }
+        public boolean isUpdate()
+        {
+            return _form.isUpdate();
+        }
+        public boolean isKeepPrivate()
+        {
+            return _form.isKeepPrivate();
+        }
+        public boolean isGetPxid()
+        {
+            return _form.isGetPxid();
+        }
+        public String getLabHeadName()
+        {
+            return _form.getLabHeadName();
+        }
+        public String getLabHeadAffiliation()
+        {
+            return _form.getLabHeadAffiliation();
+        }
+        public String getLabHeadEmail()
+        {
+            return _form.getLabHeadEmail();
+        }
+        public String getDataLicense()
+        {
+            return _form.getDataLicense();
+        }
     }
 
     public static class PublishExperimentForm extends PreSubmissionCheckForm
@@ -1067,6 +1161,7 @@ public class PanoramaPublicController extends SpringActionController
         private String _labHeadName;
         private String _labHeadAffiliation;
         private String _labHeadEmail;
+        private String _dataLicense;
 
         public int getJournalId()
         {
@@ -1167,6 +1262,16 @@ public class PanoramaPublicController extends SpringActionController
         {
             _labHeadEmail = labHeadEmail;
         }
+
+        public String getDataLicense()
+        {
+            return _dataLicense;
+        }
+
+        public void setDataLicense(String dataLicense)
+        {
+            _dataLicense = dataLicense;
+        }
     }
     // ------------------------------------------------------------------------
     // END Action for publishing an experiment (provide copy access to a journal)
@@ -1224,12 +1329,12 @@ public class PanoramaPublicController extends SpringActionController
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
             setTitle("Confirm Submission Update");
-            PublishExperimentConfirmBean bean = new PublishExperimentConfirmBean();
+            PanoramaPublicRequest bean = new PanoramaPublicRequest();
             bean.setExperimentAnnotations(_experimentAnnotations);
             bean.setJournal(_journal);
             bean.setForm(form);
 
-            JspView<PublishExperimentConfirmBean> view = new JspView<>("/org/labkey/panoramapublic/view/publish/confirmSubmit.jsp", bean, errors);
+            JspView<PanoramaPublicRequest> view = new JspView<>("/org/labkey/panoramapublic/view/publish/confirmSubmit.jsp", bean, errors);
             view.setTitle("Update Submission Request to " + _journal.getName());
             return view;
         }
@@ -1239,6 +1344,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             _journalExperiment.setKeepPrivate(form.isKeepPrivate());
             _journalExperiment.setPxidRequested(form.isGetPxid());
+            _journalExperiment.setDataLicense(DataLicense.resolveLicense(form.getDataLicense()));
             if(!_journalExperiment.getShortAccessUrl().getShortURL().equalsIgnoreCase(form.getShortAccessUrl()))
             {
                 // Change the short copy URL to match the access URL.
@@ -1648,6 +1754,13 @@ public class PanoramaPublicController extends SpringActionController
                 throw new RedirectException(url);
             }
 
+            if (!hasSkylineDocs(expAnnot))
+            {
+                errors.reject(ERROR_MSG, "There are no Skyline documents included in this experiment.  " +
+                        "Please upload one or more Skyline documents to proceed with the submission request.");
+                return new SimpleErrorView(errors);
+            }
+
             SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(expAnnot, form.isSkipMetaDataCheck(), form.isSkipRawDataCheck(), form.isSkipModCheck());
             if(status.isValid())
             {
@@ -1667,6 +1780,18 @@ public class PanoramaPublicController extends SpringActionController
         {
             return root.addChild("Pre-submission Check");
         }
+    }
+
+    private static boolean hasSkylineDocs(@NotNull ExperimentAnnotations expAnnot)
+    {
+        TargetedMSService service = TargetedMSService.get();
+        if(service != null)
+        {
+            Set<Container> expContainers = expAnnot.isIncludeSubfolders() ? ContainerManager.getAllChildren(expAnnot.getContainer())
+                    : Collections.singleton(expAnnot.getContainer());
+            return expContainers.stream().anyMatch(container -> service.getRuns(container).size() > 0);
+        }
+        return false;
     }
 
     public static class PreSubmissionCheckForm extends IdForm

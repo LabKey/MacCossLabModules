@@ -36,6 +36,10 @@ public class JournalExperiment
     private Date _copied;
     private boolean _keepPrivate;
     private boolean pxidRequested;
+    private String _labHeadName;
+    private String _labHeadEmail;
+    private String _labHeadAffiliation;
+    private DataLicense _dataLicense;
 
     public int getJournalId()
     {
@@ -125,5 +129,45 @@ public class JournalExperiment
     public void setPxidRequested(boolean pxidRequested)
     {
         this.pxidRequested = pxidRequested;
+    }
+
+    public String getLabHeadName()
+    {
+        return _labHeadName;
+    }
+
+    public void setLabHeadName(String labHeadName)
+    {
+        _labHeadName = labHeadName;
+    }
+
+    public String getLabHeadEmail()
+    {
+        return _labHeadEmail;
+    }
+
+    public void setLabHeadEmail(String labHeadEmail)
+    {
+        _labHeadEmail = labHeadEmail;
+    }
+
+    public String getLabHeadAffiliation()
+    {
+        return _labHeadAffiliation;
+    }
+
+    public void setLabHeadAffiliation(String labHeadAffiliation)
+    {
+        _labHeadAffiliation = labHeadAffiliation;
+    }
+
+    public DataLicense getDataLicense()
+    {
+        return _dataLicense;
+    }
+
+    public void setDataLicense(DataLicense dataLicense)
+    {
+        _dataLicense = dataLicense;
     }
 }

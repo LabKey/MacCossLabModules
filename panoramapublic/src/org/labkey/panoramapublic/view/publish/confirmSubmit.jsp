@@ -17,12 +17,13 @@
 %>
 <%@ page import="org.apache.commons.lang3.StringUtils" %>
 <%@ page import="org.labkey.api.security.User" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
+<%@ page import="org.labkey.api.view.ShortURLRecord" %>
+<%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -35,13 +36,14 @@
 
 <labkey:errors/>
 <%
-    JspView<PanoramaPublicController.PublishExperimentConfirmBean> me = (JspView<PanoramaPublicController.PublishExperimentConfirmBean>) HttpView.currentView();
-    PanoramaPublicController.PublishExperimentConfirmBean bean = me.getModelBean();
+    JspView<PanoramaPublicController.PanoramaPublicRequest> me = (JspView<PanoramaPublicController.PanoramaPublicRequest>) HttpView.currentView();
+    PanoramaPublicController.PanoramaPublicRequest bean = me.getModelBean();
     PanoramaPublicController.PublishExperimentForm form = bean.getForm();
 
     ExperimentAnnotations expAnnotations = bean.getExperimentAnnotations();
 
     String journal = bean.getJournal().getName();
+    DataLicense license = DataLicense.resolveLicense(form.getDataLicense());
 
     String labHeadName = form.getLabHeadName();
     String labHeadEmail = form.getLabHeadEmail();
@@ -66,7 +68,7 @@
     You are updating your submission request to <%=h(journal)%>.
     <br>
     <% } %>
-    The access link is: <%=h(AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + "/" + form.getShortAccessUrl())%>.
+    The access link is: <%=h(ShortURLRecord.renderShortURL(form.getShortAccessUrl()))%>.
     <br>
     <%if(form.isKeepPrivate()) {%>
     Your data on <%=h(journal)%> will be kept private and a reviewer account will be provided to you.
@@ -99,8 +101,12 @@
         <br>
     <% } %>
     <div style="font-weight:bold;font-style:italic;margin-top:10px;">
-        Data submitted to Panorama Public will be available under the <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0 license</a> once it is made public.
-        If you would like to make your data available under a different license please contact the PanoramaWeb team at panorama@proteinms.net.
+        <%if(form.isKeepPrivate()) { %>
+            After you make your data public it will be available on Panorama Public
+        <% } else { %>
+            Your data on Panorama Public will be available
+        <% } %>
+        under the <%=license.getDisplayLinkHtml()%> license
     </div>
 <br>
     Are you sure you want to continue?
