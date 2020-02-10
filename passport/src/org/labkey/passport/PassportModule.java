@@ -17,6 +17,7 @@
 package org.labkey.passport;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.module.ModuleContext;
@@ -44,7 +45,7 @@ public class PassportModule extends SpringModule
     }
 
     @Override
-    public double getVersion()
+    public @Nullable Double getSchemaVersion()
     {
         return 18.01;
     }
