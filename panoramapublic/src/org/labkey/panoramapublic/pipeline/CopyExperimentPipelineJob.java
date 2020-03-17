@@ -71,8 +71,10 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
         if (null == targetRoot)
             throw new NotFoundException("Cannot find target pipeline root.");
 
-        LocalDirectory localDirectory = LocalDirectory.create(targetRoot, PanoramaPublicModule.NAME, baseLogFileName,
-                !targetRoot.isCloudRoot() ? targetRoot.getRootPath().getAbsolutePath() : FileUtil.getTempDirectory().getPath());
+        // CONSIDER: Add a static factory method to LocalDirectory instead of using the constructor.
+        //           create(@NotNull PipeRoot root, @NotNull String moduleName, @NotNull String baseLogFileName, @NotNull String localDirPath, boolean temporary)
+        LocalDirectory localDirectory = new LocalDirectory(targetRoot.getContainer(), PanoramaPublicModule.NAME, root, baseLogFileName);
+
         setLocalDirectory(localDirectory);
         setLogFile(localDirectory.determineLogFile());
 
