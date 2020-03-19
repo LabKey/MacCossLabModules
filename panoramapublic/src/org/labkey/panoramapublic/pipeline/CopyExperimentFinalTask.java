@@ -199,21 +199,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 // DataFileUrl in exp.data and FilePathRoot in exp.experimentRun point to locations in the 'export' directory.
                 // We are now copying all files from the source container to the target container file root. Update the paths
                 // to point to locations in the target container file root, and delete the 'export' directory
-                if(updateDataPaths(target, service, user, job.getLogger()))
-                {
-                    // Delete the 'export' directory
-                    // 'export' directory is written to a local temp location if the target container is cloud-based,
-                    // and gets deleted after the pipeline job finishes successfully.
-                    if(!service.isCloudRoot(target))
-                    {
-                        File exportdir = jobSupport.getExportDir();
-                        if (exportdir.exists() && !FileUtil.deleteDir(exportdir))
-                        {
-                            job.getLogger().warn("Failed to delete export directory: " + exportdir);
-                        }
-                    }
-                }
-                else
+                if(!updateDataPaths(target, service, user, job.getLogger()))
                 {
                     throw new PipelineJobException("Unable to update all data file paths.");
                 }
