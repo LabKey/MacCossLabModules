@@ -18,9 +18,6 @@ package org.labkey.lincs;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.analytics.AnalyticsService;
-import org.labkey.api.cache.BlockingStringKeyCache;
-import org.labkey.api.cache.CacheLoader;
-import org.labkey.api.cache.CacheManager;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.RenderContext;
@@ -469,17 +466,4 @@ public class LincsDataTable extends FilteredTable
             return getValue(ctx);
         }
     }
-
-    private static final CacheLoader<String, Boolean> _gctFileCacheLoader = (key, arg) ->
-    {
-        if (arg != null)
-        {
-            return Files.exists((Path) arg);
-        }
-        return Boolean.FALSE;
-    };
-
-    private static final BlockingStringKeyCache<Boolean> _gctCache =
-            new BlockingStringKeyCache<Boolean>(CacheManager.getStringKeyCache(1000, CacheManager.WEEK, "GctFileCache"), _gctFileCacheLoader);
-
 }
