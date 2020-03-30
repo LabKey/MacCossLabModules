@@ -7,8 +7,7 @@ import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
-import org.labkey.test.categories.DailyB;
-import org.labkey.test.categories.MS2;
+import org.labkey.test.categories.Panorama;
 import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.components.CustomizeView;
 import org.labkey.test.pages.InsertPage;
@@ -24,7 +23,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
-@Category({DailyB.class, MS2.class})
+@Category({Panorama.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
 public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTest
 {
