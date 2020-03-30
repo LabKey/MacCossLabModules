@@ -19,6 +19,7 @@ package org.labkey.test.tests.passport;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.test.Locator;
+import org.labkey.test.categories.CustomModules;
 import org.labkey.test.categories.Panorama;
 import org.labkey.test.util.LogMethod;
 import org.labkey.test.util.PostgresOnlyTest;
@@ -26,7 +27,7 @@ import org.labkey.test.util.UIContainerHelper;
 
 import java.util.List;
 
-@Category({Panorama.class})
+@Category({CustomModules.class, Panorama.class})
 public class PassportTest  extends PassportTestPart implements PostgresOnlyTest
 {
     public PassportTest()
