@@ -7,7 +7,7 @@ import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
-import org.labkey.test.categories.CustomModules;
+import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.components.CustomizeView;
@@ -24,7 +24,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
-@Category({CustomModules.class, MacCossLabModules.class})
+@Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
 public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTest
 {
