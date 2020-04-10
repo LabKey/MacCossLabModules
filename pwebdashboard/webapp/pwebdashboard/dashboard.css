@@ -1,0 +1,16 @@
+.c3 svg g g.c3-axis.c3-axis-x {
+    font: 14px sans-serif;
+    font-weight: bold;
+}
+.c3-region-red{
+    fill: red;
+}
+.c3-region-teal{
+    fill: teal;
+}
+.c3-region-gold{
+    fill: gold;
+}
+.c3-region-green{
+    fill: green;
+}
