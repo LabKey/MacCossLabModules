@@ -116,10 +116,10 @@ public class SubmissionDataStatus
         return _missingLibFiles;
     }
 
-    public void addMissingLibFile(String lib, String skylineDoc, String[] ssf, String[] idFiles)
+    public void addMissingLibFile(String lib, String skylineDoc, List<String> ssf, List<String> idFiles)
     {
-        boolean hasSsf = ssf != null && ssf.length > 0;
-        boolean hasIdFiles = idFiles != null && idFiles.length > 0;
+        boolean hasSsf = ssf != null && !ssf.isEmpty();
+        boolean hasIdFiles = idFiles != null && !idFiles.isEmpty();
         if (!hasSsf && !hasIdFiles)
             return;
 
@@ -128,15 +128,15 @@ public class SubmissionDataStatus
         {
             _missingLibFiles.put(lib, new MissingLibrarySourceFiles(
                     new HashSet<>(Arrays.asList(skylineDoc)),
-                    hasSsf ? new HashSet<>(Arrays.asList(ssf)) : null,
-                    hasIdFiles ? new HashSet<>(Arrays.asList(idFiles)) : null));
+                    hasSsf ? new HashSet<>(ssf) : null,
+                    hasIdFiles ? new HashSet<>(idFiles) : null));
             return;
         }
         m.getSkyDocs().add(skylineDoc);
         if(hasSsf)
-            m.getSpectrumSourceFiles().addAll(Arrays.asList(ssf));
+            m.getSpectrumSourceFiles().addAll(ssf);
         if(hasIdFiles)
-            m.getIdFiles().addAll(Arrays.asList(idFiles));
+            m.getIdFiles().addAll(idFiles);
     }
 
     public List<ExperimentModificationGetter.PxModification> getInvalidMods()

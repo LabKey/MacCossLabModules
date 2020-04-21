@@ -269,7 +269,7 @@ public class SubmissionDataValidator
                     if (!hasExpData(FilenameUtils.getName(getFilePath(idFile)), run.getContainer(), rawFilesDir, expSvc))
                         idFilesMissing.add(idFile);
                 }
-                submissionStatus.addMissingLibFile(blib, run.getFileName(), ssfMissing.toArray(new String[0]), idFilesMissing.toArray(new String[0]));
+                submissionStatus.addMissingLibFile(blib, run.getFileName(), ssfMissing, idFilesMissing);
             }
         }
     }
