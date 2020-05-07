@@ -7,9 +7,9 @@ apply plugin: 'org.labkey.distribution'
 
 Distribution.inheritDependencies(project, ":server:distributions:legacy")
 
-BuildUtils.addModuleDistributionDependencies(project, [":externalModules:maccoss:signup",
-                                                       ":externalModules:maccoss:SkylineToolsStore",
-                                                       ":externalModules:maccoss:testresults"])
+BuildUtils.addModuleDistributionDependencies(project, [":server:modules:maccoss:signup",
+                                                       ":server:modules:maccoss:SkylineToolsStore",
+                                                       ":server:modules:maccoss:testresults"])
 
 project.task(
         "distribution",
