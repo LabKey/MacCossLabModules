@@ -269,8 +269,8 @@ public class ExperimentAnnotationsManager
     public static List<ExperimentAnnotations> getAllExperiments(Container container, User user)
     {
         SimpleFilter filter = new SimpleFilter();
-        ContainerFilter containerFilter = new ContainerFilter.CurrentAndSubfolders(user);
-        filter.addCondition(containerFilter.createFilterClause(PanoramaPublicManager.getSchema(), FieldKey.fromParts("Container"), container));
+        ContainerFilter containerFilter = ContainerFilter.Type.CurrentAndSubfolders.create(container, user);
+        filter.addCondition(containerFilter.createFilterClause(PanoramaPublicManager.getSchema(), FieldKey.fromParts("Container")));
 
         return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(), filter, null).getArrayList(ExperimentAnnotations.class);
     }
