@@ -325,7 +325,7 @@ public class ExperimentAnnotationsManager
 
     public static boolean hasExperimentsInSubfolders(Container container, User user)
     {
-        Collection<GUID> containerIds = new ContainerFilter.CurrentAndSubfolders(user).getIds(container);
+        Collection<GUID> containerIds = ContainerFilter.Type.CurrentAndSubfolders.create(container, user).getIds();
         if(containerIds == null || containerIds.size() == 0)
         {
             return false;
