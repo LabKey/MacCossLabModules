@@ -269,8 +269,8 @@ public class ExperimentAnnotationsManager
     public static List<ExperimentAnnotations> getAllExperiments(Container container, User user)
     {
         SimpleFilter filter = new SimpleFilter();
-        ContainerFilter containerFilter = new ContainerFilter.CurrentAndSubfolders(user);
-        filter.addCondition(containerFilter.createFilterClause(PanoramaPublicManager.getSchema(), FieldKey.fromParts("Container"), container));
+        ContainerFilter containerFilter = ContainerFilter.Type.CurrentAndSubfolders.create(container, user);
+        filter.addCondition(containerFilter.createFilterClause(PanoramaPublicManager.getSchema(), FieldKey.fromParts("Container")));
 
         return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(), filter, null).getArrayList(ExperimentAnnotations.class);
     }
@@ -325,7 +325,7 @@ public class ExperimentAnnotationsManager
 
     public static boolean hasExperimentsInSubfolders(Container container, User user)
     {
-        Collection<GUID> containerIds = new ContainerFilter.CurrentAndSubfolders(user).getIds(container);
+        Collection<GUID> containerIds = ContainerFilter.Type.CurrentAndSubfolders.create(container, user).getIds();
         if(containerIds == null || containerIds.size() == 0)
         {
             return false;
