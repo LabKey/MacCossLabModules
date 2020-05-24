@@ -154,9 +154,9 @@ public class SkylineToolsStoreController extends SpringActionController
             return new SkylineToolsStoreWebPart();
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild(getToolStoreNav(getContainer()));
+            root.addChild(getToolStoreNav(getContainer()));
         }
     }
 
@@ -612,10 +612,9 @@ public class SkylineToolsStoreController extends SpringActionController
             return new JspView("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", null);
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
             root.addChild(getToolStoreNav(getContainer())).addChild("Upload Tool", getURL());
-            return root;
         }
 
         public ActionURL getURL()
@@ -1171,9 +1170,8 @@ public class SkylineToolsStoreController extends SpringActionController
             return new SimpleErrorView(errors);
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
     public static class DownloadFileForm
@@ -1264,9 +1262,8 @@ public class SkylineToolsStoreController extends SpringActionController
             return new SkylineToolDetails(_tool);
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 

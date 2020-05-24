@@ -21,8 +21,8 @@ import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
-import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.ApiSimpleResponse;
+import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
 import org.labkey.api.data.CompareType;
@@ -56,7 +56,6 @@ import org.labkey.api.view.ViewContext;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestFailDetail;
 import org.labkey.testresults.model.TestHandleLeakDetail;
-import org.labkey.testresults.model.TestMemoryLeakDetail;
 import org.labkey.testresults.model.TestMemoryLeakDetail;
 import org.labkey.testresults.model.TestPassDetail;
 import org.labkey.testresults.model.User;
@@ -144,9 +143,8 @@ public class TestResultsController extends SpringActionController
             return new JspView("/org/labkey/testresults/view/rundown.jsp", bean);
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -358,9 +356,8 @@ public class TestResultsController extends SpringActionController
             return new JspView("/org/labkey/testresults/view/trainingdata.jsp", bean);
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -525,9 +522,8 @@ public class TestResultsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -594,9 +590,8 @@ public class TestResultsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -630,9 +625,8 @@ public class TestResultsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -689,9 +683,8 @@ public class TestResultsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -718,9 +711,8 @@ public class TestResultsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -749,9 +741,8 @@ public class TestResultsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -770,9 +761,8 @@ public class TestResultsController extends SpringActionController
             return new JspView("/org/labkey/testresults/view/flagged.jsp", new TestsDataBean(details, new User[0]));
         }
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -881,7 +871,7 @@ public class TestResultsController extends SpringActionController
                 return new ApiSimpleResponse(res);
             }
 
-            // DEFALT TO CHECK STATUS
+            // DEFAULT TO CHECK STATUS
             res.put("Message", "Status");
             res.put("Response", "" + scheduler.checkExists(jobKeyEmail));
             return new ApiSimpleResponse(res);
@@ -943,9 +933,8 @@ public class TestResultsController extends SpringActionController
 
             res.put("Message", "Success");
 
-            // DEFALT TO CHECK STATUS
+            // DEFAULT TO CHECK STATUS
             return new ApiSimpleResponse(res);
-
         }
     }
 
@@ -1043,9 +1032,8 @@ public class TestResultsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 

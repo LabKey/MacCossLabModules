@@ -128,9 +128,8 @@ public class LincsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -312,11 +311,6 @@ public class LincsController extends SpringActionController
             }
 
             return null;
-        }
-
-        public NavTree appendNavTrail(NavTree root)
-        {
-            return root;
         }
     }
 
@@ -552,9 +546,8 @@ public class LincsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return null;
         }
     }
 
@@ -736,9 +729,8 @@ public class LincsController extends SpringActionController
             return null;
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -1038,9 +1030,8 @@ public class LincsController extends SpringActionController
             return new JspView<>("/org/labkey/lincs/view/manageClueCredentials.jsp", form, errors);
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -1142,13 +1133,12 @@ public class LincsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            if(root != null)
+            if (root != null)
             {
                 root.addChild("PSP Job Details");
             }
-            return root;
         }
     }
 
@@ -1274,13 +1264,12 @@ public class LincsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            if(root != null)
+            if (root != null)
             {
                 root.addChild("PSP Job Status");
             }
-            return root;
         }
     }
 

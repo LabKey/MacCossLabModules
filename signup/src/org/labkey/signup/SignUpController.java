@@ -91,10 +91,9 @@ public class SignUpController extends SpringActionController
             return result;
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            PageFlowUtil.urlProvider(AdminUrls.class).appendAdminNavTrail(root, "Sign Up Admin", null);
-            return root;
+            PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Sign Up Admin", null);
         }
     }
 
@@ -405,9 +404,8 @@ public class SignUpController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -526,9 +524,8 @@ public class SignUpController extends SpringActionController
             throw new UnsupportedOperationException();
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 

@@ -212,10 +212,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
             root.addChild("Journal Groups");
-            return root;
         }
     }
 
@@ -351,14 +350,13 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
             if(root != null)
             {
                 root.addChild("Journal groups", new ActionURL(JournalGroupsAdminViewAction.class, getContainer()));
                 root.addChild("Create New Journal Group");
             }
-            return root;
         }
     }
 
@@ -504,14 +502,13 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
             if(root != null)
             {
                 root.addChild("Journal groups", new ActionURL(JournalGroupsAdminViewAction.class, getContainer()));
                 root.addChild("Journal group details");
             }
-            return root;
         }
     }
 
@@ -650,9 +647,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Copy Experiment");
+            root.addChild("Copy Experiment");
         }
     }
 
@@ -743,9 +740,9 @@ public class PanoramaPublicController extends SpringActionController
     public static class ViewPublishExperimentFormAction extends SimpleViewAction<PublishExperimentForm>
     {
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Experiment Submission Form");
+            root.addChild("Experiment Submission Form");
         }
 
         @Override
@@ -1776,9 +1773,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Pre-submission Check");
+            root.addChild("Pre-submission Check");
         }
     }
 
@@ -1875,9 +1872,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("ProteomeXchange Actions");
+            root.addChild("ProteomeXchange Actions");
         }
     }
 
@@ -2160,9 +2157,9 @@ public class PanoramaPublicController extends SpringActionController
             return new HtmlView(html.toString());
         }
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Validate ProteomeXchange XML");
+            root.addChild("Validate ProteomeXchange XML");
         }
     }
 
@@ -2188,9 +2185,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Submit ProteomeXchange XML");
+            root.addChild("Submit ProteomeXchange XML");
         }
     }
 
@@ -2264,9 +2261,9 @@ public class PanoramaPublicController extends SpringActionController
             return new HtmlView(html.toString());
         }
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Save ProteomeXchange ID");
+            root.addChild("Save ProteomeXchange ID");
         }
     }
 
@@ -2313,9 +2310,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Summary of ProteomeXchange Information");
+            root.addChild("Summary of ProteomeXchange Information");
         }
     }
 
@@ -2345,9 +2342,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Create Targeted MS Experiment");
+            root.addChild("Create Targeted MS Experiment");
         }
     }
 
@@ -2484,9 +2481,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Create Targeted MS Experiment");
+            root.addChild("Create Targeted MS Experiment");
         }
     }
 
@@ -2611,11 +2608,10 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Targeted MS Experiment Details");
+            root.addChild("Targeted MS Experiment Details");
         }
-
     }
 
     public static class ExperimentAnnotationsDetails
@@ -2728,9 +2724,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Update Targeted MS Experiment Details");
+            root.addChild("Update Targeted MS Experiment Details");
         }
     }
 
@@ -2791,9 +2787,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Update Targeted MS Experiment");
+            root.addChild("Update Targeted MS Experiment");
         }
     }
 
@@ -3095,9 +3091,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Add Panorama Public Module");
+            root.addChild("Add Panorama Public Module");
         }
     }
 
