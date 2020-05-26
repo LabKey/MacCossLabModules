@@ -188,6 +188,7 @@ public class TestPassDetail implements Comparable<TestPassDetail>
         this.handles = handles;
     }
 
+    @Override
     public int compareTo(TestPassDetail o2) {
         return this.getId() - o2.getId();
     }

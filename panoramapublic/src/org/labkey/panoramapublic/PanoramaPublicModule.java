@@ -128,6 +128,7 @@ public class PanoramaPublicModule extends SpringModule
 
         BaseWebPartFactory containerExperimentFactory = new BaseWebPartFactory(TargetedMSExperimentWebPart.WEB_PART_NAME)
         {
+            @Override
             public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
             {
                 return new TargetedMSExperimentWebPart(portalCtx);
@@ -136,6 +137,7 @@ public class PanoramaPublicModule extends SpringModule
 
         BaseWebPartFactory proteinSearchFactory = new BaseWebPartFactory("Panorama Public Protein Search")
         {
+            @Override
             public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
             {
                 JspView view = new JspView("/org/labkey/panoramapublic/view/search/panoramaPublicProteinSearch.jsp", getDefaultProteinSearchForm());
@@ -151,6 +153,7 @@ public class PanoramaPublicModule extends SpringModule
 
         BaseWebPartFactory peptideSearchFactory = new BaseWebPartFactory("Panorama Public Peptide Search")
         {
+            @Override
             public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
             {
                 JspView view = new JspView("/org/labkey/panoramapublic/view/search/panoramaPublicPeptideSearch.jsp", getDefaultPeptideSearchForm());

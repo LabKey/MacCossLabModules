@@ -699,6 +699,7 @@ public class PanoramaPublicController extends SpringActionController
             return _destParentContainerId != null ? ContainerManager.getForRowId(_destParentContainerId) : null;
         }
 
+        @Override
         public ActionURL getReturnActionURL()
         {
             ActionURL result;
@@ -879,6 +880,7 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
+        @Override
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
             if(form.isGetPxid() && (!SubmissionDataValidator.isValid(_experimentAnnotations, form.isSkipMetaDataCheck(), form.isSkipRawDataCheck(), form.isSkipModCheck())))
@@ -902,6 +904,7 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
+        @Override
         public ModelAndView getSuccessView(PublishExperimentForm form)
         {
             setTitle("Submitted");
@@ -926,6 +929,7 @@ public class PanoramaPublicController extends SpringActionController
             return view;
         }
 
+        @Override
         public ModelAndView getFailView(PublishExperimentForm form, BindException errors)
         {
             return getPublishFormView(form, _experimentAnnotations, errors);
@@ -1283,6 +1287,7 @@ public class PanoramaPublicController extends SpringActionController
     {
         private JournalExperiment _journalExperiment;
 
+        @Override
         public void validateForm(PublishExperimentForm form, Errors errors)
         {
             _journalExperiment = JournalManager.getJournalExperiment(_experimentAnnotations.getId(), form.getJournalId());
@@ -1305,6 +1310,7 @@ public class PanoramaPublicController extends SpringActionController
             super.validateForm(form, errors);
         }
 
+        @Override
         protected void validateJournal(Errors errors, ExperimentAnnotations experiment, Journal journal)
         {
             Journal oldJournal = JournalManager.getJournal(_journalExperiment.getJournalId());
@@ -1314,6 +1320,7 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
+        @Override
         protected void validateShortAccessUrl(PublishExperimentForm form, Errors errors)
         {
             ShortURLRecord accessUrlRecord = _journalExperiment.getShortAccessUrl();
@@ -1323,6 +1330,7 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
+        @Override
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
             setTitle("Confirm Submission Update");
@@ -2519,11 +2527,13 @@ public class PanoramaPublicController extends SpringActionController
             _addSelectedRuns = addSelectedRuns;
         }
 
+        @Override
         public String getDataRegionSelectionKey()
         {
             return _dataRegionSelectionKey;
         }
 
+        @Override
         public void setDataRegionSelectionKey(String dataRegionSelectionKey)
         {
             _dataRegionSelectionKey = dataRegionSelectionKey;
@@ -2706,6 +2716,7 @@ public class PanoramaPublicController extends SpringActionController
     @RequiresPermission(UpdatePermission.class)
     public class ShowUpdateExperimentAnnotationsAction extends SimpleViewAction<ExperimentAnnotationsForm>
     {
+        @Override
         public ModelAndView getView(ExperimentAnnotationsForm form, BindException errors)
         {
             form.refreshFromDb();
@@ -2744,6 +2755,7 @@ public class PanoramaPublicController extends SpringActionController
     public class UpdateExperimentAnnotationsAction extends FormViewAction<ExperimentAnnotationsForm>
     {
         private int _experimentAnnotationsId;
+        @Override
         public void validateCommand(ExperimentAnnotationsForm target, Errors errors)
         {}
 
@@ -2755,6 +2767,7 @@ public class PanoramaPublicController extends SpringActionController
             return view;
         }
 
+        @Override
         public boolean handlePost(ExperimentAnnotationsForm form, BindException errors) throws Exception
         {
             _experimentAnnotationsId = form.getBean().getId();
@@ -2781,6 +2794,7 @@ public class PanoramaPublicController extends SpringActionController
             return true;
         }
 
+        @Override
         public ActionURL getSuccessURL(ExperimentAnnotationsForm form)
         {
             return getViewExperimentDetailsURL(_experimentAnnotationsId, getContainer());
@@ -2853,16 +2867,19 @@ public class PanoramaPublicController extends SpringActionController
     {
         private String _dataRegionSelectionKey;
 
+        @Override
         public int[] getIds()
         {
             return PageFlowUtil.toInts(DataRegionSelection.getSelected(getViewContext(), getDataRegionSelectionKey(), false));
         }
 
+        @Override
         public String getDataRegionSelectionKey()
         {
             return _dataRegionSelectionKey;
         }
 
+        @Override
         public void setDataRegionSelectionKey(String dataRegionSelectionKey)
         {
             _dataRegionSelectionKey = dataRegionSelectionKey;
@@ -2876,6 +2893,7 @@ public class PanoramaPublicController extends SpringActionController
 
     public static class DeleteExperimentAnnotationsForm extends ExperimentAnnotationsForm implements SelectedExperimentIds
     {
+        @Override
         public int[] getIds()
         {
             return new int[]{this.getBean().getId()};
@@ -2892,6 +2910,7 @@ public class PanoramaPublicController extends SpringActionController
             return FormPage.getView("/org/labkey/panoramapublic/view/expannotations/deleteExperimentAnnotations.jsp", deleteForm);
         }
 
+        @Override
         public boolean handlePost(DeleteExperimentAnnotationsForm form, BindException errors)
         {
             int _experimentAnnotationsId = form.getBean().getId();
@@ -2925,10 +2944,12 @@ public class PanoramaPublicController extends SpringActionController
     {
         private ExperimentAnnotations _expAnnot;
 
+        @Override
         public void validateCommand(ExperimentForm form, Errors errors)
         {
         }
 
+        @Override
         public boolean handlePost(ExperimentForm form, BindException errors)
         {
             _expAnnot = form.lookupExperiment();
@@ -2963,6 +2984,7 @@ public class PanoramaPublicController extends SpringActionController
             return true;
         }
 
+        @Override
         public ActionURL getSuccessURL(ExperimentForm form)
         {
             return getViewExperimentDetailsURL(_expAnnot.getId(), getContainer());
@@ -2974,10 +2996,12 @@ public class PanoramaPublicController extends SpringActionController
     {
         private ExperimentAnnotations _expAnnot;
 
+        @Override
         public void validateCommand(ExperimentForm form, Errors errors)
         {
         }
 
+        @Override
         public boolean handlePost(ExperimentForm form, BindException errors)
         {
             _expAnnot = form.lookupExperiment();
@@ -3007,6 +3031,7 @@ public class PanoramaPublicController extends SpringActionController
             return true;
         }
 
+        @Override
         public ActionURL getSuccessURL(ExperimentForm form)
         {
             return getViewExperimentDetailsURL(_expAnnot.getId(), getContainer());

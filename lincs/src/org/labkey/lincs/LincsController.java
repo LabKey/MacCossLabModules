@@ -185,6 +185,7 @@ public class LincsController extends SpringActionController
     @RequiresPermission(ReadPermission.class)
     public class RunGCTReportApiAction extends ReadOnlyApiAction<GCTReportForm>
     {
+        @Override
         public ApiResponse execute(GCTReportForm form, BindException errors) throws Exception
         {
             if(form.getRunId() == 0)
@@ -702,6 +703,7 @@ public class LincsController extends SpringActionController
     @RequiresPermission(ReadPermission.class)
     public class DownloadCustomGCTReportAction extends SimpleViewAction<DownloadCustomGCTReportForm>
     {
+        @Override
         public ModelAndView getView(DownloadCustomGCTReportForm form, BindException errors) throws Exception
         {
             if(form.getFileName() == null)
@@ -729,6 +731,7 @@ public class LincsController extends SpringActionController
             return null;
         }
 
+        @Override
         public void addNavTrail(NavTree root)
         {
         }
@@ -1030,6 +1033,7 @@ public class LincsController extends SpringActionController
             return new JspView<>("/org/labkey/lincs/view/manageClueCredentials.jsp", form, errors);
         }
 
+        @Override
         public void addNavTrail(NavTree root)
         {
         }
@@ -1064,6 +1068,7 @@ public class LincsController extends SpringActionController
     @RequiresPermission(AdminPermission.class)
     public class LincsPspJobDetailsAction extends SimpleViewAction<LincsPspJobForm>
     {
+        @Override
         public ModelAndView getView(LincsPspJobForm form, BindException errors)
         {
             int runId = form.getRunId();
@@ -1206,6 +1211,7 @@ public class LincsController extends SpringActionController
     @RequiresPermission(AdminPermission.class)
     public class LincsPspJobStatusAction extends SimpleViewAction<LincsPspJobForm>
     {
+        @Override
         public ModelAndView getView(LincsPspJobForm form, BindException errors)
         {
             int jobId = form.getJobId();

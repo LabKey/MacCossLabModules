@@ -94,7 +94,8 @@
            List<User> uniqueUsers = new ArrayList<>();
            for(User u: users)
                uniqueUsers.add(u);
-           Collections.sort(uniqueUsers, new Comparator<User>(){ public int compare(User o1, User o2)
+           Collections.sort(uniqueUsers, new Comparator<User>(){ @Override
+           public int compare(User o1, User o2)
                {
                    return o1.getUsername().compareTo(o2.getUsername());
                }

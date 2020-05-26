@@ -67,6 +67,7 @@ public class LincsSchema extends UserSchema
     {
         DefaultSchema.registerProvider(SCHEMA_NAME, new DefaultSchema.SchemaProvider(module)
         {
+            @Override
             public QuerySchema createSchema(DefaultSchema schema, Module module)
             {
                 return new LincsSchema(schema.getUser(), schema.getContainer());

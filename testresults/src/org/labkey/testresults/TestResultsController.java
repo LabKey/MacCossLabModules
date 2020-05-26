@@ -137,12 +137,14 @@ public class TestResultsController extends SpringActionController
     public class BeginAction extends SimpleViewAction
     {
 
+        @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
         {
             RunDownBean bean = getRunDownBean(getUser(), getContainer(), getViewContext());
             return new JspView("/org/labkey/testresults/view/rundown.jsp", bean);
         }
 
+        @Override
         public void addNavTrail(NavTree root)
         {
         }
@@ -336,6 +338,7 @@ public class TestResultsController extends SpringActionController
     @RequiresPermission(ReadPermission.class)
     public class TrainingDataViewAction extends SimpleViewAction
     {
+        @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
         {
             List<Integer> foundRuns = new ArrayList<>();
@@ -356,6 +359,7 @@ public class TestResultsController extends SpringActionController
             return new JspView("/org/labkey/testresults/view/trainingdata.jsp", bean);
         }
 
+        @Override
         public void addNavTrail(NavTree root)
         {
         }

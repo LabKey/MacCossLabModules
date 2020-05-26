@@ -39,6 +39,7 @@ public class RunDownBean extends TestsDataBean
     public Map<User, List<RunDetail>> getUserToRunsMap(Date selectedDate) {
         // treemap sorted by usernames
         Map<User, List<RunDetail>> map = new TreeMap<>(new Comparator<User>() {
+            @Override
             public int compare(User u1, User u2) {
                 return u1.getUsername().compareTo(u2.getUsername());
             }

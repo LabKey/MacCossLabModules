@@ -93,6 +93,7 @@ public class PassportController extends SpringActionController
             return vbox;
         }
 
+        @Override
         public void addNavTrail(NavTree root)
         {
         }
@@ -110,6 +111,7 @@ public class PassportController extends SpringActionController
             return new JspView<>("/org/labkey/passport/view/ProteinWebPart.jsp", protein);
         }
 
+        @Override
         public void addNavTrail(NavTree root)
         {
         }

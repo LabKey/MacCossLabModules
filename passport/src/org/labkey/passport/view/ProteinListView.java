@@ -32,6 +32,7 @@ public class ProteinListView extends QueryView
         super.renderView(model, request, response);
     }
 
+    @Override
     protected void populateButtonBar(DataView view, ButtonBar bar)
     {
         super.populateButtonBar(view, bar);

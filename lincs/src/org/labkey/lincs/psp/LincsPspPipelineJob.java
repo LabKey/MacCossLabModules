@@ -78,6 +78,7 @@ public class LincsPspPipelineJob extends PipelineJob implements LincsPspJobSuppo
         return _run;
     }
 
+    @Override
     public LincsPspJob getPspJob()
     {
         return _pspJob;
