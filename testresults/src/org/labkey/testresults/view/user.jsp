@@ -2,28 +2,27 @@
 <%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.data.TableSelector" %>
 <%@ page import="org.labkey.api.data.statistics.StatsService" %>
-<%@ page import="org.labkey.api.services.ServiceRegistry" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.TestResultsController" %>
 <%@ page import="org.labkey.testresults.TestResultsSchema" %>
-<%@ page import="org.labkey.testresults.view.TestsDataBean" %>
+<%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.User" %>
+<%@ page import="org.labkey.testresults.view.TestsDataBean" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="java.util.ArrayList" %>
-<%@ page import="java.util.Collections" %>
+<%@ page import="java.util.Arrays" %>
 <%@ page import="java.util.Comparator" %>
 <%@ page import="java.util.Date" %>
-<%@ page import="java.util.List" %>
-<%@ page import="java.util.NavigableSet" %>
-<%@ page import="java.util.TreeSet" %>
-<%@ page import="java.util.Map" %>
 <%@ page import="java.util.Iterator" %>
+<%@ page import="java.util.List" %>
+<%@ page import="java.util.Map" %>
+<%@ page import="java.util.NavigableSet" %>
 <%@ page import="java.util.TreeMap" %>
+<%@ page import="java.util.TreeSet" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
@@ -91,15 +90,8 @@
     <%}%>
       <%if(!showSingleUser) {
            User[] users = new TableSelector(TestResultsSchema.getInstance().getTableInfoUser(), null, null).getArray(User.class);
-           List<User> uniqueUsers = new ArrayList<>();
-           for(User u: users)
-               uniqueUsers.add(u);
-           Collections.sort(uniqueUsers, new Comparator<User>(){ @Override
-           public int compare(User o1, User o2)
-               {
-                   return o1.getUsername().compareTo(o2.getUsername());
-               }
-           }); %>
+           List<User> uniqueUsers = new ArrayList<>(Arrays.asList(users));
+           uniqueUsers.sort(Comparator.comparing(User::getUsername)); %>
        <p>No user selected, please select from the following list:</p>
        <select id="users">
            <option disabled selected> -- select an option -- </option>
