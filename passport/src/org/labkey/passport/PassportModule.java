@@ -61,6 +61,7 @@ public class PassportModule extends SpringModule
     protected Collection<WebPartFactory> createWebPartFactories() {
         BaseWebPartFactory paretoPlotFactory = new BaseWebPartFactory("Passport")
         {
+            @Override
             public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
             {
                 QueryView v =  ProteinListView.createView(portalCtx);

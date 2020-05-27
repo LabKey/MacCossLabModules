@@ -212,10 +212,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
             root.addChild("Journal Groups");
-            return root;
         }
     }
 
@@ -351,14 +350,13 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
             if(root != null)
             {
                 root.addChild("Journal groups", new ActionURL(JournalGroupsAdminViewAction.class, getContainer()));
                 root.addChild("Create New Journal Group");
             }
-            return root;
         }
     }
 
@@ -504,14 +502,13 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
             if(root != null)
             {
                 root.addChild("Journal groups", new ActionURL(JournalGroupsAdminViewAction.class, getContainer()));
                 root.addChild("Journal group details");
             }
-            return root;
         }
     }
 
@@ -650,9 +647,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Copy Experiment");
+            root.addChild("Copy Experiment");
         }
     }
 
@@ -702,6 +699,7 @@ public class PanoramaPublicController extends SpringActionController
             return _destParentContainerId != null ? ContainerManager.getForRowId(_destParentContainerId) : null;
         }
 
+        @Override
         public ActionURL getReturnActionURL()
         {
             ActionURL result;
@@ -743,9 +741,9 @@ public class PanoramaPublicController extends SpringActionController
     public static class ViewPublishExperimentFormAction extends SimpleViewAction<PublishExperimentForm>
     {
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Experiment Submission Form");
+            root.addChild("Experiment Submission Form");
         }
 
         @Override
@@ -882,6 +880,7 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
+        @Override
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
             if(form.isGetPxid() && (!SubmissionDataValidator.isValid(_experimentAnnotations, form.isSkipMetaDataCheck(), form.isSkipRawDataCheck(), form.isSkipModCheck())))
@@ -905,6 +904,7 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
+        @Override
         public ModelAndView getSuccessView(PublishExperimentForm form)
         {
             setTitle("Submitted");
@@ -929,6 +929,7 @@ public class PanoramaPublicController extends SpringActionController
             return view;
         }
 
+        @Override
         public ModelAndView getFailView(PublishExperimentForm form, BindException errors)
         {
             return getPublishFormView(form, _experimentAnnotations, errors);
@@ -1286,6 +1287,7 @@ public class PanoramaPublicController extends SpringActionController
     {
         private JournalExperiment _journalExperiment;
 
+        @Override
         public void validateForm(PublishExperimentForm form, Errors errors)
         {
             _journalExperiment = JournalManager.getJournalExperiment(_experimentAnnotations.getId(), form.getJournalId());
@@ -1308,6 +1310,7 @@ public class PanoramaPublicController extends SpringActionController
             super.validateForm(form, errors);
         }
 
+        @Override
         protected void validateJournal(Errors errors, ExperimentAnnotations experiment, Journal journal)
         {
             Journal oldJournal = JournalManager.getJournal(_journalExperiment.getJournalId());
@@ -1317,6 +1320,7 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
+        @Override
         protected void validateShortAccessUrl(PublishExperimentForm form, Errors errors)
         {
             ShortURLRecord accessUrlRecord = _journalExperiment.getShortAccessUrl();
@@ -1326,6 +1330,7 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
+        @Override
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
             setTitle("Confirm Submission Update");
@@ -1776,9 +1781,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Pre-submission Check");
+            root.addChild("Pre-submission Check");
         }
     }
 
@@ -1875,9 +1880,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("ProteomeXchange Actions");
+            root.addChild("ProteomeXchange Actions");
         }
     }
 
@@ -2160,9 +2165,9 @@ public class PanoramaPublicController extends SpringActionController
             return new HtmlView(html.toString());
         }
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Validate ProteomeXchange XML");
+            root.addChild("Validate ProteomeXchange XML");
         }
     }
 
@@ -2188,9 +2193,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Submit ProteomeXchange XML");
+            root.addChild("Submit ProteomeXchange XML");
         }
     }
 
@@ -2264,9 +2269,9 @@ public class PanoramaPublicController extends SpringActionController
             return new HtmlView(html.toString());
         }
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Save ProteomeXchange ID");
+            root.addChild("Save ProteomeXchange ID");
         }
     }
 
@@ -2313,9 +2318,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Summary of ProteomeXchange Information");
+            root.addChild("Summary of ProteomeXchange Information");
         }
     }
 
@@ -2345,9 +2350,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Create Targeted MS Experiment");
+            root.addChild("Create Targeted MS Experiment");
         }
     }
 
@@ -2484,9 +2489,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Create Targeted MS Experiment");
+            root.addChild("Create Targeted MS Experiment");
         }
     }
 
@@ -2522,11 +2527,13 @@ public class PanoramaPublicController extends SpringActionController
             _addSelectedRuns = addSelectedRuns;
         }
 
+        @Override
         public String getDataRegionSelectionKey()
         {
             return _dataRegionSelectionKey;
         }
 
+        @Override
         public void setDataRegionSelectionKey(String dataRegionSelectionKey)
         {
             _dataRegionSelectionKey = dataRegionSelectionKey;
@@ -2611,11 +2618,10 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Targeted MS Experiment Details");
+            root.addChild("Targeted MS Experiment Details");
         }
-
     }
 
     public static class ExperimentAnnotationsDetails
@@ -2710,6 +2716,7 @@ public class PanoramaPublicController extends SpringActionController
     @RequiresPermission(UpdatePermission.class)
     public class ShowUpdateExperimentAnnotationsAction extends SimpleViewAction<ExperimentAnnotationsForm>
     {
+        @Override
         public ModelAndView getView(ExperimentAnnotationsForm form, BindException errors)
         {
             form.refreshFromDb();
@@ -2728,9 +2735,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Update Targeted MS Experiment Details");
+            root.addChild("Update Targeted MS Experiment Details");
         }
     }
 
@@ -2748,6 +2755,7 @@ public class PanoramaPublicController extends SpringActionController
     public class UpdateExperimentAnnotationsAction extends FormViewAction<ExperimentAnnotationsForm>
     {
         private int _experimentAnnotationsId;
+        @Override
         public void validateCommand(ExperimentAnnotationsForm target, Errors errors)
         {}
 
@@ -2759,6 +2767,7 @@ public class PanoramaPublicController extends SpringActionController
             return view;
         }
 
+        @Override
         public boolean handlePost(ExperimentAnnotationsForm form, BindException errors) throws Exception
         {
             _experimentAnnotationsId = form.getBean().getId();
@@ -2785,15 +2794,16 @@ public class PanoramaPublicController extends SpringActionController
             return true;
         }
 
+        @Override
         public ActionURL getSuccessURL(ExperimentAnnotationsForm form)
         {
             return getViewExperimentDetailsURL(_experimentAnnotationsId, getContainer());
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Update Targeted MS Experiment");
+            root.addChild("Update Targeted MS Experiment");
         }
     }
 
@@ -2857,16 +2867,19 @@ public class PanoramaPublicController extends SpringActionController
     {
         private String _dataRegionSelectionKey;
 
+        @Override
         public int[] getIds()
         {
             return PageFlowUtil.toInts(DataRegionSelection.getSelected(getViewContext(), getDataRegionSelectionKey(), false));
         }
 
+        @Override
         public String getDataRegionSelectionKey()
         {
             return _dataRegionSelectionKey;
         }
 
+        @Override
         public void setDataRegionSelectionKey(String dataRegionSelectionKey)
         {
             _dataRegionSelectionKey = dataRegionSelectionKey;
@@ -2880,6 +2893,7 @@ public class PanoramaPublicController extends SpringActionController
 
     public static class DeleteExperimentAnnotationsForm extends ExperimentAnnotationsForm implements SelectedExperimentIds
     {
+        @Override
         public int[] getIds()
         {
             return new int[]{this.getBean().getId()};
@@ -2896,6 +2910,7 @@ public class PanoramaPublicController extends SpringActionController
             return FormPage.getView("/org/labkey/panoramapublic/view/expannotations/deleteExperimentAnnotations.jsp", deleteForm);
         }
 
+        @Override
         public boolean handlePost(DeleteExperimentAnnotationsForm form, BindException errors)
         {
             int _experimentAnnotationsId = form.getBean().getId();
@@ -2929,10 +2944,12 @@ public class PanoramaPublicController extends SpringActionController
     {
         private ExperimentAnnotations _expAnnot;
 
+        @Override
         public void validateCommand(ExperimentForm form, Errors errors)
         {
         }
 
+        @Override
         public boolean handlePost(ExperimentForm form, BindException errors)
         {
             _expAnnot = form.lookupExperiment();
@@ -2967,6 +2984,7 @@ public class PanoramaPublicController extends SpringActionController
             return true;
         }
 
+        @Override
         public ActionURL getSuccessURL(ExperimentForm form)
         {
             return getViewExperimentDetailsURL(_expAnnot.getId(), getContainer());
@@ -2978,10 +2996,12 @@ public class PanoramaPublicController extends SpringActionController
     {
         private ExperimentAnnotations _expAnnot;
 
+        @Override
         public void validateCommand(ExperimentForm form, Errors errors)
         {
         }
 
+        @Override
         public boolean handlePost(ExperimentForm form, BindException errors)
         {
             _expAnnot = form.lookupExperiment();
@@ -3011,6 +3031,7 @@ public class PanoramaPublicController extends SpringActionController
             return true;
         }
 
+        @Override
         public ActionURL getSuccessURL(ExperimentForm form)
         {
             return getViewExperimentDetailsURL(_expAnnot.getId(), getContainer());
@@ -3095,9 +3116,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Add Panorama Public Module");
+            root.addChild("Add Panorama Public Module");
         }
     }
 

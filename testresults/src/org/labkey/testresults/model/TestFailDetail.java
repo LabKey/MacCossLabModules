@@ -117,6 +117,7 @@ public class TestFailDetail implements Comparable<TestFailDetail>
     }
 
     // comparable by date and then id if dates are the same
+    @Override
     public int compareTo(TestFailDetail o)
     {
         int diff = 0;

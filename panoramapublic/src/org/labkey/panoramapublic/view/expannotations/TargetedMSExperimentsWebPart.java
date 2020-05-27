@@ -67,6 +67,7 @@ public class TargetedMSExperimentsWebPart extends QueryView
         return settings;
     }
 
+    @Override
     protected void populateButtonBar(DataView view, ButtonBar bb)
     {
         super.populateButtonBar(view, bb);

@@ -158,26 +158,31 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
             super(LincsPspTask.class);
         }
 
+        @Override
         public PipelineJob.Task createTask(PipelineJob job)
         {
             return new LincsPspTask(this, job);
         }
 
+        @Override
         public List<FileType> getInputTypes()
         {
             return Collections.emptyList();
         }
 
+        @Override
         public List<String> getProtocolActionNames()
         {
             return Collections.emptyList();
         }
 
+        @Override
         public String getStatusName()
         {
             return "SUBMIT PSP JOB";
         }
 
+        @Override
         public boolean isJobComplete(PipelineJob job)
         {
             return false;

@@ -46,6 +46,7 @@ public class ExperimentImportTask extends PipelineJob.Task<ExperimentImportTask.
         super(factory, job);
     }
 
+    @Override
     @NotNull
     public RecordedActionSet run() throws PipelineJobException
     {
@@ -104,26 +105,31 @@ public class ExperimentImportTask extends PipelineJob.Task<ExperimentImportTask.
             super(ExperimentImportTask.class);
         }
 
+        @Override
         public PipelineJob.Task createTask(PipelineJob job)
         {
             return new ExperimentImportTask(this, job);
         }
 
+        @Override
         public List<FileType> getInputTypes()
         {
             return Collections.emptyList();
         }
 
+        @Override
         public List<String> getProtocolActionNames()
         {
             return Collections.emptyList();
         }
 
+        @Override
         public String getStatusName()
         {
             return "IMPORT EXPERIMENT";
         }
 
+        @Override
         public boolean isJobComplete(PipelineJob job)
         {
             return false;

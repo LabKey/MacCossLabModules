@@ -154,9 +154,10 @@ public class SkylineToolsStoreController extends SpringActionController
             return new SkylineToolsStoreWebPart();
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        @Override
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild(getToolStoreNav(getContainer()));
+            root.addChild(getToolStoreNav(getContainer()));
         }
     }
 
@@ -326,6 +327,7 @@ public class SkylineToolsStoreController extends SpringActionController
 
         Collections.sort(toolList, new Comparator<SkylineTool>()
         {
+            @Override
             public int compare(SkylineTool lhs, SkylineTool rhs)
             {
                 return rhs.getCreated().compareTo(lhs.getCreated());
@@ -437,6 +439,7 @@ public class SkylineToolsStoreController extends SpringActionController
         {
         }
 
+        @Override
         public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
         {
             final String sender = httpServletRequest.getParameter("sender");
@@ -612,10 +615,10 @@ public class SkylineToolsStoreController extends SpringActionController
             return new JspView("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", null);
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        @Override
+        public void addNavTrail(NavTree root)
         {
             root.addChild(getToolStoreNav(getContainer())).addChild("Upload Tool", getURL());
-            return root;
         }
 
         public ActionURL getURL()
@@ -767,6 +770,7 @@ public class SkylineToolsStoreController extends SpringActionController
         {
         }
 
+        @Override
         public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
         {
             int id = NumberUtils.toInt(httpServletRequest.getParameter("id"), -1);
@@ -804,6 +808,7 @@ public class SkylineToolsStoreController extends SpringActionController
         {
         }
 
+        @Override
         public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
         {
             final String suppTargetString = httpServletRequest.getParameter("supptarget");
@@ -865,6 +870,7 @@ public class SkylineToolsStoreController extends SpringActionController
         {
         }
 
+        @Override
         public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
         {
             final String sender = httpServletRequest.getParameter("sender");
@@ -998,6 +1004,7 @@ public class SkylineToolsStoreController extends SpringActionController
     {
         private final Class REQ_PERMS = DeletePermission.class;
 
+        @Override
         public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
         {
             Integer id;
@@ -1063,6 +1070,7 @@ public class SkylineToolsStoreController extends SpringActionController
     {
         public static final String DOWNLOADED_COOKIE_PREFIX = "downloadtool";
 
+        @Override
         public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
         {
             final int id = NumberUtils.toInt(httpServletRequest.getParameter("id"), -1);
@@ -1136,6 +1144,7 @@ public class SkylineToolsStoreController extends SpringActionController
     @ActionNames("downloadFile")
     public class DownloadToolFileAction extends SimpleViewAction<DownloadFileForm> implements PermissionCheckable
     {
+        @Override
         public ModelAndView getView(DownloadFileForm form, BindException errors) throws Exception
         {
             if (StringUtils.trimToNull(form.getTool()) == null)
@@ -1171,9 +1180,9 @@ public class SkylineToolsStoreController extends SpringActionController
             return new SimpleErrorView(errors);
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        @Override
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
     public static class DownloadFileForm
@@ -1264,9 +1273,9 @@ public class SkylineToolsStoreController extends SpringActionController
             return new SkylineToolDetails(_tool);
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        @Override
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -1316,6 +1325,7 @@ public class SkylineToolsStoreController extends SpringActionController
         {
         }
 
+        @Override
         public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
         {
             final String sender = httpServletRequest.getParameter("sender");
@@ -1387,6 +1397,7 @@ public class SkylineToolsStoreController extends SpringActionController
     {
         private final Class REQ_PERMS = InsertPermission.class;
 
+        @Override
         public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
         {
             final Integer id = Integer.parseInt(httpServletRequest.getParameter("id"));
@@ -1495,6 +1506,7 @@ public class SkylineToolsStoreController extends SpringActionController
     @RequiresNoPermission
     public class GetToolsApiAction extends AbstractController implements PermissionCheckable
     {
+        @Override
         public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException
         {
             StringBuilder sb = new StringBuilder();

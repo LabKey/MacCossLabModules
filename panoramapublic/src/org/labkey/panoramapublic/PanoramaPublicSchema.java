@@ -54,6 +54,7 @@ public class PanoramaPublicSchema extends UserSchema
     {
         DefaultSchema.registerProvider(SCHEMA_NAME, new DefaultSchema.SchemaProvider(module)
         {
+            @Override
             public QuerySchema createSchema(DefaultSchema schema, Module module)
             {
                 return new PanoramaPublicSchema(schema.getUser(), schema.getContainer());

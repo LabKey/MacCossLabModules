@@ -82,6 +82,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
                 + experiment.getContainer().getPath() + " to " + getContainer().getPath());
     }
 
+    @Override
     public ActionURL getStatusHref()
     {
         if (getContainer() != null)
@@ -91,6 +92,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
         return null;
     }
 
+    @Override
     public String getDescription()
     {
         return _description;

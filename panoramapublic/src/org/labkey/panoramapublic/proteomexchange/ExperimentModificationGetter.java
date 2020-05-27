@@ -544,6 +544,7 @@ public class ExperimentModificationGetter
             _id = id;
         }
 
+        @Override
         public String getName()
         {
             return _name;
@@ -554,6 +555,7 @@ public class ExperimentModificationGetter
             _name = name;
         }
 
+        @Override
         public String getAminoAcid()
         {
             return _aminoAcid;
@@ -564,6 +566,7 @@ public class ExperimentModificationGetter
             _aminoAcid = aminoAcid;
         }
 
+        @Override
         public String getTerminus()
         {
             return _terminus;
@@ -574,6 +577,7 @@ public class ExperimentModificationGetter
             _terminus = terminus;
         }
 
+        @Override
         public String getFormula()
         {
             return _formula;
@@ -584,6 +588,7 @@ public class ExperimentModificationGetter
             _formula = formula;
         }
 
+        @Override
         public Double getMassDiffMono()
         {
             return _massDiffMono;
@@ -594,6 +599,7 @@ public class ExperimentModificationGetter
             _massDiffMono = massDiffMono;
         }
 
+        @Override
         public Double getMassDiffAvg()
         {
             return _massDiffAvg;
@@ -604,6 +610,7 @@ public class ExperimentModificationGetter
             _massDiffAvg = massDiffAvg;
         }
 
+        @Override
         public Integer getUnimodId()
         {
             return _unimodId;
@@ -622,6 +629,7 @@ public class ExperimentModificationGetter
         private Boolean _label18O;
         private Boolean _label2H;
 
+        @Override
         public Boolean getLabel13C()
         {
             return _label13C;
@@ -632,6 +640,7 @@ public class ExperimentModificationGetter
             _label13C = label13C;
         }
 
+        @Override
         public Boolean getLabel15N()
         {
             return _label15N;
@@ -642,6 +651,7 @@ public class ExperimentModificationGetter
             _label15N = label15N;
         }
 
+        @Override
         public Boolean getLabel18O()
         {
             return _label18O;
@@ -652,6 +662,7 @@ public class ExperimentModificationGetter
             _label18O = label18O;
         }
 
+        @Override
         public Boolean getLabel2H()
         {
             return _label2H;

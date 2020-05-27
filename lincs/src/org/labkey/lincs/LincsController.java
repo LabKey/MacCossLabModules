@@ -128,9 +128,8 @@ public class LincsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -186,6 +185,7 @@ public class LincsController extends SpringActionController
     @RequiresPermission(ReadPermission.class)
     public class RunGCTReportApiAction extends ReadOnlyApiAction<GCTReportForm>
     {
+        @Override
         public ApiResponse execute(GCTReportForm form, BindException errors) throws Exception
         {
             if(form.getRunId() == 0)
@@ -312,11 +312,6 @@ public class LincsController extends SpringActionController
             }
 
             return null;
-        }
-
-        public NavTree appendNavTrail(NavTree root)
-        {
-            return root;
         }
     }
 
@@ -552,9 +547,8 @@ public class LincsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return null;
         }
     }
 
@@ -709,6 +703,7 @@ public class LincsController extends SpringActionController
     @RequiresPermission(ReadPermission.class)
     public class DownloadCustomGCTReportAction extends SimpleViewAction<DownloadCustomGCTReportForm>
     {
+        @Override
         public ModelAndView getView(DownloadCustomGCTReportForm form, BindException errors) throws Exception
         {
             if(form.getFileName() == null)
@@ -736,9 +731,9 @@ public class LincsController extends SpringActionController
             return null;
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        @Override
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -1038,9 +1033,9 @@ public class LincsController extends SpringActionController
             return new JspView<>("/org/labkey/lincs/view/manageClueCredentials.jsp", form, errors);
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        @Override
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -1073,6 +1068,7 @@ public class LincsController extends SpringActionController
     @RequiresPermission(AdminPermission.class)
     public class LincsPspJobDetailsAction extends SimpleViewAction<LincsPspJobForm>
     {
+        @Override
         public ModelAndView getView(LincsPspJobForm form, BindException errors)
         {
             int runId = form.getRunId();
@@ -1142,13 +1138,12 @@ public class LincsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            if(root != null)
+            if (root != null)
             {
                 root.addChild("PSP Job Details");
             }
-            return root;
         }
     }
 
@@ -1216,6 +1211,7 @@ public class LincsController extends SpringActionController
     @RequiresPermission(AdminPermission.class)
     public class LincsPspJobStatusAction extends SimpleViewAction<LincsPspJobForm>
     {
+        @Override
         public ModelAndView getView(LincsPspJobForm form, BindException errors)
         {
             int jobId = form.getJobId();
@@ -1274,13 +1270,12 @@ public class LincsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            if(root != null)
+            if (root != null)
             {
                 root.addChild("PSP Job Status");
             }
-            return root;
         }
     }
 

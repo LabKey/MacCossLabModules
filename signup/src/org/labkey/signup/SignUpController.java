@@ -83,6 +83,7 @@ public class SignUpController extends SpringActionController
     @RequiresSiteAdmin
     public class ShowSignUpAdminAction extends SimpleViewAction
     {
+        @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
         {
             JspView<User> result = new JspView<>("/org/labkey/signup/SignUpAdmin.jsp", getUser());
@@ -91,10 +92,10 @@ public class SignUpController extends SpringActionController
             return result;
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        @Override
+        public void addNavTrail(NavTree root)
         {
-            PageFlowUtil.urlProvider(AdminUrls.class).appendAdminNavTrail(root, "Sign Up Admin", null);
-            return root;
+            PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Sign Up Admin", null);
         }
     }
 
@@ -314,6 +315,7 @@ public class SignUpController extends SpringActionController
     @RequiresNoPermission
     public class ConfirmAction extends SimpleViewAction<SignupConfirmForm>
     {
+        @Override
         public ModelAndView getView(SignupConfirmForm form, BindException errors) throws Exception
         {
             ValidEmail email;
@@ -405,9 +407,8 @@ public class SignUpController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 
@@ -449,6 +450,7 @@ public class SignUpController extends SpringActionController
             validateSignupForm(form, errors);
         }
 
+        @Override
         public ModelAndView getView(SignupForm form, boolean reshow, BindException errors) throws Exception
         {
             if(form.isNewSignUp())
@@ -526,9 +528,9 @@ public class SignUpController extends SpringActionController
             throw new UnsupportedOperationException();
         }
 
-        public NavTree appendNavTrail(NavTree root)
+        @Override
+        public void addNavTrail(NavTree root)
         {
-            return root;
         }
     }
 

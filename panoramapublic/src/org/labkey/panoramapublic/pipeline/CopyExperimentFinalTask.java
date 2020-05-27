@@ -78,6 +78,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         super(factory, job);
     }
 
+    @Override
     @NotNull
     public RecordedActionSet run() throws PipelineJobException
     {
@@ -405,26 +406,31 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             super(CopyExperimentFinalTask.class);
         }
 
+        @Override
         public PipelineJob.Task createTask(PipelineJob job)
         {
             return new CopyExperimentFinalTask(this, job);
         }
 
+        @Override
         public List<FileType> getInputTypes()
         {
             return Collections.emptyList();
         }
 
+        @Override
         public List<String> getProtocolActionNames()
         {
             return Collections.emptyList();
         }
 
+        @Override
         public String getStatusName()
         {
             return "FINISH EXPERIMENT COPY";
         }
 
+        @Override
         public boolean isJobComplete(PipelineJob job)
         {
             return false;
