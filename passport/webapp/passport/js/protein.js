@@ -367,7 +367,6 @@ protein =
             protein.settings.changeSequenceLength(0, longestPeptide);
             // reset checkbox
             $('#showFeatures').prop('checked', false).trigger("change");
-            protein.settings.setFeaturesVisible(false);
         });
         // initialize sliding ranger bar in Filter Options
         $(function () {
