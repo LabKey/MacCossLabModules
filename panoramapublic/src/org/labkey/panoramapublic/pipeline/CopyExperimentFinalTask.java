@@ -345,7 +345,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
     private void updateRawDataTab(Container c, FileContentService service, User user)
     {
-        List<Portal.WebPart> rawDataTabParts = Portal.getParts(c, TargetedMSService.RAW_FILES_TAB);
+        List<Portal.WebPart> rawDataTabParts = Portal.getEditableParts(c, TargetedMSService.RAW_FILES_TAB);
         if(rawDataTabParts.size() == 0)
         {
             return; // Nothing to do if there is no "Raw Data" tab.
