@@ -59,7 +59,6 @@ public class PassportTest  extends PassportTestPart implements PostgresOnlyTest
     {
         // assert side bar and pipeline tab not visible... only passport tab should be seen by any user
         assertElementNotPresent(Locator.xpath("//a[@id='PipelineTab']"));
-        assertElementPresent(Locator.xpath("//a[@id='PassportTab']"));
         assertTextNotPresent("Pages");
         // enter Haptoglobin
 
@@ -112,9 +111,14 @@ public class PassportTest  extends PassportTestPart implements PostgresOnlyTest
     @LogMethod(category = LogMethod.MethodType.VERIFICATION)
     protected void testAsNormalUser()
     {
+        signOut();
         loginAs("normaluser@gmail.com");
         clickProject(getProjectName());
         testNormalStuff();
+
+        // Log back in as a site admin
+        signOut();
+        signIn();
     }
 
     @Override

@@ -77,27 +77,26 @@ public abstract class PassportTestPart extends BaseWebDriverTest
         goToFolderManagement();
         click(Locator.xpath("//a[text()='Folder Type']"));
 
-        checkCheckbox(Locator.xpath("//input[contains(@value, 'Passport')]"));
-        assertChecked(Locator.xpath("//input[contains(@value, 'Passport')]"));
-        assertChecked(Locator.xpath("//input[contains(@value, 'Pipeline')]"));
-        assertChecked(Locator.xpath("//input[contains(@value, 'Query')]"));
-        assertChecked(Locator.xpath("//input[contains(@value, 'TargetedMS')]"));
+        checkCheckbox(Locator.checkboxByNameAndValue("activeModules", "Passport"));
+        assertChecked(Locator.checkboxByNameAndValue("activeModules", "Passport"));
+        assertChecked(Locator.checkboxByNameAndValue("activeModules", "Pipeline"));
+        assertChecked(Locator.checkboxByNameAndValue("activeModules", "Query"));
+        assertChecked(Locator.checkboxByNameAndValue("activeModules", "TargetedMS"));
 
         clickButton("Update Folder");
         goToProjectHome();
         PortalHelper ph = new PortalHelper(this);
-        ph.addWebPart("Passport");
         ph.removeWebPart("Messages");
         ph.removeWebPart("Wiki");
+        ph.removeWebPart("Pages");
+        ph.addWebPart("Passport");
         ph.enterAdminMode();
         ph.addTab("Pipeline");
         ph.addWebPart("Pipeline Files");
         ph.renameTab("Start Page", "Passport");
         importData("data1.sky.zip", 1, true);
         importData("data2.sky.zip", 2, true);
-        ph.enterAdminMode();
         ph.hideTab("Pipeline");
-        ph.removeWebPart("Pages");
         ph.exitAdminMode();
     }
 
