@@ -24,6 +24,7 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicManager" %>
 <%@ page import="org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter" %>
+<%@ page import="java.util.Map" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -117,6 +118,47 @@
                     <%for(String file: missingData.getRawData()){%>
                     <%=h(file)%><br/>
                      <%}%>
+                </td>
+            </tr>
+            <%}%>
+            </tbody>
+        </table>
+        <%=button("Upload Raw Data").href(rawFilesUrl).build()%> <span>(Drag and drop to the files browser in the Raw Data tab to upload files)</span>
+    </div>
+    <%}%>
+
+    <% if(bean.hasMissingLibrarySourceFiles()) { %>
+    <div style="margin-top:10px;">
+        <span style="font-weight:bold;">Missing files for spectrum libraries:</span>
+        <table class="table-condensed table-striped table-bordered" style="margin-top:1px; margin-bottom:5px;">
+            <thead>
+            <tr>
+            <th>Library</th>
+            <th>Skyline Document</th>
+            <th>Missing Raw Data</th>
+            <th>Missing ID Files</th>
+            </tr>
+            </thead>
+            <tbody>
+            <%for(Map.Entry<String, SubmissionDataStatus.MissingLibrarySourceFiles> missingFiles: bean.getMissingLibFiles().entrySet()) {%>
+            <tr>
+                <td>
+                    <%=h(missingFiles.getKey())%>
+                </td>
+                <td>
+                    <%for(String skyDoc: missingFiles.getValue().getSkyDocs()){%>
+                    <%=h(skyDoc)%><br/>
+                    <%}%>
+                </td>
+                <td>
+                    <%for(String spectrumSourceFile: missingFiles.getValue().getSpectrumSourceFiles()){%>
+                    <%=h(spectrumSourceFile)%><br/>
+                    <%}%>
+                </td>
+                <td>
+                    <%for(String idFile: missingFiles.getValue().getIdFiles()){%>
+                    <%=h(idFile)%><br/>
+                    <%}%>
                 </td>
             </tr>
             <%}%>

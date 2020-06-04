@@ -27,9 +27,11 @@ import org.labkey.api.data.TableSelector;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.query.FieldKey;
+import org.labkey.api.targetedms.BlibSourceFiles;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.Pair;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
@@ -235,6 +237,9 @@ public class SubmissionDataValidator
 
     private static void getMissingRawFiles(ExperimentAnnotations expAnnotations, SubmissionDataStatus submissionStatus)
     {
+        TargetedMSService targetedMsSvc = TargetedMSService.get();
+        ExperimentService expSvc = ExperimentService.get();
+
         // Get a list of Skyline documents associated with this experiment
         List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(expAnnotations);
 
@@ -245,6 +250,26 @@ public class SubmissionDataValidator
             for(String missingFile: missingFiles)
             {
                 submissionStatus.addMissingRawPath(missingFile, run.getFileName());
+            }
+
+            // Get missing blib source files
+            java.nio.file.Path rawFilesDir = getRawFilesDirPath(run.getContainer());
+            for(Map.Entry<String, BlibSourceFiles> entry : targetedMsSvc.getBlibSourceFiles(run).entrySet())
+            {
+                String blib = entry.getKey();
+                List<String> ssfMissing = new ArrayList<>();
+                for(String ssf: entry.getValue().getSpectrumSourceFiles())
+                {
+                    if (!hasExpData(FilenameUtils.getName(getFilePath(ssf)), run.getContainer(), rawFilesDir, expSvc))
+                        ssfMissing.add(ssf);
+                }
+                List<String> idFilesMissing = new ArrayList<>();
+                for(String idFile: entry.getValue().getIdFiles())
+                {
+                    if (!hasExpData(FilenameUtils.getName(getFilePath(idFile)), run.getContainer(), rawFilesDir, expSvc))
+                        idFilesMissing.add(idFile);
+                }
+                submissionStatus.addMissingLibFile(blib, run.getFileName(), ssfMissing, idFilesMissing);
             }
         }
     }
