@@ -62,7 +62,7 @@ public class PassportTest  extends PassportTestPart implements PostgresOnlyTest
         assertTextNotPresent("Pages");
         // enter Haptoglobin
 
-        waitAndClick(Locator.xpath("//tr[@class='labkey-alternate-row']//a[@class='labkey-text-link'][contains(text(),'PASSPORT VIEW')]"));
+        click(Locator.xpath("//tr[contains(@class,'labkey-alternate-row')]//a[@class='labkey-text-link'][contains(text(),'PASSPORT VIEW')]"));
         assertElementContains(Locator.xpath("//h2[@id='proteinName']"), "Haptoglobin");
         assertElementContains(Locator.xpath("//td[contains(text(),'406')]"), "406");
         assertElementPresent(Locator.xpath("//sub[@id='dataUploaded']"));
