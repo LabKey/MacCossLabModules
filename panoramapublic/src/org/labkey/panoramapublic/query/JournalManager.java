@@ -110,7 +110,7 @@ public class JournalManager
         return new SqlSelector(PanoramaPublicManager.getSchema(), sql).getArrayList(Journal.class);
     }
 
-    private static List<ExperimentAnnotations> getExperimentsForJournal(int journalId)
+    public static List<ExperimentAnnotations> getExperimentsForJournal(int journalId)
     {
         SQLFragment sql = new SQLFragment("SELECT e.* FROM ");
         sql.append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "e");
@@ -201,6 +201,11 @@ public class JournalManager
     public static void saveJournal(Journal journal, User user)
     {
         Table.insert(user, PanoramaPublicManager.getTableInfoJournal(), journal);
+    }
+
+    public static void updateJournal(Journal journal, User user)
+    {
+        Table.update(user, PanoramaPublicManager.getTableInfoJournal(), journal, journal.getId());
     }
 
     public static void beforeDeleteTargetedMSExperiment(ExperimentAnnotations expAnnotations, User user)

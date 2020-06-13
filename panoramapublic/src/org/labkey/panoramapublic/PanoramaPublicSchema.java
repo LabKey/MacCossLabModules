@@ -89,6 +89,8 @@ public class PanoramaPublicSchema extends UserSchema
             result.wrapAllColumns(true);
             var projectCol = result.getMutableColumn(FieldKey.fromParts("Project"));
             ContainerForeignKey.initColumn(projectCol, this);
+            var supportContainerCol = result.getMutableColumn(FieldKey.fromParts("SupportContainer"));
+            ContainerForeignKey.initColumn(supportContainerCol, this);
             return result;
         }
         return null;

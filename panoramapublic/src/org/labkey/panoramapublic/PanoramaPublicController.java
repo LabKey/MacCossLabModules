@@ -42,11 +42,13 @@ import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerManager;
+import org.labkey.api.data.ContainerService;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DataRegion;
 import org.labkey.api.data.DataRegionSelection;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.NormalContainerType;
+import org.labkey.api.data.PropertyManager;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.TableInfo;
@@ -100,6 +102,8 @@ import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.Button;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.HtmlString;
+import org.labkey.api.util.Link;
 import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.TestContext;
@@ -129,6 +133,7 @@ import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentsWebPart;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.io.File;
@@ -147,14 +152,24 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.labkey.api.util.DOM.Attribute.action;
 import static org.labkey.api.util.DOM.Attribute.method;
 import static org.labkey.api.util.DOM.Attribute.name;
+import static org.labkey.api.util.DOM.Attribute.style;
+import static org.labkey.api.util.DOM.Attribute.type;
+import static org.labkey.api.util.DOM.Attribute.value;
 import static org.labkey.api.util.DOM.BR;
 import static org.labkey.api.util.DOM.DIV;
+import static org.labkey.api.util.DOM.INPUT;
 import static org.labkey.api.util.DOM.LABEL;
 import static org.labkey.api.util.DOM.LK.CHECKBOX;
 import static org.labkey.api.util.DOM.LK.FORM;
+import static org.labkey.api.util.DOM.OBJECT;
+import static org.labkey.api.util.DOM.SPAN;
 import static org.labkey.api.util.DOM.at;
+import static org.labkey.api.util.DOM.cl;
+import static org.labkey.api.util.DOM.createHtml;
+import static org.labkey.api.util.DOM.createHtmlFragment;
 
 /**
  * User: vsharma
@@ -177,7 +192,7 @@ public class PanoramaPublicController extends SpringActionController
     // BEGIN Actions for journal groups.
     // ------------------------------------------------------------------------
     @AdminConsoleAction
-    @RequiresPermission(AdminPermission.class)
+    @RequiresPermission(AdminOperationsPermission.class)
     public static class JournalGroupsAdminViewAction extends SimpleViewAction
     {
         @Override
@@ -205,10 +220,20 @@ public class PanoramaPublicController extends SpringActionController
                 view.addView(new HtmlView("<div><a href=\"" + newJournalUrl + "\">Create a new journal group </a></div>"));
             }
 
+            ModelAndView pxCredentialsLink = getPXCredentialsLink();
+
             view.addView(qView);
+            view.addView(pxCredentialsLink);
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Journal groups");
             return view;
+        }
+
+        private ModelAndView getPXCredentialsLink()
+        {
+            ActionURL url = new ActionURL(ManageProteomeXchangeCredentials.class, getContainer());
+            return new HtmlView(DIV(at(style, "margin-top:20px;"),
+                    new Link.LinkBuilder("Set ProteomeXchange Credentials").href(url).build()));
         }
 
         @Override
@@ -409,13 +434,19 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public boolean handlePost(JournalForm form, BindException errors)
+        public boolean handlePost(JournalForm form, BindException errors) throws IllegalAccessException
         {
             Journal journal = form.lookupJournal();
 
             if(journal == null)
             {
                 errors.addError(new LabKeyError("No journal found for journal ID  " + form.getId()));
+                return false;
+            }
+
+            if(JournalManager.getExperimentsForJournal(journal.getId()).size() > 0)
+            {
+                errors.addError(new LabKeyError("The journal project contains published experiments. It cannot be deleted."));
                 return false;
             }
 
@@ -428,7 +459,7 @@ public class PanoramaPublicController extends SpringActionController
                 SecurityManager.deleteGroup(SecurityManager.getGroup(journal.getLabkeyGroupId()));
 
                 // Delete the project created for this journal.
-                // TODO: Should we keep the project around?
+                // The project will only be deleted if it does not contain any published data.
                 ContainerManager.delete(journal.getProject(), getUser());
 
                 transaction.commit();
@@ -450,7 +481,7 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    @RequiresPermission(AdminPermission.class)
+    @RequiresPermission(AdminOperationsPermission.class)
     public static class JournalGroupDetailsAction extends SimpleViewAction<JournalForm>
     {
         @Override
@@ -464,7 +495,7 @@ public class PanoramaPublicController extends SpringActionController
             }
 
             DataRegion journalDetails = new DataRegion();
-            journalDetails.setColumns(PanoramaPublicManager.getTableInfoJournal().getColumns("Name", "LabkeyGroupId", "Project", "Created", "CreatedBy"));
+            journalDetails.setColumns(PanoramaPublicManager.getTableInfoJournal().getColumns("Name", "LabkeyGroupId", "Project", "Created", "CreatedBy", "SupportContainer"));
 
             ButtonBar buttonBar = new ButtonBar();
             buttonBar.setStyle(ButtonBar.Style.separateButtons);
@@ -474,11 +505,14 @@ public class PanoramaPublicController extends SpringActionController
                 ActionButton deleteJournalButton = new ActionButton(url, "Delete");
                 deleteJournalButton.setActionType(ActionButton.Action.GET);
                 buttonBar.add(deleteJournalButton);
+
+                ActionURL changeSupportContainerUrl = new ActionURL(ChangeJournalSupportContainerAction.class, getContainer());
+                ActionButton changeSupportContainerButton = new ActionButton(changeSupportContainerUrl, "Change Support Container");
+                changeSupportContainerButton.setActionType(ActionButton.Action.GET);
+                changeSupportContainerButton.setPrimary(false);
+                buttonBar.add(changeSupportContainerButton);
             }
             journalDetails.setButtonBar(buttonBar);
-
-            // Add the journal "id" in a hidden form field.
-            journalDetails.addHiddenFormField("id", String.valueOf(journal.getId()));
 
             DetailsView detailsView = new DetailsView(journalDetails, form.getId());
 
@@ -496,7 +530,7 @@ public class PanoramaPublicController extends SpringActionController
 
             VBox view = new VBox();
             view.addView(detailsView);
-            view.addView(new HtmlView("<div>This journal has access to the following Targeted MS experiments:</div>"));
+            view.addView(new HtmlView(DIV("This journal has access to the following Targeted MS experiments:")));
             view.addView(journalExperimentListView);
             view.setTitle("Journal group details");
             view.setFrame(WebPartView.FrameType.PORTAL);
@@ -535,6 +569,242 @@ public class PanoramaPublicController extends SpringActionController
         public void setId(int id)
         {
             _id = id;
+        }
+    }
+
+    /*
+    Support container for a Journal (e.g. "PanoramaPublic on panoramweb.org) is where new submission requests, as well as updates related to a submission
+    are posted in a message board. By default, it is the same container as the Journal's project container. But site admins should be able to
+    change it to another container.
+     */
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class ChangeJournalSupportContainerAction extends FormViewAction<JournalSupportContainerForm>
+    {
+        private Journal _journal;
+
+        @Override
+        public void validateCommand(JournalSupportContainerForm form, Errors errors)
+        {
+            _journal = form.lookupJournal();
+            if(_journal == null)
+            {
+                errors.reject(ERROR_MSG, "No journal found for journal ID  " + form.getId());
+            }
+            if(StringUtils.isBlank(form.getSupportContainerPath()))
+            {
+                errors.reject(ERROR_MSG, "Support container path cannot be blank");
+            }
+            else if(form.getSupportContainer() == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find a container for the given path: '" + form.getSupportContainerPath() + "'");
+            }
+        }
+
+        @Override
+        public ModelAndView getView(JournalSupportContainerForm form, boolean reshow, BindException errors)
+        {
+            _journal = form.lookupJournal();
+            if(!reshow)
+            {
+                Container supportContainer = _journal.getSupportContainer();
+                form.setSupportContainerPath(supportContainer != null ? supportContainer.getPath() : "");
+            }
+
+            VBox view = new VBox();
+            if(errors.getErrorCount() > 0)
+            {
+                StringBuilder html = new StringBuilder();
+                for(ObjectError error: errors.getAllErrors())
+                {
+                    HtmlString errHtml = createHtmlFragment(SPAN(cl("labkey-error"), error.getDefaultMessage()));
+                    errHtml.appendTo(html);
+                }
+                BR().appendTo(html);
+                view.addView(new HtmlView(HtmlString.unsafe(html.toString())));
+            }
+
+            view.addView(new HtmlView(
+                    DIV("Support container is where messages for new requests are posted.  The default location is the main project container of the Journal.",
+                            FORM(at(method, "POST", action, getChangeSupportContainerUrl(_journal.getId(), getContainer())),
+                                SPAN(cl("labkey-form-label"), "Support Container Path"),
+                                INPUT(at(type, "Text", name, "supportContainerPath", value, form.getSupportContainerPath())),
+                                BR(),
+                                new Button.ButtonBuilder("Save").submit(true).build(),
+                                new Button.ButtonBuilder("Cancel").submit(false).href(getJournalGroupDetailsUrl(_journal.getId(), getContainer())).build()
+                            )
+                    )
+            ));
+            view.setTitle("Change Journal Support Container");
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            return view;
+        }
+
+        @Override
+        public boolean handlePost(JournalSupportContainerForm form, BindException errors) throws Exception
+        {
+            if(_journal == null)
+            {
+                return false;
+            }
+            _journal.setSupportContainer(form.getSupportContainer());
+            JournalManager.updateJournal(_journal, getUser());
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(JournalSupportContainerForm form)
+        {
+            return getJournalGroupDetailsUrl(form.getId(), getContainer());
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            if(_journal != null)
+            {
+                root.addChild("Journal group details", getJournalGroupDetailsUrl(_journal.getId(), getContainer()));
+            }
+            root.addChild("Journal group support container");
+            return root;
+        }
+    }
+
+    private static ActionURL getJournalGroupDetailsUrl(int journalId, Container container)
+    {
+        ActionURL url = new ActionURL(JournalGroupDetailsAction.class, container);
+        url.addParameter("id", journalId);
+        return url;
+    }
+
+    private static ActionURL getChangeSupportContainerUrl(int journalId, Container container)
+    {
+        ActionURL url = new ActionURL(ChangeJournalSupportContainerAction.class, container);
+        url.addParameter("id", journalId);
+        return url;
+    }
+
+    public static class JournalSupportContainerForm extends JournalForm
+    {
+        private String _supportContainerPath;
+
+        public String getSupportContainerPath()
+        {
+            return _supportContainerPath;
+        }
+
+        public void setSupportContainerPath(String supportContainerPath)
+        {
+            _supportContainerPath = supportContainerPath;
+        }
+
+        public Container getSupportContainer()
+        {
+            if(!StringUtils.isBlank(_supportContainerPath))
+            {
+                return ContainerService.get().getForPath(_supportContainerPath);
+            }
+            return null;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public class ManageProteomeXchangeCredentials extends FormViewAction<PXCredentialsForm>
+    {
+        @Override
+        public void validateCommand(PXCredentialsForm form, Errors errors)
+        {
+            String user = form.getUserName();
+            String password = form.getPassword();
+
+            if (StringUtils.isBlank(user))
+            {
+                errors.reject(ERROR_MSG, "User name cannot be blank");
+            }
+
+            if (StringUtils.isBlank(password))
+            {
+                errors.reject(ERROR_MSG, "Password cannot be blank");
+            }
+        }
+
+        @Override
+        public boolean handlePost(PXCredentialsForm form, BindException errors)
+        {
+            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(getContainer(),
+                    ProteomeXchangeService.PX_CREDENTIALS, true);
+            map.put(ProteomeXchangeService.PX_USER, form.getUserName());
+            map.put(ProteomeXchangeService.PX_PASSWORD, form.getPassword());
+            map.save();
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(PXCredentialsForm form)
+        {
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(PXCredentialsForm form)
+        {
+            ActionURL adminUrl = new ActionURL(JournalGroupsAdminViewAction.class, getContainer());
+            return new HtmlView(
+                    DIV("ProteomeXchange credentials saved!",
+                    BR(),
+                    new Link.LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
+        }
+
+        @Override
+        public ModelAndView getView(PXCredentialsForm form, boolean reshow, BindException errors)
+        {
+            if(!reshow)
+            {
+                PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(getContainer(),
+                        ProteomeXchangeService.PX_CREDENTIALS, false);
+                if(map != null)
+                {
+                    String user = map.get(ProteomeXchangeService.PX_USER);
+                    String password = map.get(ProteomeXchangeService.PX_PASSWORD);
+                    form.setUserName(user != null ? user : "");
+                    form.setPassword(password != null ? password : "");
+                }
+            }
+            JspView view = new JspView<>("/org/labkey/panoramapublic/view/managePxCredentials.jsp", form, errors);
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            view.setTitle("ProteomeXchange Credentials");
+            return view;
+        }
+
+        @Override
+        public NavTree appendNavTrail(NavTree root)
+        {
+            return null;
+        }
+    }
+
+    public static class PXCredentialsForm
+    {
+        private String _userName;
+        private String _password;
+
+        public String getUserName()
+        {
+            return _userName != null ? _userName : "";
+        }
+
+        public void setUserName(String userName)
+        {
+            _userName = userName;
+        }
+
+        public String getPassword()
+        {
+            return _password != null ? _password : "";
+        }
+
+        public void setPassword(String password)
+        {
+            _password = password;
         }
     }
 
@@ -618,7 +888,7 @@ public class PanoramaPublicController extends SpringActionController
             if(ContainerManager.getForPath(parentContainer.getParsedPath().append(destinationFolder)) != null)
             {
                 errors.reject(ERROR_MSG, "Destination folder " + destinationFolder + " already exists. Please enter another folder name."
-                                         + errMessages.toString());
+                        + errMessages.toString());
                 return false;
             }
 
@@ -674,7 +944,7 @@ public class PanoramaPublicController extends SpringActionController
 
         public Journal lookupJournal()
         {
-            return  JournalManager.getJournal(getJournalId());
+            return JournalManager.getJournal(getJournalId());
         }
 
         public String getDestContainerName()
@@ -792,6 +1062,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     private static final int RANDOM_URL_SIZE = 6;
+
     private static JspView getPublishFormView(PublishExperimentForm form, ExperimentAnnotations exptAnnotations, BindException errors)
     {
         PublishExperimentFormBean bean = new PublishExperimentFormBean();
@@ -1112,38 +1383,47 @@ public class PanoramaPublicController extends SpringActionController
         {
             _journal = journal;
         }
+
         public String getShortAccessUrl()
         {
             return _form.getShortAccessUrl();
         }
+
         public String getShortCopyUrl()
         {
             return _form.getShortCopyUrl();
         }
+
         public boolean isUpdate()
         {
             return _form.isUpdate();
         }
+
         public boolean isKeepPrivate()
         {
             return _form.isKeepPrivate();
         }
+
         public boolean isGetPxid()
         {
             return _form.isGetPxid();
         }
+
         public String getLabHeadName()
         {
             return _form.getLabHeadName();
         }
+
         public String getLabHeadAffiliation()
         {
             return _form.getLabHeadAffiliation();
         }
+
         public String getLabHeadEmail()
         {
             return _form.getLabHeadEmail();
         }
+
         public String getDataLicense()
         {
             return _form.getDataLicense();
@@ -1386,31 +1666,31 @@ public class PanoramaPublicController extends SpringActionController
             m.setSubject(String.format("Access to copy an experiment on Panorama (ID: %s)%s", exptAnnotations.getId(), (updated ? " (**UPDATED**)" : "")));
 
             StringBuilder text = new StringBuilder("You have been given access to copy an experiment on Panorama" + (updated ? " (**UPDATED**)" : "") +".\n\n");
-            text.append("ExperimentID: ").append(exptAnnotations.getId());
-            text.append("\n\n");
-            String containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(exptAnnotations.getContainer()).getURIString();
-            text.append("The current location of the data is:\n").append(containerUrl);
-            text.append("\n\n");
-            text.append("The access URL is:\n").append(journalExperiment.getShortAccessUrl().renderShortURL());
-            text.append("\n\n");
-            text.append("Use the following link to copy the data:\n");
-            text.append(journalExperiment.getShortCopyUrl().renderShortURL()).append("\n\n");
+        text.append("ExperimentID: ").append(exptAnnotations.getId());
+        text.append("\n\n");
+        String containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(exptAnnotations.getContainer()).getURIString();
+        text.append("The current location of the data is:\n").append(containerUrl);
+        text.append("\n\n");
+        text.append("The access URL is:\n").append(journalExperiment.getShortAccessUrl().renderShortURL());
+        text.append("\n\n");
+        text.append("Use the following link to copy the data:\n");
+        text.append(journalExperiment.getShortCopyUrl().renderShortURL()).append("\n\n");
             if(form.isGetPxid())
-            {
-                text.append("\n***Get ProteomeXchange ID");
-                text.append("\nLab Head: ").append(form.getLabHeadName());
-                text.append("\nEmail: ").append(form.getLabHeadEmail());
-                text.append("\nAffiliation: ").append(form.getLabHeadAffiliation());
-                text.append("\n\n");
-            }
+        {
+            text.append("\n***Get ProteomeXchange ID");
+            text.append("\nLab Head: ").append(form.getLabHeadName());
+            text.append("\nEmail: ").append(form.getLabHeadEmail());
+            text.append("\nAffiliation: ").append(form.getLabHeadAffiliation());
+            text.append("\n\n");
+        }
             if(form.isKeepPrivate())
-            {
-                text.append("\n");
-                text.append("***Keep data private. Reviewer account requested.***");
-                text.append("\n\n");
-            }
+        {
+            text.append("\n");
+            text.append("***Keep data private. Reviewer account requested.***");
+            text.append("\n\n");
+        }
 
-            text.append("Thank you,\n\nPanorama team");
+        text.append("Thank you,\n\nPanorama team");
             m.setText(text.toString());
             MailHelper.send(m, user, container);
         }

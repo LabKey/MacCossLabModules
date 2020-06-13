@@ -172,6 +172,13 @@
                     <fkTable>Containers</fkTable>
                 </fk>
             </column>
+            <column columnName="SupportContainer">
+                <fk>
+                    <fkColumnName>EntityId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>Containers</fkTable>
+                </fk>
+            </column>
         </columns>
     </table>
 

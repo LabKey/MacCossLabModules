@@ -30,6 +30,10 @@ import java.io.IOException;
 
 public class ProteomeXchangeService
 {
+    public static final String PX_CREDENTIALS = "ProteomeXchange Credentials";
+    public static final String PX_USER = "ProteomeXchange User";
+    public static final String PX_PASSWORD = "ProteomeXchange Password";
+
     private enum METHOD {submitDataset, validateXML, requestID}
 
     public static String validatePxXml(File pxxmlFile, boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
