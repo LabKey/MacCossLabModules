@@ -105,7 +105,7 @@
     var accessUrlMessage = '<div class="urlMsg">';
     accessUrlMessage += '<span class="helpMsg"><nobr>You may change the text above to a more convenient, easy to remember string.</nobr></span>';
     accessUrlMessage += '<br/>';
-    accessUrlMessage += '<span class="helpMsg">This is the link that should be included in the manuscript to view your supplementary data on the Panorama server is. The full link is: </span>';
+    accessUrlMessage += '<span class="helpMsg">This is the link that should be included in the manuscript to view your supplementary data on Panorama Public. The full link is: </span>';
     accessUrlMessage += '</br>';
     accessUrlMessage += '<span class="bold">' + urlFixedPre + '</span>';
     accessUrlMessage += '<span class="bold" id="span_short_access_url">' + <%=q(accessRecord.getShortURL())%> + '</span>';

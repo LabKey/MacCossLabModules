@@ -16,6 +16,7 @@
 package org.labkey.panoramapublic.model;
 
 
+import org.apache.commons.lang3.StringUtils;
 import org.labkey.api.view.ShortURLRecord;
 
 import java.util.Date;
@@ -40,6 +41,7 @@ public class JournalExperiment
     private String _labHeadEmail;
     private String _labHeadAffiliation;
     private DataLicense _dataLicense;
+    private Integer _announcementId;
 
     public int getJournalId()
     {
@@ -151,6 +153,11 @@ public class JournalExperiment
         _labHeadEmail = labHeadEmail;
     }
 
+    public boolean hasLabHeadDetails()
+    {
+        return !(StringUtils.isBlank(_labHeadName) && StringUtils.isBlank(_labHeadEmail) && StringUtils.isBlank(_labHeadAffiliation));
+    }
+
     public String getLabHeadAffiliation()
     {
         return _labHeadAffiliation;
@@ -169,5 +176,15 @@ public class JournalExperiment
     public void setDataLicense(DataLicense dataLicense)
     {
         _dataLicense = dataLicense;
+    }
+
+    public Integer getAnnouncementId()
+    {
+        return _announcementId;
+    }
+
+    public void setAnnouncementId(Integer announcementId)
+    {
+        _announcementId = announcementId;
     }
 }

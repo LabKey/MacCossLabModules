@@ -111,7 +111,7 @@ public class SubmissionDataValidator
         return status;
     }
 
-    private static List<String> getMissingExperimentMetadataFields(ExperimentAnnotations expAnnot)
+    public static List<String> getMissingExperimentMetadataFields(ExperimentAnnotations expAnnot)
     {
         List<String> errors = new ArrayList<>();
         if(StringUtils.isBlank(expAnnot.getTitle()))
@@ -152,6 +152,11 @@ public class SubmissionDataValidator
         if(expAnnot.getSubmitterAffiliation() == null)
         {
             errors.add("Submitter affiliation is required.");
+        }
+
+        if(expAnnot.getLabHead() != null && StringUtils.isBlank(expAnnot.getLabHeadAffiliation()))
+        {
+            errors.add("Lab Head affiliation is required.");
         }
 
         if(StringUtils.isBlank(expAnnot.getAbstract()))

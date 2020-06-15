@@ -280,19 +280,7 @@ public class JournalManager
         return getJournalExperiment(experiment.getId(), journal.getId());
     }
 
-    public static JournalExperiment addJournalAccess(PanoramaPublicController.PanoramaPublicRequest request, User user) throws ValidationException
-    {
-        try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
-        {
-            JournalExperiment je = setupJournalAccess(request, user);
-
-            transaction.commit();
-
-            return je;
-        }
-    }
-
-    private static JournalExperiment setupJournalAccess(PanoramaPublicController.PanoramaPublicRequest request, User user) throws ValidationException
+    public static JournalExperiment setupJournalAccess(PanoramaPublicController.PanoramaPublicRequest request, User user) throws ValidationException
     {
         Journal journal = request.getJournal();
         ExperimentAnnotations exptAnnotations = request.getExperimentAnnotations();
@@ -432,17 +420,7 @@ public class JournalManager
         return shortAccessURLRecord;
     }
 
-    public static void deleteJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal, User user)
-    {
-        try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
-        {
-            removeJournalAccess(exptAnnotations, journal, user);
-
-            transaction.commit();
-        }
-    }
-
-    private static void removeJournalAccess(ExperimentAnnotations expAnnotations, Journal journal, User user)
+    public static void removeJournalAccess(ExperimentAnnotations expAnnotations, Journal journal, User user)
     {
         JournalExperiment je = getJournalExperiment(expAnnotations, journal);
 

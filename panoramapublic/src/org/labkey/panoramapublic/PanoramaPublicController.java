@@ -581,7 +581,6 @@ public class PanoramaPublicController extends SpringActionController
     public static class ChangeJournalSupportContainerAction extends FormViewAction<JournalSupportContainerForm>
     {
         private Journal _journal;
-
         @Override
         public void validateCommand(JournalSupportContainerForm form, Errors errors)
         {
@@ -1039,7 +1038,7 @@ public class PanoramaPublicController extends SpringActionController
                 form.setShortAccessUrl(journalExperiment.getShortAccessUrl().getShortURL());
                 form.setJournalId(journalExperiment.getJournalId());
                 form.setKeepPrivate(journalExperiment.isKeepPrivate());
-                form.setGetPxid(journalExperiment.isKeepPrivate());
+                form.setGetPxid(journalExperiment.isPxidRequested());
                 form.setLabHeadName(journalExperiment.getLabHeadName());
                 form.setLabHeadEmail(journalExperiment.getLabHeadEmail());
                 form.setLabHeadAffiliation(journalExperiment.getLabHeadAffiliation());
@@ -1211,19 +1210,23 @@ public class PanoramaPublicController extends SpringActionController
             // Create a short copy URL.
             assignShortCopyUrl(form);
 
-            JournalExperiment je;
             try
             {
-                je = JournalManager.addJournalAccess(new PanoramaPublicRequest(_experimentAnnotations, _journal, form), getUser());
+                try(DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
+                {
+                    JournalExperiment je = JournalManager.setupJournalAccess(new PanoramaPublicRequest(_experimentAnnotations, _journal, form), getUser());
+
+                    // Create notifications
+                    PanoramaPublicNotification.notifyCreated(_experimentAnnotations, _journal, je, getUser());
+
+                    transaction.commit();
+                }
             }
             catch(ValidationException | UnauthorizedException  e)
             {
                 errors.reject(ERROR_MSG, e.getMessage());
                 return false;
             }
-
-            // Email contact person for the journal
-            sendNotification(form, _experimentAnnotations, _journal, je, getUser(), getContainer(), false);
 
             return true;
         }
@@ -1625,28 +1628,27 @@ public class PanoramaPublicController extends SpringActionController
             _journalExperiment.setKeepPrivate(form.isKeepPrivate());
             _journalExperiment.setPxidRequested(form.isGetPxid());
             _journalExperiment.setDataLicense(DataLicense.resolveLicense(form.getDataLicense()));
-            if(!_journalExperiment.getShortAccessUrl().getShortURL().equalsIgnoreCase(form.getShortAccessUrl()))
-            {
-                // Change the short copy URL to match the access URL.
-                assignShortCopyUrl(form);
+            _journalExperiment.setLabHeadName(form.getLabHeadName());
+            _journalExperiment.setLabHeadEmail(form.getLabHeadEmail());
+            _journalExperiment.setLabHeadAffiliation(form.getLabHeadAffiliation());
 
-                try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
-                {
-                    JournalManager.updateJournalExperimentUrls(_experimentAnnotations, _journal, _journalExperiment, form.getShortAccessUrl(), form.getShortCopyUrl(), getUser());
-                    transaction.commit();
-                }
-            }
-            else
+            try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
             {
-                try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
+                if(!_journalExperiment.getShortAccessUrl().getShortURL().equalsIgnoreCase(form.getShortAccessUrl()))
+                {
+                    // Change the short copy URL to match the access URL.
+                    assignShortCopyUrl(form);
+                    JournalManager.updateJournalExperimentUrls(_experimentAnnotations, _journal, _journalExperiment, form.getShortAccessUrl(), form.getShortCopyUrl(), getUser());
+                }
+                else
                 {
                     JournalManager.updateJournalExperiment(_journalExperiment, getUser());
-                    transaction.commit();
                 }
+                // Create notifications
+                PanoramaPublicNotification.notifyUpdated(_experimentAnnotations, _journal, _journalExperiment, getUser());
+
+                transaction.commit();
             }
-
-            sendNotification(form, _experimentAnnotations, _journal, _journalExperiment, getUser(), getContainer(), true);
-
             return true;
         }
     }
@@ -1654,85 +1656,14 @@ public class PanoramaPublicController extends SpringActionController
     // END Action for updating an entry in panoramapublic.JournalExperiment table
     // ------------------------------------------------------------------------
 
-    private static void sendNotification(PublishExperimentForm form, ExperimentAnnotations exptAnnotations, Journal journal, JournalExperiment journalExperiment,
-                                         User user, Container container, boolean updated)
-    {
-        // Email contact person for the journal
-        String journalEmail = LookAndFeelProperties.getInstance(journal.getProject()).getSystemEmailAddress();
-        String panoramaAdminEmail = LookAndFeelProperties.getInstance(ContainerManager.getHomeContainer()).getSystemEmailAddress();
-        try
-        {
-            MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
-            m.setSubject(String.format("Access to copy an experiment on Panorama (ID: %s)%s", exptAnnotations.getId(), (updated ? " (**UPDATED**)" : "")));
-
-            StringBuilder text = new StringBuilder("You have been given access to copy an experiment on Panorama" + (updated ? " (**UPDATED**)" : "") +".\n\n");
-        text.append("ExperimentID: ").append(exptAnnotations.getId());
-        text.append("\n\n");
-        String containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(exptAnnotations.getContainer()).getURIString();
-        text.append("The current location of the data is:\n").append(containerUrl);
-        text.append("\n\n");
-        text.append("The access URL is:\n").append(journalExperiment.getShortAccessUrl().renderShortURL());
-        text.append("\n\n");
-        text.append("Use the following link to copy the data:\n");
-        text.append(journalExperiment.getShortCopyUrl().renderShortURL()).append("\n\n");
-            if(form.isGetPxid())
-        {
-            text.append("\n***Get ProteomeXchange ID");
-            text.append("\nLab Head: ").append(form.getLabHeadName());
-            text.append("\nEmail: ").append(form.getLabHeadEmail());
-            text.append("\nAffiliation: ").append(form.getLabHeadAffiliation());
-            text.append("\n\n");
-        }
-            if(form.isKeepPrivate())
-        {
-            text.append("\n");
-            text.append("***Keep data private. Reviewer account requested.***");
-            text.append("\n\n");
-        }
-
-        text.append("Thank you,\n\nPanorama team");
-            m.setText(text.toString());
-            MailHelper.send(m, user, container);
-        }
-        catch (Exception e)
-        {
-            LOG.error("Failed to send notification email to journal.", e);
-        }
-    }
-
-    private static void sendDeleteNotification(ExperimentAnnotations exptAnnotations, Journal journal, User user, Container container)
-    {
-        // Email contact person for the journal
-        String journalEmail = LookAndFeelProperties.getInstance(journal.getProject()).getSystemEmailAddress();
-        String panoramaAdminEmail = LookAndFeelProperties.getInstance(ContainerManager.getHomeContainer()).getSystemEmailAddress();
-        try
-        {
-            MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
-            m.setSubject(String.format("Publish request for experiment DELETED (ID: %s)", exptAnnotations.getId()));
-
-            StringBuilder text = new StringBuilder("Request to publish to ").append(journal.getName()).append(" has been deleted.\n\n");
-            text.append("ExperimentID: ").append(exptAnnotations.getId());
-            text.append("\n\n");
-            String containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(exptAnnotations.getContainer()).getURIString();
-            text.append("The current location of the data is:\n").append(containerUrl);
-            text.append("\n\n");
-
-            text.append("Thank you,\n\nPanorama team");
-            m.setText(text.toString());
-            MailHelper.send(m, user, container);
-        }
-        catch (Exception e)
-        {
-            LOG.error("Failed to send notification email to journal.", e);
-        }
-    }
-
     // ------------------------------------------------------------------------
     // BEGIN Action for deleting an entry in panoramapublic.JournalExperiment table.
     // ------------------------------------------------------------------------
     @RequiresPermission(AdminPermission.class)
     public static class DeleteJournalExperimentAction extends JournalExperimentAction
     {
+        private JournalExperiment _journalExperiment;
+
         @Override
         public ModelAndView getConfirmView(PublishExperimentForm form, BindException errors)
         {
@@ -1750,21 +1681,29 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(PublishExperimentForm form, BindException errors)
         {
-            JournalManager.deleteJournalAccess(_experimentAnnotations, _journal, getUser());
-            sendDeleteNotification(_experimentAnnotations, _journal, getUser(), getContainer());
+            try(DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
+            {
+                JournalManager.removeJournalAccess(_experimentAnnotations, _journal, getUser());
+
+                // Create notifications
+                PanoramaPublicNotification.notifyDeleted(_experimentAnnotations, _journal, _journalExperiment, getUser());
+
+                transaction.commit();
+            }
+
             return true;
         }
 
         @Override
         public void validateForm(PublishExperimentForm form, Errors errors)
         {
-            JournalExperiment je = JournalManager.getJournalExperiment(_experimentAnnotations.getId(), _journal.getId());
-            if(je == null)
+            _journalExperiment = JournalManager.getJournalExperiment(_experimentAnnotations.getId(), _journal.getId());
+            if(_journalExperiment == null)
             {
                 throw new NotFoundException("Could not find an entry for experiment with Id " + form.getId() + " and journal Id " + _journal.getId());
             }
 
-            if(je.getCopied() != null)
+            if(_journalExperiment.getCopied() != null)
             {
                 errors.reject(ERROR_MSG, "The experiment has already been copied by the journal. Unable to delete short access and copy URLs.");
             }
@@ -1825,7 +1764,7 @@ public class PanoramaPublicController extends SpringActionController
         public boolean handlePost(PublishExperimentForm form, BindException errors) throws Exception
         {
             // Remember the existing location of the copy in the journal's project
-            String journalFolderUrl = AppProps.getInstance().getBaseServerUrl() +  _journalExperiment.getShortAccessUrl().getFullURL();
+            ExperimentAnnotations currentJournalExpt = ExperimentAnnotationsManager.getExperimentForShortUrl(_journalExperiment.getShortAccessUrl());
 
             try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
             {
@@ -1842,43 +1781,9 @@ public class PanoramaPublicController extends SpringActionController
                 ExperimentAnnotationsManager.removeShortUrl(_journalExperiment.getExperimentAnnotationsId(),
                                                             _journalExperiment.getShortAccessUrl(), getUser());
 
+                PanoramaPublicNotification.notifyResubmitted(_experimentAnnotations, _journal, _journalExperiment, currentJournalExpt.getContainer(), getUser());
+
                 transaction.commit();
-            }
-
-            // Email contact person for the journal
-            String journalEmail = LookAndFeelProperties.getInstance(_journal.getProject()).getSystemEmailAddress();
-            String panoramaAdminEmail = LookAndFeelProperties.getInstance(ContainerManager.getHomeContainer()).getSystemEmailAddress();
-
-            try
-            {
-                MailHelper.ViewMessage m = MailHelper.createMessage(panoramaAdminEmail, journalEmail);
-                m.setSubject(String.format("Request to republish an experiment on Panorama (ID: %s)", _experimentAnnotations.getId()));
-                StringBuilder text = new StringBuilder("You have received a request to republish an experiment on Panorama.\n\n");
-                text.append("Experiment ID: ").append(_experimentAnnotations.getId()).append("\n\n");
-                text.append("The current journal folder is: \n").append(journalFolderUrl);
-                text.append("\n\n");
-                String containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_experimentAnnotations.getContainer()).getURIString();
-                text.append("The user folder is:\n").append(containerUrl);
-                text.append("\n\n");
-                text.append("The access URL is:\n").append(_journalExperiment.getShortAccessUrl().renderShortURL());
-                text.append("\n\n");
-                text.append("Use the following link to copy the data:\n");
-                text.append(_journalExperiment.getShortCopyUrl().renderShortURL()).append("\n\n");
-                if(_journalExperiment.isPxidRequested())
-                {
-                    text.append("\n***A ProteomeXchangeID is requested.\n\n");
-                }
-                if(_journalExperiment.isKeepPrivate())
-                {
-                    text.append("\n***A reviewer account is requested\n\n");
-                }
-                text.append("Thank you,\n\nPanorama team");
-                m.setText(text.toString());
-                MailHelper.send(m, getUser(), getContainer());
-            }
-            catch (Exception e)
-            {
-                logger.error("Failed to send notification email to journal.", e);
             }
 
             return true;
@@ -3057,6 +2962,19 @@ public class PanoramaPublicController extends SpringActionController
                 if(!urlValidator.isValid(form.getBean().getPublicationLink()))
                 {
                     errors.reject(ERROR_MSG, "Publication Link does not appear to be valid. Links should begin with either http or https.");
+                    return false;
+                }
+            }
+
+            // User is updating the experiment metadata. If this data has already been submitted, and a PX ID was requested,
+            // check that the new details entered are consistent with PX requirements.
+            JournalExperiment je = JournalManager.getLastPublishedRecord(_experimentAnnotationsId);
+            if(je != null && je.isPxidRequested())
+            {
+                List<String> missingFields = SubmissionDataValidator.getMissingExperimentMetadataFields(form.getBean());
+                if(missingFields.size() > 0)
+                {
+                    missingFields.stream().forEach(err -> errors.reject(ERROR_MSG, err));
                     return false;
                 }
             }

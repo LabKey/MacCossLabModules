@@ -237,6 +237,7 @@
             <column columnName="DataLicense">
                 <columnTitle>License</columnTitle>
             </column>
+            <column columnName="AnnouncementId"/>
         </columns>
     </table>
 
