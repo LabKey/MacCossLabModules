@@ -86,8 +86,8 @@
             border: false,
             frame: false,
             defaults: {
-                labelWidth: 150,
-                width: 500,
+                labelWidth: 250,
+                width: 800,
                 labelStyle: 'background-color: #E0E6EA; padding: 5px;'
             },
             items: [
@@ -112,9 +112,9 @@
                     fieldLabel: 'Folder name',
                     name: 'destContainerName',
                     allowBlank: false,
-                    width: 450,
+                    width: 650,
                     value: <%=q(bean.getDestContainerName())%>,
-                    afterBodyEl: '<span style="font-size: 0.75em;">A new folder with this name will be created.</span>',
+                    afterBodyEl: '<span style="font-size: 0.9em;">A new folder with this name will be created.</span>',
                     msgTarget : 'under'
                 },
                 {
@@ -155,7 +155,49 @@
                             hiddenField.setValue(record.get('id'));
                         }
                     }
-                }
+                },
+                {
+                    xtype: 'checkbox',
+                    fieldLabel: "Assign ProteomeXchange ID",
+                    hidden: false,
+                    checked: <%=bean.isAssignPxId()%>,
+                    name: 'assignPxId'
+                },
+                {
+                    xtype: 'checkbox',
+                    fieldLabel: "Use ProteomeXchange Test Database",
+                    hidden: false,
+                    checked: <%=bean.isUsePxTestDb()%>,
+                    name: 'usePxTestDb',
+                    boxLabel: 'Check this box for tests so that we get an ID from the ProteomeXchange test database rather than their production database.'
+                },
+                {
+                    xtype: 'textfield',
+                    fieldLabel: "Reviewer Email Prefix",
+                    value: <%=q(bean.getReviewerEmailPrefix())%>,
+                    name: 'reviewerEmailPrefix',
+                    width: 450,
+                    afterBodyEl: '<span style="font-size: 0.9em;">A new LabKey user account with the email &lt;email_prefix&gt;&lt;numeric suffix&gt;@proteinms.net will be created. </span>',
+                    msgTarget : 'under'
+                },
+                {
+                    xtype: 'checkbox',
+                    fieldLabel: "Send Email to Submitter",
+                    hidden: false,
+                    checked: <%=bean.isSendEmail()%>,
+                    name: 'sendEmail',
+                    boxLabel: 'If checked an email will be sent to the submitter.'
+                },
+                {
+                    xtype: 'textarea',
+                    fieldLabel: "Email address (To:)",
+                    value: <%=q(bean.getToEmailAddresses())%>,
+                    name: 'toEmailAddresses',
+                    width: 450,
+                    height:70,
+                    afterBodyEl: '<span style="font-size: 0.9em;">Enter one email address per line</span>'
+                },
+
             ],
             buttonAlign: 'left',
             buttons: [{

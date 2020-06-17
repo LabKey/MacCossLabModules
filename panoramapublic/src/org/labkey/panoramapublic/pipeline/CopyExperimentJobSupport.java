@@ -15,11 +15,11 @@
  */
 package org.labkey.panoramapublic.pipeline;
 
-
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 
 import java.io.File;
+import java.util.List;
 
 /**
  * User: vsharma
@@ -33,4 +33,12 @@ public interface CopyExperimentJobSupport
     Journal getJournal();
 
     File getExportDir();
+
+    String getReviewerEmailPrefix();
+
+    boolean assignPxId();
+    boolean usePxTestDb();
+
+    boolean emailSubmitter();
+    List<String> toEmailAddresses();
 }

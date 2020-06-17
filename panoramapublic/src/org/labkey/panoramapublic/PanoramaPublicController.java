@@ -71,7 +71,6 @@ import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.PipelineStatusUrls;
 import org.labkey.api.pipeline.PipelineUrls;
 import org.labkey.api.pipeline.PipelineValidationException;
-import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.DetailsURL;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
@@ -97,14 +96,11 @@ import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.security.roles.ProjectAdminRole;
-import org.labkey.api.settings.AppProps;
-import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.Button;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
-import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.TestContext;
 import org.labkey.api.util.URLHelper;
@@ -821,6 +817,7 @@ public class PanoramaPublicController extends SpringActionController
         private ActionURL _successURL;
         private ExperimentAnnotations _experiment;
         private Journal _journal;
+        private JournalExperiment _journalExperiment;
 
         @Override
         public void validateCommand(CopyExperimentForm form, Errors errors)
@@ -831,6 +828,10 @@ public class PanoramaPublicController extends SpringActionController
         public ModelAndView getView(CopyExperimentForm form, boolean reshow, BindException errors)
         {
             validateAction(form);
+            if(!reshow)
+            {
+                CopyExperimentForm.setDefaults(form, _experiment, _journalExperiment);
+            }
 
             JspView view = new JspView("/org/labkey/panoramapublic/view/publish/copyExperimentForm.jsp", form, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
@@ -858,6 +859,16 @@ public class PanoramaPublicController extends SpringActionController
             if(!JournalManager.userHasCopyAccess(_experiment, _journal, getUser()))
             {
                 throw new UnauthorizedException("You do not have permissions to copy this experiment.");
+            }
+            _journalExperiment = JournalManager.getJournalExperiment(_experiment.getId(), _journal.getId());
+            if(_journalExperiment == null)
+            {
+                throw new NotFoundException("Could not find an entry in JournalExperiment table for experimentId " + _experiment.getId()
+                + " and journalId " + _journal.getId());
+            }
+            if(_journalExperiment.getCopied() != null)
+            {
+                throw new UnsupportedOperationException(String.format("The experiment ID %d has already been copied.  It cannot be copied again.", _experiment.getId()));
             }
         }
 
@@ -901,7 +912,14 @@ public class PanoramaPublicController extends SpringActionController
                     throw new NotFoundException("No valid pipeline root found for " + target.getPath());
                 }
                 ViewBackgroundInfo info = new ViewBackgroundInfo(target, getUser(), getViewContext().getActionURL());
-                PipelineService.get().queueJob(new CopyExperimentPipelineJob(info, root, _experiment, _journal));
+
+                CopyExperimentPipelineJob job = new CopyExperimentPipelineJob(info, root, _experiment, _journal);
+                job.setAssignPxId(form.isAssignPxId());
+                job.setUsePxTestDb(form.isUsePxTestDb());
+                job.setReviewerEmailPrefix(form.getReviewerEmailPrefix());
+                job.setEmailSubmitter(form.isSendEmail());
+                job.setToEmailAddresses(form.getToEmailAddressList());
+                PipelineService.get().queueJob(job);
 
                 _successURL = PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlBegin(target);
 
@@ -930,6 +948,32 @@ public class PanoramaPublicController extends SpringActionController
         private int _journalId;
         private String _destContainerName;
         private Integer _destParentContainerId;
+        private String _reviewerEmailPrefix;
+        private boolean _assignPxId;
+        private boolean _usePxTestDb; // Use the test database for getting a PX ID if true
+        private boolean _sendEmail;
+        private String _toEmailAddresses;
+
+        static void setDefaults(CopyExperimentForm form, ExperimentAnnotations sourceExperiment, JournalExperiment je)
+        {
+            if(je.isKeepPrivate())
+            {
+                form.setReviewerEmailPrefix("panorama+reviewer");
+            }
+
+            form.setAssignPxId(je.isPxidRequested());
+            form.setUsePxTestDb(true); // TODO:
+
+            form.setSendEmail(true);
+            User submitter = UserManager.getUser(je.getCreatedBy());
+            // CONSIDER: Add other users that have admin access to the folder?
+            form.setToEmailAddresses(submitter.getEmail());
+
+            Container sourceExptContainer = sourceExperiment.getContainer();
+            Container project = sourceExptContainer.getProject();
+            String projectName = project.getName().replaceAll("-", "");
+            form.setDestContainerName(projectName + " - " + sourceExptContainer.getName());
+        }
 
         public int getJournalId()
         {
@@ -990,6 +1034,61 @@ public class PanoramaPublicController extends SpringActionController
             // Bad or missing returnUrl -- go to expeirment annotation details
             Container c = HttpView.currentContext().getContainer();
             return PanoramaPublicController.getViewExperimentDetailsURL(getId(), c);
+        }
+
+        public String getReviewerEmailPrefix()
+        {
+            return _reviewerEmailPrefix;
+        }
+
+        public void setReviewerEmailPrefix(String reviewerEmailPrefix)
+        {
+            _reviewerEmailPrefix = reviewerEmailPrefix;
+        }
+
+        public boolean isAssignPxId()
+        {
+            return _assignPxId;
+        }
+
+        public void setAssignPxId(boolean assignPxId)
+        {
+            _assignPxId = assignPxId;
+        }
+
+        public boolean isUsePxTestDb()
+        {
+            return _usePxTestDb;
+        }
+
+        public void setUsePxTestDb(boolean usePxTestDb)
+        {
+            _usePxTestDb = usePxTestDb;
+        }
+
+        public boolean isSendEmail()
+        {
+            return _sendEmail;
+        }
+
+        public void setSendEmail(boolean sendEmail)
+        {
+            _sendEmail = sendEmail;
+        }
+
+        public String getToEmailAddresses()
+        {
+            return _toEmailAddresses;
+        }
+
+        public List<String> getToEmailAddressList()
+        {
+            return Arrays.asList(StringUtils.split(_toEmailAddresses, "\n\r"));
+        }
+
+        public void setToEmailAddresses(String toEmailAddresses)
+        {
+            _toEmailAddresses = toEmailAddresses;
         }
     }
 
@@ -2396,8 +2495,6 @@ public class PanoramaPublicController extends SpringActionController
     @RequiresPermission(AdminOperationsPermission.class)
     public static class SavePxIdAction extends PxServiceMethodAction<SavePxIdForm>
     {
-        private static final Pattern PXID = Pattern.compile("identifier=(PX[DT]\\d{6})");
-
         public SavePxIdAction()
         {
             super(SavePxIdForm.class);
@@ -2418,16 +2515,14 @@ public class PanoramaPublicController extends SpringActionController
             }
             else
             {
-                String response = ProteomeXchangeService.getPxId(form.isTestDatabase(), pxUser, pxPassword);
+                String response = ProteomeXchangeService.getPxIdResponse(form.isTestDatabase(), pxUser, pxPassword);
 
                 html.append("Response from PX Server:");
                 html.append("<div style=\"white-space: pre-wrap;margin:10px 0px 10px 0px;\">").append(PageFlowUtil.filter(response)).append("</div>");
 
-                Matcher match = PXID.matcher(response);
-                if(match.find())
+                String pxid = ProteomeXchangeService.parsePxIdFromResponse(response);
+                if(pxid != null)
                 {
-                    String pxid = match.group(1);
-
                     // Save the PX ID with the experiment.
                     expAnnot.setPxid(pxid);
                     ExperimentAnnotationsManager.updatePxId(expAnnot, pxid);

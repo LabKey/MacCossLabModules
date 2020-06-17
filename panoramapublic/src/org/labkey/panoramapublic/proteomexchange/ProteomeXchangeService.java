@@ -27,12 +27,16 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ProteomeXchangeService
 {
     public static final String PX_CREDENTIALS = "ProteomeXchange Credentials";
     public static final String PX_USER = "ProteomeXchange User";
     public static final String PX_PASSWORD = "ProteomeXchange Password";
+
+    private static final Pattern PXID = Pattern.compile("identifier=(PX[DT]\\d{6})");
 
     private enum METHOD {submitDataset, validateXML, requestID}
 
@@ -61,7 +65,7 @@ public class ProteomeXchangeService
         return responseMessage;
     }
 
-    public static String getPxId(boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
+    public static String getPxIdResponse(boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
     {
         String responseMessage;
         try
@@ -76,6 +80,21 @@ public class ProteomeXchangeService
         }
 
         return responseMessage;
+    }
+
+    public static String parsePxIdFromResponse(String response)
+    {
+        Matcher match = PXID.matcher(response);
+        if(match.find())
+        {
+            return match.group(1);
+        }
+        return null;
+    }
+
+    public static String getPxId(boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
+    {
+        return parsePxIdFromResponse(getPxIdResponse(testDatabase, user, pass));
     }
 
     @NotNull

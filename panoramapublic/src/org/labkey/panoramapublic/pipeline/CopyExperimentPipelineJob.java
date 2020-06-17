@@ -25,7 +25,6 @@ import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.TaskId;
 import org.labkey.api.pipeline.TaskPipeline;
 import org.labkey.api.portal.ProjectUrls;
-import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.NotFoundException;
@@ -36,6 +35,7 @@ import org.labkey.panoramapublic.model.Journal;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * User: vsharma
@@ -49,8 +49,18 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     private final Journal _journal;
     private final String _description;
 
+    private String _reviewerEmailPrefix = "panorama+reviewer";
+
+    private boolean _assignPxId;
+    private boolean _usePxTestDb = true;
+
+    private boolean _emailSubmitter;
+    private String _fromEmailAddress;
+    private List<String> _toEmailAddresses;
+
     @JsonCreator
-    protected CopyExperimentPipelineJob(@JsonProperty("_experimentAnnotations") ExperimentAnnotations experiment, @JsonProperty("_journal") Journal journal, @JsonProperty("_description") String description)
+    protected CopyExperimentPipelineJob(@JsonProperty("_experimentAnnotations") ExperimentAnnotations experiment, @JsonProperty("_journal") Journal journal,
+                                        @JsonProperty("_description") String description)
     {
         super();
         _experimentAnnotations = experiment;
@@ -141,5 +151,60 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     public File getExportDir()
     {
         return new File(getLocalDirectory().getLocalDirectoryFile(), PipelineService.EXPORT_DIR);
+    }
+
+    @Override
+    public String getReviewerEmailPrefix()
+    {
+        return _reviewerEmailPrefix;
+    }
+
+    @Override
+    public boolean assignPxId()
+    {
+        return _assignPxId;
+    }
+
+    @Override
+    public boolean usePxTestDb()
+    {
+        return _usePxTestDb;
+    }
+
+    @Override
+    public boolean emailSubmitter()
+    {
+        return _emailSubmitter;
+    }
+
+    @Override
+    public List<String> toEmailAddresses()
+    {
+        return _toEmailAddresses;
+    }
+
+    public void setReviewerEmailPrefix(String reviewerEmailPrefix)
+    {
+        _reviewerEmailPrefix = reviewerEmailPrefix;
+    }
+
+    public void setAssignPxId(boolean assignPxId)
+    {
+        _assignPxId = assignPxId;
+    }
+
+    public void setUsePxTestDb(boolean usePxTestDb)
+    {
+        _usePxTestDb = usePxTestDb;
+    }
+
+    public void setEmailSubmitter(boolean emailSubmitter)
+    {
+        _emailSubmitter = emailSubmitter;
+    }
+
+    public void setToEmailAddresses(List<String> toEmailAddresses)
+    {
+        _toEmailAddresses = toEmailAddresses;
     }
 }
