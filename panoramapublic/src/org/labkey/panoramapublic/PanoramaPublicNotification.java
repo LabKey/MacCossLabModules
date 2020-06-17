@@ -5,20 +5,14 @@ import org.jetbrains.annotations.NotNull;
 import org.labkey.api.announcements.api.Announcement;
 import org.labkey.api.announcements.api.AnnouncementService;
 import org.labkey.api.data.Container;
-import org.labkey.api.data.ContainerManager;
-import org.labkey.api.notification.EmailMessage;
-import org.labkey.api.notification.EmailService;
 import org.labkey.api.portal.ProjectUrls;
-import org.labkey.api.security.Group;
-import org.labkey.api.security.MemberType;
-import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserUrls;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.MailHelper;
-import org.labkey.api.util.MimeMap;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.view.NotFoundException;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
@@ -26,9 +20,6 @@ import org.labkey.panoramapublic.query.JournalManager;
 
 import javax.mail.Message;
 import javax.mail.MessagingException;
-import javax.mail.internet.AddressException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Set;
 
 public class PanoramaPublicNotification
@@ -111,17 +102,21 @@ public class PanoramaPublicNotification
 
         // The user submitting the request does not have permissions to post in the journal's support container.  So the
         // announcement will be posted by the journal admin user.
-        User panoramaPublicAdmin = getJournalAdminUser(journal);
+        User journalAdmin = JournalManager.getJournalAdminUser(journal);
+        if(journalAdmin == null)
+        {
+            throw new NotFoundException(String.format("Could not find an admin user for %s.", journal.getName()));
+        }
 
         if(je.getAnnouncementId() != null)
         {
-            svc.insertAnnouncement(supportContainer, panoramaPublicAdmin, messageTitle, messageBody, true, je.getAnnouncementId());
+            svc.insertAnnouncement(supportContainer, journalAdmin, messageTitle, messageBody, true, je.getAnnouncementId());
         }
         else
         {
-            Announcement announcement = svc.insertAnnouncement(supportContainer, panoramaPublicAdmin, messageTitle, messageBody, true);
+            Announcement announcement = svc.insertAnnouncement(supportContainer, journalAdmin, messageTitle, messageBody, true);
             je.setAnnouncementId(announcement.getRowId());
-            JournalManager.updateJournalExperiment(je, panoramaPublicAdmin);
+            JournalManager.updateJournalExperiment(je, journalAdmin);
         }
     }
 
@@ -198,7 +193,7 @@ public class PanoramaPublicNotification
     {
         ActionURL url = PageFlowUtil.urlProvider(UserUrls.class).getUserDetailsURL(container, user.getUserId(), null);
         StringBuilder link = new StringBuilder();
-        link.append("[**").append(getUserName(user)).append("**]");
+        link.append("[").append(bold(getUserName(user))).append("]");
         link.append("(").append(AppProps.getInstance().getBaseServerUrl() + url.getEncodedLocalURIString()).append(")");
 
         return link.toString();
@@ -208,25 +203,9 @@ public class PanoramaPublicNotification
     {
         ActionURL url = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container);
         StringBuilder link = new StringBuilder("[").append(container.getName()).append("]");
-        link.append("(").append(AppProps.getInstance().getBaseServerUrl() + url.getEncodedLocalURIString()).append(")");
+        link.append("(").append(AppProps.getInstance().getBaseServerUrl()).append(url.getEncodedLocalURIString()).append(")");
 
         return link.toString();
-    }
-
-    public static User getJournalAdminUser(Journal journal)
-    {
-        Group group = SecurityManager.getGroup(journal.getLabkeyGroupId());
-        if(group == null)
-        {
-            throw new IllegalStateException("Security group not found " + journal.getLabkeyGroupId());
-        }
-
-        Set<User> grpMembers = SecurityManager.getAllGroupMembers(group, MemberType.ACTIVE_USERS);
-        if(grpMembers == null || grpMembers.size() == 0)
-        {
-            throw new IllegalStateException("Security group " + group.getName() + " does not have any active members.");
-        }
-        return grpMembers.iterator().next();
     }
 
     public static String bold(String text)
@@ -345,7 +324,7 @@ public class PanoramaPublicNotification
         messageBody.append(P).append("Email Contents:")
                 .append(P).append("To: ").append(StringUtils.join(toAddresses, ", "))
                 .append(NL).append("From: ").append(sender.getEmail())
-                .append(P).append(subject)
+                .append(P).append("Subject: ").append(subject)
                 .append(P).append(emailBody);
 
         postNotification(sourceExperiment, journal, jExperiment, messageBody.toString());

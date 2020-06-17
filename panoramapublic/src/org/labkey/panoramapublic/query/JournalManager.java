@@ -31,8 +31,10 @@ import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.Group;
+import org.labkey.api.security.MemberType;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.RoleAssignment;
+import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicy;
 import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
@@ -57,6 +59,7 @@ import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -517,5 +520,19 @@ public class JournalManager
                 delete(journal, user);
             }
         }
+    }
+
+    public static User getJournalAdminUser(Journal journal)
+    {
+        Group group = SecurityManager.getGroup(journal.getLabkeyGroupId());
+        if(group != null)
+        {
+            Set<User> grpMembers = SecurityManager.getAllGroupMembers(group, MemberType.ACTIVE_USERS);
+            if(grpMembers.size() != 0)
+            {
+                return grpMembers.stream().min(Comparator.comparing(User::getUserId)).orElse(null);
+            }
+        }
+        return null;
     }
 }

@@ -346,7 +346,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             {
                 PanoramaPublicNotification.sendEmailNotification(subject, emailBody, targetExperiment.getContainer(), pipelineJobUser, toAddresses);
             }
-            catch (MessagingException e)
+            catch (Exception e)
             {
                 log.info("Could not send email to submitter. Error was: " + e.getMessage(), e);
                 log.debug("Stack trace ", e);

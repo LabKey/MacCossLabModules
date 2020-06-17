@@ -14,6 +14,7 @@ import org.labkey.test.components.CustomizeView;
 import org.labkey.test.pages.InsertPage;
 import org.labkey.test.tests.targetedms.TargetedMSTest;
 import org.labkey.test.util.APIContainerHelper;
+import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.PortalHelper;
 import org.labkey.test.util.PostgresOnlyTest;
@@ -34,6 +35,8 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
     private static String PANORAMA_PUBLIC = "Panorama Public " + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
     private static final String PANORAMA_PUBLIC_GROUP = "panoramapublictest";
     private static final String DESTINATION_FOLDER = "Test Copy";
+
+    private static final String ADMIN_USER = "admin@panoramapublic.test";
 
     @Override
     protected String getProjectName()
@@ -58,6 +61,11 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         setFormElement(Locator.id("groupNameTextField"), PANORAMA_PUBLIC_GROUP);
         setFormElement(Locator.id("projectNameTextField"), PANORAMA_PUBLIC);
         clickButton("Submit", "Journal group details");
+
+        // Add an admin user to the security group associated with the Panorama Public project
+        _userHelper.createUser(ADMIN_USER);
+        ApiPermissionsHelper _permissionsHelper = new ApiPermissionsHelper(this);
+        _permissionsHelper.addUserToProjGroup(ADMIN_USER, PANORAMA_PUBLIC, PANORAMA_PUBLIC_GROUP);
     }
 
     @Test
