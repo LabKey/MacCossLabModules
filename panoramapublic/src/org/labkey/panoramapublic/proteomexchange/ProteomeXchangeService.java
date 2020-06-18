@@ -94,7 +94,13 @@ public class ProteomeXchangeService
 
     public static String getPxId(boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
     {
-        return parsePxIdFromResponse(getPxIdResponse(testDatabase, user, pass));
+        String response = getPxIdResponse(testDatabase, user, pass);
+        String pxId = parsePxIdFromResponse(response);
+        if(pxId == null)
+        {
+            throw new ProteomeXchangeServiceException("Could not parse ProteomeXchage ID from response \"" + response + "\"");
+        }
+        return pxId;
     }
 
     @NotNull

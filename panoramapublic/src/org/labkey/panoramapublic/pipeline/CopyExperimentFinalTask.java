@@ -43,6 +43,7 @@ import org.labkey.api.security.SecurityPolicy;
 import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
+import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.security.ValidEmail;
 import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ReaderRole;
@@ -149,11 +150,10 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             targetExperiment.setSourceExperimentPath(sourceExperiment.getContainer().getPath());
             targetExperiment.setShortUrl(jExperiment.getShortAccessUrl());
 
-            if(jExperiment.isPxidRequested() ||
-                    jobSupport.assignPxId() // Sometimes we may have to override the isPxidRequested setting in the JournalExperiment
-                                            // This can happen, e.g. if some of the modifications do not have a Unimod ID and the user
-                                            // was unable to do a PX submission.  In this case we might still want to get a PX ID.
-                                            // Let the admin who is copying the data make the decision.
+            if(jobSupport.assignPxId() // We can get isPxidRequested from the JournalExperiment but sometimes we may have to override that settting.
+                                       // This can happen, e.g. if some of the modifications do not have a Unimod ID and the user
+                                       // was unable to do a PX submission.  In this case we might still want to get a PX ID.
+                                       // Let the admin who is copying the data make the decision.
             )
             {
                 log.info("Assigning a ProteomeXchange ID.");
@@ -244,14 +244,14 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             {
                 // Assign Site:Guests to reader role
                 log.info("Making folder public.");
-                assignReader(UserManager.getGuestUser(), target);
+                assignReader(SecurityManager.getGroup(Group.groupGuests), target);
             }
 
             // Create notifications
             PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), jExperiment,
                     reviewer, reviewerPassword, user);
 
-            postEmailContents(jobSupport, user, log, sourceExperiment, jExperiment, targetExperiment, reviewer, reviewerPassword);
+            postEmailNotification(jobSupport, user, log, sourceExperiment, jExperiment, targetExperiment, reviewer, reviewerPassword);
 
             transaction.commit();
         }
@@ -261,7 +261,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     {
         if(StringUtils.isBlank(reviewerEmailPrefix))
         {
-            reviewerEmailPrefix = "panorama+reviewer";
+            reviewerEmailPrefix = PanoramaPublicController.PANORAMA_REVIEWER_PREFIX;
         }
 
         String domain = "@proteinms.net"; // TODO: configure this in admin settings
@@ -282,10 +282,10 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return newUser.getUser();
     }
 
-    private void assignReader(User reviewer, Container target)
+    private void assignReader(UserPrincipal reader, Container target)
     {
         MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
-        newPolicy.addRoleAssignment(reviewer, ReaderRole.class);
+        newPolicy.addRoleAssignment(reader, ReaderRole.class);
         SecurityPolicyManager.savePolicy(newPolicy);
     }
 
@@ -310,9 +310,9 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         }
     }
 
-    private void postEmailContents(CopyExperimentJobSupport jobSupport, User pipelineJobUser, Logger log, ExperimentAnnotations sourceExperiment,
-                                   JournalExperiment jExperiment, ExperimentAnnotations targetExperiment,
-                                   User reviewer, String reviewerPassword)
+    private void postEmailNotification(CopyExperimentJobSupport jobSupport, User pipelineJobUser, Logger log, ExperimentAnnotations sourceExperiment,
+                                       JournalExperiment jExperiment, ExperimentAnnotations targetExperiment,
+                                       User reviewer, String reviewerPassword)
     {
         // This is the user that was selected as the "Submitter" in the ExperimentAnnotations form, and will be used in the "Submitter" field
         // when announcing data on Panorama Public.

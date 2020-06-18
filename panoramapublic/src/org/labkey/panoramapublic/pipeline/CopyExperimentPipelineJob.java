@@ -49,7 +49,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     private final Journal _journal;
     private final String _description;
 
-    private String _reviewerEmailPrefix = "panorama+reviewer";
+    private String _reviewerEmailPrefix;
 
     private boolean _assignPxId;
     private boolean _usePxTestDb = true;

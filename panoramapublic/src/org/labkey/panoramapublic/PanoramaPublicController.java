@@ -176,6 +176,7 @@ public class PanoramaPublicController extends SpringActionController
 {
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(PanoramaPublicController.class);
     public static final String NAME = "panoramapublic";
+    public static final String PANORAMA_REVIEWER_PREFIX = "panorama+reviewer";
 
     public PanoramaPublicController()
     {
@@ -430,7 +431,7 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public boolean handlePost(JournalForm form, BindException errors) throws IllegalAccessException
+        public boolean handlePost(JournalForm form, BindException errors)
         {
             Journal journal = form.lookupJournal();
 
@@ -442,6 +443,8 @@ public class PanoramaPublicController extends SpringActionController
 
             if(JournalManager.getExperimentsForJournal(journal.getId()).size() > 0)
             {
+                // Do not delete the journal via the Admin console link if it contains any published data.
+                // The journal project can still be deleted from the LabKey UI, however.
                 errors.addError(new LabKeyError("The journal project contains published experiments. It cannot be deleted."));
                 return false;
             }
@@ -455,7 +458,6 @@ public class PanoramaPublicController extends SpringActionController
                 SecurityManager.deleteGroup(SecurityManager.getGroup(journal.getLabkeyGroupId()));
 
                 // Delete the project created for this journal.
-                // The project will only be deleted if it does not contain any published data.
                 ContainerManager.delete(journal.getProject(), getUser());
 
                 transaction.commit();
@@ -598,11 +600,15 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getView(JournalSupportContainerForm form, boolean reshow, BindException errors)
         {
-            _journal = form.lookupJournal();
             if(!reshow)
             {
-                Container supportContainer = _journal.getSupportContainer();
-                form.setSupportContainerPath(supportContainer != null ? supportContainer.getPath() : "");
+                _journal = form.lookupJournal();
+                if(_journal == null)
+                {
+                    errors.reject(ERROR_MSG, "Did not find a journal for journalId: " + form.getId());
+                    return new SimpleErrorView(errors);
+                }
+                form.setSupportContainerPath(_journal.getSupportContainer().getPath());
             }
 
             VBox view = new VBox();
@@ -637,10 +643,6 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(JournalSupportContainerForm form, BindException errors) throws Exception
         {
-            if(_journal == null)
-            {
-                return false;
-            }
             _journal.setSupportContainer(form.getSupportContainer());
             JournalManager.updateJournal(_journal, getUser());
             return true;
@@ -725,8 +727,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(PXCredentialsForm form, BindException errors)
         {
-            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(getContainer(),
-                    ProteomeXchangeService.PX_CREDENTIALS, true);
+            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(ProteomeXchangeService.PX_CREDENTIALS, true);
             map.put(ProteomeXchangeService.PX_USER, form.getUserName());
             map.put(ProteomeXchangeService.PX_PASSWORD, form.getPassword());
             map.save();
@@ -754,8 +755,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             if(!reshow)
             {
-                PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(getContainer(),
-                        ProteomeXchangeService.PX_CREDENTIALS, false);
+                PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(ProteomeXchangeService.PX_CREDENTIALS, false);
                 if(map != null)
                 {
                     String user = map.get(ProteomeXchangeService.PX_USER);
@@ -958,7 +958,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             if(je.isKeepPrivate())
             {
-                form.setReviewerEmailPrefix("panorama+reviewer");
+                form.setReviewerEmailPrefix(PANORAMA_REVIEWER_PREFIX);
             }
 
             form.setAssignPxId(je.isPxidRequested());
@@ -1880,7 +1880,7 @@ public class PanoramaPublicController extends SpringActionController
                 ExperimentAnnotationsManager.removeShortUrl(_journalExperiment.getExperimentAnnotationsId(),
                                                             _journalExperiment.getShortAccessUrl(), getUser());
 
-                PanoramaPublicNotification.notifyResubmitted(_experimentAnnotations, _journal, _journalExperiment, currentJournalExpt.getContainer(), getUser());
+                PanoramaPublicNotification.notifyResubmitted(_experimentAnnotations, _journal, _journalExperiment, currentJournalExpt, getUser());
 
                 transaction.commit();
             }

@@ -26,6 +26,8 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
+<%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
+<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -42,6 +44,7 @@
     PanoramaPublicController.CopyExperimentForm bean = me.getModelBean();
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
     Journal journal = bean.lookupJournal();
+    JournalExperiment je = JournalManager.getJournalExperiment(expAnnot.getId(), journal.getId());
     String selectedFolder = "Please select a destination folder...";
     if(bean.getDestParentContainerId() != null)
     {
@@ -159,31 +162,29 @@
                 {
                     xtype: 'checkbox',
                     fieldLabel: "Assign ProteomeXchange ID",
-                    hidden: false,
                     checked: <%=bean.isAssignPxId()%>,
                     name: 'assignPxId'
                 },
                 {
                     xtype: 'checkbox',
                     fieldLabel: "Use ProteomeXchange Test Database",
-                    hidden: false,
                     checked: <%=bean.isUsePxTestDb()%>,
                     name: 'usePxTestDb',
                     boxLabel: 'Check this box for tests so that we get an ID from the ProteomeXchange test database rather than their production database.'
                 },
                 {
                     xtype: 'textfield',
+                    hidden: <%=!je.isKeepPrivate()%>,
                     fieldLabel: "Reviewer Email Prefix",
                     value: <%=q(bean.getReviewerEmailPrefix())%>,
                     name: 'reviewerEmailPrefix',
                     width: 450,
-                    afterBodyEl: '<span style="font-size: 0.9em;">A new LabKey user account with the email &lt;email_prefix&gt;&lt;numeric suffix&gt;@proteinms.net will be created. </span>',
+                    afterBodyEl: '<span style="font-size: 0.9em;">A new LabKey user account email_prefix(unique numeric suffix)@proteinms.net will be created. </span>',
                     msgTarget : 'under'
                 },
                 {
                     xtype: 'checkbox',
                     fieldLabel: "Send Email to Submitter",
-                    hidden: false,
                     checked: <%=bean.isSendEmail()%>,
                     name: 'sendEmail',
                     boxLabel: 'If checked an email will be sent to the submitter.'

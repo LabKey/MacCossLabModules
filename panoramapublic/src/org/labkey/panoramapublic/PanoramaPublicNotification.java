@@ -59,11 +59,18 @@ public class PanoramaPublicNotification
         postNotification(expAnnotations, journal, je, messageBody.toString());
     }
 
-    public static void notifyResubmitted(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, Container currentJournalFolder, User user)
+    public static void notifyResubmitted(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, ExperimentAnnotations currentJournalExpt, User user)
     {
         StringBuilder messageBody = new StringBuilder();
         appendFullMessageBody(expAnnotations, journal, je, ACTION.RESUBMITTED, user, messageBody);
-        messageBody.append(NL2).append(bold("Current Journal Folder:")).append(" ").append(getContainerLink(currentJournalFolder));
+        if(currentJournalExpt != null)
+        {
+            messageBody.append(NL2).append(bold(String.format("Current %s Folder:", journal.getName()))).append(" ").append(getContainerLink(currentJournalExpt.getContainer()));
+        }
+        else
+        {
+            messageBody.append(NL2).append(bold(String.format("Could not find the current %s folder.", journal.getName())));
+        }
 
         postNotification(expAnnotations, journal, je, messageBody.toString());
     }
