@@ -3513,7 +3513,6 @@ public class PanoramaPublicController extends SpringActionController
 
             // @RequiresPermission(AdminPermission.class)
             assertForAdminPermission(user,
-                new JournalGroupDetailsAction(),
                 new PublishExperimentAction(),
                 new UpdateJournalExperimentAction(),
                 new DeleteJournalExperimentAction(),
@@ -3525,6 +3524,7 @@ public class PanoramaPublicController extends SpringActionController
             // @RequiresPermission(AdminOperationsPermission.class)
             assertForAdminOperationsPermission(user,
                 new CreateJournalGroupAction(),
+                new JournalGroupDetailsAction(),
                 new DeleteJournalGroupAction(),
                 new GetPxActionsAction(),
                 new ExportPxXmlAction(),
@@ -3535,8 +3535,8 @@ public class PanoramaPublicController extends SpringActionController
             );
 
             // @AdminConsoleAction
-            // @RequiresPermission(AdminPermission.class)
-            assertForAdminPermission(ContainerManager.getRoot(), user,
+            // @RequiresPermission(AdminOperationsPermission.class)
+            assertForAdminOperationsPermission(ContainerManager.getRoot(), user,
                 new JournalGroupsAdminViewAction()
             );
         }
