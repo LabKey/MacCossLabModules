@@ -15,6 +15,7 @@
  */
 package org.labkey.panoramapublic.pipeline;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -62,7 +63,6 @@ import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
 
-import javax.mail.MessagingException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -159,7 +159,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 log.info("Assigning a ProteomeXchange ID.");
                 try
                 {
-                    assignPxId(targetExperiment, jobSupport.usePxTestDb(), log);
+                    assignPxId(targetExperiment, jobSupport.usePxTestDb());
                 }
                 catch(ProteomeXchangeServiceException e)
                 {
@@ -289,18 +289,12 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         SecurityPolicyManager.savePolicy(newPolicy);
     }
 
-    private static final String passwordChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     public static String createPassword()
     {
-        StringBuilder passwd = new StringBuilder(10);
-
-        for (int i = 0; i < 10; i++)
-            passwd.append(passwordChars.charAt((int) Math.floor((Math.random() * passwordChars.length()))));
-
-        return passwd.toString();
+        return RandomStringUtils.randomAlphabetic(8);
     }
 
-    private void assignPxId(ExperimentAnnotations targetExpt, boolean useTestDb, Logger logger) throws ProteomeXchangeServiceException
+    private void assignPxId(ExperimentAnnotations targetExpt, boolean useTestDb) throws ProteomeXchangeServiceException
     {
         PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(ProteomeXchangeService.PX_CREDENTIALS, false);
         if(map != null)
@@ -345,17 +339,19 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             try
             {
                 PanoramaPublicNotification.sendEmailNotification(subject, emailBody, targetExperiment.getContainer(), pipelineJobUser, toAddresses);
+                PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), true);
             }
             catch (Exception e)
             {
                 log.info("Could not send email to submitter. Error was: " + e.getMessage(), e);
-                log.debug("Stack trace ", e);
                 PanoramaPublicNotification.postEmailContentsWithError(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), e.getMessage());
-                return;
             }
         }
-        // Post the email contents to the message board.
-        PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal());
+        else
+        {
+            // Post the email contents to the message board.
+            PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), false);
+        }
     }
 
     private boolean updateDataPaths(Container target, FileContentService service, User user, Logger logger) throws BatchValidationException

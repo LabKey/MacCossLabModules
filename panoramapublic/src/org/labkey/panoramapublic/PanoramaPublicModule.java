@@ -253,6 +253,7 @@ public class PanoramaPublicModule extends SpringModule
         Set<Class> set = new HashSet<>();
         set.add(PanoramaPublicController.TestCase.class);
         set.add(SubmissionDataValidator.TestCase.class);
+        set.add(PanoramaPublicNotification.TestCase.class);
         return set;
 
     }
