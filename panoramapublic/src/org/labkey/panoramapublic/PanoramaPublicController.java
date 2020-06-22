@@ -24,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
+import org.labkey.api.action.ApiUsageException;
 import org.labkey.api.action.ConfirmAction;
 import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.FormViewAction;
@@ -773,7 +774,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public NavTree appendNavTrail(NavTree root)
         {
-            return null;
+            return root.addChild("Set ProteomeXchange Credentials");
         }
     }
 
@@ -868,7 +869,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             if(_journalExperiment.getCopied() != null)
             {
-                throw new UnsupportedOperationException(String.format("The experiment ID %d has already been copied.  It cannot be copied again.", _experiment.getId()));
+                throw new ApiUsageException(String.format("The experiment ID %d has already been copied.  It cannot be copied again.", _experiment.getId()));
             }
         }
 
