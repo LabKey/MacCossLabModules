@@ -1897,6 +1897,14 @@ public class PanoramaPublicController extends SpringActionController
             {
                 errors.reject(ERROR_MSG,"Could not find an entry for experiment with Id " + form.getId() + " and journal Id " + _journal.getId());
             }
+
+            ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.getJournalCopy(_experimentAnnotations);
+            if(journalCopy != null && journalCopy.isFinal())
+            {
+                Journal journal = JournalManager.getJournal(_journalExperiment.getJournalId());
+                errors.reject(ERROR_MSG,"The experiment cannot be resubmitted. It has been copied to " + journal.getName()
+                        + ", and the copy is final. The publication link is " + PageFlowUtil.filter(journalCopy.getPublicationLink()));
+            }
         }
 
         @NotNull
@@ -2044,6 +2052,13 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, "There are no Skyline documents included in this experiment.  " +
                         "Please upload one or more Skyline documents to proceed with the submission request.");
                 return new SimpleErrorView(errors);
+            }
+
+            if (!ExperimentAnnotationsManager.hasProteomicData(expAnnot, getUser()))
+            {
+                // If this experiment has only small molecule data we cannot get a PX ID for it.  Continue on to the submission form without
+                // validating for a pX submission.
+                throw new RedirectException(getPublishExperimentURL(expAnnot.getId(), getContainer(), true, false /*No PX ID*/));
             }
 
             SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(expAnnot, form.isSkipMetaDataCheck(), form.isSkipRawDataCheck(), form.isSkipModCheck());
@@ -2852,8 +2867,6 @@ public class PanoramaPublicController extends SpringActionController
             experimentDetailsView.setTitle("Experiment Details");
 
             // List of runs in the experiment.
-//            TargetedMsRunListView.ViewType viewType = exptAnnotations.isJournalCopy() ? TargetedMsRunListView.ViewType.EXPERIMENT_VIEW :
-//                    TargetedMsRunListView.ViewType.EDITABLE_EXPERIMENT_VIEW;
             PanoramaPublicRunListView runListView = PanoramaPublicRunListView.createView(getViewContext(), exptAnnotations);
             TableInfo tinfo = runListView.getTable();
             if(tinfo instanceof FilteredTable)
@@ -2918,8 +2931,11 @@ public class PanoramaPublicController extends SpringActionController
             {
                 _lastPublishedRecord = JournalManager.getLastPublishedRecord(_experimentAnnotations.getId());
 
-                // User needs to be the folder admin to publish an experiment.
-                _canPublish = !_experimentAnnotations.isJournalCopy() && c.hasPermission(user, AdminPermission.class);
+                // Should see the "Submit" or "Resubmit" button only if
+                // 1. User is an admin in the folder
+                // 2. AND this is a NOT journal copy (i.e. a folder in the Panorama Public project)
+                // 3. AND if this experiment has been copied to Panorama Public, the copy is not final (paper published and data public).
+                _canPublish = c.hasPermission(user, AdminPermission.class) && (ExperimentAnnotationsManager.canSubmitExperiment(_experimentAnnotations));
             }
         }
         public ExperimentAnnotations getExperimentAnnotations()
@@ -3037,6 +3053,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             UpdateView view = new UpdateView(new ExperimentAnnotationsFormDataRegion(getViewContext(), form, DataRegion.MODE_UPDATE), form, errors);
             view.setTitle(TargetedMSExperimentWebPart.WEB_PART_NAME);
+            addExperimentViewDependencies(view);
             return view;
         }
 

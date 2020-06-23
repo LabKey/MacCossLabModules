@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
+import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
@@ -22,6 +23,8 @@ import org.labkey.test.util.PostgresOnlyTest;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.io.File;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -29,8 +32,11 @@ import static org.junit.Assert.assertNotNull;
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
 public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTest
 {
-    private static final String SKY_FILE_1 = "MRMer.zip";
-    private static final String SKY_FILE_2 = "smallmol_plus_peptides.sky.zip";
+    // private static final String SKY_FILE_1 = "MRMer.zip";
+    // private static final String SKY_FILE_2 = "smallmol_plus_peptides.sky.zip";
+    private static final String SKY_FILE_1 = "Study9S_Site52_v1.sky.zip";
+    private static final String RAW_FILE_WIFF = "Site52_041009_Study9S_Phase-I.wiff";
+    private static final String RAW_FILE_WIFF_SCAN = RAW_FILE_WIFF + ".scan";
 
     private static String PANORAMA_PUBLIC = "Panorama Public " + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
     private static final String PANORAMA_PUBLIC_GROUP = "panoramapublictest";
@@ -71,6 +77,11 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         _permissionsHelper.addUserToProjGroup(ADMIN_USER, PANORAMA_PUBLIC, PANORAMA_PUBLIC_GROUP);
     }
 
+    protected File getSampleDataPath(String file)
+    {
+        return TestFileUtils.getSampleData("TargetedMS/" + file);
+    }
+
     @Test
     public void testExperimentCopy()
     {
@@ -82,23 +93,35 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         setupFolder(FolderType.Experiment);
         impersonate(SUBMITTER);
 
+
         // 2. Import a Skyline document to the folder
-        importData(SKY_FILE_1);
-        importData(SKY_FILE_2, 2);
+        // importData(SKY_FILE_1);
+        // importData(SKY_FILE_2, 2);
 
         // 3. Add the "Targeted MS Experiment" webpart
         portalHelper.click(Locator.folderTab("Panorama Dashboard"));
         portalHelper.enterAdminMode();
         portalHelper.addBodyWebPart("Targeted MS Experiment");
 
-        // 4. Create a new experiment
+        // 3. Create a new experiment
         TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
         TargetedMsExperimentInsertPage insertPage = expWebPart.startInsert();
         insertPage.insert();
 
+        // Click Submit.  Should show error message since there are no Skyline documents in the folder.
+        testSubmitWithNoSkyDocs(portalHelper, expWebPart);
+
+        // 4. Import a Skyline document to the folder
+        importData(SKY_FILE_1, 1);
+
+        // Click Submit.  Expect to see the missing information page
+        testSubmitWithMissingRawFiles(portalHelper, expWebPart);
+
+        testSubmitWithRawFiles(portalHelper, expWebPart);
+
         // 5. Submit the experiment
         portalHelper.click(Locator.folderTab("Panorama Dashboard"));
-        expWebPart.submitExperiment();
+        expWebPart.submitWithoutPXId();
         assertTextPresent("Copy Pending!");
 
         // 6. Copy the experiment to the Panorama Public project
@@ -135,7 +158,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         expListTable.ensureColumnPresent("Runs");
         expListTable.ensureColumnPresent("Public"); // Column to indicate if the data is public or not
         expListTable.ensureColumnPresent("Data License");
-        assertEquals("2", expListTable.getDataAsText(0, "Runs"));
+        assertEquals("1", expListTable.getDataAsText(0, "Runs"));
         assertEquals("No", expListTable.getDataAsText(0, "Public"));
         assertEquals("CC BY 4.0", expListTable.getDataAsText(0, "Data License"));
         clickAndWait(expListTable.link(0, "Title"));
@@ -157,6 +180,38 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         _userHelper.createUser(SUBMITTER);
         ApiPermissionsHelper _permissionsHelper = new ApiPermissionsHelper(this);
         _permissionsHelper.addMemberToRole(SUBMITTER, "Project Administrator", PermissionsHelper.MemberType.user, getProjectName());
+    }
+
+    private void testSubmitWithNoSkyDocs(PortalHelper portal, TargetedMsExperimentWebPart expWebPart)
+    {
+        portal.click(Locator.folderTab("Panorama Dashboard"));
+        expWebPart.clickSubmit();
+        assertTextPresent("There are no Skyline documents included in this experiment");
+    }
+
+    private void testSubmitWithMissingRawFiles(PortalHelper portal, TargetedMsExperimentWebPart expWebPart)
+    {
+        portal.click(Locator.folderTab("Panorama Dashboard"));
+        expWebPart.clickSubmit();
+        assertTextPresent("Missing raw data");
+        assertTextPresent(RAW_FILE_WIFF);
+        assertTextPresent(RAW_FILE_WIFF_SCAN);
+    }
+
+    private void testSubmitWithRawFiles(PortalHelper portal, TargetedMsExperimentWebPart expWebPart)
+    {
+        portal.click(Locator.folderTab("Raw Data"));
+        _fileBrowserHelper.uploadFile(getSampleDataPath(RAW_FILE_WIFF));
+
+//        if (!_fileBrowserHelper.fileIsPresent(fileName))
+//            _fileBrowserHelper.uploadFile(getSampleDataPath(RAW_FILE_WIFF));
+
+        portal.click(Locator.folderTab("Panorama Dashboard"));
+        expWebPart.clickSubmit();
+        assertTextPresent("Missing raw data");
+        // assertTextNotPresent(RAW_FILE_WIFF);
+        assertTextPresent(RAW_FILE_WIFF_SCAN);
+        assertEquals(1, countText(RAW_FILE_WIFF));
     }
 
     @Override
@@ -199,7 +254,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
             return new PanoramaPublicTest.TargetedMsExperimentInsertPage(_test.getDriver());
         }
 
-        public void submitExperiment()
+        public void submitWithoutPXId()
         {
             findElement(Locator.linkContainingText("Submit")).click();
             waitAndClick(Locator.linkContainingText("Continue Without ProteomeXchange ID"));
@@ -207,6 +262,11 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
             waitAndClick(Locator.linkContainingText("Submit"));
             waitAndClick(Locator.lkButton("OK")); // Confirm to proceed with the submission.
             waitAndClick(Locator.linkWithSpan("Back to Experiment Details")); // Navigate to the experiment details page.
+        }
+
+        public void clickSubmit()
+        {
+            clickAndWait(Locator.linkContainingText("Submit"));
         }
 
         public void resubmit()

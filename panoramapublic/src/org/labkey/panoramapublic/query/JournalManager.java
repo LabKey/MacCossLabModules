@@ -127,8 +127,10 @@ public class JournalManager
         return new SqlSelector(PanoramaPublicManager.getSchema(), sql).getArrayList(ExperimentAnnotations.class);
     }
 
-    public static JournalExperiment getJournalExperiment(int experimentAnnotationsId, int journalId)
+    public static JournalExperiment getJournalExperiment(Integer experimentAnnotationsId, Integer journalId)
     {
+        if(experimentAnnotationsId == null || journalId == null)
+            return null;
         SimpleFilter filter = new SimpleFilter();
         filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
         filter.addCondition(FieldKey.fromParts("JournalId"), journalId);

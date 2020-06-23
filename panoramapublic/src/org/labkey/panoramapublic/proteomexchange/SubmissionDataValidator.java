@@ -54,6 +54,11 @@ public class SubmissionDataValidator
 
     private static final Logger LOG = Logger.getLogger(SubmissionDataValidator.class);
 
+    public static boolean isValid(ExperimentAnnotations expAnnot)
+    {
+        return isValid(expAnnot, false, false, false);
+    }
+
     public static boolean isValid(ExperimentAnnotations expAnnot, boolean skipMetaDataCheck, boolean skipRawDataCheck, boolean skipModificationCheck)
     {
         boolean metadataValid = skipMetaDataCheck || metadataComplete(expAnnot);
@@ -155,12 +160,10 @@ public class SubmissionDataValidator
         {
             errors.add("Submitter affiliation is required.");
         }
-
         if(expAnnot.getLabHead() != null && StringUtils.isBlank(expAnnot.getLabHeadAffiliation()))
         {
             errors.add("Lab Head affiliation is required.");
         }
-
         if(StringUtils.isBlank(expAnnot.getAbstract()))
         {
             errors.add("Abstract is required.");
@@ -296,29 +299,43 @@ public class SubmissionDataValidator
                 continue;
             }
 
-            String fileName = FilenameUtils.getName(filePath);
+            checkExists(run, rootExpContainer, rawFilesDir, filePath, existingRawFiles, missingFiles, expSvc);
 
-            if(!hasExpData(fileName, run.getContainer(), rawFilesDir, expSvc))
+            // If this is a SCIEX .wiff file check for the presence of the corresponding .wiff.scan file
+            if(isSciexWiff(filePath))
             {
-                // If no matching row was found in exp.data and this is NOT a cloud container check for the file on the file system.
-                // TODO: Do we really need this? Can we be sure that a row will always be in exp.data for uploaded raw data?
-                if(!FileContentService.get().isCloudRoot(rootExpContainer))
-                {
-                    if (Files.exists(rawFilesDir) && findInDirectoryTree(rawFilesDir, fileName, rootExpContainer))
-                    {
-                        existingRawFiles.add(filePath);
-                        continue;
-                    }
-                }
-                missingFiles.add(filePath);
-            }
-            else
-            {
-                existingRawFiles.add(filePath);
+                checkExists(run, rootExpContainer, rawFilesDir, filePath + ".scan", existingRawFiles, missingFiles, expSvc);
             }
         }
 
         return missingFiles;
+    }
+
+    private static boolean isSciexWiff(String fileName)
+    {
+        return fileName.toLowerCase().endsWith(".wiff");
+    }
+
+    private static void checkExists(ITargetedMSRun run, Container rootExpContainer, Path rawFilesDir, String filePath, Set<String> existingRawFiles, List<String> missingFiles, ExperimentService expSvc)
+    {
+        String fileName = FilenameUtils.getName(filePath);
+        if (!hasExpData(fileName, run.getContainer(), rawFilesDir, expSvc))
+        {
+            // If no matching row was found in exp.data and this is NOT a cloud container check for the file on the file system.
+            if(!FileContentService.get().isCloudRoot(rootExpContainer))
+            {
+                if (Files.exists(rawFilesDir) && findInDirectoryTree(rawFilesDir, fileName, rootExpContainer))
+                {
+                    existingRawFiles.add(filePath);
+                    return;
+                }
+            }
+            missingFiles.add(filePath);
+        }
+        else
+        {
+            existingRawFiles.add(filePath);
+        }
     }
 
     private static String getFilePath(String filePath)
