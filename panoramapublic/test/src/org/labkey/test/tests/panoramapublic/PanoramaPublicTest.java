@@ -10,19 +10,20 @@ import org.labkey.test.TestTimeoutException;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.BodyWebPart;
-import org.labkey.test.components.CustomizeView;
 import org.labkey.test.pages.InsertPage;
 import org.labkey.test.tests.targetedms.TargetedMSTest;
 import org.labkey.test.util.APIContainerHelper;
+import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
+import org.labkey.test.util.Ext4Helper;
+import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PortalHelper;
 import org.labkey.test.util.PostgresOnlyTest;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
-import java.util.List;
-
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
@@ -34,6 +35,11 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
     private static String PANORAMA_PUBLIC = "Panorama Public " + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
     private static final String PANORAMA_PUBLIC_GROUP = "panoramapublictest";
     private static final String DESTINATION_FOLDER = "Test Copy";
+
+    private static final String ADMIN_USER = "admin@panoramapublic.test";
+    private static final String SUBMITTER = "submitter@panoramapublic.test";
+
+    PortalHelper portalHelper = new PortalHelper(this);
 
     @Override
     protected String getProjectName()
@@ -58,6 +64,11 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         setFormElement(Locator.id("groupNameTextField"), PANORAMA_PUBLIC_GROUP);
         setFormElement(Locator.id("projectNameTextField"), PANORAMA_PUBLIC);
         clickButton("Submit", "Journal group details");
+
+        // Add an admin user to the security group associated with the Panorama Public project
+        _userHelper.createUser(ADMIN_USER);
+        ApiPermissionsHelper _permissionsHelper = new ApiPermissionsHelper(this);
+        _permissionsHelper.addUserToProjGroup(ADMIN_USER, PANORAMA_PUBLIC, PANORAMA_PUBLIC_GROUP);
     }
 
     @Test
@@ -69,16 +80,16 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
 
         // 1. Set up our source folder. We will create an experiment here and submit it to our "Panorama Public" project.
         setupFolder(FolderType.Experiment);
+        impersonate(SUBMITTER);
 
         // 2. Import a Skyline document to the folder
         importData(SKY_FILE_1);
         importData(SKY_FILE_2, 2);
 
         // 3. Add the "Targeted MS Experiment" webpart
-        PortalHelper portal = new PortalHelper(this);
-        portal.click(Locator.folderTab("Panorama Dashboard"));
-        portal.enterAdminMode();
-        portal.addBodyWebPart("Targeted MS Experiment");
+        portalHelper.click(Locator.folderTab("Panorama Dashboard"));
+        portalHelper.enterAdminMode();
+        portalHelper.addBodyWebPart("Targeted MS Experiment");
 
         // 4. Create a new experiment
         TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
@@ -86,27 +97,30 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         insertPage.insert();
 
         // 5. Submit the experiment
-        portal.click(Locator.folderTab("Panorama Dashboard"));
+        portalHelper.click(Locator.folderTab("Panorama Dashboard"));
         expWebPart.submitExperiment();
         assertTextPresent("Copy Pending!");
 
         // 6. Copy the experiment to the Panorama Public project
         // Customize the "Submission" grid to display the short copy URL
-        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "Submission");
-        CustomizeView customize = table.openCustomizeGrid();
-        customize.addColumn("ShortCopyURL");
-        customize.applyCustomView();
-        table.closeCustomizeGrid();
-        table.ensureColumnPresent("Copy Link");
-        List<String> copyLink = table.getColumnDataAsText("Copy Link");
-        click(Locator.linkContainingText(copyLink.get(0))); // Click the copy link to start copying this folder to the Panorama Public project
+        stopImpersonating();
+        goToProjectHome(PANORAMA_PUBLIC);
+        impersonateGroup(PANORAMA_PUBLIC_GROUP, false);
+        portalHelper.addWebPart("Messages");
+        assertTextPresent("NEW: Experiment ID ");
+        assertTextPresent("submitted to " + PANORAMA_PUBLIC);
+        clickAndWait(Locator.linkWithText("view message or respond"));
+        Locator.XPathLocator copyLink = Locator.linkContainingText("Copy Link");
+        assertNotNull(copyLink);
+        clickAndWait(copyLink);
 
         // In the copy form's folder tree view select the Panorama Public project as the destination.
         Locator.tagWithClass("span", "x4-tree-node-text").withText(PANORAMA_PUBLIC).waitForElement(new WebDriverWait(getDriver(), 5)).click();
         // Enter the name of the destination folder in the Panorama Public project
         setFormElement(Locator.tagWithName("input", "destContainerName"), DESTINATION_FOLDER);
+        _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Send Email to Submitter:"));
         // Locator.extButton("Begin Copy"); // Locator.extButton() does not work.
-        click(Locator.xpath(".//a[contains(@class, 'x4-btn')]//span[contains(text(), 'Begin Copy')]/ancestor::a"));
+        click(Ext4Helper.Locators.ext4Button("Begin Copy"));
 
         // Wait for the pipeline job to finish
         waitForText("Copying experiment");
@@ -129,6 +143,20 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
                 TargetedMsExperimentInsertPage.EXP_TITLE, // Title of the experiment
                 "Data License", "CC BY 4.0" // This is the default data license
         );
+
+        // Verify that notifications got posted on message board
+        goToProjectHome(PANORAMA_PUBLIC);
+        clickAndWait(Locator.linkWithText("view message or respond"));
+        assertTextPresent("COPIED: Experiment ID ");
+        assertTextPresent("Email was not sent to submitter");
+    }
+
+    protected void setupFolder(FolderType folderType)
+    {
+        super.setupFolder(folderType);
+        _userHelper.createUser(SUBMITTER);
+        ApiPermissionsHelper _permissionsHelper = new ApiPermissionsHelper(this);
+        _permissionsHelper.addMemberToRole(SUBMITTER, "Project Administrator", PermissionsHelper.MemberType.user, getProjectName());
     }
 
     @Override
@@ -175,6 +203,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         {
             findElement(Locator.linkContainingText("Submit")).click();
             waitAndClick(Locator.linkContainingText("Continue Without ProteomeXchange ID"));
+            getWrapper()._ext4Helper.selectComboBoxItem(Ext4Helper.Locators.formItemWithInputNamed("journalId"), PANORAMA_PUBLIC);
             waitAndClick(Locator.linkContainingText("Submit"));
             waitAndClick(Locator.lkButton("OK")); // Confirm to proceed with the submission.
             waitAndClick(Locator.linkWithSpan("Back to Experiment Details")); // Navigate to the experiment details page.

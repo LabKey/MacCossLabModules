@@ -31,8 +31,10 @@ import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.Group;
+import org.labkey.api.security.MemberType;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.RoleAssignment;
+import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicy;
 import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
@@ -57,6 +59,7 @@ import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -110,7 +113,7 @@ public class JournalManager
         return new SqlSelector(PanoramaPublicManager.getSchema(), sql).getArrayList(Journal.class);
     }
 
-    private static List<ExperimentAnnotations> getExperimentsForJournal(int journalId)
+    public static List<ExperimentAnnotations> getExperimentsForJournal(int journalId)
     {
         SQLFragment sql = new SQLFragment("SELECT e.* FROM ");
         sql.append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "e");
@@ -203,6 +206,11 @@ public class JournalManager
         Table.insert(user, PanoramaPublicManager.getTableInfoJournal(), journal);
     }
 
+    public static void updateJournal(Journal journal, User user)
+    {
+        Table.update(user, PanoramaPublicManager.getTableInfoJournal(), journal, journal.getId());
+    }
+
     public static void beforeDeleteTargetedMSExperiment(ExperimentAnnotations expAnnotations, User user)
     {
         List<Journal> journals = getJournalsForExperiment(expAnnotations.getId());
@@ -275,19 +283,7 @@ public class JournalManager
         return getJournalExperiment(experiment.getId(), journal.getId());
     }
 
-    public static JournalExperiment addJournalAccess(PanoramaPublicController.PanoramaPublicRequest request, User user) throws ValidationException
-    {
-        try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
-        {
-            JournalExperiment je = setupJournalAccess(request, user);
-
-            transaction.commit();
-
-            return je;
-        }
-    }
-
-    private static JournalExperiment setupJournalAccess(PanoramaPublicController.PanoramaPublicRequest request, User user) throws ValidationException
+    public static JournalExperiment setupJournalAccess(PanoramaPublicController.PanoramaPublicRequest request, User user) throws ValidationException
     {
         Journal journal = request.getJournal();
         ExperimentAnnotations exptAnnotations = request.getExperimentAnnotations();
@@ -427,17 +423,7 @@ public class JournalManager
         return shortAccessURLRecord;
     }
 
-    public static void deleteJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal, User user)
-    {
-        try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
-        {
-            removeJournalAccess(exptAnnotations, journal, user);
-
-            transaction.commit();
-        }
-    }
-
-    private static void removeJournalAccess(ExperimentAnnotations expAnnotations, Journal journal, User user)
+    public static void removeJournalAccess(ExperimentAnnotations expAnnotations, Journal journal, User user)
     {
         JournalExperiment je = getJournalExperiment(expAnnotations, journal);
 
@@ -534,5 +520,19 @@ public class JournalManager
                 delete(journal, user);
             }
         }
+    }
+
+    public static User getJournalAdminUser(Journal journal)
+    {
+        Group group = SecurityManager.getGroup(journal.getLabkeyGroupId());
+        if(group != null)
+        {
+            Set<User> grpMembers = SecurityManager.getAllGroupMembers(group, MemberType.ACTIVE_USERS);
+            if(grpMembers.size() != 0)
+            {
+                return grpMembers.stream().min(Comparator.comparing(User::getUserId)).orElse(null);
+            }
+        }
+        return null;
     }
 }

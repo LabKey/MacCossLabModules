@@ -22,11 +22,9 @@ import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
-import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
-import org.labkey.panoramapublic.query.JournalManager;
 
 import java.util.ArrayList;
 import java.util.Collections;

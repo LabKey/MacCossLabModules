@@ -29,6 +29,7 @@
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
 <%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
+<%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -105,10 +106,10 @@
     var accessUrlMessage = '<div class="urlMsg">';
     accessUrlMessage += '<span class="helpMsg"><nobr>You may change the text above to a more convenient, easy to remember string.</nobr></span>';
     accessUrlMessage += '<br/>';
-    accessUrlMessage += '<span class="helpMsg">This is the link that should be included in the manuscript to view your supplementary data on the Panorama server is. The full link is: </span>';
+    accessUrlMessage += '<span class="helpMsg">This is the link that should be included in the manuscript to view your supplementary data on Panorama Public. The full link is: </span>';
     accessUrlMessage += '</br>';
     accessUrlMessage += '<span class="bold">' + urlFixedPre + '</span>';
-    accessUrlMessage += '<span class="bold" id="span_short_access_url">' + <%=q(accessRecord.getShortURL())%> + '</span>';
+    accessUrlMessage += '<span class="bold" id="span_short_access_url">' + <%=q(PageFlowUtil.encode(accessRecord.getShortURL()))%> + '</span>';
     accessUrlMessage += '<span class="bold">' + urlFixedPost + '</span>';
     accessUrlMessage += '</div>';
 
@@ -211,7 +212,8 @@
                             {
                                 shortAccessUrlSpan = Ext4.get('span_short_access_url');
                             }
-                            shortAccessUrlSpan.dom.innerHTML = newUrl;
+                            // User should see the encoded URL as they are typing.
+                            shortAccessUrlSpan.dom.innerHTML = encodeURIComponent(newUrl);
                         }
                     }
                 },

@@ -31,6 +31,7 @@ public class Journal
     private String _name;
     private Integer _labkeyGroupId;
     private Container _project;
+    private Container _supportContainer;
     private Date _created;
     private int _createdBy;
 
@@ -72,6 +73,16 @@ public class Journal
     public void setProject(Container project)
     {
         _project = project;
+    }
+
+    public Container getSupportContainer()
+    {
+        return _supportContainer == null ? _project : _supportContainer;
+    }
+
+    public void setSupportContainer(Container supportContainer)
+    {
+        _supportContainer = supportContainer;
     }
 
     public Date getCreated()
