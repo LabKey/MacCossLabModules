@@ -19,6 +19,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,6 +32,7 @@ public class SubmissionDataStatus
     private final ExperimentAnnotations _expAnnot;
     private List<String> _missingMetadata;
     private Map<String, Set<String>> _missingRawFiles = new HashMap<>();
+    private Map<String, MissingLibrarySourceFiles> _missingLibFiles = new HashMap<>();
     private List<ExperimentModificationGetter.PxModification> _noUnimodMods;
 
     public SubmissionDataStatus(ExperimentAnnotations expAnnot)
@@ -109,6 +111,34 @@ public class SubmissionDataStatus
         skyDocs.add(skylineDoc);
     }
 
+    public Map<String, MissingLibrarySourceFiles> getMissingLibFiles()
+    {
+        return _missingLibFiles;
+    }
+
+    public void addMissingLibFile(String lib, String skylineDoc, List<String> ssf, List<String> idFiles)
+    {
+        boolean hasSsf = ssf != null && !ssf.isEmpty();
+        boolean hasIdFiles = idFiles != null && !idFiles.isEmpty();
+        if (!hasSsf && !hasIdFiles)
+            return;
+
+        MissingLibrarySourceFiles m = _missingLibFiles.get(lib);
+        if(m == null)
+        {
+            _missingLibFiles.put(lib, new MissingLibrarySourceFiles(
+                    new HashSet<>(Arrays.asList(skylineDoc)),
+                    hasSsf ? new HashSet<>(ssf) : null,
+                    hasIdFiles ? new HashSet<>(idFiles) : null));
+            return;
+        }
+        m.getSkyDocs().add(skylineDoc);
+        if(hasSsf)
+            m.getSpectrumSourceFiles().addAll(ssf);
+        if(hasIdFiles)
+            m.getIdFiles().addAll(idFiles);
+    }
+
     public List<ExperimentModificationGetter.PxModification> getInvalidMods()
     {
         return _noUnimodMods == null ? Collections.emptyList() : _noUnimodMods;
@@ -126,7 +156,7 @@ public class SubmissionDataStatus
 
     public boolean isValid()
     {
-        return (!hasMissingMetadata() && !hasMissingRawFiles() && !hasInvalidModifications());
+        return !hasMissingMetadata() && !hasMissingRawFiles() && !hasMissingLibrarySourceFiles() && !hasInvalidModifications();
     }
 
     public boolean hasMissingMetadata()
@@ -137,6 +167,11 @@ public class SubmissionDataStatus
     public boolean hasMissingRawFiles()
     {
         return _missingRawFiles != null && _missingRawFiles.size() > 0;
+    }
+
+    public boolean hasMissingLibrarySourceFiles()
+    {
+        return _missingLibFiles != null && _missingLibFiles.size() > 0;
     }
 
     public boolean hasInvalidModifications()
@@ -164,5 +199,25 @@ public class SubmissionDataStatus
         {
             return _rawData;
         }
+    }
+
+    public class MissingLibrarySourceFiles
+    {
+        private final Set<String> _skyDocs;
+        private final Set<String> _spectrumSourceFiles;
+        private final Set<String> _idFiles;
+
+        public MissingLibrarySourceFiles(Set<String> skyDocs, Set<String> ssf, Set<String> idFiles)
+        {
+            _skyDocs = skyDocs;
+            _spectrumSourceFiles = ssf != null ? ssf : new HashSet<>();
+            _idFiles = idFiles != null ? idFiles : new HashSet<>();
+        }
+
+        public Set<String> getSkyDocs() { return _skyDocs; }
+
+        public Set<String> getSpectrumSourceFiles() { return _spectrumSourceFiles; }
+
+        public Set<String> getIdFiles() { return _idFiles; }
     }
 }
