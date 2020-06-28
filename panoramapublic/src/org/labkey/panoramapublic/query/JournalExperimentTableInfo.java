@@ -202,7 +202,7 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
             _editUrl = new ActionURL(PanoramaPublicController.ViewPublishExperimentFormAction.class, container);
             _editUrl.addParameter("update", true);
             _editLinkText = "Edit";
-            _resetUrl = new ActionURL(PanoramaPublicController.RepublishJournalExperimentAction.class, container);
+            _resetUrl = new ActionURL(PanoramaPublicController.PreSubmissionCheckAction.class, container);
             _republishLinkText = "Resubmit";
         }
 
@@ -223,7 +223,6 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
                         if(ExperimentAnnotationsManager.canSubmitExperiment(experimentAnnotationsId))
                         {
                             _resetUrl.replaceParameter("id", String.valueOf(experimentAnnotationsId));
-                            _resetUrl.replaceParameter("journalId", String.valueOf(journalId));
                             out.write(PageFlowUtil.link(_republishLinkText).href(_resetUrl).toString());
                         }
                         else

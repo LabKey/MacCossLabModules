@@ -146,8 +146,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.labkey.api.util.DOM.Attribute.action;
 import static org.labkey.api.util.DOM.Attribute.method;
@@ -878,6 +876,13 @@ public class PanoramaPublicController extends SpringActionController
         {
             validateAction(form);
 
+            // Validate the data if a ProteomeXchange ID was requested.
+            if(_journalExperiment.isPxidRequested() && !SubmissionDataValidator.isValid(_experiment))
+            {
+                errors.reject(ERROR_MSG, "Data is incomplete for a ProteomeXchange submission.");
+                return false;
+            }
+
             Container parentContainer = form.lookupDestParentContainer();
             if(parentContainer == null)
             {
@@ -889,6 +894,7 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, "You do not have permissions to create a new folder in " + parentContainer.getPath());
                 return false;
             }
+
             String destinationFolder = form.getDestContainerName();
             StringBuilder errMessages = new StringBuilder();
             if(!Container.isLegalName(destinationFolder, parentContainer.isRoot(), errMessages))
@@ -920,6 +926,7 @@ public class PanoramaPublicController extends SpringActionController
                 job.setReviewerEmailPrefix(form.getReviewerEmailPrefix());
                 job.setEmailSubmitter(form.isSendEmail());
                 job.setToEmailAddresses(form.getToEmailAddressList());
+                job.setDeletePreviousCopy(form.isDeleteOldCopy());
                 PipelineService.get().queueJob(job);
 
                 _successURL = PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlBegin(target);
@@ -954,6 +961,7 @@ public class PanoramaPublicController extends SpringActionController
         private boolean _usePxTestDb; // Use the test database for getting a PX ID if true
         private boolean _sendEmail;
         private String _toEmailAddresses;
+        private boolean _deleteOldCopy;
 
         static void setDefaults(CopyExperimentForm form, ExperimentAnnotations sourceExperiment, JournalExperiment je)
         {
@@ -1090,6 +1098,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setToEmailAddresses(String toEmailAddresses)
         {
             _toEmailAddresses = toEmailAddresses;
+        }
+
+        public boolean isDeleteOldCopy()
+        {
+            return _deleteOldCopy;
+        }
+
+        public void setDeleteOldCopy(boolean deleteOldCopy)
+        {
+            _deleteOldCopy = deleteOldCopy;
         }
     }
 
@@ -1883,10 +1901,27 @@ public class PanoramaPublicController extends SpringActionController
 
                 PanoramaPublicNotification.notifyResubmitted(_experimentAnnotations, _journal, _journalExperiment, currentJournalExpt, getUser());
 
+                // Rename the container where the old copy lives so that the same folder name can be used for the new copy.
+                // The container will be deleted after the data has been re-copied.
+                renameOldContainer(currentJournalExpt.getContainer());
+
                 transaction.commit();
             }
 
             return true;
+        }
+
+        private void renameOldContainer(Container container)
+        {
+            String name = container.getName();
+            Container parent = container.getParent();
+            int version = 1;
+            String newName = name + " V." ;
+            while(parent.hasChild(newName + version))
+            {
+                version++;
+            }
+            ContainerManager.rename(container, getUser(), newName + version);
         }
 
         @Override
@@ -2031,12 +2066,12 @@ public class PanoramaPublicController extends SpringActionController
     public static class PreSubmissionCheckAction extends SimpleViewAction<PreSubmissionCheckForm>
     {
         @Override
-        public ModelAndView getView(PreSubmissionCheckForm form, BindException errors) throws Exception
+        public ModelAndView getView(PreSubmissionCheckForm form, BindException errors)
         {
             ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(form.getId());
             if(expAnnot == null)
             {
-                errors.reject(ERROR_MSG, "No experiment found in for Id " + form.getId());
+                errors.reject(ERROR_MSG, "No experiment found for Id " + form.getId());
                 return new SimpleErrorView(errors);
             }
 
@@ -2054,24 +2089,51 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors);
             }
 
-            if (!ExperimentAnnotationsManager.hasProteomicData(expAnnot, getUser()))
+            boolean validateForPx = ExperimentAnnotationsManager.hasProteomicData(expAnnot, getUser()); // Can get a PX ID only for proteomic data, not small molecule data
+            JournalExperiment je = JournalManager.getLastPublishedRecord(expAnnot.getId());
+            if(je != null)
             {
-                // If this experiment has only small molecule data we cannot get a PX ID for it.  Continue on to the submission form without
-                // validating for a pX submission.
-                throw new RedirectException(getPublishExperimentURL(expAnnot.getId(), getContainer(), true, false /*No PX ID*/));
+                // If an entry exists for this experiment in the JournalExperiment table it means that the data is being re-submitted.
+                // In this case check for a valid PX submission only if a PX ID was requested in the initial submission.
+                validateForPx = validateForPx && je.isPxidRequested();
             }
 
-            SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(expAnnot, form.isSkipMetaDataCheck(), form.isSkipRawDataCheck(), form.isSkipModCheck());
-            if(status.isValid())
+            if (validateForPx)
             {
-                throw new RedirectException(getPublishExperimentURL(expAnnot.getId(), getContainer()));
+                SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(expAnnot, form.isSkipMetaDataCheck(), form.isSkipRawDataCheck(), form.isSkipModCheck());
+                if(!status.isValid())
+                {
+                    JspView view = new JspView("/org/labkey/panoramapublic/view/publish/missingExperimentInfo.jsp", status, errors);
+                    view.setFrame(WebPartView.FrameType.PORTAL);
+                    view.setTitle("Missing Information in Submission Request");
+                    return view;
+                }
+            }
+
+            if(form.isNotSubmitting())
+            {
+                ActionURL returnUrl = form.getReturnActionURL();
+                if(returnUrl == null)
+                {
+                    return new HtmlView(DIV("Data is valid for a complete ProteomeXchange submission."));
+                }
+                else
+                {
+                    return new HtmlView(DIV("Data is valid for a complete ProteomeXchange submission.", BR(),
+                            new Link.LinkBuilder("Back").href(returnUrl).build()));
+                }
+
+            }
+
+            if(je != null)
+            {
+                // This is a resubmit request
+                return HttpView.redirect(getRePublishExperimentURL(expAnnot.getId(), je.getJournalId(), expAnnot.getContainer()));
             }
             else
             {
-                JspView view = new JspView("/org/labkey/panoramapublic/view/publish/missingExperimentInfo.jsp", status, errors);
-                view.setFrame(WebPartView.FrameType.PORTAL);
-                view.setTitle("Missing Information in Submission Request");
-                return view;
+                // This is the first submission request for this data
+                return HttpView.redirect(getPublishExperimentURL(expAnnot.getId(), getContainer(), true, validateForPx));
             }
         }
 
@@ -2096,10 +2158,21 @@ public class PanoramaPublicController extends SpringActionController
 
     public static class PreSubmissionCheckForm extends IdForm
     {
+        private boolean _notSubmitting;
         private boolean _skipRawDataCheck;
         private boolean _skipMetaDataCheck;
         private boolean _skipModCheck;
         private boolean _skipAllChecks;
+
+        public boolean isNotSubmitting()
+        {
+            return _notSubmitting;
+        }
+
+        public void setNotSubmitting(boolean notSubmitting)
+        {
+            _notSubmitting = notSubmitting;
+        }
 
         public boolean isSkipRawDataCheck()
         {
@@ -2864,7 +2937,7 @@ public class PanoramaPublicController extends SpringActionController
             JspView<ExperimentAnnotationsDetails> experimentDetailsView = new JspView<>("/org/labkey/panoramapublic/view/expannotations/experimentDetails.jsp", exptDetails);
             VBox result = new VBox(experimentDetailsView);
             experimentDetailsView.setFrame(WebPartView.FrameType.PORTAL);
-            experimentDetailsView.setTitle("Experiment Details");
+            experimentDetailsView.setTitle(TargetedMSExperimentWebPart.WEB_PART_NAME);
 
             // List of runs in the experiment.
             PanoramaPublicRunListView runListView = PanoramaPublicRunListView.createView(getViewContext(), exptAnnotations);
@@ -2899,6 +2972,14 @@ public class PanoramaPublicController extends SpringActionController
                 journalsBox.setTitle("Submission");
                 journalsBox.setFrame(WebPartView.FrameType.PORTAL);
                 journalsBox.addView(journalListView);
+
+                JournalExperiment je = JournalManager.getLastPublishedRecord(exptAnnotations.getId());
+                if(je.isPxidRequested())
+                {
+                    ActionURL url = PanoramaPublicController.getPrePublishExperimentCheckURL(exptAnnotations.getId(), exptAnnotations.getContainer(), true);
+                    url.addReturnURL(getViewExperimentDetailsURL(exptAnnotations.getId(), exptAnnotations.getContainer()));
+                    journalsBox.addView(new HtmlView(DIV(new Link.LinkBuilder("Validate for ProteomeXchange").href(url).build())));
+                }
                 result.addView(journalsBox);
             }
             return result;
@@ -3508,8 +3589,14 @@ public class PanoramaPublicController extends SpringActionController
 
     public static ActionURL getPrePublishExperimentCheckURL(int experimentAnnotationsId, Container container)
     {
+        return getPrePublishExperimentCheckURL(experimentAnnotationsId, container, false);
+    }
+
+    public static ActionURL getPrePublishExperimentCheckURL(int experimentAnnotationsId, Container container, boolean notSubmitting)
+    {
         ActionURL result = new ActionURL(PreSubmissionCheckAction.class, container);
         result.addParameter("id", experimentAnnotationsId);
+        result.addParameter("notSubmitting", notSubmitting);
         return result;
     }
 

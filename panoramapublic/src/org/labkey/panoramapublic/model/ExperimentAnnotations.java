@@ -464,7 +464,7 @@ public class ExperimentAnnotations
 
     public boolean isPublished()
     {
-        if(!StringUtils.isBlank(_publicationLink) && !StringUtils.isBlank(_citation))
+        if(!StringUtils.isBlank(_publicationLink))
         {
             return true;
         }
