@@ -255,8 +255,21 @@ public class ExperimentAnnotationsManager
 
     private static void deleteExperiment(ExperimentAnnotations expAnnotations, User user)
     {
-        // If any journal were given access to this experiment, remove the access and delete entries from the JournalExperiment table.
-        JournalManager.beforeDeleteTargetedMSExperiment(expAnnotations, user);
+        if(!expAnnotations.isJournalCopy())
+        {
+            // If any journal were given access to this experiment, remove the access and delete entries from the JournalExperiment table.
+            JournalManager.beforeDeleteTargetedMSExperiment(expAnnotations, user);
+        }
+        else
+        {
+            JournalExperiment je = JournalManager.getRowForJournalCopy(expAnnotations);
+            if(je != null)
+            {
+                // Delete the row in JournalExperiment where journalExperimentId = expAnnotations.getId()
+                JournalManager.deleteRowForJournalCopy(expAnnotations);
+                JournalManager.tryDeleteShortUrl(je.getShortCopyUrl(), user);
+            }
+        }
 
         Table.delete(PanoramaPublicManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());
 

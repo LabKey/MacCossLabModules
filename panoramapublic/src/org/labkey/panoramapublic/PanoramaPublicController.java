@@ -876,6 +876,12 @@ public class PanoramaPublicController extends SpringActionController
         {
             validateAction(form);
 
+            if(form.isAssignPxId() && !ExperimentAnnotationsManager.hasProteomicData(_experiment, getUser()))
+            {
+                errors.reject(ERROR_MSG, "Cannot get a ProteomeXchange ID for small molecule data.");
+                return false;
+            }
+
             // Validate the data if a ProteomeXchange ID was requested.
             if(_journalExperiment.isPxidRequested() && !SubmissionDataValidator.isValid(_experiment))
             {
@@ -1881,9 +1887,6 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(PublishExperimentForm form, BindException errors) throws Exception
         {
-            // Remember the existing location of the copy in the journal's project
-            ExperimentAnnotations currentJournalExpt = ExperimentAnnotationsManager.getExperimentForShortUrl(_journalExperiment.getShortAccessUrl());
-
             try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
             {
                 Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(_journal.getLabkeyGroupId());
@@ -1899,11 +1902,12 @@ public class PanoramaPublicController extends SpringActionController
                 ExperimentAnnotationsManager.removeShortUrl(_journalExperiment.getExperimentAnnotationsId(),
                                                             _journalExperiment.getShortAccessUrl(), getUser());
 
-                PanoramaPublicNotification.notifyResubmitted(_experimentAnnotations, _journal, _journalExperiment, currentJournalExpt, getUser());
-
                 // Rename the container where the old copy lives so that the same folder name can be used for the new copy.
                 // The container will be deleted after the data has been re-copied.
+                ExperimentAnnotations currentJournalExpt = ExperimentAnnotationsManager.get(_journalExperiment.getJournalExperimentId());
                 renameOldContainer(currentJournalExpt.getContainer());
+                currentJournalExpt = ExperimentAnnotationsManager.get(_journalExperiment.getJournalExperimentId()); // query again to get the updated container name
+                PanoramaPublicNotification.notifyResubmitted(_experimentAnnotations, _journal, _journalExperiment, currentJournalExpt, getUser());
 
                 transaction.commit();
             }
@@ -3281,6 +3285,8 @@ public class PanoramaPublicController extends SpringActionController
     @RequiresPermission(DeletePermission.class)
     public class DeleteExperimentAnnotationsAction extends ConfirmAction<DeleteExperimentAnnotationsForm>
     {
+        private ExperimentAnnotations _expAnnotations;
+
         @Override
         public ModelAndView getConfirmView(DeleteExperimentAnnotationsForm deleteForm, BindException errors)
         {
@@ -3290,15 +3296,8 @@ public class PanoramaPublicController extends SpringActionController
 
         public boolean handlePost(DeleteExperimentAnnotationsForm form, BindException errors)
         {
-            int _experimentAnnotationsId = form.getBean().getId();
-            ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.get(_experimentAnnotationsId);
-            if (exptAnnotations == null)
-            {
-                throw new NotFoundException("Could not find experiment with ID " + _experimentAnnotationsId);
-            }
-
             // Check container
-            ensureCorrectContainer(getContainer(), exptAnnotations.getContainer(), getViewContext());
+            ensureCorrectContainer(getContainer(), _expAnnotations.getContainer(), getViewContext());
 
             return deleteExperimentAnnotations(errors, form.getIds(), getUser());
         }
@@ -3306,7 +3305,16 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void validateCommand(DeleteExperimentAnnotationsForm deleteForm, Errors errors)
         {
-            return;
+            int _experimentAnnotationsId = deleteForm.getBean().getId();
+            _expAnnotations = ExperimentAnnotationsManager.get(_experimentAnnotationsId);
+            if (_expAnnotations == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find an experiment with ID "  + _experimentAnnotationsId);
+            }
+            if(_expAnnotations.isJournalCopy() && _expAnnotations.isFinal())
+            {
+                errors.reject(ERROR_MSG, "Experiment cannot be deleted.  It is public and is associated with a publication.");
+            }
         }
 
         @Override

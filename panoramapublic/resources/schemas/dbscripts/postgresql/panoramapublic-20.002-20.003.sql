@@ -17,12 +17,15 @@
 ALTER TABLE panoramapublic.journalexperiment ADD journalExperimentId INT;
 ALTER TABLE panoramapublic.journalexperiment ADD CONSTRAINT FK_JournalExperiment_journalExperimentId FOREIGN KEY
     (journalExperimentId) REFERENCES panoramapublic.ExperimentAnnotations(Id);
-CREATE INDEX IX_JournalExperiment_journalExperimentId ON panoramapublic.JournalExperiment(journalExperimentId);
+ALTER TABLE panoramapublic.journalexperiment ADD CONSTRAINT UQ_JournalExperiment_journalExperimentId UNIQUE(journalExperimentId);
 
 UPDATE panoramapublic.journalexperiment SET journalExperimentId = (SELECT id FROM panoramapublic.experimentannotations ea
     WHERE ea.journalcopy = true AND ea.shorturl = shortaccessurl);
 
-
-
+-- Drop the foreign key constraint on the ExperimentAnnotationsId column that refers to ExperimentAnnotations.id column.
+-- This is the id of an experiment in a user's folder. The user should be able to delete the experiment in their folder, or
+-- even delete their folder but we will not remove the corresponding row in JournalExperiment if the data has been
+-- copied to Panorama Public.
+ALTER TABLE panoramapublic.journalexperiment DROP CONSTRAINT FK_JournalExperiment_ExperimentAnnotations;
 
 

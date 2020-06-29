@@ -1,6 +1,5 @@
 package org.labkey.panoramapublic;
 
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
@@ -174,8 +173,8 @@ public class PanoramaPublicNotification
 
     private static void appendRequestName(ExperimentAnnotations expAnnotations, Journal journal, ACTION action, @NotNull StringBuilder text)
     {
-        text.append(bold(String.format("%s: Experiment ID %d submitted to %s", action, expAnnotations.getId(),
-                escape(journal.getName()))));
+        text.append(bold(String.format("%s: Experiment ID %d", action, expAnnotations.getId())))
+                .append(NL).append("Target: ").append(escape(journal.getName()));
     }
 
     private static void appendSubmissionDetails(ExperimentAnnotations exptAnnotations, JournalExperiment journalExperiment, @NotNull StringBuilder text)
