@@ -61,9 +61,9 @@ public class ExperimentAnnotationsManager
 {
     private ExperimentAnnotationsManager() {}
 
-    public static ExperimentAnnotations get(int experimentAnnotationsId)
+    public static ExperimentAnnotations get(Integer experimentAnnotationsId)
     {
-        return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),null, null).getObject(experimentAnnotationsId, ExperimentAnnotations.class);
+        return experimentAnnotationsId == null ? null : new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),null, null).getObject(experimentAnnotationsId, ExperimentAnnotations.class);
     }
 
     public static ExperimentAnnotations getForExperiment(int experimentId)
