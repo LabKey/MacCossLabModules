@@ -444,7 +444,7 @@ public class ExperimentAnnotationsManager
         {
             // If this experiment has already been copied and the journal copy is final (paper published and data public)
             // then the user should not be able to re-submit this data.
-            ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.getExperimentForShortUrl(journalExperiment.getShortAccessUrl());
+            ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.get(journalExperiment.getJournalExperimentId());
             return journalCopy == null || !journalCopy.isFinal();
         }
         return true;
@@ -455,7 +455,7 @@ public class ExperimentAnnotationsManager
         if(expAnnotations != null)
         {
             JournalExperiment journalExperiment = JournalManager.getLastPublishedRecord(expAnnotations.getId());
-            return journalExperiment != null ? ExperimentAnnotationsManager.getExperimentForShortUrl(journalExperiment.getShortAccessUrl()): null;
+            return journalExperiment != null ? ExperimentAnnotationsManager.get(journalExperiment.getJournalExperimentId()): null;
         }
         return null;
     }

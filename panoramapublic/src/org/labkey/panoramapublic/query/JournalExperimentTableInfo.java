@@ -194,16 +194,16 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
     {
         private final ActionURL _editUrl;
         private final String _editLinkText;
-        private final ActionURL _resetUrl;
-        private final String _republishLinkText;
+        private final ActionURL _resubmitUrl;
+        private final String _resubmitLinkText;
 
         EditUrlDisplayColumnFactory(Container container)
         {
             _editUrl = new ActionURL(PanoramaPublicController.ViewPublishExperimentFormAction.class, container);
             _editUrl.addParameter("update", true);
             _editLinkText = "Edit";
-            _resetUrl = new ActionURL(PanoramaPublicController.PreSubmissionCheckAction.class, container);
-            _republishLinkText = "Resubmit";
+            _resubmitUrl = new ActionURL(PanoramaPublicController.PreSubmissionCheckAction.class, container);
+            _resubmitLinkText = "Resubmit";
         }
 
         @Override
@@ -222,8 +222,8 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
                         // but NOT if the journal copy is final.
                         if(ExperimentAnnotationsManager.canSubmitExperiment(experimentAnnotationsId))
                         {
-                            _resetUrl.replaceParameter("id", String.valueOf(experimentAnnotationsId));
-                            out.write(PageFlowUtil.link(_republishLinkText).href(_resetUrl).toString());
+                            _resubmitUrl.replaceParameter("id", String.valueOf(experimentAnnotationsId));
+                            out.write(PageFlowUtil.link(_resubmitLinkText).href(_resubmitUrl).toString());
                         }
                         else
                         {

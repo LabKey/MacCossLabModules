@@ -289,8 +289,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         List<User> users = new ArrayList<>();
 
         users.addAll(securityPolicy.getAssignments().stream()
-                .filter(r -> r.getRole().equals(role))
-                .filter(r -> UserManager.getUser(r.getUserId()) != null) // Ignore user groups
+                .filter(r -> r.getRole().equals(role)
+                        && UserManager.getUser(r.getUserId()) != null) // Ignore user groups
                 .map(r -> UserManager.getUser(r.getUserId()))
                 .collect(Collectors.toList()));
         return users;
