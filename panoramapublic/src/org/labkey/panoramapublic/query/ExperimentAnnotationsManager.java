@@ -16,6 +16,7 @@
 package org.labkey.panoramapublic.query;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerManager;
@@ -61,7 +62,8 @@ public class ExperimentAnnotationsManager
 {
     private ExperimentAnnotationsManager() {}
 
-    public static ExperimentAnnotations get(Integer experimentAnnotationsId)
+    @Nullable
+    public static ExperimentAnnotations get(@Nullable Integer experimentAnnotationsId)
     {
         return experimentAnnotationsId == null ? null : new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),null, null).getObject(experimentAnnotationsId, ExperimentAnnotations.class);
     }
@@ -450,7 +452,8 @@ public class ExperimentAnnotationsManager
         return true;
     }
 
-    public static ExperimentAnnotations getJournalCopy(ExperimentAnnotations expAnnotations)
+    @Nullable
+    public static ExperimentAnnotations getJournalCopy(@Nullable ExperimentAnnotations expAnnotations)
     {
         if(expAnnotations != null)
         {

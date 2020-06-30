@@ -1150,6 +1150,8 @@ public class PanoramaPublicController extends SpringActionController
                 throw new NotFoundException("Could not find experiment with id " + form.getId());
             }
 
+            ensureCorrectContainer(getContainer(), exptAnnotations.getContainer(), getViewContext());
+
             populateForm(form, exptAnnotations);
             return getPublishFormView(form, exptAnnotations, errors);
         }
@@ -1858,7 +1860,7 @@ public class PanoramaPublicController extends SpringActionController
     // ------------------------------------------------------------------------
 
     // ------------------------------------------------------------------------
-    // BEGIN Action for resetting an entry in panoramapublic.JournalExperiment table
+    // BEGIN Action for resubmitting an entry in panoramapublic.JournalExperiment table
     //       -- Set 'Copied' column to null.
     //       -- Give journal copy privilege again.
     //       -- Reset access URL to point to the author's data
@@ -2079,12 +2081,7 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors);
             }
 
-            if(!expAnnot.getContainer().equals(getContainer()))
-            {
-                ActionURL url = getViewContext().getActionURL().clone();
-                url.setContainer(expAnnot.getContainer());
-                throw new RedirectException(url);
-            }
+            ensureCorrectContainer(getContainer(), expAnnot.getContainer(), getViewContext());
 
             if (!hasSkylineDocs(expAnnot))
             {
@@ -2677,6 +2674,8 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, "Cannot find experiment with ID " + experimentId);
                 return new SimpleErrorView(errors, true);
             }
+
+            ensureCorrectContainer(getContainer(), expAnnot.getContainer(), getViewContext());
 
             StringBuilder summaryHtml = new StringBuilder();
             PxHtmlWriter writer = new PxHtmlWriter(summaryHtml);
