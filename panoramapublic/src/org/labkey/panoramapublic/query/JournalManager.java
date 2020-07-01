@@ -127,8 +127,10 @@ public class JournalManager
         return new SqlSelector(PanoramaPublicManager.getSchema(), sql).getArrayList(ExperimentAnnotations.class);
     }
 
-    public static JournalExperiment getJournalExperiment(int experimentAnnotationsId, int journalId)
+    public static JournalExperiment getJournalExperiment(Integer experimentAnnotationsId, Integer journalId)
     {
+        if(experimentAnnotationsId == null || journalId == null)
+            return null;
         SimpleFilter filter = new SimpleFilter();
         filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
         filter.addCondition(FieldKey.fromParts("JournalId"), journalId);
@@ -427,22 +429,24 @@ public class JournalManager
     {
         JournalExperiment je = getJournalExperiment(expAnnotations, journal);
 
-        SimpleFilter filter = new SimpleFilter();
-        filter.addCondition(FieldKey.fromParts("JournalId"), journal.getId());
-        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId());
-        Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(), filter);
-
-        // Try to delete the short copy URL. Since we just deleted the entry in table JournalExperiment
-        // that references this URL we should not get a foreign key constraint error.
-        tryDeleteShortUrl(je.getShortCopyUrl(), user);
-        // Try to delete the short access URL only if the experiment has not yet been copied (accessURL points to journal's folder after copy)
-        // OR the access url is no longer referenced in the ExperimentAnnotations table.
-        if(je.getCopied() == null || ExperimentAnnotationsManager.getExperimentForShortUrl(je.getShortAccessUrl()) == null)
+        if(je.getJournalExperimentId() == null)
         {
-            tryDeleteShortUrl(je.getShortAccessUrl(), user);
+            // This experiment has not yet been copied to Panorama Public so we can delete the row in JournalExperiment
+            SimpleFilter filter = new SimpleFilter();
+            filter.addCondition(FieldKey.fromParts("JournalId"), journal.getId());
+            filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId());
+            Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(), filter);
+
+            // Try to delete the short copy URL. Since we just deleted the entry in table JournalExperiment
+            // that references this URL we should not get a foreign key constraint error.
+            tryDeleteShortUrl(je.getShortCopyUrl(), user);
+            // Try to delete the short access URL only if the experiment has not yet been copied (accessURL points to journal's folder after copy)
+            // OR the access url is no longer referenced in the ExperimentAnnotations table.
+            if(je.getCopied() == null || ExperimentAnnotationsManager.getExperimentForShortUrl(je.getShortAccessUrl()) == null)
+            {
+                tryDeleteShortUrl(je.getShortAccessUrl(), user);
+            }
         }
-
-
 
         Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
         removeJournalPermissions(expAnnotations, journalGroup, user);
@@ -467,6 +471,19 @@ public class JournalManager
         {
             LOG.info("Cannot delete the shortUrl: " + shortUrl.getShortURL() + ". Error was: " + e.getMessage());
         }
+    }
+
+    public static void deleteRowForJournalCopy(ExperimentAnnotations journalCopy)
+    {
+        Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(),
+                new SimpleFilter().addCondition(FieldKey.fromParts("JournalExperimentId"), journalCopy.getId()));
+    }
+
+    public static JournalExperiment getRowForJournalCopy(ExperimentAnnotations journalCopy)
+    {
+        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment()
+                , new SimpleFilter().addCondition(FieldKey.fromParts("JournalExperimentId"), journalCopy.getId())
+                , null).getObject(JournalExperiment.class);
     }
 
     public static void updateJournalExperimentUrls(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException

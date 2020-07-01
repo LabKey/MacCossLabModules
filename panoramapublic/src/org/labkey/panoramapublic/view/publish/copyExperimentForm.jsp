@@ -28,6 +28,9 @@
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
+<%@ page import="org.labkey.api.util.PageFlowUtil" %>
+<%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
+<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -45,6 +48,9 @@
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
     Journal journal = bean.lookupJournal();
     JournalExperiment je = JournalManager.getJournalExperiment(expAnnot.getId(), journal.getId());
+    ExperimentAnnotations previousCopy = je.getJournalExperimentId() != null ? ExperimentAnnotationsManager.get(je.getJournalExperimentId()) : null;
+    boolean isRecopy = previousCopy != null;
+
     String selectedFolder = "Please select a destination folder...";
     if(bean.getDestParentContainerId() != null)
     {
@@ -57,11 +63,20 @@
 
     ActionURL pxActionsUrl = new ActionURL(PanoramaPublicController.GetPxActionsAction.class, getContainer());
     pxActionsUrl.addParameter("id", expAnnot.getId());
+
+    ActionURL pxValidationUrl = PanoramaPublicController.getPrePublishExperimentCheckURL(expAnnot.getId(), expAnnot.getContainer(), true);
+    pxValidationUrl.addParameter(ActionURL.Param.returnUrl, je.getShortCopyUrl().getFullURL());
 %>
 
+<% if(previousCopy != null) { %>
+<div style="margin-top:15px;">
+    This experiment was last copied on <%=formatDateTime(previousCopy.getCreated())%> to the
+    folder <%=link(previousCopy.getContainer().getName(), PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(previousCopy.getContainer()))%>.
+</div>
+<% } %>
 
-<div id="copyExperimentForm"></div>
-<div>
+<div style="margin-top:15px;" id="copyExperimentForm"></div>
+<div style="margin-top:15px;">
     <%=link("ProteomeXchange Actions", pxActionsUrl)%>
 </div>
 
@@ -161,12 +176,14 @@
                 },
                 {
                     xtype: 'checkbox',
+                    hidden: <%=isRecopy%>,
                     fieldLabel: "Assign ProteomeXchange ID",
                     checked: <%=bean.isAssignPxId()%>,
                     name: 'assignPxId'
                 },
                 {
                     xtype: 'checkbox',
+                    hidden: <%=isRecopy%>,
                     fieldLabel: "Use ProteomeXchange Test Database",
                     checked: <%=bean.isUsePxTestDb()%>,
                     name: 'usePxTestDb',
@@ -174,7 +191,7 @@
                 },
                 {
                     xtype: 'textfield',
-                    hidden: <%=!je.isKeepPrivate()%>,
+                    hidden: <%=!je.isKeepPrivate() || isRecopy%>,
                     fieldLabel: "Reviewer Email Prefix",
                     value: <%=q(bean.getReviewerEmailPrefix())%>,
                     name: 'reviewerEmailPrefix',
@@ -198,21 +215,37 @@
                     height:70,
                     afterBodyEl: '<span style="font-size: 0.9em;">Enter one email address per line</span>'
                 },
+                {
+                    xtype: 'checkbox',
+                    hidden: <%=!isRecopy%>,
+                    fieldLabel: "Delete Previous Copy",
+                    checked: <%=bean.isDeleteOldCopy()%>,
+                    name: 'deleteOldCopy'
+                },
 
             ],
             buttonAlign: 'left',
             buttons: [{
-                text: 'Begin Copy',
-                handler: function() {
-                    var values = form.getForm().getValues();
-                    form.submit({
-                        url: <%=q(new ActionURL(PanoramaPublicController.CopyExperimentAction.class, getContainer()).getLocalURIString())%>,
-                        method: 'POST',
-                        params: values
-                    });
+                    text: 'Begin Copy',
+                    cls: 'labkey-button primary',
+                    handler: function() {
+                        var values = form.getForm().getValues();
+                        form.submit({
+                            url: <%=q(new ActionURL(PanoramaPublicController.CopyExperimentAction.class, getContainer()).getLocalURIString())%>,
+                            method: 'POST',
+                            params: values
+                        });
+                    },
+                    margin: '20 10 0 10'
                 },
-                margin: '20 0 0 0'
-            }]
+                {
+                    text: 'Validate for ProteomeXchange',
+                    cls: 'labkey-button',
+                    handler: function(btn) {
+                        window.open(<%=q(pxValidationUrl.getLocalURIString())%>, "_blank");
+                    }
+                }
+            ]
         });
     });
 </script>

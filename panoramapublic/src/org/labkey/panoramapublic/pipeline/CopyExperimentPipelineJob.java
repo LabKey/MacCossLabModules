@@ -55,8 +55,10 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     private boolean _usePxTestDb = true;
 
     private boolean _emailSubmitter;
-    private String _fromEmailAddress;
     private List<String> _toEmailAddresses;
+
+    private boolean _deletePreviousCopy;
+
 
     @JsonCreator
     protected CopyExperimentPipelineJob(@JsonProperty("_experimentAnnotations") ExperimentAnnotations experiment, @JsonProperty("_journal") Journal journal,
@@ -183,6 +185,12 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
         return _toEmailAddresses;
     }
 
+    @Override
+    public boolean deletePreviousCopy()
+    {
+        return _deletePreviousCopy;
+    }
+
     public void setReviewerEmailPrefix(String reviewerEmailPrefix)
     {
         _reviewerEmailPrefix = reviewerEmailPrefix;
@@ -206,5 +214,10 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     public void setToEmailAddresses(List<String> toEmailAddresses)
     {
         _toEmailAddresses = toEmailAddresses;
+    }
+
+    public void setDeletePreviousCopy(boolean deletePreviousCopy)
+    {
+        _deletePreviousCopy = deletePreviousCopy;
     }
 }

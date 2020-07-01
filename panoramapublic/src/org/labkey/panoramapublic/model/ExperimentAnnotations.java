@@ -20,6 +20,8 @@ import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExperimentService;
+import org.labkey.api.security.Group;
+import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.permissions.ReadPermission;
@@ -462,7 +464,7 @@ public class ExperimentAnnotations
 
     public boolean isPublished()
     {
-        if(!StringUtils.isBlank(_publicationLink) && !StringUtils.isBlank(_citation))
+        if(!StringUtils.isBlank(_publicationLink))
         {
             return true;
         }
@@ -472,7 +474,7 @@ public class ExperimentAnnotations
     public boolean isPublic()
     {
         // If the container where this experiment lives is readable to site:guests then the data is public.
-        return getContainer().getPolicy().hasPermissions(UserManager.getGuestUser(), ReadPermission.class);
+        return getContainer().getPolicy().hasPermissions(SecurityManager.getGroup(Group.groupGuests), ReadPermission.class);
     }
 
     public DataLicense getDataLicense()
@@ -483,5 +485,10 @@ public class ExperimentAnnotations
             return null;
         }
         return ExperimentAnnotationsManager.getLicenseSelectedForSubmission(getSourceExperimentId());
+    }
+
+    public boolean isFinal()
+    {
+        return isPublic() && isPublished();
     }
 }

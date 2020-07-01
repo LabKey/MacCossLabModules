@@ -42,6 +42,7 @@ public class JournalExperiment
     private String _labHeadAffiliation;
     private DataLicense _dataLicense;
     private Integer _announcementId;
+    private Integer _journalExperimentId;
 
     public int getJournalId()
     {
@@ -186,5 +187,15 @@ public class JournalExperiment
     public void setAnnouncementId(Integer announcementId)
     {
         _announcementId = announcementId;
+    }
+
+    public Integer getJournalExperimentId()
+    {
+        return _journalExperimentId;
+    }
+
+    public void setJournalExperimentId(Integer journalExperimentId)
+    {
+        _journalExperimentId = journalExperimentId;
     }
 }

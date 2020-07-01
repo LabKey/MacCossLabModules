@@ -1,6 +1,5 @@
 package org.labkey.panoramapublic;
 
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
@@ -34,7 +33,7 @@ public class PanoramaPublicNotification
     private static final String NL = "\n";
     private static final String NL2 = "\n\n";
 
-    private enum ACTION {NEW, UPDATED, DELETED, COPIED, RESUBMITTED}
+    private enum ACTION {NEW, UPDATED, DELETED, COPIED, RESUBMITTED, RECOPIED}
 
     public static void notifyCreated(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, User user)
     {
@@ -76,13 +75,13 @@ public class PanoramaPublicNotification
     }
 
     public static void notifyCopied(ExperimentAnnotations srcExpAnnotations, ExperimentAnnotations targetExpAnnotations, Journal journal,
-                                    JournalExperiment je, User reviewer, String reviewerPassword, User user)
+                                    JournalExperiment je, User reviewer, String reviewerPassword, User user, boolean isRecopy)
     {
         StringBuilder messageBody = new StringBuilder();
-        appendRequestName(srcExpAnnotations, journal, ACTION.COPIED, messageBody);
+        appendRequestName(srcExpAnnotations, journal, isRecopy ? ACTION.RECOPIED : ACTION.COPIED, messageBody);
         appendSubmissionDetails(srcExpAnnotations, je, messageBody);
         messageBody.append(NL);
-        messageBody.append(NL).append("Experiment has been copied to ").append(escape(journal.getName()));
+        messageBody.append(NL).append(String.format("Experiment has been %scopied to ", isRecopy ? "re": "")).append(escape(journal.getName()));
         messageBody.append(NL).append("Folder: ").append(getContainerLink(targetExpAnnotations.getContainer()));
         messageBody.append(NL).append("Experiment ID: ").append(targetExpAnnotations.getId());
 
@@ -95,7 +94,14 @@ public class PanoramaPublicNotification
         }
         else
         {
-            messageBody.append(NL2).append(bolditalics("Data has been made public"));
+            if(isRecopy && je.isKeepPrivate())
+            {
+                messageBody.append(NL2).append(bolditalics("Reviewer account is the same as the previous copy of this data."));
+            }
+            else
+            {
+                messageBody.append(NL2).append(bolditalics("Data has been made public"));
+            }
         }
 
         if(!StringUtils.isBlank(targetExpAnnotations.getPxid()))
@@ -167,8 +173,8 @@ public class PanoramaPublicNotification
 
     private static void appendRequestName(ExperimentAnnotations expAnnotations, Journal journal, ACTION action, @NotNull StringBuilder text)
     {
-        text.append(bold(String.format("%s: Experiment ID %d submitted to %s", action, expAnnotations.getId(),
-                escape(journal.getName()))));
+        text.append(bold(String.format("%s: Experiment ID %d", action, expAnnotations.getId())))
+                .append(NL).append("Target: ").append(escape(journal.getName()));
     }
 
     private static void appendSubmissionDetails(ExperimentAnnotations exptAnnotations, JournalExperiment journalExperiment, @NotNull StringBuilder text)
@@ -263,7 +269,8 @@ public class PanoramaPublicNotification
         MailHelper.send(m, fromUser, container);
     }
 
-    public static String getExperimentCopiedEmailBody(ExperimentAnnotations targetExperiment,
+    public static String getExperimentCopiedEmailBody(ExperimentAnnotations sourceExperiment,
+                                   ExperimentAnnotations targetExperiment,
                                    JournalExperiment jExperiment,
                                    Journal journal,
                                    User reviewer,
@@ -271,38 +278,70 @@ public class PanoramaPublicNotification
                                    String toUserName,
                                    String fromUserName)
     {
+        return getExperimentCopiedEmailBody(sourceExperiment, targetExperiment, jExperiment, journal, reviewer, reviewerPassword, toUserName, fromUserName, false);
+    }
+
+    public static String getExperimentReCopiedEmailBody(ExperimentAnnotations sourceExperiment,
+                                                      ExperimentAnnotations targetExperiment,
+                                                      JournalExperiment jExperiment,
+                                                      Journal journal,
+                                                      String toUserName,
+                                                      String fromUserName)
+    {
+        return getExperimentCopiedEmailBody(sourceExperiment, targetExperiment, jExperiment, journal, null, null, toUserName, fromUserName, true);
+    }
+
+    public static String getExperimentCopiedEmailBody(ExperimentAnnotations sourceExperiment,
+                                                      ExperimentAnnotations targetExperiment,
+                                                      JournalExperiment jExperiment,
+                                                      Journal journal,
+                                                      User reviewer,
+                                                      String reviewerPassword,
+                                                      String toUserName,
+                                                      String fromUserName,
+                                                      boolean recopy)
+    {
         String journalName = journal.getName();
 
         StringBuilder emailMsg = new StringBuilder();
         emailMsg.append("Dear ").append(toUserName).append(",")
-                .append(NL2)
-                .append("Thank you for your request to submit data to ").append(journalName).append(".")
-                .append(" Your data has been copied, and the access URL (").append(targetExperiment.getShortUrl().renderShortURL()).append(")")
+                .append(NL2);
+        if(!recopy)
+        {
+            emailMsg.append("Thank you for your request to submit data to ").append(journalName).append(". ");
+        }
+        emailMsg.append(String.format("Your data has been %scopied, and the access URL (", recopy ? "re" : "")).append(targetExperiment.getShortUrl().renderShortURL()).append(")")
                 .append(" now links to the copy on ").append(journalName).append(".")
                 .append(" Please take a moment to verify that the copy is accurate.")
                 .append(" Let us know right away if you notice any discrepancies.");
 
+
         if(jExperiment.isKeepPrivate())
         {
-            emailMsg.append(NL2)
-                    .append("As requested, your data on ").append(journalName).append(" is private.  Here are the reviewer account details:")
-                    .append(NL).append("Email: ").append(reviewer.getEmail())
-                    .append(NL).append("Password: ").append(reviewerPassword);
+            if(!recopy)
+            {
+                emailMsg.append(NL2)
+                        .append("As requested, your data on ").append(journalName).append(" is private.  Here are the reviewer account details:")
+                        .append(NL).append("Email: ").append(reviewer.getEmail())
+                        .append(NL).append("Password: ").append(reviewerPassword);
+            }
+            else
+            {
+                emailMsg.append(NL2).append("As requested, your data on ").append(journalName).append(" is private.  The reviewer account details remain unchanged.");
+            }
         }
         else
         {
-            emailMsg.append(NL2)
-                    .append("As requested, your data on ").append(journalName).append(" has been made public.");
+            emailMsg.append(NL2).append("As requested, your data on ").append(journalName).append(" has been made public.");
         }
 
-        if(targetExperiment.getPxid() != null)
+        if(targetExperiment.getPxid() != null && !recopy)
         {
             emailMsg.append(NL2)
                     .append("The ProteomeXchange ID reserved for your data is:")
                     .append(NL).append(targetExperiment.getPxid())
                     .append(" (http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=").append(targetExperiment.getPxid()).append(")");
         }
-
 
         emailMsg.append(NL2)
                 .append("The access URL (").append(targetExperiment.getShortUrl().renderShortURL()).append(")")
@@ -326,6 +365,15 @@ public class PanoramaPublicNotification
         {
             emailMsg.append(NL).append(fromUserName).append(NL).append("(For the Panorama Public Team)");
         }
+
+        // Add submission details
+        emailMsg.append(NL2).append(NL)
+                .append("Submission Details:")
+                .append("Experiment ID: ").append(sourceExperiment.getId())
+                .append(NL).append("Reviewer account requested: ").append(jExperiment.isKeepPrivate() ? "Yes" : "No")
+                .append(NL).append("PX ID requested: ").append(jExperiment.isPxidRequested() ? "Yes" : "No")
+                .append(NL).append("Short Access URL: ").append(targetExperiment.getShortUrl().renderShortURL())
+                .append(NL).append("Message ID: ").append(jExperiment.getAnnouncementId());
 
         return emailMsg.toString();
     }

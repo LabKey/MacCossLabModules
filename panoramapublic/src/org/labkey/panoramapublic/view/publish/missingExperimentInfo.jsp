@@ -25,6 +25,9 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicManager" %>
 <%@ page import="org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="org.labkey.api.util.Link" %>
+<%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
+<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -42,6 +45,8 @@
     SubmissionDataStatus bean = me.getModelBean();
 
     ExperimentAnnotations expAnnotations = bean.getExperimentAnnotations();
+    JournalExperiment je = JournalManager.getLastPublishedRecord(expAnnotations.getId());
+    boolean resubmit = je != null;
 
     ActionURL rawFilesUrl = PanoramaPublicManager.getRawDataTabUrl(getContainer());
     ActionURL formUrl = PanoramaPublicController.getPublishExperimentURL(expAnnotations.getId(), getContainer(),
@@ -53,7 +58,8 @@
 %>
 
 <div style="margin: 30px 20px 20px 20px">
-    The following information is required for getting a ProteomeXchange ID for your submission. <span style="margin-left:10px;"><%=link("Continue Without ProteomeXchange ID", formUrl)%></span>
+    The following information is required for getting a ProteomeXchange ID for your submission.
+    <% if(!resubmit) {%> <span style="margin-left:10px;"><%=link("Continue Without ProteomeXchange ID", formUrl)%></span> <%}%>
 
     <% if(bean.hasMissingMetadata()) { %>
     <div style="margin-top:10px;margin-bottom:20px;">
@@ -169,3 +175,4 @@
     <%}%>
 
 </div>
+
