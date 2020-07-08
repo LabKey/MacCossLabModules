@@ -65,7 +65,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 19.31;
+        return 20.003;
     }
 
     @Override
@@ -256,6 +256,7 @@ public class PanoramaPublicModule extends SpringModule
         Set<Class> set = new HashSet<>();
         set.add(PanoramaPublicController.TestCase.class);
         set.add(SubmissionDataValidator.TestCase.class);
+        set.add(PanoramaPublicNotification.TestCase.class);
         return set;
 
     }

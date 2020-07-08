@@ -79,7 +79,6 @@
         if(!journalCopyPending)
         {
             publishButtonText = "Resubmit";
-            publishUrl = PanoramaPublicController.getRePublishExperimentURL(annot.getId(), je.getJournalId(), getContainer());
         }
     }
     String accessUrl = accessUrlRecord == null ? null : accessUrlRecord.renderShortURL();

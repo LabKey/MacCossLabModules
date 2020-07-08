@@ -194,16 +194,16 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
     {
         private final ActionURL _editUrl;
         private final String _editLinkText;
-        private final ActionURL _resetUrl;
-        private final String _republishLinkText;
+        private final ActionURL _resubmitUrl;
+        private final String _resubmitLinkText;
 
         EditUrlDisplayColumnFactory(Container container)
         {
             _editUrl = new ActionURL(PanoramaPublicController.ViewPublishExperimentFormAction.class, container);
             _editUrl.addParameter("update", true);
             _editLinkText = "Edit";
-            _resetUrl = new ActionURL(PanoramaPublicController.RepublishJournalExperimentAction.class, container);
-            _republishLinkText = "Resubmit";
+            _resubmitUrl = new ActionURL(PanoramaPublicController.PreSubmissionCheckAction.class, container);
+            _resubmitLinkText = "Resubmit";
         }
 
         @Override
@@ -214,20 +214,27 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
                 @Override
                 public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
                 {
-                    String experimentAnnotationsId = String.valueOf(ctx.get("ExperimentAnnotationsId"));
-                    String journalId = String.valueOf(ctx.get("JournalId"));
-                    if(ctx.get("Copied") != null)
+                    Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
+                    Integer journalId = ctx.get(FieldKey.fromParts("JournalId"), Integer.class);
+                    if(ctx.get(FieldKey.fromParts("Copied")) != null)
                     {
-                        // Show the reset link if the experiment has already been copied by a journal
-                        _resetUrl.replaceParameter("id", experimentAnnotationsId);
-                        _resetUrl.replaceParameter("journalId", journalId);
-                        out.write(PageFlowUtil.link(_republishLinkText).href(_resetUrl).toString());
+                        // Show the resubmit link if the experiment has already been copied by a journal
+                        // but NOT if the journal copy is final.
+                        if(ExperimentAnnotationsManager.canSubmitExperiment(experimentAnnotationsId))
+                        {
+                            _resubmitUrl.replaceParameter("id", String.valueOf(experimentAnnotationsId));
+                            out.write(PageFlowUtil.link(_resubmitLinkText).href(_resubmitUrl).toString());
+                        }
+                        else
+                        {
+                            out.write("");
+                        }
                     }
                     else
                     {
                         // Otherwise show the edit link
-                        _editUrl.replaceParameter("id", experimentAnnotationsId);
-                        _editUrl.replaceParameter("journalId", journalId);
+                        _editUrl.replaceParameter("id", String.valueOf(experimentAnnotationsId));
+                        _editUrl.replaceParameter("journalId", String.valueOf(journalId));
                         out.write(PageFlowUtil.link(_editLinkText).href(_editUrl).toString());
                     }
                 }
@@ -237,6 +244,7 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
                 {
                     super.addQueryFieldKeys(keys);
                     keys.add(FieldKey.fromParts("Copied"));
+                    keys.add(FieldKey.fromParts("JournalId"));
                 }
             };
         }

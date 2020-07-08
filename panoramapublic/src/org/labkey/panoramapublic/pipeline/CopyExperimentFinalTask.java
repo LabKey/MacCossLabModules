@@ -15,11 +15,14 @@
  */
 package org.labkey.panoramapublic.pipeline;
 
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
+import org.labkey.api.data.PropertyManager;
 import org.labkey.api.exp.api.ExpData;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExpRun;
@@ -40,6 +43,8 @@ import org.labkey.api.security.SecurityPolicy;
 import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
+import org.labkey.api.security.UserPrincipal;
+import org.labkey.api.security.ValidEmail;
 import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ReaderRole;
 import org.labkey.api.security.roles.Role;
@@ -51,20 +56,24 @@ import org.labkey.api.util.FileUtil;
 import org.labkey.api.view.Portal;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
+import org.labkey.panoramapublic.PanoramaPublicNotification;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
+import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.stream.Collectors;
 
 /**
  * User: vsharma
@@ -141,15 +150,53 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             targetExperiment.setSourceExperimentId(sourceExperiment.getId());
             targetExperiment.setSourceExperimentPath(sourceExperiment.getContainer().getPath());
             targetExperiment.setShortUrl(jExperiment.getShortAccessUrl());
+
+            ExperimentAnnotations previousCopy = null;
+            if(jExperiment.getJournalExperimentId() != null)
+            {
+                previousCopy = ExperimentAnnotationsManager.get(jExperiment.getJournalExperimentId());
+                if(previousCopy == null)
+                {
+                    throw new PipelineJobException("Could not find and entry for the previous copy of the experiment.  " +
+                            "Previous experiment ID " + jExperiment.getJournalExperimentId());
+                }
+            }
+
+            if(jobSupport.assignPxId() // We can get isPxidRequested from the JournalExperiment but sometimes we may have to override that settting.
+                                       // This can happen, e.g. if some of the modifications do not have a Unimod ID and the user
+                                       // was unable to do a PX submission.  In this case we might still want to get a PX ID.
+                                       // Let the admin who is copying the data make the decision.
+            )
+            {
+                if(previousCopy != null)
+                {
+                    log.info("Copying ProteomeXchange ID from the previous copy of the data.");
+                    targetExperiment.setPxid(previousCopy.getPxid());
+                }
+                else
+                {
+                    log.info("Assigning a ProteomeXchange ID.");
+                    try
+                    {
+                        assignPxId(targetExperiment, jobSupport.usePxTestDb());
+                    }
+                    catch(ProteomeXchangeServiceException e)
+                    {
+                        throw new PipelineJobException("Could not get a ProteomeXchange ID.", e);
+                    }
+                }
+            }
+
             targetExperiment = ExperimentAnnotationsManager.save(targetExperiment, user);
 
             // Update the target of the short access URL to the journal's copy of the experiment.
             log.info("Updating access URL to point to the new copy of the data.");
             JournalManager.updateAccessUrl(targetExperiment, jExperiment, user);
 
-            // Update the JournalExperiment table -- set the 'copied' timestamp
-            log.info("Setting the 'copied' timestamp on the JournalExperiment table.");
+            // Update the JournalExperiment table -- set the 'copied' timestamp and the journalExperimentId
+            log.info("Setting the 'copied' timestamp and journalExperimentId on the JournalExperiment table.");
             jExperiment.setCopied(new Date());
+            jExperiment.setJournalExperimentId(targetExperiment.getId());
             JournalManager.updateJournalExperiment(jExperiment, user);
 
             // Remove the copy permissions given to the journal.
@@ -159,29 +206,23 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             // Give read permissions to the authors (all users that are folder admins)
             log.info("Adding read permissions to all users that are folder admins in the source container.");
-            SecurityPolicy sourceSecurityPolicy = jobSupport.getExpAnnotations().getContainer().getPolicy();
-            SortedSet<RoleAssignment> roles = sourceSecurityPolicy.getAssignments();
+            List<User> authors = getUsersWithRole(sourceExperiment.getContainer(), RoleManager.getRole(FolderAdminRole.class));
 
-            Role folderAdminRole = RoleManager.getRole(FolderAdminRole.class);
-            List<User> authors = new ArrayList<>();
-            for(RoleAssignment role: roles)
-            {
-                if(role.getRole().equals(folderAdminRole))
-                {
-                    User u = UserManager.getUser(role.getUserId());
-                    // Ignore user groups
-                    if(u != null)
-                    {
-                        authors.add(u);
-                    }
-                }
-            }
             Container target = experiment.getContainer();
             MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
             for(User author: authors)
             {
                 newPolicy.addRoleAssignment(author, ReaderRole.class);
             }
+
+            if(previousCopy != null)
+            {
+                // Users that had read access to the previous copy should be given read access to the new copy. This will include the reviewer
+                // account if one was created for the previous copy.
+                List<User> previousCopyReaders = getUsersWithRole(previousCopy.getContainer(), RoleManager.getRole(ReaderRole.class));
+                previousCopyReaders.forEach(u -> newPolicy.addRoleAssignment(u, ReaderRole.class));
+            }
+
             SecurityPolicyManager.savePolicy(newPolicy);
 
             // We are only allowing 'Experimental Data' type folders to be submitted to Panorama Public.
@@ -206,7 +247,159 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 }
             }
 
+            User reviewer = null;
+            String reviewerPassword = null;
+            if(jExperiment.isKeepPrivate())
+            {
+                if (previousCopy == null)
+                {
+                    reviewerPassword = createPassword();
+                    reviewer = createReviewerAccount(jobSupport.getReviewerEmailPrefix(), reviewerPassword, user, log);
+                    assignReader(reviewer, target);
+                }
+            }
+            else
+            {
+                // Assign Site:Guests to reader role
+                log.info("Making folder public.");
+                assignReader(SecurityManager.getGroup(Group.groupGuests), target);
+            }
+
+            // Create notifications
+            PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), jExperiment,
+                    reviewer, reviewerPassword, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
+
+            postEmailNotification(jobSupport, user, log, sourceExperiment, jExperiment, targetExperiment, reviewer, reviewerPassword, previousCopy != null);
+
+            // Delete the previous copy
+            if(previousCopy != null && jobSupport.deletePreviousCopy())
+            {
+                log.info("Deleting old container " + previousCopy.getContainer().getPath());
+                Container oldContainer = previousCopy.getContainer();
+                ContainerManager.delete(oldContainer, user);
+            }
+
             transaction.commit();
+        }
+    }
+
+    private List<User> getUsersWithRole(Container container, Role role)
+    {
+        SecurityPolicy securityPolicy = container.getPolicy();
+        List<User> users = new ArrayList<>();
+
+        users.addAll(securityPolicy.getAssignments().stream()
+                .filter(r -> r.getRole().equals(role)
+                        && UserManager.getUser(r.getUserId()) != null) // Ignore user groups
+                .map(r -> UserManager.getUser(r.getUserId()))
+                .collect(Collectors.toList()));
+        return users;
+    }
+
+    private User createReviewerAccount(String reviewerEmailPrefix, String password, User user, Logger log) throws ValidEmail.InvalidEmailException, SecurityManager.UserManagementException
+    {
+        if(StringUtils.isBlank(reviewerEmailPrefix))
+        {
+            reviewerEmailPrefix = PanoramaPublicController.PANORAMA_REVIEWER_PREFIX;
+        }
+
+        String domain = "@proteinms.net"; // TODO: configure this in admin settings
+
+        ValidEmail email = new ValidEmail(reviewerEmailPrefix + domain);
+        int num = 1;
+        while(UserManager.getUser(email) != null)
+        {
+            email = new ValidEmail(reviewerEmailPrefix + num + domain);
+            num++;
+        }
+
+        log.info("Creating a reviewer account.");
+        SecurityManager.NewUserStatus newUser = SecurityManager.addUser(email, user, true);
+        SecurityManager.setPassword(email, password);
+
+        log.info("Created reviewer with email: User " + newUser.getUser().getEmail());
+        return newUser.getUser();
+    }
+
+    private void assignReader(UserPrincipal reader, Container target)
+    {
+        MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
+        newPolicy.addRoleAssignment(reader, ReaderRole.class);
+        SecurityPolicyManager.savePolicy(newPolicy);
+    }
+
+    public static String createPassword()
+    {
+        return RandomStringUtils.randomAlphabetic(8);
+    }
+
+    private void assignPxId(ExperimentAnnotations targetExpt, boolean useTestDb) throws ProteomeXchangeServiceException
+    {
+        PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(ProteomeXchangeService.PX_CREDENTIALS, false);
+        if(map != null)
+        {
+            String user = map.get(ProteomeXchangeService.PX_USER);
+            String password = map.get(ProteomeXchangeService.PX_PASSWORD);
+            String pxId = ProteomeXchangeService.getPxId(useTestDb, user, password);
+            targetExpt.setPxid(pxId);
+        }
+        else
+        {
+            throw new ProteomeXchangeServiceException("Could not find ProteomeXchange credentials");
+        }
+    }
+
+    private void postEmailNotification(CopyExperimentJobSupport jobSupport, User pipelineJobUser, Logger log, ExperimentAnnotations sourceExperiment,
+                                       JournalExperiment jExperiment, ExperimentAnnotations targetExperiment,
+                                       User reviewer, String reviewerPassword, boolean recopy)
+    {
+        // This is the user that was selected as the "Submitter" in the ExperimentAnnotations form, and will be used in the "Submitter" field
+        // when announcing data on Panorama Public.
+        User pxSubmitter = sourceExperiment.getSubmitterUser();
+
+        // This is the user that clicked the "Submit" button.  Typically this is the same as the user above.
+        // If not, send email to both
+        User formSubmitter = UserManager.getUser(jExperiment.getCreatedBy());
+
+        Set<String> toAddresses = new HashSet<>();
+        if(pxSubmitter != null) toAddresses.add(pxSubmitter.getEmail());
+        toAddresses.add(formSubmitter.getEmail());
+        toAddresses.addAll(jobSupport.toEmailAddresses());
+
+        String subject = String.format("Submission to %s: %s", jobSupport.getJournal().getName(), targetExperiment.getShortUrl().renderShortURL());
+        String emailBody;
+        if(recopy)
+        {
+            emailBody = PanoramaPublicNotification.getExperimentReCopiedEmailBody(sourceExperiment, targetExperiment, jExperiment, jobSupport.getJournal(),
+                    PanoramaPublicNotification.getUserName(formSubmitter),
+                    PanoramaPublicNotification.getUserName(pipelineJobUser));
+        }
+        else
+        {
+            emailBody = PanoramaPublicNotification.getExperimentCopiedEmailBody(sourceExperiment, targetExperiment, jExperiment, jobSupport.getJournal(),
+                    reviewer, reviewerPassword,
+                    PanoramaPublicNotification.getUserName(formSubmitter),
+                    PanoramaPublicNotification.getUserName(pipelineJobUser));
+        }
+
+        if(jobSupport.emailSubmitter())
+        {
+            log.info("Emailing submitter.");
+            try
+            {
+                PanoramaPublicNotification.sendEmailNotification(subject, emailBody, targetExperiment.getContainer(), pipelineJobUser, toAddresses);
+                PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), true);
+            }
+            catch (Exception e)
+            {
+                log.info("Could not send email to submitter. Error was: " + e.getMessage(), e);
+                PanoramaPublicNotification.postEmailContentsWithError(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), e.getMessage());
+            }
+        }
+        else
+        {
+            // Post the email contents to the message board.
+            PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), false);
         }
     }
 
