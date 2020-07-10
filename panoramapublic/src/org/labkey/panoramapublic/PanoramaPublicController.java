@@ -19,7 +19,8 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.commons.validator.routines.UrlValidator;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 import org.labkey.api.action.ApiResponse;
@@ -171,7 +172,7 @@ public class PanoramaPublicController extends SpringActionController
         setActionResolver(_actionResolver);
     }
 
-    private static final Logger LOG = Logger.getLogger(PanoramaPublicController.class);
+    private static final Logger LOG = LogManager.getLogger(PanoramaPublicController.class);
 
     // ------------------------------------------------------------------------
     // BEGIN Actions for journal groups.

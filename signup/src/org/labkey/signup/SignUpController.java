@@ -17,7 +17,8 @@
 package org.labkey.signup;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.labkey.api.action.ReadOnlyApiAction;
 import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.ApiResponse;
@@ -66,7 +67,7 @@ import java.util.List;
 
 public class SignUpController extends SpringActionController
 {
-    private static final Logger _log = Logger.getLogger(SignUpController.class);
+    private static final Logger _log = LogManager.getLogger(SignUpController.class);
 
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(SignUpController.class);
 

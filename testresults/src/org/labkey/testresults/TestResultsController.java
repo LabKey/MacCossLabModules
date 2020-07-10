@@ -19,7 +19,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.validator.routines.EmailValidator;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.MutatingApiAction;
@@ -118,7 +119,7 @@ import static org.labkey.testresults.TestResultsModule.ViewType;
  */
 public class TestResultsController extends SpringActionController
 {
-    private static final Logger _log = Logger.getLogger(TestResultsController.class);
+    private static final Logger _log = LogManager.getLogger(TestResultsController.class);
     private static final SimpleDateFormat MDYFormat = new SimpleDateFormat("MM/dd/yyyy");
 
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(TestResultsController.class);

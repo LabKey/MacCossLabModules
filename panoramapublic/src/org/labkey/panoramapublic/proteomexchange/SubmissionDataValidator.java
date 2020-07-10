@@ -17,7 +17,8 @@ package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.junit.Assert;
 import org.junit.Test;
 import org.labkey.api.data.CompareType;
@@ -50,7 +51,7 @@ public class SubmissionDataValidator
     public static final int MIN_ABSTRACT_LENGTH = 50;
     public static final int MIN_TITLE_LENGTH = 30;
 
-    private static final Logger LOG = Logger.getLogger(SubmissionDataValidator.class);
+    private static final Logger LOG = LogManager.getLogger(SubmissionDataValidator.class);
 
     public static boolean isValid(ExperimentAnnotations expAnnot, boolean skipMetaDataCheck, boolean skipRawDataCheck, boolean skipModificationCheck)
     {

@@ -15,7 +15,8 @@
  */
 package org.labkey.lincs;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.labkey.api.util.FileUtil;
 import org.labkey.lincs.view.GctUtils;
 
@@ -34,7 +35,7 @@ public class CustomGctBuilder
 {
     private final String[] multiValueProbeAnnotations = new String[] {"pr_probe_normalization_group", "pr_probe_suitability_manual", "pr_normalization_peptide_id"};
 
-    private final static Logger _log = Logger.getLogger(CustomGctBuilder.class);
+    private final static Logger _log = LogManager.getLogger(CustomGctBuilder.class);
 
     public Gct build(List<Path> files, List<LincsController.SelectedAnnotation> selectedAnnotations,
                      Set<String> ignoredProbeAnnotations, Set<String> ignoredReplicateAnnotations) throws Gct.GctFileException

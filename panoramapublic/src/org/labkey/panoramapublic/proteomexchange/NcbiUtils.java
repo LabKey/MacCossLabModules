@@ -48,7 +48,7 @@ public class NcbiUtils
     private static final String eutilsUrl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=taxonomy";
     private static final String autoCompUrl = "https://blast.ncbi.nlm.nih.gov/portal/utils/autocomp.fcgi?dict=taxids_sg&q=";
 
-    // private static final Logger LOG = Logger.getLogger(NcbiUtils.class);
+    // private static final Logger LOG = LogManager.getLogger(NcbiUtils.class);
 
     public static List<JSONObject> getCompletions(String token) throws PxException
     {
