@@ -19,8 +19,6 @@ import org.apache.log4j.Logger;
 import org.labkey.api.admin.FolderExportPermission;
 import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
-import org.labkey.api.data.CoreSchema;
-import org.labkey.api.data.DbScope;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.Sort;
@@ -245,10 +243,7 @@ public class JournalManager
 
     public static void updateJournalExperiment(JournalExperiment journalExperiment, User user)
     {
-        Map<String, Object> pkVals = new HashMap<>();
-        pkVals.put("experimentAnnotationsId", journalExperiment.getExperimentAnnotationsId());
-        pkVals.put("journalId", journalExperiment.getJournalId());
-        Table.update(user, PanoramaPublicManager.getTableInfoJournalExperiment(), journalExperiment, pkVals);
+        Table.update(user, PanoramaPublicManager.getTableInfoJournalExperiment(), journalExperiment, journalExperiment.getId());
     }
 
     public static boolean journalHasAccess(Journal journal, ExperimentAnnotations experiment)
@@ -274,10 +269,7 @@ public class JournalManager
 
         sourceJournalExp.setShortAccessUrl(shortAccessUrlRecord);
 
-        Map<String, Integer> pkVals = new HashMap<>();
-        pkVals.put("JournalId", sourceJournalExp.getJournalId());
-        pkVals.put("ExperimentAnnotationsId", sourceJournalExp.getExperimentAnnotationsId());
-        Table.update(user, PanoramaPublicManager.getTableInfoJournalExperiment(), sourceJournalExp, pkVals);
+        updateJournalExperiment(sourceJournalExp, user);
     }
 
     public static JournalExperiment getJournalExperiment(ExperimentAnnotations experiment, Journal journal)
@@ -429,7 +421,7 @@ public class JournalManager
     {
         JournalExperiment je = getJournalExperiment(expAnnotations, journal);
 
-        if(je.getJournalExperimentId() == null)
+        if(je.getCopiedExperimentId() == null)
         {
             // This experiment has not yet been copied to Panorama Public so we can delete the row in JournalExperiment
             SimpleFilter filter = new SimpleFilter();
@@ -476,13 +468,13 @@ public class JournalManager
     public static void deleteRowForJournalCopy(ExperimentAnnotations journalCopy)
     {
         Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(),
-                new SimpleFilter().addCondition(FieldKey.fromParts("JournalExperimentId"), journalCopy.getId()));
+                new SimpleFilter().addCondition(FieldKey.fromParts("CopiedExperimentId"), journalCopy.getId()));
     }
 
     public static JournalExperiment getRowForJournalCopy(ExperimentAnnotations journalCopy)
     {
         return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment()
-                , new SimpleFilter().addCondition(FieldKey.fromParts("JournalExperimentId"), journalCopy.getId())
+                , new SimpleFilter().addCondition(FieldKey.fromParts("CopiedExperimentId"), journalCopy.getId())
                 , null).getObject(JournalExperiment.class);
     }
 

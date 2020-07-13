@@ -117,6 +117,7 @@
             <column columnName="pxid">
                 <columnTitle>PX ID</columnTitle>
             </column>
+            <column columnName="PubmedId"/>
         </columns>
     </table>
 
@@ -195,6 +196,18 @@
                     <fkTable>UsersData</fkTable>
                 </fk>
             </column>
+            <column columnName="Modified"/>
+            <column columnName="ModifiedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+            <column columnName="Id">
+                <description>Contains a unique id for this JouralExperiment (submission).</description>
+                <isHidden>true</isHidden>
+            </column>
             <column columnName="JournalId">
                 <columnTitle>Target</columnTitle>
                 <fk>
@@ -238,7 +251,57 @@
                 <columnTitle>License</columnTitle>
             </column>
             <column columnName="AnnouncementId"/>
-            <column columnName="JournalExperimentId"/>
+            <column columnName="CopiedExperimentId"/>
+        </columns>
+    </table>
+
+    <table tableName="PxXml" tableDbType="TABLE">
+        <titleColumn>Name</titleColumn>
+        <columns>
+            <column columnName="_ts">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Created">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="CreatedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Modified">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="ModifiedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Id">
+                <description>Contains a unique id for this submitted ProteomeXchange XML.</description>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="JournalExperimentId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>JournalExperiment</fkTable>
+                </fk>
+            </column>
+            <column columnName="Xml">
+                <description>Xml submitted to ProteomeXchange</description>
+                <nullable>false</nullable>
+            </column>
+            <column columnName="Version" />
+            <column columnName="UpdateLog">
+                <description>Change log added to the submitted XML</description>
+            </column>
         </columns>
     </table>
 

@@ -51,15 +51,19 @@
     ActionURL rawFilesUrl = PanoramaPublicManager.getRawDataTabUrl(getContainer());
     ActionURL formUrl = PanoramaPublicController.getPublishExperimentURL(expAnnotations.getId(), getContainer(),
             true,  // keep private.
-            false); // don't request a PX ID.
+            bean.canSubmitToPx()); // don't request a PX ID.
     ActionURL editUrl = PanoramaPublicController.getEditExperimentDetailsURL(getContainer(), expAnnotations.getId(),
             PanoramaPublicController.getViewExperimentDetailsURL(expAnnotations.getId(), getContainer()));
 
+    String incompleteSubmissionTxt = "Continue with an incomplete ProteomeXchange submission";
+    String continueSubmissionText = bean.canSubmitToPx() ? incompleteSubmissionTxt : "Continue without ProteomeXchange ID";
 %>
 
 <div style="margin: 30px 20px 20px 20px">
-    The following information is required for getting a ProteomeXchange ID for your submission.
-    <% if(!resubmit) {%> <span style="margin-left:10px;"><%=link("Continue Without ProteomeXchange ID", formUrl)%></span> <%}%>
+    The following information is required for a "complete" ProteomeXchange submission.
+    <% if(!resubmit || resubmit && bean.canSubmitToPx()) {%>
+        <span style="margin-left:10px;"><%=link(continueSubmissionText, formUrl)%></span>
+    <%}%>
 
     <% if(bean.hasMissingMetadata()) { %>
     <div style="margin-top:10px;margin-bottom:20px;">
@@ -136,6 +140,31 @@
     <% if(bean.hasMissingLibrarySourceFiles()) { %>
     <div style="margin-top:10px;">
         <span style="font-weight:bold;">Missing files for spectrum libraries:</span>
+
+        <br>
+        <div style="color:steelblue;margin-bottom: 10px;">
+            Raw data and search results used to build spectrum libraries associated with Skyline documents are required
+            for a "complete" ProteomeXchange submission.
+            You can click the <span style="font-weight:bold;">"<%=h(incompleteSubmissionTxt)%>"</span> link
+            at the top of the page to proceed with an "incomplete" ProteomeXchange submission.
+            You will see the link only if all the raw files imported into the Skyline documents have been uploaded and all
+            the required experiment metadata (e.g. abstract, organism, instrument etc.) has been provided.
+
+            <br><br>
+            You do not have to upload the files used to build a spectrum library if one of the following conditions applies:
+            <ul>
+                <li>Raw data and search results have been uploaded to another ProteomeXchange repository</li>
+                <li>The library was downloaded from a public resource</li>
+                <li>The library is irrelevant to results OR was used only as supporting information</li>
+            </ul>
+            If one of the above applies, you can respond to the confirmation email from Panorama Public after your data has been
+            copied.  In your email, please include the reason for not uploading files for a spectrum library.
+            If the files are in another ProteomeXchange repository such as PRIDE or MassIVE then let us know the PXD accession of
+            the data and the reviewer account details if the data in the repository is private.  For a library that was downloaded
+            from a public resource please provide the URL of the resource.
+            We will upgrade your submission to a "complete" ProteomeXchange submission if we are able to verify the details.
+        </div>
+
         <table class="table-condensed table-striped table-bordered" style="margin-top:1px; margin-bottom:5px;">
             <thead>
             <tr>
@@ -170,7 +199,7 @@
             <%}%>
             </tbody>
         </table>
-        <%=button("Upload Raw Data").href(rawFilesUrl).build()%> <span>(Drag and drop to the files browser in the Raw Data tab to upload files)</span>
+        <%=button("Upload Library Source Data").href(rawFilesUrl).build()%> <span>(Drag and drop to the files browser in the Raw Data tab to upload files)</span>
     </div>
     <%}%>
 

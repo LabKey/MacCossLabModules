@@ -72,6 +72,7 @@ import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.PipelineStatusUrls;
 import org.labkey.api.pipeline.PipelineUrls;
 import org.labkey.api.pipeline.PipelineValidationException;
+import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.DetailsURL;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
@@ -111,6 +112,7 @@ import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.PxXml;
 import org.labkey.panoramapublic.pipeline.AddPanoramaPublicModuleJob;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
 import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
@@ -124,6 +126,7 @@ import org.labkey.panoramapublic.proteomexchange.SubmissionDataStatus;
 import org.labkey.panoramapublic.proteomexchange.SubmissionDataValidator;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
+import org.labkey.panoramapublic.query.PxXmlManager;
 import org.labkey.panoramapublic.view.PanoramaPublicRunListView;
 import org.labkey.panoramapublic.view.expannotations.ExperimentAnnotationsFormDataRegion;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
@@ -133,11 +136,12 @@ import org.springframework.validation.Errors;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.servlet.ModelAndView;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -159,11 +163,9 @@ import static org.labkey.api.util.DOM.INPUT;
 import static org.labkey.api.util.DOM.LABEL;
 import static org.labkey.api.util.DOM.LK.CHECKBOX;
 import static org.labkey.api.util.DOM.LK.FORM;
-import static org.labkey.api.util.DOM.OBJECT;
 import static org.labkey.api.util.DOM.SPAN;
 import static org.labkey.api.util.DOM.at;
 import static org.labkey.api.util.DOM.cl;
-import static org.labkey.api.util.DOM.createHtml;
 import static org.labkey.api.util.DOM.createHtmlFragment;
 
 /**
@@ -1906,9 +1908,9 @@ public class PanoramaPublicController extends SpringActionController
 
                 // Rename the container where the old copy lives so that the same folder name can be used for the new copy.
                 // The container will be deleted after the data has been re-copied.
-                ExperimentAnnotations currentJournalExpt = ExperimentAnnotationsManager.get(_journalExperiment.getJournalExperimentId());
+                ExperimentAnnotations currentJournalExpt = ExperimentAnnotationsManager.get(_journalExperiment.getCopiedExperimentId());
                 renameOldContainer(currentJournalExpt.getContainer());
-                currentJournalExpt = ExperimentAnnotationsManager.get(_journalExperiment.getJournalExperimentId()); // query again to get the updated container name
+                currentJournalExpt = ExperimentAnnotationsManager.get(_journalExperiment.getCopiedExperimentId()); // query again to get the updated container name
                 PanoramaPublicNotification.notifyResubmitted(_experimentAnnotations, _journal, _journalExperiment, currentJournalExpt, getUser());
 
                 transaction.commit();
@@ -1975,6 +1977,7 @@ public class PanoramaPublicController extends SpringActionController
             if(_experimentAnnotations == null)
             {
                 errors.reject(ERROR_MSG,"Could not find experiment with Id " + form.getId());
+                return;
             }
 
             ensureCorrectContainer(getContainer(), _experimentAnnotations.getContainer(), getViewContext());
@@ -2095,8 +2098,14 @@ public class PanoramaPublicController extends SpringActionController
             if(je != null)
             {
                 // If an entry exists for this experiment in the JournalExperiment table it means that the data is being re-submitted.
-                // In this case check for a valid PX submission only if a PX ID was requested in the initial submission.
-                validateForPx = validateForPx && je.isPxidRequested();
+                // In this case check for a valid PX submission only if a PX ID was requested in the initial submission
+                // OR if the experiment was copied to Panorama Public and assigned a PX ID.  Some experiments on Panorama Public have
+                // been assigned a PX ID even though submitter could not request it because of non-Unimod modifications used in their Skyline documents.
+                // Such submissions can now be announced on PX as "incomplete metadata and/or data".
+                ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.get(je.getCopiedExperimentId());
+                validateForPx = validateForPx && (journalCopy != null ?
+                        !StringUtils.isBlank(journalCopy.getPxid()) // Experiment was copied to Panorama Public and assigned a PX ID. Do validation.
+                        : je.isPxidRequested()); // Experiment has not yet been copied to Panorama Public but a PX ID was requested in the submission.  Do validation.
             }
 
             if (validateForPx)
@@ -2113,17 +2122,11 @@ public class PanoramaPublicController extends SpringActionController
 
             if(form.isNotSubmitting())
             {
+                String text = validateForPx ? "Data is valid for a complete ProteomeXchange submission." :
+                        "Data was not validated for a ProteomeXchange submission.";
                 ActionURL returnUrl = form.getReturnActionURL();
-                if(returnUrl == null)
-                {
-                    return new HtmlView(DIV("Data is valid for a complete ProteomeXchange submission."));
-                }
-                else
-                {
-                    return new HtmlView(DIV("Data is valid for a complete ProteomeXchange submission.", BR(),
-                            new Link.LinkBuilder("Back").href(returnUrl).build()));
-                }
-
+                return returnUrl == null ? new HtmlView(DIV(text))
+                        : new HtmlView(DIV(text, BR(), new Link.LinkBuilder("Back").href(returnUrl).build()));
             }
 
             if(je != null)
@@ -2218,30 +2221,69 @@ public class PanoramaPublicController extends SpringActionController
     // ------------------------------------------------------------------------
     // BEGIN Actions for ProteomeXchange
     // ------------------------------------------------------------------------
+    public enum PX_METHOD {GET_ID, VALIDATE, SUBMIT, UPDATE}
+
     @RequiresPermission(AdminOperationsPermission.class)
-    public static class GetPxActionsAction extends SimpleViewAction<PxExportForm>
+    public static class GetPxActionsAction extends FormViewAction<PxActionsForm>
     {
+        private ExperimentAnnotations _expAnnot;
+        private JournalExperiment _journalExperiment;
+        private String _pxResponse;
+
         @Override
-        public ModelAndView getView(PxExportForm form, BindException errors) throws Exception
+        public void validateCommand(PxActionsForm form, Errors errors)
         {
-            if(form.getId() <= 0)
+            int experimentId = form.getId();
+
+            _expAnnot = ExperimentAnnotationsManager.get(experimentId);
+            if(_expAnnot == null)
             {
-                errors.reject(ERROR_MSG, "Invalid experiment annotations ID found in request " + form.getId());
+                errors.reject(ERROR_MSG, "Cannot find experiment with ID " + experimentId);
+                return;
+            }
+
+            ensureCorrectContainer(getContainer(), _expAnnot.getContainer(), getViewContext());
+
+            if(!_expAnnot.isJournalCopy())
+            {
+                errors.reject(ERROR_MSG, "ProteomeXchange actions can only be executed on a Panorama Public copy.");
+                return;
+            }
+
+            _journalExperiment = JournalManager.getRowForJournalCopy(_expAnnot);
+            if(_journalExperiment == null)
+            {
+                errors.reject(ERROR_MSG, "Cannot find a row in JournalExperiment for experiment ID: " + _expAnnot.getId());
+                return;
+            }
+        }
+
+        @Override
+        public ModelAndView getView(PxActionsForm form, boolean reshow, BindException errors)
+        {
+            if(errors.getErrorCount() > 0)
+            {
+                if(!StringUtils.isBlank(_pxResponse))
+                {
+                    errors.addError(new LabKeyError(_pxResponse));
+                }
+                return new SimpleErrorView(errors, true);
+            }
+
+            _expAnnot = ExperimentAnnotationsManager.get(form.getId());
+            if(_expAnnot == null)
+            {
+                errors.reject(ERROR_MSG, "Cannot find experiment with ID " + form.getId());
                 return new SimpleErrorView(errors);
             }
 
-            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(form.getId());
-            if(expAnnot == null)
+            ensureCorrectContainer(getContainer(), _expAnnot.getContainer(), getViewContext());
+
+            if(!reshow)
             {
-                errors.reject(ERROR_MSG,"Cannot find experiment with ID " + form.getId());
-                return new SimpleErrorView(errors);
-            }
-            if(!StringUtils.isBlank(expAnnot.getPublicationLink()) && !StringUtils.isBlank(expAnnot.getCitation()))
-            {
-                form.setPeerReviewed(true);
+                form.setTestDatabase(true);
             }
 
-            form.setTestDatabase(true);
             JspView view = new JspView<>("/org/labkey/panoramapublic/view/publish/pxActions.jsp", form, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("ProteomeXchange Actions");
@@ -2253,17 +2295,205 @@ public class PanoramaPublicController extends SpringActionController
         {
             return root.addChild("ProteomeXchange Actions");
         }
+
+        @Override
+        public boolean handlePost(PxActionsForm form, BindException errors) throws ProteomeXchangeServiceException, PxException
+        {
+            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(ProteomeXchangeService.PX_CREDENTIALS, false);
+            String pxUser = null;
+            String pxPassword = null;
+            if(map != null)
+            {
+                pxUser = map.get(ProteomeXchangeService.PX_USER);
+                pxPassword = map.get(ProteomeXchangeService.PX_PASSWORD);
+            }
+            if(StringUtils.isBlank(pxUser))
+            {
+                errors.reject(ERROR_MSG, "Cannot find ProteomeXchange username.");
+            }
+            if(StringUtils.isBlank(pxPassword))
+            {
+                errors.reject(ERROR_MSG, "Cannot find ProteomeXchange password.");
+            }
+            if(StringUtils.isBlank(form.getMethod()))
+            {
+                errors.reject(ERROR_MSG, "Did not find a ProteomeXchange method in request.");
+            }
+            if(errors.getErrorCount() > 0)
+            {
+                return false;
+            }
+
+            PX_METHOD method = PX_METHOD.valueOf(form.getMethod());
+            switch (method)
+            {
+                case GET_ID:
+                    assignPxId(form.isTestDatabase(), pxUser, pxPassword, errors);
+                    break;
+                case VALIDATE:
+                    validatePxXml(form.isTestDatabase(), form.getChangeLog(), pxUser, pxPassword, errors);
+                    break;
+                case SUBMIT:
+                    submitPxXml(form.isTestDatabase(), pxUser, pxPassword, errors);
+                    break;
+                case UPDATE:
+                    updatePxXml(form.isTestDatabase(), form.getChangeLog(), pxUser, pxPassword, errors);
+                    break;
+                default: return false;
+            }
+
+            return errors.getErrorCount() == 0;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(PxActionsForm form)
+        {
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(PxActionsForm form)
+        {
+            return new HtmlView(
+                    DIV("Sent request to " + form.getMethod(), ".  Request was successful.", BR(),
+                        SPAN("Response from PX server: "), BR(),
+                        DIV(at(style, "white-space: pre-wrap;margin:10px 0px 10px 0px;"),
+                            _pxResponse),
+                    DIV(new Link.LinkBuilder("Back to folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
+        }
+
+        private PxXml createPxXml(ExperimentAnnotations expAnnot, JournalExperiment je, String pxChanageLog) throws PxException
+        {
+            // Generate the PX XML
+            int pxVersion = PxXmlManager.getNextVersion(_journalExperiment.getId());
+            PxXmlWriter annWriter;
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream())
+            {
+                PxExperimentAnnotations pxInfo = new PxExperimentAnnotations(expAnnot, je);
+                pxInfo.setPxChangeLog(pxChanageLog);
+                pxInfo.setVersion(pxVersion);
+                annWriter = new PxXmlWriter(baos);
+                annWriter.write(pxInfo);
+
+                String xml = baos.toString(StandardCharsets.UTF_8);
+                return new PxXml(je.getId(), xml, pxVersion, pxChanageLog);
+            }
+            catch (IOException e)
+            {
+                throw new PxException("Error creating PX XML.", e);
+            }
+        }
+
+        private File writePxXmlFile(String xmlString) throws PxException
+        {
+            File xml = getLocalFile(getContainer(), "px.xml");
+
+            try (PrintWriter out = new PrintWriter(new FileWriter(xml, StandardCharsets.UTF_8)))
+            {
+                out.write(xmlString);
+            }
+            catch (IOException e)
+            {
+                throw new PxException("Error writing PX XML.", e);
+            }
+            return xml;
+        }
+
+        public void assignPxId(boolean useTestDb, String pxUser, String pxPassword, BindException errors) throws ProteomeXchangeServiceException
+        {
+            _pxResponse = ProteomeXchangeService.getPxIdResponse(useTestDb, pxUser, pxPassword);
+            String pxid = ProteomeXchangeService.parsePxIdFromResponse(_pxResponse);
+            if(pxid != null)
+            {
+                // Save the PX ID with the experiment.
+                _expAnnot.setPxid(pxid);
+                ExperimentAnnotationsManager.updatePxId(_expAnnot, pxid);
+            }
+            else
+            {
+                errors.reject(ERROR_MSG, "Could not parse PXD accession from the response.");
+            }
+        }
+
+        private void validatePxXml(boolean useTestDb, String pxChangeLog, String pxUser, String pxPassword, BindException errors) throws PxException, ProteomeXchangeServiceException
+        {
+            File xmlFile = writePxXmlFile(createPxXml(_expAnnot, _journalExperiment, pxChangeLog).getXml());
+            _pxResponse = ProteomeXchangeService.validatePxXml(xmlFile, useTestDb, pxUser, pxPassword);
+            if(ProteomeXchangeService.responseHasErrors(_pxResponse))
+            {
+                errors.reject(ERROR_MSG, "PX XML is could not be validated. See response for details.");
+            }
+        }
+
+        private void submitPxXml(boolean useTestDb, String pxUser, String pxPassword, BindException errors) throws ProteomeXchangeServiceException, PxException
+        {
+            submitPxXml(useTestDb, null, pxUser, pxPassword, errors);
+        }
+
+        private void submitPxXml(boolean useTestDb, String pxChangeLog, String pxUser, String pxPassword, BindException errors) throws ProteomeXchangeServiceException, PxException
+        {
+            PxXml pxXml = createPxXml(_expAnnot, _journalExperiment, pxChangeLog);
+            File xmlFile = writePxXmlFile(pxXml.getXml());
+            _pxResponse = ProteomeXchangeService.submitPxXml(xmlFile, useTestDb, pxUser, pxPassword);
+            if(ProteomeXchangeService.responseHasErrors(_pxResponse))
+            {
+                errors.reject(ERROR_MSG, "PX XML could not be submitted. See response for details.");
+            }
+            else
+            {
+                PxXmlManager.save(pxXml, getUser());
+            }
+        }
+
+        private void updatePxXml(boolean useTestDb, String pxChangeLog, String pxUser, String pxPassword, BindException errors) throws PxException, ProteomeXchangeServiceException
+        {
+            if(StringUtils.isBlank(pxChangeLog))
+            {
+                errors.reject(ERROR_MSG, "Change log cannot be empty.");
+                return;
+            }
+            submitPxXml(useTestDb, pxChangeLog, pxUser, pxPassword, errors);
+        }
+
+        private static File getLocalFile(Container container, String fileName) throws PxException
+        {
+            java.nio.file.Path fileRoot = FileContentService.get().getFileRootPath(container, FileContentService.ContentType.files);
+            if(fileRoot == null)
+            {
+                throw new PxException("Error writing PX XML.  Could not find file root for container " + container);
+            }
+            if (FileUtil.hasCloudScheme(fileRoot))
+            {
+                PipeRoot root = PipelineService.get().getPipelineRootSetting(container);
+                if (root != null)
+                {
+                    LocalDirectory localDirectory = LocalDirectory.create(root, PanoramaPublicModule.NAME);
+                    return new File(localDirectory.getLocalDirectoryFile(), fileName);
+                }
+                else
+                {
+                    throw new PxException("Error writing PX XML.  Pipeline root not found for container " + container);
+                }
+            }
+            else
+            {
+                return fileRoot.resolve(fileName).toFile();
+            }
+        }
     }
 
     public static class PxExperimentAnnotations
     {
         private final ExperimentAnnotations _experimentAnnotations;
-        private final PxExportForm _form;
+        private final JournalExperiment _journalExperiment;
+        private String _pxChangeLog;
+        private int _version;
+        private boolean _useTestDb;
 
-        public PxExperimentAnnotations(ExperimentAnnotations experimentAnnotations, PxExportForm form)
+        public PxExperimentAnnotations(ExperimentAnnotations experimentAnnotations, JournalExperiment je)
         {
             _experimentAnnotations = experimentAnnotations;
-            _form = form;
+            _journalExperiment = je;
         }
 
         public ExperimentAnnotations getExperimentAnnotations()
@@ -2271,17 +2501,47 @@ public class PanoramaPublicController extends SpringActionController
             return _experimentAnnotations;
         }
 
-        public PxExportForm getForm()
+        public JournalExperiment getJournalExperiment()
         {
-            return _form;
+            return _journalExperiment;
+        }
+
+        public String getPxChangeLog()
+        {
+            return _pxChangeLog;
+        }
+
+        public void setPxChangeLog(String pxChangeLog)
+        {
+            _pxChangeLog = pxChangeLog;
+        }
+
+        public int getVersion()
+        {
+            return _version;
+        }
+
+        public void setVersion(int version)
+        {
+            _version = version;
+        }
+
+        public boolean isUseTestDb()
+        {
+            return _useTestDb;
+        }
+
+        public void setUseTestDb(boolean useTestDb)
+        {
+            _useTestDb = useTestDb;
         }
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
-    public static class ExportPxXmlAction extends SimpleStreamAction<PxExportForm>
+    public static class ExportPxXmlAction extends SimpleStreamAction<PxActionsForm>
     {
         @Override
-        public void render(PxExportForm form, BindException errors, PrintWriter out) throws Exception
+        public void render(PxActionsForm form, BindException errors, PrintWriter out) throws Exception
         {
             int experimentId = form.getId();
             if(experimentId <= 0)
@@ -2297,60 +2557,26 @@ public class PanoramaPublicController extends SpringActionController
                 return;
             }
 
-            if(!expAnnot.getContainer().equals(getContainer()))
+            JournalExperiment je = expAnnot.isJournalCopy() ? JournalManager.getRowForJournalCopy(expAnnot) : JournalManager.getLastPublishedRecord(experimentId);
+            if(je == null)
             {
-                ActionURL redirect = getViewContext().cloneActionURL();
-                redirect.setContainer(expAnnot.getContainer());
-                throw new RedirectException(redirect);
+                out.write("Cannot find a row in JournalExperiment for experiment ID " + experimentId);
             }
 
+            ensureCorrectContainer(getContainer(), expAnnot.getContainer(), getViewContext());
+
             PxXmlWriter annWriter = new PxXmlWriter(out);
-            annWriter.write(new PxExperimentAnnotations(expAnnot, form));
+            PxExperimentAnnotations pxInfo = new PxExperimentAnnotations(expAnnot, je);
+            pxInfo.setVersion(PxXmlManager.getNextVersion(je.getId()));
+            annWriter.write(pxInfo);
         }
     }
 
-    public static class PxExportForm extends ExperimentIdForm
+    public static class PxActionsForm extends ExperimentIdForm
     {
-        private boolean _peerReviewed;
-        private String _publicationId;
-        private String _publicationReference;
         private boolean _testDatabase;
-        private String _pxUserName;
-        private String _pxPassword;
         private String _changeLog;
-        private String _labHeadName;
-        private String _labHeadEmail;
-        private String _labHeadAffiliation;
-
-        public boolean getPeerReviewed()
-        {
-            return _peerReviewed;
-        }
-
-        public void setPeerReviewed(boolean peerReviewed)
-        {
-            _peerReviewed = peerReviewed;
-        }
-
-        public String getPublicationId()
-        {
-            return _publicationId;
-        }
-
-        public void setPublicationId(String publicationId)
-        {
-            _publicationId = publicationId;
-        }
-
-        public String getPublicationReference()
-        {
-            return _publicationReference;
-        }
-
-        public void setPublicationReference(String publicationReference)
-        {
-            _publicationReference = publicationReference;
-        }
+        private String _method;
 
         public boolean isTestDatabase()
         {
@@ -2360,26 +2586,6 @@ public class PanoramaPublicController extends SpringActionController
         public void setTestDatabase(boolean testDatabase)
         {
             _testDatabase = testDatabase;
-        }
-
-        public String getPxUserName()
-        {
-            return _pxUserName;
-        }
-
-        public void setPxUserName(String pxUserName)
-        {
-            _pxUserName = pxUserName;
-        }
-
-        public String getPxPassword()
-        {
-            return _pxPassword;
-        }
-
-        public void setPxPassword(String pxPassword)
-        {
-            _pxPassword = pxPassword;
         }
 
         public String getChangeLog()
@@ -2392,274 +2598,22 @@ public class PanoramaPublicController extends SpringActionController
             _changeLog = changeLog;
         }
 
-        public String getLabHeadName()
+        public String getMethod()
         {
-            return _labHeadName;
+            return _method;
         }
 
-        public void setLabHeadName(String labHeadName)
+        public void setMethod(String method)
         {
-            _labHeadName = labHeadName;
-        }
-
-        public String getLabHeadEmail()
-        {
-            return _labHeadEmail;
-        }
-
-        public void setLabHeadEmail(String labHeadEmail)
-        {
-            _labHeadEmail = labHeadEmail;
-        }
-
-        public String getLabHeadAffiliation()
-        {
-            return _labHeadAffiliation;
-        }
-
-        public void setLabHeadAffiliation(String labHeadAffiliation)
-        {
-            _labHeadAffiliation = labHeadAffiliation;
-        }
-    }
-
-    @RequiresPermission(AdminOperationsPermission.class)
-    public abstract static class PxServiceMethodAction <FormType extends PxExportForm> extends SimpleViewAction<FormType>
-    {
-        public PxServiceMethodAction(Class<FormType> formClass)
-        {
-            super(formClass);
-        }
-
-        @Override
-        public ModelAndView getView(FormType form, BindException errors) throws Exception
-        {
-            int experimentId = form.getId();
-            if(experimentId <= 0)
-            {
-                errors.reject(ERROR_MSG, "Invalid experiment Id found in request: " + experimentId);
-                return new SimpleErrorView(errors, true);
-            }
-
-            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(experimentId);
-            if(expAnnot == null)
-            {
-                errors.reject(ERROR_MSG, "Cannot find experiment with ID " + experimentId);
-                return new SimpleErrorView(errors, true);
-            }
-
-            String pxUser = form.getPxUserName();
-            if(StringUtils.isBlank(pxUser))
-            {
-                errors.reject(ERROR_MSG, "ProteomeXchange username cannot be blank.");
-            }
-            String pxPassword = form.getPxPassword();
-            if(StringUtils.isBlank(pxPassword))
-            {
-                errors.reject(ERROR_MSG, "ProteomeXchange password cannot be blank.");
-            }
-
-            if(errors.hasErrors())
-            {
-                return new SimpleErrorView(errors, true);
-            }
-
-            return getHtmlView(expAnnot, form, pxUser, pxPassword);
-        }
-
-        protected File writePxXmlFile(ExperimentAnnotations expAnnot, FormType form) throws PxException
-        {
-            File xml = getLocalFile(getContainer(), "px.xml");
-            // Generate the PX XML
-            PxXmlWriter annWriter;
-            try (OutputStream out = new FileOutputStream(xml))
-            {
-                annWriter = new PxXmlWriter(out);
-                annWriter.write(new PxExperimentAnnotations(expAnnot, form));
-            }
-            catch (IOException e)
-            {
-                throw new PxException("Error writing PX XML file.", e);
-            }
-            return xml;
-        }
-
-        public abstract HtmlView getHtmlView(ExperimentAnnotations expAnnot, FormType form, String pxUser, String pxPassword) throws PxException, ProteomeXchangeServiceException;
-    }
-
-    private static File getLocalFile(Container container, String fileName) throws PxException
-    {
-        java.nio.file.Path fileRoot = FileContentService.get().getFileRootPath(container, FileContentService.ContentType.files);
-        if(fileRoot == null)
-        {
-            throw new PxException("Error writing PX XML.  Could not find file root for container " + container);
-        }
-        if (FileUtil.hasCloudScheme(fileRoot))
-        {
-            PipeRoot root = PipelineService.get().getPipelineRootSetting(container);
-            if (root != null)
-            {
-                LocalDirectory localDirectory = LocalDirectory.create(root, PanoramaPublicModule.NAME);
-                return new File(localDirectory.getLocalDirectoryFile(), fileName);
-            }
-            else
-            {
-                throw new PxException("Error writing PX XML.  Pipeline root not found for container " + container);
-            }
-        }
-        else
-        {
-            return fileRoot.resolve(fileName).toFile();
-        }
-    }
-
-    @RequiresPermission(AdminOperationsPermission.class)
-    public static class ValidatePxXmlAction extends PxServiceMethodAction<PxExportForm>
-    {
-        public ValidatePxXmlAction()
-        {
-            super(PxExportForm.class);
-        }
-
-        @Override
-        public HtmlView getHtmlView(ExperimentAnnotations expAnnot, PxExportForm form, String pxUser, String pxPassword) throws PxException, ProteomeXchangeServiceException
-        {
-            File xml = writePxXmlFile(expAnnot, form);
-            String response = ProteomeXchangeService.validatePxXml(xml, form.isTestDatabase(), pxUser, pxPassword);
-            StringBuilder html = new StringBuilder();
-            html.append("<p>PX XML has been created at ").append(PageFlowUtil.filter(xml.getPath())).append(".</p>");
-            html.append("<p>Sent request to validate XML.</p>");
-            html.append("<p>Response was: </p>");
-            html.append("<p style=\"white-space: pre-wrap;\">").append(PageFlowUtil.filter(response)).append("</p>");
-            return new HtmlView(html.toString());
-        }
-        @Override
-        public NavTree appendNavTrail(NavTree root)
-        {
-            return root.addChild("Validate ProteomeXchange XML");
-        }
-    }
-
-    @RequiresPermission(AdminOperationsPermission.class)
-    public static class SubmitPxXmlAction extends PxServiceMethodAction<PxExportForm>
-    {
-        public SubmitPxXmlAction()
-        {
-            super(PxExportForm.class);
-        }
-
-        @Override
-        public HtmlView getHtmlView(ExperimentAnnotations expAnnot, PxExportForm form, String pxUser, String pxPassword) throws PxException, ProteomeXchangeServiceException
-        {
-            File xml = writePxXmlFile(expAnnot, form);
-            String response = ProteomeXchangeService.submitPxXml(xml, form.isTestDatabase(), pxUser, pxPassword);
-            StringBuilder html = new StringBuilder();
-            html.append("<p>PX XML has been created at ").append(PageFlowUtil.filter(xml.getPath())).append(".</p>");
-            html.append("<p>Submitted XML to ProteomeXchange.</p>");
-            html.append("<p>Response was: </p>");
-            html.append("<p style=\"white-space: pre-wrap;\">").append(PageFlowUtil.filter(response)).append("</p>");
-            return new HtmlView(html.toString());
-        }
-
-        @Override
-        public NavTree appendNavTrail(NavTree root)
-        {
-            return root.addChild("Submit ProteomeXchange XML");
-        }
-    }
-
-    @RequiresPermission(AdminOperationsPermission.class)
-    public static class UpdatePxXmlAction extends SubmitPxXmlAction
-    {
-        @Override
-        public void validate(PxExportForm form, BindException errors)
-        {
-            if(StringUtils.isBlank(form.getChangeLog()))
-            {
-                errors.reject(ERROR_MSG, "Change log cannot be empty.");
-            }
-            super.validate(form, errors);
-        }
-    }
-
-    @RequiresPermission(AdminOperationsPermission.class)
-    public static class SavePxIdAction extends PxServiceMethodAction<SavePxIdForm>
-    {
-        public SavePxIdAction()
-        {
-            super(SavePxIdForm.class);
-        }
-
-        @Override
-        public HtmlView getHtmlView(ExperimentAnnotations expAnnot, SavePxIdForm form, String pxUser, String pxPassword) throws PxException, ProteomeXchangeServiceException
-        {
-            StringBuilder html = new StringBuilder();
-            if(expAnnot.getPxid() != null && !form.isOverride())
-            {
-                html.append("Experiment ID ").append(expAnnot.getId()).append(" is associated with PX ID ").append(expAnnot.getPxid()).append(".");
-                html.append("<div style=\"margin-top:20px;\">");
-                ActionURL overrideUrl = getViewContext().getActionURL().clone();
-                overrideUrl.addParameter("id", expAnnot.getId()).addParameter("override", true).addParameter("testDatabase", form.isTestDatabase());
-                html.append(PageFlowUtil.button("Generate New PX ID").href(overrideUrl).addClass("primary"));
-                html.append("</div>");
-            }
-            else
-            {
-                String response = ProteomeXchangeService.getPxIdResponse(form.isTestDatabase(), pxUser, pxPassword);
-
-                html.append("Response from PX Server:");
-                html.append("<div style=\"white-space: pre-wrap;margin:10px 0px 10px 0px;\">").append(PageFlowUtil.filter(response)).append("</div>");
-
-                String pxid = ProteomeXchangeService.parsePxIdFromResponse(response);
-                if(pxid != null)
-                {
-                    // Save the PX ID with the experiment.
-                    expAnnot.setPxid(pxid);
-                    ExperimentAnnotationsManager.updatePxId(expAnnot, pxid);
-
-                    html.append("<p>");
-                    html.append("PX ID: ").append("<span style=\"font-weight-bold;color:red;\">").append(pxid).append("</span> saved for experiment ").append(expAnnot.getId());
-                    html.append("</p>");
-                }
-                else
-                {
-                    html.append("<p>");
-                    html.append("<span style=\"font-weight-bold;color:red;\"> ERROR getting PX ID.</span>");
-                    html.append("</p>");
-                }
-            }
-
-            html.append("<br>");
-            html.append(PageFlowUtil.link("Back to PX Actions").href(new ActionURL(GetPxActionsAction.class, getContainer()).addParameter("id", expAnnot.getId())));
-            return new HtmlView(html.toString());
-        }
-        @Override
-        public NavTree appendNavTrail(NavTree root)
-        {
-            return root.addChild("Save ProteomeXchange ID");
-        }
-    }
-
-    public static class SavePxIdForm extends PxExportForm
-    {
-        private boolean _override;
-
-        public boolean isOverride()
-        {
-            return _override;
-        }
-
-        public void setOverride(boolean override)
-        {
-            _override = override;
+            _method = method;
         }
     }
 
     @RequiresPermission(AdminPermission.class)
-    public static class PxXmlSummaryAction extends SimpleViewAction<PxExportForm>
+    public static class PxXmlSummaryAction extends SimpleViewAction<PxActionsForm>
     {
         @Override
-        public ModelAndView getView(PxExportForm form, BindException errors) throws Exception
+        public ModelAndView getView(PxActionsForm form, BindException errors) throws Exception
         {
             int experimentId = form.getId();
             if(experimentId <= 0)
@@ -2672,6 +2626,13 @@ public class PanoramaPublicController extends SpringActionController
             if(expAnnot == null)
             {
                 errors.reject(ERROR_MSG, "Cannot find experiment with ID " + experimentId);
+                return new SimpleErrorView(errors, true);
+            }
+
+            JournalExperiment je = expAnnot.isJournalCopy() ? JournalManager.getRowForJournalCopy(expAnnot) : JournalManager.getLastPublishedRecord(experimentId);
+            if(je == null)
+            {
+                errors.reject(ERROR_MSG, "Cannot find a row in JournalExperiment for experiment ID: " + experimentId);
                 return new SimpleErrorView(errors, true);
             }
 
@@ -2679,7 +2640,11 @@ public class PanoramaPublicController extends SpringActionController
 
             StringBuilder summaryHtml = new StringBuilder();
             PxHtmlWriter writer = new PxHtmlWriter(summaryHtml);
-            writer.write(new PxExperimentAnnotations(expAnnot, form));
+            PxExperimentAnnotations pxInfo = new PxExperimentAnnotations(expAnnot, je);
+            pxInfo.setUseTestDb(form.isTestDatabase());
+            pxInfo.setPxChangeLog(form.getChangeLog());
+            pxInfo.setVersion(PxXmlManager.getNextVersion(je.getId()));
+            writer.write(pxInfo);
 
             return new HtmlView(summaryHtml.toString());
         }
@@ -3639,11 +3604,7 @@ public class PanoramaPublicController extends SpringActionController
                 new JournalGroupDetailsAction(),
                 new DeleteJournalGroupAction(),
                 new GetPxActionsAction(),
-                new ExportPxXmlAction(),
-                new ValidatePxXmlAction(),
-                new SavePxIdAction(),
-                new SubmitPxXmlAction(),
-                new UpdatePxXmlAction()
+                new ExportPxXmlAction()
             );
 
             // @AdminConsoleAction

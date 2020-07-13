@@ -37,7 +37,6 @@ import org.labkey.api.pipeline.RecordedActionSet;
 import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.MutableSecurityPolicy;
-import org.labkey.api.security.RoleAssignment;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicy;
 import org.labkey.api.security.SecurityPolicyManager;
@@ -72,7 +71,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.SortedSet;
 import java.util.stream.Collectors;
 
 /**
@@ -152,13 +150,13 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             targetExperiment.setShortUrl(jExperiment.getShortAccessUrl());
 
             ExperimentAnnotations previousCopy = null;
-            if(jExperiment.getJournalExperimentId() != null)
+            if(jExperiment.getCopiedExperimentId() != null)
             {
-                previousCopy = ExperimentAnnotationsManager.get(jExperiment.getJournalExperimentId());
+                previousCopy = ExperimentAnnotationsManager.get(jExperiment.getCopiedExperimentId());
                 if(previousCopy == null)
                 {
                     throw new PipelineJobException("Could not find and entry for the previous copy of the experiment.  " +
-                            "Previous experiment ID " + jExperiment.getJournalExperimentId());
+                            "Previous experiment ID " + jExperiment.getCopiedExperimentId());
                 }
             }
 
@@ -196,7 +194,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // Update the JournalExperiment table -- set the 'copied' timestamp and the journalExperimentId
             log.info("Setting the 'copied' timestamp and journalExperimentId on the JournalExperiment table.");
             jExperiment.setCopied(new Date());
-            jExperiment.setJournalExperimentId(targetExperiment.getId());
+            jExperiment.setCopiedExperimentId(targetExperiment.getId());
             JournalManager.updateJournalExperiment(jExperiment, user);
 
             // Remove the copy permissions given to the journal.
@@ -265,12 +263,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 assignReader(SecurityManager.getGroup(Group.groupGuests), target);
             }
 
-            // Create notifications
-            PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), jExperiment,
-                    reviewer, reviewerPassword, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
-
-            postEmailNotification(jobSupport, user, log, sourceExperiment, jExperiment, targetExperiment, reviewer, reviewerPassword, previousCopy != null);
-
             // Delete the previous copy
             if(previousCopy != null && jobSupport.deletePreviousCopy())
             {
@@ -278,6 +270,12 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 Container oldContainer = previousCopy.getContainer();
                 ContainerManager.delete(oldContainer, user);
             }
+
+            // Create notifications. Do this at the end after everything else is done.
+            PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), jExperiment,
+                    reviewer, reviewerPassword, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
+
+            postEmailNotification(jobSupport, user, log, sourceExperiment, jExperiment, targetExperiment, reviewer, reviewerPassword, previousCopy != null);
 
             transaction.commit();
         }

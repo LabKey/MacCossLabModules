@@ -94,6 +94,11 @@ public class SubmissionDataValidator
         return true;
     }
 
+    public static SubmissionDataStatus validateExperiment(ExperimentAnnotations expAnnot)
+    {
+        return validateExperiment(expAnnot, false, false, false);
+    }
+
     public static SubmissionDataStatus validateExperiment(ExperimentAnnotations expAnnot, boolean skipMetaDataCheck, boolean skipRawDataCheck, boolean skipModificationCheck)
     {
         SubmissionDataStatus status = new SubmissionDataStatus(expAnnot);

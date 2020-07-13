@@ -48,7 +48,7 @@
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
     Journal journal = bean.lookupJournal();
     JournalExperiment je = JournalManager.getJournalExperiment(expAnnot.getId(), journal.getId());
-    ExperimentAnnotations previousCopy = je.getJournalExperimentId() != null ? ExperimentAnnotationsManager.get(je.getJournalExperimentId()) : null;
+    ExperimentAnnotations previousCopy = je.getCopiedExperimentId() != null ? ExperimentAnnotationsManager.get(je.getCopiedExperimentId()) : null;
     boolean isRecopy = previousCopy != null;
 
     String selectedFolder = "Please select a destination folder...";

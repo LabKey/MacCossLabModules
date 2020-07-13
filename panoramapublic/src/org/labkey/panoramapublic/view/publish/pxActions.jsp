@@ -33,26 +33,20 @@
 %>
 
 <%
-    JspView<PanoramaPublicController.PxExportForm> me = (JspView<PanoramaPublicController.PxExportForm>) HttpView.currentView();
-    PanoramaPublicController.PxExportForm bean = me.getModelBean();
+    JspView<PanoramaPublicController.PxActionsForm> me = (JspView<PanoramaPublicController.PxActionsForm>) HttpView.currentView();
+    PanoramaPublicController.PxActionsForm bean = me.getModelBean();
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
-
-    ActionURL generateXmlUrl = new ActionURL(PanoramaPublicController.ExportPxXmlAction.class, getContainer());
-    generateXmlUrl.addParameter("id", expAnnot.getId());
-
-    ActionURL validateXmlUrl = new ActionURL(PanoramaPublicController.ValidatePxXmlAction.class, getContainer());
-    validateXmlUrl.addParameter("id", expAnnot.getId());
 %>
 
 
-<div id="pxExportForm"></div>
+<div id="pxMethodsForm"></div>
 
 <script type="text/javascript">
 
     Ext4.onReady(function(){
 
         var form = Ext4.create('Ext.form.Panel', {
-            renderTo: "pxExportForm",
+            renderTo: "pxMethodsForm",
             standardSubmit: true,
             border: false,
             frame: false,
@@ -71,7 +65,6 @@
                 {
                     xtype:'displayfield',
                     fieldLabel: "Experiment ID",
-                    name: 'id',
                     value: <%=expAnnot.getId()%>
                 },
                 {
@@ -80,54 +73,15 @@
                     value: <%=expAnnot.getId()%>
                 },
                 {
-                    xtype: 'checkbox',
-                    fieldLabel: 'Peer Reviewed',
-                    name: 'peerReviewed',
-                    value: <%=bean.getPeerReviewed()%>,
-                    afterBodyEl: '<span style="font-size: 0.75em;margin-left:5px;">Check if data has been peer reviewed and published.</span>',
-                    msgTarget : 'side'
-                },
-                {
-                    xtype: 'textfield',
-                    fieldLabel: 'PubMed ID',
-                    value: <%=q(bean.getPublicationId())%>,
-                    name: 'publicationId'
-                },
-                {
-                    xtype: 'textfield',
-                    fieldLabel: 'Reference',
-                    value: <%=q(bean.getPublicationReference())%>,
-                    name: 'publicationReference'
-                },
-                {
-                    xtype: 'textfield',
-                    fieldLabel: 'Lab Head',
-                    name: 'labHeadName'
-                },
-                {
-                    xtype: 'textfield',
-                    fieldLabel: 'Lab Head Email',
-                    name: 'labHeadEmail'
-                },
-                {
-                    xtype: 'textfield',
-                    fieldLabel: 'Lab Head Affiliation',
-                    name: 'labHeadAffiliation'
+                    xtype:'hiddenfield',
+                    name: 'method',
+                    value: <%=q(bean.getMethod())%>
                 },
                 {
                     xtype: 'textfield',
                     fieldLabel: 'PX Change Log',
-                    name: 'changeLog'
-                },
-                {
-                    xtype: 'textfield',
-                    fieldLabel: 'PX User Name',
-                    name: 'pxUserName'
-                },
-                {
-                    xtype: 'textfield',
-                    fieldLabel: 'PX Password',
-                    name: 'pxPassword'
+                    name: 'changeLog',
+                    value: <%=q(bean.getChangeLog())%>
                 },
                 {
                     xtype: 'checkbox',
@@ -165,31 +119,23 @@
                                 params: values
                             });
                         },
+                        margin: '20 30 0 0'
+                    },
+                    {
+                        text: 'Get PX ID',
+                        cls: 'labkey-button primary',
+                        handler: function() {
+                            form.getForm().findField('method').setValue(<%=q(PanoramaPublicController.PX_METHOD.GET_ID.toString())%>);
+                            submitPxForm();
+                        },
                         margin: '20 10 0 0'
                     },
                     {
                         text: 'Validate PX XML',
                         cls: 'labkey-button',
                         handler: function() {
-                            var values = form.getForm().getValues();
-                            form.submit({
-                                url: <%=q(new ActionURL(PanoramaPublicController.ValidatePxXmlAction.class, getContainer()).getLocalURIString())%>,
-                                method: 'POST',
-                                params: values
-                            });
-                        },
-                        margin: '20 10 0 0'
-                    },
-                    {
-                        text: 'Get PX ID',
-                        cls: 'labkey-button primary',
-                        handler: function() {
-                            var values = form.getForm().getValues();
-                            form.submit({
-                                url: <%=q(new ActionURL(PanoramaPublicController.SavePxIdAction.class, getContainer()).getLocalURIString())%>,
-                                method: 'POST',
-                                params: values
-                            });
+                            form.getForm().findField('method').setValue(<%=q(PanoramaPublicController.PX_METHOD.VALIDATE.toString())%>);
+                            submitPxForm();
                         },
                         margin: '20 10 0 0'
                     },
@@ -197,12 +143,8 @@
                         text: 'Submit PX XML',
                         cls: 'labkey-button primary',
                         handler: function() {
-                            var values = form.getForm().getValues();
-                            form.submit({
-                                url: <%=q(new ActionURL(PanoramaPublicController.SubmitPxXmlAction.class, getContainer()).getLocalURIString())%>,
-                                method: 'POST',
-                                params: values
-                            });
+                            form.getForm().findField('method').setValue(<%=q(PanoramaPublicController.PX_METHOD.SUBMIT.toString())%>);
+                            submitPxForm();
                         },
                         margin: '20 10 0 0'
                     },
@@ -210,16 +152,21 @@
                         text: 'Update PX XML',
                         cls: 'labkey-button primary',
                         handler: function() {
-                            var values = form.getForm().getValues();
-                            form.submit({
-                                url: <%=q(new ActionURL(PanoramaPublicController.UpdatePxXmlAction.class, getContainer()).getLocalURIString())%>,
-                                method: 'POST',
-                                params: values
-                            });
+                            form.getForm().findField('method').setValue(<%=q(PanoramaPublicController.PX_METHOD.UPDATE.toString())%>);
+                            submitPxForm();
                         },
                         margin: '20 10 0 0'
                     }
             ]
         });
+
+        function submitPxForm() {
+            var values = form.getForm().getValues();
+            form.submit({
+                url: <%=q(new ActionURL(PanoramaPublicController.GetPxActionsAction.class, getContainer()).getLocalURIString())%>,
+                method: 'POST',
+                params: values
+            });
+        }
     });
 </script>

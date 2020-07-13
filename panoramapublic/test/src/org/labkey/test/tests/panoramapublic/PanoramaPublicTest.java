@@ -110,7 +110,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         // Click Submit.  Expect to see the missing information page
         testSubmitWithMissingRawFiles(portalHelper, expWebPart);
 
-        // Submit the experiment by clicking the "Continue Without ProteomeXchange ID" link
+        // Submit the experiment by clicking the "Continue without ProteomeXchange ID" link
         portalHelper.click(Locator.folderTab("Panorama Dashboard"));
         expWebPart.submitWithoutPXId();
         assertTextPresent("Copy Pending!");
@@ -271,7 +271,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         public void submitWithoutPXId()
         {
             findElement(Locator.linkContainingText("Submit")).click();
-            waitAndClick(Locator.linkContainingText("Continue Without ProteomeXchange ID"));
+            waitAndClick(Locator.linkContainingText("Continue without ProteomeXchange ID"));
             getWrapper()._ext4Helper.selectComboBoxItem(Ext4Helper.Locators.formItemWithInputNamed("journalId"), PANORAMA_PUBLIC);
             waitAndClick(Locator.linkContainingText("Submit"));
             waitAndClick(Locator.lkButton("OK")); // Confirm to proceed with the submission.

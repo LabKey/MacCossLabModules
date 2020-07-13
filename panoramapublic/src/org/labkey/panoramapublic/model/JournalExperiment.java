@@ -28,12 +28,15 @@ import java.util.Date;
  */
 public class JournalExperiment
 {
+    private int _id;
     private int _journalId;
     private int _experimentAnnotationsId;
     private ShortURLRecord _shortAccessUrl;
     private ShortURLRecord _shortCopyUrl;
     private Date _created;
     private int _createdBy;
+    private Date _modified;
+    private int _modifiedBy;
     private Date _copied;
     private boolean _keepPrivate;
     private boolean pxidRequested;
@@ -42,7 +45,17 @@ public class JournalExperiment
     private String _labHeadAffiliation;
     private DataLicense _dataLicense;
     private Integer _announcementId;
-    private Integer _journalExperimentId;
+    private Integer _copiedExperimentId;
+
+    public int getId()
+    {
+        return _id;
+    }
+
+    public void setId(int id)
+    {
+        _id = id;
+    }
 
     public int getJournalId()
     {
@@ -112,6 +125,26 @@ public class JournalExperiment
     public void setCopied(Date copied)
     {
         _copied = copied;
+    }
+
+    public Date getModified()
+    {
+        return _modified;
+    }
+
+    public void setModified(Date modified)
+    {
+        _modified = modified;
+    }
+
+    public int getModifiedBy()
+    {
+        return _modifiedBy;
+    }
+
+    public void setModifiedBy(int modifiedBy)
+    {
+        _modifiedBy = modifiedBy;
     }
 
     public boolean isKeepPrivate()
@@ -189,13 +222,13 @@ public class JournalExperiment
         _announcementId = announcementId;
     }
 
-    public Integer getJournalExperimentId()
+    public Integer getCopiedExperimentId()
     {
-        return _journalExperimentId;
+        return _copiedExperimentId;
     }
 
-    public void setJournalExperimentId(Integer journalExperimentId)
+    public void setCopiedExperimentId(Integer copiedExperimentId)
     {
-        _journalExperimentId = journalExperimentId;
+        _copiedExperimentId = copiedExperimentId;
     }
 }

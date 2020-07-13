@@ -57,9 +57,14 @@ public class ProteomeXchangeService
             MultipartEntityBuilder builder = getMultipartEntityBuilder(pxxmlFile, testDatabase, method, user, pass);
             responseMessage = postRequest(builder);
         }
+        catch(ProteomeXchangeServiceException e)
+        {
+            throw e;
+        }
         catch (Exception e)
         {
-            throw new ProteomeXchangeServiceException("Error with service request " + method + " to ProteomeXchange.", e);
+            String exMsg = e.getMessage() == null ? e.toString() : e.getMessage();
+            throw new ProteomeXchangeServiceException("Error with service request " + method + " to ProteomeXchange. " + exMsg);
         }
 
         return responseMessage;
@@ -152,6 +157,16 @@ public class ProteomeXchangeService
             throw new ProteomeXchangeServiceException("Error " + statusCode + " from ProteomeXchange server: " + responseMessage);
         }
         return responseMessage;
+    }
+
+    public static boolean responseHasErrors(String response)
+    {
+        return !response.contains("result=SUCCESS")
+                || !response.contains("info=File does appear to be XML")
+                || !response.contains("info=Submitted XML is valid according to the XSD.")
+                || !response.contains("info=There were a total of 0 different CV errors or warnings.")
+                || !response.contains("info=There was a total of 0 non-CV warnings.")
+                || !response.contains("info=There was a total of 0 non-CV errors.");
     }
 }
 

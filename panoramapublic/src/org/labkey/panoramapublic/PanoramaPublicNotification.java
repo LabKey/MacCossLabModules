@@ -369,7 +369,7 @@ public class PanoramaPublicNotification
         // Add submission details
         emailMsg.append(NL2).append(NL)
                 .append("Submission Details:")
-                .append("Experiment ID: ").append(sourceExperiment.getId())
+                .append(NL).append("Experiment ID: ").append(sourceExperiment.getId())
                 .append(NL).append("Reviewer account requested: ").append(jExperiment.isKeepPrivate() ? "Yes" : "No")
                 .append(NL).append("PX ID requested: ").append(jExperiment.isPxidRequested() ? "Yes" : "No")
                 .append(NL).append("Short Access URL: ").append(targetExperiment.getShortUrl().renderShortURL())

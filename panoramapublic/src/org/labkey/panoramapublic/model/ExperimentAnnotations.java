@@ -75,6 +75,7 @@ public class ExperimentAnnotations
     private Integer _submitter;
     private String _submitterAffiliation;
     private String _pxid;
+    private String _pubmedId;
 
     private static Pattern taxIdPattern = Pattern.compile("(.*)\\(taxid:(\\d+)\\)");
 
@@ -98,6 +99,7 @@ public class ExperimentAnnotations
         _labHeadAffiliation = experiment.getLabHeadAffiliation();
         _submitterAffiliation = experiment.getSubmitterAffiliation();
         _pxid = experiment.getPxid();
+        _pubmedId = experiment.getPubmedId();
     }
 
     public int getId()
@@ -464,11 +466,25 @@ public class ExperimentAnnotations
 
     public boolean isPublished()
     {
-        if(!StringUtils.isBlank(_publicationLink))
-        {
-            return true;
-        }
-        return false;
+        return !StringUtils.isBlank(_publicationLink);
+    }
+
+    public boolean isPeerReviewed()
+    {
+        String publicationLink = getPublicationLink();
+        // Authors use the medRxiv and bioRxiv services to make their manuscripts available as preprintsù before peer review, allowing
+        // other scientists to see, discuss, and comment on the findings immediately.
+        return isPublished() && !(publicationLink.contains("www.biorxiv.org") || publicationLink.contains("www.medrxiv.org"));
+    }
+
+    public String getPubmedId()
+    {
+        return _pubmedId;
+    }
+
+    public void setPubmedId(String pubmedId)
+    {
+        _pubmedId = pubmedId;
     }
 
     public boolean isPublic()
