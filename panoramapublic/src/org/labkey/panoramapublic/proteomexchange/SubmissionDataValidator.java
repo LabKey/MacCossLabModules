@@ -27,9 +27,11 @@ import org.labkey.api.data.TableSelector;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.query.FieldKey;
+import org.labkey.api.targetedms.BlibSourceFiles;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.Pair;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
@@ -51,6 +53,11 @@ public class SubmissionDataValidator
     public static final int MIN_TITLE_LENGTH = 30;
 
     private static final Logger LOG = Logger.getLogger(SubmissionDataValidator.class);
+
+    public static boolean isValid(ExperimentAnnotations expAnnot)
+    {
+        return isValid(expAnnot, false, false, false);
+    }
 
     public static boolean isValid(ExperimentAnnotations expAnnot, boolean skipMetaDataCheck, boolean skipRawDataCheck, boolean skipModificationCheck)
     {
@@ -111,7 +118,7 @@ public class SubmissionDataValidator
         return status;
     }
 
-    private static List<String> getMissingExperimentMetadataFields(ExperimentAnnotations expAnnot)
+    public static List<String> getMissingExperimentMetadataFields(ExperimentAnnotations expAnnot)
     {
         List<String> errors = new ArrayList<>();
         if(StringUtils.isBlank(expAnnot.getTitle()))
@@ -153,7 +160,10 @@ public class SubmissionDataValidator
         {
             errors.add("Submitter affiliation is required.");
         }
-
+        if(expAnnot.getLabHead() != null && StringUtils.isBlank(expAnnot.getLabHeadAffiliation()))
+        {
+            errors.add("Lab Head affiliation is required.");
+        }
         if(StringUtils.isBlank(expAnnot.getAbstract()))
         {
             errors.add("Abstract is required.");
@@ -235,6 +245,9 @@ public class SubmissionDataValidator
 
     private static void getMissingRawFiles(ExperimentAnnotations expAnnotations, SubmissionDataStatus submissionStatus)
     {
+        TargetedMSService targetedMsSvc = TargetedMSService.get();
+        ExperimentService expSvc = ExperimentService.get();
+
         // Get a list of Skyline documents associated with this experiment
         List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(expAnnotations);
 
@@ -245,6 +258,26 @@ public class SubmissionDataValidator
             for(String missingFile: missingFiles)
             {
                 submissionStatus.addMissingRawPath(missingFile, run.getFileName());
+            }
+
+            // Get missing blib source files
+            java.nio.file.Path rawFilesDir = getRawFilesDirPath(run.getContainer());
+            for(Map.Entry<String, BlibSourceFiles> entry : targetedMsSvc.getBlibSourceFiles(run).entrySet())
+            {
+                String blib = entry.getKey();
+                List<String> ssfMissing = new ArrayList<>();
+                for(String ssf: entry.getValue().getSpectrumSourceFiles())
+                {
+                    if (!hasExpData(FilenameUtils.getName(getFilePath(ssf)), run.getContainer(), rawFilesDir, expSvc))
+                        ssfMissing.add(ssf);
+                }
+                List<String> idFilesMissing = new ArrayList<>();
+                for(String idFile: entry.getValue().getIdFiles())
+                {
+                    if (!hasExpData(FilenameUtils.getName(getFilePath(idFile)), run.getContainer(), rawFilesDir, expSvc))
+                        idFilesMissing.add(idFile);
+                }
+                submissionStatus.addMissingLibFile(blib, run.getFileName(), ssfMissing, idFilesMissing);
             }
         }
     }
@@ -266,29 +299,43 @@ public class SubmissionDataValidator
                 continue;
             }
 
-            String fileName = FilenameUtils.getName(filePath);
+            checkExists(run, rootExpContainer, rawFilesDir, filePath, existingRawFiles, missingFiles, expSvc);
 
-            if(!hasExpData(fileName, run.getContainer(), rawFilesDir, expSvc))
+            // If this is a SCIEX .wiff file check for the presence of the corresponding .wiff.scan file
+            if(isSciexWiff(filePath))
             {
-                // If no matching row was found in exp.data and this is NOT a cloud container check for the file on the file system.
-                // TODO: Do we really need this? Can we be sure that a row will always be in exp.data for uploaded raw data?
-                if(!FileContentService.get().isCloudRoot(rootExpContainer))
-                {
-                    if (Files.exists(rawFilesDir) && findInDirectoryTree(rawFilesDir, fileName, rootExpContainer))
-                    {
-                        existingRawFiles.add(filePath);
-                        continue;
-                    }
-                }
-                missingFiles.add(filePath);
-            }
-            else
-            {
-                existingRawFiles.add(filePath);
+                checkExists(run, rootExpContainer, rawFilesDir, filePath + ".scan", existingRawFiles, missingFiles, expSvc);
             }
         }
 
         return missingFiles;
+    }
+
+    private static boolean isSciexWiff(String fileName)
+    {
+        return fileName.toLowerCase().endsWith(".wiff");
+    }
+
+    private static void checkExists(ITargetedMSRun run, Container rootExpContainer, Path rawFilesDir, String filePath, Set<String> existingRawFiles, List<String> missingFiles, ExperimentService expSvc)
+    {
+        String fileName = FilenameUtils.getName(filePath);
+        if (!hasExpData(fileName, run.getContainer(), rawFilesDir, expSvc))
+        {
+            // If no matching row was found in exp.data and this is NOT a cloud container check for the file on the file system.
+            if(!FileContentService.get().isCloudRoot(rootExpContainer))
+            {
+                if (Files.exists(rawFilesDir) && findInDirectoryTree(rawFilesDir, fileName, rootExpContainer))
+                {
+                    existingRawFiles.add(filePath);
+                    return;
+                }
+            }
+            missingFiles.add(filePath);
+        }
+        else
+        {
+            existingRawFiles.add(filePath);
+        }
     }
 
     private static String getFilePath(String filePath)

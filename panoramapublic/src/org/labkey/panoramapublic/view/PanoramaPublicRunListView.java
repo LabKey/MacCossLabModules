@@ -35,7 +35,6 @@ public class PanoramaPublicRunListView extends ExperimentRunListView
 
         setShowMoveRunsButton(false);
         setShowExportButtons(false);
-        setShowPagination(false);
         if(expAnnotations.isJournalCopy())
         {
             setButtonBarPosition(DataRegion.ButtonBarPosition.NONE);

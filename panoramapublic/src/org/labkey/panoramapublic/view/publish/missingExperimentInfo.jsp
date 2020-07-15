@@ -24,6 +24,10 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicManager" %>
 <%@ page import="org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter" %>
+<%@ page import="java.util.Map" %>
+<%@ page import="org.labkey.api.util.Link" %>
+<%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
+<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -41,6 +45,8 @@
     SubmissionDataStatus bean = me.getModelBean();
 
     ExperimentAnnotations expAnnotations = bean.getExperimentAnnotations();
+    JournalExperiment je = JournalManager.getLastPublishedRecord(expAnnotations.getId());
+    boolean resubmit = je != null;
 
     ActionURL rawFilesUrl = PanoramaPublicManager.getRawDataTabUrl(getContainer());
     ActionURL formUrl = PanoramaPublicController.getPublishExperimentURL(expAnnotations.getId(), getContainer(),
@@ -52,7 +58,8 @@
 %>
 
 <div style="margin: 30px 20px 20px 20px">
-    The following information is required for getting a ProteomeXchange ID for your submission. <span style="margin-left:10px;"><%=link("Continue Without ProteomeXchange ID", formUrl)%></span>
+    The following information is required for getting a ProteomeXchange ID for your submission.
+    <% if(!resubmit) {%> <span style="margin-left:10px;"><%=link("Continue Without ProteomeXchange ID", formUrl)%></span> <%}%>
 
     <% if(bean.hasMissingMetadata()) { %>
     <div style="margin-top:10px;margin-bottom:20px;">
@@ -126,4 +133,46 @@
     </div>
     <%}%>
 
+    <% if(bean.hasMissingLibrarySourceFiles()) { %>
+    <div style="margin-top:10px;">
+        <span style="font-weight:bold;">Missing files for spectrum libraries:</span>
+        <table class="table-condensed table-striped table-bordered" style="margin-top:1px; margin-bottom:5px;">
+            <thead>
+            <tr>
+            <th>Library</th>
+            <th>Skyline Document</th>
+            <th>Missing Raw Data</th>
+            <th>Missing ID Files</th>
+            </tr>
+            </thead>
+            <tbody>
+            <%for(Map.Entry<String, SubmissionDataStatus.MissingLibrarySourceFiles> missingFiles: bean.getMissingLibFiles().entrySet()) {%>
+            <tr>
+                <td>
+                    <%=h(missingFiles.getKey())%>
+                </td>
+                <td>
+                    <%for(String skyDoc: missingFiles.getValue().getSkyDocs()){%>
+                    <%=h(skyDoc)%><br/>
+                    <%}%>
+                </td>
+                <td>
+                    <%for(String spectrumSourceFile: missingFiles.getValue().getSpectrumSourceFiles()){%>
+                    <%=h(spectrumSourceFile)%><br/>
+                    <%}%>
+                </td>
+                <td>
+                    <%for(String idFile: missingFiles.getValue().getIdFiles()){%>
+                    <%=h(idFile)%><br/>
+                    <%}%>
+                </td>
+            </tr>
+            <%}%>
+            </tbody>
+        </table>
+        <%=button("Upload Raw Data").href(rawFilesUrl).build()%> <span>(Drag and drop to the files browser in the Raw Data tab to upload files)</span>
+    </div>
+    <%}%>
+
 </div>
+
