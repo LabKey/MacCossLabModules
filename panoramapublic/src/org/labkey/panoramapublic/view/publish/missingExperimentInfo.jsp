@@ -63,9 +63,10 @@
             PanoramaPublicController.getViewExperimentDetailsURL(expAnnotations.getId(), getContainer()));
 
     String continueSubmissionText;
+    String continueIncomplete = "Continue with an incomplete ProteomeXchange submission";
     if(status.canSubmitToPx())
     {
-        continueSubmissionText = bean.isNotSubmitting() ? "Data is valid for an \"incomplete\" ProteomeXchange submission." : "Continue with an incomplete ProteomeXchange submission";
+        continueSubmissionText = bean.isNotSubmitting() ? "Data is valid for an \"incomplete\" ProteomeXchange submission." : continueIncomplete;
     }
     else
     {
@@ -160,7 +161,7 @@
         <div style="color:steelblue;margin-bottom: 10px;">
             Raw data and search results used to build spectrum libraries associated with Skyline documents are required
             for a "complete" ProteomeXchange submission.
-            You can click the <span style="font-weight:bold;">"<%=h(continueSubmissionText)%>"</span> link
+            You can click the <span style="font-weight:bold;">"<%=h(continueIncomplete)%>"</span> link
             at the top of the page to proceed with an "incomplete" ProteomeXchange submission.
             You will see the link only if all the raw files imported into the Skyline documents have been uploaded and all
             the required experiment metadata (e.g. abstract, organism, instrument etc.) has been provided.

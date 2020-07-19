@@ -161,7 +161,7 @@ public class SubmissionDataStatus
 
     public boolean isIncomplete()
     {
-        return canSubmitToPx() && (hasMissingRawFiles() || hasInvalidModifications());
+        return canSubmitToPx() && (hasMissingLibrarySourceFiles() || hasInvalidModifications());
     }
 
     public boolean canSubmitToPx()
