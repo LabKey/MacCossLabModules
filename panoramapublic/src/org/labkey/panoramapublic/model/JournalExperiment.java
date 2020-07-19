@@ -28,21 +28,35 @@ import java.util.Date;
  */
 public class JournalExperiment
 {
+    private int _id;
     private int _journalId;
     private int _experimentAnnotationsId;
     private ShortURLRecord _shortAccessUrl;
     private ShortURLRecord _shortCopyUrl;
     private Date _created;
     private int _createdBy;
+    private Date _modified;
+    private int _modifiedBy;
     private Date _copied;
     private boolean _keepPrivate;
-    private boolean pxidRequested;
+    private boolean _pxidRequested;
+    private boolean _incompletePxSubmission;
     private String _labHeadName;
     private String _labHeadEmail;
     private String _labHeadAffiliation;
     private DataLicense _dataLicense;
     private Integer _announcementId;
-    private Integer _journalExperimentId;
+    private Integer _copiedExperimentId;
+
+    public int getId()
+    {
+        return _id;
+    }
+
+    public void setId(int id)
+    {
+        _id = id;
+    }
 
     public int getJournalId()
     {
@@ -114,6 +128,26 @@ public class JournalExperiment
         _copied = copied;
     }
 
+    public Date getModified()
+    {
+        return _modified;
+    }
+
+    public void setModified(Date modified)
+    {
+        _modified = modified;
+    }
+
+    public int getModifiedBy()
+    {
+        return _modifiedBy;
+    }
+
+    public void setModifiedBy(int modifiedBy)
+    {
+        _modifiedBy = modifiedBy;
+    }
+
     public boolean isKeepPrivate()
     {
         return _keepPrivate;
@@ -126,12 +160,22 @@ public class JournalExperiment
 
     public boolean isPxidRequested()
     {
-        return pxidRequested;
+        return _pxidRequested;
     }
 
     public void setPxidRequested(boolean pxidRequested)
     {
-        this.pxidRequested = pxidRequested;
+        _pxidRequested = pxidRequested;
+    }
+
+    public boolean isIncompletePxSubmission()
+    {
+        return _incompletePxSubmission;
+    }
+
+    public void setIncompletePxSubmission(boolean incompletePxSubmission)
+    {
+        this._incompletePxSubmission = incompletePxSubmission;
     }
 
     public String getLabHeadName()
@@ -189,13 +233,13 @@ public class JournalExperiment
         _announcementId = announcementId;
     }
 
-    public Integer getJournalExperimentId()
+    public Integer getCopiedExperimentId()
     {
-        return _journalExperimentId;
+        return _copiedExperimentId;
     }
 
-    public void setJournalExperimentId(Integer journalExperimentId)
+    public void setCopiedExperimentId(Integer copiedExperimentId)
     {
-        _journalExperimentId = journalExperimentId;
+        _copiedExperimentId = copiedExperimentId;
     }
 }

@@ -32,6 +32,7 @@ import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.DataLicense;
+import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
 import java.io.IOException;
@@ -108,6 +109,7 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
         columns.add(FieldKey.fromParts("Edit"));
         columns.add(FieldKey.fromParts("Delete"));
         columns.add(FieldKey.fromParts("DataLicense"));
+        columns.add(FieldKey.fromParts("PxidRequested"));
         setDefaultVisibleColumns(columns);
     }
 
@@ -192,18 +194,11 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
 
     public static class EditUrlDisplayColumnFactory implements DisplayColumnFactory
     {
-        private final ActionURL _editUrl;
-        private final String _editLinkText;
-        private final ActionURL _resubmitUrl;
-        private final String _resubmitLinkText;
+        private final Container _container;
 
         EditUrlDisplayColumnFactory(Container container)
         {
-            _editUrl = new ActionURL(PanoramaPublicController.ViewPublishExperimentFormAction.class, container);
-            _editUrl.addParameter("update", true);
-            _editLinkText = "Edit";
-            _resubmitUrl = new ActionURL(PanoramaPublicController.PreSubmissionCheckAction.class, container);
-            _resubmitLinkText = "Resubmit";
+            _container = container;
         }
 
         @Override
@@ -216,26 +211,29 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
                 {
                     Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
                     Integer journalId = ctx.get(FieldKey.fromParts("JournalId"), Integer.class);
-                    if(ctx.get(FieldKey.fromParts("Copied")) != null)
+                    JournalExperiment je = JournalManager.getJournalExperiment(experimentAnnotationsId, journalId);
+                    if(je != null)
                     {
-                        // Show the resubmit link if the experiment has already been copied by a journal
-                        // but NOT if the journal copy is final.
-                        if(ExperimentAnnotationsManager.canSubmitExperiment(experimentAnnotationsId))
+                        if(je.getCopied() != null)
                         {
-                            _resubmitUrl.replaceParameter("id", String.valueOf(experimentAnnotationsId));
-                            out.write(PageFlowUtil.link(_resubmitLinkText).href(_resubmitUrl).toString());
+                            // Show the resubmit link if the experiment has already been copied by a journal
+                            // but NOT if the journal copy is final.
+                            if(ExperimentAnnotationsManager.canSubmitExperiment(experimentAnnotationsId))
+                            {
+                                ActionURL resubmitUrl = PanoramaPublicController.getRePublishExperimentURL(experimentAnnotationsId, journalId, _container, je.isKeepPrivate(),
+                                        true /*check if data is valid for PXD. Always do this check on a resubmit.*/);
+                                out.write(PageFlowUtil.link("Resubmit").href(resubmitUrl).toString());
+                            }
                         }
                         else
                         {
-                            out.write("");
+                            ActionURL ediUrl = PanoramaPublicController.getUpdateJournalExperimentURL(experimentAnnotationsId, journalId, _container, je.isKeepPrivate(), true);
+                            out.write(PageFlowUtil.link("Edit").href(ediUrl).toString());
                         }
                     }
                     else
                     {
-                        // Otherwise show the edit link
-                        _editUrl.replaceParameter("id", String.valueOf(experimentAnnotationsId));
-                        _editUrl.replaceParameter("journalId", String.valueOf(journalId));
-                        out.write(PageFlowUtil.link(_editLinkText).href(_editUrl).toString());
+                        out.write("");
                     }
                 }
 
@@ -243,7 +241,6 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
                 public void addQueryFieldKeys(Set<FieldKey> keys)
                 {
                     super.addQueryFieldKeys(keys);
-                    keys.add(FieldKey.fromParts("Copied"));
                     keys.add(FieldKey.fromParts("JournalId"));
                 }
             };

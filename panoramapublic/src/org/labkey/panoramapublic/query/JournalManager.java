@@ -19,8 +19,6 @@ import org.apache.log4j.Logger;
 import org.labkey.api.admin.FolderExportPermission;
 import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
-import org.labkey.api.data.CoreSchema;
-import org.labkey.api.data.DbScope;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.Sort;
@@ -60,9 +58,7 @@ import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
 
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 
@@ -245,10 +241,7 @@ public class JournalManager
 
     public static void updateJournalExperiment(JournalExperiment journalExperiment, User user)
     {
-        Map<String, Object> pkVals = new HashMap<>();
-        pkVals.put("experimentAnnotationsId", journalExperiment.getExperimentAnnotationsId());
-        pkVals.put("journalId", journalExperiment.getJournalId());
-        Table.update(user, PanoramaPublicManager.getTableInfoJournalExperiment(), journalExperiment, pkVals);
+        Table.update(user, PanoramaPublicManager.getTableInfoJournalExperiment(), journalExperiment, journalExperiment.getId());
     }
 
     public static boolean journalHasAccess(Journal journal, ExperimentAnnotations experiment)
@@ -274,10 +267,7 @@ public class JournalManager
 
         sourceJournalExp.setShortAccessUrl(shortAccessUrlRecord);
 
-        Map<String, Integer> pkVals = new HashMap<>();
-        pkVals.put("JournalId", sourceJournalExp.getJournalId());
-        pkVals.put("ExperimentAnnotationsId", sourceJournalExp.getExperimentAnnotationsId());
-        Table.update(user, PanoramaPublicManager.getTableInfoJournalExperiment(), sourceJournalExp, pkVals);
+        updateJournalExperiment(sourceJournalExp, user);
     }
 
     public static JournalExperiment getJournalExperiment(ExperimentAnnotations experiment, Journal journal)
@@ -310,6 +300,7 @@ public class JournalManager
         je.setShortAccessUrl(accessUrlRecord);
         je.setShortCopyUrl(copyUrlRecord);
         je.setPxidRequested(request.isGetPxid());
+        je.setIncompletePxSubmission(request.isIncompletePxSubmission());
         je.setKeepPrivate(request.isKeepPrivate());
         je.setLabHeadName(request.getLabHeadName());
         je.setLabHeadEmail(request.getLabHeadEmail());
@@ -429,7 +420,7 @@ public class JournalManager
     {
         JournalExperiment je = getJournalExperiment(expAnnotations, journal);
 
-        if(je.getJournalExperimentId() == null)
+        if(je.getCopiedExperimentId() == null)
         {
             // This experiment has not yet been copied to Panorama Public so we can delete the row in JournalExperiment
             SimpleFilter filter = new SimpleFilter();
@@ -476,13 +467,13 @@ public class JournalManager
     public static void deleteRowForJournalCopy(ExperimentAnnotations journalCopy)
     {
         Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(),
-                new SimpleFilter().addCondition(FieldKey.fromParts("JournalExperimentId"), journalCopy.getId()));
+                new SimpleFilter().addCondition(FieldKey.fromParts("CopiedExperimentId"), journalCopy.getId()));
     }
 
     public static JournalExperiment getRowForJournalCopy(ExperimentAnnotations journalCopy)
     {
         return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment()
-                , new SimpleFilter().addCondition(FieldKey.fromParts("JournalExperimentId"), journalCopy.getId())
+                , new SimpleFilter().addCondition(FieldKey.fromParts("CopiedExperimentId"), journalCopy.getId())
                 , null).getObject(JournalExperiment.class);
     }
 
