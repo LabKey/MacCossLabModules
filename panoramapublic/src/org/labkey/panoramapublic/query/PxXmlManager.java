@@ -17,12 +17,12 @@ public class PxXmlManager
 
     public static int getNextVersion(int journalExperimentId)
     {
-        List<Integer> versions =  new TableSelector(PanoramaPublicManager.getTableInfoPxXml(),
+        Integer version = new TableSelector(PanoramaPublicManager.getTableInfoPxXml(),
                 Collections.singleton("Version"),
                 new SimpleFilter(FieldKey.fromParts("JournalExperimentId"), journalExperimentId),
-                new Sort("-Version")).getArrayList(Integer.class);
+                new Sort("-Version")).setMaxRows(1).getObject(Integer.class);
 
-        return versions.size() == 0 ? 1 : versions.get(0) + 1;
+        return version == null ? 1 : version + 1;
     }
 
     public static PxXml save(PxXml pxXml, User user)

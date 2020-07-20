@@ -231,10 +231,6 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
                             out.write(PageFlowUtil.link("Edit").href(ediUrl).toString());
                         }
                     }
-                    else
-                    {
-                        out.write("");
-                    }
                 }
 
                 @Override
