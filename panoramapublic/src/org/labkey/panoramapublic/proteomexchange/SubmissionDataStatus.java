@@ -154,9 +154,19 @@ public class SubmissionDataStatus
         _noUnimodMods.add(modName);
     }
 
-    public boolean isValid()
+    public boolean isComplete()
     {
-        return !hasMissingMetadata() && !hasMissingRawFiles() && !hasMissingLibrarySourceFiles() && !hasInvalidModifications();
+        return canSubmitToPx() && !hasMissingLibrarySourceFiles() && !hasInvalidModifications();
+    }
+
+    public boolean isIncomplete()
+    {
+        return canSubmitToPx() && (hasMissingLibrarySourceFiles() || hasInvalidModifications());
+    }
+
+    public boolean canSubmitToPx()
+    {
+        return !hasMissingMetadata() && !hasMissingRawFiles();
     }
 
     public boolean hasMissingMetadata()

@@ -49,7 +49,7 @@
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
     Journal journal = bean.lookupJournal();
     JournalExperiment je = JournalManager.getJournalExperiment(expAnnot.getId(), journal.getId());
-    ExperimentAnnotations previousCopy = je.getJournalExperimentId() != null ? ExperimentAnnotationsManager.get(je.getJournalExperimentId()) : null;
+    ExperimentAnnotations previousCopy = je.getCopiedExperimentId() != null ? ExperimentAnnotationsManager.get(je.getCopiedExperimentId()) : null;
     boolean isRecopy = previousCopy != null;
 
     String selectedFolder = "Please select a destination folder...";
@@ -177,14 +177,13 @@
                 },
                 {
                     xtype: 'checkbox',
-                    hidden: <%=isRecopy%>,
                     fieldLabel: "Assign ProteomeXchange ID",
                     checked: <%=bean.isAssignPxId()%>,
-                    name: 'assignPxId'
+                    name: 'assignPxId',
+                    boxLabel: 'This box will be checked if the user requested a ProteomeXchange ID. Admin doing the copy can override if needed.'
                 },
                 {
                     xtype: 'checkbox',
-                    hidden: <%=isRecopy%>,
                     fieldLabel: "Use ProteomeXchange Test Database",
                     checked: <%=bean.isUsePxTestDb()%>,
                     name: 'usePxTestDb',

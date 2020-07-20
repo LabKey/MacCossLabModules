@@ -29,7 +29,6 @@
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
-<%@ page import="org.labkey.api.util.Link" %>
 <%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
@@ -55,7 +54,7 @@
             PanoramaPublicController.getViewExperimentDetailsURL(annot.getId(), getContainer()));
     ActionURL deleteUrl = PanoramaPublicController.getDeleteExperimentURL(getContainer(), annot.getId(), getContainer().getStartURL(getUser()));
 
-    ActionURL publishUrl = PanoramaPublicController.getPrePublishExperimentCheckURL(annot.getId(), getContainer());
+    ActionURL publishUrl = PanoramaPublicController.getPublishExperimentURL(annot.getId(), getContainer(), true, true);
     Container experimentContainer = annot.getContainer();
     final boolean canEdit = (!annot.isJournalCopy() || getUser().hasSiteAdminPermission()) && experimentContainer.hasPermission(getUser(), InsertPermission.class);
     // User needs to be the folder admin to publish an experiment.
@@ -79,6 +78,7 @@
         if(!journalCopyPending)
         {
             publishButtonText = "Resubmit";
+            publishUrl = PanoramaPublicController.getRePublishExperimentURL(annot.getId(), je.getJournalId(), getContainer(), je.isKeepPrivate(), true); // Has been copied; User is re-submitting
         }
     }
     String accessUrl = accessUrlRecord == null ? null : accessUrlRecord.renderShortURL();
