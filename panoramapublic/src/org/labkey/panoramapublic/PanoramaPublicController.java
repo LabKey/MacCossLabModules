@@ -2917,7 +2917,7 @@ public class PanoramaPublicController extends SpringActionController
 
             if(!_experimentAnnotations.isJournalCopy())
             {
-                errors.reject(ERROR_MSG, "Experiment is not a jounal copy. Cannot update PX ID and other details.");
+                errors.reject(ERROR_MSG, "Experiment is not a journal copy. Cannot update PX ID and other details.");
                 return;
             }
 
