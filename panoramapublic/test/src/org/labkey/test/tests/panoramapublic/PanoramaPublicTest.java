@@ -275,7 +275,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
             getWrapper()._ext4Helper.selectComboBoxItem(Ext4Helper.Locators.formItemWithInputNamed("journalId"), PANORAMA_PUBLIC);
             waitAndClick(Ext4Helper.Locators.ext4Button("Submit"));
             waitAndClick(Locator.lkButton("OK")); // Confirm to proceed with the submission.
-            waitAndClick(Locator.linkWithSpan("Back to Experiment Details")); // Navigate to the experiment details page.
+            waitAndClick(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
         }
 
         public void clickSubmit()
@@ -294,7 +294,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
             waitForText("Confirm resubmission request to");
             click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
             waitForText("Request resubmitted to");
-            click(Locator.linkWithSpan("Back to Experiment Details")); // Navigate to the experiment details page.
+            click(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
         }
     }
 

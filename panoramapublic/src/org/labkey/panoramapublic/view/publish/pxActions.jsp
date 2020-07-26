@@ -21,6 +21,8 @@
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
+<%@ page import="org.labkey.api.util.PageFlowUtil" %>
+<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -39,9 +41,8 @@
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
 %>
 
-
-<div id="pxMethodsForm"></div>
 <div id="pxLinks"></div>
+<div id="pxMethodsForm"></div>
 
 <script type="text/javascript">
 
@@ -146,7 +147,7 @@
         var linksPanel = Ext4.create('Ext.panel.Panel', {
             renderTo: "pxLinks",
             bodyPadding: 5,
-            // width: 300,
+            layout: {type: 'vbox', align: 'left'},
             border: false,
             frame: false,
             defaults: {
@@ -161,7 +162,7 @@
                     autoEl: {tag: 'a',
                         href: <%=q(new ActionURL(PanoramaPublicController.PxXmlSummaryAction.class, getContainer()).addParameter("id", expAnnot.getId()).getLocalURIString())%>,
                         html: 'Get PX XML Summary',
-                        style: 'font-weight: bold; margin-right: 10px'}
+                        style: 'font-weight: bold;'}
                 },
                 {
                     xtype: 'component',
@@ -169,6 +170,15 @@
                     autoEl: {tag: 'a',
                         href: <%=q(new ActionURL(PanoramaPublicController.ExportPxXmlAction.class, getContainer()).addParameter("id", expAnnot.getId()).getLocalURIString())%>,
                         html: 'Export PX XML file',
+                        style: 'font-weight: bold'}
+                },
+                {
+                    xtype: 'component',
+                    fieldLabel: "Update PX ID And Submission Type",
+                    autoEl: {tag: 'a',
+                        href: <%=q(new ActionURL(PanoramaPublicController.UpdatePxDetailsAction.class, getContainer()).addParameter("id", expAnnot.getId())
+                                 .addReturnURL(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnot.getContainer())).getLocalURIString())%>,
+                        html: 'Update PX ID And Submission Type',
                         style: 'font-weight: bold'}
                 }
             ]

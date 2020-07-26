@@ -89,6 +89,7 @@ import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
+import org.labkey.api.security.ValidEmail;
 import org.labkey.api.security.permissions.AbstractActionPermissionTest;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.security.permissions.AdminPermission;
@@ -910,10 +911,37 @@ public class PanoramaPublicController extends SpringActionController
                 }
             }
 
-            if(form.isSendEmail() && StringUtils.isBlank(form.getToEmailAddresses()))
+            List<String> recipientEmails = new ArrayList<>();
+            String replyToEmail = null;
+            if(form.isSendEmail())
             {
-                errors.reject(ERROR_MSG, "Please enter at least one email address.");
-                return false;
+                if(StringUtils.isBlank(form.getToEmailAddresses()))
+                {
+                    errors.reject(ERROR_MSG, "Please enter at least one email address.");
+                    return false;
+                }
+
+                for(String email: form.getToEmailAddressList())
+                {
+                    ValidEmail vEmail = getValidEmail(email, "Invalid email address in \"To\" field: " + email, errors);
+                    if(vEmail != null)
+                    {
+                        recipientEmails.add(vEmail.getEmailAddress());
+                    }
+                }
+
+                if(!StringUtils.isBlank(form.getReplyToAddress()))
+                {
+                    ValidEmail vEmail = getValidEmail(form.getReplyToAddress(), "Invalid email address in \"Reply-To\" field: " + form.getReplyToAddress(), errors);
+                    if(vEmail != null)
+                    {
+                        replyToEmail = vEmail.getEmailAddress();
+                    }
+                }
+                if(errors.getErrorCount() > 0)
+                {
+                    return false;
+                }
             }
 
             Container parentContainer = form.lookupDestParentContainer();
@@ -958,7 +986,8 @@ public class PanoramaPublicController extends SpringActionController
                 job.setUsePxTestDb(form.isUsePxTestDb());
                 job.setReviewerEmailPrefix(form.getReviewerEmailPrefix());
                 job.setEmailSubmitter(form.isSendEmail());
-                job.setToEmailAddresses(form.getToEmailAddressList());
+                job.setToEmailAddresses(recipientEmails);
+                job.setReplyToAddress(replyToEmail);
                 job.setDeletePreviousCopy(form.isDeleteOldCopy());
                 PipelineService.get().queueJob(job);
 
@@ -969,6 +998,19 @@ public class PanoramaPublicController extends SpringActionController
             catch (PipelineValidationException e){
                 return false;
             }
+        }
+
+        private ValidEmail getValidEmail(String email, String errMsg, BindException errors)
+        {
+            try
+            {
+                return new ValidEmail(email);
+            }
+            catch (ValidEmail.InvalidEmailException e)
+            {
+                errors.reject(ERROR_MSG, errMsg + ". " + e.getMessage());
+            }
+            return null;
         }
 
         @Override
@@ -994,6 +1036,7 @@ public class PanoramaPublicController extends SpringActionController
         private boolean _usePxTestDb; // Use the test database for getting a PX ID if true
         private boolean _sendEmail;
         private String _toEmailAddresses;
+        private String _replyToAddress;
         private boolean _deleteOldCopy;
 
         static void setDefaults(CopyExperimentForm form, ExperimentAnnotations sourceExperiment, JournalExperiment je)
@@ -1132,6 +1175,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setToEmailAddresses(String toEmailAddresses)
         {
             _toEmailAddresses = toEmailAddresses;
+        }
+
+        public String getReplyToAddress()
+        {
+            return _replyToAddress;
+        }
+
+        public void setReplyToAddress(String replyToAddress)
+        {
+            _replyToAddress = replyToAddress;
         }
 
         public boolean isDeleteOldCopy()
@@ -1429,21 +1482,27 @@ public class PanoramaPublicController extends SpringActionController
             setTitle(getSuccessViewTitle());
             String journal = _journal.getName();
             ActionURL returnUrl = PanoramaPublicController.getViewExperimentDetailsURL(_experimentAnnotations.getId(), getContainer());
-            StringBuilder html = new StringBuilder();
-            html.append("Thank you for submitting your data to ").append(PageFlowUtil.filter(journal)).append("!");
-            html.append(" We will send you a confirmation email once your data has been copied. This can take up to a week.");
+
+            String dataPrivate = "";
             if(form.isKeepPrivate())
             {
-                html.append("<br>Your data on ").append(PageFlowUtil.filter(journal)).append(" will be kept private and reviewer account details will be included in the confirmation email. ");
-            }
-            if(form.isGetPxid())
-            {
-                html.append("<br>A ProteomeXchange ID will be requested for your data and included in the confirmation email.");
+                dataPrivate = "Your data on " + journal + " will be kept private";
+                dataPrivate += form.isResubmit() ? ". The reviewer account details will be the same before." : " and reviewer account details will be included in the confirmation email.";
             }
 
-            html.append("<br><br>");
-            html.append("<a href=" + returnUrl.getEncodedLocalURIString() + "><span class=\"labkey-button\">Back to Experiment Details</span></a>");
-            HtmlView view = new HtmlView(html.toString());
+            String pxdAssigned = "";
+            if(form.isGetPxid())
+            {
+                pxdAssigned = form.isResubmit() ? "The ProteomeXchange ID assigned to the data will remain the same as before."
+                        : "A ProteomeXchange ID will be requested for your data and included in the confirmation email.";
+            }
+
+            HtmlView view = new HtmlView(DIV(getSuccessViewText() + " We will send you a confirmation email once your data has been copied.  This can take upto a week.",
+                    DIV(dataPrivate),
+                    DIV(pxdAssigned),
+                    BR(), BR(),
+                    new Link.LinkBuilder("Back to Experiment Details").href(returnUrl).build()));
+
             view.setTitle(getSuccessViewTitle());
             return view;
         }
@@ -1451,6 +1510,11 @@ public class PanoramaPublicController extends SpringActionController
         String getSuccessViewTitle()
         {
             return "Request submitted to " + _journal.getName();
+        }
+
+        String getSuccessViewText()
+        {
+            return "Thank you for submitting your data to " + _journal.getName() + "!";
         }
 
         @Override
@@ -1883,40 +1947,16 @@ public class PanoramaPublicController extends SpringActionController
             return "Update submission request to " + _journal.getName();
         }
 
-        public ModelAndView getSuccessView(PublishExperimentForm form)
-        {
-            setTitle(getSuccessViewTitle());
-            String journal = _journal.getName();
-            ActionURL returnUrl = PanoramaPublicController.getViewExperimentDetailsURL(_experimentAnnotations.getId(), getContainer());
-
-            String dataPrivate = "";
-            if(form.isKeepPrivate())
-            {
-                dataPrivate = "Your data on " + journal + " will be kept private";
-                dataPrivate += form.isResubmit() ? ". The reviewer account details will be the same before." : " and reviewer account details will be included in the confirmation email.";
-            }
-
-            String pxdAssigned = "";
-            if(form.isGetPxid())
-            {
-                pxdAssigned = form.isResubmit() ? "The ProteomeXchange ID assigned to the data will remain the same as before."
-                        : "A ProteomeXchange ID will be requested for your data and included in the confirmation email.";
-            }
-
-            HtmlView view = new HtmlView(DIV("Your submission request has been upated. We will send you a confirmation email once your data has been copied.  This can take upto a week.",
-                                         DIV(dataPrivate),
-                                         DIV(pxdAssigned),
-                                         BR(), BR(),
-                                         new Link.LinkBuilder("Back to Experiment Details").href(returnUrl).build()));
-
-            view.setTitle(getSuccessViewTitle());
-            return view;
-        }
-
         @Override
         String getSuccessViewTitle()
         {
             return "Updated submission request to " + _journal.getName();
+        }
+
+        @Override
+        String getSuccessViewText()
+        {
+            return "Your submission request to " + _journal.getName() + " has been updated.";
         }
 
         @Override
@@ -2066,7 +2106,7 @@ public class PanoramaPublicController extends SpringActionController
             setTitle("Confirm Delete Submission");
             HtmlView view = new HtmlView(DIV("Are you sure you want to cancel your submission request to " + _journal.getName() + "?",
                     BR(), BR(),
-                    SPAN("Experiment " + _experimentAnnotations.getTitle())));
+                    SPAN("Experiment: " + _experimentAnnotations.getTitle())));
             view.setTitle("Cancel Submission Request to " + _journal.getName());
             return view;
         }
@@ -2148,6 +2188,12 @@ public class PanoramaPublicController extends SpringActionController
         String getSuccessViewTitle()
         {
             return "Request resubmitted to " + _journal.getName();
+        }
+
+        @Override
+        String getSuccessViewText()
+        {
+            return "Your request to " + _journal.getName() + " has been resubmitted.";
         }
 
         @Override
@@ -2579,6 +2625,12 @@ public class PanoramaPublicController extends SpringActionController
 
         public void assignPxId(boolean useTestDb, boolean testMode, String pxUser, String pxPassword, BindException errors) throws ProteomeXchangeServiceException
         {
+            if(!StringUtils.isBlank(_expAnnot.getPxid()))
+            {
+                errors.reject(ERROR_MSG, "A PX ID is already assigned to the experiment.");
+                return;
+            }
+
             _pxResponse = ProteomeXchangeService.getPxIdResponse(useTestDb, pxUser, pxPassword);
             String pxid = ProteomeXchangeService.parsePxIdFromResponse(_pxResponse);
             if(pxid != null)
@@ -2845,6 +2897,118 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class UpdatePxDetailsAction extends FormViewAction<PxDetailsForm>
+    {
+        private ExperimentAnnotations _experimentAnnotations;
+        private JournalExperiment _journalExperiment;
+
+        @Override
+        public void validateCommand(PxDetailsForm form, Errors errors)
+        {
+            _experimentAnnotations = form.lookupExperiment();
+            if(_experimentAnnotations == null)
+            {
+                errors.reject(ERROR_MSG, "Cannot find experiment with ID " + form.getId());
+                return;
+            }
+
+            ensureCorrectContainer(getContainer(), _experimentAnnotations.getContainer(), getViewContext());
+
+            if(!_experimentAnnotations.isJournalCopy())
+            {
+                errors.reject(ERROR_MSG, "Experiment is not a journal copy. Cannot update PX ID and other details.");
+                return;
+            }
+
+            _journalExperiment = JournalManager.getRowForJournalCopy(_experimentAnnotations);
+            if(_journalExperiment == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find a row in JournalExperiment for copied experiment " + _experimentAnnotations.getId());
+            }
+        }
+
+        @Override
+        public ModelAndView getView(PxDetailsForm form, boolean reshow, BindException errors)
+        {
+            if(!reshow)
+            {
+               validateCommand(form, errors);
+               if(errors.getErrorCount() > 0)
+               {
+                   return new SimpleErrorView(errors);
+               }
+               form.setPxId(_experimentAnnotations.getPxid());
+               form.setIncompletePxSubmission(_journalExperiment.isIncompletePxSubmission());
+            }
+
+            JspView view = new JspView<>("/org/labkey/panoramapublic/view/publish/updatePxDetails.jsp", form, errors);
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            view.setTitle("Update ProteomeXchange Details");
+            return view;
+        }
+
+        @Override
+        public boolean handlePost(PxDetailsForm form, BindException errors)
+        {
+            String pxid = form.getPxId();
+            if(!StringUtils.isBlank(pxid) && !pxid.matches(ProteomeXchangeService.PXID))
+            {
+                errors.reject(ERROR_MSG, "Invalid ProteomeXchange ID");
+                return false;
+            }
+
+            try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
+            {
+                _experimentAnnotations.setPxid(pxid);
+                ExperimentAnnotationsManager.updatePxId(_experimentAnnotations, pxid);
+
+                _journalExperiment.setIncompletePxSubmission(form.isIncompletePxSubmission());
+                JournalManager.updateJournalExperiment(_journalExperiment, getUser());
+
+                transaction.commit();
+            }
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(PxDetailsForm pxDetailsForm)
+        {
+            return PanoramaPublicController.getViewExperimentDetailsURL(_experimentAnnotations.getId(), _experimentAnnotations.getContainer());
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Update ProteomeXchange Details");
+        }
+    }
+
+    public static class PxDetailsForm extends ExperimentIdForm
+    {
+        private String _pxId;
+        private boolean _incompletePxSubmission;
+
+        public String getPxId()
+        {
+            return _pxId;
+        }
+
+        public void setPxId(String pxId)
+        {
+            _pxId = pxId;
+        }
+
+        public boolean isIncompletePxSubmission()
+        {
+            return _incompletePxSubmission;
+        }
+
+        public void setIncompletePxSubmission(boolean incompletePxSubmission)
+        {
+            _incompletePxSubmission = incompletePxSubmission;
+        }
+    }
     // ------------------------------------------------------------------------
     // END Actions for ProteomeXchange
     // ------------------------------------------------------------------------
@@ -3822,7 +3986,8 @@ public class PanoramaPublicController extends SpringActionController
                 new JournalGroupDetailsAction(),
                 new DeleteJournalGroupAction(),
                 new GetPxActionsAction(),
-                new ExportPxXmlAction()
+                new ExportPxXmlAction(),
+                new UpdatePxDetailsAction()
             );
 
             // @AdminConsoleAction

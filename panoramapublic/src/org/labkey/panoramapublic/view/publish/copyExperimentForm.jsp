@@ -216,6 +216,13 @@
                     afterBodyEl: '<span style="font-size: 0.9em;">Enter one email address per line</span>'
                 },
                 {
+                    xtype: 'textfield',
+                    fieldLabel: "Email address (Reply-To:)",
+                    value: <%=q(bean.getReplyToAddress())%>,
+                    name: 'replyToAddress',
+                    width: 450
+                },
+                {
                     xtype: 'checkbox',
                     hidden: <%=!isRecopy%>,
                     fieldLabel: "Delete Previous Copy",
