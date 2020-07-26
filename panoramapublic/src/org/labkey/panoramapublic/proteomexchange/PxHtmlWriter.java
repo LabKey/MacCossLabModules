@@ -32,7 +32,6 @@ import java.util.Map;
 public class PxHtmlWriter extends PxWriter
 {
     private final StringBuilder _output;
-    private boolean _usePxTestDb;
 
     private static final Logger LOG = Logger.getLogger(PxHtmlWriter.class);
 
@@ -44,7 +43,6 @@ public class PxHtmlWriter extends PxWriter
     @Override
     public void write(PanoramaPublicController.PxExperimentAnnotations bean) throws PxException
     {
-        _usePxTestDb = bean.isUseTestDb();
         super.write(bean);
     }
 
@@ -52,7 +50,6 @@ public class PxHtmlWriter extends PxWriter
     void begin(ExperimentAnnotations experimentAnnotations)
     {
         _output.append("<div><table class=\"table-condensed table-striped table-bordered\">");
-        tr("PX Test Database", String.valueOf(_usePxTestDb));
         tr("Experiment ID", String.valueOf(experimentAnnotations.getId()));
         tr("Title", experimentAnnotations.getTitle());
         String pxid = experimentAnnotations.getPxid();

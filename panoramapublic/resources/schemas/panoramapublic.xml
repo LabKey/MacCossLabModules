@@ -215,7 +215,7 @@
                     <fkDbSchema>panoramapublic</fkDbSchema>
                     <fkTable>ExperimentAnnotations</fkTable>
                 </fk>
-                <url>/panoramapublic/showExperimentAnnotations.view?id=${ExperimentAnnotationsId}</url>
+                <url>/panoramapublic-showExperimentAnnotations.view?id=${ExperimentAnnotationsId}</url>
             </column>
             <column columnName="ShortAccessURL">
                 <columnTitle>Access Link</columnTitle>
@@ -243,7 +243,15 @@
                 <columnTitle>License</columnTitle>
             </column>
             <column columnName="AnnouncementId"/>
-            <column columnName="CopiedExperimentId"/>
+            <column columnName="CopiedExperimentId">
+                <columnTitle>Data Copy</columnTitle>
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>ExperimentAnnotations</fkTable>
+                </fk>
+                <url>/panoramapublic-showExperimentAnnotations.view?id=${CopiedExperimentId}</url>
+            </column>
             <column columnName="IncompletePxSubmission"/>
             <column columnName="Modified"/>
             <column columnName="ModifiedBy">

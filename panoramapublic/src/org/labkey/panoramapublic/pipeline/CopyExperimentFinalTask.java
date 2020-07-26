@@ -264,12 +264,24 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 assignReader(SecurityManager.getGroup(Group.groupGuests), target);
             }
 
+            // Hide the Data Pipeline tab
+            log.info("Hiding the Data Pipeline tab.");
+            hideDataPipelineTab(targetExperiment.getContainer());
+
             // Delete the previous copy
             if(previousCopy != null && jobSupport.deletePreviousCopy())
             {
                 log.info("Deleting old container " + previousCopy.getContainer().getPath());
                 Container oldContainer = previousCopy.getContainer();
-                ContainerManager.delete(oldContainer, user);
+                try
+                {
+                    ContainerManager.delete(oldContainer, user);
+                }
+                catch(Exception e)
+                {
+                    // Log exception so that the admin doing the copy can review.
+                    log.error("Error deleting previous copy of the data in container " + oldContainer.getPath(), e);
+                }
             }
 
             // Create notifications. Do this at the end after everything else is done.
@@ -377,7 +389,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             log.info("Emailing submitter.");
             try
             {
-                PanoramaPublicNotification.sendEmailNotification(subject, emailBody, targetExperiment.getContainer(), pipelineJobUser, toAddresses);
+                PanoramaPublicNotification.sendEmailNotification(subject, emailBody, targetExperiment.getContainer(), pipelineJobUser, toAddresses, jobSupport.replyToAddress());
                 PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), true);
             }
             catch (Exception e)
@@ -523,6 +535,15 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         for(Container child: children)
         {
             updateRawDataTab(child, service, user);
+        }
+    }
+
+    private void hideDataPipelineTab(Container c)
+    {
+        Set<Container> children = ContainerManager.getAllChildren(c); // Includes parent
+        for(Container child: children)
+        {
+            Portal.hidePage(child, "Data Pipeline");
         }
     }
 

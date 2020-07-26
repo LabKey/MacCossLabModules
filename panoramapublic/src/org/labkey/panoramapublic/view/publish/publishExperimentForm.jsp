@@ -346,7 +346,6 @@
                 cls: 'labkey-button primary',
                 handler: function() {
                     var values = form.getForm().getValues();
-                    console.log(values);
                     form.submit({
                         url: <%=q(submitUrl)%>,
                         method: 'POST',

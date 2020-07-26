@@ -109,34 +109,37 @@ public class PanoramaPublicNotification
             messageBody.append(NL2).append(bold("ProteomeXchange ID:")).append(" ").append(targetExpAnnotations.getPxid());
         }
 
-        appendActionSubmitterDetails(targetExpAnnotations, user, messageBody);
-
-        postNotification(srcExpAnnotations, journal, je, messageBody.toString());
+        postNotification(srcExpAnnotations, journal, je, messageBody.toString(), user /* User is either a site admin or a Panorama Public admin, and should have permissions to post*/);
     }
 
     public static void postNotification(ExperimentAnnotations experimentAnnotations, Journal journal, JournalExperiment je, String messageBody)
+    {
+        // The user submitting the request does not have permissions to post in the journal's support container.  So the
+        // announcement will be posted by the journal admin user.
+        User journalAdmin = JournalManager.getJournalAdminUser(journal);
+        if (journalAdmin == null)
+        {
+            throw new NotFoundException(String.format("Could not find an admin user for %s.", journal.getName()));
+        }
+
+        postNotification(experimentAnnotations, journal, je, messageBody, journalAdmin);
+    }
+
+    public static void postNotification(ExperimentAnnotations experimentAnnotations, Journal journal, JournalExperiment je, String messageBody, User messagePoster)
     {
         AnnouncementService svc = AnnouncementService.get();
         Container supportContainer = journal.getSupportContainer();
         String messageTitle = "ID: " + experimentAnnotations.getId() +" " + experimentAnnotations.getContainer().getPath();
 
-        // The user submitting the request does not have permissions to post in the journal's support container.  So the
-        // announcement will be posted by the journal admin user.
-        User journalAdmin = JournalManager.getJournalAdminUser(journal);
-        if(journalAdmin == null)
-        {
-            throw new NotFoundException(String.format("Could not find an admin user for %s.", journal.getName()));
-        }
-
         if(je.getAnnouncementId() != null)
         {
-            svc.insertAnnouncement(supportContainer, journalAdmin, messageTitle, messageBody, true, je.getAnnouncementId());
+            svc.insertAnnouncement(supportContainer, messagePoster, messageTitle, messageBody, true, je.getAnnouncementId());
         }
         else
         {
-            Announcement announcement = svc.insertAnnouncement(supportContainer, journalAdmin, messageTitle, messageBody, true);
+            Announcement announcement = svc.insertAnnouncement(supportContainer, messagePoster, messageTitle, messageBody, true);
             je.setAnnouncementId(announcement.getRowId());
-            JournalManager.updateJournalExperiment(je, journalAdmin);
+            JournalManager.updateJournalExperiment(je, messagePoster);
         }
     }
 
@@ -263,11 +266,15 @@ public class PanoramaPublicNotification
     }
 
     public static void sendEmailNotification(String subject, String emailBody, Container container,
-                                                   User fromUser, Set<String> toEmails) throws MessagingException
+                                                   User fromUser, Set<String> toEmails, String replyTo) throws MessagingException
     {
         MailHelper.ViewMessage m = MailHelper.createMessage();
         m.addFrom(MailHelper.createAddressArray(fromUser.getEmail()));
         m.addRecipients(Message.RecipientType.TO, MailHelper.createAddressArray(StringUtils.join(toEmails, ";")));
+        if(replyTo != null)
+        {
+            m.setReplyTo(MailHelper.createAddressArray(replyTo));
+        }
         m.setSubject(subject);
         m.setText(emailBody);
         MailHelper.send(m, fromUser, container);
@@ -362,6 +369,10 @@ public class PanoramaPublicNotification
                 .append(NL).append("PX ID requested: ").append(jExperiment.isPxidRequested() ? "Yes" : "No")
                 .append(NL).append("Short Access URL: ").append(targetExperiment.getShortUrl().renderShortURL())
                 .append(NL).append("Message ID: ").append(jExperiment.getAnnouncementId());
+        if(recopy)
+        {
+            emailMsg.append(NL).append("Resubmit request");
+        }
 
         return emailMsg.toString();
     }
@@ -398,7 +409,7 @@ public class PanoramaPublicNotification
                 .append(NL2).append("Subject: ").append(escape(subject))
                 .append(NL2).append(escape(emailBody));
 
-        postNotification(sourceExperiment, journal, jExperiment, messageBody.toString());
+        postNotification(sourceExperiment, journal, jExperiment, messageBody.toString(), sender /* User is either a site admin or a Panorama Public admin, and should have permissions to post*/);
     }
     public static class TestCase extends Assert
     {

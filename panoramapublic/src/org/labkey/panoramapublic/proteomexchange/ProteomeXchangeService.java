@@ -36,7 +36,8 @@ public class ProteomeXchangeService
     public static final String PX_USER = "ProteomeXchange User";
     public static final String PX_PASSWORD = "ProteomeXchange Password";
 
-    private static final Pattern PXID = Pattern.compile("identifier=(PX[DT]\\d{6})");
+    public static final String PXID = "PX[DT]\\d{6}";
+    private static final Pattern PXID_IN_RESPONSE = Pattern.compile("identifier=(" + PXID + ")");
 
     private enum METHOD {submitDataset, validateXML, requestID}
 
@@ -89,7 +90,7 @@ public class ProteomeXchangeService
 
     public static String parsePxIdFromResponse(String response)
     {
-        Matcher match = PXID.matcher(response);
+        Matcher match = PXID_IN_RESPONSE.matcher(response);
         if(match.find())
         {
             return match.group(1);
