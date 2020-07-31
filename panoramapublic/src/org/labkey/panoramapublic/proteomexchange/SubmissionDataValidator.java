@@ -56,14 +56,9 @@ public class SubmissionDataValidator
 
     public static boolean isValid(ExperimentAnnotations expAnnot)
     {
-        return isValid(expAnnot, false, false, false);
-    }
-
-    public static boolean isValid(ExperimentAnnotations expAnnot, boolean skipMetaDataCheck, boolean skipRawDataCheck, boolean skipModificationCheck)
-    {
-        boolean metadataValid = skipMetaDataCheck || metadataComplete(expAnnot);
-        boolean hasRawFiles = skipRawDataCheck || rawDataUploaded(expAnnot);
-        boolean hasValidMods = skipModificationCheck || hasUnimodModifications(expAnnot);
+        boolean metadataValid = metadataComplete(expAnnot);
+        boolean hasRawFiles = rawDataUploaded(expAnnot);
+        boolean hasValidMods = hasUnimodModifications(expAnnot);
         return metadataValid && hasRawFiles && hasValidMods;
     }
 
@@ -94,27 +89,17 @@ public class SubmissionDataValidator
         return true;
     }
 
-    public static SubmissionDataStatus validateExperiment(ExperimentAnnotations expAnnot, boolean skipMetaDataCheck, boolean skipRawDataCheck, boolean skipModificationCheck)
+    public static SubmissionDataStatus validateExperiment(ExperimentAnnotations expAnnot)
     {
         SubmissionDataStatus status = new SubmissionDataStatus(expAnnot);
-        if(!skipMetaDataCheck)
-        {
-            status.setMissingMetadata(getMissingExperimentMetadataFields(expAnnot));
-        }
-        if(!skipRawDataCheck)
-        {
-            getMissingRawFiles(expAnnot, status);
-        }
+        status.setMissingMetadata(getMissingExperimentMetadataFields(expAnnot));
+        getMissingRawFiles(expAnnot, status);
 
-        if(!skipModificationCheck)
+        List<ExperimentModificationGetter.PxModification> invalidMods = getInvalidModifications(expAnnot);
+        for (ExperimentModificationGetter.PxModification invalidMod : invalidMods)
         {
-            List<ExperimentModificationGetter.PxModification> invalidMods = getInvalidModifications(expAnnot);
-            for (ExperimentModificationGetter.PxModification invalidMod : invalidMods)
-            {
-                status.addInvalidMod(invalidMod);
-            }
+            status.addInvalidMod(invalidMod);
         }
-
         return status;
     }
 

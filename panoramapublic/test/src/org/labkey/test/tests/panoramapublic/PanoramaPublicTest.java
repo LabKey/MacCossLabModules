@@ -110,7 +110,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         // Click Submit.  Expect to see the missing information page
         testSubmitWithMissingRawFiles(portalHelper, expWebPart);
 
-        // Submit the experiment by clicking the "Continue Without ProteomeXchange ID" link
+        // Submit the experiment by clicking the "Continue without a ProteomeXchange ID" link
         portalHelper.click(Locator.folderTab("Panorama Dashboard"));
         expWebPart.submitWithoutPXId();
         assertTextPresent("Copy Pending!");
@@ -169,7 +169,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         goToProjectHome(getProjectName());
         impersonate(SUBMITTER);
         portalHelper.click(Locator.folderTab("Panorama Dashboard"));
-        expWebPart.resubmit();
+        expWebPart.resubmitWithoutPxd();
 
         stopImpersonating();
         goToProjectHome(PANORAMA_PUBLIC);
@@ -271,11 +271,11 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         public void submitWithoutPXId()
         {
             findElement(Locator.linkContainingText("Submit")).click();
-            waitAndClick(Locator.linkContainingText("Continue Without ProteomeXchange ID"));
+            waitAndClick(Locator.linkContainingText("Continue without a ProteomeXchange ID"));
             getWrapper()._ext4Helper.selectComboBoxItem(Ext4Helper.Locators.formItemWithInputNamed("journalId"), PANORAMA_PUBLIC);
-            waitAndClick(Locator.linkContainingText("Submit"));
+            waitAndClick(Ext4Helper.Locators.ext4Button("Submit"));
             waitAndClick(Locator.lkButton("OK")); // Confirm to proceed with the submission.
-            waitAndClick(Locator.linkWithSpan("Back to Experiment Details")); // Navigate to the experiment details page.
+            waitAndClick(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
         }
 
         public void clickSubmit()
@@ -283,12 +283,18 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
             clickAndWait(Locator.linkContainingText("Submit"));
         }
 
-        public void resubmit()
+        public void resubmitWithoutPxd()
         {
             Locator.XPathLocator resubmitLink = Locator.linkContainingText("Resubmit");
             assertNotNull("Expected to see a \"Resubmit\" button", resubmitLink);
             clickAndWait(resubmitLink);
-            waitAndClick(Locator.lkButton("OK")); // Confirm to proceed with the submission.
+            waitAndClick(Locator.linkContainingText("Continue without a ProteomeXchange ID"));
+            waitForText("Resubmit Request to ");
+            click(Ext4Helper.Locators.ext4Button(("Resubmit")));
+            waitForText("Confirm resubmission request to");
+            click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
+            waitForText("Request resubmitted to");
+            click(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
         }
     }
 

@@ -60,9 +60,13 @@
     Set<Container> experimentFolders = ExperimentAnnotationsManager.getExperimentFolders(expAnnotations, getUser());
 
     boolean isUpdate = bean.getForm().isUpdate();
-    String publishButtonText = isUpdate ? "Update" : "Submit";
-    String submitUrl = isUpdate ? new ActionURL(PanoramaPublicController.UpdateJournalExperimentAction.class, getContainer()).getLocalURIString() :
-            new ActionURL(PanoramaPublicController.PublishExperimentAction.class, getContainer()).getLocalURIString();
+    boolean isResubmit = bean.getForm().isResubmit();
+    String publishButtonText = isUpdate ? "Update" : (isResubmit ? "Resubmit" : "Submit");
+    String submitUrl = isUpdate ? new ActionURL(PanoramaPublicController.UpdateJournalExperimentAction.class, getContainer()).getLocalURIString()
+            : (isResubmit ?
+              new ActionURL(PanoramaPublicController.RepublishJournalExperimentAction.class, getContainer()).getLocalURIString()
+            : new ActionURL(PanoramaPublicController.PublishExperimentAction.class, getContainer()).getLocalURIString());
+
     String cancelUrl = PanoramaPublicController.getViewExperimentDetailsURL(bean.getForm().getId(), getContainer()).getLocalURIString();
 
     boolean siteAdmin = getUser().hasSiteAdminPermission();
@@ -156,6 +160,16 @@
                 },
                 {
                     xtype: 'hidden',
+                    name: 'resubmit',
+                    value: <%=isResubmit%>
+                },
+                {
+                    xtype: 'hidden',
+                    name: 'dataValidated',
+                    value: <%=bean.getForm().isDataValidated()%>
+                },
+                {
+                    xtype: 'hidden',
                     name: 'id',
                     value: <%=bean.getExperimentAnnotations().getId()%>
                 },
@@ -166,7 +180,7 @@
                 },
 
                 // If the user is updating an existing entry, don't allow them to choose a journal
-                <%if(bean.getForm().isUpdate()) { %>
+                <%if(isUpdate || isResubmit) { %>
                     {
                         xtype: 'displayfield',
                         fieldLabel: "Submit To",
@@ -194,6 +208,19 @@
                         value: <%=journalId%>
                     },
                 <%}%>
+                // If the user is resubmitting the experiment we will not change the short access url
+                <%if(isResubmit) { %>
+                {
+                    xtype: 'displayfield',
+                    fieldLabel: "Short Access URL",
+                    value: <%=q(shortAccessUrl)%>
+                },
+                {
+                    xtype: 'hidden',
+                    name: 'shortAccessUrl',
+                    value: <%=q(shortAccessUrl)%>
+                },
+                <%} else { %>
                 {
                     xtype: 'textfield',
                     name: 'shortAccessUrl',
@@ -218,6 +245,7 @@
                         }
                     }
                 },
+                <%}%>
                 {
                     xtype: 'checkbox',
                     fieldLabel: "Keep Private",
@@ -229,10 +257,15 @@
                 {
                     xtype: 'checkbox',
                     fieldLabel: "Get ProteomeXchange ID",
-                    hidden: <%=!siteAdmin%>,
+                    hidden: <%=!form.isGetPxid()%>, // This field will be set to true if this is data is valid for PX.  Hide the field otherwise.
                     checked: <%=form.isGetPxid()%>,
                     name: 'getPxid',
                     boxLabel: 'Check this box to get a ProteomeXchange ID for your data.'
+                },
+                {
+                    xtype: 'hidden',
+                    name: 'incompletePxSubmission',
+                    value: <%=form.isIncompletePxSubmission()%>,
                 },
                 {
                     xtype: 'textfield',
@@ -305,27 +338,6 @@
                             }
                         }
                     }
-                },
-                {
-                    xtype: 'checkbox',
-                    fieldLabel: "Skip Raw Data Check",
-                    hidden: <%=!siteAdmin%>,
-                    checked: false,
-                    name: 'skipRawDataCheck'
-                },
-                {
-                    xtype: 'checkbox',
-                    fieldLabel: "Skip Meta Data Check",
-                    hidden: <%=!siteAdmin%>,
-                    checked: false,
-                    name: 'skipMetaDataCheck'
-                },
-                {
-                    xtype: 'checkbox',
-                    fieldLabel: "Skip Modifications Check",
-                    hidden: <%=!siteAdmin%>,
-                    checked: false,
-                    name: 'skipModCheck'
                 }
             ],
             buttonAlign: 'left',
@@ -334,10 +346,9 @@
                 cls: 'labkey-button primary',
                 handler: function() {
                     var values = form.getForm().getValues();
-                    console.log(values);
                     form.submit({
                         url: <%=q(submitUrl)%>,
-                        method: 'GET',
+                        method: 'POST',
                         params: values
                         });
                     }

@@ -24,6 +24,8 @@
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.api.view.ShortURLRecord" %>
 <%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
+<%@ page import="org.labkey.api.util.PageFlowUtil" %>
+<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -62,24 +64,36 @@
 %>
 
 <div>
-    <%if(!form.isUpdate()) { %>
-    You are giving access to <%=h(journal)%> to make a copy of your data.
+    <%if(form.isResubmit()) { %>
+    This experiment has already been copied by <%=h(journal)%>. If you click OK the existing copy on <%=h(journal)%> will be deleted and a request will be sent to make a new copy.
     <br>
-    <% } else { %>
+    <% } else if(form.isUpdate()) { %>
     You are updating your submission request to <%=h(journal)%>.
     <br>
+    <% } else { %>
+    You are giving access to <%=h(journal)%> to make a copy of your data.
     <% } %>
     The access link is: <%=h(ShortURLRecord.renderShortURL(form.getShortAccessUrl()))%>.
     <br>
     <%if(form.isKeepPrivate()) {%>
-    Your data on <%=h(journal)%> will be kept private and a reviewer account will be provided to you.
+    Your data on <%=h(journal)%> will be kept private
+    <%if(!form.isResubmit()) { %> and a reviewer account will be provided to you.<% } else {%>
+    . The reviewer account details will be the same as before.<% } %>
     <%} else { %>
     Your data on <%=h(journal)%> will be made public.
     <% } %>
     <%if(form.isGetPxid()) { %>
         <br><br>
-        A ProteomeXchange ID will be requested for your data.
-        The following user information will be submitted to ProteomeXchange:
+        <%if(!form.isResubmit()) { %>
+            A ProteomeXchange ID will be requested for your data.
+        <% } else { %>
+            The ProteomeXchange ID assigned to your data will remain the same as before.
+        <% } %>
+        <%if(form.isIncompletePxSubmission()) { %>
+        <br> The data will be submitted as "supported by repository but incomplete data and/or metadata" when it is made public on ProteomeXchange.
+        <%}%>
+        <br>
+        The following user information will be submitted to ProteomeXchange<%if(form.isKeepPrivate()) { %> when this data is made public<%}%>:
         <br>
         <span style="font-weight:bold;">Submitter:</span>
         <ul>
@@ -100,6 +114,7 @@
             <% } %>
         </ul>
         <br>
+
     <% } %>
     <div style="font-weight:bold;font-style:italic;margin-top:10px;">
         <%if(form.isKeepPrivate()) { %>
@@ -111,4 +126,24 @@
     </div>
 <br>
     Are you sure you want to continue?
+</div>
+<div>
+<labkey:form action="<%=getActionURL().clone().deleteParameters()%>" method="POST">
+    <%= button("Cancel").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnotations.getContainer())) %>
+    <%= button("OK").submit(true) %>
+    <input type="hidden" name="update" value="<%=form.isUpdate()%>"/>
+    <input type="hidden" name="dataValidated" value="<%=form.isDataValidated()%>"/>
+    <input type="hidden" name="resubmit" value="<%=form.isResubmit()%>"/>
+    <input type="hidden" name="requestConfirmed" value="true"/>
+    <input type="hidden" name="id" value="<%=form.getId()%>"/>
+    <input type="hidden" name="journalId" value="<%=form.getJournalId()%>"/>
+    <input type="hidden" name="shortAccessUrl" value="<%=h(form.getShortAccessUrl())%>"/>
+    <input type="hidden" name="keepPrivate" value="<%=form.isKeepPrivate()%>"/>
+    <input type="hidden" name="getPxid" value="<%=form.isGetPxid()%>"/>
+    <input type="hidden" name="incompletePxSubmission" value="<%=form.isIncompletePxSubmission()%>"/>
+    <input type="hidden" name="labHeadName" value="<%=h(form.getLabHeadName())%>"/>
+    <input type="hidden" name="labHeadEmail" value="<%=h(form.getLabHeadEmail())%>"/>
+    <input type="hidden" name="labHeadAffiliation" value="<%=h(form.getLabHeadAffiliation())%>"/>
+    <input type="hidden" name="dataLicense" value="<%=h(form.getDataLicense())%>"/>
+</labkey:form>
 </div>

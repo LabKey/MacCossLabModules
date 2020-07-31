@@ -41,15 +41,15 @@ public abstract class PxWriter
         try
         {
             begin(expAnnotations);
-            writeChangeLog(bean.getForm());
-            writeDatasetSummary(expAnnotations, bean.getForm());
-            writeDatasetIdentifierList(expAnnotations.getPxid(), accessUrl);
+            writeChangeLog(bean.getPxChangeLog());
+            writeDatasetSummary(expAnnotations);
+            writeDatasetIdentifierList(expAnnotations.getPxid(), bean.getVersion(), accessUrl);
             writeDatasetOriginList();
             writeSpeciesList(expAnnotations);
             writeInstrumentList(expAnnotations);
             writeModificationList(expAnnotations);
-            writeContactList(expAnnotations, bean.getForm());
-            writePublicationList(expAnnotations, bean.getForm());
+            writeContactList(expAnnotations, bean.getJournalExperiment());
+            writePublicationList(expAnnotations);
             writeKeywordList(expAnnotations);
             writeDatasetLinkList(accessUrl);
             end();
@@ -83,15 +83,15 @@ public abstract class PxWriter
     abstract void begin(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void end() throws PxException;
     abstract void close() throws PxException;
-    abstract void writeChangeLog(PanoramaPublicController.PxExportForm form) throws PxException;
-    abstract void writeDatasetSummary(ExperimentAnnotations expAnnotations, PanoramaPublicController.PxExportForm form) throws PxException;
-    abstract void writeDatasetIdentifierList(String pxId, ShortURLRecord accessUrl) throws PxException;
+    abstract void writeChangeLog(String pxChangeLog) throws PxException;
+    abstract void writeDatasetSummary(ExperimentAnnotations expAnnotations) throws PxException;
+    abstract void writeDatasetIdentifierList(String pxId, int version, ShortURLRecord accessUrl) throws PxException;
     abstract void writeDatasetOriginList() throws PxException;
     abstract void writeSpeciesList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeInstrumentList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeModificationList(ExperimentAnnotations experimentAnnotations) throws PxException;
-    abstract void writeContactList(ExperimentAnnotations experimentAnnotationsn, PanoramaPublicController.PxExportForm form) throws PxException;
-    abstract void writePublicationList(ExperimentAnnotations experimentAnnotations, PanoramaPublicController.PxExportForm form) throws PxException;
+    abstract void writeContactList(ExperimentAnnotations experimentAnnotationsn, JournalExperiment je) throws PxException;
+    abstract void writePublicationList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeKeywordList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeDatasetLinkList(ShortURLRecord accessUrl) throws PxException;
 

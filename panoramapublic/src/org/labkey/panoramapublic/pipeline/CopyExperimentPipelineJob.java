@@ -56,6 +56,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
 
     private boolean _emailSubmitter;
     private List<String> _toEmailAddresses;
+    private String _replyToAddress;
 
     private boolean _deletePreviousCopy;
 
@@ -188,6 +189,12 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     }
 
     @Override
+    public String replyToAddress()
+    {
+        return _replyToAddress;
+    }
+
+    @Override
     public boolean deletePreviousCopy()
     {
         return _deletePreviousCopy;
@@ -216,6 +223,11 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     public void setToEmailAddresses(List<String> toEmailAddresses)
     {
         _toEmailAddresses = toEmailAddresses;
+    }
+
+    public void setReplyToAddress(String replyToAddress)
+    {
+        _replyToAddress = replyToAddress;
     }
 
     public void setDeletePreviousCopy(boolean deletePreviousCopy)

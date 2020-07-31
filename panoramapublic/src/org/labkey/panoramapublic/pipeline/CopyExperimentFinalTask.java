@@ -37,7 +37,6 @@ import org.labkey.api.pipeline.RecordedActionSet;
 import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.MutableSecurityPolicy;
-import org.labkey.api.security.RoleAssignment;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicy;
 import org.labkey.api.security.SecurityPolicyManager;
@@ -72,7 +71,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.SortedSet;
 import java.util.stream.Collectors;
 
 /**
@@ -152,13 +150,13 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             targetExperiment.setShortUrl(jExperiment.getShortAccessUrl());
 
             ExperimentAnnotations previousCopy = null;
-            if(jExperiment.getJournalExperimentId() != null)
+            if(jExperiment.getCopiedExperimentId() != null)
             {
-                previousCopy = ExperimentAnnotationsManager.get(jExperiment.getJournalExperimentId());
+                previousCopy = ExperimentAnnotationsManager.get(jExperiment.getCopiedExperimentId());
                 if(previousCopy == null)
                 {
                     throw new PipelineJobException("Could not find and entry for the previous copy of the experiment.  " +
-                            "Previous experiment ID " + jExperiment.getJournalExperimentId());
+                            "Previous experiment ID " + jExperiment.getCopiedExperimentId());
                 }
             }
 
@@ -168,7 +166,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                                        // Let the admin who is copying the data make the decision.
             )
             {
-                if(previousCopy != null)
+                if(previousCopy != null && previousCopy.getPxid() != null)
                 {
                     log.info("Copying ProteomeXchange ID from the previous copy of the data.");
                     targetExperiment.setPxid(previousCopy.getPxid());
@@ -196,7 +194,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // Update the JournalExperiment table -- set the 'copied' timestamp and the journalExperimentId
             log.info("Setting the 'copied' timestamp and journalExperimentId on the JournalExperiment table.");
             jExperiment.setCopied(new Date());
-            jExperiment.setJournalExperimentId(targetExperiment.getId());
+            jExperiment.setCopiedExperimentId(targetExperiment.getId());
             JournalManager.updateJournalExperiment(jExperiment, user);
 
             // Remove the copy permissions given to the journal.
@@ -219,6 +217,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             {
                 // Users that had read access to the previous copy should be given read access to the new copy. This will include the reviewer
                 // account if one was created for the previous copy.
+                log.info("Adding read permissions to all users that had read access to previous copy.");
                 List<User> previousCopyReaders = getUsersWithRole(previousCopy.getContainer(), RoleManager.getRole(ReaderRole.class));
                 previousCopyReaders.forEach(u -> newPolicy.addRoleAssignment(u, ReaderRole.class));
             }
@@ -251,7 +250,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             String reviewerPassword = null;
             if(jExperiment.isKeepPrivate())
             {
-                if (previousCopy == null)
+                if (previousCopy == null || (previousCopy != null && previousCopy.isPublic()))
                 {
                     reviewerPassword = createPassword();
                     reviewer = createReviewerAccount(jobSupport.getReviewerEmailPrefix(), reviewerPassword, user, log);
@@ -265,19 +264,31 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 assignReader(SecurityManager.getGroup(Group.groupGuests), target);
             }
 
-            // Create notifications
-            PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), jExperiment,
-                    reviewer, reviewerPassword, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
-
-            postEmailNotification(jobSupport, user, log, sourceExperiment, jExperiment, targetExperiment, reviewer, reviewerPassword, previousCopy != null);
+            // Hide the Data Pipeline tab
+            log.info("Hiding the Data Pipeline tab.");
+            hideDataPipelineTab(targetExperiment.getContainer());
 
             // Delete the previous copy
             if(previousCopy != null && jobSupport.deletePreviousCopy())
             {
                 log.info("Deleting old container " + previousCopy.getContainer().getPath());
                 Container oldContainer = previousCopy.getContainer();
-                ContainerManager.delete(oldContainer, user);
+                try
+                {
+                    ContainerManager.delete(oldContainer, user);
+                }
+                catch(Exception e)
+                {
+                    // Log exception so that the admin doing the copy can review.
+                    log.error("Error deleting previous copy of the data in container " + oldContainer.getPath(), e);
+                }
             }
+
+            // Create notifications. Do this at the end after everything else is done.
+            PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), jExperiment,
+                    reviewer, reviewerPassword, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
+
+            postEmailNotification(jobSupport, user, log, sourceExperiment, jExperiment, targetExperiment, reviewer, reviewerPassword, previousCopy != null);
 
             transaction.commit();
         }
@@ -367,27 +378,18 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         toAddresses.addAll(jobSupport.toEmailAddresses());
 
         String subject = String.format("Submission to %s: %s", jobSupport.getJournal().getName(), targetExperiment.getShortUrl().renderShortURL());
-        String emailBody;
-        if(recopy)
-        {
-            emailBody = PanoramaPublicNotification.getExperimentReCopiedEmailBody(sourceExperiment, targetExperiment, jExperiment, jobSupport.getJournal(),
-                    PanoramaPublicNotification.getUserName(formSubmitter),
-                    PanoramaPublicNotification.getUserName(pipelineJobUser));
-        }
-        else
-        {
-            emailBody = PanoramaPublicNotification.getExperimentCopiedEmailBody(sourceExperiment, targetExperiment, jExperiment, jobSupport.getJournal(),
+        String emailBody = PanoramaPublicNotification.getExperimentCopiedEmailBody(sourceExperiment, targetExperiment, jExperiment, jobSupport.getJournal(),
                     reviewer, reviewerPassword,
-                    PanoramaPublicNotification.getUserName(formSubmitter),
-                    PanoramaPublicNotification.getUserName(pipelineJobUser));
-        }
+                    formSubmitter,
+                    pipelineJobUser,
+                    recopy);
 
         if(jobSupport.emailSubmitter())
         {
             log.info("Emailing submitter.");
             try
             {
-                PanoramaPublicNotification.sendEmailNotification(subject, emailBody, targetExperiment.getContainer(), pipelineJobUser, toAddresses);
+                PanoramaPublicNotification.sendEmailNotification(subject, emailBody, targetExperiment.getContainer(), pipelineJobUser, toAddresses, jobSupport.replyToAddress());
                 PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), true);
             }
             catch (Exception e)
@@ -533,6 +535,15 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         for(Container child: children)
         {
             updateRawDataTab(child, service, user);
+        }
+    }
+
+    private void hideDataPipelineTab(Container c)
+    {
+        Set<Container> children = ContainerManager.getAllChildren(c); // Includes parent
+        for(Container child: children)
+        {
+            Portal.hidePage(child, "Data Pipeline");
         }
     }
 

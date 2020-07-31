@@ -41,6 +41,7 @@ public interface CopyExperimentJobSupport
 
     boolean emailSubmitter();
     List<String> toEmailAddresses();
+    String replyToAddress();
 
     boolean deletePreviousCopy();
 }
