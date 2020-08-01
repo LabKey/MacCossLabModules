@@ -654,14 +654,13 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
             if(_journal != null)
             {
                 root.addChild("Journal group details", getJournalGroupDetailsUrl(_journal.getId(), getContainer()));
             }
             root.addChild("Journal group support container");
-            return root;
         }
     }
 
@@ -770,9 +769,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
+        public void addNavTrail(NavTree root)
         {
-            return root.addChild("Set ProteomeXchange Credentials");
+            root.addChild("Set ProteomeXchange Credentials");
         }
     }
 
