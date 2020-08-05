@@ -19,8 +19,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.security.User;
 import org.labkey.api.view.ShortURLRecord;
-import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.JournalExperiment;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -127,13 +127,13 @@ public class PxXmlWriter extends PxWriter
     }
 
     @Override
-    void writeChangeLog(PanoramaPublicController.PxExportForm form) throws PxException
+    void writeChangeLog(String pxChangeLog) throws PxException
     {
-        if(!StringUtils.isBlank(form.getChangeLog()))
+        if(!StringUtils.isBlank(pxChangeLog))
         {
             Element changeLogEl = new Element(("ChangeLog"));
             Element clEntryEl = new Element("ChangeLogEntry");
-            clEntryEl.setText(form.getChangeLog());
+            clEntryEl.setText(pxChangeLog);
             changeLogEl.addChild(clEntryEl);
             try
             {
@@ -207,8 +207,7 @@ public class PxXmlWriter extends PxWriter
         }
     }
 
-    @Override
-    void writePublicationList(ExperimentAnnotations expAnnotations, PanoramaPublicController.PxExportForm form) throws PxException
+    void writePublicationList(ExperimentAnnotations expAnnotations) throws PxException
     {
         /*
         <PublicationList>
@@ -220,40 +219,65 @@ public class PxXmlWriter extends PxWriter
 
         OR
 
+        // Example of a peer-reviewed dataset without a PubMed ID: http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD009544
+        <PublicationList>
+            <Publication id="Unpublished_Paper_1">
+                <cvParam accession="MS:1002866" cvRef="MS" name="Reference" value="Virpi Talman, Jaakko Teppo, Päivi Pöhö, Parisa Movahedi, Anu Vaikkinen, S. Tuuli Karhu, Kajetan Trošt, Tommi Suvitaival, Jukka Heikkonen, Tapio Pahikkala, Tapio Kotiaho, Risto Kostiainen, Markku Varjosalo, Heikki Ruskoaho. Molecular Atlas of Postnatal Mouse Heart Development. J Am Heart Assoc. 2018;7:e010378. DOI: 10.1161/JAHA.118.010378."/>
+            </Publication>
+        </PublicationList>
+
+        OR
+
         <PublicationList>
             <Publication id="pending">
                 <cvParam cvRef="MS" accession="MS:1002858" name="Dataset with its publication pending"/>
             </Publication>
         </PublicationList>
+
+        OR
+
+        Example: http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD015895
+        <PublicationList>
+            <Publication id="unpublished">
+                <cvParam accession="MS:1002853" cvRef="MS" name="Dataset with no associated published manuscript"/>
+            </Publication>
+        </PublicationList>
+
          */
 
         Element publication_list = new Element("PublicationList");
-        boolean hasPubmedId = !StringUtils.isBlank(form.getPublicationId());
-        if(hasPubmedId || form.getPeerReviewed())
+
+        if(expAnnotations.isPublished() && expAnnotations.hasCitation())
         {
+            boolean hasPubmedId = !StringUtils.isBlank(expAnnotations.getPubmedId());
             Element publication = new Element("Publication");
-            String id = hasPubmedId ? "PMID" + form.getPublicationId() : "pubmed_id_pending";
+            String id = hasPubmedId ? "PMID" + expAnnotations.getPubmedId() : "pubmed_id_pending";
             publication.setAttributes(Collections.singletonList(new Attribute("id", id)));
             if(hasPubmedId)
             {
-                publication.addChild(new CvParamElement("MS", "MS:1000879", "PubMed identifier", form.getPublicationId()));
+                publication.addChild(new CvParamElement("MS", "MS:1000879", "PubMed identifier", expAnnotations.getPubmedId()));
             }
-            String reference = form.getPublicationReference();
-            if(StringUtils.isBlank(reference))
-            {
-                reference = expAnnotations.getCitation();
-            }
-            publication.addChild(new CvParamElement("MS", "MS:1002866", "Reference", reference));
+            publication.addChild(new CvParamElement("MS", "MS:1002866", "Reference", expAnnotations.getCitation()));
+            publication_list.addChild(publication);
+
+            // MS:1002865 - "Accepted manuscript" A dataset has one associated manuscript, which has been accepted but no PubMedID is available yet
+        }
+        else if(expAnnotations.isPublished() || expAnnotations.hasCitation())
+        {
+            // MS:1002858 - "Dataset with its publication pending" A dataset which has an associated manuscript pending for publication.
+            // Example: http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD020188
+            Element publication = new Element("Publication");
+            publication.setAttributes(Collections.singletonList(new Attribute("id", "pending")));
+            publication.addChild(new CvParamElement("MS", "MS:1002858", "Dataset with its publication pending"));
             publication_list.addChild(publication);
         }
         else
         {
-            // MS:1002865 - "Accepted manuscript" A dataset has one associated manuscript, which has been accepted but no PubMedID is available yet
-            // MS:1002858 - "Dataset with its publication pending" A dataset which has an associated manuscript pending for publication.
             // MS:1002853 - "Dataset with no associated published manuscript"
+            // Example: http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD015895
             Element publication = new Element("Publication");
-            publication.setAttributes(Collections.singletonList(new Attribute("id", "pending")));
-            publication.addChild(new CvParamElement("MS", "MS:1002858", "Dataset with its publication pending"));
+            publication.setAttributes(Collections.singletonList(new Attribute("id", "unpublished")));
+            publication.addChild(new CvParamElement("MS", "MS:1002853", "Dataset with no associated published manuscript"));
             publication_list.addChild(publication);
         }
         try
@@ -266,8 +290,7 @@ public class PxXmlWriter extends PxWriter
         }
     }
 
-    @Override
-    void writeContactList(ExperimentAnnotations expAnnotations, PanoramaPublicController.PxExportForm form) throws PxException
+    void writeContactList(ExperimentAnnotations expAnnotations, JournalExperiment je) throws PxException
     {
         /*
         <ContactList>
@@ -297,11 +320,11 @@ public class PxXmlWriter extends PxWriter
         String labHeadName = labHead != null ? labHead.getFullName() : null;
         String labHeadEmail = labHead != null ? labHead.getEmail() : null;
         // Check if there is a form override
-        if(!StringUtils.isBlank(form.getLabHeadName()))
+        if(je.hasLabHeadDetails())
         {
-            labHeadName = form.getLabHeadName();
-            labHeadEmail = form.getLabHeadEmail();
-            labHeadAffiliation = form.getLabHeadAffiliation();
+            labHeadName = je.getLabHeadName();
+            labHeadEmail = je.getLabHeadEmail();
+            labHeadAffiliation = je.getLabHeadAffiliation();
         }
 
         Element labHeadEl = new Element("Contact");
@@ -372,8 +395,11 @@ public class PxXmlWriter extends PxWriter
                 continue;
             }
             seen.add(mod.getName());
-            String unimodId = mod.hasUnimodId() ? mod.getUnimodId() : "NO_UNIMOD_ID";
-            mod_list.addChild(new CvParamElement("UNIMOD", unimodId, mod.getName()));
+            if(mod.hasUnimodId())
+            {
+                // Include only modifications that have a UNIMOD ID so that we can do an "incomplete" submissions.
+                mod_list.addChild(new CvParamElement("UNIMOD", mod.getUnimodId(), mod.getName()));
+            }
         }
 
         try
@@ -506,13 +532,12 @@ public class PxXmlWriter extends PxWriter
         }
     }
 
-    @Override
-    void writeDatasetIdentifierList(String pxId, ShortURLRecord accessUrl) throws PxException
+    void writeDatasetIdentifierList(String pxId, int version, ShortURLRecord accessUrl) throws PxException
     {
         Element di_list = new Element("DatasetIdentifierList");
         Element di1 = new Element("DatasetIdentifier");
         di1.addChild(new CvParamElement("MS", "MS:1001919", "ProteomeXchange accession number", StringUtils.isBlank(pxId) ? "PXD000000" : pxId));
-//        di2.addChild(new CvParamElement("MS", "MS:1001921", "ProteomeXchange accession number version number", "1"));
+        di1.addChild(new CvParamElement("MS", "MS:1001921", "ProteomeXchange accession number version number", String.valueOf(version)));
         di_list.addChild(di1);
         Element di2 = new Element("DatasetIdentifier");
         di2.addChild(new CvParamElement("MS", "MS:1002872", "Panorama Public dataset identifier", getAccessUrlString(accessUrl)));
@@ -557,8 +582,7 @@ public class PxXmlWriter extends PxWriter
         return el;
     }
 
-    @Override
-    void writeDatasetSummary(ExperimentAnnotations annotations, PanoramaPublicController.PxExportForm form) throws PxException
+    void writeDatasetSummary(ExperimentAnnotations annotations) throws PxException
     {
         Element el = new Element("DatasetSummary");
         List<Attribute> attributes = new ArrayList<>(3);
@@ -574,11 +598,23 @@ public class PxXmlWriter extends PxWriter
 
 
         Element reviewLevel = new Element("ReviewLevel");
-        reviewLevel.addChild((form.getPeerReviewed() || annotations.isPublished()) ? peerReviewedEl : nonPeerReviewedEl);
+        reviewLevel.addChild((annotations.isPeerReviewed()) ? peerReviewedEl : nonPeerReviewedEl);
         el.addChild(reviewLevel);
 
         Element repoSupport = new Element("RepositorySupport");
-        repoSupport.addChild(new CvParamElement("MS", "MS:1002856", "Supported dataset by repository"));
+        SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(annotations);
+        if(status.isComplete())
+        {
+            repoSupport.addChild(new CvParamElement("MS", "MS:1002856", "Supported dataset by repository"));
+        }
+        else if(status.isIncomplete())
+        {
+            repoSupport.addChild(new CvParamElement("MS", "MS:1003087", "supported by repository but incomplete data and/or metadata"));
+        }
+        else
+        {
+            throw new PxException("Data is missing raw files and / or required metadata. It cannot be announced on ProteomeXchange.");
+        }
         el.addChild(repoSupport);
 
         try

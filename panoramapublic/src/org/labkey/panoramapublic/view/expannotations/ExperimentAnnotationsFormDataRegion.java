@@ -39,7 +39,7 @@ public class ExperimentAnnotationsFormDataRegion extends DataRegion
         super();
 
         addColumns(new ExperimentAnnotationsTableInfo(new PanoramaPublicSchema(viewContext.getUser(), viewContext.getContainer()), null),
-                "Id,Title,Organism,Instrument,SpikeIn,Abstract,ExperimentDescription,SampleDescription, Keywords, LabHead, LabHeadAffiliation, Submitter, SubmitterAffiliation, Citation,PublicationLink,");
+                "Id,Title,Organism,Instrument,SpikeIn,Abstract,ExperimentDescription,SampleDescription, Keywords, LabHead, LabHeadAffiliation, Submitter, SubmitterAffiliation, Citation,PublicationLink,PubmedId");
 
         DisplayColumn idCol = getDisplayColumn("Id");
         idCol.setVisible(false);

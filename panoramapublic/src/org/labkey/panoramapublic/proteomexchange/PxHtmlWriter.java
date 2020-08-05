@@ -23,6 +23,7 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.JournalExperiment;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,7 +33,6 @@ import java.util.Map;
 public class PxHtmlWriter extends PxWriter
 {
     private final StringBuilder _output;
-    private boolean _usePxTestDb;
 
     private static final Logger LOG = LogManager.getLogger(PxHtmlWriter.class);
 
@@ -44,7 +44,6 @@ public class PxHtmlWriter extends PxWriter
     @Override
     public void write(PanoramaPublicController.PxExperimentAnnotations bean) throws PxException
     {
-        _usePxTestDb = bean.getForm().isTestDatabase();
         super.write(bean);
     }
 
@@ -52,9 +51,10 @@ public class PxHtmlWriter extends PxWriter
     void begin(ExperimentAnnotations experimentAnnotations)
     {
         _output.append("<div><table class=\"table-condensed table-striped table-bordered\">");
-        tr("PX Test Database", String.valueOf(_usePxTestDb));
         tr("Experiment ID", String.valueOf(experimentAnnotations.getId()));
         tr("Title", experimentAnnotations.getTitle());
+        String pxid = experimentAnnotations.getPxid();
+        tr("PX ID", pxid != null ? pxid : "NOT ASSIGNED", pxid == null);
     }
 
     @Override
@@ -70,26 +70,64 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writeChangeLog(PanoramaPublicController.PxExportForm form)
+    void writeChangeLog(String pxChangeLog)
     {
-        if(!StringUtils.isBlank(form.getChangeLog()))
+        if(!StringUtils.isBlank(pxChangeLog))
         {
-            tr("Change Log", form.getChangeLog());
+            tr("Change Log", pxChangeLog);
         }
     }
 
     @Override
-    void writeDatasetSummary(ExperimentAnnotations expAnnotations, PanoramaPublicController.PxExportForm form)
+    void writeDatasetSummary(ExperimentAnnotations expAnnotations)
     {
         tr("Description", expAnnotations.getAbstract());
-        tr("Review Level", (form.getPeerReviewed() || expAnnotations.isPublished()) ? "Peer Reviewed" : "Not Peer Reviewed");
+        tr("Review Level", (expAnnotations.isPeerReviewed()) ? "Peer Reviewed" : "Not Peer Reviewed");
+
+        SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(expAnnotations);
+        if(status.isComplete())
+        {
+            tr("Repository Support", "Supported dataset by repository");
+        }
+        else if(status.isIncomplete())
+        {
+            HtmlList list = new HtmlList();
+            if(status.hasInvalidModifications())
+            {
+               list.addItem("Modifications without UNIMOD Ids", "Yes", true);
+            }
+            if(status.hasMissingLibrarySourceFiles())
+            {
+                list.addItem("Missing spectrum library source files", "Yes", true);
+            }
+            list.end();
+            trNoFilter("Repository Support", "supported by repository but incomplete data and/or metadata" + list.getHtml());
+        }
+        else
+        {
+            HtmlList list = new HtmlList();
+            if(status.hasMissingRawFiles())
+            {
+                list.addItem("Missing raw files", "Yes", true);
+            }
+            if(status.hasMissingMetadata())
+            {
+                list.addItem("Missing metadata", "Yes", true);
+            }
+            list.end();
+            trNoFilter("Repository Support", "Cannot be announced on ProteomeXchange" + list.getHtml(), true);
+        }
     }
 
     @Override
-    void writeDatasetIdentifierList(String pxId, ShortURLRecord accessUrl)
+    void writeDatasetIdentifierList(String pxId, int version, ShortURLRecord accessUrl)
     {
         HtmlList list = new HtmlList();
         list.addItem("PX ID", pxId, StringUtils.isBlank(pxId));
+        if(!StringUtils.isBlank(pxId))
+        {
+            list.addItem("PX Version", String.valueOf(version), false);
+        }
         list.addItem("Access URL", getAccessUrlString(accessUrl), accessUrl == null);
         list.end();
         trNoFilter("Dataset identifier", list.getHtml());
@@ -193,14 +231,14 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writeContactList(ExperimentAnnotations experimentAnnotations, PanoramaPublicController.PxExportForm form)
+    void writeContactList(ExperimentAnnotations experimentAnnotations, JournalExperiment je)
     {
         HtmlList contactList = new HtmlList();
 
         User labHead = experimentAnnotations.getLabHeadUser();
-        String labHeadName = labHead != null ? labHead.getFullName() : form.getLabHeadName();
-        String labHeadEmail = labHead != null ? labHead.getEmail() : form.getLabHeadEmail();
-        String labHeadAffiliation = labHead != null ? experimentAnnotations.getLabHeadAffiliation() : form.getLabHeadAffiliation();
+        String labHeadName = labHead != null ? labHead.getFullName() : je.getLabHeadName();
+        String labHeadEmail = labHead != null ? labHead.getEmail() : je.getLabHeadEmail();
+        String labHeadAffiliation = labHead != null ? experimentAnnotations.getLabHeadAffiliation() : je.getLabHeadAffiliation();
 
         boolean contactErr = StringUtils.isBlank(labHeadName);
         contactList.addItem("Lab head name", StringUtils.isBlank(labHeadName) ? "NO LAB HEAD. Submitter details will be used." : labHeadName, contactErr);
@@ -211,9 +249,18 @@ public class PxHtmlWriter extends PxWriter
         }
 
         User submitter = experimentAnnotations.getSubmitterUser();
-        contactErr = submitter == null;
-        contactList.addItem("Submitter name", submitter == null ? "NO SUBMITTER" : submitter.getFullName(), contactErr);
-        contactList.addItem("Submitter email", submitter == null ? "NO EMAIL" : submitter.getEmail(), contactErr);
+        if(submitter == null)
+        {
+            contactList.addItem("Submitter name","NO SUBMITTER", true);
+            contactList.addItem("Submitter email", "NO EMAIL", true);
+        }
+        else
+        {
+            String fullName = submitter.getFullName();
+            boolean err = StringUtils.isBlank(fullName);
+            contactList.addItem("Submitter name", err ? "MISSING NAME" : fullName, err); // We need a name to submit to PX
+            contactList.addItem("Submitter email", submitter.getEmail(), false);
+        }
         if(experimentAnnotations.getSubmitterAffiliation() != null)
         {
             contactList.addItem("Submitter affiliation", experimentAnnotations.getSubmitterAffiliation(), false);
@@ -222,31 +269,49 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writePublicationList(ExperimentAnnotations experimentAnnotations, PanoramaPublicController.PxExportForm form)
+    void writePublicationList(ExperimentAnnotations experimentAnnotations)
     {
         HtmlList publicationList = new HtmlList();
-        boolean hasPubmedId = !StringUtils.isBlank(form.getPublicationId());
-        if(form.getPeerReviewed() || hasPubmedId)
+        if(experimentAnnotations.isPublished())
         {
-            if(hasPubmedId)
+            publicationList.addItem("Link: ", experimentAnnotations.getPublicationLink(), false);
+
+            if(experimentAnnotations.hasPubmedId())
             {
-                publicationList.addItem("PMID", form.getPublicationId(), false);
+                publicationList.addItem("PMID", experimentAnnotations.getPubmedId(), false);
             }
             else
             {
                 publicationList.addItem(null, "NO_PUBMED_ID", false);
             }
-            String reference = form.getPublicationReference();
-            if(StringUtils.isBlank(reference))
+            if(!StringUtils.isBlank(experimentAnnotations.getCitation()))
             {
-                reference = experimentAnnotations.getCitation();
+                publicationList.addItem("Reference", experimentAnnotations.getCitation(), false);
             }
-            publicationList.addItem("Reference", reference, false);
+            else
+            {
+                publicationList.addItem("Reference", "NO REFERNCE", true);
+            }
         }
         else
         {
             publicationList.addItem(null, "NONE", false);
         }
+        String announcedAs;
+        if(experimentAnnotations.isPublished() && experimentAnnotations.hasCitation())
+        {
+            announcedAs = experimentAnnotations.hasPubmedId() ? "with pubmedid id: " + experimentAnnotations.getCitation()
+                    : "pubmed_id_pending: " + experimentAnnotations.getCitation();
+        }
+        else if(experimentAnnotations.isPublished() || experimentAnnotations.hasCitation())
+        {
+            announcedAs = "Dataset with its publication pending";
+        }
+        else
+        {
+            announcedAs = "Dataset with no associated published manuscript";
+        }
+        publicationList.addItem("Announcement Type", announcedAs, false);
         publicationList.end();
         trNoFilter("Publication", publicationList.getHtml());
     }
@@ -282,6 +347,11 @@ public class PxHtmlWriter extends PxWriter
     private void trNoFilter(String cell1, String cell2)
     {
         tr(cell1, cell2, false);
+    }
+
+    private void trNoFilter(String cell1, String cell2, boolean error)
+    {
+        tr(cell1, cell2, error);
     }
 
     // Expects cell1 and cell2 to be HTML encoded.

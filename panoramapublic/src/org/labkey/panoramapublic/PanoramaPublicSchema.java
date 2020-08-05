@@ -16,12 +16,14 @@
 
 package org.labkey.panoramapublic;
 
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.collections.CaseInsensitiveHashSet;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.DbSchemaType;
+import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.dialect.SqlDialect;
 import org.labkey.api.module.Module;
@@ -44,6 +46,7 @@ public class PanoramaPublicSchema extends UserSchema
     public static final String TABLE_JOURNAL = "Journal";
     public static final String TABLE_JOURNAL_EXPERIMENT = "JournalExperiment";
     public static final String TABLE_EXPERIMENT_ANNOTATIONS = "ExperimentAnnotations";
+    public static final String TABLE_PX_XML = "PxXml";
 
     public PanoramaPublicSchema(User user, Container container)
     {
@@ -90,9 +93,60 @@ public class PanoramaPublicSchema extends UserSchema
             result.wrapAllColumns(true);
             var projectCol = result.getMutableColumn(FieldKey.fromParts("Project"));
             ContainerForeignKey.initColumn(projectCol, this);
+            var supportContainerCol = result.getMutableColumn(FieldKey.fromParts("SupportContainer"));
+            ContainerForeignKey.initColumn(supportContainerCol, this);
             return result;
         }
+
+        if(TABLE_PX_XML.equalsIgnoreCase(name))
+        {
+            return getFilteredPxXmlTable(name, cf);
+        }
         return null;
+    }
+
+    @NotNull
+    private TableInfo getFilteredPxXmlTable(String name, ContainerFilter cf)
+    {
+        FilteredTable<PanoramaPublicSchema> result = new FilteredTable<>(getSchema().getTable(name), this, cf)
+        {
+            @Override
+            protected void applyContainerFilter(ContainerFilter filter)
+            {
+                // Don't apply the container filter normally, let us apply it in our wrapper around the normally generated SQL
+            }
+
+            @Override
+            public SQLFragment getFromSQL(String alias)
+            {
+                // This table does not have a Container column so we will join it to the JournalExperiment and ExperimentAnnotations
+                // tables to filter by the Container of the copied experiment.
+                SQLFragment sql = new SQLFragment("(SELECT X.* FROM ");
+                sql.append(super.getFromSQL("X"));
+                sql.append(" ");
+
+                if (getContainerFilter() != ContainerFilter.EVERYTHING)
+                {
+                    SQLFragment joinToExpAnnotSql = new SQLFragment("INNER JOIN ");
+                    joinToExpAnnotSql.append(PanoramaPublicManager.getTableInfoJournalExperiment(), "je");
+                    joinToExpAnnotSql.append(" ON (je.id = JournalExperimentId) ");
+                    joinToExpAnnotSql.append(" INNER JOIN ");
+                    joinToExpAnnotSql.append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "exp");
+                    joinToExpAnnotSql.append(" ON (exp.id = je.CopiedExperimentId) ");
+
+                    sql.append(joinToExpAnnotSql);
+
+                    sql.append(" WHERE ");
+                    sql.append(getContainerFilter().getSQLFragment(getSchema(), new SQLFragment("exp.Container"), getContainer()));
+                }
+                sql.append(") ");
+                sql.append(alias);
+
+                return sql;
+            }
+        };
+        result.wrapAllColumns(true);
+        return result;
     }
 
     @Override
@@ -102,6 +156,7 @@ public class PanoramaPublicSchema extends UserSchema
         hs.add(TABLE_JOURNAL);
         hs.add(TABLE_JOURNAL_EXPERIMENT);
         hs.add(TABLE_EXPERIMENT_ANNOTATIONS);
+        hs.add(TABLE_PX_XML);
 
         return hs;
     }

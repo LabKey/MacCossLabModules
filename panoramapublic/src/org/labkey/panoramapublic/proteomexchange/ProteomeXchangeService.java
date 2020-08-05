@@ -27,9 +27,18 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ProteomeXchangeService
 {
+    public static final String PX_CREDENTIALS = "ProteomeXchange Credentials";
+    public static final String PX_USER = "ProteomeXchange User";
+    public static final String PX_PASSWORD = "ProteomeXchange Password";
+
+    public static final String PXID = "PX[DT]\\d{6}";
+    private static final Pattern PXID_IN_RESPONSE = Pattern.compile("identifier=(" + PXID + ")");
+
     private enum METHOD {submitDataset, validateXML, requestID}
 
     public static String validatePxXml(File pxxmlFile, boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
@@ -49,15 +58,20 @@ public class ProteomeXchangeService
             MultipartEntityBuilder builder = getMultipartEntityBuilder(pxxmlFile, testDatabase, method, user, pass);
             responseMessage = postRequest(builder);
         }
+        catch(ProteomeXchangeServiceException e)
+        {
+            throw e;
+        }
         catch (Exception e)
         {
-            throw new ProteomeXchangeServiceException("Error with service request " + method + " to ProteomeXchange.", e);
+            String exMsg = e.getMessage() == null ? e.toString() : e.getMessage();
+            throw new ProteomeXchangeServiceException("Error with service request " + method + " to ProteomeXchange. " + exMsg);
         }
 
         return responseMessage;
     }
 
-    public static String getPxId(boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
+    public static String getPxIdResponse(boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
     {
         String responseMessage;
         try
@@ -72,6 +86,27 @@ public class ProteomeXchangeService
         }
 
         return responseMessage;
+    }
+
+    public static String parsePxIdFromResponse(String response)
+    {
+        Matcher match = PXID_IN_RESPONSE.matcher(response);
+        if(match.find())
+        {
+            return match.group(1);
+        }
+        return null;
+    }
+
+    public static String getPxId(boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
+    {
+        String response = getPxIdResponse(testDatabase, user, pass);
+        String pxId = parsePxIdFromResponse(response);
+        if(pxId == null)
+        {
+            throw new ProteomeXchangeServiceException("Could not parse ProteomeXchage ID from response \"" + response + "\"");
+        }
+        return pxId;
     }
 
     @NotNull
@@ -123,6 +158,16 @@ public class ProteomeXchangeService
             throw new ProteomeXchangeServiceException("Error " + statusCode + " from ProteomeXchange server: " + responseMessage);
         }
         return responseMessage;
+    }
+
+    public static boolean responseHasErrors(String response)
+    {
+        return !response.contains("result=SUCCESS")
+                || !response.contains("info=File does appear to be XML")
+                || !response.contains("info=Submitted XML is valid according to the XSD.")
+                || !response.contains("info=There were a total of 0 different CV errors or warnings.")
+                || !response.contains("info=There was a total of 0 non-CV warnings.")
+                || !response.contains("info=There was a total of 0 non-CV errors.");
     }
 }
 

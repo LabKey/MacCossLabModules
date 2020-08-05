@@ -15,12 +15,16 @@
  */
 package org.labkey.panoramapublic.query;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
+import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.SqlExecutor;
+import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
@@ -28,9 +32,11 @@ import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.query.FieldKey;
+import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
 import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.targetedms.ITargetedMSRun;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.GUID;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.api.view.ShortURLRecord;
@@ -56,9 +62,10 @@ public class ExperimentAnnotationsManager
 {
     private ExperimentAnnotationsManager() {}
 
-    public static ExperimentAnnotations get(int experimentAnnotationsId)
+    @Nullable
+    public static ExperimentAnnotations get(@Nullable Integer experimentAnnotationsId)
     {
-        return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),null, null).getObject(experimentAnnotationsId, ExperimentAnnotations.class);
+        return experimentAnnotationsId == null ? null : new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),null, null).getObject(experimentAnnotationsId, ExperimentAnnotations.class);
     }
 
     public static ExperimentAnnotations getForExperiment(int experimentId)
@@ -250,8 +257,21 @@ public class ExperimentAnnotationsManager
 
     private static void deleteExperiment(ExperimentAnnotations expAnnotations, User user)
     {
-        // If any journal were given access to this experiment, remove the access and delete entries from the JournalExperiment table.
-        JournalManager.beforeDeleteTargetedMSExperiment(expAnnotations, user);
+        if(!expAnnotations.isJournalCopy())
+        {
+            // If any journal were given access to this experiment, remove the access and delete entries from the JournalExperiment table.
+            JournalManager.beforeDeleteTargetedMSExperiment(expAnnotations, user);
+        }
+        else
+        {
+            JournalExperiment je = JournalManager.getRowForJournalCopy(expAnnotations);
+            if(je != null)
+            {
+                // Delete the row in JournalExperiment where journalExperimentId = expAnnotations.getId()
+                JournalManager.deleteRowForJournalCopy(expAnnotations);
+                JournalManager.tryDeleteShortUrl(je.getShortCopyUrl(), user);
+            }
+        }
 
         Table.delete(PanoramaPublicManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());
 
@@ -402,5 +422,69 @@ public class ExperimentAnnotationsManager
         if(submittedExperimentId == null) return null;
         JournalExperiment je = JournalManager.getLastPublishedRecord(submittedExperimentId);
         return je != null ? je.getDataLicense() : null;
+    }
+
+    public static boolean canSubmitExperiment(int expAnnotationsId)
+    {
+        ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(expAnnotationsId);
+        return expAnnotations != null ? canSubmitExperiment(expAnnotations) : false;
+    }
+
+    /**
+     * Returns true if
+     * 1. this is a NOT journal copy (i.e. a folder in the Panorama Public project)
+     * 2. AND if this experiment has been copied to Panorama Public, the copy is not final (paper published and data public).
+     */
+    public static boolean canSubmitExperiment(@NotNull ExperimentAnnotations expAnnotations)
+    {
+        if(expAnnotations.isJournalCopy())
+        {
+            return false;
+        }
+        JournalExperiment journalExperiment = JournalManager.getLastPublishedRecord(expAnnotations.getId());
+        if(journalExperiment != null)
+        {
+            // If this experiment has already been copied and the journal copy is final (paper published and data public)
+            // then the user should not be able to re-submit this data.
+            ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.get(journalExperiment.getCopiedExperimentId());
+            return journalCopy == null || !journalCopy.isFinal();
+        }
+        return true;
+    }
+
+    @Nullable
+    public static ExperimentAnnotations getJournalCopy(@Nullable ExperimentAnnotations expAnnotations)
+    {
+        if(expAnnotations != null)
+        {
+            JournalExperiment journalExperiment = JournalManager.getLastPublishedRecord(expAnnotations.getId());
+            return journalExperiment != null ? ExperimentAnnotationsManager.get(journalExperiment.getCopiedExperimentId()): null;
+        }
+        return null;
+    }
+
+    public static boolean hasProteomicData(ExperimentAnnotations experimentAnnotations, User user)
+    {
+        // CONSIDER: Add this method to TargetedMSService?
+        TargetedMSService svc = TargetedMSService.get();
+        UserSchema targetedmsSchema = svc.getUserSchema(user, experimentAnnotations.getContainer());
+
+        SQLFragment sql = new SQLFragment("SELECT Id FROM ").append(svc.getTableInfoRuns(), "r")
+                .append(" WHERE PeptideCount > 0 ")
+                .append(" AND Deleted = ? " ).add(Boolean.FALSE)
+                .append(" AND Container IN ");
+        if(experimentAnnotations.isIncludeSubfolders())
+        {
+            List<Container> containers = ContainerManager.getAllChildren(experimentAnnotations.getContainer(), user);
+            sql.append(ContainerManager.getIdsAsCsvList(new HashSet<>(containers)));
+        }
+        else
+        {
+            sql.append("('");
+            sql.append(experimentAnnotations.getContainer().getId());
+            sql.append("')");
+        }
+
+        return new SqlSelector(targetedmsSchema.getDbSchema(), sql).exists();
     }
 }

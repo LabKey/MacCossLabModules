@@ -20,13 +20,13 @@ import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExperimentService;
+import org.labkey.api.security.Group;
+import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
-import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
-import org.labkey.panoramapublic.query.JournalManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,6 +75,7 @@ public class ExperimentAnnotations
     private Integer _submitter;
     private String _submitterAffiliation;
     private String _pxid;
+    private String _pubmedId;
 
     private static Pattern taxIdPattern = Pattern.compile("(.*)\\(taxid:(\\d+)\\)");
 
@@ -98,6 +99,7 @@ public class ExperimentAnnotations
         _labHeadAffiliation = experiment.getLabHeadAffiliation();
         _submitterAffiliation = experiment.getSubmitterAffiliation();
         _pxid = experiment.getPxid();
+        _pubmedId = experiment.getPubmedId();
     }
 
     public int getId()
@@ -259,6 +261,11 @@ public class ExperimentAnnotations
     public String getCitation()
     {
         return _citation;
+    }
+
+    public boolean hasCitation()
+    {
+        return !StringUtils.isBlank(_citation);
     }
 
     public Boolean getSpikeIn()
@@ -464,17 +471,36 @@ public class ExperimentAnnotations
 
     public boolean isPublished()
     {
-        if(!StringUtils.isBlank(_publicationLink) && !StringUtils.isBlank(_citation))
-        {
-            return true;
-        }
-        return false;
+        return !StringUtils.isBlank(_publicationLink);
+    }
+
+    public boolean isPeerReviewed()
+    {
+        String publicationLink = getPublicationLink();
+        // Authors use the medRxiv and bioRxiv services to make their manuscripts available as preprints before peer review, allowing
+        // other scientists to see, discuss, and comment on the findings immediately.
+        return isPublished() && !(publicationLink.contains("www.biorxiv.org") || publicationLink.contains("www.medrxiv.org"));
+    }
+
+    public String getPubmedId()
+    {
+        return _pubmedId;
+    }
+
+    public boolean hasPubmedId()
+    {
+        return !StringUtils.isBlank(_pubmedId);
+    }
+
+    public void setPubmedId(String pubmedId)
+    {
+        _pubmedId = pubmedId;
     }
 
     public boolean isPublic()
     {
         // If the container where this experiment lives is readable to site:guests then the data is public.
-        return getContainer().getPolicy().hasPermissions(UserManager.getGuestUser(), ReadPermission.class);
+        return getContainer().getPolicy().hasPermissions(SecurityManager.getGroup(Group.groupGuests), ReadPermission.class);
     }
 
     public DataLicense getDataLicense()
@@ -485,5 +511,10 @@ public class ExperimentAnnotations
             return null;
         }
         return ExperimentAnnotationsManager.getLicenseSelectedForSubmission(getSourceExperimentId());
+    }
+
+    public boolean isFinal()
+    {
+        return isPublic() && isPublished();
     }
 }

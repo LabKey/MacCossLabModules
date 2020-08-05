@@ -6,34 +6,44 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
+import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.BodyWebPart;
-import org.labkey.test.components.CustomizeView;
 import org.labkey.test.pages.InsertPage;
 import org.labkey.test.tests.targetedms.TargetedMSTest;
 import org.labkey.test.util.APIContainerHelper;
+import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
+import org.labkey.test.util.Ext4Helper;
+import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PortalHelper;
 import org.labkey.test.util.PostgresOnlyTest;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
-import java.util.List;
+import java.io.File;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
 public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTest
 {
-    private static final String SKY_FILE_1 = "MRMer.zip";
-    private static final String SKY_FILE_2 = "smallmol_plus_peptides.sky.zip";
+    private static final String SKY_FILE_1 = "Study9S_Site52_v1.sky.zip";
+    private static final String RAW_FILE_WIFF = "Site52_041009_Study9S_Phase-I.wiff";
+    private static final String RAW_FILE_WIFF_SCAN = RAW_FILE_WIFF + ".scan";
 
     private static String PANORAMA_PUBLIC = "Panorama Public " + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
     private static final String PANORAMA_PUBLIC_GROUP = "panoramapublictest";
     private static final String DESTINATION_FOLDER = "Test Copy";
+
+    private static final String ADMIN_USER = "admin@panoramapublic.test";
+    private static final String SUBMITTER = "submitter@panoramapublic.test";
+
+    PortalHelper portalHelper = new PortalHelper(this);
 
     @Override
     protected String getProjectName()
@@ -58,6 +68,16 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         setFormElement(Locator.id("groupNameTextField"), PANORAMA_PUBLIC_GROUP);
         setFormElement(Locator.id("projectNameTextField"), PANORAMA_PUBLIC);
         clickButton("Submit", "Journal group details");
+
+        // Add an admin user to the security group associated with the Panorama Public project
+        _userHelper.createUser(ADMIN_USER);
+        ApiPermissionsHelper _permissionsHelper = new ApiPermissionsHelper(this);
+        _permissionsHelper.addUserToProjGroup(ADMIN_USER, PANORAMA_PUBLIC, PANORAMA_PUBLIC_GROUP);
+    }
+
+    protected File getSampleDataPath(String file)
+    {
+        return TestFileUtils.getSampleData("TargetedMS/" + file);
     }
 
     @Test
@@ -67,46 +87,53 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         DataRegionTable expListTable = DataRegionTable.findDataRegionWithinWebpart(this, "Targeted MS Experiment List");
         assertEquals(0, expListTable.getDataRowCount()); // Table should be empty since we have not yet copied any experiments.
 
-        // 1. Set up our source folder. We will create an experiment here and submit it to our "Panorama Public" project.
+        // Set up our source folder. We will create an experiment here and submit it to our "Panorama Public" project.
         setupFolder(FolderType.Experiment);
+        impersonate(SUBMITTER);
 
-        // 2. Import a Skyline document to the folder
-        importData(SKY_FILE_1);
-        importData(SKY_FILE_2, 2);
+        // Add the "Targeted MS Experiment" webpart
+        portalHelper.click(Locator.folderTab("Panorama Dashboard"));
+        portalHelper.enterAdminMode();
+        portalHelper.addBodyWebPart("Targeted MS Experiment");
 
-        // 3. Add the "Targeted MS Experiment" webpart
-        PortalHelper portal = new PortalHelper(this);
-        portal.click(Locator.folderTab("Panorama Dashboard"));
-        portal.enterAdminMode();
-        portal.addBodyWebPart("Targeted MS Experiment");
-
-        // 4. Create a new experiment
+        // Create a new experiment
         TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
         TargetedMsExperimentInsertPage insertPage = expWebPart.startInsert();
         insertPage.insert();
 
-        // 5. Submit the experiment
-        portal.click(Locator.folderTab("Panorama Dashboard"));
-        expWebPart.submitExperiment();
+        // Should show error message since there are no Skyline documents in the folder.
+        testSubmitWithNoSkyDocs(portalHelper, expWebPart);
+
+        // Import a Skyline document to the folder
+        importData(SKY_FILE_1, 1);
+
+        // Click Submit.  Expect to see the missing information page
+        testSubmitWithMissingRawFiles(portalHelper, expWebPart);
+
+        // Submit the experiment by clicking the "Continue without a ProteomeXchange ID" link
+        portalHelper.click(Locator.folderTab("Panorama Dashboard"));
+        expWebPart.submitWithoutPXId();
         assertTextPresent("Copy Pending!");
 
-        // 6. Copy the experiment to the Panorama Public project
-        // Customize the "Submission" grid to display the short copy URL
-        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "Submission");
-        CustomizeView customize = table.openCustomizeGrid();
-        customize.addColumn("ShortCopyURL");
-        customize.applyCustomView();
-        table.closeCustomizeGrid();
-        table.ensureColumnPresent("Copy Link");
-        List<String> copyLink = table.getColumnDataAsText("Copy Link");
-        click(Locator.linkContainingText(copyLink.get(0))); // Click the copy link to start copying this folder to the Panorama Public project
+        // Copy the experiment to the Panorama Public project
+        stopImpersonating();
+        goToProjectHome(PANORAMA_PUBLIC);
+        impersonateGroup(PANORAMA_PUBLIC_GROUP, false);
+        portalHelper.addWebPart("Messages");
+        assertTextPresent("NEW: Experiment ID ");
+        assertTextPresent("Target: " + PANORAMA_PUBLIC);
+        clickAndWait(Locator.linkWithText("view message or respond"));
+        Locator.XPathLocator copyLink = Locator.linkContainingText("Copy Link");
+        assertNotNull(copyLink);
+        clickAndWait(copyLink);
 
         // In the copy form's folder tree view select the Panorama Public project as the destination.
         Locator.tagWithClass("span", "x4-tree-node-text").withText(PANORAMA_PUBLIC).waitForElement(new WebDriverWait(getDriver(), 5)).click();
         // Enter the name of the destination folder in the Panorama Public project
         setFormElement(Locator.tagWithName("input", "destContainerName"), DESTINATION_FOLDER);
+        _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Send Email to Submitter:"));
         // Locator.extButton("Begin Copy"); // Locator.extButton() does not work.
-        click(Locator.xpath(".//a[contains(@class, 'x4-btn')]//span[contains(text(), 'Begin Copy')]/ancestor::a"));
+        click(Ext4Helper.Locators.ext4Button("Begin Copy"));
 
         // Wait for the pipeline job to finish
         waitForText("Copying experiment");
@@ -121,7 +148,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         expListTable.ensureColumnPresent("Runs");
         expListTable.ensureColumnPresent("Public"); // Column to indicate if the data is public or not
         expListTable.ensureColumnPresent("Data License");
-        assertEquals("2", expListTable.getDataAsText(0, "Runs"));
+        assertEquals("1", expListTable.getDataAsText(0, "Runs"));
         assertEquals("No", expListTable.getDataAsText(0, "Public"));
         assertEquals("CC BY 4.0", expListTable.getDataAsText(0, "Data License"));
         clickAndWait(expListTable.link(0, "Title"));
@@ -129,6 +156,76 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
                 TargetedMsExperimentInsertPage.EXP_TITLE, // Title of the experiment
                 "Data License", "CC BY 4.0" // This is the default data license
         );
+
+        // Verify that notifications got posted on message board
+        goToProjectHome(PANORAMA_PUBLIC);
+        clickAndWait(Locator.linkWithText("view message or respond"));
+        assertTextPresent("COPIED: Experiment ID ");
+        assertTextPresent("Email was not sent to submitter");
+
+
+        // Test re-submit experiment
+        stopImpersonating();
+        goToProjectHome(getProjectName());
+        impersonate(SUBMITTER);
+        portalHelper.click(Locator.folderTab("Panorama Dashboard"));
+        expWebPart.resubmitWithoutPxd();
+
+        stopImpersonating();
+        goToProjectHome(PANORAMA_PUBLIC);
+        impersonateGroup(PANORAMA_PUBLIC_GROUP, false);
+        // Messages webpart is already added.
+        assertEquals(1, countText("view message or respond")); // Expect to see only 1 message thread
+        clickAndWait(Locator.linkWithText("view message or respond"));
+        copyLink = Locator.linkContainingText("Copy Link");
+        assertNotNull(copyLink);
+        clickAndWait(copyLink);
+        // In the copy form's folder tree view select the Panorama Public project as the destination.
+        assertTextPresent("This experiment was last copied on");
+        Locator.XPathLocator deletePreviousCopyCb = Ext4Helper.Locators.checkbox(this, "Delete Previous Copy:");
+        assertNotNull("Expected to see \"Delete Previous Copy\" checkbox", deletePreviousCopyCb);
+        _ext4Helper.uncheckCheckbox(deletePreviousCopyCb);
+        Locator.tagWithClass("span", "x4-tree-node-text").withText(PANORAMA_PUBLIC).waitForElement(new WebDriverWait(getDriver(), 5)).click();
+        // Enter the name of the destination folder in the Panorama Public project
+        setFormElement(Locator.tagWithName("input", "destContainerName"), DESTINATION_FOLDER);
+        _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Send Email to Submitter:"));
+        click(Ext4Helper.Locators.ext4Button("Begin Copy"));
+
+        // Wait for the pipeline job to finish
+        waitForText("Copying experiment");
+        waitForPipelineJobsToComplete(1, "Copying experiment: " + TargetedMsExperimentInsertPage.EXP_TITLE, false);
+    }
+
+    protected void setupFolder(FolderType folderType)
+    {
+        super.setupFolder(folderType);
+        _userHelper.createUser(SUBMITTER);
+        ApiPermissionsHelper _permissionsHelper = new ApiPermissionsHelper(this);
+        _permissionsHelper.addMemberToRole(SUBMITTER, "Project Administrator", PermissionsHelper.MemberType.user, getProjectName());
+    }
+
+    private void testSubmitWithNoSkyDocs(PortalHelper portal, TargetedMsExperimentWebPart expWebPart)
+    {
+        portal.click(Locator.folderTab("Panorama Dashboard"));
+        expWebPart.clickSubmit();
+        assertTextPresent("There are no Skyline documents included in this experiment");
+    }
+
+    private void testSubmitWithMissingRawFiles(PortalHelper portal, TargetedMsExperimentWebPart expWebPart)
+    {
+        portal.click(Locator.folderTab("Panorama Dashboard"));
+        expWebPart.clickSubmit();
+        assertTextPresent("Missing raw data");
+        assertTextPresent(RAW_FILE_WIFF);
+        assertTextPresent(RAW_FILE_WIFF_SCAN);
+
+        portal.click(Locator.folderTab("Raw Data"));
+        _fileBrowserHelper.uploadFile(getSampleDataPath(RAW_FILE_WIFF));
+        portal.click(Locator.folderTab("Panorama Dashboard"));
+        expWebPart.clickSubmit();
+        assertTextPresent("Missing raw data");
+        assertTextPresent(RAW_FILE_WIFF_SCAN);
+        assertEquals(1, countText(RAW_FILE_WIFF));
     }
 
     @Override
@@ -171,19 +268,33 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
             return new PanoramaPublicTest.TargetedMsExperimentInsertPage(_test.getDriver());
         }
 
-        public void submitExperiment()
+        public void submitWithoutPXId()
         {
             findElement(Locator.linkContainingText("Submit")).click();
-            waitAndClick(Locator.linkContainingText("Continue Without ProteomeXchange ID"));
-            waitAndClick(Locator.linkContainingText("Submit"));
+            waitAndClick(Locator.linkContainingText("Continue without a ProteomeXchange ID"));
+            getWrapper()._ext4Helper.selectComboBoxItem(Ext4Helper.Locators.formItemWithInputNamed("journalId"), PANORAMA_PUBLIC);
+            waitAndClick(Ext4Helper.Locators.ext4Button("Submit"));
             waitAndClick(Locator.lkButton("OK")); // Confirm to proceed with the submission.
-            waitAndClick(Locator.linkWithSpan("Back to Experiment Details")); // Navigate to the experiment details page.
+            waitAndClick(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
         }
 
-        public void resubmit()
+        public void clickSubmit()
         {
-            clickAndWait(Locator.linkContainingText("Resubmit"));
-            waitAndClick(Locator.lkButton("OK")); // Confirm to proceed with the submission.
+            clickAndWait(Locator.linkContainingText("Submit"));
+        }
+
+        public void resubmitWithoutPxd()
+        {
+            Locator.XPathLocator resubmitLink = Locator.linkContainingText("Resubmit");
+            assertNotNull("Expected to see a \"Resubmit\" button", resubmitLink);
+            clickAndWait(resubmitLink);
+            waitAndClick(Locator.linkContainingText("Continue without a ProteomeXchange ID"));
+            waitForText("Resubmit Request to ");
+            click(Ext4Helper.Locators.ext4Button(("Resubmit")));
+            waitForText("Confirm resubmission request to");
+            click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
+            waitForText("Request resubmitted to");
+            click(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
         }
     }
 
