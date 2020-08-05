@@ -1,6 +1,7 @@
 package org.labkey.testresults;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.SQLFragment;
@@ -46,7 +47,7 @@ public class SendTestResultsEmail implements org.quartz.Job
         String ADMIN_EMAIL = "yuval@uw.edu";
     }
 
-    private static final Logger LOG = Logger.getLogger(SendTestResultsEmail.class);
+    private static final Logger LOG = LogManager.getLogger(SendTestResultsEmail.class);
 
     public SendTestResultsEmail()
     {

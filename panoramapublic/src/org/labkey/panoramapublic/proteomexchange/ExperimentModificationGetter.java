@@ -16,7 +16,8 @@
 package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.junit.Assert;
 import org.junit.Test;
 import org.labkey.api.data.Container;
@@ -38,7 +39,7 @@ import java.util.Set;
 
 public class ExperimentModificationGetter
 {
-    private static final Logger LOG = Logger.getLogger(ExperimentModificationGetter.class);
+    private static final Logger LOG = LogManager.getLogger(ExperimentModificationGetter.class);
 
     public static List<PxModification> getModifications(ExperimentAnnotations expAnnot)
     {

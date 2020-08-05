@@ -15,7 +15,8 @@
  */
 package org.labkey.panoramapublic.pipeline;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.admin.FolderExportContext;
 import org.labkey.api.admin.FolderWriterImpl;
@@ -109,7 +110,7 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
 
         FolderExportContext ctx = new FolderExportContext(user, source, PageFlowUtil.set(templateWriterTypes),
                 null, includeSubfolders, PHI.NotPHI, false,
-                false, false, new StaticLoggerGetter(Logger.getLogger(FolderWriterImpl.class)));
+                false, false, new StaticLoggerGetter(LogManager.getLogger(FolderWriterImpl.class)));
 
 
         File exportDir = support.getExportDir();

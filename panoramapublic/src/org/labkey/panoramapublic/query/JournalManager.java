@@ -15,7 +15,8 @@
  */
 package org.labkey.panoramapublic.query;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.labkey.api.admin.FolderExportPermission;
 import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
@@ -69,7 +70,7 @@ import java.util.SortedSet;
  */
 public class JournalManager
 {
-    private static final Logger LOG = Logger.getLogger(JournalManager.class);
+    private static final Logger LOG = LogManager.getLogger(JournalManager.class);
 
     public static List<Journal> getJournals()
     {

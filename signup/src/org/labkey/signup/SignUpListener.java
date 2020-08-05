@@ -16,7 +16,8 @@
 
 package org.labkey.signup;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager.ContainerListener;
@@ -30,7 +31,7 @@ import java.util.Collections;
 
 public class SignUpListener implements ContainerListener, UserManager.UserListener
 {
-    private static final Logger _log = Logger.getLogger(SignUpListener.class);
+    private static final Logger _log = LogManager.getLogger(SignUpListener.class);
 
     @Override
     public void userDeletedFromSite(User user)

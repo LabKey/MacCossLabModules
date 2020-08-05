@@ -1,6 +1,7 @@
 package org.labkey.lincs;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.labkey.api.data.Container;
 import org.labkey.api.exp.api.ExpProtocol;
 import org.labkey.api.exp.api.ExpRun;
@@ -33,7 +34,7 @@ import java.util.stream.Stream;
 
 public class DocImportListenter implements ExperimentListener
 {
-    private static Logger _log = Logger.getLogger(DocImportListenter.class);
+    private static Logger _log = LogManager.getLogger(DocImportListenter.class);
 
     @Override
     public void beforeRunCreated(Container container, User user, ExpProtocol protocol, ExpRun run)

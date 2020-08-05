@@ -16,7 +16,8 @@
 
 package org.labkey.lincs;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.DbSchemaType;
@@ -48,7 +49,7 @@ public class LincsManager
 {
     private static final LincsManager _instance = new LincsManager();
 
-    private static Logger _log = Logger.getLogger(LincsManager.class);
+    private static Logger _log = LogManager.getLogger(LincsManager.class);
 
     private LincsManager()
     {
