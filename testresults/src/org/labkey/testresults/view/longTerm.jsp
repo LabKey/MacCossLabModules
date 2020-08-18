@@ -1,7 +1,6 @@
 <%@ page import="org.json.JSONObject" %>
 <%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.data.statistics.StatsService" %>
-<%@ page import="org.labkey.api.services.ServiceRegistry" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
@@ -22,66 +21,46 @@
     String viewType = data.getViewType();
     Container c = getContainer();
 %>
-<div id="menu">
-    <ul>
-        <li><a href="<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>" style="color:#fff;">-Overview</a></li>
-        <li><a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>" style="color:#fff;">-User</a></li>
-        <li><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>" style="color:#fff;">-Run</a></li>
-        <li><a href="<%=h(new ActionURL(TestResultsController.LongTermAction.class, c))%>" style="color:#fff;">-Long Term</a></li>
-        <li><a href="<%=h(new ActionURL(TestResultsController.ShowFlaggedAction.class, c))%>" style="color:#fff;">-Flags</a></li>
-        <li><a href="<%=h(new ActionURL(TestResultsController.TrainingDataViewAction.class, c))%>" style="color:#fff;">-Training Data</a></li>
-        <li><a href="<%=h(new ActionURL(TestResultsController.ErrorFilesAction.class, c))%>" style="color:#fff;">-Posting Errors</a></li>
-        <li><a href="https://skyline.gs.washington.edu/labkey/project/home/issues/begin.view?" target="_blank" title="Report bugs/Request features.  Use 'TestResults' as area when creating new issue" style="color:#fff;">-Issues</a></li>
-        <img src="<%=h(contextPath)%>/TestResults/img/uw.png" id="uw">
-    </ul>
-</div>
+<%@include file="menu.jsp" %>
 <script type="text/javascript">
     LABKEY.requiresCss("/TestResults/css/style.css");
 </script>
-<script src="<%=h(contextPath)%>/TestResults/js/d3.v3.js"></script>
+<link rel="stylesheet" href="<%=h(contextPath)%>/TestResults/css/c3.min.css">
+<script src="<%=h(contextPath)%>/TestResults/js/d3.min.js"></script>
 <script src="<%=h(contextPath)%>/TestResults/js/c3.min.js"></script>
 <script src="//code.jquery.com/jquery-1.10.2.js"></script>
 <br />
 <form action="<%=h(new ActionURL(TestResultsController.LongTermAction.class, c))%>">
-    View Type: <select name="viewType">
-        <option disabled selected> -- select an option -- </option>
-        <option id="<%=h(ViewType.WEEK)%>" value="<%=h(ViewType.WEEK)%>">Week</option>
-        <option id="<%=h(ViewType.MONTH)%>" value="<%=h(ViewType.MONTH)%>">Month</option>
-    <option id="<%=h(ViewType.YEAR)%>" value="<%=h(ViewType.YEAR)%>">Year</option>
-    <option id="<%=h(ViewType.ALLTIME)%>" value="<%=h(ViewType.ALLTIME)%>">The Beginning of Time</option>
-</select>
-    <input type="submit" value="Submit">
+    View Type: <select name="viewType" onchange="this.form.submit()">
+                    <option disabled selected> -- select an option -- </option>
+                    <option id="<%=h(ViewType.WEEK)%>" value="<%=h(ViewType.WEEK)%>">Week</option>
+                    <option id="<%=h(ViewType.MONTH)%>" value="<%=h(ViewType.MONTH)%>">Month</option>
+                    <option id="<%=h(ViewType.YEAR)%>" value="<%=h(ViewType.YEAR)%>">Year</option>
+                    <option id="<%=h(ViewType.ALLTIME)%>" value="<%=h(ViewType.ALLTIME)%>">The Beginning of Time</option>
+                </select>
 </form>
-<!--If parameter "viewType" exists, will select that option in the dropdown-->
-<%if(viewType != null) {%>
-<script type="text/javascript">
-    document.getElementById("<%=h(viewType)%>").selected = "true";
-</script>
-<%}%>
-<%if(data != null) {%>
-<%
+
+<% if(data != null) {
     JSONObject trendsJson = data.getTrends();
     JSONObject failureJson = data.getFailuresJson();
     JSONObject runCountPerDayJson = data.getRunsPerDayJson();
     //TODO figure out run count for date range selected...
-
-    StatsService service = StatsService.get();
 %>
-<div id="duration" class="c3chart" style="width:700px; height:400px"></div>
-<div id="passes" class="c3chart" style="width:700px; height:400px"></div>
-<div id="memory" class="c3chart" style="width:700px; height:400px"></div>
+<div id="duration" style="width:700px; height:400px"></div>
+<div id="passes" style="width:700px; height:400px"></div>
+<div id="memory" style="width:700px; height:400px"></div>
 <div style="float:left; width:700px;">
-    <div id="failGraph" class="c3chart" style="width:700px; height:400px"></div>
+    <div id="failGraph" style="width:700px; height:400px"></div>
     <table id="failureTable"></table>
 </div>
 
-    <%if(trendsJson != null) {%>
+    <% if (trendsJson != null) { %>
         <script src="<%=h(contextPath)%>/TestResults/js/generateTrendCharts.js"></script>
         <script type="text/javascript">
-            var trendsJson = jQuery.parseJSON( <%= q(trendsJson.toString()) %> );
-            var failureJson = jQuery.parseJSON( <%= q(failureJson.toString()) %> );
-            var runCountPerDayJson = jQuery.parseJSON( <%= q(runCountPerDayJson.toString()) %> );
-            generateTrendCharts(trendsJson, <%=h(viewType.equals(ViewType.YEAR) || viewType.equals(ViewType.ALLTIME))%>);
+            var trendsJson = jQuery.parseJSON(<%= q(trendsJson.toString())%>);
+            var failureJson = jQuery.parseJSON(<%= q(failureJson.toString())%>);
+            var runCountPerDayJson = jQuery.parseJSON(<%=q(runCountPerDayJson.toString())%>);
+            generateTrendCharts(trendsJson, {showSubChart: <%=h(viewType.equals(ViewType.YEAR) || viewType.equals(ViewType.ALLTIME))%>});
 
             function subchartDomainUpdated(domain) { changeData(domain); }
             function changeData(domain) {
@@ -97,10 +76,10 @@
                     var currDateStr = currDate.mmddyyyy();
                     var failures = failureJson[currDateStr];
                     var runCount = runCountPerDayJson[currDateStr];
-                    if(Number.isInteger(runCount))
+                    if (Number.isInteger(runCount))
                         totalRuns += runCount;
-                    if(failures != null) {
-                        for(var i = 0; i < failures.length; i++) {
+                    if (failures != null) {
+                        for (var i = 0; i < failures.length; i++) {
                             var fail = failures[i];
                             var testname = ""+ fail.testname;
                             if(!(testname in testFailCount)) {

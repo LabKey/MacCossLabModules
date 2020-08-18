@@ -24,7 +24,6 @@ public class TestMemoryLeakDetail extends TestLeakDetail
     private int bytes; // bytes leaked
 
     public TestMemoryLeakDetail() {
-
     }
 
     public TestMemoryLeakDetail(int testRunId, String name, String type, int bytes) {
@@ -43,5 +42,4 @@ public class TestMemoryLeakDetail extends TestLeakDetail
     {
         this.bytes = bytes;
     }
-
 }

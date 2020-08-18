@@ -62,15 +62,9 @@ public class TestPassDetail implements Comparable<TestPassDetail>
         return testRunId;
     }
 
-    public void setTestRunId(int testRunId)
-    {
-        this.testRunId = testRunId;
-    }
+    public void setTestRunId(int testRunId) { this.testRunId = testRunId; }
 
-    public int getPass()
-    {
-        return pass;
-    }
+    public int getPass() { return pass; }
 
     public void setPass(int pass)
     {
@@ -98,9 +92,9 @@ public class TestPassDetail implements Comparable<TestPassDetail>
     }
 
     public String getLanguage() {
-        if(language == null)
-            return "unknown";  // standard display value so that null values aren't ignored as that would skew data..
-        return language;
+        return language != null
+            ? language
+            : "unknown";  // standard display value so that null values aren't ignored as that would skew data..
     }
 
     public void setLanguage(String language)
@@ -128,10 +122,7 @@ public class TestPassDetail implements Comparable<TestPassDetail>
         this.managedMemory = managedMemory;
     }
 
-    public double getTotalMemory()
-    {
-        return totalMemory;
-    }
+    public double getTotalMemory() { return totalMemory; }
 
     public void setTotalMemory(double totalMemory)
     {

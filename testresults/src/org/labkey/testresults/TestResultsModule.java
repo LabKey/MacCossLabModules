@@ -17,7 +17,6 @@
 package org.labkey.testresults;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.module.DefaultModule;
@@ -47,7 +46,6 @@ public class TestResultsModule extends DefaultModule
     public static final String TR_VIEW = "testresults-view";
 
     public interface ViewType {
-
         String DAY = "day";
         String WEEK= "wk";
         String MONTH = "mo";
@@ -62,9 +60,9 @@ public class TestResultsModule extends DefaultModule
     }
 
     @Override
-    public @Nullable Double getSchemaVersion()
+    public double getVersion()
     {
-        return 13.35;
+        return 13.38;
     }
 
     @Override
