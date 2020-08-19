@@ -5,11 +5,15 @@ import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SqlSelector;
+import org.labkey.api.data.TableSelector;
 import org.labkey.api.notification.EmailMessage;
 import org.labkey.api.notification.EmailService;
+import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.ValidEmail;
+import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.MimeMap;
+import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
 import org.labkey.api.util.Path;
 import org.labkey.api.view.ActionURL;
@@ -63,9 +67,10 @@ public class SendTestResultsEmail implements org.quartz.Job
         return "background-color:" + color + ";";
     }
 
-    public Pair<String, String> getHTMLEmail(org.labkey.api.security.User from) {
+    public Pair<String, String> getHTMLEmail(org.labkey.api.security.User from)
+    {
         // Sends email for all runs since 8:01 the previous morning, at 8am every morning
-        Container parent = ContainerManager.getForPath(new Path("home", "development"));
+        Container parent = ContainerManager.getHomeContainer().getChild("development");
         //parent = ContainerManager.getForPath(new Path(new String[]{"home"})); // DEV ONLY, localhost container path
 
         List<Container> containers = ContainerManager.getAllChildren(parent, from);
@@ -105,9 +110,11 @@ public class SendTestResultsEmail implements org.quartz.Job
                 continue;
 
             // build message as an HTML email message
+            ActionURL containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container);
+            String testResultsUrl = AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + containerUrl.getEncodedLocalURIString();
             message.append("<div style='margin:auto; text-align:center;'>")
-                .append("<h1>").append(container.getName()).append("<br><span style='font-size:11px;'>starting: ").append(start.toString()).append("</span></h1>")
-                .append("<h5 style='margin:0; padding:0;'><a href='https://skyline.ms/project/home/development/" + container.getName() + "/begin.view?end=" + mdyFormatter.format(end) + "'>View Full TestResults</a></h5>")
+                .append("<h1>").append(PageFlowUtil.filter(container.getName())).append("<br><span style='font-size:11px;'>starting: ").append(start.toString()).append("</span></h1>")
+                .append("<h5 style='margin:0; padding:0;'><a href=\"" + testResultsUrl + "end=" + mdyFormatter.format(end) + "\">View Full TestResults</a></h5>")
                 .append("</div>");
 
             // MAIN "rundown" table
@@ -122,11 +129,9 @@ public class SendTestResultsEmail implements org.quartz.Job
                     "<td>Leaks</td>" +
                     "</tr>");
 
-            SQLFragment sqlFragment = new SQLFragment();
-            sqlFragment.append("select * from " + TestResultsSchema.getTableInfoGlobalSettings());
-            SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
             List<Integer> values = new ArrayList<>();
-            sqlSelector.forEach(rs -> {
+            new TableSelector(TestResultsSchema.getTableInfoGlobalSettings()).forEachResults(rs ->
+            {
                 values.add(rs.getInt("warningb"));
                 values.add(rs.getInt("errorb"));
             });

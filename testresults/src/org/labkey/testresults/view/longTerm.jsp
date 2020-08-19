@@ -1,13 +1,9 @@
 <%@ page import="org.json.JSONObject" %>
-<%@ page import="org.labkey.api.data.Container" %>
-<%@ page import="org.labkey.api.data.statistics.StatsService" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.testresults.TestResultsController" %>
-<%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
 <%@ page import="org.labkey.testresults.view.LongTermBean" %>
+<%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
@@ -21,14 +17,20 @@
     String viewType = data.getViewType();
     Container c = getContainer();
 %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("TestResults/css/style.css");
+        dependencies.add("TestResults/css/c3.min.css");
+        dependencies.add("TestResults/js/d3.min.js");
+        dependencies.add("TestResults/js/c3.min.js");
+    }
+%>
+
 <%@include file="menu.jsp" %>
-<script type="text/javascript">
-    LABKEY.requiresCss("/TestResults/css/style.css");
-</script>
-<link rel="stylesheet" href="<%=h(contextPath)%>/TestResults/css/c3.min.css">
-<script src="<%=h(contextPath)%>/TestResults/js/d3.min.js"></script>
-<script src="<%=h(contextPath)%>/TestResults/js/c3.min.js"></script>
-<script src="//code.jquery.com/jquery-1.10.2.js"></script>
 <br />
 <form action="<%=h(new ActionURL(TestResultsController.LongTermAction.class, c))%>">
     View Type: <select name="viewType" onchange="this.form.submit()">

@@ -277,24 +277,30 @@ public class RunDetail implements Comparable<RunDetail>
         if (pointsummary == null)
             return new Double[0];
 
-        ByteArrayInputStream bais = new ByteArrayInputStream(pointsummary);
-        DataInputStream in = new DataInputStream(bais);
-        StringBuilder str = new StringBuilder();
-        while (in.available() > 0) {
-            str.append(in.readUTF());
-        }
-        String[] strValues = str.toString().split(",");
         List<Double> values = new ArrayList<>();
-        try {
-            for (String val: strValues) {
-                double d = Double.parseDouble(val);
-                values.add(d);
+        try (
+            ByteArrayInputStream bais = new ByteArrayInputStream(pointsummary);
+            DataInputStream in = new DataInputStream(bais);
+        ) {
+            StringBuilder str = new StringBuilder();
+            while (in.available() > 0)
+            {
+                str.append(in.readUTF());
             }
-        } catch (Exception e) {
-            e.getStackTrace();
+            String[] strValues = str.toString().split(",");
+            try
+            {
+                for (String val : strValues)
+                {
+                    double d = Double.parseDouble(val);
+                    values.add(d);
+                }
+            }
+            catch (Exception e)
+            {
+                e.getStackTrace();
+            }
         }
-        in.close();
-        bais.close();
         return values.toArray(new Double[0]);
     }
 

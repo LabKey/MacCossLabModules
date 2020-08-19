@@ -21,7 +21,7 @@
     Container c = getContainer();
 %>
 
-<<%@include file="menu.jsp" %>
+<%@include file="menu.jsp" %>
 <script type="text/javascript">
     LABKEY.requiresCss("/TestResults/css/style.css");
 </script>
