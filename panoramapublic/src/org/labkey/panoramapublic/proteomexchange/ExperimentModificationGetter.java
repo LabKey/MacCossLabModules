@@ -45,8 +45,8 @@ public class ExperimentModificationGetter
     {
         List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(expAnnot);
 
-        Map<Integer, PxModification> strModMap = new HashMap<>();
-        Map<Integer, PxModification> isoModMap = new HashMap<>();
+        Map<Long, PxModification> strModMap = new HashMap<>();
+        Map<Long, PxModification> isoModMap = new HashMap<>();
 
         UnimodModifications uMods = getUnimodMods(); // Read the UNIMOD modifications
 
@@ -525,7 +525,7 @@ public class ExperimentModificationGetter
 
     static class Modification implements IModification
     {
-        private int _id;
+        private long _id;
         private String _name;
         private String _aminoAcid;
         private String _terminus;
@@ -535,12 +535,12 @@ public class ExperimentModificationGetter
         private Integer _unimodId;
 
         @Override
-        public int getId()
+        public long getId()
         {
             return _id;
         }
 
-        public void setId(int id)
+        public void setId(long id)
         {
             _id = id;
         }
