@@ -304,46 +304,34 @@ public class TestResultsController extends SpringActionController
     }
 
     public static User[] getTrainingDataForContainer(Container c, String username) {
-        SimpleFilter userFilter = null;
+        SQLFragment sqlFragment = new SQLFragment();
+
+        sqlFragment.append(
+            "SELECT * FROM testresults.user " +
+            "JOIN testresults.userdata ON testresults.user.id = testresults.userdata.userid " +
+            "WHERE testresults.userdata.container = ?");
+        sqlFragment.add(c.getEntityId());
         if (username != null && !username.isEmpty())
         {
-            ArrayList<String> usernameCollection = new ArrayList<>();
-            usernameCollection.add(username);
-            userFilter = new SimpleFilter();
-            SimpleFilter.InClause in = new SimpleFilter.InClause(FieldKey.fromParts("username"), usernameCollection);
-            userFilter.addClause(in);
+            sqlFragment.append(" AND testresults.user.username = ?");
+            sqlFragment.add(username);
         }
 
-        User[] users = new TableSelector(TestResultsSchema.getTableInfoUser(), userFilter, null).getArray(User.class);
-        SQLFragment sqlFragment = new SQLFragment();
-        sqlFragment.append("SELECT * FROM testresults.userdata WHERE container = ?");
-        if (userFilter != null)
-        {
-            sqlFragment.append(" AND userid IN (");
-            for (int i = 0; i < users.length; i++)
-            {
-                if (i > 0)
-                    sqlFragment.append(',');
-                sqlFragment.append(users[i].getId());
-            }
-            sqlFragment.append(')');
-        }
-        sqlFragment.add(c.getEntityId());
-        SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
-        sqlSelector.forEach(rs -> {
-            for (User user : users) {
-                if (user.getId() == rs.getInt("userid")) {
-                    user.setMeanmemory(rs.getDouble("meanmemory"));
-                    user.setMeantestsrun(rs.getDouble("meantestsrun"));
-                    user.setStddevtestsrun(rs.getDouble("stddevtestsrun"));
-                    user.setStddevmemory(rs.getDouble("stddevmemory"));
-                    user.setContainer(c);
-                    user.setActive(rs.getBoolean("active"));
-                }
-            }
+        List<User> users = new ArrayList<>();
+        new SqlSelector(TestResultsSchema.getSchema(), sqlFragment).forEach(rs -> {
+            User u = new User();
+            u.setId(rs.getInt("id"));
+            u.setUsername(rs.getString("username"));
+            u.setMeanmemory(rs.getDouble("meanmemory"));
+            u.setMeantestsrun(rs.getDouble("meantestsrun"));
+            u.setStddevtestsrun(rs.getDouble("stddevtestsrun"));
+            u.setStddevmemory(rs.getDouble("stddevmemory"));
+            u.setContainer(c);
+            u.setActive(rs.getBoolean("active"));
+            users.add(u);
         });
-        Arrays.sort(users);
-        return users;
+        Collections.sort(users);
+        return users.toArray(new User[0]);
     }
 
     /**

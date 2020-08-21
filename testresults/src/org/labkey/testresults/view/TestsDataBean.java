@@ -277,7 +277,6 @@ public class TestsDataBean
             int failTotal = 0;
             int avgMemoryTotal = 0;
             int durationTotal = 0;
-            double medianMem = 0;
             for (RunDetail run: runs) {
                 passTotal += run.getPassedtests();
                 failTotal += run.getFailedtests();

@@ -207,9 +207,9 @@ public class SendTestResultsEmail implements org.quartz.Job
 
                         message.append("<tr style='border-bottom:1px solid grey;'>")
                             .append("\n<td style=\"" + style + " padding: 6px;\"><a href=\"" +
-                                "https://skyline.ms" + new ActionURL(TestResultsController.ShowRunAction.class, container) + "runId=" + run.getId()
-                                + "\" target=\"_blank\" style=\"text-decoration:none; font-weight:600; color:black;\">"
-                                + run.getUserName() + "</a></td>")
+                                new ActionURL(TestResultsController.ShowRunAction.class, container).addParameter("runId", Integer.valueOf(run.getId())).getURIString() +
+                                "\" target=\"_blank\" style=\"text-decoration:none; font-weight:600; color:black;\">" +
+                                PageFlowUtil.filter(run.getUserName()) + "</a></td>")
                             .append("\n<td style='padding: 6px; " + (highlightMemory ? style : "") + "'>" + data.round(run.getAverageMemory(), 2) + "</td>")
                             .append("\n<td style='padding: 6px; " + (highlightRuns ? style : "") + "'>" + run.getPassedtests() + "</td>")
                             .append("\n<td style='padding: 6px;'>" + run.getPostTime() + "</td>")
@@ -243,7 +243,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                     fileCount++;
             }
             if (fileCount > 0)
-                message.append("<a href=\"https://skyline.ms" + new ActionURL(TestResultsController.ErrorFilesAction.class, container) + "\">" + fileCount + " post error file(s)</a>");
+                message.append("<a href=\"" + new ActionURL(TestResultsController.ErrorFilesAction.class, container).getURIString() + "\">" + fileCount + " post error file(s)</a>");
             message.append("</td>")
                 .append("</tr>")
                 .append("</table>");

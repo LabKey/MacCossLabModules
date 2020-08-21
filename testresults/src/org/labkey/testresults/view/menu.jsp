@@ -18,7 +18,7 @@
         <li><a href="<%=h(new ActionURL(TestResultsController.ShowFlaggedAction.class, menuContainer))%>" style="color:#fff;">-Flags</a></li>
         <li><a href="<%=h(new ActionURL(TestResultsController.TrainingDataViewAction.class, menuContainer))%>" style="color:#fff;">-Training Data</a></li>
         <li><a href="<%=h(new ActionURL(TestResultsController.ErrorFilesAction.class, menuContainer))%>" style="color:#fff;">-Posting Errors</a></li>
-        <li><a href="https://skyline.gs.washington.edu/labkey/project/home/issues/begin.view?" target="_blank" title="Report bugs/Request features.  Use 'TestResults' as area when creating new issue" style="color:#fff;">-Issues</a></li>
+        <li><a href="/project/home/issues/begin.view?" target="_blank" title="Report bugs/Request features.  Use 'TestResults' as area when creating new issue" style="color:#fff;">-Issues</a></li>
         <img src="<%=getWebappURL("TestResults/img/uw.png")%>" id="uw">
         <span id="stats"></span>
     </ul>
