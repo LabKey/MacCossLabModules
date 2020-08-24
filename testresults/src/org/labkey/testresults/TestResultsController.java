@@ -307,13 +307,14 @@ public class TestResultsController extends SpringActionController
         SQLFragment sqlFragment = new SQLFragment();
 
         sqlFragment.append(
-            "SELECT * FROM testresults.user " +
-            "JOIN testresults.userdata ON testresults.user.id = testresults.userdata.userid " +
-            "WHERE testresults.userdata.container = ?");
+            "SELECT u.id, u.username, d.meantestsrun, d.meanmemory, d.stddevtestsrun, d.stddevmemory, d.active " +
+            "FROM testresults.user u " +
+            "JOIN testresults.userdata d ON u.id = d.userid " +
+            "WHERE d.container = ?");
         sqlFragment.add(c.getEntityId());
         if (username != null && !username.isEmpty())
         {
-            sqlFragment.append(" AND testresults.user.username = ?");
+            sqlFragment.append(" AND u.username = ?");
             sqlFragment.add(username);
         }
 
@@ -322,8 +323,8 @@ public class TestResultsController extends SpringActionController
             User u = new User();
             u.setId(rs.getInt("id"));
             u.setUsername(rs.getString("username"));
-            u.setMeanmemory(rs.getDouble("meanmemory"));
             u.setMeantestsrun(rs.getDouble("meantestsrun"));
+            u.setMeanmemory(rs.getDouble("meanmemory"));
             u.setStddevtestsrun(rs.getDouble("stddevtestsrun"));
             u.setStddevmemory(rs.getDouble("stddevmemory"));
             u.setContainer(c);
