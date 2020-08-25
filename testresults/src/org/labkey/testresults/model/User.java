@@ -5,7 +5,7 @@ import org.labkey.api.data.Container;
 /**
  * Created by Yuval on 6/10/2016.
  */
-public class User  implements Comparable<User>
+public class User implements Comparable<User>
 {
     private int id;
     private String username;
@@ -18,10 +18,9 @@ public class User  implements Comparable<User>
 
     public User()
     {
-
     }
 
-    public User(int id, String username, double meantestsrun,double meanmemory,double stddevtestsrun, double stddevmemory, boolean active) {
+    public User(int id, String username, double meantestsrun, double meanmemory, double stddevtestsrun, double stddevmemory, boolean active) {
         this.id = id;
         this.username = username;
         this.meantestsrun = meantestsrun;
@@ -36,10 +35,7 @@ public class User  implements Comparable<User>
         this.username = username;
     }
 
-    public int getId()
-    {
-        return id;
-    }
+    public int getId() { return id; }
 
     public void setId(int id)
     {
@@ -56,30 +52,18 @@ public class User  implements Comparable<User>
         this.username = username;
     }
 
-    public double getStddevmemory()
-    {
-        return stddevmemory;
-    }
+    public double getStddevmemory() { return stddevmemory; }
 
     public void setStddevmemory(double stddevmemory)
     {
         this.stddevmemory = stddevmemory;
     }
 
-    public double getStddevtestsrun()
-    {
-        return stddevtestsrun;
-    }
+    public double getStddevtestsrun() { return stddevtestsrun; }
 
-    public void setStddevtestsrun(double stddevtestsrun)
-    {
-        this.stddevtestsrun = stddevtestsrun;
-    }
+    public void setStddevtestsrun(double stddevtestsrun) { this.stddevtestsrun = stddevtestsrun; }
 
-    public double getMeanmemory()
-    {
-        return meanmemory;
-    }
+    public double getMeanmemory() { return meanmemory; }
 
     public void setMeanmemory(double meanmemory)
     {
@@ -111,19 +95,52 @@ public class User  implements Comparable<User>
     public void setActive(boolean active) { this.active = active; }
 
     public boolean fitsRunCountTrainingData(int testsRunCount, int stdDeviations) {
-        if(getMeantestsrun() == 0.0 || getMeanmemory() == 0.0)  // if no training data for user
-            return true;
-        double lowerBound = getMeantestsrun() - getStddevtestsrun() * stdDeviations;
-        return (lowerBound <= testsRunCount);
+        return getMeantestsrun() == 0.0 || getMeanmemory() == 0.0 ||  // if no training data for user
+            lowerBound(getMeantestsrun(), getStddevtestsrun(), stdDeviations) <= testsRunCount;
     }
 
     public boolean fitsMemoryTrainingData(double avgMemory, int stdDeviations) {
-        if(getMeantestsrun() == 0.0 || getMeanmemory() == 0.0) // if no training data for user
-            return true;
-        double topBound = getMeanmemory() + getStddevmemory() * stdDeviations;
-        double lowerBound = getMeanmemory() - getStddevmemory() * stdDeviations;
-        return (lowerBound <= avgMemory && avgMemory <= topBound);
+        return getMeantestsrun() == 0.0 || getMeanmemory() == 0.0 || // if no training data for user
+            avgMemory <= upperBound(getMeanmemory(), getStddevmemory(), stdDeviations);
     }
+
+    public static double lowerBound(double mean, double stdDev, int stdDevs) { return Math.max(mean - stdDev * stdDevs, 0); }
+    public static double upperBound(double mean, double stdDev, int stdDevs) { return mean + stdDev * stdDevs; }
+
+    public String runBoundHtmlString(int warningBoundary, int errorBoundary) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Good: ");
+        sb.append("> ");
+        sb.append((int) Math.round(lowerBound(getMeantestsrun(), getStddevtestsrun(), warningBoundary)) - 1);
+        sb.append("\n");
+        sb.append("Warn: ");
+        sb.append((int) Math.round(lowerBound(getMeantestsrun(), getStddevtestsrun(), errorBoundary)));
+        sb.append(" - ");
+        sb.append((int) Math.round(lowerBound(getMeantestsrun(), getStddevtestsrun(), warningBoundary)) - 1);
+        sb.append("\n");
+        sb.append("Error: ");
+        sb.append("< ");
+        sb.append((int) Math.round(lowerBound(getMeantestsrun(), getStddevtestsrun(), errorBoundary)));
+        return sb.toString();
+    }
+
+    public String memBoundHtmlString(int warningBoundary, int errorBoundary) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Good: ");
+        sb.append("< ");
+        sb.append((int) Math.round(upperBound(getMeanmemory(), getStddevmemory(), warningBoundary)) + 1);
+        sb.append("\n");
+        sb.append("Warn: ");
+        sb.append((int) Math.round(upperBound(getMeanmemory(), getStddevmemory(), warningBoundary)) + 1);
+        sb.append(" - ");
+        sb.append((int) Math.round(upperBound(getMeanmemory(), getStddevmemory(), errorBoundary)));
+        sb.append("\n");
+        sb.append("Error: ");
+        sb.append("> ");
+        sb.append((int) Math.round(upperBound(getMeanmemory(), getStddevmemory(), errorBoundary)));
+        return sb.toString();
+    }
+
     @Override
     public int compareTo(User o)
     {

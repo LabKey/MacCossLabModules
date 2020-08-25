@@ -47,7 +47,6 @@ public class TestResultsModule extends DefaultModule
     public static final String TR_VIEW = "testresults-view";
 
     public interface ViewType {
-
         String DAY = "day";
         String WEEK= "wk";
         String MONTH = "mo";
@@ -64,7 +63,7 @@ public class TestResultsModule extends DefaultModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 13.35;
+        return 13.38;
     }
 
     @Override

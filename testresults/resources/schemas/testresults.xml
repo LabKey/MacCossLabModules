@@ -18,6 +18,40 @@
  -->
 <tables xsi:schemaLocation="http://labkey.org/data/xml ..\..\..\..\schemas\tableInfo.xsd"
         xmlns="http://labkey.org/data/xml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <table tableName="globalsettings" tableDbType="TABLE">
+        <columns>
+            <column columnName="warningb"/>
+            <column columnName="errorb"/>
+        </columns>
+    </table>
+    <table tableName="handleleaks" tableDbType="TABLE">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="testrunid"/>
+            <column columnName="testname"/>
+            <column columnName="handles"/>
+            <column columnName="type"/>
+        </columns>
+    </table>
+    <table tableName="hangs" tableDbType="TABLE">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="testrunid"/>
+            <column columnName="testname"/>
+            <column columnName="pass"/>
+            <column columnName="timestamp"/>
+            <column columnName="language"/>
+        </columns>
+    </table>
+    <table tableName="memoryleaks" tableDbType="TABLE">
+        <columns>
+            <column columnName="id"/>
+            <column columnName="testrunid"/>
+            <column columnName="testname"/>
+            <column columnName="bytes"/>
+            <column columnName="type"/>
+        </columns>
+    </table>
     <table tableName="testfails" tableDbType="TABLE">
         <columns>
             <column columnName="id"/>
@@ -30,21 +64,21 @@
             <column columnName="timestamp"/>
         </columns>
     </table>
-    <table tableName="userdata" tableDbType="TABLE">
+    <table tableName="testpasses" tableDbType="TABLE">
         <columns>
             <column columnName="id"/>
-            <column columnName="userid"/>
-            <column columnName="container"/>
-            <column columnName="meantestsrun"/>
-            <column columnName="meanmemory"/>
-            <column columnName="stddevtestsrun"/>
-            <column columnName="stddevmemory"/>
-        </columns>
-    </table>
-    <table tableName="trainruns" tableDbType="TABLE">
-        <columns>
-            <column columnName="id"/>
-            <column columnName="runid"/>
+            <column columnName="testrunid"/>
+            <column columnName="testname"/>
+            <column columnName="pass"/>
+            <column columnName="testid"/>
+            <column columnName="language"/>
+            <column columnName="managedmemory"/>
+            <column columnName="totalmemory"/>
+            <column columnName="duration"/>
+            <column columnName="timestamp"/>
+            <column columnName="userandgdihandles"/>
+            <column columnName="committedmemory"/>
+            <column columnName="handles"/>
         </columns>
     </table>
     <table tableName="testruns" tableDbType="TABLE">
@@ -68,46 +102,28 @@
             <column columnName="githash"/>
         </columns>
     </table>
-    <table tableName="handleleaks" tableDbType="TABLE">
+    <table tableName="trainruns" tableDbType="TABLE">
         <columns>
             <column columnName="id"/>
-            <column columnName="testrunid"/>
-            <column columnName="testname"/>
-            <column columnName="handles"/>
-            <column columnName="type"/>
-        </columns>
-    </table>
-    <table tableName="testpasses" tableDbType="TABLE">
-        <columns>
-            <column columnName="id"/>
-            <column columnName="testrunid"/>
-            <column columnName="testname"/>
-            <column columnName="pass"/>
-            <column columnName="testid"/>
-            <column columnName="language"/>
-            <column columnName="managedmemory"/>
-            <column columnName="totalmemory"/>
-            <column columnName="duration"/>
-            <column columnName="timestamp"/>
-            <column columnName="userandgdihandles"/>
-            <column columnName="committedmemory"/>
-            <column columnName="handles"/>
+            <column columnName="runid"/>
         </columns>
     </table>
     <table tableName="user" tableDbType="TABLE">
         <columns>
             <column columnName="id"/>
             <column columnName="username"/>
-            <column columnName="active"/>
         </columns>
     </table>
-    <table tableName="memoryleaks" tableDbType="TABLE">
+    <table tableName="userdata" tableDbType="TABLE">
         <columns>
             <column columnName="id"/>
-            <column columnName="testrunid"/>
-            <column columnName="testname"/>
-            <column columnName="bytes"/>
-            <column columnName="type"/>
+            <column columnName="userid"/>
+            <column columnName="container"/>
+            <column columnName="meantestsrun"/>
+            <column columnName="meanmemory"/>
+            <column columnName="stddevtestsrun"/>
+            <column columnName="stddevmemory"/>
+            <column columnName="active"/>
         </columns>
     </table>
 </tables>

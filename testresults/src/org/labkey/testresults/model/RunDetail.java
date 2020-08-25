@@ -33,6 +33,8 @@ import java.util.zip.GZIPInputStream;
  */
 public class RunDetail implements Comparable<RunDetail>
 {
+    public final static int HANG_MILLISECONDS = 30*60*1000; // 30 minutes
+
     private int id;
     private int userid;
     private String username;
@@ -48,6 +50,7 @@ public class RunDetail implements Comparable<RunDetail>
     private TestFailDetail[] failures; // all failures which resulted in this run
     private TestPassDetail[] passes; // all passes(successful tests runs) in this run
     private TestMemoryLeakDetail[] testmemoryleaks; // all memory testmemoryleaks detected during this run
+    private TestHangDetail hang;
 
     private byte[] xml; // compressed xml
 
@@ -57,14 +60,14 @@ public class RunDetail implements Comparable<RunDetail>
     private int failedtests;
     private int leakedtests;
     private int averagemem;
+    private Integer medianmem;
 
     public RunDetail()
     {
-
     }
 
     public RunDetail(int userid, int duration, Date posttime, Date timestamp, String os, int revision, String gitHash, Container container, boolean flagged,
-                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem, byte[] log) {
+                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem, byte[] log, int medianmem) {
         this.userid = userid;
         this.username = null;
         this.duration = duration;
@@ -76,6 +79,7 @@ public class RunDetail implements Comparable<RunDetail>
         this.failures = new TestFailDetail[0];
         this.passes = new TestPassDetail[0];
         this.testmemoryleaks = new TestMemoryLeakDetail[0];
+        this.hang = null;
         this.flagged = flagged;
         this.timestamp = timestamp;
         this.xml = xml;
@@ -85,10 +89,11 @@ public class RunDetail implements Comparable<RunDetail>
         this.leakedtests = leakedtests;
         this.averagemem = averagemem;
         this.log = log;
+        this.medianmem = medianmem;
     }
     public RunDetail(int userid, String username, int duration, Date posttime, Date timestamp, String os, int revision, String gitHash, Container container, boolean flagged,
-                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem) {
-        this(userid, duration, posttime, timestamp, os, revision, gitHash, container, flagged, xml, pointsummary, passedtests, failedtests, leakedtests, averagemem, new byte[0]);
+                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem, int medianmem) {
+        this(userid, duration, posttime, timestamp, os, revision, gitHash, container, flagged, xml, pointsummary, passedtests, failedtests, leakedtests, averagemem, new byte[0], medianmem);
         this.username = username;
     }
 
@@ -146,15 +151,12 @@ public class RunDetail implements Comparable<RunDetail>
         this.testmemoryleaks = testmemoryleaks;
     }
 
-    public TestFailDetail[] getFailures()
-    {
-        return failures;
-    }
+    public TestFailDetail[] getFailures() { return failures; }
 
-    public void setFailures(TestFailDetail[] failures)
-    {
-        this.failures = failures;
-    }
+    public void setFailures(TestFailDetail[] failures) { this.failures = failures; }
+
+    public TestHangDetail getHang() { return hang; }
+    public void setHang(TestHangDetail hang) { this.hang = hang; }
 
     public TestPassDetail[] getPasses()
     {
@@ -165,15 +167,9 @@ public class RunDetail implements Comparable<RunDetail>
     {
         this.passes = passes;
     }
-    public void setPasses(List<TestPassDetail> passes)
-    {
-        this.passes = passes.toArray(new TestPassDetail[passes.size()]);
-    }
+    public void setPasses(List<TestPassDetail> passes) { this.passes = passes.toArray(new TestPassDetail[0]); }
 
-    public int getId()
-    {
-        return id;
-    }
+    public int getId() { return id; }
 
     public void setId(int id)
     {
@@ -197,10 +193,7 @@ public class RunDetail implements Comparable<RunDetail>
         this.duration = duration;
     }
 
-    public int getUserid()
-    {
-        return userid;
-    }
+    public int getUserid() { return userid; }
 
     public void setUserid(int userid)
     {
@@ -227,10 +220,7 @@ public class RunDetail implements Comparable<RunDetail>
         isTrainRun = trainRun;
     }
 
-    public boolean isFlagged() // if true run is not considered in stats & generated charts
-    {
-        return flagged;
-    }
+    public boolean isFlagged() { return flagged; } // if true run is not considered in stats & generated charts
 
     public void setFlagged(boolean flagged)
     {
@@ -244,10 +234,7 @@ public class RunDetail implements Comparable<RunDetail>
         this.timestamp = timestamp;
     }
 
-    public byte[] getXml()
-    {
-        return xml;
-    }
+    public byte[] getXml() { return xml; }
 
     public void setXml(byte[] xml)
     {
@@ -262,58 +249,59 @@ public class RunDetail implements Comparable<RunDetail>
     public void setLog(byte[] log) { this.log = log; }
 
     public String getDecodedLog() {
-        byte[] bytes = getLog();
-        if(bytes == null)
-            return "";
+        return decode(getLog());
+    }
 
+    public static String decode(byte[] bytes) {
+        if (bytes == null)
+            return "";
         ByteArrayInputStream baos = new ByteArrayInputStream(bytes);
         StringBuilder out = new StringBuilder();
-        try(GZIPInputStream s = new GZIPInputStream(baos)){
+        try (GZIPInputStream s = new GZIPInputStream(baos)) {
             BufferedReader reader = Readers.getReader(s);
             BufferedReader in = new BufferedReader(reader);
             for (String line = in.readLine(); line != null; line = in.readLine()) {
                 out.append(line);
                 out.append("\r\n");
             }
-
         }
         catch (IOException e1)
         {
             e1.printStackTrace();
         }
-
         return out.toString();
     }
 
-
     // decodes point pass summary data points from the byte array
     public Double[] getPoints() throws IOException {
-        if(pointsummary == null)
+        if (pointsummary == null)
             return new Double[0];
 
-        ByteArrayInputStream bais = new ByteArrayInputStream(pointsummary);
-        DataInputStream in = new DataInputStream(bais);
-        String str = "";
-        while (in.available() > 0) {
-            String element = in.readUTF();
-            str+=element;
-        }
-        String[] strValues = str.split(",");
         List<Double> values = new ArrayList<>();
-        try {
-
-            for(String val: strValues) {
-                double d = Double.parseDouble(val);
-                values.add(d);
-
+        try (
+            ByteArrayInputStream bais = new ByteArrayInputStream(pointsummary);
+            DataInputStream in = new DataInputStream(bais);
+        ) {
+            StringBuilder str = new StringBuilder();
+            while (in.available() > 0)
+            {
+                str.append(in.readUTF());
             }
-        } catch (Exception e) {
-            e.getStackTrace();
+            String[] strValues = str.toString().split(",");
+            try
+            {
+                for (String val : strValues)
+                {
+                    double d = Double.parseDouble(val);
+                    values.add(d);
+                }
+            }
+            catch (Exception e)
+            {
+                e.getStackTrace();
+            }
         }
-
-        in.close();
-        bais.close();
-        return values.toArray(new Double[values.size()]);
+        return values.toArray(new Double[0]);
     }
 
     public int getPassedtests() { return passedtests; }
@@ -332,35 +320,53 @@ public class RunDetail implements Comparable<RunDetail>
 
     public int getAveragemem() { return averagemem; }
 
+    public void setMedianmem(Integer mem) { medianmem = mem;}
+
+    public int getMedianmem() { return medianmem != null ? medianmem : 0; }
+
     public double getAverageMemory() {
-        if(averagemem != 0) {
+        if (averagemem != 0) {
             return averagemem;
-        } else if(passes == null || (passes.length > 0 && passes[0] == null))
+        } else if (passes == null || (passes.length > 0 && passes[0] == null))
             return 0d;
         double total = 0;
-        for(TestPassDetail pass : passes) {
+        for (TestPassDetail pass : passes) {
             total += pass.getTotalMemory();
         }
         return total/passes.length;
     }
 
+    public double getMedian1000Memory() {
+        return 0;
+        /*if (medianmem == null) {
+            return 0d;
+        }
+        else if(medianmem != 0) {
+            return medianmem;
+        } else if(passes == null || (passes.length > 0 && passes[0] == null))
+            return 0d;
+        if (passes.length > 1000) {
+            return passes[passes.length-500].getTotalMemory();
+        }
+        else if (passes.length < 1000 && passes.length>100){
+            return passes[passes.length-50].getTotalMemory();
+        }
+        else {
+            return passes[passes.length-1].getTotalMemory();
+        }*/
+    }
+
     public boolean hasHang() {
-        if(passes != null && passes.length > 0 && getPostTime() != null && passes[passes.length-1].getTimestamp() != null) {
-            /* If posttime is over 30 minutes(1800000ms) from last test run then assume there was a hang */
-            return getPostTime().getTime() - passes[passes.length-1].getTimestamp().getTime() > 1800000;
+        if (passes != null && passes.length > 0 && getPostTime() != null && passes[passes.length-1].getTimestamp() != null) {
+            return getPostTime().getTime() - passes[passes.length-1].getTimestamp().getTime() > HANG_MILLISECONDS;
         }
         return false;
     }
 
     @Override
     public int compareTo(RunDetail other) {
-        if(this.posttime != null && other.posttime!= null)
+        if (this.posttime != null && other.posttime != null)
             return this.posttime.compareTo(other.posttime);
-        if (this.id  > other.id)
-            return 1;
-        else if (this.id < other.id)
-            return -1;
-        else
-            return 0;
+        return Integer.compare(this.id, other.id);
     }
 }
