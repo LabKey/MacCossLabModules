@@ -19,8 +19,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.validator.routines.EmailValidator;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.MutatingApiAction;
@@ -33,7 +33,6 @@ import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.JdbcType;
 import org.labkey.api.data.Parameter;
-import org.labkey.api.data.PropertyManager;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.Sort;
@@ -154,10 +153,7 @@ public class TestResultsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
-        {
-            return root;
-        }
+        public void addNavTrail(NavTree root) { }
     }
 
     // return TestDataBean specifically for rundown.jsp aka the home page of the module
@@ -364,10 +360,7 @@ public class TestResultsController extends SpringActionController
         }
 
         @Override
-        public NavTree appendNavTrail(NavTree root)
-        {
-            return root;
-        }
+        public void addNavTrail(NavTree root) { }
     }
 
     // API endpoint for adding or removing a run for the training set needs parameters: runId=int&train=boolean
