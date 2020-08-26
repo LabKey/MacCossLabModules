@@ -1,29 +1,25 @@
 <%@ page import="org.json.JSONObject" %>
-<%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.data.TableSelector" %>
-<%@ page import="org.labkey.api.data.statistics.StatsService" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.testresults.TestResultsController" %>
 <%@ page import="org.labkey.testresults.TestResultsSchema" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.User" %>
 <%@ page import="org.labkey.testresults.view.TestsDataBean" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
-<%@ page import="java.util.ArrayList" %>
-<%@ page import="java.util.Arrays" %>
+<%@ page import="java.util.Calendar" %>
+<%@ page import="java.util.Collections" %>
 <%@ page import="java.util.Comparator" %>
 <%@ page import="java.util.Date" %>
+<%@ page import="java.util.HashSet" %>
 <%@ page import="java.util.Iterator" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
-<%@ page import="java.util.NavigableSet" %>
 <%@ page import="java.util.TreeMap" %>
 <%@ page import="java.util.TreeSet" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+<%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
 <%
     /**
@@ -34,222 +30,291 @@
     TestsDataBean data = (TestsDataBean)me.getModelBean();
     final String contextPath = AppProps.getInstance().getContextPath();
 
-    String startDate = getViewContext().getRequest().getParameter("start");
-    String endDate = getViewContext().getRequest().getParameter("end");
-    boolean showSingleUser = true;
-    String user = getViewContext().getRequest().getParameter("user");
-    if(user == null || user.equals(""))
-        showSingleUser = false;
+    User userObj = data.getUsers().length == 1 ? data.getUsers()[0] : null;
+
+    HttpServletRequest req = getViewContext().getRequest();
+    String startDate = req.getParameter("start");
+    String endDate = req.getParameter("end");
+    String user = req.getParameter("user");
+    boolean showSingleUser = user != null && !user.equals("");
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
     Date today = new Date();
-    if(startDate == null)
+    if (startDate == null)
         startDate = df.format(today);
-    if(endDate == null)
+    if (endDate == null)
         endDate = df.format(today);
+    String dataInclude = req.getParameter("datainclude");
+    if (dataInclude == null ||
+        (!dataInclude.equalsIgnoreCase("date") && !dataInclude.equalsIgnoreCase("train") && !dataInclude.equalsIgnoreCase("both")))
+        dataInclude = "date";
 
-    StatsService service = StatsService.get();
     JSONObject trendsJson = null;
-    if(data != null && data.getRuns().length > 0) {
+    if (data != null && data.getRuns().length > 0) {
         trendsJson = data.getTrends();
     }
     Container c = getViewContext().getContainer();
+    HashSet<Long> trainRuns = new HashSet<>();
+
+    TreeSet<RunDetail> sortedRuns = new TreeSet<>();
+    TreeMap<String, Integer> userFailCount = new TreeMap<>();
+    Calendar cal = Calendar.getInstance();
+    for (RunDetail r: data.getRuns()) {
+        sortedRuns.add(r);
+        if (r.isTrainRun())
+        {
+            cal.setTime(r.getPostTime());
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            trainRuns.add(cal.getTime().getTime());
+        }
+    }
 %>
 <script type="text/javascript">
     LABKEY.requiresCss("/TestResults/css/style.css");
 </script>
-<script src="<%=h(contextPath)%>/TestResults/js/d3.v3.js"></script>
+<link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
+<link rel="stylesheet" href="<%=h(contextPath)%>/TestResults/css/c3.min.css">
+<script src="<%=h(contextPath)%>/TestResults/js/d3.min.js"></script>
 <script src="<%=h(contextPath)%>/TestResults/js/c3.min.js"></script>
 <script src="<%=h(contextPath)%>/TestResults/js/multiselect.datepicker.js"></script>
-<link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
 <script src="//code.jquery.com/jquery-1.10.2.js"></script>
 <script src="//code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
 <div id="content">
-    <div id="menu">
-        <ul>
-            <li><a href="<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>" style="color:#fff;">-Overview</a></li>
-            <li><a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>" style="color:#fff;">-User</a></li>
-            <li><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>" style="color:#fff;">-Run</a></li>
-            <li><a href="<%=h(new ActionURL(TestResultsController.LongTermAction.class, c))%>" style="color:#fff;">-Long Term</a></li>
-            <li><a href="<%=h(new ActionURL(TestResultsController.ShowFlaggedAction.class, c))%>" style="color:#fff;">-Flags</a></li>
-            <li><a href="<%=h(new ActionURL(TestResultsController.TrainingDataViewAction.class, c))%>" style="color:#fff;">-Training Data</a></li>
-            <li><a href="<%=h(new ActionURL(TestResultsController.ErrorFilesAction.class, c))%>" style="color:#fff;">-Posting Errors</a></li>
-            <li><a href="https://skyline.gs.washington.edu/labkey/project/home/issues/begin.view?" target="_blank" title="Report bugs/Request features.  Use 'TestResults' as area when creating new issue" style="color:#fff;">-Issues</a></li>
-            <img src="<%=h(contextPath)%>/TestResults/img/uw.png" id="uw">
-        </ul>
+    <%@include file="menu.jsp" %>
+<%--    <form action="<%=h(new ActionURL(TestResultsController.PostAction.class, c))%>" method="post" enctype="multipart/form-data">--%>
+<%--        <labkey:csrf/>--%>
+<%--        <input type="file" name="xml_file"><input type="submit" value="submit">This form is meant to parse and store xml files into the database--%>
+<%--    </form>--%>
+    <%
+        List<User> users = new TableSelector(TestResultsSchema.getInstance().getTableInfoUser(), null, null).getArrayList(User.class);
+        Collections.sort(users, Comparator.comparing(User::getUsername)); %>
+    <div style="margin: 12px 0;">
+        <select id="users">
+            <option disabled selected> -- select an option -- </option>
+            <% for (User u: users) { %>
+            <option value="<%=h(u.getUsername())%>"<% if (u.getUsername().equals(user)) { %> selected<% } %>><%=h(u.getUsername())%></option>
+            <% } %>
+        </select>
     </div>
-    <br />
     <!--If data is not null (runs exist for user in selected date range)-->
-    <%if(data != null && data.getRuns().length >= 0) {%>
-        <div id="datePickers">
-            <strong>Select date range</strong> <br />
-                <div id="jrange" class="dates">
-                    <input />
-                    <div></div>
-                </div>
+    <% if (data != null && data.getRuns().length >= 0) { %>
+    <div id="datePickers" style="margin: 12px 0;">
+        <strong>Date range</strong><br>
+        <div id="jrange" class="dates">
+            <input value="<% if (startDate.equals(endDate)) { %><%=h(startDate)%><% } else { %><%=h(startDate + " - " + endDate) %><% } %>">
+            <div></div>
         </div>
-    <%}%>
-      <%if(!showSingleUser) {
-           User[] users = new TableSelector(TestResultsSchema.getInstance().getTableInfoUser(), null, null).getArray(User.class);
-           List<User> uniqueUsers = new ArrayList<>(Arrays.asList(users));
-           uniqueUsers.sort(Comparator.comparing(User::getUsername)); %>
-       <p>No user selected, please select from the following list:</p>
-       <select id="users">
-           <option disabled selected> -- select an option -- </option>
-           <%for(User u: uniqueUsers) {%>
-               <option value="<%=h(u.getUsername())%>"><%=h(u.getUsername())%></option>
-           <%}%>
-       </select>
+    </div>
+    <div style="margin: 12px 0;">
+        <strong>Data to include</strong><br>
+        <select id="data-include">
+            <option value="date"<% if (dataInclude.equalsIgnoreCase("date")) { %> selected<% } %>>Date range</option>
+            <option value="train"<% if (dataInclude.equalsIgnoreCase("train")) { %> selected<% } %>>Training data</option>
+            <option value="both"<% if (dataInclude.equalsIgnoreCase("both")) { %> selected<% } %>>Both</option>
+        </select>
+    </div>
+    <div style="margin: 12px 0;">
+        <input id="fill-missing" type="checkbox">
+        <label for="fill-missing" style="font-weight: bold;">Include missing dates</label>
+    </div>
+    <% } %>
+    <% if (data == null) { %>
+    <p>User, <%=h(user)%> was selected but there are no runs in the current date selection matching the specified user.</p>
+    <% } %>
 
-
-       <script type="text/javascript">
-           $('#users').on('change', function (e) {
-               var valueSelected = this.value;
-               window.location.href = "<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>user=" + valueSelected;
-           });
-       </script>
-       <%} else if(data == null) {%>
-       <p>User, <%=h(user)%> was selected but there are no runs in the current date selection matching the specified user.</p>
-       <%}%>
-
-    <%if(data != null && data.getRuns().length > 0) {%>
+    <%if (data != null && data.getRuns().length > 0) {%>
     <div id="headerContent">
         <h2><%=h(user)%></h2>
-        <% String headerDate = startDate;
-        if(getViewContext().getRequest().getParameter("end") != null)
-            headerDate += " - " + endDate; %>
+        <%
+            String headerDate = startDate;
+            if (getViewContext().getRequest().getParameter("end") != null)
+                headerDate += " - " + endDate;
+        %>
         <p><%=h(headerDate)%></p>
-        <p><a id="dayView">DAY</a> | <a id="weekView">WEEK</a> | <a id="monthView">MONTH</a></p>
-        <!--click functions for Day, Week, and Month views-->
-        <script type="text/javascript">
-            $( "#dayView" ).click(function() {
-                var endDate = new Date();
-                var endDateFormatted = endDate.getUTCMonth() + 1 + "/" + endDate.getUTCDate() + "/" + endDate.getUTCFullYear();
-                var startDate = new Date();
-                var startDateFormatted = startDate.getUTCMonth() + 1 + "/" + startDate.getUTCDate() + "/" + startDate.getUTCFullYear();
-                window.location.href = "<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>user=" + "<%=h(user)%>" +
-                        "&start=" + startDateFormatted + "&end=" + endDateFormatted;
-            });
-            $( "#weekView" ).click(function() { // no need for parameters because week is default view
-                window.location.href = "<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>user=" + "<%=h(user)%>";
-            });
-            $( "#monthView" ).click(function() {
-                var endDate = new Date();
-                var endDateFormatted = endDate.getUTCMonth() + 1 + "/" + endDate.getUTCDate() + "/" + endDate.getUTCFullYear();
-                var startDate = new Date();
-                startDate.setMonth(startDate.getMonth() - 1);
-                var startDateFormatted = startDate.getUTCMonth() + 1 + "/" + startDate.getUTCDate() + "/" + startDate.getUTCFullYear();
-                window.location.href = "<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>user=" + "<%=h(user)%>" +
-                        "&start=" + startDateFormatted + "&end=" + endDateFormatted;
-            });
-        </script>
-
+        <p>
+            <a id="quickview-day" style="cursor: pointer;">DAY</a> |
+            <a id="quickview-week" style="cursor: pointer;">WEEK</a> |
+            <a id="quickview-month" style="cursor: pointer;">MONTH</a> |
+            <a href="<%=h(new ActionURL(TestResultsController.TrainingDataViewAction.class, c))%>#user-anchor-<%= h(user) %>">training data</a>
+        </p>
     </div>
-    <%if(showSingleUser){%>
-        <div class="centeredContent">
-            <div id="duration" class="c3chart"></div>
-            <div id="passes" class="c3chart"></div>
-            <div id="memory" class="c3chart"></div>
-            <div id="failGraph" class="c3chart"></div>
+
+    <% if (showSingleUser) { %>
+<%--            <div id="medianmem"></div>--%>
+        <div style="width: 100%; display: flex;">
+            <div id="memory" style="flex: 50%;"></div>
+            <div id="passes" style="flex: 50%;"></div>
         </div>
-    <%}%>
+        <div style="width: 100%; display: flex;">
+            <div id="duration" style="flex: 50%;"></div>
+            <div id="failGraph" style="flex: 50%;"></div>
+        </div>
+    <% } %>
     <div class="centeredContent">
-        <table  class="decoratedtable">
+        <table class="decoratedtable">
             <tr>
                 <td></td>
-                <%if(!showSingleUser){%><td>User</td><%}%>
+                <%if (!showSingleUser) { %><td>User</td><% } %>
                 <td>Date</td>
                 <td>Duration</td>
                 <td>Passes</td>
+                <td>Memory</td>
                 <td>Failures</td>
                 <td>Leaks</td>
                 <td>OS</td>
                 <td>Revision</td>
             </tr>
-            <%  RunDetail[] allRuns = data.getRuns();
-                TreeSet<RunDetail> sortedRuns = new TreeSet<>();
-                TreeMap<String, Integer> userFailCount = new TreeMap<>();
-                for(RunDetail r: allRuns)
-                    sortedRuns.add(r);
-                NavigableSet<RunDetail> resort = sortedRuns.descendingSet();
-                for(RunDetail run: resort) {
+            <% for (RunDetail run: sortedRuns.descendingSet()) {
                     String key = run.getUserName();
-                    if(!userFailCount.containsKey(key))
+                    if (!userFailCount.containsKey(key))
                         userFailCount.put(key, 0);
-                    userFailCount.put(key, userFailCount.get(key) + run.getFailedtests());
-            %>
-            <tr>
-                <td><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>">run details</a></td>
-                <%if(!showSingleUser){%><td><%=h(run.getUserName())%></td><%}%>
-                <td><%=h(df.format(run.getPostTime()))%></td>
-                <td><%=h(run.getDuration())%></td>
-                <td><%=h(run.getPassedtests())%></td>
-                <td><%=h(run.getFailedtests())%></td>
-                <td><%=h(run.getLeakedtests())%></td>
-                <td><%=h(run.getOs())%></td>
-                <td><%=h(run.getRevisionFull())%></td>
-                <td><a class="trainset" runId="<%=h(run.getId())%>" runTrained="<%=h(run.isTrainRun())%>">
-                    <%=h((run.isTrainRun()) ? "Remove from training set" : "Add to training set")%>
-                </a></td>
-            </tr>
-            <%}%>
+                    userFailCount.put(key, userFailCount.get(key) + run.getFailedtests()); %>
+                <tr class="run-row" data-run-id="<%=h(run.getId())%>" data-timestamp="<%=h(run.getPostTime().getTime())%>">
+                    <td><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>">run details</a></td>
+                    <% if (!showSingleUser) { %><td><%=h(run.getUserName())%></td><% } %>
+                    <td><%=h(df.format(run.getPostTime()))%></td>
+                    <td><%=h(run.getDuration())%></td>
+                    <td><%=h(run.getPassedtests())%></td>
+                    <td><%=h(run.getAveragemem())%></td>
+<%--                    <td><%=h(run.getMedianmem())%></td>--%>
+                    <td><%=h(run.getFailedtests())%></td>
+                    <td><%=h(run.getLeakedtests())%></td>
+                    <td><%=h(run.getOs())%></td>
+                    <td><%=h(run.getRevisionFull())%></td>
+                    <td><a class="trainset" runId="<%=h(run.getId())%>" runTrained="<%=h(run.isTrainRun())%>" style="cursor:pointer;">
+                        <%=h((run.isTrainRun()) ? "Remove from training set" : "Add to training set")%>
+                    </a></td>
+                </tr>
+                <% } %>
         </table>
         <table>
             <tr><td>Username</td><td>Failures</td></tr>
-            <%  Iterator it = userFailCount.entrySet().iterator();
-                 while (it.hasNext()) {
-                        Map.Entry pair = (Map.Entry)it.next();
-                        System.out.println(pair.getKey() + " = " + pair.getValue());
-                        it.remove(); // avoids a ConcurrentModificationException   %>
-                    <tr><td><%=h(pair.getKey())%></td><td><%=h(pair.getValue())%></td>       </tr>
-                     <%}%>
+            <%
+                Iterator<Map.Entry<String, Integer>> it = userFailCount.entrySet().iterator();
+                while (it.hasNext()) {
+                    Map.Entry<String, Integer> pair = it.next();
+                    it.remove(); // avoids a ConcurrentModificationException %>
+            <tr><td><%=h(pair.getKey())%></td><td><%=h(pair.getValue())%></td></tr>
+                <% } %>
         </table>
     </div>
 
 
-<% }%>
-    </div>
-</div>
-
-<%if(data != null) { %>
-<script type="text/javascript">
-    function refreshPage() {
-        var dateRange = $('#jrange input').val();
-        var dates = dateRange.split(" - ");
-        var startDate = dates[0];
-        var endDate = dates[1];
-        if (startDate != null && endDate != null) {
-            window.location.href = "<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>start=" + startDate + "&end=" + endDate + "&user=<%=h(user)%>";
-        }
-    }
-   initDatePicker(refreshPage);
-</script>
 <% } %>
-<!--Handels add/remove from training  data set-->
+    </div>
+
 <script>
+    function paramRedirect(startDate, endDate) {
+        if (!startDate) {
+            var dateRange = $('#jrange input').val();
+            var dates = dateRange.split(" - ");
+            switch (dates.length) {
+                case 1:
+                    startDate = endDate = dates[0];
+                    break;
+                case 2:
+                    startDate = dates[0];
+                    endDate = dates[1];
+                    break;
+                default:
+                    return;
+            }
+        }
+        if (!endDate) {
+            endDate = <%=q(df.format(today))%>;
+        }
+        window.location.href = "<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>" +
+            "&user=" + ($("#users").val() || "") +
+            "&start=" + startDate + "&end=" + endDate +
+            "&datainclude=" + $("#data-include").val();
+    }
+
+    $('#users').change(function() { paramRedirect(); });
+    $('#data-include').change(function() { paramRedirect(); });
+    initDatePicker(paramRedirect);
+
+    $('#quickview-day').click(function() {
+        paramRedirect(<%=q(df.format(today))%>);
+    });
+    $('#quickview-week').click(function() {
+        <% cal.setTime(today);
+        cal.add(Calendar.DATE, -7); %>
+        paramRedirect(<%=q(df.format(cal.getTime()))%>);
+    });
+    $('#quickview-month').click(function() {
+        <% cal.setTime(today);
+        cal.add(Calendar.MONTH, -1); %>
+        paramRedirect(<%=q(df.format(cal.getTime()))%>);
+    });
+
+    <!--Handles add/remove from training data set-->
     $('.trainset').click(function() {
         var runId = this.getAttribute("runId");
         var isTrainRun = this.getAttribute("runTrained") == "true";
         var trainObj = this;
+        trainObj.innerHTML = "Loading...";
         var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
         $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId='+runId+'&train='+!isTrainRun, csrf_header, function(data){
-            if(data.Success) {
+            if (data.Success) {
                 trainObj.setAttribute("runTrained", !isTrainRun);
-                if(!isTrainRun)
-                    trainObj.innerHTML = "Remove from training set";
-                else
-                    trainObj.innerHTML = "Add to training set";
+                trainObj.innerHTML = !isTrainRun ? "Remove from training set" : "Add to training set";
             } else {
                 alert(data);
             }
         }, "json");
-    })
+    });
 </script>
 <!--Javascript which uses c3 & d3js to paint charts with given trendJson data-->
-<%if(trendsJson != null) {%>
-<script src="<%=h(contextPath)%>/TestResults/js/generateTrendCharts.js"></script>
+<% if (trendsJson != null) { %>
+<script src="<%= h(contextPath) %>/TestResults/js/generateTrendCharts.js"></script>
 <script type="text/javascript">
-    var trendsJson = jQuery.parseJSON( <%= q(trendsJson.toString()) %> );
-    generateTrendCharts(trendsJson, false);
-</script>
-<%}%>
+    function generateCharts() {
+        var trendsJson = jQuery.parseJSON( <%= q(trendsJson.toString()) %> );
+        var memData = null;
+        var runData = null;
+        var chartClickPoint = null;
 
+        <% if (userObj != null) { %>
+        memData = {
+            mean: <%= userObj.getMeanmemory() %>,
+            stddev: <%= userObj.getStddevmemory() %>,
+            warnBound: <%= data.getWarningBoundary() %>,
+            errorBound: <%= data.getErrorBoundary() %>
+        };
+        runData = {
+            mean: <%= userObj.getMeantestsrun() %>,
+            stddev: <%= userObj.getStddevtestsrun() %>,
+            warnBound: <%= data.getWarningBoundary() %>,
+            errorBound: <%= data.getErrorBoundary() %>
+        };
+        chartClickPoint = function(obj) {
+            var timestamp = typeof obj.x === 'number' ? trendsJson.dates[obj.x + 1] : obj.x.getTime();
+            var minRow = null;
+            var minDiff = 4102444799999;
+            $(".run-row").each(function() {
+                var diff = Math.abs(timestamp - $(this).data("timestamp"));
+                if (diff < minDiff) {
+                    minRow = $(this);
+                    minDiff = diff;
+                }
+            });
+            if (minRow)
+                location.href = '<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=' + minRow.data("run-id");
+        };
+        <% } %>
+
+        generateTrendCharts(trendsJson, {
+            trainRuns: new Set(<%= h(trainRuns) %>),
+            showSubChart: false,
+            fillMissing: $("#fill-missing").prop("checked"),
+            memData: memData,
+            runData: runData,
+            clickHandler: chartClickPoint
+        });
+    }
+    generateCharts();
+    $('#fill-missing').change(generateCharts);
+</script>
+<% } %>

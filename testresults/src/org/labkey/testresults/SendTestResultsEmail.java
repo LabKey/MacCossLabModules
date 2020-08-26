@@ -5,24 +5,28 @@ import org.apache.logging.log4j.LogManager;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.SQLFragment;
+import org.labkey.api.data.SqlSelector;
+import org.labkey.api.data.TableSelector;
 import org.labkey.api.notification.EmailMessage;
 import org.labkey.api.notification.EmailService;
+import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.ValidEmail;
+import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.MimeMap;
+import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
 import org.labkey.api.util.Path;
 import org.labkey.api.view.ActionURL;
 import org.labkey.testresults.model.BackgroundColor;
 import org.labkey.testresults.model.RunDetail;
-import org.labkey.testresults.model.TestFailDetail;
-import org.labkey.testresults.model.TestMemoryLeakDetail;
-import org.labkey.testresults.model.TestMemoryLeakDetail;
+import org.labkey.testresults.model.RunProblems;
 import org.labkey.testresults.model.User;
 import org.labkey.testresults.view.RunDownBean;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
+import java.io.File;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -31,41 +35,48 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 // SendTestResultsEmail is a Quarts Job that sends an email to the Skyline developers with a summary of the nightly runs from the previous day at 8am to the present.
 // It is currently scheduled to send an email every morning at 8am which is why we show all runs since the previous 8am.
 public class SendTestResultsEmail implements org.quartz.Job
 {
-    public static final  String TEST_ADMIN = "testadmin";
+    public static final String TEST_ADMIN = "testadmin";
     public static final String TEST_CUSTOM = "testcustom";
     public static final String TEST_GET_HTML_EMAIL = "gethtml";
     public static final String MORNING_EMAIL = "morningemail";
 
+    private Date _date;
+
     public interface DEFAULT_EMAIL {
         String RECIPIENT = "skyline-dev@proteinms.net";
-        String ADMIN_EMAIL = "yuval@uw.edu";
+        String ADMIN_EMAIL = "skyline@proteinms.net";
     }
 
     private static final Logger LOG = LogManager.getLogger(SendTestResultsEmail.class);
 
     public SendTestResultsEmail()
     {
+        _date = null;
+    }
 
+    public SendTestResultsEmail(Date date)
+    {
+        _date = date;
     }
 
     private String getBackgroundStyle(BackgroundColor color) {
         return "background-color:" + color + ";";
     }
 
-    public Pair<String, String> getHTMLEmail(org.labkey.api.security.User from) {
+    public Pair<String, String> getHTMLEmail(org.labkey.api.security.User from)
+    {
         // Sends email for all runs since 8:01 the previous morning, at 8am every morning
-        Container parent = ContainerManager.getForPath(new Path(new String[]{"home","development"}));
+        Container parent = ContainerManager.getHomeContainer().getChild("development");
         //parent = ContainerManager.getForPath(new Path(new String[]{"home"})); // DEV ONLY, localhost container path
 
         List<Container> containers = ContainerManager.getAllChildren(parent, from);
-        if(containers.size() == 0)
-            return null;
+        if (containers.isEmpty())
+            return new Pair<>("", "");
         int totalErrorRuns = 0;
         int totalWarningRuns = 0;
         int totalGoodRuns = 0;
@@ -75,36 +86,37 @@ public class SendTestResultsEmail implements org.quartz.Job
         message.append("<!doctype HTML><head><meta charset=\"UTF-8\"></head>");
 
         Calendar c = Calendar.getInstance();
-        c.set(Calendar.HOUR_OF_DAY, 8);
-        c.set(Calendar.MINUTE, 1);
-        c.set(Calendar.SECOND, 0);
-        c.set(Calendar.MILLISECOND, 0);
+        if (_date != null)
+            c.setTime(_date);
+        TestResultsController.setToEightAM(c);
         Date end = new Date(c.getTime().getTime());  // Calender date is previous date at 8:01 AM
         c.add(Calendar.DATE, -1);
         Date start = new Date(c.getTime().getTime());  // Calender date is previous date at 8:01 AM
-        for(Container container: containers)
+        SimpleDateFormat mdyFormatter = new SimpleDateFormat("MM/dd/yyyy");
+        for (Container container : containers)
         {
-            SQLFragment sqlFragment = new SQLFragment();
             RunDetail[] runs = TestResultsController.getRunsSinceDate(start, end, container, null, false, false);
             Arrays.sort(runs);
 
-            if(runs.length == 0) // IF NO RUNS DONT ADD CONTAINER TO EMAIL
-                continue;
             TestResultsController.ensureRunDataCached(runs, false);
             TestResultsController.populatePassesLeaksFails(runs);
 
-            User[] users = TestResultsController.getTrainingDataForContainer(container);
+            User[] users = TestResultsController.getTrainingDataForContainer(container, null);
 
             RunDownBean data = new RunDownBean(runs, users);
-            Map<String, List<TestFailDetail>> todaysFailures = data.getFailedTestsByDate(new Date(), true);
-            Map<String, List<TestMemoryLeakDetail>> todaysLeaks = data.getLeaksByDate(new Date(), true);
+            RunProblems problems = new RunProblems(data.getRunsByDate(end));
             User[] missingUsers = data.getMissingUsers(data.getRuns());
-            List<User> nightsUsers = new ArrayList<>();
+
+            if (runs.length == 0 && missingUsers.length == 0)
+                continue;
+
             // build message as an HTML email message
-            message.append("<div style='margin:auto; text-align:center;'>");
-            message.append("<h1>" + container.getName() + " <br /><span style='font-size:11px;'>starting: " + start.toString() + "</span></h1>");
-            message.append("<h5 style='margin:0; padding:0;'><a href='https://skyline.gs.washington.edu/labkey/project/home/development/"+container.getName()+"/begin.view?'>View Full TestResults</a></h5>");
-            message.append("</div>");
+            ActionURL containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container);
+            String testResultsUrl = AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + containerUrl.getEncodedLocalURIString();
+            message.append("<div style='margin:auto; text-align:center;'>")
+                .append("<h1>").append(PageFlowUtil.filter(container.getName())).append("<br><span style='font-size:11px;'>starting: ").append(start.toString()).append("</span></h1>")
+                .append("<h5 style='margin:0; padding:0;'><a href=\"" + testResultsUrl + "end=" + mdyFormatter.format(end) + "\">View Full TestResults</a></h5>")
+                .append("</div>");
 
             // MAIN "rundown" table
             message.append("<table style='border-collapse: collapse; border-spacing: 0; margin:auto;'>" +
@@ -117,6 +129,22 @@ public class SendTestResultsEmail implements org.quartz.Job
                     "<td>Failures</td>" +
                     "<td>Leaks</td>" +
                     "</tr>");
+
+            List<Integer> values = new ArrayList<>();
+            new TableSelector(TestResultsSchema.getTableInfoGlobalSettings()).forEachResults(rs ->
+            {
+                values.add(rs.getInt("warningb"));
+                values.add(rs.getInt("errorb"));
+            });
+
+            int warningBoundary = 2;
+            int errorBoundary = 3;
+
+            if (!values.isEmpty()) {
+                warningBoundary = values.get(0);
+                errorBoundary = values.get(1);
+            }
+
             int errorRuns = 0;
             int warningRuns = 0;
             int goodRuns = 0;
@@ -128,20 +156,18 @@ public class SendTestResultsEmail implements org.quartz.Job
                     if (u.getId() == run.getUserid())
                     {
                         totalPasses += run.getPassedtests();
-                        nightsUsers.add(u);
                         boolean isGoodRun = true;
-                        boolean highlightDuration = false, highlightRuns = false, highlightMemory = false;
+                        boolean highlightRuns = false, highlightMemory = false;
                         String style = getBackgroundStyle(BackgroundColor.pass);
                         // ERROR: duration < 540, failures or leaks count > 0, more then 3 standard deviations away
                         // WARNING: Between 2 and 3 standard deviations away
                         // PASS: within 2 standard deviations away as well as not an ERROR or a WARNING
-                        int errorCount = errorRuns;
-                        if (isGoodRun && (u.getMeanmemory() == 0d || u.getMeantestsrun() == 0d || !u.isActive()))
+                        if (u.getMeanmemory() == 0d || u.getMeantestsrun() == 0d || !u.isActive())
                         {  // IF NO TRAINING DATA FOR USER or INACTIVE
                             style = getBackgroundStyle(BackgroundColor.unknown);
                             isGoodRun = false;
                         }
-                        highlightDuration = run.getDuration() < 539;
+                        boolean highlightDuration = run.getDuration() < 539 || run.getHang() != null;
                         if (highlightDuration || run.getFailures().length > 0 || run.getTestmemoryleaks().length > 0)
                         {
                             style = getBackgroundStyle(BackgroundColor.error);
@@ -150,19 +176,18 @@ public class SendTestResultsEmail implements org.quartz.Job
                         }
                         if (isGoodRun)
                         {
-                            highlightMemory = !u.fitsMemoryTrainingData(run.getAverageMemory(), 3);
-                            highlightRuns = !u.fitsRunCountTrainingData(run.getPassedtests(), 3);
+                            highlightMemory = !u.fitsMemoryTrainingData(run.getAverageMemory(), errorBoundary);
+                            highlightRuns = !u.fitsRunCountTrainingData(run.getPassedtests(), errorBoundary);
                             if (highlightMemory || highlightRuns)
                             {
                                 style = getBackgroundStyle(BackgroundColor.error);
                                 isGoodRun = false;
-                                if (errorCount == errorRuns)
-                                    errorRuns++;
+                                errorRuns++;
                             }
                             else
                             {
-                                highlightMemory = !u.fitsMemoryTrainingData(run.getAverageMemory(), 2);
-                                highlightRuns = !u.fitsRunCountTrainingData(run.getPassedtests(), 2);
+                                highlightMemory = !u.fitsMemoryTrainingData(run.getAverageMemory(), warningBoundary);
+                                highlightRuns = !u.fitsRunCountTrainingData(run.getPassedtests(), warningBoundary);
                                 if (highlightMemory || highlightRuns)
                                 {
                                     style = getBackgroundStyle(BackgroundColor.warn);
@@ -171,7 +196,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                                 }
                             }
                         }
-                        if(isGoodRun && run.hasHang())
+                        if (isGoodRun && run.getHang() != null)
                         {
                             style = getBackgroundStyle(BackgroundColor.warn);
                             isGoodRun = false;
@@ -181,18 +206,18 @@ public class SendTestResultsEmail implements org.quartz.Job
                         if (isGoodRun)
                             goodRuns++;
 
-                        message.append("<tr style='border-bottom:1px solid grey;'>");
-                        message.append("\n<td style=\"" + style + " padding: 6px;\"><a href=\"" +
-                                "http://skyline.ms" + new ActionURL(TestResultsController.ShowRunAction.class, container) + "runId=" + run.getId()
-                                + "\" target=\"_blank\" style=\"text-decoration:none; font-weight:600; color:black;\">"
-                                + run.getUserName() + "</a></td>");
-                        message.append("\n<td style='padding: 6px; " + (highlightMemory ? style : "") + "'>" + data.round(run.getAverageMemory(), 2) + "</td>");
-                        message.append("\n<td style='padding: 6px; " + (highlightRuns ? style : "") + "'>" + run.getPassedtests() + "</td>");
-                        message.append("\n<td style='padding: 6px;'>" + run.getPostTime() + "</td>");
-                        message.append("\n<td style='padding: 6px; " + (highlightDuration ? style : "") + "'>" + run.getDuration() + "</td>");
-                        message.append("\n<td style='padding: 6px; " + (run.getFailedtests() > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getFailedtests() + "</td>");
-                        message.append("\n<td style='padding: 6px; " + (run.getLeakedtests() > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getLeakedtests() + "</td>");
-                        message.append("</tr>");
+                        message.append("<tr style='border-bottom:1px solid grey;'>")
+                            .append("\n<td style=\"" + style + " padding: 6px;\"><a href=\"" +
+                                new ActionURL(TestResultsController.ShowRunAction.class, container).addParameter("runId", Integer.valueOf(run.getId())).getURIString() +
+                                "\" target=\"_blank\" style=\"text-decoration:none; font-weight:600; color:black;\">" +
+                                PageFlowUtil.filter(run.getUserName()) + "</a></td>")
+                            .append("\n<td style='padding: 6px; " + (highlightMemory ? style : "") + "'>" + data.round(run.getAverageMemory(), 2) + "</td>")
+                            .append("\n<td style='padding: 6px; " + (highlightRuns ? style : "") + "'>" + run.getPassedtests() + "</td>")
+                            .append("\n<td style='padding: 6px;'>" + run.getPostTime() + "</td>")
+                            .append("\n<td style='padding: 6px; " + (highlightDuration ? style : "") + "'>" + run.getDuration() + (run.getHang() != null ? " (hang)" : "") + "</td>")
+                            .append("\n<td style='padding: 6px; " + (run.getFailedtests() > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getFailedtests() + "</td>")
+                            .append("\n<td style='padding: 6px; " + (run.getLeakedtests() > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getLeakedtests() + "</td>")
+                            .append("</tr>");
                     }
                 }
             }
@@ -204,89 +229,53 @@ public class SendTestResultsEmail implements org.quartz.Job
 
             for (User u : missingUsers)
             {
-                message.append("<tr style='border-bottom:1px solid grey;'>");
-                message.append("\n<td style='" + getBackgroundStyle(BackgroundColor.error) + " padding: 6px;'>Missing " + u.getUsername() + "</td>");
-                for (int i = 0; i < 6; i++)
-                    message.append("\n<td style='" + getBackgroundStyle(BackgroundColor.error) + " padding: 6px;'></td>");
-                message.append("</tr>");
+                message.append("<tr style='border-bottom: 1px solid grey;'>")
+                    .append("\n<td style='" + getBackgroundStyle(BackgroundColor.error) + " padding: 6px;' colspan='7'>Missing " + u.getUsername() + "</td>")
+                    .append("</tr>");
             }
-            message.append("<tr style=\"float:right;\"><td></td><td></td><td></td><td></td><td></td><td></td><td>" + goodRuns + "/" + errorRuns + " (Pass/Fail)</td></tr>");
-            message.append("</table>");
-            List<Integer> noFailLeakRuns = new ArrayList<>();
-            // FAILURES & LEAKS TABLE
-            if (todaysFailures.size() > 0 || todaysLeaks.size() > 0)
+            message.append("<tr>")
+                .append("<td>" + goodRuns + "/" + errorRuns + " (Pass/Fail)</td>")
+                .append("<td colspan='6' style='font-weight: 600; color: red;'>");
+            // Files that failed to post
+            int fileCount = 0;
+            for (File f : TestResultsController.NIGHTLY_POSTER.getLocalPath(container).listFiles())
             {
-                message.append("\n<table style='border-collapse: collapse; border-spacing: 0; margin:auto;'>");
-                message.append("\n<tr >");
-                message.append("\n<td style='width:200px; overflow:hidden; padding:0px;'>Fail: <span style='font-weight:600; color:red;'>X</span> | Leak: <span style='font-weight:600; color:orange;'>X</span></td>");
-
-                for (RunDetail run: runs)
-                {
-                    boolean addUser = false;
-
-                    if (run.getFailedtests() > 0)
-                        addUser = true;
-                    if (!addUser)
-                    {
-                        if (run.getLeakedtests() > 0)
-                            addUser = true;
-                    }
-                    if (addUser)
-                        message.append("\n<td style='max-width:60px; width:60px; overflow:hidden; text-overflow: ellipsis; padding:3px; border:1px solid #ccc;'>" + run.getUserName() + "</td>");
-                    else
-                        noFailLeakRuns.add(run.getId());
-
-                }
+                if (!f.getName().startsWith(".")) // ignore hidden files
+                    fileCount++;
+            }
+            if (fileCount > 0)
+                message.append("<a href=\"" + new ActionURL(TestResultsController.ErrorFilesAction.class, container).getURIString() + "\">" + fileCount + " post error file(s)</a>");
+            message.append("</td>")
+                .append("</tr>")
+                .append("</table>");
+            // Problems table
+            if (problems.any())
+            {
+                message.append("\n<table style='border-collapse: collapse; border-spacing: 0; margin:auto;'>")
+                    .append("\n<tr>")
+                    .append("\n<td style='width:200px; overflow: hidden; padding: 0px;'>" +
+                            "Fail: <span style='font-weight: 600; color: red;'>X</span> | " +
+                            "Leak: <span style='font-weight: 600; color: orange;'>X</span> | " +
+                            "Hang: <span style='font-weight: 600; color: navy;'>X</span>" +
+                            "</td>");
+                RunDetail[] problemRuns = problems.getRuns();
+                for (RunDetail run : problemRuns)
+                    message.append("\n<td style='max-width: 60px; width: 60px; overflow: hidden; text-overflow: ellipsis; padding: 3px; border: 1px solid #ccc;'>" + run.getUserName() + "</td>");
                 message.append("\n</tr>");
-                for (Map.Entry<String, List<TestFailDetail>> entry : todaysFailures.entrySet())
+
+                for (String test : problems.getTestNames())
                 {
-                    message.append("\n<tr>");
-                    message.append("\n<td style='overflow:hidden; text-overflow: ellipsis; padding:3px; border:1px solid #ccc;'>" + entry.getKey() + "</td>");
-                    for (RunDetail run: runs)
+                    message.append("\n<tr>")
+                        .append("\n<td style='overflow: hidden; text-overflow: ellipsis; padding: 3px; border: 1px solid #ccc;'>" + test + "</td>");
+                    for (RunDetail run : problemRuns)
                     {
-                        if (noFailLeakRuns.contains(run.getId()))
-                            continue;
-                        message.append("\n<td style='width:60px; overflow:hidden; padding:3px; border:1px solid #ccc;'>");
-                        TestFailDetail matchingFail = null;
-
-                        for (TestFailDetail fail : entry.getValue())
-                        {
-                            if (fail.getTestRunId() == run.getId())
-                            {
-                                matchingFail = fail;
-                            }
-                        }
-                        if (matchingFail != null)
-                        {
-                            message.append("\n<span style='font-weight:600; color:red;'>X</span>");
-                        }
-
-                        message.append("\n</td>");
-                    }
-                    message.append("\n</tr>");
-                }
-                for (Map.Entry<String, List<TestMemoryLeakDetail>> entry : todaysLeaks.entrySet())
-                {
-                    message.append("\n<tr>");
-                    message.append("\n<td style='overflow:hidden; text-overflow: ellipsis; padding:3px; border:1px solid #ccc;'>" + entry.getKey() + "</td>");
-                    for (RunDetail run: runs)
-                    {
-                        if (noFailLeakRuns.contains(run.getId()))
-                            continue;
-                        message.append("\n<td style='width:60px; overflow:hidden; padding:3px; border:1px solid #ccc;'>");
-                        TestMemoryLeakDetail matchingLeak = null;
-
-                        for (TestMemoryLeakDetail leak : entry.getValue())
-                        {
-                            if (leak.getTestRunId() == run.getId())
-                            {
-                                matchingLeak = leak;
-                            }
-                        }
-                        if (matchingLeak != null)
-                        {
-                            message.append("\n<span style='font-weight:600; color:orange;'>X</span>");
-                        }
+                        message.append("\n<td style='width: 60px; overflow: hidden; padding: 3px; border: 1px solid #ccc;'>");
+                        if (problems.isFail(run, test))
+                            message.append("\n<span style='font-weight: 600; color: red;'>X</span>");
+                        if (problems.isLeak(run, test))
+                            message.append("\n<span style='font-weight: 600; color: orange;'>X</span>");
+                        if (problems.isHang(run, test))
+                            message.append("\n<span style='font-weight: 600; color: navy;'>X</span>");
                         message.append("\n</td>");
                     }
                     message.append("\n</tr>");
@@ -295,33 +284,40 @@ public class SendTestResultsEmail implements org.quartz.Job
             }
         }
 
+        if (totalTotalPasses == 0)
+            return new Pair(null, null);
+
         SimpleDateFormat formatter = new SimpleDateFormat("MM/dd");
         String subject = "TestResults " + formatter.format(start) + " - " + formatter.format(end) + " (8AM - 8AM)";
-        if(totalErrorRuns > 0 || totalWarningRuns > 0) {
+        if (totalErrorRuns > 0 || totalWarningRuns > 0) {
             subject += " | Err: " + totalErrorRuns + " Warn: " + totalWarningRuns;
         } else {
             subject = "ALL PASSED WAHOOOO!! - ";
         }
         subject += " Pass: " + totalGoodRuns +" ";
-        if(totalMissingUsers > 0)
-            subject += "Missing: "+ totalMissingUsers;
+        if (totalMissingUsers > 0)
+            subject += "Missing: " + totalMissingUsers;
 
         subject += " | " + new DecimalFormat("#,###").format(totalTotalPasses) + " tests run";
         return new Pair(subject, message.toString());
     }
+
     public void execute(String ctx, org.labkey.api.security.User from, String emailTo) throws JobExecutionException
     {
         List<String> recipients = Collections.singletonList(emailTo);
-        if(ctx.equals(MORNING_EMAIL))
+        if (ctx.equals(MORNING_EMAIL))
             LOG.info("Sending daily emails...");
 
-        Pair<String,String> msg = getHTMLEmail(from);
+        Pair<String, String> msg = getHTMLEmail(from);
+        if (msg.first == null && msg.second == null)
+            return;
 
         EmailService svc = EmailService.get();
         EmailMessage emailMsg = svc.createMessage(from.getEmail(), recipients, msg.first);
         emailMsg.addContent(MimeMap.MimeType.HTML, msg.second);
         svc.sendMessages(Collections.singletonList(emailMsg), from, ContainerManager.getHomeContainer());
     }
+
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException
     {

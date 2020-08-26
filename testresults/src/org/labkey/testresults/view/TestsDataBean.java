@@ -17,6 +17,10 @@ package org.labkey.testresults.view;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.labkey.api.data.SQLFragment;
+import org.labkey.api.data.SqlSelector;
+import org.labkey.testresults.TestResultsSchema;
+import org.labkey.testresults.model.GlobalSettings;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestMemoryLeakDetail;
 import org.labkey.testresults.model.User;
@@ -46,6 +50,8 @@ public class TestsDataBean
     private String viewType;
     private Date startDate;
     private Date endDate;
+    private Integer boundaryWarning;
+    private Integer boundaryError;
 
     public TestsDataBean(RunDetail[] runs, User[] users) {
         setRuns(runs);
@@ -74,7 +80,7 @@ public class TestsDataBean
 
     public Date getEndDate()
     {
-        if(endDate == null)
+        if (endDate == null)
             setEndDate(new Date());
         return endDate;
     }
@@ -94,8 +100,6 @@ public class TestsDataBean
         this.viewType = viewType;
     }
 
-
-
     // Getters and Setters for fields
     public RunDetail[] getRuns() {
         RunDetail[] r = runs.values().toArray(new RunDetail[runs.size()]);
@@ -104,8 +108,8 @@ public class TestsDataBean
     }
     public RunDetail[] setStatRuns() {
         List<RunDetail> statRuns = new ArrayList<>();
-        for(RunDetail run: runs.values())
-            if(!excludeRun(run.getId()))
+        for (RunDetail run: runs.values())
+            if (!excludeRun(run.getId()))
                 statRuns.add(run);
         Collections.sort(statRuns);
         return statRuns.toArray(new RunDetail[statRuns.size()]);
@@ -116,21 +120,21 @@ public class TestsDataBean
     }
 
     public Map<String, Map<String, Double>> getLanguageBreakdown(Map<String, List<TestFailDetail>> topFailures){
-                Map<String, Map<String, Double>> m = new TreeMap<String, Map<String, Double>>();
-        for(String f: topFailures.keySet()) {
+                Map<String, Map<String, Double>> m = new TreeMap<>();
+        for (String f: topFailures.keySet()) {
             double total = 0.0;
-            if(!m.containsKey(f))
-                m.put(f, new TreeMap<String, Double>());
+            if (!m.containsKey(f))
+                m.put(f, new TreeMap<>());
             List<TestFailDetail> l = topFailures.get(f);
-            for(TestFailDetail detail: l) {
-                if(detail != null) {
-                    if(!m.get(f).containsKey(detail.getLanguage()))
+            for (TestFailDetail detail: l) {
+                if (detail != null) {
+                    if (!m.get(f).containsKey(detail.getLanguage()))
                         m.get(f).put(detail.getLanguage(), 0.0);
                     m.get(f).put(detail.getLanguage(), m.get(f).get(detail.getLanguage()) + 1);
                     total += 1;
                 }
             }
-            for(String language: m.get(f).keySet()) {
+            for (String language: m.get(f).keySet()) {
                 m.get(f).put(language, m.get(f).get(language) / total);
             }
         }
@@ -139,8 +143,8 @@ public class TestsDataBean
     }
 
     public double round(double value, int places) {
-        if (places < 0) throw new IllegalArgumentException();
-
+        if (places < 0)
+            throw new IllegalArgumentException();
         long factor = (long) Math.pow(10, places);
         value = value * factor;
         long tmp = Math.round(value);
@@ -155,43 +159,43 @@ public class TestsDataBean
 
     public TestMemoryLeakDetail[] getLeaks() {
         List<TestMemoryLeakDetail> leaks = new ArrayList<>();
-        for(RunDetail r: runs.values()) {
-                leaks.addAll(Arrays.asList(r.getTestmemoryleaks()));
+        for (RunDetail r: runs.values()) {
+            leaks.addAll(Arrays.asList(r.getTestmemoryleaks()));
         }
         return leaks.toArray(new TestMemoryLeakDetail[leaks.size()]);
     }
 
     public TestFailDetail[] getFailures() {
         List<TestFailDetail> fails = new ArrayList<>();
-        for(RunDetail r: runs.values())
-                fails.addAll(Arrays.asList(r.getFailures()));
+        for (RunDetail r: runs.values())
+            fails.addAll(Arrays.asList(r.getFailures()));
         return fails.toArray(new TestFailDetail[fails.size()]);
     }
 
     public TestFailDetail[] getFailuresByName(String testName) {
         List<TestFailDetail> fails = new ArrayList<>();
-        for(RunDetail r: runs.values())
-            for(TestFailDetail f: r.getFailures())
-                if(f.getTestName().equals(testName))
+        for (RunDetail r: runs.values())
+            for (TestFailDetail f: r.getFailures())
+                if (f.getTestName().equals(testName))
                     fails.add(f);
         return fails.toArray(new TestFailDetail[fails.size()]);
     }
 
     public TestPassDetail[] getPasses() {
         List<TestPassDetail> passes = new ArrayList<>();
-        for(RunDetail run : runs.values())
-                passes.addAll(Arrays.asList(run.getPasses()));
+        for (RunDetail run : runs.values())
+            passes.addAll(Arrays.asList(run.getPasses()));
         return passes.toArray(new TestPassDetail[passes.size()]);
     }
 
     private void addRuns(RunDetail[] runs) {
-        if(runs == null)
+        if (runs == null)
             return;
         for (RunDetail run : runs) {
             // round all memory data
             TestPassDetail[] passes = run.getPasses();
-            if(passes != null && passes.length > 0 && passes[0] != null) {
-                for(int i = 0; i <passes.length; i++) {
+            if (passes != null && passes.length > 0 && passes[0] != null) {
+                for (int i = 0; i < passes.length; i++) {
                     passes[i].setManagedMemory(round(passes[i].getManagedMemory(), 2));
                     passes[i].setTotalMemory(round(passes[i].getTotalMemory(), 2));
                 }
@@ -208,14 +212,14 @@ public class TestsDataBean
 
     // returns array of passes in a specified run
     public TestPassDetail[] getPassesByRunId(int runId, boolean isStatRun) {
-        if(isStatRun && excludeRun(runId))
+        if (isStatRun && excludeRun(runId))
             return new TestPassDetail[0];
         RunDetail run = getRunDetailById(runId);
-        return run!=null?run.getPasses():new TestPassDetail[0];
+        return run != null ? run.getPasses() : new TestPassDetail[0];
     }
     public User getUserById(int userId) {
-        for(User u : users) {
-            if(u.getId() == userId)
+        for (User u : users) {
+            if (u.getId() == userId)
                 return u;
         }
         return null;
@@ -223,17 +227,13 @@ public class TestsDataBean
     // failures and leaks arent referenced to users to this method can be used to find user of failure or leak
     public User getUserByRunId(int runId) {
         RunDetail r = getRunDetailById(runId);
-        User u = null;
-        if(r != null) {
-             u = getUserById(r.getUserid());
-        }
-        return u;
+        return r != null ? getUserById(r.getUserid()) : null;
     }
 
     // returns array of failures in a specified run
     public TestFailDetail[] getFailuresByRunId(int runId) {
         RunDetail f = getRunDetailById(runId);
-        return f!=null?f.getFailures():new TestFailDetail[0];
+        return f != null ? f.getFailures() : new TestFailDetail[0];
     }
 
     // gets run detail by id
@@ -246,22 +246,22 @@ public class TestsDataBean
     * if there are no runs returns NULL
     */
     public JSONObject getTrends() {
-        if(runs.size() == 0)
+        if (runs.isEmpty())
             return null;
-        Map<Date, List<RunDetail>> dates = new TreeMap<Date, List<RunDetail>>();
+        Map<Date, List<RunDetail>> dates = new TreeMap<>();
         Calendar cal = Calendar.getInstance();
-        for(RunDetail run: getStatRuns()) {
-                cal.setTime(run.getPostTime());
-                cal.set(Calendar.HOUR_OF_DAY, 0);
-                cal.set(Calendar.MINUTE, 0);
-                cal.set(Calendar.SECOND, 0);
-                cal.set(Calendar.MILLISECOND, 0);
-                Date strippedDay = cal.getTime();
-                List<RunDetail> list = dates.get(strippedDay);
-                if (list == null) {
-                    dates.put(strippedDay, list = new ArrayList<>());
-                }
-                list.add(run);
+        for (RunDetail run: getStatRuns()) {
+            cal.setTime(run.getPostTime());
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            Date strippedDay = cal.getTime();
+            List<RunDetail> list = dates.get(strippedDay);
+            if (list == null) {
+                dates.put(strippedDay, list = new ArrayList<>());
+            }
+            list.add(run);
         }
 
         int size = dates.size();
@@ -269,28 +269,31 @@ public class TestsDataBean
         double[] avgTestRuns = new double[size];
         int[] avgMemory = new int[size];
         double[] avgFailures = new double[size];
+//        double[] medianMemory = new double[size];
         int i = 0;
-        for(Map.Entry<Date, List<RunDetail>> entry : dates.entrySet()) {
+        for (Map.Entry<Date, List<RunDetail>> entry : dates.entrySet()) {
             List<RunDetail> runs = entry.getValue();
             int passTotal = 0;
             int failTotal = 0;
             int avgMemoryTotal = 0;
             int durationTotal = 0;
-            for(RunDetail run: runs) {
+            for (RunDetail run: runs) {
                 passTotal += run.getPassedtests();
                 failTotal += run.getFailedtests();
                 durationTotal += run.getDuration();
                 avgMemoryTotal += run.getAverageMemory();
+//                medianMem = run.getMedian1000Memory();
             }
             avgTestRuns[i] = round((double) passTotal/runs.size(),2);
             avgFailures[i] = round(((double)failTotal)/runs.size(),2);
             avgMemory[i] = avgMemoryTotal/runs.size();
             avgDuration[i] = round(((double)durationTotal)/runs.size(),2);
+//            medianMemory[i] = medianMem;
             i++;
         }
         long[] milliSecondDates = new long[dates.size()];
         int j = 0;
-        for(Date d: dates.keySet()) {
+        for (Date d: dates.keySet()) {
             milliSecondDates[j] = d.getTime();
             j++;
         }
@@ -300,8 +303,8 @@ public class TestsDataBean
         jo.put("avgMemory", avgMemory);
         jo.put("avgFailures", avgFailures);
         jo.put("avgTestRuns", avgTestRuns);
+//        jo.put("medianMemory", medianMemory);
         jo.put("dates", milliSecondDates);
-
         return jo;
     }
 
@@ -316,8 +319,8 @@ public class TestsDataBean
         List<Double> managedMemory = new ArrayList<>();
         List<String> testName = new ArrayList<>();
         int index = 0;
-        for(TestPassDetail testPassDetails : mostRecent) {
-            if(index % 10 == 0) {
+        for (TestPassDetail testPassDetails : mostRecent) {
+            if (index % 10 == 0) {
                 String thisTestName = testPassDetails.getTestName() + " Pass:" + testPassDetails.getPass();
                 totalMemory.add(testPassDetails.getTotalMemory());
                 managedMemory.add(testPassDetails.getManagedMemory());
@@ -353,10 +356,34 @@ public class TestsDataBean
     // if a run has no test runs returns false
     public boolean excludeRun(int runId) {
         RunDetail run = runs.get(runId);
-        if(run == null)
-            return true;
-        if(run.isFlagged())
-            return true;
-        return false;
+        return run == null || run.isFlagged();
+    }
+
+    public int getWarningBoundary()
+    {
+        if (boundaryWarning == null)
+            readBoundaries();
+        return boundaryWarning;
+    }
+
+    public int getErrorBoundary()
+    {
+        if (boundaryError == null)
+            readBoundaries();
+        return boundaryError;
+    }
+
+    private void readBoundaries()
+    {
+        SQLFragment sqlFragment = new SQLFragment();
+        sqlFragment.append("select * from " + TestResultsSchema.getTableInfoGlobalSettings());
+        SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
+        List<Integer> values = new ArrayList<>();
+        sqlSelector.forEach(rs -> {
+            values.add(rs.getInt("warningb"));
+            values.add(rs.getInt("errorb"));
+        });
+        boundaryWarning = values.isEmpty() ? 2 : values.get(0);
+        boundaryError = values.isEmpty() ? 3 : values.get(1);
     }
 }

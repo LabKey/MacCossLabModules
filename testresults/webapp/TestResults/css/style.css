@@ -259,13 +259,6 @@ path {
     border-top:solid 1px #ccc;
 }
 
-.c3chart {
-    float:left;
-    width:350px;
-    height:250px;
-    display:block;
-}
-
 #datePickers {
     overflow: visible;
     max-height:40px;
@@ -359,7 +352,7 @@ path {
     border-collapse: collapse;
     float:left;
 }
-#failureTable tr{
+#failureTable tr {
     height:15px;
     padding:0;
     margin:0;
@@ -367,9 +360,6 @@ path {
 #failureTable tr:first-child  {
     font-weight:600;
 }
-/*#failureTable td {*/
-/*width:200px;*/
-/*}*/
 #failureTable td:first-child {
     text-align: right !important;
     border-right:1px solid black;
@@ -378,3 +368,7 @@ path {
 #failureTable td:last-child {
     padding-left: 3px;
 }
+
+.c3-ygrid-line.chart-mean line { stroke: #333333; stroke-dasharray: 3; stroke-opacity: 0.65; }
+.c3-ygrid-line.chart-stddev-warn line { stroke: #ff8c00; stroke-dasharray: 3; stroke-opacity: 0.75; }
+.c3-ygrid-line.chart-stddev-error line { stroke: #ff0000; stroke-dasharray: 3; stroke-opacity: 0.75; }

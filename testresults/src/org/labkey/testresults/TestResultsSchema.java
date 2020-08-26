@@ -45,30 +45,20 @@ public class TestResultsSchema
         return DbSchema.get("testresults");
     }
 
-    public static TableInfo getTableInfoTestRuns()
-    {
-        return getSchema().getTable("testruns");
-    }
+    public static TableInfo getTableInfoTestRuns() { return getSchema().getTable("testruns"); }
 
     public static TableInfo getTableInfoUser()
     {
         return getSchema().getTable("user");
     }
 
-    public static TableInfo getTableInfoUserData()
-    {
-        return getSchema().getTable("userdata");
-    }
+    public static TableInfo getTableInfoUserData() { return getSchema().getTable("userdata"); }
 
-    public static TableInfo getTableInfoTrain()
-    {
-        return getSchema().getTable("trainruns");
-    }
+    public static TableInfo getTableInfoTrain() { return getSchema().getTable("trainruns"); }
 
-    public static TableInfo getTableInfoMemoryLeaks()
-    {
-        return getSchema().getTable("memoryleaks");
-    }
+    public static TableInfo getTableInfoHangs() { return getSchema().getTable("hangs"); }
+
+    public static TableInfo getTableInfoMemoryLeaks() { return getSchema().getTable("memoryleaks"); }
 
     public static TableInfo getTableInfoHandleLeaks() { return getSchema().getTable("handleleaks"); }
 
@@ -80,6 +70,11 @@ public class TestResultsSchema
     public static TableInfo getTableInfoTestFails()
     {
         return getSchema().getTable("testfails");
+    }
+
+    public static TableInfo getTableInfoGlobalSettings()
+    {
+        return getSchema().getTable("globalsettings");
     }
 
     public static SqlDialect getSqlDialect()
