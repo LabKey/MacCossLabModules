@@ -179,7 +179,7 @@ public class LincsManager
         return new TableSelector(getTableInfoLincsPspJob(), new SimpleFilter(FieldKey.fromParts("Id"), id), null).getObject(LincsPspJob.class);
     }
 
-    public void deleteLincsPspJobsForRun(int runId)
+    public void deleteLincsPspJobsForRun(long runId)
     {
         Table.delete(getTableInfoLincsPspJob(), new SimpleFilter(FieldKey.fromParts("runId"), runId));
     }

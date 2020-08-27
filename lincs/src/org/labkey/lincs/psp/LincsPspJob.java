@@ -7,7 +7,7 @@ import org.labkey.lincs.LincsModule;
 public class LincsPspJob
 {
     private int id;
-    private int _runId;
+    private long _runId;
     private Container _container;
     private Integer _pipelineJobId;
 
@@ -23,7 +23,7 @@ public class LincsPspJob
 
     public LincsPspJob() {}
 
-    public LincsPspJob(Container container, int runId)
+    public LincsPspJob(Container container, long runId)
     {
         _container = container;
         _runId = runId;
@@ -39,7 +39,7 @@ public class LincsPspJob
         this.id = id;
     }
 
-    public int getRunId()
+    public long getRunId()
     {
         return _runId;
     }
