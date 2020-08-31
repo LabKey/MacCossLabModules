@@ -17,6 +17,7 @@
 <%@ page import="java.util.Iterator" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="org.labkey.api.util.SafeToRender" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     JspView<?> me = (JspView<?>)HttpView.currentView();
@@ -158,7 +159,7 @@
 %>
 <!--Submit Rating Form-->
 <div id="reviewPop" title="Leave a review" style="display:none;">
-    <form action="<%= urlFor(SkylineToolsStoreController.SubmitRatingAction.class) %>" method="post">
+    <form action="<%=h(urlFor(SkylineToolsStoreController.SubmitRatingAction.class))%>" method="post">
         Title: <input type="text" name="title"><br>
         <input type="text" name="value" style="display:none;" value="5">
         <div id="slider">
@@ -171,7 +172,7 @@
 </div>
 <!--Manage Tool Owners Form-->
 <div id="manageOwnersPop" title="Manage tool owners" style="display:none;">
-    <form action="<%= urlFor(SkylineToolsStoreController.SetOwnersAction.class) %>" method="post">
+    <form action="<%=h(urlFor(SkylineToolsStoreController.SetOwnersAction.class))%>" method="post">
         <p>
             <label for="toolOwnersManage">Tool owners </label><br />
             <input type="text" id="toolOwnersManage" class="toolOwners" name="toolOwners" /><br /><br />
@@ -183,7 +184,7 @@
 </div>
 <!--Add Tool / Upload New Version Form-->
 <div id="uploadPop" title="Upload tool zip file" style="display:none;">
-    <form action="<%= urlFor(SkylineToolsStoreController.InsertAction.class) %>" enctype="multipart/form-data" method="post">
+    <form action="<%=h(urlFor(SkylineToolsStoreController.InsertAction.class))%>" enctype="multipart/form-data" method="post">
         <p>
             Browse to the zip file containing the tool you would like to upload.<br/><br />
             <input type="file" name="toolZip" /><br /><br />
@@ -199,7 +200,7 @@
 </div>
 <!--Upload Supplementary File Form-->
 <div id="uploadSuppPop" title="Upload supplementary file" style="display:none;">
-    <form action="<%= urlFor(SkylineToolsStoreController.InsertSupplementAction.class) %>" enctype="multipart/form-data" method="post">
+    <form action="<%=h(urlFor(SkylineToolsStoreController.InsertSupplementAction.class))%>" enctype="multipart/form-data" method="post">
         <p>
             Browse to the supplementary file you would like to upload.<br/><br/>
             <input type="file" name="suppFile" /><br /><br />
@@ -239,7 +240,7 @@
         </td>
         <td class="contentright">
             <div class="contentcontainer">
-                <span class="title"><a href="<%= detailsUrl %>"><%= h(tool.getName()) %></a></span>
+                <span class="title"><a href="<%=h(detailsUrl)%>"><%= h(tool.getName()) %></a></span>
 <% if (toolEditor) { %>
                 <div class="menuMouseArea sprocket" alt="<%= h(tool.getName()) %>">
                     <img src="<%= h(imgDir) %>gear.png" title="Settings" />
@@ -331,7 +332,7 @@
 
                 <div class="toolButtons">
 
-                    <button type="button" onclick="window.location.href = '<%= urlFor(SkylineToolsStoreController.DownloadToolAction.class).addParameter("id", tool.getRowId()) %>'" class="styled-button">Download</button>
+                    <button type="button" onclick="window.location.href = '<%=h(urlFor(SkylineToolsStoreController.DownloadToolAction.class).addParameter("id", tool.getRowId()))%>'" class="styled-button">Download</button>
 <% if ((ratingsCurVer == null || ratingsCurVer.length == 0) && loggedIn) { %>
                     <%--<button type="button" onclick="$('#ratingToolId').val(<%= h(tool.getRowId()) %>); $('#reviewPop').dialog('open')" class="styled-button">Leave the first Review!</button>--%>
 <%
@@ -339,7 +340,7 @@
     if (suppFiles.size() == 1) {
         Map.Entry suppPair = (Map.Entry)suppIter.next();
 %>
-                        <a href="<%= suppPair.getKey() %>"><button type="button" class="styled-button">Documentation</button></a>
+                        <a href="<%=h(suppPair.getKey())%>"><button type="button" class="styled-button">Documentation</button></a>
 <% } else if (suppFiles.size() > 1) { %>
                         <div class="menuMouseArea">
                             <button type="button" class="styled-button">Documentation</button>
@@ -348,7 +349,7 @@
         while (suppIter.hasNext()) {
             Map.Entry suppPair = (Map.Entry)suppIter.next();
 %>
-                                <li><a href="<%= suppPair.getKey() %>"><img class="menuIconImg" src="<%= suppPair.getValue() %>" alt="Supplementary file"><%= h(new File(suppPair.getKey().toString()).getName()) %></a></li>
+                                <li><a href="<%=h(suppPair.getKey())%>"><img class="menuIconImg" src="<%=h(suppPair.getValue())%>" alt="Supplementary file"><%= h(new File(suppPair.getKey().toString()).getName()) %></a></li>
 <% } %>
                             </ul>
                         </div>
@@ -472,7 +473,7 @@
     toolOwners[<%= h(tool.getRowId()) %>] = "<%= h(toolOwners.get(tool.getRowId())) %>";
 <%
         }
-        String users = SkylineToolsStoreController.getUsersForAutocomplete();
+        SafeToRender users = SkylineToolsStoreController.getUsersForAutocomplete();
 %>
     $(".toolOwners").each(function() {autocomplete($(this), <%=users%>);});
 
@@ -520,7 +521,7 @@
                 setButtonsEnabled(false);
                 $(this).html("<p>Please wait...</p>");
                 var toolTable = $(this).data("toolTable");
-                $.post("<%= urlFor(SkylineToolsStoreController.DeleteAction.class) %>", {
+                $.post("<%=h(urlFor(SkylineToolsStoreController.DeleteAction.class))%>", {
                     "id": toolTable.attr("data-toolId"),
                     "X-LABKEY-CSRF": LABKEY.CSRF
                 }).done(function() {
@@ -546,7 +547,7 @@
                 setButtonsEnabled(false);
                 $(this).html("<p>Please wait...</p>");
                 var toolTable = $(this).data("toolTable");
-                $.post("<%= urlFor(SkylineToolsStoreController.DeleteLatestAction.class)%>", {
+                $.post("<%=h(urlFor(SkylineToolsStoreController.DeleteLatestAction.class))%>", {
                     "id": toolTable.attr("data-toolId")
                 }).done(function(data) {
                     var newToolTable = extractToolTable(data, toolTable.attr("data-toolLsid"));

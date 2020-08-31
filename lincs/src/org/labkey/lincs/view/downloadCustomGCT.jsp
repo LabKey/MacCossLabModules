@@ -1,27 +1,28 @@
 <%
-    /*
-     * Copyright (c) 2015-2016 LabKey Corporation
-     *
-     * Licensed under the Apache License, Version 2.0 (the "License");
-     * you may not use this file except in compliance with the License.
-     * You may obtain a copy of the License at
-     *
-     *     http://www.apache.org/licenses/LICENSE-2.0
-     *
-     * Unless required by applicable law or agreed to in writing, software
-     * distributed under the License is distributed on an "AS IS" BASIS,
-     * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-     * See the License for the specific language governing permissions and
-     * limitations under the License.
-     */
+/*
+ * Copyright (c) 2015-2016 LabKey Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 %>
+<%@ page import="org.labkey.api.util.FileUtil" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.lincs.LincsController" %>
 <%@ page import="java.util.List" %>
-<%@ page import="org.labkey.api.util.FileUtil" %>
+<%@ page import="java.util.stream.Collectors" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -55,8 +56,8 @@
     {
         var container = LABKEY.ActionURL.getContainer();
         var assayType = container.indexOf("P100") !== -1 ? "P100" : "GCP";
-        console.log("Initializing for <%=fileName%>");
-        var morpheusUrl = externalHeatmapViewerLink(container, '<%=fileName%>', "morpheusLink", assayType);
+        console.log("Initializing for <%=h(fileName)%>");
+        var morpheusUrl = externalHeatmapViewerLink(container, '<%=h(fileName)%>', "morpheusLink", assayType);
         console.log("Morpheus URL: " + morpheusUrl);
     }
 
@@ -71,15 +72,12 @@
 
 <div style="margin:20px 10px 20px 10px">
     <div style="font-weight:bold;">Selected options:</div>
-    <p>Experiment type: <%=form.getExperimentType()%></p>
+    <p>Experiment type: <%=h(form.getExperimentType())%></p>
     <p>
         <%for(LincsController.SelectedAnnotation annotation: annotations) { %>
-            <%=annotation.getDisplayName()%>:
-            <%  String comma = "";
-                for(String value: annotation.getSortedValues()) { %>
-                <%=comma%><%=value%>
-                <%comma = ", ";%>
-            <%}%>
+            <%=h(annotation.getDisplayName())%>:
+            <%=h(annotation.getSortedValues().stream()
+                    .collect(Collectors.joining(", ")))%>
             </br>
         <%}%>
     </p>

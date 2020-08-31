@@ -19,6 +19,9 @@
 <%@ page import="java.util.Iterator" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="org.labkey.api.util.SafeToRender" %>
+<%@ page import="org.labkey.api.util.JavaScriptFragment" %>
+<%@ page import="org.labkey.api.util.HtmlString" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     JspView<?> me = (JspView<?>) HttpView.currentView();
@@ -30,7 +33,7 @@
     final String imgDir = contextPath + "/skylinetoolsstore/img/";
     final String jsDir = contextPath + "/skylinetoolsstore/js/";
 
-    final String autocompleteUsers = admin ? SkylineToolsStoreController.getUsersForAutocomplete() : "\"\"";
+    final SafeToRender autocompleteUsers = admin ? SkylineToolsStoreController.getUsersForAutocomplete() : HtmlString.unsafe("\"\"");
 
     // Get supporting files in map <url, icon url>
     HashMap<String, String> suppFiles = SkylineToolsStoreController.getSupplementaryFiles(tool);
@@ -303,7 +306,7 @@ a.banner-button-small{
     <p<% if (iVersion.getLatest()) { %> class="boldfont"<% } %>>
         <%= h(iVersion.getPrettyCreated()) %> |
 <% if (!viewingThis) { %>
-        <a href="<%= SkylineToolStoreUrls.getToolDetailsUrl(iVersion) %>">
+        <a href="<%=h(SkylineToolStoreUrls.getToolDetailsUrl(iVersion))%>">
 <% } %>
             <%= h(iVersion.getName()) %> (version <%= h(iVersion.getVersion()) %>)
 <% if (!viewingThis) { %>
@@ -314,7 +317,7 @@ a.banner-button-small{
 </div>
 <!--Manage Tool Owners Form-->
 <div id="manageOwnersPop" title="Manage tool owners" style="display:none;">
-    <form action="<%= urlFor(SkylineToolsStoreController.SetOwnersAction.class) %>" method="post">
+    <form action="<%=h(urlFor(SkylineToolsStoreController.SetOwnersAction.class))%>" method="post">
         <p>
             <label for="toolOwners">Tool owners </label><br />
             <input type="text" id="toolOwners" name="toolOwners" /><br /><br />
@@ -326,7 +329,7 @@ a.banner-button-small{
 </div>
 <!--Upload New Version Form-->
 <div id="uploadPop" title="Upload tool zip file" style="display:none;">
-    <form action="<%= urlFor(SkylineToolsStoreController.InsertAction.class) %>" enctype="multipart/form-data" method="post">
+    <form action="<%=h(urlFor(SkylineToolsStoreController.InsertAction.class))%>" enctype="multipart/form-data" method="post">
         <p>
             Browse to the zip file containing the tool you would like to upload.<br/><br/>
             <input type="file" size="50" name="toolZip" /><br /><br />
@@ -338,7 +341,7 @@ a.banner-button-small{
 </div>
 <!--Upload Supplementary File Form-->
 <div id="uploadSuppPop" title="Upload supplementary file" style="display:none;">
-    <form action="<%= urlFor(SkylineToolsStoreController.InsertSupplementAction.class) %>" enctype="multipart/form-data" method="post">
+    <form action="<%=h(urlFor(SkylineToolsStoreController.InsertSupplementAction.class))%>" enctype="multipart/form-data" method="post">
         <p>
             Browse to the supplementary file you would like to upload.<br/><br/>
             <input type="file" size="50" name="suppFile" /><br /><br />
@@ -350,7 +353,7 @@ a.banner-button-small{
 </div>
 <!--Submit Rating Web Form-->
 <div id="reviewPop" title="Leave a review" style="display:none;">
-    <form action="<%= urlFor(SkylineToolsStoreController.SubmitRatingAction.class) %>" method="post">
+    <form action="<%=h(urlFor(SkylineToolsStoreController.SubmitRatingAction.class))%>" method="post">
         Title: <input type="text" name="title"><br>
         <input type="text" id="reviewValuePop" name="value" style="display:none;" value="5">
         <div id="ratingSliderPop">
@@ -403,7 +406,7 @@ a.banner-button-small{
 
             <% if (!tool.getLatest()) { %>
             <p>
-                <a class="importantLink" href="<%= SkylineToolStoreUrls.getToolDetailsUrl(allVersions[0]) %>">See latest version</a>
+                <a class="importantLink" href="<%=h(SkylineToolStoreUrls.getToolDetailsUrl(allVersions[0]))%>">See latest version</a>
             <p>
 <% } %>
         </div>
@@ -456,8 +459,8 @@ a.banner-button-small{
         Map.Entry suppPair = (Map.Entry)suppIter.next();
 %>
     <div class="barItem suppfile">
-        <a href="<%= suppPair.getKey() %>">
-        <img src="<%= suppPair.getValue() %>" alt="Supplementary file" />
+        <a href="<%=h(suppPair.getKey())%>">
+        <img src="<%=h(suppPair.getValue())%>" alt="Supplementary file" />
         <span class="suppfilename"><%= h(new File(suppPair.getKey().toString()).getName()) %></span>
         </a>
     </div>
@@ -512,7 +515,7 @@ a.banner-button-small{
 
 <% if (!getUser().isGuest() && isLatestVersion && !leftReview) { %>
 
-<form action="<%= urlFor(SkylineToolsStoreController.SubmitRatingAction.class) %>" method="post" id="ratingform">
+<form action="<%=h(urlFor(SkylineToolsStoreController.SubmitRatingAction.class))%>" method="post" id="ratingform">
     <legend>Leave a Review</legend>
     <%--<center><h3>Leave a Review</h3></center>--%>
     <input type="text" name="title" class="ratinginput">
@@ -621,7 +624,7 @@ a.banner-button-small{
                 (ui.draggable).offset({top: offset.top, left: offset.left});
                 return;
             }
-            $.post("<%= urlFor(SkylineToolsStoreController.DeleteSupplementAction.class) %>", {
+            $.post("<%=h(urlFor(SkylineToolsStoreController.DeleteSupplementAction.class))%>", {
                 "supptarget": <%= h(tool.getRowId()) %>,
                 "suppFile": targetDel
             }).done(function() {
@@ -694,7 +697,7 @@ a.banner-button-small{
             });
         }
 
-        window.location.href = "<%= urlFor(SkylineToolsStoreController.DownloadToolAction.class) %>id=" + toolId;
+        window.location.href = "<%=h(urlFor(SkylineToolsStoreController.DownloadToolAction.class))%>id=" + toolId;
     }
 
     function popToolOwners() {
@@ -716,7 +719,7 @@ a.banner-button-small{
     $("#delRatingDlg").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE, dialogClass:"noCloseDlg",
         buttons: {
             Ok: function() {
-                window.location = "<%= urlFor(SkylineToolsStoreController.DeleteRatingAction.class) %>id=" + $("#delRatingDlg").data("ratingId");
+                window.location = "<%=h(urlFor(SkylineToolsStoreController.DeleteRatingAction.class))%>id=" + $("#delRatingDlg").data("ratingId");
             },
             Cancel: function() {$(this).dialog("close");}
         }
@@ -726,7 +729,7 @@ a.banner-button-small{
         buttons: {
             Ok: function() {
                 setButtonsEnabled(false);
-                var url = "<%= urlFor(SkylineToolsStoreController.DeleteAction.class)%>";
+                var url = "<%=h(urlFor(SkylineToolsStoreController.DeleteAction.class))%>";
                 var csrf = LABKEY.CSRF;
                 var form = $('<form action="' + url + '" method="post"> ' +
                         '<input type="hidden" name="X-LABKEY-CSRF" value="' +  csrf + '" /> ' +
@@ -742,7 +745,7 @@ a.banner-button-small{
         buttons: {
             Ok: function() {
                 setButtonsEnabled(false);
-                window.location = "<%= urlFor(SkylineToolsStoreController.DeleteLatestAction.class).addParameter("id", tool.getRowId()).addParameter("sender", toolDetailsLatestUrl.getLocalURIString()) %>"
+                window.location = "<%=h(urlFor(SkylineToolsStoreController.DeleteLatestAction.class).addParameter("id", tool.getRowId()).addParameter("sender", toolDetailsLatestUrl.getLocalURIString()))%>"
             },
             Cancel: function() {$(this).dialog("close");}
         }
@@ -773,7 +776,7 @@ a.banner-button-small{
                 $(this).html("<p>Please wait...</p>");
                 $.ajax({
                     type: "POST",
-                    url: "<%= urlFor(SkylineToolsStoreController.UpdatePropertyAction.class) %>",
+                    url: "<%=h(urlFor(SkylineToolsStoreController.UpdatePropertyAction.class))%>",
                     data: postData,
                     success: function() {
                         $("#editToolDlg").dialog("close");

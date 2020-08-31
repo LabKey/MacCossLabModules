@@ -19,6 +19,7 @@ package org.labkey.skylinetoolsstore;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.NavTrailAction;
@@ -55,12 +56,13 @@ import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ReaderRole;
 import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
-import org.labkey.api.services.ServiceRegistry;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.JavaScriptFragment;
 import org.labkey.api.util.NetworkDrive;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
+import org.labkey.api.util.SafeToRender;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
@@ -102,8 +104,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -325,26 +325,16 @@ public class SkylineToolsStoreController extends SpringActionController
     {
         List<SkylineTool> toolList = Arrays.asList(tools);
 
-        Collections.sort(toolList, new Comparator<SkylineTool>()
-        {
-            @Override
-            public int compare(SkylineTool lhs, SkylineTool rhs)
-            {
-                return rhs.getCreated().compareTo(lhs.getCreated());
-            }
-        });
+        toolList.sort((lhs, rhs) -> rhs.getCreated().compareTo(lhs.getCreated()));
 
         return toolList.toArray(new SkylineTool[0]);
     }
 
-    public static String getUsersForAutocomplete()
+    public static SafeToRender getUsersForAutocomplete()
     {
-        StringBuilder sb = new StringBuilder();
-        sb.append('[');
-        for (User u : UserManager.getActiveUsers())
-            sb.append(sb.length() == 1 ? "\"" + u.getEmail() + "\"" : ",\"" + u.getEmail() + "\"");
-        sb.append(']');
-        return sb.toString();
+        return UserManager.getActiveUsers().stream()
+            .map(User::getEmail)
+            .collect(JSONArray.collector());
     }
 
     protected static Pair<ArrayList<User>, ArrayList<String>> parseToolOwnerString(String toolOwners) throws ValidEmail.InvalidEmailException
@@ -395,7 +385,7 @@ public class SkylineToolsStoreController extends SpringActionController
         final String[] knownExtensions = {"pdf", "zip"};
         final String imgDir = AppProps.getInstance().getContextPath() + "/skylinetoolsstore/img/";
 
-        HashMap<String, String> suppFiles = new HashMap();
+        HashMap<String, String> suppFiles = new HashMap<>();
         for (String suppFile : getSupplementaryFileBasenames(tool))
         {
             final String suppFileExtension = FileUtil.getExtension(suppFile).toLowerCase();
@@ -409,7 +399,7 @@ public class SkylineToolsStoreController extends SpringActionController
 
     public static HashSet<String> getSupplementaryFileBasenames(SkylineTool tool)
     {
-        HashSet<String> suppFiles = new HashSet();
+        HashSet<String> suppFiles = new HashSet<>();
         File localToolDir = getLocalPath(tool.lookupContainer());
         for (String suppFile : localToolDir.list())
         {

@@ -16,16 +16,16 @@
  */
 %>
 <%@ page import="org.apache.commons.lang3.StringUtils" %>
+<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page import="org.labkey.api.security.User" %>
+<%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.api.view.ShortURLRecord" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
-<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
-<%@ page import="org.labkey.api.view.ShortURLRecord" %>
 <%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
-<%@ page import="org.labkey.api.util.PageFlowUtil" %>
-<%@ page import="org.labkey.api.portal.ProjectUrls" %>
+<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -97,20 +97,20 @@
         <br>
         <span style="font-weight:bold;">Submitter:</span>
         <ul>
-            <li>Name: <%=expAnnotations.getSubmitterName()%></li>
-            <li>Email: <%=expAnnotations.getSubmitterUser().getEmail()%></li>
+            <li>Name: <%=h(expAnnotations.getSubmitterName())%></li>
+            <li>Email: <%=h(expAnnotations.getSubmitterUser().getEmail())%></li>
             <%if(!StringUtils.isBlank(expAnnotations.getSubmitterAffiliation())) { %>
-            <li>Affiliation: <%=expAnnotations.getSubmitterAffiliation()%></li>
+            <li>Affiliation: <%=h(expAnnotations.getSubmitterAffiliation())%></li>
             <% } %>
         </ul>
         <span style="font-weight:bold;">Lab Head:</span>
         <ul>
-            <li>Name: <%=labHeadName%></li>
+            <li>Name: <%=h(labHeadName)%></li>
             <%if(!StringUtils.isBlank(labHeadEmail)) { %>
-            <li>Email: <%=labHeadEmail%></li>
+            <li>Email: <%=h(labHeadEmail)%></li>
             <% } %>
             <%if(!StringUtils.isBlank(labHeadAffiliation)) { %>
-            <li>Affiliation: <%=labHeadAffiliation%></li>
+            <li>Affiliation: <%=h(labHeadAffiliation)%></li>
             <% } %>
         </ul>
         <br>

@@ -176,8 +176,8 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
                     if(copiedExperimentId == null)
                     {
                         // Show the delete link only if the experiment has not yet been copied
-                        _url.replaceParameter("id", String.valueOf(experimentAnnotationsId));
-                        _url.replaceParameter("journalId", String.valueOf(journalId));
+                        _url.replaceParameter("id", experimentAnnotationsId);
+                        _url.replaceParameter("journalId", journalId);
                         out.write(PageFlowUtil.link("Delete").href(_url).toString());
                     }
                 }

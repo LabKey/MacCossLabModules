@@ -15,11 +15,11 @@
     <table>
         <tr>
             <td  class='labkey-form-label'>User:</td>
-            <td><input size="50" type="text" name="userName" value="<%=form.getUserName()%>"></td>
+            <td><input size="50" type="text" name="userName" value="<%=h(form.getUserName())%>"></td>
         </tr>
         <tr>
             <td  class='labkey-form-label'>Password:</td>
-            <td><input size="50" type="text" name="password" value="<%=form.getPassword()%>"></td>
+            <td><input size="50" type="text" name="password" value="<%=h(form.getPassword())%>"></td>
         </tr>
         <tr>
             <td style="padding-top: 10px; padding-right: 5px;"><%=button("Save Credentials").submit(true)%></td>

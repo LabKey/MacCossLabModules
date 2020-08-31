@@ -1,26 +1,21 @@
-<%@ page import="org.labkey.api.data.Container" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
+<%@ page import="org.json.JSONObject" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
-<%@ page import="org.labkey.testresults.TestResultsController" %>
 <%@ page import="org.labkey.testresults.view.TestsDataBean" %>
+<%@ page import="java.text.DateFormat" %>
+<%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="java.util.Arrays" %>
+<%@ page import="java.util.Calendar" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.TreeMap" %>
-<%@ page import="org.json.JSONObject" %>
-<%@ page import="java.text.DateFormat" %>
-<%@ page import="java.text.SimpleDateFormat" %>
-<%@ page import="java.util.Calendar" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
-
 <%
-    /**
-     * User: Yuval Boss, yuval(at)uw.edu
-     * Date: 10/05/2015
+    /*
+      User: Yuval Boss, yuval(at)uw.edu
+      Date: 10/05/2015
      */
     JspView<?> me = (JspView<?>) HttpView.currentView();
     TestsDataBean data = (TestsDataBean)me.getModelBean();
@@ -35,8 +30,8 @@
     languageFailures.put(failedTest, Arrays.asList(data.getFailures()));
     Map<String, Map<String, Double>> languageBreakdown = data.getLanguageBreakdown(languageFailures);
 
-    DateFormat df = new SimpleDateFormat("MM/dd/YYYY HH:mm");
-    DateFormat dfEnd = new SimpleDateFormat("MM/dd/YYYY");
+    DateFormat df = new SimpleDateFormat("MM/dd/yyyy HH:mm");
+    DateFormat dfEnd = new SimpleDateFormat("MM/dd/yyyy");
     DateFormat jsDf = new SimpleDateFormat("yyyy-MM-dd");
 %>
 
@@ -59,17 +54,17 @@
 %>
 <form action="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>">
     View Type: <select name="viewType" onchange="this.form.submit()">
-                    <option disabled value="firsttime" <%= (value.equals("firsttime")?"selected='selected'":"") %>> -- select an option -- </option>
-                    <option id="posttime" value="posttime"  <%= (value.equals("posttime")?"selected='selected'":"") %>>Day</option>
-                    <option id="wk" value="wk" <%= (value.equals("wk")?"selected='selected'":"") %> >Week</option>
-                    <option id="mo" value="mo" <%= (value.equals("mo")?"selected='selected'":"") %> >Month</option>
-                    <option id="yr" value="yr"  <%= (value.equals("yr")?"selected='selected'":"") %>>Year</option>
-                    <option id="at" value="at"  <%= (value.equals("at")?"selected='selected'":"") %>>The Beginning of Time</option>
+                    <option disabled value="firsttime"<%=selected(value.equals("firsttime"))%>> -- select an option -- </option>
+                    <option id="posttime" value="posttime"<%=selected(value.equals("posttime"))%>>Day</option>
+                    <option id="wk" value="wk"<%=selected(value.equals("wk"))%>>Week</option>
+                    <option id="mo" value="mo"<%=selected(value.equals("mo"))%>>Month</option>
+                    <option id="yr" value="yr"<%=selected(value.equals("yr"))%>>Year</option>
+                    <option id="at" value="at"<%=selected(value.equals("at"))%>>The Beginning of Time</option>
                 </select>
     <select name="failedTest" style="display:none;">
         <option id="<%=h(failedTest)%>" value="<%=h(failedTest)%>"></option>
     </select>
-    <input type="hidden" name="end" value="<%=dfEnd.format(data.getEndDate())%>" />
+    <input type="hidden" name="end" value="<%=h(dfEnd.format(data.getEndDate()))%>" />
 </form>
 <!-- main content of page -->
 <% if (data.getStatRuns().length > 0) { %>

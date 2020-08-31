@@ -18,18 +18,18 @@
 <%@ page import="org.apache.commons.lang3.StringUtils" %>
 <%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
+<%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.ShortURLRecord" %>
-<%@ page import="java.util.Set" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
-<%@ page import="org.labkey.panoramapublic.model.Journal" %>
-<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
-<%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
 <%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
-<%@ page import="org.labkey.api.util.PageFlowUtil" %>
+<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
+<%@ page import="org.labkey.panoramapublic.model.Journal" %>
+<%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
+<%@ page import="java.util.Set" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -76,7 +76,7 @@
 <div id="publishExperimentForm"></div>
 
 <div style="margin: 30px 20px 20px 20px">
-    By submitting the experiment you are granting access to <%=journalName%> to copy data as well as any
+    By submitting the experiment you are granting access to <%=h(journalName)%> to copy data as well as any
     wiki pages, custom views, custom queries, lists and R reports in the following folders:
     <ul>
     <%for(Container folder: experimentFolders) { %>

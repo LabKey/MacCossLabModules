@@ -69,15 +69,15 @@
         <%for(LincsController.SelectedAnnotation annot : annotations) { %>
 
             var newRow = document.createElement("tr");
-            newRow.className = '<%=annot.isAdvanced() ? "advanced" : "required"%>';
+            newRow.className = <%=q(annot.isAdvanced() ? "advanced" : "required")%>;
             var td1 = newRow.insertCell(0);
             var td2 = newRow.insertCell(1);
             td1.className = 'inputCell';
             td2.className = 'inputCell';
 
-            var td1InnerHtml = '<span class="heading">' + '<%=annot.getDisplayName()%>';
-            var td2InnerHtml = '<div class="input" id="' + '<%=annot.getName()%>' + '_combo_input" ></div>' +
-                               '<div id="' + '<%=annot.getName()%>' + '_combo_selected" class="selected"></div>';
+            var td1InnerHtml = '<span class="heading">' + <%=q(annot.getDisplayName())%>;
+            var td2InnerHtml = '<div class="input" id="' + <%=q(annot.getName())%> + '_combo_input" ></div>' +
+                               '<div id="' + <%=q(annot.getName())%> + '_combo_selected" class="selected"></div>';
 
             td1.innerHTML = td1InnerHtml;
             td2.innerHTML = td2InnerHtml;
@@ -106,8 +106,8 @@
         <%for(LincsController.SelectedAnnotation annot : annotations) { %>
             var storeData = [];
             <%for (String value: annot.getSortedValues()) { %>
-                storeData.push({'DisplayName': '<%=value%>',
-                                'NameValue': '<%=annot.getName()%>' + ":" + '<%=value%>'});
+                storeData.push({'DisplayName': <%=q(value)%>,
+                                'NameValue': <%=q(annot.getName())%> + ":" + <%=q(value)%>});
             <%}%>
 
             var store =  Ext4.create('Ext.data.Store', {
@@ -115,8 +115,8 @@
                 data : storeData
             });
 
-            var div_id =  '<%=annot.getName()%>' +"_combo_input";
-            var combo_id = '<%=annot.getName()%>' +"_combo";
+            var div_id = <%=q(annot.getName())%> +"_combo_input";
+            var combo_id = <%=q(annot.getName())%> +"_combo";
             var multiCombo = Ext4.create('Ext.form.field.ComboBox', {
                 fieldLabel: '',
                 renderTo: div_id,
@@ -266,7 +266,7 @@
             <td>
                 <select name="experimentType">
                     <%for(String expType: LincsController.CustomGCTForm.EXP_TYPES) {%>
-                        <option <%=selected(form.getExperimentType().equals(expType))%> value="<%=expType%>"><%=expType%></option>
+                        <option <%=selected(form.getExperimentType().equals(expType))%> value="<%=h(expType)%>"><%=h(expType)%></option>
                     <%}%>
                 </select>
             </td>

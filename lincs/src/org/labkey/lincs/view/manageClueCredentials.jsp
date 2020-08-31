@@ -1,7 +1,5 @@
-<%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="java.util.Map" %>
 <%@ page import="org.labkey.lincs.LincsController" %>
 <%@ page extends="org.labkey.api.jsp.FormPage" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
@@ -17,11 +15,11 @@
     <table>
         <tr>
             <td>URL:</td>
-            <td><input type="text" name="serverUri" value="<%=form.getServerUri()%>"></td>
+            <td><input type="text" name="serverUri" value="<%=h(form.getServerUri())%>"></td>
         </tr>
         <tr>
             <td>API Key:</td>
-            <td><input type="text" name="apiKey" value="<%=form.getApiKey()%>"></td>
+            <td><input type="text" name="apiKey" value="<%=h(form.getApiKey())%>"></td>
         </tr>
     </table>
     <labkey:button text="Save"></labkey:button>

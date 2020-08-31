@@ -51,7 +51,7 @@
     if (hideForm == null || (boolean)hideForm != true)
     {
 %>
-<form action="<%= urlFor(SkylineToolsStoreController.SubmitRatingAction.class) %>" enctype="multipart/form-data" method="post">
+<form action="<%=h(urlFor(SkylineToolsStoreController.SubmitRatingAction.class))%>" enctype="multipart/form-data" method="post">
     Title: <input type="text" name="title" value="<%= h(formTitle) %>"><br>
     <input type="text" id="ratingvalue" name="value" style="display:none;" value="<%= formValue %>">
     <div id="slider">
@@ -59,10 +59,10 @@
     </div>
     <textarea name="review" rows="6" cols="60"><%= h(formReview) %></textarea><br /><br />
 <% if (toolId != null) { %>
-    <input type="hidden" name="toolId" value="<%= toolId %>" />
+    <input type="hidden" name="toolId" value="<%=h(toolId)%>" />
 <% } %>
 <% if (ratingId != null) { %>
-    <input type="hidden" name="ratingId" value="<%= ratingId %>" />
+    <input type="hidden" name="ratingId" value="<%=h(ratingId)%>" />
 <% } %>
     <input type="submit" value="Submit Review" />
 </form>
