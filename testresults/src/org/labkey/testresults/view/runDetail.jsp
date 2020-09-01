@@ -108,7 +108,7 @@
                 "Press 'Ok' to flag this run.  You will be able to unflag the run but while the run " +
                 "remains flagged it will not be used in analyses across the module."
                 <% } %>)) {
-                    window.location.href = "<%=h(new ActionURL(TestResultsController.FlagRunAction.class, c))%>" + "runId=<%=h(run.getId())%>" + "&flag=<%=h(!run.isFlagged())%>";
+                    window.location.href = "<%=h(new ActionURL(TestResultsController.FlagRunAction.class, c))%>" + "runId=<%=h(run.getId())%>" + "&flag=<%=!run.isFlagged()%>";
                 }
             }
         });
