@@ -1,18 +1,13 @@
-<%@ page import="org.labkey.testresults.view.TestsDataBean" %>
-<%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
+<%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
 <%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
+<%@ page import="org.labkey.testresults.model.TestPassDetail" %>
+<%@ page import="org.labkey.testresults.view.TestsDataBean" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
-<%@ page import="org.labkey.testresults.TestResultsController" %>
-<%@ page import="org.labkey.api.data.Container" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.testresults.model.TestPassDetail" %>
 <%@ page import="java.util.Arrays" %>
-<%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
