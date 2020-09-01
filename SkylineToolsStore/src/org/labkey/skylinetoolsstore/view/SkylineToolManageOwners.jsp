@@ -2,6 +2,8 @@
 <%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreController" %>
 <%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
+<%@ page import="org.labkey.api.util.HtmlString" %>
+<%@ page import="org.labkey.api.util.SafeToRender" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     Object errorAttribute = request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "form");
@@ -20,7 +22,7 @@
     final String updateTarget = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "updatetarget");
 
     final boolean admin = getUser().hasSiteAdminPermission();
-    final String autocompleteUsers = admin ? SkylineToolsStoreController.getUsersForAutocomplete() : "\"\"";
+    final SafeToRender autocompleteUsers = admin ? SkylineToolsStoreController.getUsersForAutocomplete() : HtmlString.unsafe("\"\"");
     pageContext.setAttribute("autocompleteUsers", autocompleteUsers);
 %>
 

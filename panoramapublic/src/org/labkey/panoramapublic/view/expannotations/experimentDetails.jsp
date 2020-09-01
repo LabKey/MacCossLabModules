@@ -23,13 +23,13 @@
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.ShortURLRecord" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
-<%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
+<%@ page import="java.text.SimpleDateFormat" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -178,7 +178,7 @@
 <div id="title"><%=h(annot.getTitle())%></div>
 <div>
     <%if(canPublish && !journalCopyPending){%>
-        <a class="button-small button-small-red" style="float:left; margin:0px 5px 0px 2px;" href="<%=h(publishUrl)%>"><%=publishButtonText%></a>
+        <a class="button-small button-small-red" style="float:left; margin:0px 5px 0px 2px;" href="<%=h(publishUrl)%>"><%=h(publishButtonText)%></a>
     <%}%>
     <%if(canEdit){%>
     <a style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>">[Edit]</a>
@@ -192,7 +192,7 @@
 <br/>
 <% if(!StringUtils.isBlank(accessUrl)) {%>
     <div class="link">
-       <strong><%=linkText%>: </strong>
+       <strong><%=h(linkText)%>: </strong>
        <span id="accessUrl" style="margin-top:5px;"><a href="<%=h(accessUrl)%>"><%=h(accessUrl)%></a></span>
        <a class="button-small button-small-green" style="margin:0px 5px 0px 2px;" href="" onclick="showShareLink(this, '<%=h(accessUrl)%>'); return false;">Share</a>
     </div>
@@ -233,7 +233,7 @@
     <%}%>
     <%if(annot.getSpikeIn() != null){%>
  <li><strong>SpikeIn:</strong>
-     <%=annot.getSpikeIn() ? "Yes" : "No"%>
+     <%=h(annot.getSpikeIn() ? "Yes" : "No")%>
  </li>
     <%}%>
     <%if(annot.getKeywords() != null){%>
@@ -243,7 +243,7 @@
     <%}%>
     <%if(annot.getLabHead() != null){%>
     <li><strong>Lab head:</strong>
-        <%=annot.getLabHeadName()%>
+        <%=h(annot.getLabHeadName())%>
     </li>
     <%}%>
 </ul>

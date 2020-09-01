@@ -1,13 +1,11 @@
 <%@ page import="org.json.JSONObject" %>
-<%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.data.statistics.MathStat" %>
 <%@ page import="org.labkey.api.data.statistics.StatsService" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.testresults.TestResultsController" %>
+<%@ page import="org.labkey.testresults.model.BackgroundColor" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
+<%@ page import="org.labkey.testresults.model.RunProblems" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
 <%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
 <%@ page import="org.labkey.testresults.model.User" %>
@@ -18,14 +16,11 @@
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
-<%@ page import="org.labkey.testresults.model.BackgroundColor" %>
-<%@ page import="org.labkey.testresults.model.RunProblems" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
-
 <%
-    /**
-     * User: Yuval Boss, yuval(at)uw.edu
-     * Date: 1/14/2015
+    /*
+      User: Yuval Boss, yuval(at)uw.edu
+      Date: 1/14/2015
      */
     JspView<?> me = (JspView<?>)HttpView.currentView();
     RunDownBean data = (RunDownBean)me.getModelBean();
