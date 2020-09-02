@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
+<!-- 
 
  * Copyright (c) 2011 LabKey Corporation
  *
@@ -100,7 +100,6 @@
             <column columnName="averagemem"/>
             <column columnName="log"/>
             <column columnName="githash"/>
-            <column columnName="medianmem"/>
         </columns>
     </table>
     <table tableName="trainruns" tableDbType="TABLE">
@@ -113,7 +112,6 @@
         <columns>
             <column columnName="id"/>
             <column columnName="username"/>
-            <column columnName="active"/>
         </columns>
     </table>
     <table tableName="userdata" tableDbType="TABLE">
@@ -125,6 +123,7 @@
             <column columnName="meanmemory"/>
             <column columnName="stddevtestsrun"/>
             <column columnName="stddevmemory"/>
+            <column columnName="active"/>
         </columns>
     </table>
 </tables>
