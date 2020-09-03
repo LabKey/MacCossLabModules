@@ -1,18 +1,13 @@
-<%@ page import="org.labkey.testresults.view.TestsDataBean" %>
-<%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
+<%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
 <%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
+<%@ page import="org.labkey.testresults.model.TestPassDetail" %>
+<%@ page import="org.labkey.testresults.view.TestsDataBean" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
-<%@ page import="org.labkey.testresults.TestResultsController" %>
-<%@ page import="org.labkey.api.data.Container" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.testresults.model.TestPassDetail" %>
 <%@ page import="java.util.Arrays" %>
-<%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
@@ -113,7 +108,7 @@
                 "Press 'Ok' to flag this run.  You will be able to unflag the run but while the run " +
                 "remains flagged it will not be used in analyses across the module."
                 <% } %>)) {
-                    window.location.href = "<%=h(new ActionURL(TestResultsController.FlagRunAction.class, c))%>" + "runId=<%=h(run.getId())%>" + "&flag=<%=h(!run.isFlagged())%>";
+                    window.location.href = "<%=h(new ActionURL(TestResultsController.FlagRunAction.class, c))%>" + "runId=<%=h(run.getId())%>" + "&flag=<%=!run.isFlagged()%>";
                 }
             }
         });

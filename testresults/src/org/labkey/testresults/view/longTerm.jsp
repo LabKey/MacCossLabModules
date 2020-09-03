@@ -1,9 +1,9 @@
 <%@ page import="org.json.JSONObject" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.testresults.view.LongTermBean" %>
 <%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
-<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
@@ -62,7 +62,7 @@
             var trendsJson = jQuery.parseJSON(<%= q(trendsJson.toString())%>);
             var failureJson = jQuery.parseJSON(<%= q(failureJson.toString())%>);
             var runCountPerDayJson = jQuery.parseJSON(<%=q(runCountPerDayJson.toString())%>);
-            generateTrendCharts(trendsJson, {showSubChart: <%=h(viewType.equals(ViewType.YEAR) || viewType.equals(ViewType.ALLTIME))%>});
+            generateTrendCharts(trendsJson, {showSubChart: <%=viewType.equals(ViewType.YEAR) || viewType.equals(ViewType.ALLTIME)%>});
 
             function subchartDomainUpdated(domain) { changeData(domain); }
             function changeData(domain) {
