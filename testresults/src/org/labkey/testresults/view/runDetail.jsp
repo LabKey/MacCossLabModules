@@ -11,9 +11,9 @@
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
-    /**
-     * User: Yuval Boss, yuval(at)uw.edu
-     * Date: 1/14/2015
+    /*
+      User: Yuval Boss, yuval(at)uw.edu
+      Date: 1/14/2015
      */
     JspView<?> me = (JspView<?>) HttpView.currentView();
     TestsDataBean data = (TestsDataBean)me.getModelBean();
@@ -75,14 +75,14 @@
         <% if (hang != null) { %><span style="color: red;">(POSSIBLE HANG: <%=h(hang)%>)</span><% } %>
     </h2>
     <p>
-        Run Id: <%=h(run.getId())%><br>
-        User : <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>user=<%=h(run.getUserName())%>"><%=h(run.getUserName())%></a><br>
+        Run Id: <%=run.getId()%><br>
+        User : <a href="<%=h(urlFor(TestResultsController.ShowUserAction.class))%>user=<%=h(run.getUserName())%>"><%=h(run.getUserName())%></a><br>
         OS: <%=h(run.getOs())%><br>
         Revision: <%=h(run.getRevisionFull())%><br>
-        Passed Tests : <%=h(run.getPasses().length)%><br>
+        Passed Tests : <%=run.getPasses().length%><br>
         Memory : <%=h(run.getAverageMemory())%><br>
-        Failures : <%=h(failures.length)%><br>
-        Leaks : <%=h(testmemoryleaks.length)%><br>
+        Failures : <%=failures.length%><br>
+        Leaks : <%=testmemoryleaks.length%><br>
         Timestamp:  <%=h((run.getTimestamp() == null) ? "N/A" : run.getTimestamp())%><br>
         <a id="trainset" style="cursor: pointer;"><%=h((run.isTrainRun()) ? "Remove from training set" : "Add to training set")%></a>
     </p>
@@ -108,13 +108,13 @@
                 "Press 'Ok' to flag this run.  You will be able to unflag the run but while the run " +
                 "remains flagged it will not be used in analyses across the module."
                 <% } %>)) {
-                    window.location.href = "<%=h(new ActionURL(TestResultsController.FlagRunAction.class, c))%>" + "runId=<%=h(run.getId())%>" + "&flag=<%=!run.isFlagged()%>";
+                    window.location.href = "<%=h(new ActionURL(TestResultsController.FlagRunAction.class, c))%>" + "runId=<%=run.getId()%>" + "&flag=<%=!run.isFlagged()%>";
                 }
             }
         });
         $('#deleteRun').click(function() {
             if (confirm("Press 'Ok' to delete this run and all associated passes, leaks, failures, and hangs."))
-                window.location.href = "<%=h(new ActionURL(TestResultsController.DeleteRunAction.class, c))%>" + "runId=<%=h(run.getId())%>";
+                window.location.href = "<%=h(new ActionURL(TestResultsController.DeleteRunAction.class, c))%>" + "runId=<%=run.getId()%>";
         });
     </script>
 </div>
@@ -167,22 +167,22 @@ if (testmemoryleaks.length > 0) { %>
     <% for (TestPassDetail detail: passes) { %>
        <tr>
            <td><%=h(detail.getTestName())%></td>
-           <td><%=h(detail.getPass())%></td>
+           <td><%=detail.getPass()%></td>
            <td><%=h(detail.getLanguage())%></td>
-           <td><%=h(detail.getDuration())%></td>
-           <td><%=h(data.round(detail.getManagedMemory(), 2))%></td>
-           <td><%=h(data.round(detail.getTotalMemory(),2))%></td>
+           <td><%=detail.getDuration()%></td>
+           <td><%=data.round(detail.getManagedMemory(), 2)%></td>
+           <td><%=data.round(detail.getTotalMemory(), 2)%></td>
            <td><%=h((detail.getTimestamp() == null) ? "N/A" : dfMDHM.format(detail.getTimestamp()))%></td>
        </tr>
     <% } %>
-    <tr><td<% if (hang != null) { %> style="background: yellow;"<% } %>>Posted: <%=h(run.getPostTime())%></td></tr>
+    <tr><td<% if (hang != null) { %> style="background: yellow;"<% } %>>Posted: <%=h(formatDateTime(run.getPostTime()))%></td></tr>
     </table>
 <!--Handles add/remove from training data set-->
 <script>
     $('#trainset').click(function() {
         var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
         $(this).off().text("Please wait...");
-        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId=<%=h(run.getId())%>&train=<%=h((run.isTrainRun()) ? "false" : "true")%>', csrf_header, function(data){
+        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId=<%=run.getId()%>&train=<%=h(run.isTrainRun() ? "false" : "true")%>', csrf_header, function(data){
             if (data.Success) {
                 location.reload();
             } else {
@@ -244,7 +244,7 @@ if (testmemoryleaks.length > 0) { %>
 
 <% } else { %>
     <!--Content to display if data is null-->
-<form action="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>">
+<form action="<%=h(urlFor(TestResultsController.ShowRunAction.class))%>">
     <br />
     Run Id:<br>
     <input type="text" name="runId">

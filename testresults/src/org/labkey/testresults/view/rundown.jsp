@@ -3,6 +3,7 @@
 <%@ page import="org.labkey.api.data.statistics.StatsService" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.testresults.TestResultsController.ShowRunAction" %>
 <%@ page import="org.labkey.testresults.model.BackgroundColor" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.RunProblems" %>
@@ -14,8 +15,8 @@
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="java.util.Date" %>
 <%@ page import="java.util.List" %>
-<%@ page import="java.util.Map" %>
 <%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
+<%@ page import="java.util.Map" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     /*
@@ -124,7 +125,7 @@
                             for (User u : statRunUserMap.keySet()) {
                                 for (RunDetail run : statRunUserMap.get(u)) {
                         %>
-                        <tr class="highlightrun highlighttr-<%=h(run.getId())%>">
+                        <tr class="highlightrun highlighttr-<%=run.getId()%>">
                             <%
                                 int passes =  run.getPassedtests();
                                 int failures = run.getFailedtests();
@@ -191,32 +192,32 @@
                                 <% } else if (runStatus == 2) { %>rundown-error
                                 <% } %>"
                                 data-sort-value="<%=h(run.getUserName())%>">
-                                <a title="<%=h(title)%>" style="color: #000 !important; font-weight: 400;" href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>" target="_blank">
-                                    <%=h(run.getUserName() + "("+h(run.getId())+")")%>
+                                <a title="<%=h(title)%>" style="color: #000 !important; font-weight: 400;" href="<%=h(new ActionURL(ShowRunAction.class, c))%>runId=<%=run.getId()%>" target="_blank">
+                                    <%=h(run.getUserName() + "(" + run.getId() + ")")%>
                                 </a>
                             </td>
-                            <td style="font-size: 11px;" data-sort-value="<%=h(run.getPostTime().getTime())%>"><%=h(dfMDHM.format(run.getPostTime()))%></td>
+                            <td style="font-size: 11px;" data-sort-value="<%=run.getPostTime().getTime()%>"><%=h(dfMDHM.format(run.getPostTime()))%></td>
                             <td class="<% if (durationStatus > 0) { %>rundown-error<% } %>">
-                                <%=h(run.getDuration())%>
+                                <%=run.getDuration()%>
                                 <% if (run.getHang() != null) { %><img src='<%=h(contextPath)%>/TestResults/img/hangicon.png'><% } %>
                             <td title="<%=h(u.runBoundHtmlString(warningBoundary, errorBoundary))%>"
                                 class="rundown-user-passes <% if (passStatus == 1) { %>rundown-warn<% } else if (passStatus == 2) { %>rundown-error<% } %>">
-                                <%=h(passes)%>
+                                <%=passes%>
                             </td>
                             <td title="<%=h(u.memBoundHtmlString(warningBoundary, errorBoundary))%>"
                                 class="rundown-user-mem <% if (memStatus == 1) { %>rundown-warn<% } else if (memStatus == 2) { %>rundown-error<% } %>">
                                 <%=h(run.getAverageMemory()) %>
                             </td>
                             <td class="<% if (failStatus > 0) { %>rundown-error<% } %>">
-                                <%=h(failures)%>
+                                <%=failures%>
                                 <% if (failStatus > 0) { %><img src='<%=h(contextPath)%>/TestResults/img/fail.png'><% } %>
                             </td>
                             <td class="<% if (leakStatus > 0) { %>rundown-error<% } %>">
-                                <%=h(testmemoryleaks)%>
+                                <%=testmemoryleaks%>
                                 <% if (leakStatus > 0) { %><img src='<%=h(contextPath)%>/TestResults/img/leak.png'><% } %>
                             </td>
                             <td>
-                                <a style="cursor: pointer;" runid="<%=h(run.getId())%>" train="<%=h((run.isTrainRun()) ? "false" : "true")%>" class="traindata"><%=h((run.isTrainRun()) ? "Untrain" : "Train")%></a>
+                                <a style="cursor: pointer;" runid="<%=run.getId()%>" train="<%=h(run.isTrainRun() ? "false" : "true")%>" class="traindata"><%=h(run.isTrainRun() ? "Untrain" : "Train")%></a>
                             </td>
                         </tr>
                         <% }
@@ -243,8 +244,8 @@
                             </td>
                             <% for (RunDetail run : problemRuns) { %>
                             <td style="max-width: 60px; width: 60px; overflow: hidden; text-overflow: ellipsis; padding: 0;" title="<%=h(run.getUserName())%>">
-                                <a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>" target="_blank">
-                                    <%=h(run.getUserName())%>(<%=h(run.getId())%>)
+                                <a href="<%=h(urlFor(ShowRunAction.class))%>runId=<%=run.getId()%>" target="_blank">
+                                    <%=h(run.getUserName())%>(<%=run.getId()%>)
                                 </a>
                             </td>
                             <% } %>
@@ -257,7 +258,7 @@
                                 <a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>end=<%=h(df.format(selectedDate))%>&failedTest=<%=h(test)%>" target="_blank"><%=h(test)%></a>
                             </td>
                             <% for (RunDetail run : problemRuns) { %>
-                            <td class="highlightrun highlighttd-<%=h(run.getId())%>" style="width: 60px; overflow: hidden; padding: 0;">
+                            <td class="highlightrun highlighttd-<%=run.getId()%>" style="width: 60px; overflow: hidden; padding: 0;">
                                 <% if (problems.isFail(run, test)) { %><img src="<%=h(contextPath)%>/TestResults/img/fail.png"><% } %>
                                 <% if (problems.isLeak(run, test)) { %><img src="<%=h(contextPath)%>/TestResults/img/leak.png"><% } %>
                                 <% if (problems.isHang(run, test)) { %><img src="<%=h(contextPath)%>/TestResults/img/hangicon.png"><% } %>
@@ -273,7 +274,7 @@
         </div>
     </div>
     <script type="text/javascript">
-        $('#stats').text("<%=h(errorRuns)%> Errors | <%=h(warningRuns)%> Warnings | <%=h(goodRuns)%> Passes | <%=h(missingUsers.length)%> Missing");
+        $('#stats').text("<%=errorRuns%> Errors | <%=warningRuns%> Warnings | <%=goodRuns%> Passes | <%=missingUsers.length%> Missing");
     </script>
     <% } %>
     <br />
@@ -309,7 +310,7 @@
         <!--Basic test run information about duration, # of passses, # of failures, and # of testmemoryleaks-->
         <div class="centeredContent">
         <% if (!topFailures.isEmpty()) { %>
-            <!--Top Failures, occurences, and language pie chart table-->
+            <!--Top Failures, occurrences, and language pie chart table-->
             <table class="decoratedtable" style="float:left;">
                 <tr>
                     <td><h4>Top Failures</h4></td>
@@ -319,7 +320,7 @@
                 <% for (String key: topFailures.keySet()) { %>
                 <tr>
                     <td><a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>failedTest=<%=h(key)%>&end=<%=h(df.format(selectedDate))%>&viewType=<%=h(viewType)%>" target="_blank"><%=h(key)%></a></td>
-                    <td><%=h(topFailures.get(key).size())%></td>
+                    <td><%=topFailures.get(key).size()%></td>
                     <td>
                         <div id="<%=h(key)%>" class="c3chart" style="width: 120px; height: 120px;"></div>
                         <script>
@@ -332,7 +333,7 @@
                             for (String l: lang.keySet()) {
                                 double percent = lang.get(l) * 100;
                         %>
-                                ['<%=h(l)%>', <%=h((int)percent)%>],
+                                ['<%=h(l)%>', <%=(int)percent%>],
                         <% } %> ],
                             type: 'pie',
                                 onclick: function (d, i) { console.log("onclick", d, i); },
@@ -365,7 +366,7 @@
                 <% for (String key: topLeaks.keySet()) { %>
                 <tr>
                     <td><%=h(key)%></td>
-                    <td><%=h(topLeaks.get(key).size())%></td>
+                    <td><%=topLeaks.get(key).size()%></td>
                     <% double[] leakbytes = new double[topLeaks.get(key).size()];
                         for (int i = 0; i < topLeaks.get(key).size(); i++) {
                             leakbytes[i] = topLeaks.get(key).get(i).getBytes();
@@ -462,7 +463,7 @@
                         }
                         var id = m[1];
                         window.open(
-                            '<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId='+ id,
+                            '<%=h(new ActionURL(ShowRunAction.class, c))%>runId='+ id,
                             '_blank' // <- This is what makes it open in a new window.
                         );
                     }

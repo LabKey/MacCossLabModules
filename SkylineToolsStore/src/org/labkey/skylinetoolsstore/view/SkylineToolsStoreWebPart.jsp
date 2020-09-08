@@ -312,11 +312,11 @@
                     </div>
                     <div class="ratingcontent">
                         <div class="averagerating"><p><%= averageRatingRounded %> out of 5 stars</p></div>
-                        5 stars:<div id="rating-5-<%= h(tool.getRowId()) %>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[4])%>%;"></div><div style="margin-left:153px !important;"><%= h(ratingsBreakDown[4]) %></div></div><br>
-                        4 stars:<div id="rating-5-<%= h(tool.getRowId()) %>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[3])%>%;"></div><div style="margin-left:153px !important;"><%= h(ratingsBreakDown[3]) %></div></div><br>
-                        3 stars:<div id="rating-5-<%= h(tool.getRowId()) %>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[2])%>%;"></div><div style="margin-left:153px !important;"><%= h(ratingsBreakDown[2]) %></div></div><br>
-                        2 stars:<div id="rating-5-<%= h(tool.getRowId()) %>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[1])%>%;"></div><div style="margin-left:153px !important;"><%= h(ratingsBreakDown[1]) %></div></div><br>
-                        1 stars:<div id="rating-5-<%= h(tool.getRowId()) %>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[0])%>%;"></div><div style="margin-left:153px !important;"><%= h(ratingsBreakDown[0]) %></div></div><br>
+                        5 stars:<div id="rating-5-<%=tool.getRowId()%>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[4])%>%;"></div><div style="margin-left:153px !important;"><%=ratingsBreakDown[4]%></div></div><br>
+                        4 stars:<div id="rating-5-<%=tool.getRowId()%>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[3])%>%;"></div><div style="margin-left:153px !important;"><%=ratingsBreakDown[3]%></div></div><br>
+                        3 stars:<div id="rating-5-<%=tool.getRowId()%>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[2])%>%;"></div><div style="margin-left:153px !important;"><%=ratingsBreakDown[2]%></div></div><br>
+                        2 stars:<div id="rating-5-<%=tool.getRowId()%>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[1])%>%;"></div><div style="margin-left:153px !important;"><%=ratingsBreakDown[1]%></div></div><br>
+                        1 stars:<div id="rating-5-<%=tool.getRowId()%>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[0])%>%;"></div><div style="margin-left:153px !important;"><%=ratingsBreakDown[0]%></div></div><br>
                         <div class="ratingfooter">
                             <p>
                                 <a href="<%= h(detailsUrl) %>">See all <%= totalReviews %> reviews</a>

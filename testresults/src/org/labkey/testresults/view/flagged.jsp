@@ -1,24 +1,19 @@
-<%@ page import="org.labkey.api.data.Container" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.testresults.TestResultsController" %>
-<%@ page import="org.labkey.testresults.view.TestsDataBean" %>
+<%@ page import="org.labkey.testresults.TestResultsController.ShowRunAction" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
+<%@ page import="org.labkey.testresults.view.TestsDataBean" %>
 <%@ page import="java.util.Arrays" %>
 <%@ page import="java.util.Collections" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
-    /**
-     * User: Yuval Boss, yuval(at)uw.edu
-     * Date: 10/05/2015
+    /*
+      User: Yuval Boss, yuval(at)uw.edu
+      Date: 10/05/2015
      */
     JspView<?> me = (JspView<?>) HttpView.currentView();
     TestsDataBean data = (TestsDataBean)me.getModelBean();
-    final String contextPath = AppProps.getInstance().getContextPath();
-    Container c = getContainer();
 %>
 
 <%@include file="menu.jsp" %>
@@ -36,7 +31,7 @@
             Collections.reverse(Arrays.asList(runs));
             for(RunDetail run: runs) {%>
         <tr>
-            <td><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>">  id: <%=h(run.getId())%> / <%=h(run.getUserid())%> / <%=h(run.getPostTime())%></a></td>
+            <td><a href="<%=h(urlFor(ShowRunAction.class).addParameter("runId", run.getId()))%>">  id: <%=run.getId()%> / <%=run.getUserid()%> / <%=run.getPostTime()%></a></td>
         </tr>
         <%}%>
     </table>

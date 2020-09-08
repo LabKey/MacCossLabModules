@@ -3,20 +3,22 @@
 <%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.data.ContainerManager" %>
 <%@ page import="org.labkey.api.data.PropertyManager" %>
-<%@ page import="org.labkey.api.security.SecurityManager" %>
+<%@ page import="org.labkey.api.security.Group" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+<%@ page import="org.labkey.api.security.SecurityManager" %>
 <%@ page import="org.labkey.api.security.User" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.signup.SignUpController" %>
+<%@ page import="org.labkey.signup.SignUpController.AddGroupChangeProperty" %>
+<%@ page import="org.labkey.signup.SignUpController.AddPropertyAction" %>
+<%@ page import="org.labkey.signup.SignUpController.RemoveGroupChangeProperty" %>
+<%@ page import="org.labkey.signup.SignUpController.RemovePropertyAction" %>
 <%@ page import="org.labkey.signup.SignUpModule" %>
+<%@ page import="java.util.Arrays" %>
 <%@ page import="java.util.HashMap" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.Set" %>
-<%@ page import="java.util.Arrays" %>
-<%@ page import="org.labkey.api.security.Group" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
 <%
     JspView<User> me = (JspView<User>) HttpView.currentView();
     User data = me.getModelBean();
@@ -52,12 +54,12 @@
 
 <!--Creates drop down list of all containers-->
 <h4 style="padding:0px; margin: 0px;">Add new user group rule</h4>
-<form <%=formAction(SignUpController.AddPropertyAction.class, Method.Post)%>><labkey:csrf/>
+<form <%=formAction(AddPropertyAction.class, Method.Post)%>><labkey:csrf/>
     <select id="containerId" name="containerId" onchange="loadGroups(this.value)">
         <option disabled selected> -- select an option -- </option>
         <%for(Container c: list) {
         m.put(String.valueOf(c.getRowId()), SecurityManager.getGroups(c.getProject(), false));%> <!--Adds container and associated groups to map-->
-        <option value="<%=h(c.getRowId())%>"><%=h(c.getPath())%></option>
+        <option value="<%=c.getRowId()%>"><%=h(c.getPath())%></option>
     <%}%>
     </select>
     <!--Creates a drop down list of all groups in selected container (dynamic) no ajax-->
@@ -80,7 +82,7 @@
             <tr>
                 <td><%=h(c.getPath())%></td>
                 <td><%=h(property.get(SignUpModule.SIGNUP_GROUP_NAME))%></td>
-                <td><%=link("Remove", new ActionURL(SignUpController.RemovePropertyAction.class, getContainer()).addParameter("containerId", c.getRowId())).usePost()%></td>
+                <td><%=link("Remove", urlFor(RemovePropertyAction.class).addParameter("containerId", c.getRowId())).usePost()%></td>
             </tr>
         <%}
     }%>
@@ -92,7 +94,7 @@
 
 <!--Creates drop down list of all groups-->
 <h4 style="padding:0px; margin: 0px;">Add group conversion rule</h4>
-<form <%=formAction(SignUpController.AddGroupChangeProperty.class, Method.Post)%>><labkey:csrf/>
+<form <%=formAction(AddGroupChangeProperty.class, Method.Post)%>><labkey:csrf/>
     <select id="oldgroup" name="oldgroup">
         <option disabled selected> -- select an option -- </option>
         <%for(Container c: list) {
@@ -100,7 +102,7 @@
             List<Group> groups = SecurityManager.getGroups(c.getProject(), false);%>
         <option disabled><%=h(c.getName())%></option>
           <%for(Group g: groups) {%>
-          <option value="<%=h(g.getUserId())%>">--<%=h(g.getName())%></option>
+          <option value="<%=g.getUserId()%>">--<%=h(g.getName())%></option>
         <%}}}%>
     </select>
     <select id="newgroup" name="newgroup">
@@ -110,7 +112,7 @@
                 List<Group>  groups = SecurityManager.getGroups(c.getProject(), false);%>
         <option disabled><%=h(c.getName())%></option>
         <%for(Group g: groups) {%>
-        <option value="<%=h(g.getUserId())%>">--<%=h(g.getName())%></option>
+        <option value="<%=g.getUserId()%>">--<%=h(g.getName())%></option>
         <%}}}%>
     </select>
     <labkey:button text="Add Rule" />
@@ -130,7 +132,7 @@
         <tr>
             <td><%=h(SecurityManager.getGroup(Integer.parseInt(key)))%> (<%=h(key)%>)</td>
             <td><%=h(SecurityManager.getGroup(Integer.parseInt(rule)))%> (<%=h(rule)%>)</td>
-            <td><%=link("Remove", new ActionURL(SignUpController.RemoveGroupChangeProperty.class, getContainer()).addParameters(Map.of("oldgroup", key, "newgroup", rule))).usePost()%></td>
+            <td><%=link("Remove", urlFor(RemoveGroupChangeProperty.class).addParameters(Map.of("oldgroup", key, "newgroup", rule))).usePost()%></td>
         </tr>
         <%}}}%>
 </table>
