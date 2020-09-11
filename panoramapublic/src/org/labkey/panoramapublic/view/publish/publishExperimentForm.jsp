@@ -25,6 +25,11 @@
 <%@ page import="org.labkey.api.view.ShortURLRecord" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PublishExperimentAction" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PublishExperimentForm" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PublishExperimentFormBean" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.RepublishJournalExperimentAction" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.UpdateJournalExperimentAction" %>
 <%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
@@ -43,9 +48,9 @@
 
 <labkey:errors/>
 <%
-    JspView<PanoramaPublicController.PublishExperimentFormBean> me = (JspView<PanoramaPublicController.PublishExperimentFormBean>) HttpView.currentView();
-    PanoramaPublicController.PublishExperimentFormBean bean = me.getModelBean();
-    PanoramaPublicController.PublishExperimentForm form = bean.getForm();
+    JspView<PublishExperimentFormBean> me = (JspView<PublishExperimentFormBean>) HttpView.currentView();
+    PublishExperimentFormBean bean = me.getModelBean();
+    PublishExperimentForm form = bean.getForm();
 
     String shortAccessUrl = StringUtils.trimToEmpty(form.getShortAccessUrl());
 
@@ -62,12 +67,12 @@
     boolean isUpdate = bean.getForm().isUpdate();
     boolean isResubmit = bean.getForm().isResubmit();
     String publishButtonText = isUpdate ? "Update" : (isResubmit ? "Resubmit" : "Submit");
-    String submitUrl = isUpdate ? new ActionURL(PanoramaPublicController.UpdateJournalExperimentAction.class, getContainer()).getLocalURIString()
+    ActionURL submitUrl = isUpdate ? new ActionURL(UpdateJournalExperimentAction.class, getContainer())
             : (isResubmit ?
-              new ActionURL(PanoramaPublicController.RepublishJournalExperimentAction.class, getContainer()).getLocalURIString()
-            : new ActionURL(PanoramaPublicController.PublishExperimentAction.class, getContainer()).getLocalURIString());
+              new ActionURL(RepublishJournalExperimentAction.class, getContainer())
+            : new ActionURL(PublishExperimentAction.class, getContainer()));
 
-    String cancelUrl = PanoramaPublicController.getViewExperimentDetailsURL(bean.getForm().getId(), getContainer()).getLocalURIString();
+    ActionURL cancelUrl = PanoramaPublicController.getViewExperimentDetailsURL(bean.getForm().getId(), getContainer());
 
     boolean siteAdmin = getUser().hasSiteAdminPermission();
     boolean getLabHeadUserInfo = form.isGetPxid() && expAnnotations.getLabHeadUser() == null;

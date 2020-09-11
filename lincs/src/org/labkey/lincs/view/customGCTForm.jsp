@@ -255,7 +255,7 @@
     }
 </script>
 
-<labkey:form action="<%=buildURL(LincsController.CreateCustomGCTAction.class)%>" method="post" id="customGCTForm">
+<labkey:form action="<%=urlFor(LincsController.CreateCustomGCTAction.class)%>" method="post" id="customGCTForm">
 
     <input type="hidden" name="selectedAnnotations"/>
 

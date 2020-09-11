@@ -1,18 +1,18 @@
-<%@ page import="org.labkey.api.view.HttpView" %>
-<%@ page import="org.labkey.signup.SignUpController" %>
-<%@ page import="org.labkey.signup.SignUpManager" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
+<%@ page import="org.labkey.api.view.HttpView" %>
+<%@ page import="org.labkey.signup.SignUpController.BeginAction" %>
+<%@ page import="org.labkey.signup.SignUpController.SignupForm" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%
-    SignUpController.SignupForm form = (SignUpController.SignupForm)HttpView.currentModel();
-    ActionURL url = new ActionURL(SignUpController.BeginAction.class, getContainer());
+    SignupForm form = (SignupForm)HttpView.currentModel();
+    ActionURL url = urlFor(BeginAction.class);
 %>
 
 <!-- Display errors here -->
 <labkey:errors/>
 
-<form action="<%=h(url.getLocalURIString())%>" method=post>
+<form action="<%=h(url)%>" method=post>
     <labkey:csrf/>
     <table>
         <tr>

@@ -1,28 +1,31 @@
 <%
-    /*
-     * Copyright (c) 2018-2019 LabKey Corporation
-     *
-     * Licensed under the Apache License, Version 2.0 (the "License");
-     * you may not use this file except in compliance with the License.
-     * You may obtain a copy of the License at
-     *
-     *     http://www.apache.org/licenses/LICENSE-2.0
-     *
-     * Unless required by applicable law or agreed to in writing, software
-     * distributed under the License is distributed on an "AS IS" BASIS,
-     * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-     * See the License for the specific language governing permissions and
-     * limitations under the License.
-     */
+/*
+ * Copyright (c) 2018-2019 LabKey Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
+<%@ page import="org.labkey.api.portal.ProjectUrls" %>
+<%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.ExportPxXmlAction" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.GetPxActionsAction" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PxXmlSummaryAction" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.UpdatePxDetailsAction" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
-<%@ page import="org.labkey.api.util.PageFlowUtil" %>
-<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -138,7 +141,7 @@
         function submitPxForm() {
             var values = form.getForm().getValues();
             form.submit({
-                url: <%=q(new ActionURL(PanoramaPublicController.GetPxActionsAction.class, getContainer()).getLocalURIString())%>,
+                url: <%=q(urlFor(GetPxActionsAction.class))%>,
                 method: 'POST',
                 params: values
             });
@@ -160,7 +163,7 @@
                     xtype: 'component',
                     fieldLabel: "PX XML Summary",
                     autoEl: {tag: 'a',
-                        href: <%=q(new ActionURL(PanoramaPublicController.PxXmlSummaryAction.class, getContainer()).addParameter("id", expAnnot.getId()).getLocalURIString())%>,
+                        href: <%=q(urlFor(PxXmlSummaryAction.class).addParameter("id", expAnnot.getId()))%>,
                         html: 'Get PX XML Summary',
                         style: 'font-weight: bold;'}
                 },
@@ -168,7 +171,7 @@
                     xtype: 'component',
                     fieldLabel: "Export PX XML",
                     autoEl: {tag: 'a',
-                        href: <%=q(new ActionURL(PanoramaPublicController.ExportPxXmlAction.class, getContainer()).addParameter("id", expAnnot.getId()).getLocalURIString())%>,
+                        href: <%=q(urlFor(ExportPxXmlAction.class).addParameter("id", expAnnot.getId()))%>,
                         html: 'Export PX XML file',
                         style: 'font-weight: bold'}
                 },
@@ -176,8 +179,8 @@
                     xtype: 'component',
                     fieldLabel: "Update PX ID And Submission Type",
                     autoEl: {tag: 'a',
-                        href: <%=q(new ActionURL(PanoramaPublicController.UpdatePxDetailsAction.class, getContainer()).addParameter("id", expAnnot.getId())
-                                 .addReturnURL(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnot.getContainer())).getLocalURIString())%>,
+                        href: <%=q(urlFor(UpdatePxDetailsAction.class).addParameter("id", expAnnot.getId())
+                                 .addReturnURL(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnot.getContainer())))%>,
                         html: 'Update PX ID And Submission Type',
                         style: 'font-weight: bold'}
                 }

@@ -1,8 +1,10 @@
+<%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PxDetailsForm" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.UpdatePxDetailsAction" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page extends="org.labkey.api.jsp.FormPage" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
@@ -16,7 +18,7 @@
 %>
 
 <%
-    PanoramaPublicController.PxDetailsForm form = ((JspView<PanoramaPublicController.PxDetailsForm>) HttpView.currentView()).getModelBean();
+    PxDetailsForm form = ((JspView<PxDetailsForm>) HttpView.currentView()).getModelBean();
     ExperimentAnnotations expAnnot = form.lookupExperiment();
     ActionURL cancelUrl = form.getReturnActionURL(PanoramaPublicController.getViewExperimentDetailsURL(expAnnot.getId(), expAnnot.getContainer()));
 %>
@@ -77,7 +79,7 @@
                     handler: function() {
                         var values = form.getForm().getValues();
                         form.submit({
-                            url: <%=q(new ActionURL(PanoramaPublicController.UpdatePxDetailsAction.class, getContainer()).getLocalURIString())%>,
+                            url: <%=q(urlFor(UpdatePxDetailsAction.class))%>,
                             method: 'POST',
                             params: values
                         });
@@ -88,7 +90,7 @@
                     text: 'Cancel',
                     cls: 'labkey-button',
                     hrefTarget: '_self',
-                    href: <%=q(cancelUrl.getLocalURIString())%>
+                    href: <%=q(cancelUrl)%>
                 }
             ]
         });

@@ -20,7 +20,10 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.lincs.LincsController" %>
+<%@ page import="org.labkey.lincs.LincsController.CustomGCTForm" %>
+<%@ page import="org.labkey.lincs.LincsController.DownloadCustomGCTReportAction" %>
+<%@ page import="org.labkey.lincs.LincsController.GctBean" %>
+<%@ page import="org.labkey.lincs.LincsController.SelectedAnnotation" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.stream.Collectors" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
@@ -35,12 +38,12 @@
     }
 %>
 <%
-    JspView<LincsController.CustomGCTForm> jspView = (JspView<LincsController.CustomGCTForm>) HttpView.currentView();
-    LincsController.CustomGCTForm form = jspView.getModelBean();
-    List<LincsController.SelectedAnnotation> annotations = form.getSelectedAnnotationValues();
-    LincsController.GctBean gctBean = form.getCustomGctBean();
+    JspView<CustomGCTForm> jspView = (JspView<CustomGCTForm>) HttpView.currentView();
+    CustomGCTForm form = jspView.getModelBean();
+    List<SelectedAnnotation> annotations = form.getSelectedAnnotationValues();
+    GctBean gctBean = form.getCustomGctBean();
 
-    ActionURL downloadGctUrl = new ActionURL(LincsController.DownloadCustomGCTReportAction.class, getContainer());
+    ActionURL downloadGctUrl = urlFor(DownloadCustomGCTReportAction.class);
     String fileName = FileUtil.getFileName(gctBean.getGctFile());
     downloadGctUrl.addParameter("fileName", fileName);
 %>
@@ -74,7 +77,7 @@
     <div style="font-weight:bold;">Selected options:</div>
     <p>Experiment type: <%=h(form.getExperimentType())%></p>
     <p>
-        <%for(LincsController.SelectedAnnotation annotation: annotations) { %>
+        <%for(SelectedAnnotation annotation: annotations) { %>
             <%=h(annotation.getDisplayName())%>:
             <%=h(annotation.getSortedValues().stream()
                     .collect(Collectors.joining(", ")))%>

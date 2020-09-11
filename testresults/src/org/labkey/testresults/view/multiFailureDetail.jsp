@@ -90,8 +90,8 @@
 <div style="float:left;">
     <h2>All Failures</h2>
     <h4>Viewing data for: <%=h(df.format(data.getStartDate()))%> - <%=h(df.format(data.getEndDate()))%></h4>
-    <h4>Total failures: <%=h(runs.length)%></h4>
-    <h4>Unique users: <%=h(users.size())%></h4>
+    <h4>Total failures: <%=runs.length%></h4>
+    <h4>Unique users: <%=users.size()%></h4>
 </div>
 <br />
 <!-- Bar & Pie chart containers -->
@@ -108,13 +108,13 @@
     for(RunDetail run: runs) { %>
         <tr>
             <td>
-                <p style="width:200px;"><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>">
+                <p style="width:200px;"><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=run.getId()%>">
                 <%=h(run.getUserName())%> <br />
-                Duration: <%=h(run.getDuration())%> <br />
+                Duration: <%=run.getDuration()%> <br />
                 OS: <%=h(run.getOs())%> <br />
-                Post Time: <%=h(run.getPostTime())%> <br />
-                Rev: <%=h(run.getRevision())%> <br />
-                Run Failures: <%=h(run.getFailures().length)%>
+                Post Time: <%=run.getPostTime()%> <br />
+                Rev: <%=run.getRevision()%> <br />
+                Run Failures: <%=run.getFailures().length%>
                 </a></p>
             </td>
             <td>
@@ -122,7 +122,7 @@
                     for(TestFailDetail fail: run.getFailures()) {
                             failCounter++; %>
                         <pre style="text-align: left; padding:10px;"
-                             class="pass-<%=h(fail.getPass())%>">Pass: <%=h(fail.getPass())%> Language: <%=h(fail.getLanguage())%> --- <%=h(fail.getStacktrace())%>
+                             class="pass-<%=fail.getPass()%>">Pass: <%=fail.getPass()%> Language: <%=h(fail.getLanguage())%> --- <%=h(fail.getStacktrace())%>
                         </pre>
                     <%}%>
                 <%
@@ -148,7 +148,7 @@
                     Double percent = lang.get(l) * 100;
                 %>
 
-                ['<%=h(l)%>', <%=h(percent.intValue())%>],
+                ['<%=h(l)%>', <%=percent.intValue()%>],
                 <%}%>  ],
             type : 'pie'
         },

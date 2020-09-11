@@ -15,22 +15,25 @@
  * limitations under the License.
  */
 %>
+<%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.data.ContainerManager" %>
+<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page import="org.labkey.api.security.permissions.AdminPermission" %>
+<%@ page import="org.labkey.api.security.roles.RoleManager" %>
+<%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.api.security.roles.RoleManager" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.CopyExperimentAction" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.CopyExperimentForm" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.GetPxActionsAction" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
-<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
-<%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
-<%@ page import="org.labkey.api.portal.ProjectUrls" %>
+<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -44,8 +47,8 @@
 %>
 
 <%
-    JspView<PanoramaPublicController.CopyExperimentForm> me = (JspView<PanoramaPublicController.CopyExperimentForm>) HttpView.currentView();
-    PanoramaPublicController.CopyExperimentForm bean = me.getModelBean();
+    JspView<CopyExperimentForm> me = (JspView<CopyExperimentForm>) HttpView.currentView();
+    CopyExperimentForm bean = me.getModelBean();
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
     Journal journal = bean.lookupJournal();
     JournalExperiment je = JournalManager.getJournalExperiment(expAnnot.getId(), journal.getId());
@@ -62,7 +65,7 @@
         }
     }
 
-    ActionURL pxActionsUrl = new ActionURL(PanoramaPublicController.GetPxActionsAction.class, getContainer());
+    ActionURL pxActionsUrl = urlFor(GetPxActionsAction.class);
     pxActionsUrl.addParameter("id", expAnnot.getId());
 
     ActionURL pxValidationUrl = PanoramaPublicController.getPrePublishExperimentCheckURL(expAnnot.getId(), expAnnot.getContainer(), true);
@@ -238,7 +241,7 @@
                     handler: function() {
                         var values = form.getForm().getValues();
                         form.submit({
-                            url: <%=q(new ActionURL(PanoramaPublicController.CopyExperimentAction.class, getContainer()).getLocalURIString())%>,
+                            url: <%=q(urlFor(CopyExperimentAction.class))%>,
                             method: 'POST',
                             params: values
                         });
@@ -249,7 +252,7 @@
                     text: 'Validate for ProteomeXchange',
                     cls: 'labkey-button',
                     handler: function(btn) {
-                        window.open(<%=q(pxValidationUrl.getLocalURIString())%>, "_blank");
+                        window.open(<%=q(pxValidationUrl)%>, "_blank");
                     }
                 }
             ]

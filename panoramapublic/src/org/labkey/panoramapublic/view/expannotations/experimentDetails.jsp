@@ -24,6 +24,9 @@
 <%@ page import="org.labkey.api.view.ShortURLRecord" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.ExperimentAnnotationsDetails" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.GetPxActionsAction" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.ShowExperimentAnnotationsAction" %>
 <%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
@@ -47,8 +50,8 @@
 %>
 
 <%
-    JspView<PanoramaPublicController.ExperimentAnnotationsDetails> me = (JspView<PanoramaPublicController.ExperimentAnnotationsDetails>) HttpView.currentView();
-    PanoramaPublicController.ExperimentAnnotationsDetails annotDetails = me.getModelBean();
+    JspView<ExperimentAnnotationsDetails> me = (JspView<ExperimentAnnotationsDetails>) HttpView.currentView();
+    ExperimentAnnotationsDetails annotDetails = me.getModelBean();
     ExperimentAnnotations annot = annotDetails.getExperimentAnnotations();
     ActionURL editUrl = PanoramaPublicController.getEditExperimentDetailsURL(getContainer(), annot.getId(),
             PanoramaPublicController.getViewExperimentDetailsURL(annot.getId(), getContainer()));
@@ -61,7 +64,7 @@
     final boolean canPublish = annotDetails.isCanPublish();
     final boolean showingFullDetails = annotDetails.isFullDetails();
 
-    ActionURL experimentDetailsUrl = new ActionURL(PanoramaPublicController.ShowExperimentAnnotationsAction.class, getContainer());
+    ActionURL experimentDetailsUrl = urlFor(ShowExperimentAnnotationsAction.class);
     experimentDetailsUrl.addParameter("id", annot.getId());
 
     Journal journal = null;
@@ -218,7 +221,7 @@
 <%}%>
 
 <%if(getUser().hasSiteAdminPermission()) {
-    ActionURL pxActionsUrl = new ActionURL(PanoramaPublicController.GetPxActionsAction.class, getContainer());
+    ActionURL pxActionsUrl = urlFor(GetPxActionsAction.class);
     pxActionsUrl.addParameter("id", annot.getId());
 %>
 <br/><div><%=link("ProteomeXchange Actions", pxActionsUrl)%></div>
