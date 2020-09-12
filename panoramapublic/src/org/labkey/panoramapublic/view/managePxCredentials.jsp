@@ -1,14 +1,14 @@
+<%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
-<%@ page import="org.labkey.api.util.URLHelper" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.JournalGroupsAdminViewAction" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PXCredentialsForm" %>
 <%@ page extends="org.labkey.api.jsp.FormPage" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
 <%
-    PanoramaPublicController.PXCredentialsForm form = ((JspView<PanoramaPublicController.PXCredentialsForm>) HttpView.currentView()).getModelBean();
-    ActionURL panoramaPublicAdminUrl = new ActionURL(PanoramaPublicController.JournalGroupsAdminViewAction.class, getContainer());
+    PXCredentialsForm form = ((JspView<PXCredentialsForm>) HttpView.currentView()).getModelBean();
+    ActionURL panoramaPublicAdminUrl = urlFor(JournalGroupsAdminViewAction.class);
 %>
 <p>
 <labkey:form method="post">

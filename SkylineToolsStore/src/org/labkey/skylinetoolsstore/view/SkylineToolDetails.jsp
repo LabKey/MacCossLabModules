@@ -570,7 +570,7 @@ a.banner-button-small{
             <h2><%= h(reviewTitle) %></h2>
             <div class="ratingstars">
                 <div class="ratingempty">
-                    <div class="ratingfull" style="width:<%= h(ratingValue * 15) %>px;"></div>
+                    <div class="ratingfull" style="width:<%=ratingValue * 15%>px;"></div>
                 </div>
             </div>
             <br />

@@ -2,6 +2,7 @@
 <%@ page import="org.labkey.api.data.TableSelector" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.testresults.TestResultsController.ShowRunAction" %>
 <%@ page import="org.labkey.testresults.TestResultsSchema" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.User" %>
@@ -171,19 +172,19 @@
                     if (!userFailCount.containsKey(key))
                         userFailCount.put(key, 0);
                     userFailCount.put(key, userFailCount.get(key) + run.getFailedtests()); %>
-                <tr class="run-row" data-run-id="<%=h(run.getId())%>" data-timestamp="<%=h(run.getPostTime().getTime())%>">
-                    <td><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>">run details</a></td>
+                <tr class="run-row" data-run-id="<%=run.getId()%>" data-timestamp="<%=run.getPostTime().getTime()%>">
+                    <td><a href="<%=h(urlFor(ShowRunAction.class).addParameter("runId", run.getId()))%>">run details</a></td>
                     <% if (!showSingleUser) { %><td><%=h(run.getUserName())%></td><% } %>
                     <td><%=h(df.format(run.getPostTime()))%></td>
-                    <td><%=h(run.getDuration())%></td>
-                    <td><%=h(run.getPassedtests())%></td>
-                    <td><%=h(run.getAveragemem())%></td>
+                    <td><%=run.getDuration()%></td>
+                    <td><%=run.getPassedtests()%></td>
+                    <td><%=run.getAveragemem()%></td>
 <%--                    <td><%=h(run.getMedianmem())%></td>--%>
-                    <td><%=h(run.getFailedtests())%></td>
-                    <td><%=h(run.getLeakedtests())%></td>
+                    <td><%=run.getFailedtests()%></td>
+                    <td><%=run.getLeakedtests()%></td>
                     <td><%=h(run.getOs())%></td>
                     <td><%=h(run.getRevisionFull())%></td>
-                    <td><a class="trainset" runId="<%=h(run.getId())%>" runTrained="<%=run.isTrainRun()%>" style="cursor:pointer;">
+                    <td><a class="trainset" runId="<%=run.getId()%>" runTrained="<%=run.isTrainRun()%>" style="cursor:pointer;">
                         <%=h((run.isTrainRun()) ? "Remove from training set" : "Add to training set")%>
                     </a></td>
                 </tr>
@@ -301,7 +302,7 @@
                 }
             });
             if (minRow)
-                location.href = '<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=' + minRow.data("run-id");
+                location.href = '<%=h(new ActionURL(ShowRunAction.class, c))%>runId=' + minRow.data("run-id");
         };
         <% } %>
 

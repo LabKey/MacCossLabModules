@@ -267,7 +267,7 @@
         {
             var values = publishForm.getForm().getValues();
             // console.log(values);
-            publishForm.submit({url: <%=q(submitUrl.getLocalURIString())%>, method: 'GET', params: values});
+            publishForm.submit({url: <%=q(submitUrl)%>, method: 'GET', params: values});
         }
         else
         {

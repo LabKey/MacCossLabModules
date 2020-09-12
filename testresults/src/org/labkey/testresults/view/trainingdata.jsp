@@ -149,12 +149,12 @@
                         if (firstRunId == -1) { firstRunId = run.getId(); }
             %>
             <tr>
-                <td style="border-left: 1px solid #000; padding-left: 5px;"><%=h(run.getPostTime())%></td>
-                <td style="border-left: 1px solid #000; padding-left: 5px;"><%=h(run.getDuration())%></td>
-                <td style="border-left: 1px solid #000; padding-left: 5px;"><%=h(run.getPassedtests())%></td>
-                <td style="border-left: 1px solid #000; padding-left: 5px;"><%=h(run.getFailedtests())%></td>
+                <td style="border-left: 1px solid #000; padding-left: 5px;"><%=h(formatDateTime(run.getPostTime()))%></td>
+                <td style="border-left: 1px solid #000; padding-left: 5px;"><%=run.getDuration()%></td>
+                <td style="border-left: 1px solid #000; padding-left: 5px;"><%=run.getPassedtests()%></td>
+                <td style="border-left: 1px solid #000; padding-left: 5px;"><%=run.getFailedtests()%></td>
                 <td style="border-left: 1px solid #000; padding-left: 5px;"><%=h(run.getAverageMemory())%></td>
-                <td style="border-left: 1px solid #000; padding-left: 5px;"><a style="cursor: pointer;" runid="<%=h(run.getId())%>" class="removedata">Remove</a></td>
+                <td style="border-left: 1px solid #000; padding-left: 5px;"><a style="cursor: pointer;" runid="<%=run.getId()%>" class="removedata">Remove</a></td>
             </tr>
             <% }
             } %>

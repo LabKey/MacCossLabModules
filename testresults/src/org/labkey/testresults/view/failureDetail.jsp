@@ -71,7 +71,7 @@
 <div style="float: left;">
     <h2><%=h(failedTest)%></h2>
     <h4>Viewing data for: <%=h(df.format(data.getStartDate()))%> - <%=h(df.format(data.getEndDate()))%></h4>
-    <h4>Total failures: <%=h(runs.length)%></h4>
+    <h4>Total failures: <%=runs.length%></h4>
 </div>
 <br />
 <!-- Bar & Pie chart containers -->
@@ -115,15 +115,15 @@
             for (RunDetail run : runs) { %>
         <tr>
             <td>
-                <a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(run.getId())%>">
+                <a href="<%=h(urlFor(TestResultsController.ShowRunAction.class).addParameter("runId", run.getId()))%>">
                     <%=h(run.getUserName())%>
                 </a>
             </td>
             <td><%=h(df.format(run.getPostTime()))%></td>
-            <td><%=h(run.getDuration())%></td>
+            <td><%=run.getDuration()%></td>
             <td><%=h(run.getOs())%></td>
             <td><%=h(run.getRevisionFull())%></td>
-            <td><%=h(run.getFailedtests())%></td>
+            <td><%=run.getFailedtests()%></td>
             <td><%=h(run.getHang() != null ? run.getHang().getTestName() : "-")%></td>
             <td>
                 <% for (TestFailDetail fail: run.getFailures()) {
@@ -135,7 +135,7 @@
                             String dateString = jsDf.format(cal.getTime());
                             dates.put(dateString, dates.get(dateString) + 1); %>
                 <pre style="text-align: left; padding:10px;"
-                     class="pass-<%=h(fail.getPass())%>">Pass: <%=h(fail.getPass())%> Language: <%=h(fail.getLanguage())%> --- <%=h(fail.getStacktrace())%>
+                     class="pass-<%=fail.getPass()%>">Pass: <%=fail.getPass()%> Language: <%=h(fail.getLanguage())%> --- <%=h(fail.getStacktrace())%>
                             </pre>
                         <% }
                     } %>
@@ -157,7 +157,7 @@
                     for (String l: lang.keySet()) {
                         Double percent = lang.get(l) * 100;
                 %>
-                ['<%=h(l)%>', <%=h(percent.intValue())%>],
+                ['<%=h(l)%>', <%=percent.intValue()%>],
                 <% } %>  ],
             type: 'pie'
         },
