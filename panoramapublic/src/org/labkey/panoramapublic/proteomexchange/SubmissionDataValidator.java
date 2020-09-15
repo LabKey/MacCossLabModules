@@ -27,7 +27,7 @@ import org.labkey.api.data.TableSelector;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.query.FieldKey;
-import org.labkey.api.targetedms.BlibSourceFiles;
+import org.labkey.api.targetedms.BlibSourceFile;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
@@ -247,22 +247,36 @@ public class SubmissionDataValidator
 
             // Get missing blib source files
             java.nio.file.Path rawFilesDir = getRawFilesDirPath(run.getContainer());
-            for(Map.Entry<String, BlibSourceFiles> entry : targetedMsSvc.getBlibSourceFiles(run).entrySet())
+            for(Map.Entry<String, List<BlibSourceFile>> entry : targetedMsSvc.getBlibSourceFiles(run).entrySet())
             {
-                String blib = entry.getKey();
-                List<String> ssfMissing = new ArrayList<>();
-                for(String ssf: entry.getValue().getSpectrumSourceFiles())
+                Set<String> checkedFiles = new HashSet<>();
+                Set<String> ssfMissing = new HashSet<>();
+                Set<String> idFilesMissing = new HashSet<>();
+                for(BlibSourceFile file: entry.getValue())
                 {
-                    if (!hasExpData(FilenameUtils.getName(getFilePath(ssf)), run.getContainer(), rawFilesDir, expSvc))
-                        ssfMissing.add(ssf);
+                    String ssf = file.getSpectrumSourceFile();
+                    if (file.hasSpectrumSourceFile() && !checkedFiles.contains(ssf))
+                    {
+                        boolean isMaxquant = (file.hasIdFile() && file.getIdFile().endsWith("msms.txt")) || file.containsScoreType("MAXQUANT SCORE");
+                        if (!hasExpData(FilenameUtils.getName(getFilePath(ssf)), run.getContainer(), rawFilesDir, expSvc, isMaxquant))
+                            ssfMissing.add(ssf);
+                        checkedFiles.add(ssf);
+                    }
+                    String idFile = file.getIdFile();
+                    if (file.hasIdFile() && !checkedFiles.contains(idFile))
+                    {
+                        if (!hasExpData(FilenameUtils.getName(getFilePath(idFile)), run.getContainer(), rawFilesDir, expSvc, false))
+                            idFilesMissing.add(idFile);
+                        checkedFiles.add(idFile);
+                    }
                 }
-                List<String> idFilesMissing = new ArrayList<>();
-                for(String idFile: entry.getValue().getIdFiles())
-                {
-                    if (!hasExpData(FilenameUtils.getName(getFilePath(idFile)), run.getContainer(), rawFilesDir, expSvc))
-                        idFilesMissing.add(idFile);
-                }
-                submissionStatus.addMissingLibFile(blib, run.getFileName(), ssfMissing, idFilesMissing);
+
+                // Source spectrum file can be the same as the ID file if embedded spectra are used.
+                // In this case, we only want it added once (as an ID file).
+                for(String file: idFilesMissing)
+                    ssfMissing.remove(file);
+
+                submissionStatus.addMissingLibFile(entry.getKey(), run.getFileName(), ssfMissing, idFilesMissing);
             }
         }
     }
@@ -304,7 +318,7 @@ public class SubmissionDataValidator
     private static void checkExists(ITargetedMSRun run, Container rootExpContainer, Path rawFilesDir, String filePath, Set<String> existingRawFiles, List<String> missingFiles, ExperimentService expSvc)
     {
         String fileName = FilenameUtils.getName(filePath);
-        if (!hasExpData(fileName, run.getContainer(), rawFilesDir, expSvc))
+        if (!hasExpData(fileName, run.getContainer(), rawFilesDir, expSvc, false))
         {
             // If no matching row was found in exp.data and this is NOT a cloud container check for the file on the file system.
             if(!FileContentService.get().isCloudRoot(rootExpContainer))
@@ -405,7 +419,7 @@ public class SubmissionDataValidator
         return null;
     }
 
-    private static boolean hasExpData(String sampleFileName, Container container, Path rawFilesDir, ExperimentService svc)
+    private static boolean hasExpData(String sampleFileName, Container container, Path rawFilesDir, ExperimentService svc, boolean allowBasenameOnly)
     {
         if(svc == null)
         {
@@ -430,7 +444,7 @@ public class SubmissionDataValidator
 
         for (String expDataFile: files)
         {
-            if(accept(sampleFileName, expDataFile))
+            if(accept(sampleFileName, expDataFile, allowBasenameOnly))
             {
                 return true;
             }
@@ -440,12 +454,18 @@ public class SubmissionDataValidator
 
     private static boolean accept(String sampleFileName, String uploadedFileName)
     {
+        return accept(sampleFileName, uploadedFileName, false);
+    }
+
+    private static boolean accept(String sampleFileName, String uploadedFileName, boolean allowBasenameOnly)
+    {
         // Accept QC_10.9.17.raw OR for QC_10.9.17.raw.zip OR QC_10.9.17.zip
         // 170428_DBS_cal_7a.d OR 170428_DBS_cal_7a.d.zip OR 170428_DBS_cal_7a.zip
         String nameNoExt = FileUtil.getBaseName(sampleFileName);
         return sampleFileName.equalsIgnoreCase(uploadedFileName)
                 || (sampleFileName + ".zip").equalsIgnoreCase(uploadedFileName)
-                || (nameNoExt + ".zip").equalsIgnoreCase(uploadedFileName);
+                || (nameNoExt + ".zip").equalsIgnoreCase(uploadedFileName)
+                || (allowBasenameOnly && nameNoExt.equalsIgnoreCase(FileUtil.getBaseName(uploadedFileName)));
     }
 
     public static class TestCase extends Assert
