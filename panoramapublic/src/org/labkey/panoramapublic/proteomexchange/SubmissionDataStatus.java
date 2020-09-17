@@ -116,7 +116,7 @@ public class SubmissionDataStatus
         return _missingLibFiles;
     }
 
-    public void addMissingLibFile(String lib, String skylineDoc, List<String> ssf, List<String> idFiles)
+    public void addMissingLibFile(String lib, String skylineDoc, Set<String> ssf, Set<String> idFiles)
     {
         boolean hasSsf = ssf != null && !ssf.isEmpty();
         boolean hasIdFiles = idFiles != null && !idFiles.isEmpty();
@@ -128,8 +128,8 @@ public class SubmissionDataStatus
         {
             _missingLibFiles.put(lib, new MissingLibrarySourceFiles(
                     new HashSet<>(Arrays.asList(skylineDoc)),
-                    hasSsf ? new HashSet<>(ssf) : null,
-                    hasIdFiles ? new HashSet<>(idFiles) : null));
+                    hasSsf ? ssf : null,
+                    hasIdFiles ? idFiles : null));
             return;
         }
         m.getSkyDocs().add(skylineDoc);
