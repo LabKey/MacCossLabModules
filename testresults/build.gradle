@@ -1,0 +1,3 @@
+dependencies {
+    external "commons-fileupload:commons-fileupload:${commonsFileuploadVersion}"
+}
