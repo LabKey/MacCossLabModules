@@ -29,6 +29,7 @@ import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
@@ -455,9 +456,9 @@ public class LincsDataTable extends FilteredTable
 
         @NotNull
         @Override
-        public String getFormattedValue(RenderContext ctx)
+        public HtmlString getFormattedHtml(RenderContext ctx)
         {
-            return (String)getDisplayValue(ctx);
+            return HtmlString.of((String)getDisplayValue(ctx));
         }
 
         @Override

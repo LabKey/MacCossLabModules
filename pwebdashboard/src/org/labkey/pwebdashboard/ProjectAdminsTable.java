@@ -119,11 +119,11 @@ public class ProjectAdminsTable extends ContainerTable
 
         @NotNull
         @Override
-        public String getFormattedValue(RenderContext ctx)
+        public HtmlString getFormattedHtml(RenderContext ctx)
         {
             String value = h(getValue(ctx));
             if(value != null) value = value.replaceAll(",", "<br />");
-            return value != null ? value : "";
+            return HtmlString.unsafe(value);
         }
 
         @Nullable

@@ -48,6 +48,7 @@ import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
+import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.SimpleNamedObject;
 import org.labkey.api.util.UniqueID;
@@ -224,9 +225,9 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                 return getValue(ctx);
             }
             @Override
-            public @NotNull String getFormattedValue(RenderContext ctx)
+            public @NotNull HtmlString getFormattedHtml(RenderContext ctx)
             {
-                return (String)getValue(ctx);
+                return HtmlString.of((String)getValue(ctx));
             }
             @Override
             public Class getValueClass()
@@ -261,9 +262,9 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             }
 
             @Override
-            public @NotNull String getFormattedValue(RenderContext ctx)
+            public @NotNull HtmlString getFormattedHtml(RenderContext ctx)
             {
-                return (String) getDisplayValue(ctx);
+                return HtmlString.of((String) getDisplayValue(ctx));
             }
 
             @Override
@@ -385,7 +386,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         }
 
         @Override
-        public @NotNull String getFormattedValue(RenderContext ctx)
+        public @NotNull HtmlString getFormattedHtml(RenderContext ctx)
         {
             Integer userId = ctx.get(getColumnInfo().getFieldKey(), Integer.class);
             String userDisplayName = null;
@@ -393,7 +394,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             {
                 userDisplayName = getUserDisplayName(UserManager.getUser(userId));
             }
-            return userDisplayName == null ? super.getFormattedValue(ctx) : userDisplayName;
+            return userDisplayName == null ? super.getFormattedHtml(ctx) : HtmlString.of(userDisplayName);
         }
     }
 
@@ -452,9 +453,9 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
         @NotNull
         @Override
-        public String getFormattedValue(RenderContext ctx)
+        public HtmlString getFormattedHtml(RenderContext ctx)
         {
-            return h(getValue(ctx));
+            return HtmlString.of(getValue(ctx));
         }
 
         @Override
@@ -491,9 +492,9 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
         @NotNull
         @Override
-        public String getFormattedValue(RenderContext ctx)
+        public HtmlString getFormattedHtml(RenderContext ctx)
         {
-            return h(getValue(ctx));
+            return HtmlString.of(getValue(ctx));
         }
     }
 
