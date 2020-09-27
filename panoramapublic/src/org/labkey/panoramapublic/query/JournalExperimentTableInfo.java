@@ -26,6 +26,7 @@ import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
+import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.panoramapublic.PanoramaPublicManager;
@@ -73,7 +74,7 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
         licenseCol.setURLTargetWindow("_blank");
         licenseCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo){
             @Override
-            public Object getValue(RenderContext ctx)
+            public DataLicense getValue(RenderContext ctx)
             {
                 return ctx.get(FieldKey.fromParts("DataLicense"), DataLicense.class);
             }
@@ -81,21 +82,21 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
             @Override
             public Object getDisplayValue(RenderContext ctx)
             {
-                DataLicense license = (DataLicense) getValue(ctx);
+                DataLicense license = getValue(ctx);
                 return license != null ? license.getDisplayName() : super.getDisplayValue(ctx);
             }
 
             @Override
-            public @NotNull String getFormattedValue(RenderContext ctx)
+            public @NotNull HtmlString getFormattedHtml(RenderContext ctx)
             {
-                DataLicense license = (DataLicense) getValue(ctx);
-                return license != null ? license.getDisplayName() : super.getFormattedHtml(ctx);
+                DataLicense license = getValue(ctx);
+                return license != null ? HtmlString.of(license.getDisplayName()) : super.getFormattedHtml(ctx);
             }
 
             @Override
             public String renderURL(RenderContext ctx)
             {
-                DataLicense license = (DataLicense) getValue(ctx);
+                DataLicense license = getValue(ctx);
                 return license != null ? license.getUrl() : super.renderURL(ctx);
             }
         });

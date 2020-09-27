@@ -22,6 +22,7 @@ import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.query.FieldKey;
+import org.labkey.api.util.HtmlString;
 import org.labkey.api.view.ShortURLRecord;
 
 import java.util.Set;
@@ -54,10 +55,10 @@ public class ShortUrlDisplayColumnFactory implements DisplayColumnFactory
         }
 
         @Override @NotNull
-        public String getFormattedValue(RenderContext ctx)
+        public HtmlString getFormattedHtml(RenderContext ctx)
         {
             String shortUrl = getShortUrlDisplayValue(ctx);
-            return shortUrl != null ? shortUrl : super.getFormattedValue(ctx);
+            return shortUrl != null ? HtmlString.of(shortUrl) : super.getFormattedHtml(ctx);
         }
 
         private String getShortUrlDisplayValue(RenderContext ctx)
