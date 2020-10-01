@@ -68,6 +68,16 @@ public class PanoramaPublicManager
         return getSchema().getTable(PanoramaPublicSchema.TABLE_PX_XML);
     }
 
+    public static TableInfo getTableInfoSpecLibInfo()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_SPEC_LIB_INFO);
+    }
+
+    public static TableInfo getTableInfoSpecLibInfoRun()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_SPEC_LIB_INFO_RUN);
+    }
+
     public static ITargetedMSRun getRunByLsid(String lsid, Container container)
     {
         return TargetedMSService.get().getRunByLsid(lsid, container);

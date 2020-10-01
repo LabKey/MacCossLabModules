@@ -26,6 +26,7 @@ import org.labkey.api.module.ModuleContext;
 import org.labkey.api.module.SpringModule;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.protein.ProteinService;
+import org.labkey.api.query.QueryView;
 import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.settings.AdminConsole;
@@ -36,12 +37,14 @@ import org.labkey.api.view.JspView;
 import org.labkey.api.view.Portal;
 import org.labkey.api.view.ShortURLService;
 import org.labkey.api.view.ViewContext;
+import org.labkey.api.view.WebPartConfigurationException;
 import org.labkey.api.view.WebPartFactory;
 import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.SubmissionDataValidator;
 import org.labkey.panoramapublic.query.ExperimentTitleDisplayColumn;
 import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
+import org.labkey.panoramapublic.view.expannotations.SpectralLibrariesWebPart;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentsWebPart;
 
@@ -65,7 +68,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 20.005;
+        return 20.006;
     }
 
     @Override
@@ -167,11 +170,21 @@ public class PanoramaPublicModule extends SpringModule
             }
         };
 
+        BaseWebPartFactory specLibFactory = new BaseWebPartFactory("Panorama Public Spectral Libraries")
+        {
+            @Override
+            public WebPartView getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart)
+            {
+                return new SpectralLibrariesWebPart(portalCtx);
+            }
+        };
+
         List<WebPartFactory> webpartFactoryList = new ArrayList<>();
         webpartFactoryList.add(experimentAnnotationsListFactory);
         webpartFactoryList.add(containerExperimentFactory);
         webpartFactoryList.add(proteinSearchFactory);
         webpartFactoryList.add(peptideSearchFactory);
+        webpartFactoryList.add(specLibFactory);
         return webpartFactoryList;
     }
 

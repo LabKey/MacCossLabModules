@@ -20,6 +20,7 @@ import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.exp.api.ExpData;
 import org.labkey.api.exp.api.ExpExperiment;
+import org.labkey.api.exp.api.ExpProtocol;
 import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentListener;
 import org.labkey.api.exp.api.ExperimentService;
@@ -29,13 +30,16 @@ import org.labkey.api.security.User;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.SkylineDocumentImportListener;
 import org.labkey.api.targetedms.TargetedMSFolderTypeListener;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.api.view.ShortURLService;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.SpecLibInfo;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
+import org.labkey.panoramapublic.query.SpecLibInfoManager;
 
 import java.beans.PropertyChangeEvent;
 import java.util.ArrayList;
@@ -43,6 +47,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -58,6 +63,12 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     public void beforeExperimentDeleted(Container c, User user, ExpExperiment experiment)
     {
         ExperimentAnnotationsManager.beforeDeleteExpExperiment(experiment, user);
+    }
+
+    @Override
+    public void beforeRunDelete(ExpProtocol protocol, ExpRun run)
+    {
+        SpecLibInfoManager.deleteRuns(run.getRowId());
     }
 
     // ContainerListener
@@ -143,6 +154,18 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
             {
                 expAnnotations.getExperiment().addRuns(user, new ExpRun[] {expData.getRun()});
             }
+        }
+
+        Map<String, SpecLibInfo> existingSpecLibInfos = SpecLibInfo.toMap(SpecLibInfoManager.get(container));
+        for (String libFile : TargetedMSService.get().getBlibSourceFiles(run).keySet())
+        {
+            SpecLibInfo specLibInfo = existingSpecLibInfos.getOrDefault(libFile, null);
+            if (specLibInfo == null)
+            {
+                specLibInfo = SpecLibInfoManager.addInfo(new SpecLibInfo(libFile), user);
+                existingSpecLibInfos.put(libFile, specLibInfo);
+            }
+            SpecLibInfoManager.addRun(run, specLibInfo, user);
         }
     }
 

@@ -23,16 +23,24 @@ import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.DbSchemaType;
+import org.labkey.api.data.ForeignKey;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.dialect.SqlDialect;
+import org.labkey.api.exp.api.ExpData;
+import org.labkey.api.exp.api.ExpDataClass;
+import org.labkey.api.exp.query.ExpDataClassTable;
 import org.labkey.api.module.Module;
 import org.labkey.api.query.DefaultSchema;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
+import org.labkey.api.query.QueryForeignKey;
 import org.labkey.api.query.QuerySchema;
+import org.labkey.api.query.UserIdQueryForeignKey;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
+import org.labkey.api.targetedms.TargetedMSService;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsTableInfo;
 import org.labkey.panoramapublic.query.JournalExperimentTableInfo;
 
@@ -47,6 +55,8 @@ public class PanoramaPublicSchema extends UserSchema
     public static final String TABLE_JOURNAL_EXPERIMENT = "JournalExperiment";
     public static final String TABLE_EXPERIMENT_ANNOTATIONS = "ExperimentAnnotations";
     public static final String TABLE_PX_XML = "PxXml";
+    public static final String TABLE_SPEC_LIB_INFO = "SpecLibInfo";
+    public static final String TABLE_SPEC_LIB_INFO_RUN = "SpecLibInfoRun";
 
     public PanoramaPublicSchema(User user, Container container)
     {
@@ -102,6 +112,12 @@ public class PanoramaPublicSchema extends UserSchema
         {
             return getFilteredPxXmlTable(name, cf);
         }
+
+        if (TABLE_SPEC_LIB_INFO_RUN.equalsIgnoreCase(name))
+        {
+            return getFilteredSpecLibInfoRunTable(name, cf);
+        }
+
         return null;
     }
 
@@ -149,6 +165,66 @@ public class PanoramaPublicSchema extends UserSchema
         return result;
     }
 
+    @NotNull
+    private TableInfo getFilteredSpecLibInfoRunTable(String name, ContainerFilter cf)
+    {
+        FilteredTable<PanoramaPublicSchema> result = new FilteredTable<>(getSchema().getTable(name), this, cf)
+        {
+            @Override
+            protected void applyContainerFilter(ContainerFilter filter)
+            {
+                // Don't apply the container filter normally, let us apply it in our wrapper around the normally generated SQL
+            }
+
+            @Override
+            public SQLFragment getFromSQL(String alias)
+            {
+                SQLFragment sql = new SQLFragment("(SELECT slir.* FROM ");
+                sql.append(PanoramaPublicManager.getTableInfoSpecLibInfoRun(), "slir");
+
+                sql.append(" JOIN ");
+                sql.append(PanoramaPublicManager.getTableInfoSpecLibInfo(), "sli");
+                sql.append(" ON sli.id = slir.SpecLibInfoId ");
+
+                if (getContainerFilter() != ContainerFilter.EVERYTHING)
+                {
+                    sql.append(" JOIN ");
+                    sql.append(TargetedMSService.get().getTableInfoRuns(), "r");
+                    sql.append(" ON r.id = slir.RunId WHERE ");
+                    sql.append(getContainerFilter().getSQLFragment(getSchema(), new SQLFragment("r.Container"), getContainer()));
+                }
+                sql.append(") ");
+                sql.append(alias);
+
+                return sql;
+            }
+        };
+
+        result.wrapAllColumns(true);
+
+        for (var columnInfo : result.getMutableColumns())
+        {
+            ForeignKey fk = columnInfo.getFk();
+            if (fk != null && PanoramaPublicSchema.SCHEMA_NAME.equalsIgnoreCase(fk.getLookupSchemaName()))
+            {
+                columnInfo.setFk(new QueryForeignKey(result.getUserSchema(), result.getContainerFilter(), result.getUserSchema(), null, fk.getLookupTableName(), fk.getLookupColumnName(), fk.getLookupDisplayName()));
+            }
+            else
+            {
+                String colName = columnInfo.getName();
+                if ("Container".equalsIgnoreCase(colName))
+                {
+                    columnInfo.setFk(new ContainerForeignKey(result.getUserSchema()));
+                }
+                if ("CreatedBy".equalsIgnoreCase(columnInfo.getName()) || "ModifiedBy".equalsIgnoreCase(columnInfo.getName()))
+                {
+                    columnInfo.setFk(new UserIdQueryForeignKey(result.getUserSchema(), true));
+                }
+            }
+        }
+        return result;
+    }
+
     @Override
     public Set<String> getTableNames()
     {
@@ -157,6 +233,7 @@ public class PanoramaPublicSchema extends UserSchema
         hs.add(TABLE_JOURNAL_EXPERIMENT);
         hs.add(TABLE_EXPERIMENT_ANNOTATIONS);
         hs.add(TABLE_PX_XML);
+        hs.add(TABLE_SPEC_LIB_INFO_RUN);
 
         return hs;
     }

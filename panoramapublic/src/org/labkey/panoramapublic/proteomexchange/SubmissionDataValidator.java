@@ -33,7 +33,9 @@ import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.Pair;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.SpecLibInfo;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+import org.labkey.panoramapublic.query.SpecLibInfoManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -247,8 +249,21 @@ public class SubmissionDataValidator
 
             // Get missing blib source files
             java.nio.file.Path rawFilesDir = getRawFilesDirPath(run.getContainer());
+            Map<String, SpecLibInfo> specLibInfos = SpecLibInfo.toMap(SpecLibInfoManager.getByRun(run.getId()));
             for(Map.Entry<String, List<BlibSourceFile>> entry : targetedMsSvc.getBlibSourceFiles(run).entrySet())
             {
+                SpecLibInfo specLibInfo = specLibInfos.getOrDefault(entry.getKey(), null);
+                if (specLibInfo != null)
+                {
+                    int sourceType = specLibInfo.getSourceType();
+                    int dependencyType = specLibInfo.getDependencyType();
+                    if (sourceType != SpecLibInfo.SourceType.SKYLINE || dependencyType == SpecLibInfo.DependencyType.SUPPORTING_INFO || dependencyType == SpecLibInfo.DependencyType.IRRELEVANT)
+                    {
+                        // don't require raw files in these cases
+                        continue;
+                    }
+                }
+
                 Set<String> checkedFiles = new HashSet<>();
                 Set<String> ssfMissing = new HashSet<>();
                 Set<String> idFilesMissing = new HashSet<>();

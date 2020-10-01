@@ -113,6 +113,7 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.model.PxXml;
+import org.labkey.panoramapublic.model.SpecLibInfo;
 import org.labkey.panoramapublic.pipeline.AddPanoramaPublicModuleJob;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
 import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
@@ -127,6 +128,7 @@ import org.labkey.panoramapublic.proteomexchange.SubmissionDataValidator;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.PxXmlManager;
+import org.labkey.panoramapublic.query.SpecLibInfoManager;
 import org.labkey.panoramapublic.view.PanoramaPublicRunListView;
 import org.labkey.panoramapublic.view.expannotations.ExperimentAnnotationsFormDataRegion;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
@@ -3758,6 +3760,160 @@ public class PanoramaPublicController extends SpringActionController
         public ActionURL getSuccessURL(ExperimentForm form)
         {
             return getViewExperimentDetailsURL(_expAnnot.getId(), getContainer());
+        }
+    }
+
+    public static class EditSpecLibInfoForm
+    {
+        private int _sourceType;
+        private String _sourceUrl;
+        private String _sourcePxid;
+        private String _sourceAccession;
+        private String _sourceUsername;
+        private String _sourcePassword;
+        private int _dependencyType;
+
+        public int getSourceType()
+        {
+            return _sourceType;
+        }
+
+        public void setSourceType(int sourceType)
+        {
+            _sourceType = sourceType;
+        }
+
+        public String getSourceUrl()
+        {
+            return _sourceUrl;
+        }
+
+        public void setSourceUrl(String sourceUrl)
+        {
+            _sourceUrl = sourceUrl;
+        }
+
+        public String getSourcePxid()
+        {
+            return _sourcePxid;
+        }
+
+        public void setSourcePxid(String sourcePxid)
+        {
+            _sourcePxid = sourcePxid;
+        }
+
+        public String getSourceAccession()
+        {
+            return _sourceAccession;
+        }
+
+        public void setSourceAccession(String sourceAccession)
+        {
+            _sourceAccession = sourceAccession;
+        }
+
+        public String getSourceUsername()
+        {
+            return _sourceUsername;
+        }
+
+        public void setSourceUsername(String sourceUsername)
+        {
+            _sourceUsername = sourceUsername;
+        }
+
+        public String getSourcePassword()
+        {
+            return _sourcePassword;
+        }
+
+        public void setSourcePassword(String sourcePassword)
+        {
+            _sourcePassword = sourcePassword;
+        }
+
+        public int getDependencyType()
+        {
+            return _dependencyType;
+        }
+
+        public void setDependencyType(int dependencyType)
+        {
+            _dependencyType = dependencyType;
+        }
+    }
+
+    @RequiresPermission(UpdatePermission.class)
+    public static class EditSpecLibInfoAction extends FormViewAction<EditSpecLibInfoForm>
+    {
+        @Override
+        public void validateCommand(EditSpecLibInfoForm target, Errors errors) {}
+
+        @Override
+        public ModelAndView getView(EditSpecLibInfoForm form, boolean reshow, BindException errors)
+        {
+            SpecLibInfo info = SpecLibInfoManager.get(Integer.parseInt(getViewContext().getRequest().getParameter("id")));
+            if (info != null)
+            {
+                form.setSourceType(info.getSourceType());
+                form.setSourceUrl(info.getSourceUrl());
+                form.setSourcePxid(info.getSourcePxid());
+                form.setSourceAccession(info.getSourceAccession());
+                form.setSourceUsername(info.getSourceUsername());
+                form.setSourcePassword(info.getSourcePassword());
+                form.setDependencyType(info.getDependencyType());
+            }
+
+            JspView view = new JspView<>("/org/labkey/panoramapublic/view/expannotations/editSpecLibInfo.jsp", form, errors);
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            view.setTitle("Edit Spectral Library Information");
+            return view;
+        }
+
+        @Override
+        public boolean handlePost(EditSpecLibInfoForm form, BindException errors)
+        {
+            if (!SpecLibInfo.SourceType.isValid(form.getSourceType()))
+            {
+                errors.addError(new LabKeyError("Invalid source type"));
+            }
+
+            if (!SpecLibInfo.DependencyType.isValid(form.getDependencyType()))
+            {
+                errors.addError(new LabKeyError("Invalid dependency type"));
+            }
+
+            if (errors.getErrorCount() > 0)
+            {
+                return false;
+            }
+
+            SpecLibInfo info = SpecLibInfoManager.get(Integer.parseInt(getViewContext().getRequest().getParameter("id")));
+            info.setSourceType(form.getSourceType());
+            info.setSourceUrl(form.getSourceUrl());
+            info.setSourcePxid(form.getSourcePxid());
+            info.setSourceAccession(form.getSourceAccession());
+            info.setSourceUsername(form.getSourceUsername());
+            info.setSourcePassword(form.getSourcePassword());
+            info.setDependencyType(form.getDependencyType());
+            SpecLibInfoManager.update(info, getUser());
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(EditSpecLibInfoForm editSpecLibInfoForm)
+        {
+            return getContainer().getStartURL(getUser());
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            if (root != null)
+            {
+                root.addChild("Edit Spectral Library Information");
+            }
         }
     }
 
