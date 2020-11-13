@@ -62,6 +62,7 @@ import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestFailDetail;
 import org.labkey.testresults.model.TestHandleLeakDetail;
 import org.labkey.testresults.model.TestHangDetail;
+import org.labkey.testresults.model.TestLeakDetail;
 import org.labkey.testresults.model.TestMemoryLeakDetail;
 import org.labkey.testresults.model.TestPassDetail;
 import org.labkey.testresults.model.User;
@@ -235,7 +236,7 @@ public class TestResultsController extends SpringActionController
                 {
                     TestPassDetail[] passes = run.getPasses();
                     TestFailDetail[] failures = run.getFailures();
-                    TestMemoryLeakDetail[] leaks = run.getTestmemoryleaks();
+                    TestLeakDetail[] leaks = run.getLeaks();
                     if (passes == null)
                         passes = getPassesForRun(run);
                     if (failures == null)
@@ -294,7 +295,7 @@ public class TestResultsController extends SpringActionController
                     if (!keepObjData) {
                         run.setPasses(new TestPassDetail[0]);
                         run.setFailures(new TestFailDetail[0]);
-                        run.setTestmemoryleaks(new TestMemoryLeakDetail[0]);
+                        run.setLeaks(new TestLeakDetail[0]);
                         run.setHang(null);
                     }
                 }
@@ -520,7 +521,9 @@ public class TestResultsController extends SpringActionController
 
             TestFailDetail[] fails = new TableSelector(TestResultsSchema.getTableInfoTestFails(), filter, null).getArray(TestFailDetail.class);
             TestPassDetail[] passes = new TableSelector(TestResultsSchema.getTableInfoTestPasses(), filter, null).getArray(TestPassDetail.class);
-            TestMemoryLeakDetail[] memoryLeaks = new TableSelector(TestResultsSchema.getTableInfoMemoryLeaks(), filter, null).getArray(TestMemoryLeakDetail.class);
+            List<TestLeakDetail> leaks = new ArrayList<>();
+            Collections.addAll(leaks, new TableSelector(TestResultsSchema.getTableInfoMemoryLeaks(), filter, null).getArray(TestMemoryLeakDetail.class));
+            Collections.addAll(leaks, new TableSelector(TestResultsSchema.getTableInfoHandleLeaks(), filter, null).getArray(TestHandleLeakDetail.class));
             TestHangDetail[] hangs = new TableSelector(TestResultsSchema.getTableInfoHangs(), filter, null).getArray(TestHangDetail.class);
 
             SQLFragment sqlFragment = new SQLFragment();
@@ -554,7 +557,7 @@ public class TestResultsController extends SpringActionController
                 Arrays.sort(passes);
             }
             run.setFailures(fails);
-            run.setTestmemoryleaks(memoryLeaks);
+            run.setLeaks(leaks.toArray(new TestLeakDetail[0]));
             if (hangs.length > 0)
                 run.setHang(hangs[0]);
             run.setPasses(passes);
@@ -1426,7 +1429,7 @@ public class TestResultsController extends SpringActionController
                 byte[] compressedLog = log != null ? compressString(log) : null;
 
                 RunDetail run = new RunDetail(userid, duration, postTime, xmlTimestamp, os, revision, gitHash, c, false, compressedXML,
-                        pointSummary, passes.size(), failures.size(), memoryLeaks.size(), avgMemory, compressedLog, (int)medianMem); //TODO change date AND USERID
+                        pointSummary, passes.size(), failures.size(), memoryLeaks.size() + handleLeaks.size(), avgMemory, compressedLog, (int)medianMem); //TODO change date AND USERID
                 // stores test run in database and gets the id(foreign key)
                 run = Table.insert(null, TestResultsSchema.getTableInfoTestRuns(), run);
                 int runId = run.getId();
@@ -1661,12 +1664,12 @@ public class TestResultsController extends SpringActionController
         populateFailures(runs);
         return runs[0].getFailures();
     }
-    static TestMemoryLeakDetail[] getLeaksForRun(RunDetail run) {
+    static TestLeakDetail[] getLeaksForRun(RunDetail run) {
         if (run == null)
             return null;
         RunDetail[] runs = new RunDetail[]{run};
         populateLeaks(runs);
-        return runs[0].getTestmemoryleaks();
+        return runs[0].getLeaks();
     }
     /*
     * Given a set of run details this method queries and populates each RunDetail with corresponding
@@ -1766,12 +1769,13 @@ public class TestResultsController extends SpringActionController
 
         SimpleFilter filter = filterByRunId(runs);
 
-//        TestHandleLeakDetail[] handleLeaks = new TableSelector(TestResultsSchema.getInstance().getTableInfoHandleLeaks(), filter, null).getArray(TestHandleLeakDetail.class);
-        TestMemoryLeakDetail[] memoryLeaks = new TableSelector(TestResultsSchema.getTableInfoMemoryLeaks(), filter, null).getArray(TestMemoryLeakDetail.class);
-        Map<Integer, List<TestMemoryLeakDetail>> testLeakDetails = new HashMap<>();
+        List<TestLeakDetail> leaks = new ArrayList<>();
+        Collections.addAll(leaks, new TableSelector(TestResultsSchema.getTableInfoMemoryLeaks(), filter, null).getArray(TestMemoryLeakDetail.class));
+        Collections.addAll(leaks, new TableSelector(TestResultsSchema.getTableInfoHandleLeaks(), filter, null).getArray(TestHandleLeakDetail.class));
+        Map<Integer, List<TestLeakDetail>> testLeakDetails = new HashMap<>();
 
-        for (TestMemoryLeakDetail leak : memoryLeaks) {
-            List<TestMemoryLeakDetail> list = testLeakDetails.get(leak.getTestRunId());
+        for (TestLeakDetail leak : leaks) {
+            List<TestLeakDetail> list = testLeakDetails.get(leak.getTestRunId());
             if (null == list) {
                 list = new ArrayList<>();
             }
@@ -1780,10 +1784,8 @@ public class TestResultsController extends SpringActionController
         }
         for (RunDetail run : runs) {
             int runId = run.getId();
-            List<TestMemoryLeakDetail> leakList = testLeakDetails.get(runId);
-            run.setTestmemoryleaks(leakList != null
-                    ? leakList.toArray(new TestMemoryLeakDetail[0])
-                    : new TestMemoryLeakDetail[0]);
+            List<TestLeakDetail> leakList = testLeakDetails.get(runId);
+            run.setLeaks(leakList != null ? leakList.toArray(new TestLeakDetail[0]) : new TestLeakDetail[0]);
         }
     }
 

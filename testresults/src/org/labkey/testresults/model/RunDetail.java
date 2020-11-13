@@ -23,6 +23,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
@@ -49,7 +50,7 @@ public class RunDetail implements Comparable<RunDetail>
     private boolean isTrainRun;
     private TestFailDetail[] failures; // all failures which resulted in this run
     private TestPassDetail[] passes; // all passes(successful tests runs) in this run
-    private TestMemoryLeakDetail[] testmemoryleaks; // all memory testmemoryleaks detected during this run
+    private TestLeakDetail[] leaks;
     private TestHangDetail hang;
 
     private byte[] xml; // compressed xml
@@ -78,7 +79,7 @@ public class RunDetail implements Comparable<RunDetail>
         this.container = container;
         this.failures = new TestFailDetail[0];
         this.passes = new TestPassDetail[0];
-        this.testmemoryleaks = new TestMemoryLeakDetail[0];
+        this.leaks = new TestLeakDetail[0];
         this.hang = null;
         this.flagged = flagged;
         this.timestamp = timestamp;
@@ -141,14 +142,24 @@ public class RunDetail implements Comparable<RunDetail>
         this.os = os;
     }
 
-    public TestMemoryLeakDetail[] getTestmemoryleaks()
+    public TestLeakDetail[] getLeaks()
     {
-        return testmemoryleaks;
+        return leaks;
     }
 
-    public void setTestmemoryleaks(TestMemoryLeakDetail[] testmemoryleaks)
+    public TestMemoryLeakDetail[] getMemoryLeaks()
     {
-        this.testmemoryleaks = testmemoryleaks;
+        return Arrays.stream(leaks).filter(leak -> leak instanceof TestMemoryLeakDetail).toArray(TestMemoryLeakDetail[]::new);
+    }
+
+    public TestHandleLeakDetail[] getHandleLeaks()
+    {
+        return Arrays.stream(leaks).filter(leak -> leak instanceof TestHandleLeakDetail).toArray(TestHandleLeakDetail[]::new);
+    }
+
+    public void setLeaks(TestLeakDetail[] leaks)
+    {
+        this.leaks = leaks;
     }
 
     public TestFailDetail[] getFailures() { return failures; }

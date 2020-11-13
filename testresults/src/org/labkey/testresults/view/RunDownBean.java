@@ -7,6 +7,7 @@ import org.labkey.api.data.statistics.StatsService;
 import org.labkey.api.services.ServiceRegistry;
 import org.labkey.testresults.TestResultsController;
 import org.labkey.testresults.model.TestHangDetail;
+import org.labkey.testresults.model.TestLeakDetail;
 import org.labkey.testresults.model.TestMemoryLeakDetail;
 import org.labkey.testresults.model.User;
 import org.labkey.testresults.model.RunDetail;
@@ -72,7 +73,7 @@ public class RunDownBean extends TestsDataBean
             ? new TestsDataBean(getRuns(), new User[0])
             : new TestsDataBean(getStatRuns(), new User[0]);
         Map<String, List<TestMemoryLeakDetail>> m = new HashMap<>();
-        TestMemoryLeakDetail[] leaks = runs.getLeaks();
+        TestMemoryLeakDetail[] leaks = runs.getMemoryLeaks();
         for (TestMemoryLeakDetail leak: leaks) {
             List<TestMemoryLeakDetail> list = m.get(leak.getTestName());
             if (list == null) {

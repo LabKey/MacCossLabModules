@@ -167,7 +167,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                             isGoodRun = false;
                         }
                         boolean highlightDuration = run.getDuration() < 539 || run.getHang() != null;
-                        if (highlightDuration || run.getFailures().length > 0 || run.getTestmemoryleaks().length > 0)
+                        if (highlightDuration || run.getFailures().length > 0 || run.getLeaks().length > 0)
                         {
                             style = getBackgroundStyle(BackgroundColor.error);
                             isGoodRun = false;
@@ -215,7 +215,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                             .append("\n<td style='padding: 6px;'>" + run.getPostTime() + "</td>")
                             .append("\n<td style='padding: 6px; " + (highlightDuration ? style : "") + "'>" + run.getDuration() + (run.getHang() != null ? " (hang)" : "") + "</td>")
                             .append("\n<td style='padding: 6px; " + (run.getFailedtests() > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getFailedtests() + "</td>")
-                            .append("\n<td style='padding: 6px; " + (run.getLeakedtests() > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getLeakedtests() + "</td>")
+                            .append("\n<td style='padding: 6px; " + (run.getLeaks().length > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getLeaks().length + "</td>")
                             .append("</tr>");
                     }
                 }

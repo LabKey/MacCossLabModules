@@ -22,6 +22,7 @@ import org.labkey.api.data.SqlSelector;
 import org.labkey.testresults.TestResultsSchema;
 import org.labkey.testresults.model.GlobalSettings;
 import org.labkey.testresults.model.RunDetail;
+import org.labkey.testresults.model.TestLeakDetail;
 import org.labkey.testresults.model.TestMemoryLeakDetail;
 import org.labkey.testresults.model.User;
 import org.labkey.testresults.model.TestFailDetail;
@@ -157,19 +158,27 @@ public class TestsDataBean
         statRuns = setStatRuns();
     }
 
-    public TestMemoryLeakDetail[] getLeaks() {
+    public TestLeakDetail[] getLeaks() {
+        List<TestLeakDetail> leaks = new ArrayList<>();
+        for (RunDetail r: runs.values()) {
+            leaks.addAll(Arrays.asList(r.getLeaks()));
+        }
+        return leaks.toArray(new TestLeakDetail[0]);
+    }
+
+    public TestMemoryLeakDetail[] getMemoryLeaks() {
         List<TestMemoryLeakDetail> leaks = new ArrayList<>();
         for (RunDetail r: runs.values()) {
-            leaks.addAll(Arrays.asList(r.getTestmemoryleaks()));
+            leaks.addAll(Arrays.asList(r.getMemoryLeaks()));
         }
-        return leaks.toArray(new TestMemoryLeakDetail[leaks.size()]);
+        return leaks.toArray(new TestMemoryLeakDetail[0]);
     }
 
     public TestFailDetail[] getFailures() {
         List<TestFailDetail> fails = new ArrayList<>();
         for (RunDetail r: runs.values())
             fails.addAll(Arrays.asList(r.getFailures()));
-        return fails.toArray(new TestFailDetail[fails.size()]);
+        return fails.toArray(new TestFailDetail[0]);
     }
 
     public TestFailDetail[] getFailuresByName(String testName) {
@@ -178,14 +187,14 @@ public class TestsDataBean
             for (TestFailDetail f: r.getFailures())
                 if (f.getTestName().equals(testName))
                     fails.add(f);
-        return fails.toArray(new TestFailDetail[fails.size()]);
+        return fails.toArray(new TestFailDetail[0]);
     }
 
     public TestPassDetail[] getPasses() {
         List<TestPassDetail> passes = new ArrayList<>();
         for (RunDetail run : runs.values())
             passes.addAll(Arrays.asList(run.getPasses()));
-        return passes.toArray(new TestPassDetail[passes.size()]);
+        return passes.toArray(new TestPassDetail[0]);
     }
 
     private void addRuns(RunDetail[] runs) {
