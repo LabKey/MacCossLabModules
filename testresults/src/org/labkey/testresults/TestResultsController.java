@@ -181,7 +181,8 @@ public class TestResultsController extends SpringActionController
         List<RunDetail> monthRuns = new ArrayList<>();
 
         for (RunDetail run : allRuns) {
-            if (run.getPostTime().getTime() > dateBefore1Day.getTime() && run.getPostTime().getTime() < endDate.getTime()) {
+            long postTime = run.getPostTime().getTime();
+            if (dateBefore1Day.getTime() < postTime && postTime < endDate.getTime()) {
                 todaysRuns.add(run);
             } else {
                 monthRuns.add(run);
@@ -306,33 +307,45 @@ public class TestResultsController extends SpringActionController
 
     public static User[] getTrainingDataForContainer(Container c, String username) {
         SQLFragment sqlFragment = new SQLFragment();
-
-        sqlFragment.append(
-            "SELECT u.id, u.username, d.meantestsrun, d.meanmemory, d.stddevtestsrun, d.stddevmemory, d.active " +
-            "FROM testresults.user u " +
-            "JOIN testresults.userdata d ON u.id = d.userid " +
-            "WHERE d.container = ?");
-        sqlFragment.add(c.getEntityId());
+        sqlFragment.append("SELECT id, username FROM testresults.user");
         if (username != null && !username.isEmpty())
         {
-            sqlFragment.append(" AND u.username = ?");
+            sqlFragment.append(" WHERE username = ?");
             sqlFragment.add(username);
         }
-
+        sqlFragment.append(" ORDER BY id");
         List<User> users = new ArrayList<>();
         new SqlSelector(TestResultsSchema.getSchema(), sqlFragment).forEach(rs -> {
             User u = new User();
             u.setId(rs.getInt("id"));
             u.setUsername(rs.getString("username"));
-            u.setMeantestsrun(rs.getDouble("meantestsrun"));
-            u.setMeanmemory(rs.getDouble("meanmemory"));
-            u.setStddevtestsrun(rs.getDouble("stddevtestsrun"));
-            u.setStddevmemory(rs.getDouble("stddevmemory"));
-            u.setContainer(c);
-            u.setActive(rs.getBoolean("active"));
             users.add(u);
         });
-        Collections.sort(users);
+
+        if (c != null)
+        {
+            sqlFragment = new SQLFragment();
+            sqlFragment.append(
+                    "SELECT userid, meantestsrun, meanmemory, stddevtestsrun, stddevmemory, active " +
+                            "FROM testresults.userdata " +
+                            "WHERE container = ?");
+            sqlFragment.add(c.getEntityId());
+            new SqlSelector(TestResultsSchema.getSchema(), sqlFragment).forEach(rs -> {
+                for (User u : users)
+                {
+                    if (u.getId() == rs.getInt("userid"))
+                    {
+                        u.setMeantestsrun(rs.getDouble("meantestsrun"));
+                        u.setMeanmemory(rs.getDouble("meanmemory"));
+                        u.setStddevtestsrun(rs.getDouble("stddevtestsrun"));
+                        u.setStddevmemory(rs.getDouble("stddevmemory"));
+                        u.setContainer(c);
+                        u.setActive(rs.getBoolean("active"));
+                        break;
+                    }
+                }
+            });
+        }
         return users.toArray(new User[0]);
     }
 

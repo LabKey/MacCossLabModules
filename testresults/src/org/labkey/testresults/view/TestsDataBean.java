@@ -18,9 +18,11 @@ package org.labkey.testresults.view;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.labkey.api.data.SQLFragment;
+import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.SqlSelector;
+import org.labkey.api.data.TableSelector;
+import org.labkey.api.query.FieldKey;
 import org.labkey.testresults.TestResultsSchema;
-import org.labkey.testresults.model.GlobalSettings;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestLeakDetail;
 import org.labkey.testresults.model.TestMemoryLeakDetail;
@@ -103,7 +105,7 @@ public class TestsDataBean
 
     // Getters and Setters for fields
     public RunDetail[] getRuns() {
-        RunDetail[] r = runs.values().toArray(new RunDetail[runs.size()]);
+        RunDetail[] r = runs.values().toArray(new RunDetail[0]);
         Arrays.sort(r);
         return r;
     }
@@ -113,7 +115,7 @@ public class TestsDataBean
             if (!excludeRun(run.getId()))
                 statRuns.add(run);
         Collections.sort(statRuns);
-        return statRuns.toArray(new RunDetail[statRuns.size()]);
+        return statRuns.toArray(new RunDetail[0]);
     }
 
     public RunDetail[] getStatRuns() {
@@ -181,15 +183,6 @@ public class TestsDataBean
         return fails.toArray(new TestFailDetail[0]);
     }
 
-    public TestFailDetail[] getFailuresByName(String testName) {
-        List<TestFailDetail> fails = new ArrayList<>();
-        for (RunDetail r: runs.values())
-            for (TestFailDetail f: r.getFailures())
-                if (f.getTestName().equals(testName))
-                    fails.add(f);
-        return fails.toArray(new TestFailDetail[0]);
-    }
-
     public TestPassDetail[] getPasses() {
         List<TestPassDetail> passes = new ArrayList<>();
         for (RunDetail run : runs.values())
@@ -232,17 +225,6 @@ public class TestsDataBean
                 return u;
         }
         return null;
-    }
-    // failures and leaks arent referenced to users to this method can be used to find user of failure or leak
-    public User getUserByRunId(int runId) {
-        RunDetail r = getRunDetailById(runId);
-        return r != null ? getUserById(r.getUserid()) : null;
-    }
-
-    // returns array of failures in a specified run
-    public TestFailDetail[] getFailuresByRunId(int runId) {
-        RunDetail f = getRunDetailById(runId);
-        return f != null ? f.getFailures() : new TestFailDetail[0];
     }
 
     // gets run detail by id

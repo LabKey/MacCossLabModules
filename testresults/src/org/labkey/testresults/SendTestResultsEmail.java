@@ -127,6 +127,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                     "<td>Duration</td>" +
                     "<td>Failures</td>" +
                     "<td>Leaks</td>" +
+                    "<td>Git hash</td>" +
                     "</tr>");
 
             List<Integer> values = new ArrayList<>();
@@ -216,6 +217,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                             .append("\n<td style='padding: 6px; " + (highlightDuration ? style : "") + "'>" + run.getDuration() + (run.getHang() != null ? " (hang)" : "") + "</td>")
                             .append("\n<td style='padding: 6px; " + (run.getFailedtests() > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getFailedtests() + "</td>")
                             .append("\n<td style='padding: 6px; " + (run.getLeaks().length > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getLeaks().length + "</td>")
+                            .append("\n<td style='padding: 6px;'> " + run.getGitHash() + "</td>")
                             .append("</tr>");
                     }
                 }
