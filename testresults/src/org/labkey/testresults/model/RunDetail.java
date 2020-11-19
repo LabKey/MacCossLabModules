@@ -333,7 +333,7 @@ public class RunDetail implements Comparable<RunDetail>
 
     public void setMedianmem(Integer mem) { medianmem = mem;}
 
-    public int getMedianmem() { return medianmem != null ? medianmem : 0; }
+//    public int getMedianmem() { return medianmem != null ? medianmem : 0; }
 
     public double getAverageMemory() {
         if (averagemem != 0) {

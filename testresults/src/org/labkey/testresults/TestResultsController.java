@@ -206,7 +206,7 @@ public class TestResultsController extends SpringActionController
 
         ensureRunDataCached(allRuns, false);
 
-        User[] users = getTrainingDataForContainer(c, null);
+        User[] users = getUsers(c, null);
         return new RunDownBean(allRuns, users, viewType, null, endDate);
     }
 
@@ -305,7 +305,7 @@ public class TestResultsController extends SpringActionController
         }
     }
 
-    public static User[] getTrainingDataForContainer(Container c, String username) {
+    public static User[] getUsers(Container trainingDataContainer, String username) {
         SQLFragment sqlFragment = new SQLFragment();
         sqlFragment.append("SELECT id, username FROM testresults.user");
         if (username != null && !username.isEmpty())
@@ -322,14 +322,14 @@ public class TestResultsController extends SpringActionController
             users.add(u);
         });
 
-        if (c != null)
+        if (trainingDataContainer != null)
         {
             sqlFragment = new SQLFragment();
             sqlFragment.append(
-                    "SELECT userid, meantestsrun, meanmemory, stddevtestsrun, stddevmemory, active " +
-                            "FROM testresults.userdata " +
-                            "WHERE container = ?");
-            sqlFragment.add(c.getEntityId());
+                "SELECT userid, meantestsrun, meanmemory, stddevtestsrun, stddevmemory, active " +
+                "FROM testresults.userdata " +
+                "WHERE container = ?");
+            sqlFragment.add(trainingDataContainer.getEntityId());
             new SqlSelector(TestResultsSchema.getSchema(), sqlFragment).forEach(rs -> {
                 for (User u : users)
                 {
@@ -339,7 +339,7 @@ public class TestResultsController extends SpringActionController
                         u.setMeanmemory(rs.getDouble("meanmemory"));
                         u.setStddevtestsrun(rs.getDouble("stddevtestsrun"));
                         u.setStddevmemory(rs.getDouble("stddevmemory"));
-                        u.setContainer(c);
+                        u.setContainer(trainingDataContainer);
                         u.setActive(rs.getBoolean("active"));
                         break;
                     }
@@ -371,7 +371,7 @@ public class TestResultsController extends SpringActionController
 
             ensureRunDataCached(runs, false);
 
-            User[] users = getTrainingDataForContainer(getContainer(), null);
+            User[] users = getUsers(getContainer(), null);
             TestsDataBean bean = new TestsDataBean(runs, users);
             return new JspView("/org/labkey/testresults/view/trainingdata.jsp", bean);
         }
@@ -490,7 +490,7 @@ public class TestResultsController extends SpringActionController
             User user = null;
             if (userName != null && !userName.isEmpty())
             {
-                User[] users = getTrainingDataForContainer(getContainer(), userName);
+                User[] users = getUsers(getContainer(), userName);
                 if (users.length == 1)
                     user = users[0];
             }
@@ -1254,9 +1254,7 @@ public class TestResultsController extends SpringActionController
                 // USER ID
                 int userid;
                 String username = docElement.getAttribute("id");
-                SimpleFilter filter = new SimpleFilter();
-                filter.addCondition(FieldKey.fromParts("username"), username);
-                User[] details = new TableSelector(TestResultsSchema.getTableInfoUser(), filter, null).getArray(User.class);
+                User[] details = getUsers(null, username);
                 if (details.length == 0) {
                     User newUser =  new User();
                     newUser.setUsername(username);

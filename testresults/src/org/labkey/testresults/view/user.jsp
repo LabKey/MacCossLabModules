@@ -85,7 +85,7 @@
 <%--        <input type="file" name="xml_file"><input type="submit" value="submit">This form is meant to parse and store xml files into the database--%>
 <%--    </form>--%>
     <%
-        User[] users = TestResultsController.getTrainingDataForContainer(null, null);
+        User[] users = TestResultsController.getUsers(null, null);
         Arrays.sort(users, Comparator.comparing(User::getUsername)); %>
     <div style="margin: 12px 0;">
         <select id="users">
