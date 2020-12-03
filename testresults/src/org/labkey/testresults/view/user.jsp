@@ -226,10 +226,13 @@
         if (!endDate) {
             endDate = <%=q(df.format(today))%>;
         }
-        window.location.href = "<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>" +
-            "&user=" + ($("#users").val() || "") +
-            "&start=" + startDate + "&end=" + endDate +
-            "&datainclude=" + $("#data-include").val();
+
+        let url = new URL(<%=q(new ActionURL(TestResultsController.ShowUserAction.class, c).getURIString())%>);
+        url.searchParams.set('user', $("#users").val() || "");
+        url.searchParams.set('start', startDate);
+        url.searchParams.set('end', endDate);
+        url.searchParams.set('datainclude', $("#data-include").val());
+        window.location.href = url;
     }
 
     $('#users').change(function() { paramRedirect(); });
@@ -257,7 +260,10 @@
         var trainObj = this;
         trainObj.innerHTML = "Loading...";
         var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
-        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId='+runId+'&train='+!isTrainRun, csrf_header, function(data){
+        let url = new URL(<%=q(new ActionURL(TestResultsController.TrainRunAction.class, c).getURIString())%>);
+        url.searchParams.set('runId', runId);
+        url.searchParams.set('train', !isTrainRun);
+        $.post(url.toString(), csrf_header, function(data){
             if (data.Success) {
                 trainObj.setAttribute("runTrained", !isTrainRun);
                 trainObj.innerHTML = !isTrainRun ? "Remove from training set" : "Add to training set";
@@ -301,8 +307,11 @@
                     minDiff = diff;
                 }
             });
-            if (minRow)
-                location.href = '<%=h(new ActionURL(ShowRunAction.class, c))%>runId=' + minRow.data("run-id");
+            if (minRow) {
+                let url = new URL(<%=q(new ActionURL(ShowRunAction.class, c).getURIString())%>);
+                url.searchParams.set('runId', minRow.data('run-id'));
+                location.href = url.toString();
+            }
         };
         <% } %>
 

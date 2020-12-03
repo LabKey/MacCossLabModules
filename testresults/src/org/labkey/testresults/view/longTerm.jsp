@@ -109,9 +109,11 @@
                 });
                 $('#failureTable').empty();
                 var failureTableHTML = "<tr><td>Test</td><td>Failures per Run(%)</td></tr>";
+                let url = new URL(<%=q(new ActionURL(TestResultsController.ShowFailures.class, c).addParameter("viewType", "yr").getURIString())%>);
                 for(var i = 0; i < failuresByFailToRunRatio.length; i++) {
                     var failure = failuresByFailToRunRatio[i];
-                    failureTableHTML += '<tr><td><a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>viewType=yr&failedTest='+failure[0]+'">'+failure[0]+'</a></td><td>'+failure[1]+'</td></tr>';
+                    url.searchParams.set('failedTest', failure[0]);
+                    failureTableHTML += '<tr><td><a href="' + url.toString() + '">'+failure[0]+'</a></td><td>'+failure[1]+'</td></tr>';
                 }
                 $('#failureTable').append(failureTableHTML);
             }

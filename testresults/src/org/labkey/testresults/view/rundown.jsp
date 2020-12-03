@@ -82,9 +82,9 @@
 <%@include file="menu.jsp" %>
 <div id="content">
     <p>
-        <a href="<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>end=<%=h(df.format(yesterday))%>"><<<</a>
+        <a href="<%=h(new ActionURL(TestResultsController.BeginAction.class, c).addParameter("end", df.format(yesterday)))%>"><<<</a>
         Date: <input type="text" id="datepicker" size="30">
-        <a href="<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>end=<%=h(df.format(tomorrow))%>">>>></a>
+        <a href="<%=h(new ActionURL(TestResultsController.BeginAction.class, c).addParameter("end", df.format(tomorrow)))%>">>>></a>
     </p>
     <div id="headerContent">
     </div>
@@ -192,7 +192,7 @@
                                 <% } else if (runStatus == 2) { %>rundown-error
                                 <% } %>"
                                 data-sort-value="<%=h(run.getUserName())%>">
-                                <a title="<%=h(title)%>" style="color: #000 !important; font-weight: 400;" href="<%=h(new ActionURL(ShowRunAction.class, c))%>runId=<%=run.getId()%>" target="_blank">
+                                <a title="<%=h(title)%>" style="color: #000 !important; font-weight: 400;" href="<%=h(new ActionURL(ShowRunAction.class, c).addParameter("runId", run.getId()))%>" target="_blank">
                                     <%=h(run.getUserName() + "(" + run.getId() + ")")%>
                                 </a>
                             </td>
@@ -244,7 +244,7 @@
                             </td>
                             <% for (RunDetail run : problemRuns) { %>
                             <td style="max-width: 60px; width: 60px; overflow: hidden; text-overflow: ellipsis; padding: 0;" title="<%=h(run.getUserName())%>">
-                                <a href="<%=h(urlFor(ShowRunAction.class))%>runId=<%=run.getId()%>" target="_blank">
+                                <a href="<%=h(urlFor(ShowRunAction.class).addParameter("runId", run.getId()))%>" target="_blank">
                                     <%=h(run.getUserName())%>(<%=run.getId()%>)
                                 </a>
                             </td>
@@ -255,7 +255,7 @@
                         <% for (String test : problemTests) { %>
                         <tr>
                             <td style="width: 200px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; padding: 0;">
-                                <a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>end=<%=h(df.format(selectedDate))%>&failedTest=<%=h(test)%>" target="_blank"><%=h(test)%></a>
+                                <a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c).addParameter("end", df.format(selectedDate)).addParameter("failedTest", test))%>" target="_blank"><%=h(test)%></a>
                             </td>
                             <% for (RunDetail run : problemRuns) { %>
                             <td class="highlightrun highlighttd-<%=run.getId()%>" style="width: 60px; overflow: hidden; padding: 0;">
@@ -291,7 +291,9 @@
             </center>
             <script type="text/javascript">
                 $('#viewType').on('change', function() {
-                    window.location.href = "<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>&viewType=" + this.value +"&end=<%=h(df.format(selectedDate))%>";
+                    let url = new URL(<%=q(new ActionURL(TestResultsController.BeginAction.class, c).addParameter("end", df.format(selectedDate)).getURIString())%>;
+                    url.searchParams.set('viewType', this.value);
+                    window.location.href = url.toString();
                 });
             </script>
             <!--Bar Graphs for average over past week-->
@@ -319,7 +321,7 @@
                 </tr>
                 <% for (String key: topFailures.keySet()) { %>
                 <tr>
-                    <td><a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>failedTest=<%=h(key)%>&end=<%=h(df.format(selectedDate))%>&viewType=<%=h(viewType)%>" target="_blank"><%=h(key)%></a></td>
+                    <td><a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c).addParameter("failedTest", key).addParameter("end",df.format(selectedDate)).addParameter("viewType", viewType))%>" target="_blank"><%=h(key)%></a></td>
                     <td><%=topFailures.get(key).size()%></td>
                     <td>
                         <div id="<%=h(key)%>" class="c3chart" style="width: 120px; height: 120px;"></div>
@@ -505,7 +507,10 @@ $(function() {
         var isTrain = curText == 'Train';
         var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
         $(this).text(isTrain ? 'Training...' : 'Untraining...');
-        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId='+runId+'&train='+train, csrf_header, function(data){
+        let url = new URL(<%=q(new ActionURL(TestResultsController.TrainRunAction.class, c).getURIString())%>);
+        url.searchParams.set('runId', runId);
+        url.searchParams.set('train', train);
+        $.post(url.toString(), csrf_header, function(data){
             if (data.Success) {
                 self.setAttribute('train', isTrain ? 'false' : 'true');
                 $(self).text(isTrain ? 'Untrain' : 'Train');
