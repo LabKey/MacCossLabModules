@@ -151,8 +151,8 @@ if (leaks.length > 0) { %>
     <% for (TestLeakDetail l: leaks) { %>
     <tr>
         <td><%=h(l.getTestName())%></td>
-        <td><% if (l instanceof TestMemoryLeakDetail) { %><%= h((Integer)(TestMemoryLeakDetail.class.getMethod("getBytes").invoke(l))/1000) %> kb<% } %></td>
-        <td><% if (l instanceof TestHandleLeakDetail) { %><%= h(TestHandleLeakDetail.class.getMethod("getHandles").invoke(l)) %><% } %></td>
+        <td><% if (l instanceof TestMemoryLeakDetail) { %><%= h(((TestMemoryLeakDetail)l).getBytes()/1000) %> kb<% } %></td>
+        <td><% if (l instanceof TestHandleLeakDetail) { %><%= h(((TestHandleLeakDetail)l).getHandles()) %><% } %></td>
     </tr>
     <% } %>
 </table>

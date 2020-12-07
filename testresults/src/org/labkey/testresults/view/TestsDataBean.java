@@ -160,12 +160,12 @@ public class TestsDataBean
         statRuns = setStatRuns();
     }
 
-    public TestLeakDetail[] getLeaks() {
+    public List<TestLeakDetail> getLeaks() {
         List<TestLeakDetail> leaks = new ArrayList<>();
         for (RunDetail r: runs.values()) {
             leaks.addAll(Arrays.asList(r.getLeaks()));
         }
-        return leaks.toArray(new TestLeakDetail[0]);
+        return leaks;
     }
 
     public TestMemoryLeakDetail[] getMemoryLeaks() {
