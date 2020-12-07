@@ -133,7 +133,7 @@
                             <%
                                 int passes =  run.getPassedtests();
                                 int failures = run.getFailedtests();
-                                int testmemoryleaks = run.getLeakedtests();
+                                int testmemoryleaks = run.getLeaks().length;
                                 int runStatus = 0; // -1 = unknown, 0 = good, 1 = warn, 2 = error
                                 int durationStatus = 0;
                                 int passStatus = 0;
@@ -176,7 +176,7 @@
                                         failStatus = 2;
                                         runStatus = 2;
                                     }
-                                    if (run.getTestmemoryleaks().length > 0) {
+                                    if (run.getLeaks().length > 0) {
                                         leakStatus = 2;
                                         runStatus = 2;
                                     }

@@ -23,7 +23,7 @@ public class RunProblems
             if (run == null || run.isFlagged())
                 continue;
             this.runs.put(run.getId(), run);
-            for (TestMemoryLeakDetail leak : run.getTestmemoryleaks())
+            for (TestLeakDetail leak : run.getLeaks())
                 add(run, leak.getTestName(), leak);
             for (TestFailDetail fail : run.getFailures())
                 add(run, fail.getTestName(), fail);
@@ -52,7 +52,7 @@ public class RunProblems
 
     public boolean isLeak(RunDetail run, String testName)
     {
-        return objExists(run, testName, TestMemoryLeakDetail.class);
+        return objExists(run, testName, TestMemoryLeakDetail.class) || objExists(run, testName, TestHandleLeakDetail.class);
     }
 
     public boolean isHang(RunDetail run, String testName)
