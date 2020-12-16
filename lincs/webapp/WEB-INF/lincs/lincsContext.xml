@@ -6,8 +6,11 @@
     <bean id="lincsPipelineRegistry" class="org.labkey.api.pipeline.TaskPipelineRegistrar">
         <property name="factoryImpls">
             <list>
+                <bean class="org.labkey.lincs.cromwell.LincsL2GctCromwellTask$Factory">
+                    <property name="location" value="webserver" />
+                </bean>
                 <bean class="org.labkey.lincs.psp.LincsPspTask$Factory">
-                    <property name="location" value="webserver-high-priority" />
+                    <property name="location" value="webserver" />
                 </bean>
             </list>
         </property>
@@ -18,6 +21,9 @@
                     <constructor-arg type="java.lang.Class" value="org.labkey.lincs.psp.LincsPspPipelineJob"/>
                     <property name="taskProgressionSpec">
                         <list>
+                            <bean id="lincsL2GctCromwellTask" class="org.labkey.api.pipeline.TaskId">
+                                <constructor-arg><value type="java.lang.Class">org.labkey.lincs.cromwell.LincsL2GctCromwellTask</value></constructor-arg>
+                            </bean>
                             <bean id="lincsPspTask" class="org.labkey.api.pipeline.TaskId">
                                 <constructor-arg><value type="java.lang.Class">org.labkey.lincs.psp.LincsPspTask</value></constructor-arg>
                             </bean>

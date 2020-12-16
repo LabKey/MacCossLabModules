@@ -23,11 +23,15 @@ import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.exp.api.ExperimentService;
+import org.labkey.api.module.AdminLinkManager;
 import org.labkey.api.module.ModuleContext;
 import org.labkey.api.module.ModuleProperty;
 import org.labkey.api.module.SpringModule;
+import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.BaseWebPartFactory;
+import org.labkey.api.view.NavTree;
 import org.labkey.api.view.Portal;
 import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartFactory;
@@ -117,7 +121,16 @@ public class LincsModule extends SpringModule
 
         ExperimentService service = ExperimentService.get();
         service.addExperimentListener(new DocImportListenter());
+
+        AdminLinkManager.getInstance().addListener((adminNavTree, container, user) -> {
+            if (container.hasPermission(user, AdminPermission.class) && container.getActiveModules().contains(LincsModule.this))
+            {
+                adminNavTree.addChild(new NavTree("Manage PSP Credentials", new ActionURL(LincsController.ManageLincsClueCredentials.class, container)));
+                adminNavTree.addChild(new NavTree("Manage Cromwell Config", new ActionURL(LincsController.CromwellConfigAction.class, container)));
+            }
+        });
     }
+
     @Override
     @NotNull
     public Collection<String> getSummary(Container c)

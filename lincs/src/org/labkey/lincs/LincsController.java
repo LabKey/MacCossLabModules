@@ -73,6 +73,8 @@ import org.labkey.api.view.VBox;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartView;
+import org.labkey.lincs.cromwell.CromwellConfig;
+import org.labkey.lincs.cromwell.CromwellException;
 import org.labkey.lincs.psp.LincsPspException;
 import org.labkey.lincs.psp.LincsPspJob;
 import org.labkey.lincs.psp.LincsPspPipelineJob;
@@ -1062,6 +1064,114 @@ public class LincsController extends SpringActionController
         public void setApiKey(String apiKey)
         {
             _apiKey = apiKey;
+        }
+    }
+
+    @RequiresPermission(AdminPermission.class)
+    public class CromwellConfigAction extends FormViewAction<CromwellConfigForm>
+    {
+        @Override
+        public void validateCommand(CromwellConfigForm target, Errors errors) {}
+
+        @Override
+        public boolean handlePost(CromwellConfigForm form, BindException errors)
+        {
+            try
+            {
+                CromwellConfig config = form.getConfig();
+                config.save(getContainer());
+            }
+            catch (CromwellException e)
+            {
+                errors.reject(ERROR_MSG, e.getMessage());
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(CromwellConfigForm form)
+        {
+            return new ActionURL(CromwellConfigAction.class, getContainer());
+        }
+
+        @Override
+        public ModelAndView getView(CromwellConfigForm form, boolean reshow, BindException errors)
+        {
+            if(!reshow)
+            {
+                CromwellConfig config = CromwellConfig.get(getContainer());
+                if (config != null)
+                {
+                    form.setCromwellServerUrl(config.getCromwellServerUrl());
+                    form.setCromwellServerPort(config.getCromwellServerPort());
+                    form.setApiKey(config.getPanoramaApiKey());
+                    if (config.getJobType() != null)
+                    {
+                        form.setAssayType(config.getJobType().name());
+                    }
+                }
+            }
+            return new JspView<>("/org/labkey/lincs/view/cromwellSettings.jsp", form, errors);
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Cromwell Settings");
+        }
+    }
+
+    public static class CromwellConfigForm
+    {
+        private String _cromwellServerUrl;
+        private Integer _cromwellServerPort;
+        private String _apiKey;
+        private String _assayType;
+
+        public String getCromwellServerUrl()
+        {
+            return _cromwellServerUrl;
+        }
+
+        public void setCromwellServerUrl(String cromwellServerUrl)
+        {
+            _cromwellServerUrl = cromwellServerUrl;
+        }
+
+        public Integer getCromwellServerPort()
+        {
+            return _cromwellServerPort;
+        }
+
+        public void setCromwellServerPort(Integer cromwellServerPort)
+        {
+            _cromwellServerPort = cromwellServerPort;
+        }
+
+        public String getApiKey()
+        {
+            return _apiKey;
+        }
+
+        public void setApiKey(String apiKey)
+        {
+            _apiKey = apiKey;
+        }
+
+        public String getAssayType()
+        {
+            return _assayType;
+        }
+
+        public void setAssayType(String assayType)
+        {
+            _assayType = assayType;
+        }
+
+        public CromwellConfig getConfig() throws CromwellException
+        {
+            return CromwellConfig.create(_cromwellServerUrl, _cromwellServerPort, _apiKey, _assayType);
         }
     }
 

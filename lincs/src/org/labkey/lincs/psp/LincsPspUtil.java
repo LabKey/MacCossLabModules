@@ -178,7 +178,7 @@ public class LincsPspUtil
         JSONObject json = new JSONObject();
         JSONObject details = new JSONObject();
         String method = level == LincsModule.LincsLevel.Two ? "GET" : "PUT";
-        String url = level == LincsModule.LincsLevel.Two ? getRunReportURL(run, assayName) : getWebDavUrl(run, level);
+        String url = /*level == LincsModule.LincsLevel.Two ? getRunReportURL(run, assayName) :*/ getWebDavUrl(run, level);
         details.put("url", url);
         details.put("method", method);
         json.put("panorama", details);
