@@ -27,10 +27,10 @@ public class LincsL2GctCromwellTask extends PipelineJob.Task<LincsL2GctCromwellT
     @Override
     public @NotNull RecordedActionSet run() throws PipelineJobException
     {
-        PipelineJob job = getJob();
+        var job = getJob();
         LincsPspJobSupport support = job.getJobSupport(LincsPspJobSupport.class);
 
-        job.getLogger().info("Submitting job to create L2 GCT on Cromwell for " + support.getRun().getFileName());
+        job.getLogger().info("Submitting Cromwell job to create L2 GCT for " + support.getRun().getFileName());
 
         submitCromwellJob(support, job.getLogger());
 
@@ -44,40 +44,26 @@ public class LincsL2GctCromwellTask extends PipelineJob.Task<LincsL2GctCromwellT
         Container container = this.getJob().getContainer();
 
         ITargetedMSRun run = jobSupport.getRun();
-        CromwellUtil.CromwellJobStatus cromwellStatus = null;
-        CromwellConfig cromwellConfig = null;
+        CromwellConfig cromwellConfig;
 
-        cromwellConfig = CromwellConfig.get(container);
-        if(cromwellConfig == null)
-        {
-            throw new PipelineJobException("Could not create a Cromwell config.");
-        }
         try
         {
-            cromwellConfig.validate();
+            cromwellConfig = CromwellConfig.getValidConfig(container);
         }
         catch(CromwellException e)
         {
-            throw new PipelineJobException("Error validating Cromwell config", e);
+            throw new PipelineJobException("Could not get a valid Cromwell configuration. Error was: " + e.getMessage(), e);
         }
 
         CromwellJobSubmitter submitter = new CromwellJobSubmitter(cromwellConfig);
-        try
-        {
-            cromwellStatus = submitter.submitJob(getJob().getContainer(), run.getFileName(), log);
-        }
-        catch (CromwellException e)
-        {
-            throw new PipelineJobException("Error submitting Cromwell job", e);
-        }
-
+        CromwellUtil.CromwellJobStatus cromwellStatus = submitter.submitJob(getJob().getContainer(), run.getFileName(), log);
         if(cromwellStatus == null)
         {
             throw new PipelineJobException("Unable to submit Cromwell job. Did not get a job status.");
         }
 
-        URI jobStatusUri = cromwellConfig.buildJobStatusUri(cromwellStatus.getJobId());
-        URI jobMetadataUri = cromwellConfig.buildMetadataUri(cromwellStatus.getJobId());
+        URI jobStatusUri = cromwellConfig.getJobStatusUri(cromwellStatus.getJobId());
+        URI jobMetadataUri = cromwellConfig.getMetadataUri(cromwellStatus.getJobId());
         final int sleepTime = 20 * 1000;
 
         int attempts = 5;
@@ -110,7 +96,7 @@ public class LincsL2GctCromwellTask extends PipelineJob.Task<LincsL2GctCromwellT
                 {
                     if(attempts > 0)
                     {
-                        log.info("Did not get job status.  Job may not yet have started running. Trying again...");
+                        log.info("Did not get job status.  Job may not yet have been put in the queue. Trying again...");
                         attempts--;
                         continue;
                     }
@@ -132,17 +118,11 @@ public class LincsL2GctCromwellTask extends PipelineJob.Task<LincsL2GctCromwellT
                 }
                 if(status.failed())
                 {
-//                    log.error("Cromwell job failed.");
                     throw new PipelineJobException("Cromwel job failed. Get details at " + jobMetadataUri);
-                    // TODO: throw an exception here so the pipeline job status is set to failed too?
-//                    break;
                 }
             }
             catch (CromwellException e)
             {
-//                log.error("An error occurred getting Cromwell job status", e);
-                // TODO: throw an exception here so the pipeline job status is set to failed too?
-//                break;
                 throw new PipelineJobException("An error occurred getting Cromwell job status", e);
             }
         }

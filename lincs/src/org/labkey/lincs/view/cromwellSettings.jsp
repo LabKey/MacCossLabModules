@@ -3,13 +3,13 @@
 <%@ page import="org.labkey.lincs.LincsController" %>
 <%@ page extends="org.labkey.api.jsp.FormPage" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
+<%
+    LincsController.CromwellConfigForm form = ((JspView<LincsController.CromwellConfigForm>) HttpView.currentView()).getModelBean();
+ %>
 <p>
     Manage Cromwell Settings
 </p>
 <br>
-<%
-    LincsController.CromwellConfigForm form = ((JspView<LincsController.CromwellConfigForm>) HttpView.currentView()).getModelBean();
- %>
 <labkey:errors/>
 <labkey:form method="post">
     <table>

@@ -11,8 +11,8 @@ workflow lincs_gct_workflow {
 
     String url_webdav_skyline_zip
 	String url_webdav_skyr
-    String url_webdav_gct_folder
-    String url_webdav_cromwell_output_folder
+    String url_webdav_gct_dir
+    String url_webdav_cromwell_output_dir
     String panorama_apikey
 
 
@@ -43,24 +43,16 @@ workflow lincs_gct_workflow {
             report_file=skyline_export_report.report_file
     }
 
-	# Upload the GCT file
-    call upload_files as upload_gct {
+	# Upload the GCT, exported report and logs
+    call upload_files {
         input:
-            target_webdav_gct_dir=url_webdav_gct_folder,
-            target_webdav_cromwell_dir=url_webdav_cromwell_output_folder,
+            target_webdav_gct_dir=url_webdav_gct_dir,
+            target_webdav_cromwell_dir=url_webdav_cromwell_output_dir,
 			gctFile=gct_maker.gct,
 			csvReport=skyline_export_report.report_file,
-			skyLog=skyline_export_report.skyline_log
-			gctMakerLog=gct_maker.task_log
+			skyLog=skyline_export_report.skyline_log,
+			gctMakerLog=gct_maker.task_log,
 			apikey=panorama_apikey
-    }
-
-    # Upload the exported report
-    call upload_file as upload_report_csv {
-        input:
-            target_webdav_dir=url_webdav_cromwell_output_folder,
-            file=skyline_export_report.report_file,
-            apikey=panorama_apikey
     }
 }
 
@@ -103,7 +95,7 @@ task skyline_export_report {
 	    unzip "${skyzip_name}"
 		rm "${skyzip_name}"
         wine SkylineCmd --in="${sky_basename}.sky" --report-add="${report_template}" --report-name="${report_name}" --report-conflict-resolution=overwrite  \
-		--report-file="${skyzip_basename}.csv" --log-file="${skyzip_basename}.log"
+		--report-file="${skyzip_basename}.csv" --log-file="${skyzip_basename}.skyline.log"
     }
 
     runtime {
@@ -112,7 +104,7 @@ task skyline_export_report {
 
     output {
         File report_file = "${skyzip_basename}.csv"
-        File skyline_log = "${skyzip_basename}.log"
+        File skyline_log = "${skyzip_basename}.skyline.log"
         File task_log = stdout()
     }
 }
@@ -148,23 +140,23 @@ task upload_files {
         java -jar /code/PanoramaClient.jar \
              -u \
 			 -f "${gctFile}" \
-             -w "${target_webdav_dir}" \
+             -w "${target_webdav_gct_dir}" \
              -k "${apikey}"
         java -jar /code/PanoramaClient.jar \
-                     -u \
-        			 -f "${csvReport}" \
-                     -w "${target_webdav_cromwell_dir}" \
-                     -k "${apikey}"
+             -u \
+             -f "${csvReport}" \
+             -w "${target_webdav_cromwell_dir}" \
+             -k "${apikey}"
         java -jar /code/PanoramaClient.jar \
-                             -u \
-                			 -f "${skyLog}" \
-                             -w "${target_webdav_cromwell_dir}" \
-                             -k "${apikey}"
+             -u \
+             -f "${skyLog}" \
+             -w "${target_webdav_cromwell_dir}" \
+             -k "${apikey}"
         java -jar /code/PanoramaClient.jar \
-                                     -u \
-                        			 -f "${gctMakerLog}" \
-                                     -w "${target_webdav_cromwell_dir}" \
-                                     -k "${apikey}"
+             -u \
+             -f "${gctMakerLog}" \
+             -w "${target_webdav_cromwell_dir}" \
+             -k "${apikey}"
     }
 
     runtime {

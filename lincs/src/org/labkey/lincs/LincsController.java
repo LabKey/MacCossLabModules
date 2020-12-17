@@ -19,6 +19,7 @@ package org.labkey.lincs;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
+import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.ReadOnlyApiAction;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
@@ -48,6 +49,7 @@ import org.labkey.api.pipeline.PipelineStatusFile;
 import org.labkey.api.pipeline.PipelineStatusUrls;
 import org.labkey.api.pipeline.PipelineUrls;
 import org.labkey.api.pipeline.PipelineValidationException;
+import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.reports.Report;
 import org.labkey.api.reports.report.RReport;
@@ -62,6 +64,7 @@ import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.SkylineAnnotation;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
@@ -106,6 +109,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.labkey.api.util.DOM.BR;
+import static org.labkey.api.util.DOM.DIV;
 
 public class LincsController extends SpringActionController
 {
@@ -185,7 +191,7 @@ public class LincsController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public class RunGCTReportApiAction extends ReadOnlyApiAction<GCTReportForm>
+    public class RunGCTReportApiAction extends MutatingApiAction<GCTReportForm>
     {
         @Override
         public ApiResponse execute(GCTReportForm form, BindException errors) throws Exception
@@ -1076,23 +1082,36 @@ public class LincsController extends SpringActionController
         @Override
         public boolean handlePost(CromwellConfigForm form, BindException errors)
         {
+            CromwellConfig config = form.getConfig();
             try
             {
-                CromwellConfig config = form.getConfig();
-                config.save(getContainer());
+                config.validate();
             }
             catch (CromwellException e)
             {
                 errors.reject(ERROR_MSG, e.getMessage());
                 return false;
             }
+            config.save(getContainer());
             return true;
         }
 
         @Override
-        public URLHelper getSuccessURL(CromwellConfigForm form)
+        public URLHelper getSuccessURL(CromwellConfigForm cromwellConfigForm)
         {
-            return new ActionURL(CromwellConfigAction.class, getContainer());
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(CromwellConfigForm cromwellConfigForm)
+        {
+            ActionURL projectUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer());
+            return new HtmlView(
+                    DIV("Cromwell details saved!",
+                            BR(),
+                            new Link.LinkBuilder("Back to Project").href(projectUrl).build()
+                    )
+            );
         }
 
         @Override
@@ -1106,10 +1125,7 @@ public class LincsController extends SpringActionController
                     form.setCromwellServerUrl(config.getCromwellServerUrl());
                     form.setCromwellServerPort(config.getCromwellServerPort());
                     form.setApiKey(config.getPanoramaApiKey());
-                    if (config.getJobType() != null)
-                    {
-                        form.setAssayType(config.getJobType().name());
-                    }
+                    form.setAssayType(config.getAssayType());
                 }
             }
             return new JspView<>("/org/labkey/lincs/view/cromwellSettings.jsp", form, errors);
@@ -1169,7 +1185,7 @@ public class LincsController extends SpringActionController
             _assayType = assayType;
         }
 
-        public CromwellConfig getConfig() throws CromwellException
+        public CromwellConfig getConfig()
         {
             return CromwellConfig.create(_cromwellServerUrl, _cromwellServerPort, _apiKey, _assayType);
         }

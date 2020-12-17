@@ -16,24 +16,20 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.Logger;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 
 public class CromwellUtil
 {
-    public static CromwellJobStatus submitJob(CromwellConfig config, String wdl, String inputsJson, Logger logger) throws CromwellException
+    public static CromwellJobStatus submitJob(CromwellConfig config, String wdl, String inputsJson, Logger log)
     {
-        URI uri = config.buildJobSubmitUri();
+        URI uri = config.getJobSubmitUri();
 
         try (CloseableHttpClient client = HttpClientBuilder.create().build())
         {
-            // String url = "http://127.0.0.1:8000/api/workflows/v1";
+            // Example: "http://127.0.0.1:8000/api/workflows/v1";
             HttpPost post = new HttpPost(uri);
 
             MultipartEntityBuilder builder = MultipartEntityBuilder.create();
@@ -42,7 +38,7 @@ public class CromwellUtil
             builder.addPart("workflowInputs", new StringBody(inputsJson, ContentType.APPLICATION_JSON));
             HttpEntity entity = builder.build();
             post.setEntity(entity);
-            logger.info("Submitting job to " + uri);
+            log.info("Submitting job to " + uri);
 
             try (CloseableHttpResponse response = client.execute(post))
             {
@@ -53,12 +49,12 @@ public class CromwellUtil
                 {
                     String resp = handler.handleResponse(response);
                     JSONObject json = new JSONObject(resp);
-                    // {"id":"ac73fdba-51f5-4aa2-8a09-bd5f7f9611fa","status":"Submitted"}
+                    // Example: {"id":"ac73fdba-51f5-4aa2-8a09-bd5f7f9611fa","status":"Submitted"}
                     return new CromwellJobStatus(json.getString("id"), json.getString("status"));
                 }
                 else
                 {
-                    logger.error("Job submission failed. Response code was " + status.getStatusCode() + " " +  status.getReasonPhrase());
+                    log.error("Job submission failed. Response code was " + status.getStatusCode() + " " +  status.getReasonPhrase());
                     EntityUtils.consume(response.getEntity());
                     return null;
                 }
@@ -66,7 +62,8 @@ public class CromwellUtil
         }
         catch (IOException e)
         {
-            throw new CromwellException("Error occurred submitting job.", e);
+            log.error("Could not submit job. Error was:" + e.getMessage(), e);
+            return null;
         }
     }
 
@@ -100,124 +97,6 @@ public class CromwellUtil
         {
             throw new CromwellException("Error checking status of job.", e);
         }
-    }
-
-    public static List<String> getJobLogs(URI jobLogsUri) throws CromwellException
-    {
-        List<String> logFiles = new ArrayList<>();
-
-        try (CloseableHttpClient client = HttpClientBuilder.create().build())
-        {
-            HttpGet get = new HttpGet(jobLogsUri);
-
-            try (CloseableHttpResponse response = client.execute(get))
-            {
-                ResponseHandler<String> handler = new BasicResponseHandler();
-                StatusLine status = response.getStatusLine();
-
-                if (status.getStatusCode() == HttpStatus.SC_OK)
-                {
-                    String resp = handler.handleResponse(response);
-                    JSONObject json = new JSONObject(resp);
-                    JSONObject calls = json.getJSONObject("calls");
-                    for (Iterator<String> it = calls.keys(); it.hasNext(); )
-                    {
-                        String key = it.next();
-                        JSONArray values = calls.getJSONArray(key);
-                        for(int i = 0; i < values.length(); i++)
-                        {
-                            JSONObject info = values.getJSONObject(i);
-                            String stdout = info.getString("stdout");
-                            String stderr = info.getString("stderr");
-
-                            JSONObject callCaching = info.getJSONObject("callCaching");
-                            if(callCaching != null && callCaching.containsKey("hit"))
-                            {
-                                if(callCaching.getBoolean("hit"))
-                                {
-                                    var callRoot = info.getString("callRoot");
-                                    stdout = callRoot + "/cacheCopy/execution/stdout";
-                                    stderr = callRoot + "/cacheCopy/execution/stderr";
-                                }
-                            }
-
-                            logFiles.add(stdout);
-                            logFiles.add(stderr);
-                        }
-                    }
-                }
-                else
-                {
-                    EntityUtils.consume(response.getEntity());
-                    throw new CromwellException("Error getting list of log files for job. Response code was " + status.getStatusCode() + " " +  status.getReasonPhrase());
-                }
-            }
-        }
-        catch (IOException e)
-        {
-            throw new CromwellException("Error getting list of log files for job.", e);
-        }
-
-        return logFiles;
-    }
-
-    public static CromwellMetadata getJobMetadata(URI metadataUri) throws CromwellException
-    {
-        List<String> logFiles = new ArrayList<>();
-
-        try (CloseableHttpClient client = HttpClientBuilder.create().build())
-        {
-            HttpGet get = new HttpGet(metadataUri);
-
-            try (CloseableHttpResponse response = client.execute(get))
-            {
-                ResponseHandler<String> handler = new BasicResponseHandler();
-                StatusLine status = response.getStatusLine();
-
-                if (status.getStatusCode() == HttpStatus.SC_OK)
-                {
-                    String resp = handler.handleResponse(response);
-                    JSONObject json = new JSONObject(resp);
-                    JSONObject calls = json.getJSONObject("calls");
-                    for (Iterator<String> it = calls.keys(); it.hasNext(); )
-                    {
-                        String key = it.next();
-                        JSONArray values = calls.getJSONArray(key);
-                        for(int i = 0; i < values.length(); i++)
-                        {
-                            JSONObject info = values.getJSONObject(i);
-                            String stdout = info.getString("stdout");
-                            String stderr = info.getString("stderr");
-
-                            JSONObject callCaching = info.getJSONObject("callCaching");
-                            if(callCaching != null && callCaching.containsKey("hit"))
-                            {
-                                if(callCaching.getBoolean("hit"))
-                                {
-                                    var callRoot = info.getString("callRoot");
-                                    stdout = callRoot + "/cacheCopy/execution/stdout";
-                                    stderr = callRoot + "/cacheCopy/execution/stderr";
-                                }
-                            }
-
-                            logFiles.add(stdout);
-                            logFiles.add(stderr);
-                        }
-                    }
-                }
-                else
-                {
-                    EntityUtils.consume(response.getEntity());
-                    throw new CromwellException("Error getting list of log files for job. Response code was " + status.getStatusCode() + " " +  status.getReasonPhrase());
-                }
-            }
-        }
-        catch (IOException e)
-        {
-            throw new CromwellException("Error getting list of log files for job.", e);
-        }
-
-        return null; // TODO
     }
 
     public static class CromwellJobStatus

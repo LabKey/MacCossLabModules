@@ -148,6 +148,12 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
                 log.error("Cancelled task.", e);
                 break;
             }
+
+            var pipelineJobStatus = PipelineService.get().getStatusFile(getJob().getJobGUID()).getStatus();
+            if(PipelineJob.TaskStatus.cancelling.matches(pipelineJobStatus))
+            {
+                break;
+            }
         }
     }
 
