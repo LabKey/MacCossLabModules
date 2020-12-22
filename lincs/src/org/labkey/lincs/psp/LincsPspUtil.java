@@ -9,6 +9,7 @@ import org.json.simple.JSONArray;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.PropertyManager;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.security.User;
 import org.labkey.api.targetedms.ITargetedMSRun;
@@ -32,26 +33,21 @@ public class LincsPspUtil
 {
     public static PspEndpoint getPspEndpoint(Container container) throws LincsPspException
     {
-        LincsModule.ClueCredentials credentials;
         String pspUrl = null;
         String pspApiKey = null;
         try
         {
             // Only run if the psp endpoint configuration has been saved in the container
-            credentials = LincsModule.getClueCredentials(container);
-            if (credentials != null)
+            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(container, LincsController.LINCS_CLUE_CREDENTIALS, false);
+            if(map != null)
             {
-                pspUrl = credentials.getServerUrl();
-                pspApiKey = credentials.getApiKey();
+                pspUrl = map.get(LincsController.CLUE_SERVER_URI);
+                pspApiKey = map.get(LincsController.CLUE_API_KEY);
             }
         }
         catch(Exception e)
         {
             throw new LincsPspException("Error looking up PSP endpoint configuration in container " + container.getPath() + ". Error: " + e.getMessage(), e);
-        }
-        if(credentials == null)
-        {
-            throw new LincsPspException(LincsPspException.NO_PSP_CONFIG);
         }
         if(StringUtils.isBlank(pspUrl))
         {

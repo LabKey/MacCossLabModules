@@ -3,6 +3,7 @@ package org.labkey.lincs.cromwell;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
+import org.labkey.api.files.FileContentService;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
@@ -11,15 +12,19 @@ import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.RecordedActionSet;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.util.FileType;
+import org.labkey.lincs.LincsController;
+import org.labkey.lincs.LincsModule;
 import org.labkey.lincs.psp.LincsPspJobSupport;
 
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
-public class LincsL2GctCromwellTask extends PipelineJob.Task<LincsL2GctCromwellTask.Factory>
+public class CromwellGctTask extends PipelineJob.Task<CromwellGctTask.Factory>
 {
-    public LincsL2GctCromwellTask(Factory factory, PipelineJob job)
+    public CromwellGctTask(Factory factory, PipelineJob job)
     {
         super(factory, job);
     }
@@ -30,7 +35,7 @@ public class LincsL2GctCromwellTask extends PipelineJob.Task<LincsL2GctCromwellT
         var job = getJob();
         LincsPspJobSupport support = job.getJobSupport(LincsPspJobSupport.class);
 
-        job.getLogger().info("Submitting Cromwell job to create L2 GCT for " + support.getRun().getFileName());
+        job.getLogger().info("Starting task to create L2 GCT for " + support.getRun().getFileName());
 
         submitCromwellJob(support, job.getLogger());
 
@@ -41,11 +46,17 @@ public class LincsL2GctCromwellTask extends PipelineJob.Task<LincsL2GctCromwellT
 
     private void submitCromwellJob(LincsPspJobSupport jobSupport, Logger log) throws PipelineJobException
     {
-        Container container = this.getJob().getContainer();
+        var container = this.getJob().getContainer();
 
         ITargetedMSRun run = jobSupport.getRun();
-        CromwellConfig cromwellConfig;
 
+        if(l2GctExistsForRun(run, container))
+        {
+            log.info("L2 GCT for run " + run.getFileName() + " exists. Skipping Cromwell job submission.");
+            return;
+        }
+
+        CromwellConfig cromwellConfig;
         try
         {
             cromwellConfig = CromwellConfig.getValidConfig(container);
@@ -55,7 +66,13 @@ public class LincsL2GctCromwellTask extends PipelineJob.Task<LincsL2GctCromwellT
             throw new PipelineJobException("Could not get a valid Cromwell configuration. Error was: " + e.getMessage(), e);
         }
 
-        CromwellJobSubmitter submitter = new CromwellJobSubmitter(cromwellConfig);
+        LincsModule.LincsAssay assayType = LincsController.getLincsAssayType(container);
+        if(assayType == null)
+        {
+            throw new PipelineJobException("Lincs assay type could not be determined for container " + container.getPath());
+        }
+
+        CromwellJobSubmitter submitter = new CromwellJobSubmitter(cromwellConfig, assayType);
         CromwellUtil.CromwellJobStatus cromwellStatus = submitter.submitJob(getJob().getContainer(), run.getFileName(), log);
         if(cromwellStatus == null)
         {
@@ -63,7 +80,6 @@ public class LincsL2GctCromwellTask extends PipelineJob.Task<LincsL2GctCromwellT
         }
 
         URI jobStatusUri = cromwellConfig.getJobStatusUri(cromwellStatus.getJobId());
-        URI jobMetadataUri = cromwellConfig.getMetadataUri(cromwellStatus.getJobId());
         final int sleepTime = 20 * 1000;
 
         int attempts = 5;
@@ -82,15 +98,23 @@ public class LincsL2GctCromwellTask extends PipelineJob.Task<LincsL2GctCromwellT
                 break;
             }
 
+            // If the user has cancelled the job, send abort request for the job running on the Cromwell server.
+            var pipelineJobStatus = PipelineService.get().getStatusFile(getJob().getJobGUID()).getStatus();
+            if(PipelineJob.TaskStatus.cancelling.matches(pipelineJobStatus))
+            {
+                try
+                {
+                    CromwellUtil.abortJob(cromwellConfig.getAbortUri(cromwellStatus.getJobId()), log);
+                }
+                catch (CromwellException e)
+                {
+                    log.warn("Error aborting cromwell job");
+                }
+                break;
+            }
+
             try
             {
-                var pipelineJobStatus = PipelineService.get().getStatusFile(getJob().getJobGUID()).getStatus();
-                if(PipelineJob.TaskStatus.cancelling.matches(pipelineJobStatus))
-                {
-                    // TODO: Send abort signal to Cromwell
-                    break;
-                }
-
                 CromwellUtil.CromwellJobStatus status = CromwellUtil.getJobStatus(jobStatusUri, log);
                 if(status == null)
                 {
@@ -113,12 +137,12 @@ public class LincsL2GctCromwellTask extends PipelineJob.Task<LincsL2GctCromwellT
 
                 if(status.success())
                 {
-                    log.info("Cromwell job completed successfully. Job details at " + jobMetadataUri);
+                    log.info("Cromwell job completed successfully");
                     break;
                 }
                 if(status.failed())
                 {
-                    throw new PipelineJobException("Cromwel job failed. Get details at " + jobMetadataUri);
+                    throw new PipelineJobException("Cromwell job failed");
                 }
             }
             catch (CromwellException e)
@@ -128,17 +152,32 @@ public class LincsL2GctCromwellTask extends PipelineJob.Task<LincsL2GctCromwellT
         }
     }
 
-    public static class Factory extends AbstractTaskFactory<AbstractTaskFactorySettings, LincsL2GctCromwellTask.Factory>
+    private boolean l2GctExistsForRun(ITargetedMSRun run, Container container)
+    {
+        FileContentService fcs = FileContentService.get();
+        if(fcs != null)
+        {
+            Path fileRootPath = fcs.getFileRootPath(container, FileContentService.ContentType.files);
+            if (fileRootPath != null)
+            {
+                Path l2Gct = fileRootPath.resolve(LincsController.GCT_DIR).resolve(run.getBaseName() + LincsModule.getExt(LincsModule.LincsLevel.Two));
+                return Files.exists(l2Gct);
+            }
+        }
+        return false;
+    }
+
+    public static class Factory extends AbstractTaskFactory<AbstractTaskFactorySettings, CromwellGctTask.Factory>
     {
         public Factory()
         {
-            super(LincsL2GctCromwellTask.class);
+            super(CromwellGctTask.class);
         }
 
         @Override
-        public PipelineJob.Task createTask(PipelineJob job)
+        public CromwellGctTask createTask(PipelineJob job)
         {
-            return new LincsL2GctCromwellTask(this, job);
+            return new CromwellGctTask(this, job);
         }
 
         @Override

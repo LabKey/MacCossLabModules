@@ -4,7 +4,7 @@
 # 2. Download the Skyline report template from PanoramaWeb
 # 3. Use Skyline to export a report from the downloaded document using the report template.
 # 4. Run the GCT Maker Perl script to create a GCT file from the exported report.
-# 3. Upload the GCT file to PanoramaWweb
+# 5. Upload the GCT file, exported report and logs to PanoramaWeb
 
 
 workflow lincs_gct_workflow {
@@ -69,12 +69,20 @@ task download_file {
     }
 
     runtime {
-        docker: "vagisha11/test-panorama-client-java:4.0"
+        docker: "proteowizard/panorama-client-java:1.1"
     }
 
     output {
         File downloaded_file = basename("${file_url}")
-        File task_log = stdout()
+    }
+    parameter_meta {
+        file_url: "WebDAV URL for file to be downloaded"
+        apikey: "Panorama Server API key"
+    }
+    meta {
+        author: "Vagisha Sharma"
+        email: "vsharma@uw.edu"
+        description: "Download file from a Panorama Server WebDAV url"
     }
 }
 
@@ -99,13 +107,12 @@ task skyline_export_report {
     }
 
     runtime {
-        docker: "proteowizard/pwiz-skyline-i-agree-to-the-vendor-licenses:latest"
+        docker: "proteowizard/pwiz-skyline-i-agree-to-the-vendor-licenses:skyline_20_2"
     }
 
     output {
         File report_file = "${skyzip_basename}.csv"
         File skyline_log = "${skyzip_basename}.skyline.log"
-        File task_log = stdout()
     }
 }
 
@@ -114,16 +121,16 @@ task gct_maker {
 	String gct_file_name=basename(report_file, ".csv")
 
     command {
-		perl /code/skyline_gct_maker.pl . "${gct_file_name}" "${report_file}"
+		perl /code/skyline_gct_maker.pl . "${gct_file_name}" "${report_file}" > "${gct_file_name}.gctmaker.log" 2>&1
     }
 
     runtime {
-        docker: "vagisha11/gct_maker:1.0"
+        docker: "proteowizard/panorama-skyline-gct:latest"
     }
 
     output {
         File gct = "${gct_file_name}.gct"
-        File task_log = stdout()
+        File task_log = "${gct_file_name}.gctmaker.log"
     }
 }
 
@@ -160,10 +167,6 @@ task upload_files {
     }
 
     runtime {
-        docker: "vagisha11/test-panorama-client-java:4.0"
-    }
-
-    output {
-        File task_log = stdout()
+        docker: "proteowizard/panorama-client-java:1.1"
     }
 }

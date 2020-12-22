@@ -6,7 +6,7 @@
     <bean id="lincsPipelineRegistry" class="org.labkey.api.pipeline.TaskPipelineRegistrar">
         <property name="factoryImpls">
             <list>
-                <bean class="org.labkey.lincs.cromwell.LincsL2GctCromwellTask$Factory">
+                <bean class="org.labkey.lincs.cromwell.CromwellGctTask$Factory">
                     <property name="location" value="webserver" />
                 </bean>
                 <bean class="org.labkey.lincs.psp.LincsPspTask$Factory">
@@ -22,7 +22,7 @@
                     <property name="taskProgressionSpec">
                         <list>
                             <bean id="lincsL2GctCromwellTask" class="org.labkey.api.pipeline.TaskId">
-                                <constructor-arg><value type="java.lang.Class">org.labkey.lincs.cromwell.LincsL2GctCromwellTask</value></constructor-arg>
+                                <constructor-arg><value type="java.lang.Class">org.labkey.lincs.cromwell.CromwellGctTask</value></constructor-arg>
                             </bean>
                             <bean id="lincsPspTask" class="org.labkey.api.pipeline.TaskId">
                                 <constructor-arg><value type="java.lang.Class">org.labkey.lincs.psp.LincsPspTask</value></constructor-arg>

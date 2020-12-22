@@ -6,6 +6,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.security.ApiKeyManager;
+import org.labkey.api.security.User;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -16,7 +18,6 @@ public class CromwellConfig
     public static final String PROP_CROMWELL_SERVER_URL = "cromwell_server_url";
     public static final String PROP_CROMWELL_SERVER_PORT = "cromwell_server_port";
     public static final String PROP_API_KEY = "cromwell_panorama_api_key";
-    public static final String PROP_ASSAY_TYPE = "lincs_assay_type";
 
     private static String CROMWELL_API_PATH = "/api/workflows/v1";
 
@@ -25,34 +26,15 @@ public class CromwellConfig
     private Integer _cromwellServerPort;
 
     private URI _cromwellServerUri;
-    private String _assayType;
-
-    public enum AssayType
-    {
-        P100("p100_comprehensive_report_v2.skyr"),
-        GCP("gcp_comprehensive_report.skyr");
-
-        final String _reportName;
-        AssayType(String reportTemplate)
-        {
-            _reportName = reportTemplate;
-        }
-
-        public String getReportName()
-        {
-            return _reportName;
-        }
-    }
 
     private CromwellConfig() {}
 
-    public static CromwellConfig create(String cromwellServerUrl, Integer cromwellServerPort, String panoramaApiKey, String assayType)
+    public static CromwellConfig create(String cromwellServerUrl, Integer cromwellServerPort, String panoramaApiKey)
     {
         CromwellConfig config = new CromwellConfig();
         config._cromwellServerUrl = cromwellServerUrl;
         config._cromwellServerPort = cromwellServerPort;
         config._panoramaApiKey = panoramaApiKey;
-        config._assayType = assayType;
         return config;
     }
 
@@ -69,16 +51,6 @@ public class CromwellConfig
     public String getPanoramaApiKey()
     {
         return _panoramaApiKey;
-    }
-
-    public String getAssayType()
-    {
-        return _assayType;
-    }
-
-    String getReportForAssay()
-    {
-        return AssayType.valueOf(getAssayType()).getReportName();
     }
 
     public URI getCromwellServerUri()
@@ -102,34 +74,18 @@ public class CromwellConfig
         return buildCromwellServerUri(path);
     }
 
-    public URI getMetadataUri(String cromwellJobId)
+    public URI getAbortUri(String cromwellJobId)
     {
-        String path = CROMWELL_API_PATH + '/' + cromwellJobId + "/metadata";
+        String path = CROMWELL_API_PATH + '/' + cromwellJobId + "/abort";
         return buildCromwellServerUri(path);
     }
 
-    public URI buildFilteredMetadaUrl(String cromwellJobId) throws URISyntaxException
-    {
-        String path = CROMWELL_API_PATH + '/' + cromwellJobId + "/metadata";
-        // Query params to limit returned JSON to the keys we are interested in
-        // includeKey=calls&includeKey=stdout&includeKey=stderr&includeKey=callCaching"
-
-        return new URIBuilder(buildCromwellServerUri(path))
-                .addParameter("includeKey", "calls")
-                .addParameter("includeKey", "stdout")
-                .addParameter("includeKey", "stderr")
-                .addParameter("includeKey", "callCaching")
-                .addParameter("includeKey", "callRoot")
-                .build();
-    }
-    
     public void save(@NotNull Container container)
     {
         PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(container, PROPS_CROMWELL, true);
         map.put(PROP_CROMWELL_SERVER_URL, getCromwellServerUrl());
         map.put(PROP_CROMWELL_SERVER_PORT, String.valueOf(getCromwellServerPort()));
         map.put(PROP_API_KEY, String.valueOf(getPanoramaApiKey()));
-        map.put(PROP_ASSAY_TYPE, getAssayType().toLowerCase());
         map.save();
     }
 
@@ -143,18 +99,21 @@ public class CromwellConfig
         {
             throw new CromwellException("Cromwell server port not found in config");
         }
-        if(StringUtils.isBlank(getPanoramaApiKey()))
+        String apiKey = getPanoramaApiKey();
+        if(StringUtils.isBlank(apiKey))
         {
             throw new CromwellException("Panorama API key not found in config");
         }
-        if(StringUtils.isBlank(getAssayType()))
+        if(!apiKey.startsWith("apikey|"))
         {
-            throw new CromwellException("Assay type not found in config");
+            throw new CromwellException("Invalid API key. API keys must start with \"apikey|\": " + apiKey);
         }
-        if(!accepted(getAssayType()))
+        User user = ApiKeyManager.get().authenticateFromApiKey(apiKey);
+        if(user == null)
         {
-            throw new CromwellException("Unrecognized assay type in config");
+            throw new CromwellException("Cannot authenticate user with API Key.  The key may have expired");
         }
+
         if(_cromwellServerUri == null)
         {
             try
@@ -171,11 +130,6 @@ public class CromwellConfig
                 throw new CromwellException("Error parsing Cromwell server URL. Error was: " + e.getMessage(), e);
             }
         }
-    }
-
-    private boolean accepted(String assayType)
-    {
-        return AssayType.GCP.name().equalsIgnoreCase(assayType) || AssayType.P100.name().equalsIgnoreCase(assayType);
     }
 
     @Nullable
@@ -195,7 +149,6 @@ public class CromwellConfig
                 config._cromwellServerPort = Integer.valueOf(serverPortStr);
             }
             config._panoramaApiKey = map.get(PROP_API_KEY);
-            config._assayType = map.get(PROP_ASSAY_TYPE);
             return config;
         }
         return null;
@@ -206,7 +159,7 @@ public class CromwellConfig
         CromwellConfig config = get(container);
         if(config == null)
         {
-            throw new CromwellException("Cromwell configuration is not saved in the container " + container);
+            throw new CromwellException("Cromwell configuration is not saved in the container " + container.getPath());
         }
         config.validate();
         return config;

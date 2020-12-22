@@ -1125,7 +1125,6 @@ public class LincsController extends SpringActionController
                     form.setCromwellServerUrl(config.getCromwellServerUrl());
                     form.setCromwellServerPort(config.getCromwellServerPort());
                     form.setApiKey(config.getPanoramaApiKey());
-                    form.setAssayType(config.getAssayType());
                 }
             }
             return new JspView<>("/org/labkey/lincs/view/cromwellSettings.jsp", form, errors);
@@ -1143,7 +1142,6 @@ public class LincsController extends SpringActionController
         private String _cromwellServerUrl;
         private Integer _cromwellServerPort;
         private String _apiKey;
-        private String _assayType;
 
         public String getCromwellServerUrl()
         {
@@ -1175,19 +1173,9 @@ public class LincsController extends SpringActionController
             _apiKey = apiKey;
         }
 
-        public String getAssayType()
-        {
-            return _assayType;
-        }
-
-        public void setAssayType(String assayType)
-        {
-            _assayType = assayType;
-        }
-
         public CromwellConfig getConfig()
         {
-            return CromwellConfig.create(_cromwellServerUrl, _cromwellServerPort, _apiKey, _assayType);
+            return CromwellConfig.create(_cromwellServerUrl, _cromwellServerPort, _apiKey);
         }
     }
 
@@ -1525,10 +1513,19 @@ public class LincsController extends SpringActionController
                 return false;
             }
 
-            PspEndpoint pspEndpoint = null;
             try
             {
-                pspEndpoint = LincsPspUtil.getPspEndpoint(container);
+                CromwellConfig.getValidConfig(container);
+            }
+            catch (CromwellException e)
+            {
+                errors.reject(ERROR_MSG, e.getMessage());
+                return false;
+            }
+
+            try
+            {
+                LincsPspUtil.getPspEndpoint(container);
             }
             catch(LincsPspException e)
             {
@@ -1542,7 +1539,7 @@ public class LincsController extends SpringActionController
             LincsPspJob newPspJob = lincsManager.saveNewLincsPspJob(skylineRun, getUser());
 
             ViewBackgroundInfo info = new ViewBackgroundInfo(container, getUser(), null);
-            LincsPspPipelineJob job = new LincsPspPipelineJob(info, root, skylineRun, newPspJob, oldPspJob, pspEndpoint);
+            LincsPspPipelineJob job = new LincsPspPipelineJob(info, root, skylineRun, newPspJob, oldPspJob);
             try
             {
                 PipelineService.get().queueJob(job);

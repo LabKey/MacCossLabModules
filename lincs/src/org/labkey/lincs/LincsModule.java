@@ -21,13 +21,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
-import org.labkey.api.data.PropertyManager;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.module.AdminLinkManager;
 import org.labkey.api.module.ModuleContext;
 import org.labkey.api.module.ModuleProperty;
 import org.labkey.api.module.SpringModule;
 import org.labkey.api.security.permissions.AdminPermission;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.BaseWebPartFactory;
@@ -119,8 +119,12 @@ public class LincsModule extends SpringModule
         // add a container listener so we'll know when our container is deleted:
         ContainerManager.addContainerListener(new LincsContainerListener());
 
+        DocImportListenter docImportListenter = new DocImportListenter();
         ExperimentService service = ExperimentService.get();
-        service.addExperimentListener(new DocImportListenter());
+        service.addExperimentListener(docImportListenter);
+
+        TargetedMSService tmsService = TargetedMSService.get();
+        tmsService.registerSkylineDocumentImportListener(docImportListenter);
 
         AdminLinkManager.getInstance().addListener((adminNavTree, container, user) -> {
             if (container.hasPermission(user, AdminPermission.class) && container.getActiveModules().contains(LincsModule.this))
@@ -138,59 +142,28 @@ public class LincsModule extends SpringModule
         return Collections.emptyList();
     }
 
-    public static ClueCredentials getClueCredentials(Container container)
-    {
-        PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(container, LincsController.LINCS_CLUE_CREDENTIALS, false);
-        if(map == null)
-        {
-            return null;
-        }
-        String clueServerUrl = map.get(LincsController.CLUE_SERVER_URI);
-        String clueApiKey = map.get(LincsController.CLUE_API_KEY);
-        if(clueServerUrl != null && clueApiKey != null)
-        {
-            return new ClueCredentials(clueServerUrl, clueApiKey);
-        }
-        return null;
-    }
-
-    public static class ClueCredentials
-    {
-        private final String _serverUrl;
-        private final String _apiKey;
-
-        public ClueCredentials(String serverUrl, String apiKey)
-        {
-            _serverUrl = serverUrl;
-            _apiKey = apiKey;
-        }
-
-        public String getServerUrl()
-        {
-            return _serverUrl;
-        }
-
-        public String getApiKey()
-        {
-            return _apiKey;
-        }
-    }
-
     public enum LincsAssay
     {
-        P100("GCT File P100"),
-        GCP("GCT File GCP");
+        P100("GCT File P100", "p100_comprehensive_report.skyr"),
+        GCP("GCT File GCP", "gcp_comprehensive_report.skyr");
 
         private final String _reportName;  // Name of the R report that will be run to generate the L2 GCT for a Skyline document
+        private final String _skylineReport; // Name of the Skyline report template file that will be used in the Cromwell workflow
 
-        LincsAssay(String reportName)
+        LincsAssay(String reportName, String skylineReport)
         {
             _reportName = reportName;
+            _skylineReport = skylineReport;
         }
 
         public String getReportName()
         {
             return _reportName;
+        }
+
+        public String getSkylineReport()
+        {
+            return _skylineReport;
         }
 
         public static String getReportName(String assayName)

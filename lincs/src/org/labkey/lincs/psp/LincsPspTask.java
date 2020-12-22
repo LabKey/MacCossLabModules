@@ -3,7 +3,6 @@ package org.labkey.lincs.psp;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
-import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
@@ -41,11 +40,19 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
         return new RecordedActionSet();
     }
 
-    private void postToPsp(LincsPspJobSupport jobSupport, User user, Logger log)
+    private void postToPsp(LincsPspJobSupport jobSupport, User user, Logger log) throws PipelineJobException
     {
         Container container = this.getJob().getContainer();
 
-        PspEndpoint endpoint = jobSupport.getPspEndpoint();
+        PspEndpoint endpoint;
+        try
+        {
+            endpoint = LincsPspUtil.getPspEndpoint(container);
+        }
+        catch(LincsPspException e)
+        {
+            throw new PipelineJobException(e.getMessage(), e);
+        }
 
         LincsPspJob pspJob = jobSupport.getPspJob();
         LincsPspJob oldPspJob = jobSupport.getOldPspJob();
@@ -77,8 +84,7 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
                 pspJob.setPipelineJobId(pipelineJobId);
             }
 
-            LincsModule module = ModuleLoader.getInstance().getModule(LincsModule.class);
-            String suffix = module.PSP_JOB_NAME_SUFFIX_PROPERTY.getEffectiveValue(container);
+            String suffix = LincsModule.PSP_JOB_NAME_SUFFIX_PROPERTY.getEffectiveValue(container);
 
             pspJob.setPspJobName(LincsPspUtil.getJobName(run, endpoint, suffix, log));
             log.info("PSP job name: " + pspJob.getPspJobName());
@@ -87,16 +93,10 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
         }
         catch(LincsPspException e)
         {
-            log.error(e.getMessage(), e);
+            throw new PipelineJobException("Error submitting PSP job", e);
         }
 
-        if (pspJob == null)
-        {
-            log.error("Error submitting PSP job");
-            return;
-        }
-
-        final int sleepTime = 1 * 20 * 1000;
+        final int sleepTime = 20 * 1000;
         final long thirtyMin = 30 * 60 * 1000;
 
         long timeWaited = 0;
@@ -122,13 +122,11 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
             }
             catch (IOException e)
             {
-                log.error("An error occurred getting PSP job status", e);
-                break;
+                throw new PipelineJobException("An error occurred getting PSP job status", e);
             }
             catch (LincsPspException e)
             {
-                log.error("Error parsing PSP job status", e);
-                break;
+                throw new PipelineJobException("Error parsing PSP job status", e);
             }
 
             if(timeWaited > thirtyMin)
@@ -165,7 +163,7 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
         }
 
         @Override
-        public PipelineJob.Task createTask(PipelineJob job)
+        public LincsPspTask createTask(PipelineJob job)
         {
             return new LincsPspTask(this, job);
         }

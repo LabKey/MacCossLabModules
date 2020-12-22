@@ -25,10 +25,6 @@
             <td>Panoama API Key:</td>
             <td><input type="text" name="apiKey" value="<%=h(form.getApiKey())%>"></td>
         </tr>
-        <tr>
-            <td>LINCS Assay Type:</td>
-            <td><input type="text" name="assayType" value="<%=h(form.getAssayType())%>"></td>
-        </tr>
     </table>
     <labkey:button text="Save"></labkey:button>
 </labkey:form>

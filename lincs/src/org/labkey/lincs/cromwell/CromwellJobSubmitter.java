@@ -1,6 +1,7 @@
 package org.labkey.lincs.cromwell;
 
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 import org.labkey.api.data.Container;
 import org.labkey.api.files.FileContentService;
@@ -25,12 +26,13 @@ public class CromwellJobSubmitter
     public static final String WDL = "lincs_gct_workflow.wdl";
 
     private final CromwellConfig _cromwellConfig;
+    private final LincsModule.LincsAssay _lincsAssay;
 
-    public CromwellJobSubmitter(CromwellConfig cromwellConfig)
+    public CromwellJobSubmitter(@NotNull CromwellConfig cromwellConfig, @NotNull LincsModule.LincsAssay lincsAssay)
     {
         _cromwellConfig = cromwellConfig;
+        _lincsAssay = lincsAssay;
     }
-
 
 
     public CromwellJobStatus submitJob(Container container, String skylineDocName, Logger log)
@@ -44,7 +46,7 @@ public class CromwellJobSubmitter
         Path fileRootPath = fcs.getFileRootPath(container, FileContentService.ContentType.files);
         if(fileRootPath == null)
         {
-            log.error("Cannot get a file root path for container " + container);
+            log.error("Cannot get a file root path for container " + container.getPath());
             return null;
         }
 
@@ -83,8 +85,8 @@ public class CromwellJobSubmitter
                return null;
            }
 
-           // Copy the Skyline report template fil to the working directory
-           Path skyrFile = copyReportToWorkDir(module, workDir, _cromwellConfig.getReportForAssay(), log);
+           // Copy the Skyline report template file to the working directory
+           Path skyrFile = copyReportToWorkDir(module, workDir, _lincsAssay.getSkylineReport(), log);
            if(skyrFile == null)
            {
                 return null;
@@ -92,6 +94,7 @@ public class CromwellJobSubmitter
 
            // Create inputs
            JSONObject inputsJson = createInputs(fileRootPath, container, skyrFile, skyDocPath, gctDir, workDir);
+
            // Submit job
            return CromwellUtil.submitJob(_cromwellConfig, wdl, inputsJson.toString(), log);
        }
@@ -179,11 +182,11 @@ public class CromwellJobSubmitter
     private JSONObject createInputs(Path fileRoot, Container container, Path skyrPath, Path skyDocPath, Path gctDir, Path workdir)
     {
         /* Example:
-        "lincs_gct_workflow.panorama_apikey": "apikey|c181ea53313f474f2b4388f5e6932f2f",
-        "lincs_gct_workflow.url_webdav_skyr": "https://panoramaweb-dr.gs.washington.edu/_webdav/00Developer/vsharma/Workflows/LINCS/%40files/p100_comprehensive_report_v2.skyr",
-        "lincs_gct_workflow.url_webdav_skyline_zip": "https://panoramaweb-dr.gs.washington.edu/_webdav/00Developer/vsharma/Workflows/LINCS/%40files/LINCS_P100_DIA_Plate70_annotated_minimized_2019-10-11_15-25-03.sky.zip",
-        "lincs_gct_workflow.url_webdav_gct_dir": "https://panoramaweb-dr.gs.washington.edu/_webdav/00Developer/vsharma/Workflows/LINCS/%40files/GCT/",
-        "lincs_gct_workflow.url_webdav_cromwell_output_dir": "https://panoramaweb-dr.gs.washington.edu/_webdav/00Developer/vsharma/Workflows/LINCS/%40files/GCT/Cromwell/LINCS_P100_DIA_Plate70_annotated_minimized_2019-10-11_15-25-03"
+        "lincs_gct_workflow.panorama_apikey": "apikey|xxxx",
+        "lincs_gct_workflow.url_webdav_skyr": "http://localhost:8080/_webdav/00Developer/vsharma/Workflows/LINCS/%40files/p100_comprehensive_report.skyr",
+        "lincs_gct_workflow.url_webdav_skyline_zip": "http://localhost:8080/_webdav/00Developer/vsharma/Workflows/LINCS/%40files/LINCS_P100_DIA_Plate70_annotated_minimized_2019-10-11_15-25-03.sky.zip",
+        "lincs_gct_workflow.url_webdav_gct_dir": "http://localhost:8080/_webdav/00Developer/vsharma/Workflows/LINCS/%40files/GCT/",
+        "lincs_gct_workflow.url_webdav_cromwell_output_dir": "http://localhost:8080/_webdav/00Developer/vsharma/Workflows/LINCS/%40files/GCT/Cromwell/LINCS_P100_DIA_Plate70_annotated_minimized_2019-10-11_15-25-03"
          */
         JSONObject json = new JSONObject();
         json.put("lincs_gct_workflow.panorama_apikey", _cromwellConfig.getPanoramaApiKey());
