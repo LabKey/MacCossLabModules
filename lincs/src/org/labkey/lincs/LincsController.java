@@ -19,6 +19,7 @@ package org.labkey.lincs;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
+import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.ReadOnlyApiAction;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
@@ -48,6 +49,7 @@ import org.labkey.api.pipeline.PipelineStatusFile;
 import org.labkey.api.pipeline.PipelineStatusUrls;
 import org.labkey.api.pipeline.PipelineUrls;
 import org.labkey.api.pipeline.PipelineValidationException;
+import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.reports.Report;
 import org.labkey.api.reports.report.RReport;
@@ -62,6 +64,7 @@ import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.SkylineAnnotation;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
@@ -73,6 +76,8 @@ import org.labkey.api.view.VBox;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartView;
+import org.labkey.lincs.cromwell.CromwellConfig;
+import org.labkey.lincs.cromwell.CromwellException;
 import org.labkey.lincs.psp.LincsPspException;
 import org.labkey.lincs.psp.LincsPspJob;
 import org.labkey.lincs.psp.LincsPspPipelineJob;
@@ -104,6 +109,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.labkey.api.util.DOM.BR;
+import static org.labkey.api.util.DOM.DIV;
 
 public class LincsController extends SpringActionController
 {
@@ -183,7 +191,7 @@ public class LincsController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public class RunGCTReportApiAction extends ReadOnlyApiAction<GCTReportForm>
+    public class RunGCTReportApiAction extends MutatingApiAction<GCTReportForm>
     {
         @Override
         public ApiResponse execute(GCTReportForm form, BindException errors) throws Exception
@@ -1066,6 +1074,112 @@ public class LincsController extends SpringActionController
     }
 
     @RequiresPermission(AdminPermission.class)
+    public class CromwellConfigAction extends FormViewAction<CromwellConfigForm>
+    {
+        @Override
+        public void validateCommand(CromwellConfigForm target, Errors errors) {}
+
+        @Override
+        public boolean handlePost(CromwellConfigForm form, BindException errors)
+        {
+            CromwellConfig config = form.getConfig();
+            try
+            {
+                config.validate();
+            }
+            catch (CromwellException e)
+            {
+                errors.reject(ERROR_MSG, e.getMessage());
+                return false;
+            }
+            config.save(getContainer());
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(CromwellConfigForm cromwellConfigForm)
+        {
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(CromwellConfigForm cromwellConfigForm)
+        {
+            ActionURL projectUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer());
+            return new HtmlView(
+                    DIV("Cromwell details saved!",
+                            BR(),
+                            new Link.LinkBuilder("Back to Project").href(projectUrl).build()
+                    )
+            );
+        }
+
+        @Override
+        public ModelAndView getView(CromwellConfigForm form, boolean reshow, BindException errors)
+        {
+            if(!reshow)
+            {
+                CromwellConfig config = CromwellConfig.get(getContainer());
+                if (config != null)
+                {
+                    form.setCromwellServerUrl(config.getCromwellServerUrl());
+                    form.setCromwellServerPort(config.getCromwellServerPort());
+                    form.setApiKey(config.getPanoramaApiKey());
+                }
+            }
+            return new JspView<>("/org/labkey/lincs/view/cromwellSettings.jsp", form, errors);
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Cromwell Settings");
+        }
+    }
+
+    public static class CromwellConfigForm
+    {
+        private String _cromwellServerUrl;
+        private Integer _cromwellServerPort;
+        private String _apiKey;
+
+        public String getCromwellServerUrl()
+        {
+            return _cromwellServerUrl;
+        }
+
+        public void setCromwellServerUrl(String cromwellServerUrl)
+        {
+            _cromwellServerUrl = cromwellServerUrl;
+        }
+
+        public Integer getCromwellServerPort()
+        {
+            return _cromwellServerPort;
+        }
+
+        public void setCromwellServerPort(Integer cromwellServerPort)
+        {
+            _cromwellServerPort = cromwellServerPort;
+        }
+
+        public String getApiKey()
+        {
+            return _apiKey;
+        }
+
+        public void setApiKey(String apiKey)
+        {
+            _apiKey = apiKey;
+        }
+
+        public CromwellConfig getConfig()
+        {
+            return CromwellConfig.create(_cromwellServerUrl, _cromwellServerPort, _apiKey);
+        }
+    }
+
+    @RequiresPermission(AdminPermission.class)
     public class LincsPspJobDetailsAction extends SimpleViewAction<LincsPspJobForm>
     {
         @Override
@@ -1399,10 +1513,19 @@ public class LincsController extends SpringActionController
                 return false;
             }
 
-            PspEndpoint pspEndpoint = null;
             try
             {
-                pspEndpoint = LincsPspUtil.getPspEndpoint(container);
+                CromwellConfig.getValidConfig(container);
+            }
+            catch (CromwellException e)
+            {
+                errors.reject(ERROR_MSG, e.getMessage());
+                return false;
+            }
+
+            try
+            {
+                LincsPspUtil.getPspEndpoint(container);
             }
             catch(LincsPspException e)
             {
@@ -1416,7 +1539,7 @@ public class LincsController extends SpringActionController
             LincsPspJob newPspJob = lincsManager.saveNewLincsPspJob(skylineRun, getUser());
 
             ViewBackgroundInfo info = new ViewBackgroundInfo(container, getUser(), null);
-            LincsPspPipelineJob job = new LincsPspPipelineJob(info, root, skylineRun, newPspJob, oldPspJob, pspEndpoint);
+            LincsPspPipelineJob job = new LincsPspPipelineJob(info, root, skylineRun, newPspJob, oldPspJob);
             try
             {
                 PipelineService.get().queueJob(job);

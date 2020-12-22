@@ -44,7 +44,7 @@ public class LincsPspJob
         return _runId;
     }
 
-    public void setRunId(int runId)
+    public void setRunId(long runId)
     {
         _runId = runId;
     }

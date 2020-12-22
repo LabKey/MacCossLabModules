@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<views>
+  <view name="gcp_comprehensive_report" rowsource="pwiz.Skyline.Model.Databinding.Entities.Peptide" sublist="" uimode="proteomic">
+    <column name="&quot;annotation_pr_id&quot;" />
+    <column name="&quot;annotation_pr_gene_id&quot;" />
+    <column name="&quot;annotation_pr_uniprot_id&quot;" />
+    <column name="&quot;annotation_pr_gene_symbol&quot;" />
+    <column name="&quot;annotation_pr_gcp_base_peptide&quot;" />
+    <column name="&quot;annotation_pr_gcp_modified_peptide_code&quot;" />
+    <column name="&quot;annotation_pr_gcp_histone_mark&quot;" />
+    <column name="&quot;annotation_pr_gcp_BI_number&quot;" />
+    <column name="&quot;annotation_pr_probe_normalization_group&quot;" />
+    <column name="&quot;annotation_pr_normalization_peptide_id&quot;" />
+    <column name="&quot;annotation_pr_probe_suitability_manual&quot;" />
+    <column name="&quot;annotation_pr_processing_params&quot;" />
+    <column name="Results!*.Value.&quot;ratio_Light:Heavy&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_id&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_cell_id&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_cell_molecular_features&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_det_plate&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_det_well&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_det_normalization_group_vector&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_det_filename&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_id&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_batch_id&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_lsm_id&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pubchem_cid&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_isomeric_smiles&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_multiplicity&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_iname&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_type&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_vehicle&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_dose&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_dose_unit&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_time&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_time_unit&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_batch_internal_replicate&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_batch_internal_compound_enumerator&quot;" />
+    <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_provenance_code&quot;" />
+    <column name="Results!*.Value.Peptide" hidden="true" />
+    <filter column="Results.Count" opname="&gt;" operand="0" />
+  </view>
+</views>
