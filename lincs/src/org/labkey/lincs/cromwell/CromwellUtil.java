@@ -80,7 +80,7 @@ public class CromwellUtil
         }
         catch (IOException e)
         {
-            throw new CromwellException("Error aborting job.", e);
+            throw new CromwellException("Error aborting job. Error message: " + e.getMessage(), e);
         }
     }
 

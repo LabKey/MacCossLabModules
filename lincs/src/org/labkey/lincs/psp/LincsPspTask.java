@@ -151,6 +151,7 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
             if(PipelineJob.TaskStatus.cancelling.matches(pipelineJobStatus))
             {
                 // Job cancelled by user
+                pspJob.setError("Job cancelled by user");
                 break;
             }
         }

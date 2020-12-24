@@ -10,6 +10,9 @@ import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.RecordedActionSet;
+import org.labkey.api.security.SecurityManager;
+import org.labkey.api.security.User;
+import org.labkey.api.settings.AppProps;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.util.FileType;
 import org.labkey.lincs.LincsController;
@@ -70,7 +73,29 @@ public class CromwellGctTask extends PipelineJob.Task<CromwellGctTask.Factory>
             throw new PipelineJobException("Lincs assay type could not be determined for container " + container.getPath());
         }
 
-        CromwellJobSubmitter submitter = new CromwellJobSubmitter(cromwellConfig, assayType);
+        if (AppProps.getInstance().isAllowApiKeys())
+        {
+            User user = getJob().getUser();
+
+            String apiKey = SecurityManager.beginTransformSession(user); // Creates a key that expires in a day
+            try
+            {
+                submitJob(cromwellConfig, assayType, run, apiKey, log);
+            }
+            finally
+            {
+                SecurityManager.endTransformSession(apiKey);
+            }
+        }
+        else
+        {
+            throw new PipelineJobException("Creation of API keys is disabled on the server.  An API key is required for executing Cromwell jobs.");
+        }
+    }
+
+    private void submitJob(CromwellConfig cromwellConfig, LincsModule.LincsAssay assayType, ITargetedMSRun run, String apiKey, Logger log) throws PipelineJobException
+    {
+        CromwellJobSubmitter submitter = new CromwellJobSubmitter(cromwellConfig, assayType, apiKey);
         CromwellUtil.CromwellJobStatus cromwellStatus = submitter.submitJob(getJob().getContainer(), run, log);
         if(cromwellStatus == null)
         {
@@ -106,7 +131,7 @@ public class CromwellGctTask extends PipelineJob.Task<CromwellGctTask.Factory>
                 }
                 catch (CromwellException e)
                 {
-                    log.warn("Error aborting cromwell job");
+                    log.warn("Error aborting cromwell job", e);
                 }
                 break;
             }

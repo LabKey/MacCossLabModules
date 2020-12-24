@@ -21,10 +21,6 @@
             <td>Cromwell Server Port:</td>
             <td><input type="text" name="cromwellServerPort" value="<%=h(form.getCromwellServerPort())%>"></td>
         </tr>
-        <tr>
-            <td>Panoama API Key:</td>
-            <td><input type="text" name="apiKey" value="<%=h(form.getApiKey())%>"></td>
-        </tr>
     </table>
     <labkey:button text="Save"></labkey:button>
 </labkey:form>

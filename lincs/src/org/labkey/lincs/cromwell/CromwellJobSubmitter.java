@@ -2,6 +2,7 @@ package org.labkey.lincs.cromwell;
 
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
 import org.labkey.api.data.Container;
 import org.labkey.api.files.FileContentService;
@@ -10,7 +11,6 @@ import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.resource.FileResource;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.targetedms.ITargetedMSRun;
-import org.labkey.api.util.FileUtil;
 import org.labkey.api.webdav.WebdavService;
 import org.labkey.lincs.LincsController;
 import org.labkey.lincs.LincsModule;
@@ -28,13 +28,16 @@ public class CromwellJobSubmitter
 
     private final CromwellConfig _cromwellConfig;
     private final LincsModule.LincsAssay _lincsAssay;
+    private final String _apiKey;
 
-    public CromwellJobSubmitter(@NotNull CromwellConfig cromwellConfig, @NotNull LincsModule.LincsAssay lincsAssay)
+    public CromwellJobSubmitter(@NotNull CromwellConfig cromwellConfig, @NotNull LincsModule.LincsAssay lincsAssay, String apiKey)
     {
         _cromwellConfig = cromwellConfig;
         _lincsAssay = lincsAssay;
+        _apiKey = apiKey;
     }
 
+    @Nullable
     public CromwellJobStatus submitJob(Container container, ITargetedMSRun run, Logger log)
     {
         FileContentService fcs = FileContentService.get();
@@ -102,6 +105,7 @@ public class CromwellJobSubmitter
        return null;
     }
 
+    @Nullable
     private String getWdl(Module module, Logger log)
     {
         FileResource resource = (FileResource)module.getModuleResolver().lookup(org.labkey.api.util.Path.parse(WDL));
@@ -127,6 +131,7 @@ public class CromwellJobSubmitter
         return null;
     }
 
+    @Nullable
     private Path copyReportToWorkDir(Module module, Path workDir, String reportTemplate, Logger log)
     {
         FileResource reportTemplateResource = (FileResource)module.getModuleResolver().lookup(org.labkey.api.util.Path.parse(reportTemplate));
@@ -154,6 +159,7 @@ public class CromwellJobSubmitter
         }
     }
 
+    @Nullable
     private static java.nio.file.Path createDirIfNotExists(java.nio.file.Path parent, String dirName, Logger log)
     {
         java.nio.file.Path dir = parent.resolve(dirName);
@@ -190,7 +196,7 @@ public class CromwellJobSubmitter
         "lincs_gct_workflow.url_webdav_cromwell_output_dir": "http://localhost:8080/_webdav/00Developer/vsharma/Workflows/LINCS/%40files/GCT/Cromwell/LINCS_P100_DIA_Plate70_annotated_minimized_2019-10-11_15-25-03"
          */
         JSONObject json = new JSONObject();
-        json.put("lincs_gct_workflow.panorama_apikey", _cromwellConfig.getPanoramaApiKey());
+        json.put("lincs_gct_workflow.panorama_apikey", _apiKey);
         json.put("lincs_gct_workflow.url_webdav_skyr", getWebdavUrl(fileRoot, container, skyrPath));
         json.put("lincs_gct_workflow.url_webdav_skyline_zip", getWebdavUrl(fileRoot, container, skyDocPath));
         json.put("lincs_gct_workflow.url_webdav_gct_dir", getWebdavUrl(fileRoot, container, gctDir));

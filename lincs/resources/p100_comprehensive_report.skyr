@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <views>
-  <view name="p100_comprehensive_report_v2" rowsource="pwiz.Skyline.Model.Databinding.Entities.Peptide" sublist="" uimode="proteomic">
+  <view name="p100_comprehensive_report" rowsource="pwiz.Skyline.Model.Databinding.Entities.Peptide" sublist="" uimode="proteomic">
     <column name="&quot;annotation_pr_id&quot;" />
     <column name="&quot;annotation_pr_gene_id&quot;" />
     <column name="&quot;annotation_pr_uniprot_id&quot;" />

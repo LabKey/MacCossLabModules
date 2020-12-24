@@ -1026,7 +1026,19 @@ public class LincsController extends SpringActionController
         @Override
         public URLHelper getSuccessURL(ClueCredentialsForm form)
         {
-            return new ActionURL(ManageLincsClueCredentials.class, getContainer());
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(ClueCredentialsForm form)
+        {
+            ActionURL projectUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer());
+            return new HtmlView(
+                    DIV("Clue/PSP details saved!",
+                            BR(),
+                            new Link.LinkBuilder("Back to Project").href(projectUrl).build()
+                    )
+            );
         }
 
         @Override
@@ -1044,6 +1056,7 @@ public class LincsController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
+            root.addChild("Clue/PSP Settings");
         }
     }
 
@@ -1124,7 +1137,6 @@ public class LincsController extends SpringActionController
                 {
                     form.setCromwellServerUrl(config.getCromwellServerUrl());
                     form.setCromwellServerPort(config.getCromwellServerPort());
-                    form.setApiKey(config.getPanoramaApiKey());
                 }
             }
             return new JspView<>("/org/labkey/lincs/view/cromwellSettings.jsp", form, errors);
@@ -1141,7 +1153,6 @@ public class LincsController extends SpringActionController
     {
         private String _cromwellServerUrl;
         private Integer _cromwellServerPort;
-        private String _apiKey;
 
         public String getCromwellServerUrl()
         {
@@ -1163,19 +1174,9 @@ public class LincsController extends SpringActionController
             _cromwellServerPort = cromwellServerPort;
         }
 
-        public String getApiKey()
-        {
-            return _apiKey;
-        }
-
-        public void setApiKey(String apiKey)
-        {
-            _apiKey = apiKey;
-        }
-
         public CromwellConfig getConfig()
         {
-            return CromwellConfig.create(_cromwellServerUrl, _cromwellServerPort, _apiKey);
+            return new CromwellConfig(_cromwellServerUrl, _cromwellServerPort);
         }
     }
 
