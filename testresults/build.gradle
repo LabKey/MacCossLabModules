@@ -1,3 +1,7 @@
+plugins {
+    id 'org.labkey.build.module'
+}
+
 dependencies {
     external "commons-fileupload:commons-fileupload:${commonsFileuploadVersion}"
 }
