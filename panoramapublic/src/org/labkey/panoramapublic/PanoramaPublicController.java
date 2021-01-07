@@ -3891,7 +3891,7 @@ public class PanoramaPublicController extends SpringActionController
         ActionURL result = new ActionURL(IncludeSubFoldersInExperimentAction.class, container);
         if (returnURL != null)
         {
-            result.addParameter(ActionURL.Param.returnUrl, returnURL.getLocalURIString());
+            result.addReturnURL(returnURL);
         }
         result.addParameter("id", experimentAnnotationsId);
         return result;
@@ -3902,7 +3902,7 @@ public class PanoramaPublicController extends SpringActionController
         ActionURL result = new ActionURL(ExcludeSubFoldersInExperimentAction.class, container);
         if (returnURL != null)
         {
-            result.addParameter(ActionURL.Param.returnUrl, returnURL.getLocalURIString());
+            result.addReturnURL(returnURL);
         }
         result.addParameter("id", experimentAnnotationsId);
         return result;
