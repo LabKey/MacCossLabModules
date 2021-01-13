@@ -37,6 +37,37 @@
     <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_batch_internal_replicate&quot;" />
     <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_batch_internal_compound_enumerator&quot;" />
     <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_provenance_code&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_bio_rep&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_cell_desc&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_cell_line&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_cell_lineage&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_cell_participantID&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_cell_reprogrammed&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_internal_guide_enumerator&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_lna_id&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_na_target_gene_id&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_na_transcript_id&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ncbiprobe_id&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_sample_collection&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_sense_sequence&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_target_locus&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_center_batch_id&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_center_name&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_disease&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_disease_detail&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_disease_marker&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_disease_site_onset&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_donor_age&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_donor_ethnicity&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_donor_race&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_donor_sex&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_name&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_organ&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_organism&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_patient_id&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_provider_catalog_id&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_provider_name&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ti_related_projects&quot;" />
     <column name="Results!*.Value.Peptide" hidden="true" />
     <filter column="Results.Count" opname="&gt;" operand="0" />
   </view>

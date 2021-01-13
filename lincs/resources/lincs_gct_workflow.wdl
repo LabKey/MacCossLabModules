@@ -50,6 +50,7 @@ workflow lincs_gct_workflow {
             target_webdav_cromwell_dir=url_webdav_cromwell_output_dir,
 			gctFile=gct_maker.gct,
 			csvReport=skyline_export_report.report_file,
+			csvReportTrimmed=gct_maker.report_trimmed,
 			skyLog=skyline_export_report.skyline_log,
 			gctMakerLog=gct_maker.task_log,
 			apikey=panorama_apikey
@@ -75,10 +76,12 @@ task download_file {
     output {
         File downloaded_file = basename("${file_url}")
     }
+
     parameter_meta {
         file_url: "WebDAV URL for file to be downloaded"
         apikey: "Panorama Server API key"
     }
+
     meta {
         author: "Vagisha Sharma"
         email: "vsharma@uw.edu"
@@ -118,10 +121,12 @@ task skyline_export_report {
 
 task gct_maker {
     File report_file
-	String gct_file_name=basename(report_file, ".csv")
+    String report_file_name=basename(report_file)
+	String gct_file_base_name=basename(report_file, ".csv")
 
     command {
-		perl /code/skyline_gct_maker.pl . "${gct_file_name}" "${report_file}" > "${gct_file_name}.gctmaker.log" 2>&1
+        cp ${report_file} .
+		perl /code/skyline_gct_maker.pl . "${gct_file_base_name}" "${report_file_name}" > "${gct_file_base_name}.gctmaker.log" 2>&1
     }
 
     runtime {
@@ -129,8 +134,9 @@ task gct_maker {
     }
 
     output {
-        File gct = "${gct_file_name}.gct"
-        File task_log = "${gct_file_name}.gctmaker.log"
+	    File report_trimmed = "${report_file_name}_minus_blank_columns.csv"
+        File gct = "${gct_file_base_name}.gct"
+        File task_log = "${gct_file_base_name}.gctmaker.log"
     }
 }
 
@@ -139,6 +145,7 @@ task upload_files {
     String target_webdav_cromwell_dir
     String apikey
     File csvReport
+	File csvReportTrimmed
     File gctFile
     File skyLog
     File gctMakerLog
@@ -152,6 +159,11 @@ task upload_files {
         java -jar /code/PanoramaClient.jar \
              -u \
              -f "${csvReport}" \
+             -w "${target_webdav_cromwell_dir}" \
+             -k "${apikey}"
+		java -jar /code/PanoramaClient.jar \
+             -u \
+             -f "${csvReportTrimmed}" \
              -w "${target_webdav_cromwell_dir}" \
              -k "${apikey}"
         java -jar /code/PanoramaClient.jar \
@@ -168,5 +180,11 @@ task upload_files {
 
     runtime {
         docker: "proteowizard/panorama-client-java:1.1"
+    }
+
+    meta {
+        author: "Vagisha Sharma"
+        email: "vsharma@uw.edu"
+        description: "Upload files to a folder on Panorama Server"
     }
 }

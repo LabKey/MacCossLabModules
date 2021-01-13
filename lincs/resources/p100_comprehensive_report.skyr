@@ -14,6 +14,7 @@
     <column name="&quot;annotation_pr_probe_normalization_group&quot;" />
     <column name="&quot;annotation_pr_probe_suitability_manual&quot;" />
     <column name="&quot;annotation_pr_processing_params&quot;" />
+    <column name="&quot;annotation_pr_probe_suitability&quot;" />
     <column name="Results!*.Value.&quot;ratio_Light:Heavy&quot;" />
     <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_id&quot;" />
     <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_cell_id&quot;" />
@@ -38,6 +39,17 @@
     <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_batch_internal_replicate&quot;" />
     <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_batch_internal_compound_enumerator&quot;" />
     <column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_provenance_code&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_cell_reprogrammed&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_internal_guide_enumerator&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_lna_id&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_na_target_gene_id&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_na_transcript_id&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_ncbiprobe_id&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_batch_id&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_desc&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_pert_multiplicity&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_sense_sequence&quot;" />
+	<column name="Results!*.Value.ResultFile.Replicate.&quot;annotation_target_locus&quot;" />
     <column name="Results!*.Value.Peptide" hidden="true" />
     <filter column="Results.Count" opname="&gt;" operand="0" />
   </view>
