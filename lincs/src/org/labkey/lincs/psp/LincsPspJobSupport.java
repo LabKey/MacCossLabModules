@@ -9,6 +9,4 @@ public interface LincsPspJobSupport
     LincsPspJob getPspJob();
 
     LincsPspJob getOldPspJob();
-
-    PspEndpoint getPspEndpoint();
 }
