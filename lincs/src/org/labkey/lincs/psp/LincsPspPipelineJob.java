@@ -20,29 +20,26 @@ public class LincsPspPipelineJob extends PipelineJob implements LincsPspJobSuppo
     private String _description;
     private LincsPspJob _pspJob;
     private LincsPspJob _oldPspJob;
-    private PspEndpoint _pspEndpoint;
 
     @JsonCreator
     protected LincsPspPipelineJob(@JsonProperty("_run") ITargetedMSRun run, @JsonProperty("_pspJob") LincsPspJob pspJob,
-                                  @JsonProperty("_oldPspJob") LincsPspJob oldPspJob, @JsonProperty("_pspEndpoint") PspEndpoint pspEndpoint,
+                                  @JsonProperty("_oldPspJob") LincsPspJob oldPspJob,
                                   @JsonProperty("_description") String description)
     {
         super();
         _run = run;
         _pspJob = pspJob;
         _oldPspJob = oldPspJob;
-        _pspEndpoint = pspEndpoint;
         _description = description;
     }
 
-    public LincsPspPipelineJob(ViewBackgroundInfo info, PipeRoot root, ITargetedMSRun run, LincsPspJob pspJob, LincsPspJob oldPspJob, PspEndpoint pspEndpoint)
+    public LincsPspPipelineJob(ViewBackgroundInfo info, PipeRoot root, ITargetedMSRun run, LincsPspJob pspJob, LincsPspJob oldPspJob)
     {
         super(LincsPspPipelineProvider.NAME, info, root);
         _run = run;
         _pspJob = pspJob;
         _oldPspJob = oldPspJob;
-        _description = (_oldPspJob != null ? "Re-r" : "R") + "unning LINCS pipeline on PSP for:  " + run.getBaseName();
-        _pspEndpoint = pspEndpoint;
+        _description = (_oldPspJob != null ? "Re-r" : "R") + "unning LINCS pipeline for:  " + run.getBaseName();
 
         String baseLogFileName = FileUtil.makeFileNameWithTimestamp("LincsPSP_" + (_oldPspJob != null ? "rerun_" : "") + run.getBaseName().replace(" ", "_"));
 
@@ -88,11 +85,5 @@ public class LincsPspPipelineJob extends PipelineJob implements LincsPspJobSuppo
     public LincsPspJob getOldPspJob()
     {
         return _oldPspJob;
-    }
-
-    @Override
-    public PspEndpoint getPspEndpoint()
-    {
-        return _pspEndpoint;
     }
 }
