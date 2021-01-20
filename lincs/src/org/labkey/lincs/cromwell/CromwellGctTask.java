@@ -19,6 +19,7 @@ import org.labkey.lincs.LincsController;
 import org.labkey.lincs.LincsModule;
 import org.labkey.lincs.psp.LincsPspJobSupport;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -77,14 +78,13 @@ public class CromwellGctTask extends PipelineJob.Task<CromwellGctTask.Factory>
         {
             User user = getJob().getUser();
 
-            String apiKey = SecurityManager.beginTransformSession(user); // Creates a key that expires in a day
-            try
+            try (SecurityManager.TransformSession session = SecurityManager.createTransformSession(user))
             {
-                submitJob(cromwellConfig, assayType, run, apiKey, log);
+                submitJob(cromwellConfig, assayType, run, session.getApiKey(), log);
             }
-            finally
+            catch (IOException e)
             {
-                SecurityManager.endTransformSession(apiKey);
+                throw new PipelineJobException(e);
             }
         }
         else
