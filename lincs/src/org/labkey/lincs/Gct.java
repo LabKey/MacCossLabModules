@@ -212,7 +212,7 @@ public class Gct
     {
         if(_replicateAnnotationNames == null)
         {
-            filterProbeAnnotations(Collections.emptySet());
+            filterReplicateAnnotations(Collections.emptySet());
         }
 
         return _replicateAnnotationNames.size();

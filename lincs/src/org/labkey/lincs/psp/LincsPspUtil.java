@@ -9,6 +9,7 @@ import org.json.simple.JSONArray;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.PropertyManager;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.security.User;
 import org.labkey.api.targetedms.ITargetedMSRun;
@@ -32,26 +33,21 @@ public class LincsPspUtil
 {
     public static PspEndpoint getPspEndpoint(Container container) throws LincsPspException
     {
-        LincsModule.ClueCredentials credentials;
         String pspUrl = null;
         String pspApiKey = null;
         try
         {
             // Only run if the psp endpoint configuration has been saved in the container
-            credentials = LincsModule.getClueCredentials(container);
-            if (credentials != null)
+            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(container, LincsController.LINCS_CLUE_CREDENTIALS, false);
+            if(map != null)
             {
-                pspUrl = credentials.getServerUrl();
-                pspApiKey = credentials.getApiKey();
+                pspUrl = map.get(LincsController.CLUE_SERVER_URI);
+                pspApiKey = map.get(LincsController.CLUE_API_KEY);
             }
         }
         catch(Exception e)
         {
             throw new LincsPspException("Error looking up PSP endpoint configuration in container " + container.getPath() + ". Error: " + e.getMessage(), e);
-        }
-        if(credentials == null)
-        {
-            throw new LincsPspException(LincsPspException.NO_PSP_CONFIG);
         }
         if(StringUtils.isBlank(pspUrl))
         {
@@ -178,7 +174,7 @@ public class LincsPspUtil
         JSONObject json = new JSONObject();
         JSONObject details = new JSONObject();
         String method = level == LincsModule.LincsLevel.Two ? "GET" : "PUT";
-        String url = level == LincsModule.LincsLevel.Two ? getRunReportURL(run, assayName) : getWebDavUrl(run, level);
+        String url = getWebDavUrl(run, level);
         details.put("url", url);
         details.put("method", method);
         json.put("panorama", details);
@@ -195,15 +191,6 @@ public class LincsPspUtil
         String gctFile = run.getBaseName() + LincsModule.getExt(level);
         Path path = WebdavService.getPath().append(run.getContainer().getParsedPath()).append(FileContentService.FILES_LINK).append("GCT").append(gctFile);
         return ActionURL.getBaseServerURL() + path.encode();
-    }
-
-    private static String getRunReportURL(ITargetedMSRun run, String assayName)
-    {
-        ActionURL url = new ActionURL(LincsController.RunGCTReportApiAction.class, run.getContainer());
-        url.addParameter("runId", run.getId());
-        url.addParameter("remote", true);
-        url.addParameter("reportName", LincsModule.LincsAssay.getReportName(assayName));
-        return url.getURIString();
     }
 
     public static String getJobName(ITargetedMSRun run, PspEndpoint server, String jobNameSuffix, Logger log) throws LincsPspException
