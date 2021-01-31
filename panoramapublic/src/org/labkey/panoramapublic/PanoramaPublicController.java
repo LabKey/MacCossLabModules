@@ -19,8 +19,8 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.commons.validator.routines.UrlValidator;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 import org.labkey.api.action.ApiResponse;
@@ -101,6 +101,7 @@ import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.Button;
+import org.labkey.api.util.DOM.LK;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
@@ -163,6 +164,7 @@ import static org.labkey.api.util.DOM.DIV;
 import static org.labkey.api.util.DOM.INPUT;
 import static org.labkey.api.util.DOM.LABEL;
 import static org.labkey.api.util.DOM.LK.CHECKBOX;
+import static org.labkey.api.util.DOM.LK.ERRORS;
 import static org.labkey.api.util.DOM.LK.FORM;
 import static org.labkey.api.util.DOM.SPAN;
 import static org.labkey.api.util.DOM.at;
@@ -1047,16 +1049,38 @@ public class PanoramaPublicController extends SpringActionController
             }
 
             form.setAssignPxId(je.isPxidRequested());
-            form.setUsePxTestDb(true); // TODO:
+            form.setUsePxTestDb(false);
 
             form.setSendEmail(true);
-            User submitter = UserManager.getUser(je.getCreatedBy());
-            // CONSIDER: Add other users that have admin access to the folder?
-            form.setToEmailAddresses(submitter.getEmail());
+            Set<String> toEmailAddresses = new HashSet<>();
+            User submitter = UserManager.getUser(je.getCreatedBy()); // User that clicked the submit button
+            toEmailAddresses.add(submitter.getEmail());
+
+            User dataSubmitter = sourceExperiment.getSubmitterUser(); // User selected as the data submitter.
+                                                                      // May be different from the user that clicked the button.
+                                                                      // This user's name will be included in the PX announcement.
+            if(dataSubmitter != null)
+            {
+                toEmailAddresses.add(dataSubmitter.getEmail());
+            }
+            User labHead = sourceExperiment.getLabHeadUser();
+            if(labHead != null)
+            {
+                toEmailAddresses.add(labHead.getEmail());
+            }
+            else if(!StringUtils.isBlank(je.getLabHeadEmail()))
+            {
+                // Email address of the lab head was entered in the data submission form
+                toEmailAddresses.add(je.getLabHeadEmail());
+            }
+            form.setToEmailAddresses(StringUtils.join(toEmailAddresses, '\n'));
 
             Container sourceExptContainer = sourceExperiment.getContainer();
             Container project = sourceExptContainer.getProject();
-            String projectName = project.getName().replaceAll("-", "");
+            // Project names on PanoramaWeb can be like: U. of Washington - MacCoss Lab
+            // On Panorama Public we want to create a folder: U. of Washington MacCoss Lab - <name of folder being copied>
+            // Remove hyphen and any extra spaces from project name .
+            String projectName = StringUtils.normalizeSpace(project.getName().replaceAll("-", ""));
             form.setDestContainerName(projectName + " - " + sourceExptContainer.getName());
         }
 
@@ -1251,6 +1275,12 @@ public class PanoramaPublicController extends SpringActionController
                     return new SimpleErrorView(errors);
                 }
 
+                // Require that the users selected as the submitter and lab head have first and last names in their account details
+                if(userInfoIncomplete(_experimentAnnotations, errors))
+                {
+                    return getAccountInfoIncompleteView(errors);
+                }
+
                 if(!ExperimentAnnotationsManager.hasProteomicData(_experimentAnnotations, getUser()))
                 {
                     // Cannot get a PX ID small molecule data
@@ -1276,6 +1306,40 @@ public class PanoramaPublicController extends SpringActionController
             else
             {
                 return getPublishFormView(form, _experimentAnnotations, errors);
+            }
+        }
+
+        private HtmlView getAccountInfoIncompleteView(BindException errors)
+        {
+            return new HtmlView("Incomplete Account Information",
+                    DIV(ERRORS(errors),
+                            DIV(at(style, "margin-top:10px; margin-bottom:10px;"),
+                            "Logged in users can update their account information by clicking the user icon (",
+                            SPAN(at(style, "padding:5px;"), LK.FA("user")),
+                            ") in the top right corner of the page and selecting \"My Account\" from the menu."),
+                            BR(),
+                            PageFlowUtil.generateBackButton()));
+        }
+
+        private boolean userInfoIncomplete(ExperimentAnnotations experimentAnnotations, BindException errors)
+        {
+            checkAccountInfo(experimentAnnotations.getSubmitterUser(), "data submitter", errors);
+            checkAccountInfo(experimentAnnotations.getLabHeadUser(), "lab head", errors);
+            return errors.getErrorCount() > 0;
+        }
+
+        private void checkAccountInfo(User user, String userType, BindException errors)
+        {
+            if(user != null)
+            {
+                boolean noFirst = StringUtils.isBlank(user.getFirstName());
+                boolean noLast = StringUtils.isBlank(user.getLastName());
+                if (noFirst || noLast)
+                {
+                    String message = (noFirst && noLast) ? "First and last names " : (noFirst ? "First name " : "Last name ");
+                    message += "missing for " + userType + ": " + user.getEmail();
+                    errors.reject(ERROR_MSG, message);
+                }
             }
         }
 
@@ -2586,7 +2650,7 @@ public class PanoramaPublicController extends SpringActionController
                     DIV(new Link.LinkBuilder("Back to folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
         }
 
-        private PxXml createPxXml(ExperimentAnnotations expAnnot, JournalExperiment je, String pxChanageLog) throws PxException
+        private PxXml createPxXml(ExperimentAnnotations expAnnot, JournalExperiment je, String pxChanageLog, boolean submittingToPx) throws PxException
         {
             // Generate the PX XML
             int pxVersion = PxXmlManager.getNextVersion(_journalExperiment.getId());
@@ -2596,7 +2660,7 @@ public class PanoramaPublicController extends SpringActionController
                 PxExperimentAnnotations pxInfo = new PxExperimentAnnotations(expAnnot, je);
                 pxInfo.setPxChangeLog(pxChanageLog);
                 pxInfo.setVersion(pxVersion);
-                annWriter = new PxXmlWriter(baos);
+                annWriter = new PxXmlWriter(baos, submittingToPx);
                 annWriter.write(pxInfo);
 
                 String xml = baos.toString(StandardCharsets.UTF_8);
@@ -2647,7 +2711,7 @@ public class PanoramaPublicController extends SpringActionController
 
         private void validatePxXml(boolean useTestDb, String pxChangeLog, String pxUser, String pxPassword, BindException errors) throws PxException, ProteomeXchangeServiceException
         {
-            File xmlFile = writePxXmlFile(createPxXml(_expAnnot, _journalExperiment, pxChangeLog).getXml());
+            File xmlFile = writePxXmlFile(createPxXml(_expAnnot, _journalExperiment, pxChangeLog, true).getXml());
             _pxResponse = ProteomeXchangeService.validatePxXml(xmlFile, useTestDb, pxUser, pxPassword);
             if(ProteomeXchangeService.responseHasErrors(_pxResponse))
             {
@@ -2662,7 +2726,7 @@ public class PanoramaPublicController extends SpringActionController
 
         private void submitPxXml(boolean useTestDb, boolean testMode, String pxChangeLog, String pxUser, String pxPassword, BindException errors) throws ProteomeXchangeServiceException, PxException
         {
-            PxXml pxXml = createPxXml(_expAnnot, _journalExperiment, pxChangeLog);
+            PxXml pxXml = createPxXml(_expAnnot, _journalExperiment, pxChangeLog, true);
             File xmlFile = writePxXmlFile(pxXml.getXml());
             _pxResponse = ProteomeXchangeService.submitPxXml(xmlFile, useTestDb, pxUser, pxPassword);
             if(ProteomeXchangeService.responseHasErrors(_pxResponse))
@@ -2718,7 +2782,6 @@ public class PanoramaPublicController extends SpringActionController
         private final JournalExperiment _journalExperiment;
         private String _pxChangeLog;
         private int _version;
-        private boolean _useTestDb;
 
         public PxExperimentAnnotations(ExperimentAnnotations experimentAnnotations, JournalExperiment je)
         {
@@ -2755,16 +2818,6 @@ public class PanoramaPublicController extends SpringActionController
         {
             _version = version;
         }
-
-        public boolean isUseTestDb()
-        {
-            return _useTestDb;
-        }
-
-        public void setUseTestDb(boolean useTestDb)
-        {
-            _useTestDb = useTestDb;
-        }
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
@@ -2795,9 +2848,10 @@ public class PanoramaPublicController extends SpringActionController
 
             ensureCorrectContainer(getContainer(), expAnnot.getContainer(), getViewContext());
 
-            PxXmlWriter annWriter = new PxXmlWriter(out);
+            PxXmlWriter annWriter = new PxXmlWriter(out, false);
             PxExperimentAnnotations pxInfo = new PxExperimentAnnotations(expAnnot, je);
             pxInfo.setVersion(PxXmlManager.getNextVersion(je.getId()));
+            pxInfo.setPxChangeLog(form.getChangeLog());
             annWriter.write(pxInfo);
         }
     }
@@ -2882,7 +2936,6 @@ public class PanoramaPublicController extends SpringActionController
             StringBuilder summaryHtml = new StringBuilder();
             PxHtmlWriter writer = new PxHtmlWriter(summaryHtml);
             PxExperimentAnnotations pxInfo = new PxExperimentAnnotations(expAnnot, je);
-            pxInfo.setUseTestDb(form.isTestDatabase());
             pxInfo.setPxChangeLog(form.getChangeLog());
             pxInfo.setVersion(PxXmlManager.getNextVersion(je.getId()));
             writer.write(pxInfo);

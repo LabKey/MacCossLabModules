@@ -79,17 +79,22 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writeDatasetSummary(ExperimentAnnotations expAnnotations)
+    void writeDatasetSummary(ExperimentAnnotations expAnnotations, JournalExperiment journalExperiment)
     {
         tr("Description", expAnnotations.getAbstract());
         tr("Review Level", (expAnnotations.isPeerReviewed()) ? "Peer Reviewed" : "Not Peer Reviewed");
 
         SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(expAnnotations);
+
+        final String complete = "Supported dataset by repository";
+        final String incomplete = "supported by repository but incomplete data and/or metadata";
+        final String repoSupport = "Repository Support";
+        final String override = " (override) ";
         if(status.isComplete())
         {
-            tr("Repository Support", "Supported dataset by repository");
+            tr(repoSupport, complete);
         }
-        else if(status.isIncomplete())
+        else
         {
             HtmlList list = new HtmlList();
             if(status.hasInvalidModifications())
@@ -100,13 +105,7 @@ public class PxHtmlWriter extends PxWriter
             {
                 list.addItem("Missing spectrum library source files", "Yes", true);
             }
-            list.end();
-            trNoFilter("Repository Support", "supported by repository but incomplete data and/or metadata" + list.getHtml());
-        }
-        else
-        {
-            HtmlList list = new HtmlList();
-            if(status.hasMissingRawFiles())
+            if (status.hasMissingRawFiles())
             {
                 list.addItem("Missing raw files", "Yes", true);
             }
@@ -115,7 +114,31 @@ public class PxHtmlWriter extends PxWriter
                 list.addItem("Missing metadata", "Yes", true);
             }
             list.end();
-            trNoFilter("Repository Support", "Cannot be announced on ProteomeXchange" + list.getHtml(), true);
+            String submissionTypeTxt;
+            if (status.isIncomplete())
+            {
+                submissionTypeTxt = journalExperiment.isIncompletePxSubmission() ? incomplete
+                        // Data validator tell us that his is an incomplete submission but there was an admin override
+                        // to submit this as a complete submission.
+                        // Use case: data for .blib spectrum libraries was not uploaded to Panorama Public but
+                        // was uploaded to another PX repository, and has been verified by an admin.
+                        : complete + override;
+            }
+            else if (expAnnotations.getPxid() != null)
+            {
+                // Data is not a valid PX submission. User could not have requested a PX ID but a PX ID was assigned by an admin.
+                // Use case: This will allow PX submission of data from Jeff Whiteaker's group.  They do not collect .wiff.scan files
+                // but we require .wiff.scan files for valid PX submissions. The Whiteaker lab uses an instrument setting that allows
+                // them to collect everything in .wiff files.  However, this is not a setting recommended by SCIEX.  It is not
+                // easy to determine, just by looking at the Skyline document, that a .wiff file contains all the scans. We will continue
+                // to require .wiff.scan files but make an exception for the Whiteaker group.
+                submissionTypeTxt = journalExperiment.isIncompletePxSubmission() ? incomplete + override : complete + override;
+            }
+            else
+            {
+                submissionTypeTxt = "PX ID was neither requested nor assigned.  Cannot be announced on ProteomeXchange";
+            }
+            trNoFilter(repoSupport,  submissionTypeTxt + list.getHtml(), true);
         }
     }
 
@@ -179,7 +202,7 @@ public class PxHtmlWriter extends PxWriter
                 }
             }
             String name = sciName.equalsIgnoreCase(orgName) ? orgName : sciName + " (" + orgName + ")";
-            list.addItem(name, ((taxid != null) ? String.valueOf(taxid) : "NO_TAX_ID"), taxid == null);
+            list.addItem(name, ((taxid != null) ? String.valueOf(taxid) : NO_TAX_ID), taxid == null);
         }
         list.end();
         trNoFilter("Species", list.getHtml());
@@ -205,7 +228,7 @@ public class PxHtmlWriter extends PxWriter
                 LOG.error("Error getting PSI instruments", e);
             }
 
-            instrumentList.addItem(instrumentName, ((instrument != null) ? instrument.getId() : ("NO_PSI_ID" + (lookupError ? " (Error getting PSI instruments)" : ""))), instrument == null);
+            instrumentList.addItem(instrumentName, ((instrument != null) ? instrument.getId() : (NO_PSI_ID + (lookupError ? " (Error getting PSI instruments)" : ""))), instrument == null);
         }
         instrumentList.end();
         trNoFilter("Instruments", instrumentList.getHtml());
@@ -219,7 +242,7 @@ public class PxHtmlWriter extends PxWriter
         for(ExperimentModificationGetter.PxModification mod: mods)
         {
             String name = mod.getName();
-            String value = mod.hasUnimodId() ? mod.getUnimodId() : "NO_UNIMOD_ID";
+            String value = mod.hasUnimodId() ? mod.getUnimodId() : NO_UNIMOD_ID;
             if(!mod.getName().equals(mod.getSkylineName()))
             {
                name += " (" + mod.getSkylineName() + ")";
