@@ -17,6 +17,7 @@ package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.security.User;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
@@ -48,10 +49,12 @@ public class PxXmlWriter extends PxWriter
     private static CvParamElement nonPeerReviewedEl = new CvParamElement("MS", "MS:1002855", "Non peer-reviewed dataset");
     private static final String INDENT = "  ";
 
-    private XMLStreamWriter _writer;
+    private final XMLStreamWriter _writer;
+    private final boolean _submittingToPx;
 
-    public PxXmlWriter(Writer out) throws IOException
+    public PxXmlWriter(Writer out, boolean submittingToPx) throws IOException
     {
+        _submittingToPx = submittingToPx;
         XMLOutputFactory outFactory = XMLOutputFactory.newInstance();
         try
         {
@@ -63,8 +66,9 @@ public class PxXmlWriter extends PxWriter
         }
     }
 
-    public PxXmlWriter(OutputStream out) throws IOException
+    public PxXmlWriter(OutputStream out, boolean submittingToPx) throws IOException
     {
+        _submittingToPx = submittingToPx;
         XMLOutputFactory outFactory = XMLOutputFactory.newInstance();
         try
         {
@@ -114,7 +118,7 @@ public class PxXmlWriter extends PxWriter
     }
 
     @Override
-    void close() throws PxException
+    void close()
     {
         if(_writer != null)
         {
@@ -191,7 +195,7 @@ public class PxXmlWriter extends PxWriter
         if(!StringUtils.isBlank(keywords))
         {
             Element keywordList = new Element("KeywordList");
-            String[] array = StringUtils.split(keywords, ",");
+            String[] array = StringUtils.split(keywords, ",;");
             for(String keyword: array)
             {
                 keywordList.addChild(new CvParamElement("MS", "MS:1001925", "submitter keyword", keyword.trim()));
@@ -207,6 +211,7 @@ public class PxXmlWriter extends PxWriter
         }
     }
 
+    @Override
     void writePublicationList(ExperimentAnnotations expAnnotations) throws PxException
     {
         /*
@@ -290,6 +295,7 @@ public class PxXmlWriter extends PxWriter
         }
     }
 
+    @Override
     void writeContactList(ExperimentAnnotations expAnnotations, JournalExperiment je) throws PxException
     {
         /*
@@ -400,6 +406,11 @@ public class PxXmlWriter extends PxWriter
                 // Include only modifications that have a UNIMOD ID so that we can do an "incomplete" submissions.
                 mod_list.addChild(new CvParamElement("UNIMOD", mod.getUnimodId(), mod.getName()));
             }
+            else if(!_submittingToPx)
+            {
+                // We are not submitting this to ProteomeXchange. We want to see which modifications don't have a Unimod Id
+                mod_list.addChild(new CvParamElement("UNIMOD", NO_UNIMOD_ID, mod.getName()));
+            }
         }
 
         try
@@ -432,7 +443,12 @@ public class PxXmlWriter extends PxWriter
 
             if(instrument == null)
             {
-                instrument = new PsiInstrumentParser.PsiInstrument("NO_PSI_ID", instrumentName, null, null);
+                if(_submittingToPx)
+                {
+                    // When submitting to PX we should always have a PSI-MS id for an instrument
+                    throw new PxException("Could not find a PSI instrument id for instrument " + instrumentName);
+                }
+                instrument = new PsiInstrumentParser.PsiInstrument(NO_PSI_ID, instrumentName, null, null);
             }
 
             instrument_list.addChild(getInstrumentElement(instrument, i++));
@@ -472,11 +488,17 @@ public class PxXmlWriter extends PxWriter
         Element sp_list = new Element("SpeciesList");
 
         List<Integer> taxIds = new ArrayList<>();
-        for(Integer taxId: organisms.values())
+        for(Map.Entry<String, Integer> organism: organisms.entrySet())
         {
+            Integer taxId = organism.getValue();
             if(taxId != null)
             {
                 taxIds.add(taxId);
+            }
+            else if(_submittingToPx)
+            {
+                // If we are submitting to PX we should always have the taxonomy id
+                throw new PxException("Could not find a taxonomy id for organism " + organism.getKey());
             }
         }
 
@@ -495,7 +517,7 @@ public class PxXmlWriter extends PxWriter
                 }
             }
 
-            String taxIdStr = taxid == null ? "NO_TAX_ID" : String.valueOf(taxid);
+            String taxIdStr = taxid == null ? NO_TAX_ID : String.valueOf(taxid);
             Element sp = new Element("Species");
             sp.addChild(new CvParamElement("MS", "MS:1001469", "taxonomy: scientific name", sciName));
             sp.addChild(new CvParamElement("MS", "MS:1001467", "taxonomy: NCBI TaxID", taxIdStr));
@@ -532,6 +554,7 @@ public class PxXmlWriter extends PxWriter
         }
     }
 
+    @Override
     void writeDatasetIdentifierList(String pxId, int version, ShortURLRecord accessUrl) throws PxException
     {
         Element di_list = new Element("DatasetIdentifierList");
@@ -570,7 +593,7 @@ public class PxXmlWriter extends PxWriter
         writeElement(writer, el);
     }
 
-    private Element makeCVElement (String id, String fullName, String uri) throws XMLStreamException
+    private Element makeCVElement (String id, String fullName, String uri)
     {
         List<Attribute> attributes = new ArrayList<>(3);
         attributes.add(new Attribute("id", id));
@@ -582,7 +605,8 @@ public class PxXmlWriter extends PxWriter
         return el;
     }
 
-    void writeDatasetSummary(ExperimentAnnotations annotations) throws PxException
+    @Override
+    void writeDatasetSummary(ExperimentAnnotations annotations, JournalExperiment journalExperiment) throws PxException
     {
         Element el = new Element("DatasetSummary");
         List<Attribute> attributes = new ArrayList<>(3);
@@ -603,17 +627,40 @@ public class PxXmlWriter extends PxWriter
 
         Element repoSupport = new Element("RepositorySupport");
         SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(annotations);
+        final CvParamElement completeEl = new CvParamElement("MS", "MS:1002856", "Supported dataset by repository");
+        final CvParamElement incompleteEl = new CvParamElement("MS", "MS:1003087", "supported by repository but incomplete data and/or metadata");
         if(status.isComplete())
         {
-            repoSupport.addChild(new CvParamElement("MS", "MS:1002856", "Supported dataset by repository"));
+            repoSupport.addChild(completeEl);
         }
         else if(status.isIncomplete())
         {
-            repoSupport.addChild(new CvParamElement("MS", "MS:1003087", "supported by repository but incomplete data and/or metadata"));
+            repoSupport.addChild(journalExperiment.isIncompletePxSubmission() ? incompleteEl :
+                    // Data validator tell us that his is an incomplete submission but there was an admin override
+                    // to submit this as a complete submission.
+                    // Use case: data for .blib spectrum libraries was not uploaded to Panorama Public but
+                    // was uploaded to another PX repository, and has been verified by an admin.
+                    completeEl);
+        }
+        else if(annotations.getPxid() != null)
+        {
+            // Data is not a valid PX submission. User could not have requested a PX ID but a PX ID was assigned by an admin.
+            // Use case: This will allow PX submission of data from Jeff Whiteaker's group.  They do not collect .wiff.scan files
+            // but we require .wiff.scan files for valid PX submissions. The Whiteaker lab uses an instrument setting that allows
+            // them to collect everything in .wiff files.  However, this is not a setting recommended by SCIEX.  It is not
+            // easy to determine, just by looking at the Skyline document, that a .wiff file contains all the scans. We will continue
+            // to require .wiff.scan files but make an exception for the Whiteaker group.
+            repoSupport.addChild(journalExperiment.isIncompletePxSubmission() ? incompleteEl : completeEl);
+        }
+        else if(_submittingToPx)
+        {
+            throw new PxException("Data does not have a PX ID and is missing raw files and / or required metadata. It cannot be announced on ProteomeXchange.");
         }
         else
         {
-            throw new PxException("Data is missing raw files and / or required metadata. It cannot be announced on ProteomeXchange.");
+            Element invalidPxDataset = new Element("InvalidPXDataset");
+            invalidPxDataset.setText("Data is missing raw files and / or required metadata. It cannot be announced on ProteomeXchange.");
+            repoSupport.addChild(invalidPxDataset);
         }
         el.addChild(repoSupport);
 
@@ -752,24 +799,22 @@ public class PxXmlWriter extends PxWriter
 
     private final static class CvParamElement extends Element
     {
-        public CvParamElement(String cvRef, String accession, String name)
+        public CvParamElement(@NotNull String cvRef, @NotNull String accession, @NotNull String name)
         {
-            super("cvParam");
-            List<Attribute> attributes = new ArrayList<>(3);
-            attributes.add(new Attribute("cvRef", cvRef));
-            attributes.add(new Attribute("accession", accession));
-            attributes.add(new Attribute("name", name));
-            setAttributes(attributes);
+            this(cvRef, accession, name, null);
         }
 
-        public CvParamElement(String cvRef, String accession, String name, String value)
+        public CvParamElement(@NotNull String cvRef, @NotNull String accession, @NotNull String name, @Nullable String value)
         {
             super("cvParam");
             List<Attribute> attributes = new ArrayList<>(3);
             attributes.add(new Attribute("cvRef", cvRef));
             attributes.add(new Attribute("accession", accession));
             attributes.add(new Attribute("name", name));
-            attributes.add(new Attribute("value", value));
+            if(value != null)
+            {
+                attributes.add(new Attribute("value", value));
+            }
             setAttributes(attributes);
         }
     }
