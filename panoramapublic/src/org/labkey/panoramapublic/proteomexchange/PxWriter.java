@@ -18,15 +18,17 @@ package org.labkey.panoramapublic.proteomexchange;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
-import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
-import org.labkey.panoramapublic.query.JournalManager;
 
 import java.util.List;
 import java.util.Map;
 
 public abstract class PxWriter
 {
+    static final String NO_UNIMOD_ID = "NO_UNIMOD_ID";
+    static final String NO_TAX_ID = "NO_TAX_ID";
+    static final String NO_PSI_ID = "NO_PSI_ID";
+
     public void write(PanoramaPublicController.PxExperimentAnnotations bean) throws PxException
     {
         ExperimentAnnotations expAnnotations = bean.getExperimentAnnotations();
@@ -34,15 +36,14 @@ public abstract class PxWriter
         if(accessUrl == null)
         {
             // This is an experiment in a user project.  short access url is saved in JournalExperiment.
-            JournalExperiment je = getJournalExperiment(expAnnotations);
-            accessUrl = je == null ? null : je.getShortAccessUrl();
+            accessUrl = bean.getJournalExperiment().getShortAccessUrl();
         }
 
         try
         {
             begin(expAnnotations);
             writeChangeLog(bean.getPxChangeLog());
-            writeDatasetSummary(expAnnotations);
+            writeDatasetSummary(expAnnotations, bean.getJournalExperiment());
             writeDatasetIdentifierList(expAnnotations.getPxid(), bean.getVersion(), accessUrl);
             writeDatasetOriginList();
             writeSpeciesList(expAnnotations);
@@ -60,16 +61,6 @@ public abstract class PxWriter
         }
     }
 
-    private  JournalExperiment getJournalExperiment(ExperimentAnnotations expAnnotations)
-    {
-        Journal journal = JournalManager.getJournal("Panorama Public");
-        if(journal == null)
-        {
-            return null;
-        }
-        return JournalManager.getJournalExperiment(expAnnotations, journal);
-    }
-
     String getAccessUrlString(ShortURLRecord accessUrl)
     {
         return accessUrl != null ? accessUrl.renderShortURL() : "NO_ACCESS_URL";
@@ -84,7 +75,7 @@ public abstract class PxWriter
     abstract void end() throws PxException;
     abstract void close() throws PxException;
     abstract void writeChangeLog(String pxChangeLog) throws PxException;
-    abstract void writeDatasetSummary(ExperimentAnnotations expAnnotations) throws PxException;
+    abstract void writeDatasetSummary(ExperimentAnnotations expAnnotations, JournalExperiment journalExperiment) throws PxException;
     abstract void writeDatasetIdentifierList(String pxId, int version, ShortURLRecord accessUrl) throws PxException;
     abstract void writeDatasetOriginList() throws PxException;
     abstract void writeSpeciesList(ExperimentAnnotations experimentAnnotations) throws PxException;
