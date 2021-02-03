@@ -139,10 +139,14 @@
         });
 
         function submitPxForm() {
+            submitPxFormToUrl(<%=q(urlFor(GetPxActionsAction.class))%>, 'POST');
+        }
+
+        function submitPxFormToUrl(url, method) {
             var values = form.getForm().getValues();
             form.submit({
-                url: <%=q(urlFor(GetPxActionsAction.class))%>,
-                method: 'POST',
+                url: url,
+                method: method,
                 params: values
             });
         }
@@ -161,19 +165,21 @@
             items: [
                 {
                     xtype: 'component',
-                    fieldLabel: "PX XML Summary",
                     autoEl: {tag: 'a',
-                        href: <%=q(urlFor(PxXmlSummaryAction.class).addParameter("id", expAnnot.getId()))%>,
                         html: 'Get PX XML Summary',
-                        style: 'font-weight: bold;'}
+                        style: 'font-weight: bold; cursor: pointer;'},
+                    listeners: {
+                        click: {element: 'el', fn: function() { submitPxFormToUrl(<%=q(urlFor(PxXmlSummaryAction.class))%>, 'GET');}}
+                    }
                 },
                 {
                     xtype: 'component',
-                    fieldLabel: "Export PX XML",
                     autoEl: {tag: 'a',
-                        href: <%=q(urlFor(ExportPxXmlAction.class).addParameter("id", expAnnot.getId()))%>,
                         html: 'Export PX XML file',
-                        style: 'font-weight: bold'}
+                        style: 'font-weight: bold; cursor: pointer;'},
+                    listeners: {
+                        click: {element: 'el', fn: function() { submitPxFormToUrl(<%=q(urlFor(ExportPxXmlAction.class))%>, 'GET');}}
+                    }
                 },
                 {
                     xtype: 'component',

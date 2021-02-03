@@ -244,9 +244,10 @@
         <%=h(annot.getKeywords())%>
     </li>
     <%}%>
-    <%if(annot.getLabHead() != null){%>
-    <li><strong>Lab head:</strong>
-        <%=h(annot.getLabHeadName())%>
+    <%if(annot.getSubmitter() != null || annot.getLabHead() != null){%>
+    <li>
+        <%if(annot.getLabHead() != null) { %> <span style="margin-right:6px;"><strong>Lab head:</strong> <%=h(annot.getLabHeadName())%> </span> <%}%>
+        <%if(annot.getSubmitter() != null) { %> <strong>Submitter:</strong> <%=h(annot.getSubmitterName())%>  <%}%>
     </li>
     <%}%>
 </ul>
