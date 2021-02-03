@@ -1314,7 +1314,7 @@ public class PanoramaPublicController extends SpringActionController
             return new HtmlView("Incomplete Account Information",
                     DIV(ERRORS(errors),
                             DIV(at(style, "margin-top:10px; margin-bottom:10px;"),
-                            "Logged in users can update their account information by clicking the user icon (",
+                            "Users can update their account information by clicking the user icon (",
                             SPAN(at(style, "padding:5px;"), LK.FA("user")),
                             ") in the top right corner of the page and selecting \"My Account\" from the menu."),
                             BR(),
