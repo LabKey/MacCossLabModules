@@ -239,6 +239,18 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             {
                 return String.class;
             }
+
+            @Override
+            public boolean isFilterable()
+            {
+                return false;
+            }
+
+            @Override
+            public boolean isSortable()
+            {
+                return false;
+            }
         });
         addColumn(isPublicCol);
 

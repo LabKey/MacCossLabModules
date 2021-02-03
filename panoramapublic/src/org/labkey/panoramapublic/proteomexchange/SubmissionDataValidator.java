@@ -32,7 +32,6 @@ import org.labkey.api.targetedms.BlibSourceFile;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
-import org.labkey.api.util.Pair;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
@@ -250,6 +249,11 @@ public class SubmissionDataValidator
             java.nio.file.Path rawFilesDir = getRawFilesDirPath(run.getContainer());
             for(Map.Entry<String, List<BlibSourceFile>> entry : targetedMsSvc.getBlibSourceFiles(run).entrySet())
             {
+                if(isPrositLibrary(entry, run))
+                {
+                    // Prosit libraries are built from predictions, so no raw files or search results need to be uploaded.
+                    continue;
+                }
                 Set<String> checkedFiles = new HashSet<>();
                 Set<String> ssfMissing = new HashSet<>();
                 Set<String> idFilesMissing = new HashSet<>();
@@ -280,6 +284,26 @@ public class SubmissionDataValidator
                 submissionStatus.addMissingLibFile(entry.getKey(), run.getFileName(), ssfMissing, idFilesMissing);
             }
         }
+    }
+
+    private static boolean isPrositLibrary(Map.Entry<String, List<BlibSourceFile>> entry, ITargetedMSRun run)
+    {
+        List<BlibSourceFile> sourceFiles = entry.getValue();
+        // For a library based on Prosit we only expect one row in the SpectrumSourceFiles table,
+        // We expect idFileName to be blank amd the value in the fileName column to be "Prositintensity_prosit_publication_v1".
+        // The value in the fileName column may be different in Skyline 21.1. This code will be have to be updated then.
+        if(sourceFiles.size() == 1 && !sourceFiles.get(0).hasIdFile())
+        {
+            String fileName = sourceFiles.get(0).getSpectrumSourceFile();
+            return "Prositintensity_prosit_publication_v1".equals(fileName) && preSkyline21(run);
+        }
+        return false;
+    }
+
+    private static boolean preSkyline21(ITargetedMSRun run)
+    {
+        SkylineVersion version = SkylineVersion.parse(run.getSoftwareVersion());
+        return version != null && version.getMajorVersion() < 21;
     }
 
     private static List<String> getMissingFilesForRun(ITargetedMSRun run, Container rootExpContainer, Set<String> existingRawFiles)

@@ -107,6 +107,10 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         // Import a Skyline document to the folder
         importData(SKY_FILE_1, 1);
 
+        // Should show an error message since the submitter's account info does not have a first and last name
+        testSubmitWithIncompleteAccountInfo(portalHelper, expWebPart);
+        updateSubmitterAccountInfo();
+
         // Click Submit.  Expect to see the missing information page
         testSubmitWithMissingRawFiles(portalHelper, expWebPart);
 
@@ -199,9 +203,26 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
     protected void setupFolder(FolderType folderType)
     {
         super.setupFolder(folderType);
+        _userHelper.deleteUser(SUBMITTER);
         _userHelper.createUser(SUBMITTER);
         ApiPermissionsHelper _permissionsHelper = new ApiPermissionsHelper(this);
         _permissionsHelper.addMemberToRole(SUBMITTER, "Project Administrator", PermissionsHelper.MemberType.user, getProjectName());
+    }
+
+    private void testSubmitWithIncompleteAccountInfo(PortalHelper portal, TargetedMsExperimentWebPart expWebPart)
+    {
+        portal.click(Locator.folderTab("Panorama Dashboard"));
+        expWebPart.clickSubmit();
+        assertTextPresent("First and last names missing for data submitter: " + SUBMITTER);
+    }
+
+    private void updateSubmitterAccountInfo()
+    {
+        goToMyAccount();
+        clickButton("Edit");
+        setFormElement(Locator.name("quf_FirstName"), "Panorama");
+        setFormElement(Locator.name("quf_LastName"), "Submitter");
+        clickButton("Submit");
     }
 
     private void testSubmitWithNoSkyDocs(PortalHelper portal, TargetedMsExperimentWebPart expWebPart)

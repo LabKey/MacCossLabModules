@@ -39,6 +39,7 @@ import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartFactory;
 import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
+import org.labkey.panoramapublic.proteomexchange.SkylineVersion;
 import org.labkey.panoramapublic.proteomexchange.SubmissionDataValidator;
 import org.labkey.panoramapublic.query.ExperimentTitleDisplayColumn;
 import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
@@ -257,6 +258,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(PanoramaPublicController.TestCase.class);
         set.add(SubmissionDataValidator.TestCase.class);
         set.add(PanoramaPublicNotification.TestCase.class);
+        set.add(SkylineVersion.TestCase.class);
         return set;
 
     }
