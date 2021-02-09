@@ -52,7 +52,7 @@ public class RunProblems
 
     public boolean isLeak(RunDetail run, String testName)
     {
-         return isMemoryLeak(run, testName) || isHang(run, testName);
+         return isMemoryLeak(run, testName) || isHandleLeak(run, testName);
     }
 
     public boolean isMemoryLeak(RunDetail run, String testName)
