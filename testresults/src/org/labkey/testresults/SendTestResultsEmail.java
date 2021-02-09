@@ -273,8 +273,17 @@ public class SendTestResultsEmail implements org.quartz.Job
                         message.append("\n<td style='width: 60px; overflow: hidden; padding: 3px; border: 1px solid #ccc;'>");
                         if (problems.isFail(run, test))
                             message.append("\n<span style='font-weight: 600; color: red;'>X</span>");
-                        if (problems.isLeak(run, test))
-                            message.append("\n<span style='font-weight: 600; color: orange;'>X</span>");
+                        boolean leakMem = problems.isMemoryLeak(run, test);
+                        boolean leakHandle = problems.isHandleLeak(run, test);
+                        String leakType = "";
+                        if (leakMem && leakHandle)
+                            leakType = "Memory and handle leak";
+                        else if (leakMem)
+                            leakType = "Memory leak";
+                        else if (leakHandle)
+                            leakType = "Handle leak";
+                        if (!leakType.isEmpty())
+                            message.append("\n<span style='font-weight: 600; color: orange;' title='" + leakType + "'>X</span>");
                         if (problems.isHang(run, test))
                             message.append("\n<span style='font-weight: 600; color: navy;'>X</span>");
                         message.append("\n</td>");

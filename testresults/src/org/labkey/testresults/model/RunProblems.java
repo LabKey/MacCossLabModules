@@ -52,7 +52,17 @@ public class RunProblems
 
     public boolean isLeak(RunDetail run, String testName)
     {
-        return objExists(run, testName, TestMemoryLeakDetail.class) || objExists(run, testName, TestHandleLeakDetail.class);
+         return isMemoryLeak(run, testName) || isHandleLeak(run, testName);
+    }
+
+    public boolean isMemoryLeak(RunDetail run, String testName)
+    {
+        return objExists(run, testName, TestMemoryLeakDetail.class);
+    }
+
+    public boolean isHandleLeak(RunDetail run, String testName)
+    {
+        return objExists(run, testName, TestHandleLeakDetail.class);
     }
 
     public boolean isHang(RunDetail run, String testName)
