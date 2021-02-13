@@ -203,7 +203,7 @@
         var row = link.closest("tr");
         var undo = link.text() === 'Undo';
         link.text("Working...");
-        let url = new URL(<%=q(new ActionURL(TestResultsController.TrainRunAction.class, c).getURIString())%>);
+        let url = <%=jsURL(new ActionURL(TestResultsController.TrainRunAction.class, c))%>;
         url.searchParams.set('runId', runId);
         url.searchParams.set('train', (!undo ? 'false' : 'true'));
         $.post(url.toString(), csrf_header, function(data) {
@@ -226,7 +226,7 @@
         if (data.Response == "false") {
             $("#email-cron-button").attr('value', 'Start');
             $("#email-cron-button").click(function() {
-                $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=start', csrf_header, function(data){
+                $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c).addParameter("action", "start"))%>', csrf_header, function(data){
                     $('#cron-message').text(data.Message);
                     location.reload();
                 }, "json")
@@ -234,7 +234,7 @@
         } else {
             $("#email-cron-button").attr('value', 'Stop');
             $("#email-cron-button").click(function() {
-                $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=stop', csrf_header, function(data){
+                $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c).addParameter("action", "stop"))%>', csrf_header, function(data){
                     $('#cron-message').text(data.Message);
                     location.reload();
                 }, "json")
@@ -245,7 +245,7 @@
     $("#generate-email-datepicker").datepicker();
     $("#generate-email-datepicker").datepicker("setDate", new Date());
     $("#html-button").click(function() {
-        let url = new URL(<%=q(new ActionURL(TestResultsController.SetEmailCronAction.class, c).addParameter("action", SendTestResultsEmail.TEST_GET_HTML_EMAIL).getURIString())%>);
+        let url = <%=jsURL(new ActionURL(TestResultsController.SetEmailCronAction.class, c).addParameter("action", SendTestResultsEmail.TEST_GET_HTML_EMAIL))%>;
         url.searchParams.set("generatedate", $("#generate-email-datepicker").val());
         $.post(url.toString(), csrf_header, function(data) {
             var win = window.open("", data.subject,
@@ -256,7 +256,7 @@
     });
 
     $("#send-button").click(function() {
-        let url = new URL(<%=q(new ActionURL(TestResultsController.SetEmailCronAction.class, c).addParameter("action", SendTestResultsEmail.TEST_CUSTOM).getURIString())%>);
+        let url = <%=jsURL(new ActionURL(TestResultsController.SetEmailCronAction.class, c).addParameter("action", SendTestResultsEmail.TEST_CUSTOM))%>;
         url.searchParams.set('emailF', $('#emailFrom').val());
         url.searchParams.set('emailT', $('#emailTo').val());
         url.searchParams.set('generatedate', $('#generate-email-datepicker').val());
@@ -267,7 +267,7 @@
 
     $("#submit-button").click(function () {
         //post to the backend
-        let url = new URL(<%=q(new ActionURL(TestResultsController.ChangeBoundaries.class, c))%>);
+        let url = <%=jsURL(new ActionURL(TestResultsController.ChangeBoundaries.class, c))%>;
         url.searchParams.set('warningb', $('#warningb').val());
         url.searchParams.set('errorb', $('#errorb').val());
         $.post(url.toString(), csrf_header, function (data) {
@@ -276,7 +276,7 @@
     });
 
     $('.deactivate-user').click(function(obj) {
-        let url = new URL(<%=q(new ActionURL(TestResultsController.SetUserActive.class, c).addParameter("active", false))%>);
+        let url = <%=jsURL(new ActionURL(TestResultsController.SetUserActive.class, c).addParameter("active", false))%>;
         url.searchParams.set('userId', userId);
         $.post(url.toString(), csrf_header, function(data) {
             location.reload();
@@ -284,7 +284,7 @@
     });
 
     $('.activate-user').click(function(obj) {
-        let url = new URL(<%=q(new ActionURL(TestResultsController.SetUserActive.class, c).addParameter("active", true))%>);
+        let url = <%=jsURL(new ActionURL(TestResultsController.SetUserActive.class, c).addParameter("active", true))%>;
         url.searchParams.set('userId', userId);
         $.post(url.toString(), csrf_header, function(data) {
             location.reload();
@@ -306,7 +306,7 @@
         var runId = el.closest(".stats-row").data("runid");
         el.remove();
         cell.text("working...");
-        let url = new URL(<%=q(new ActionURL(TestResultsController.TrainRunAction.class, c).addParameter("train", "force").getURIString())%>);
+        let url = <%=jsURL(new ActionURL(TestResultsController.TrainRunAction.class, c).addParameter("train", "force"))%>;
         url.searchParams.set('runId', runId);
         $.post(url.toString(), csrf_header, function(data) {
             cell.text(data.Success ? "done" : "error");

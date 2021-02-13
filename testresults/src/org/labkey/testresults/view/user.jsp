@@ -138,7 +138,7 @@
             <a id="quickview-day" style="cursor: pointer;">DAY</a> |
             <a id="quickview-week" style="cursor: pointer;">WEEK</a> |
             <a id="quickview-month" style="cursor: pointer;">MONTH</a> |
-            <a href="<%=h(new ActionURL(TestResultsController.TrainingDataViewAction.class, c))%>#user-anchor-<%= h(user) %>">training data</a>
+            <a href="<%=h(new ActionURL(TestResultsController.TrainingDataViewAction.class, c).setFragment("user-anchor-" + user))%>">training data</a>
         </p>
     </div>
 
@@ -227,7 +227,7 @@
             endDate = <%=q(df.format(today))%>;
         }
 
-        let url = new URL(<%=q(new ActionURL(TestResultsController.ShowUserAction.class, c).getURIString())%>);
+        let url = <%=jsURL(new ActionURL(TestResultsController.ShowUserAction.class, c))%>;
         url.searchParams.set('user', $("#users").val() || "");
         url.searchParams.set('start', startDate);
         url.searchParams.set('end', endDate);
@@ -260,7 +260,7 @@
         var trainObj = this;
         trainObj.innerHTML = "Loading...";
         var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
-        let url = new URL(<%=q(new ActionURL(TestResultsController.TrainRunAction.class, c).getURIString())%>);
+        let url = <%=jsURL(new ActionURL(TestResultsController.TrainRunAction.class, c))%>;
         url.searchParams.set('runId', runId);
         url.searchParams.set('train', !isTrainRun);
         $.post(url.toString(), csrf_header, function(data){
@@ -308,7 +308,7 @@
                 }
             });
             if (minRow) {
-                let url = new URL(<%=q(new ActionURL(ShowRunAction.class, c).getURIString())%>);
+                let url = <%=jsURL(new ActionURL(ShowRunAction.class, c))%>;
                 url.searchParams.set('runId', minRow.data('run-id'));
                 location.href = url.toString();
             }

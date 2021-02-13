@@ -291,7 +291,7 @@
             </center>
             <script type="text/javascript">
                 $('#viewType').on('change', function() {
-                    let url = new URL(<%=q(new ActionURL(TestResultsController.BeginAction.class, c).addParameter("end", df.format(selectedDate)).getURIString())%>;
+                    let url = <%=jsURL(new ActionURL(TestResultsController.BeginAction.class, c).addParameter("end", df.format(selectedDate)))%>;
                     url.searchParams.set('viewType', this.value);
                     window.location.href = url.toString();
                 });
@@ -464,8 +464,10 @@
                             }
                         }
                         var id = m[1];
+                        var url = <%=jsURL(new ActionURL(ShowRunAction.class, c))%>;
+                        url.searchParams.set('runId', id);
                         window.open(
-                            '<%=h(new ActionURL(ShowRunAction.class, c))%>runId='+ id,
+                            url,
                             '_blank' // <- This is what makes it open in a new window.
                         );
                     }
@@ -488,7 +490,9 @@ $(function() {
     /* Initialize datepicker */
     $("#datepicker").datepicker({
         onSelect: function(date) {
-            window.location.href = "<%=h(new ActionURL(TestResultsController.BeginAction.class, c))%>end=" + date;
+            let url = <%=jsURL(new ActionURL(TestResultsController.BeginAction.class, c))%>;
+            url.searchParams.set('end', date);
+            window.location.href = url;
         }
     });
     $("#anim").change(function() {
@@ -507,7 +511,7 @@ $(function() {
         var isTrain = curText == 'Train';
         var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
         $(this).text(isTrain ? 'Training...' : 'Untraining...');
-        let url = new URL(<%=q(new ActionURL(TestResultsController.TrainRunAction.class, c).getURIString())%>);
+        let url = <%=jsURL(new ActionURL(TestResultsController.TrainRunAction.class, c))%>;
         url.searchParams.set('runId', runId);
         url.searchParams.set('train', train);
         $.post(url.toString(), csrf_header, function(data){
