@@ -108,7 +108,7 @@
     for(RunDetail run: runs) { %>
         <tr>
             <td>
-                <p style="width:200px;"><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=run.getId()%>">
+                <p style="width:200px;"><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c).addParameter("runId", run.getId()))%>">
                 <%=h(run.getUserName())%> <br />
                 Duration: <%=run.getDuration()%> <br />
                 OS: <%=h(run.getOs())%> <br />

@@ -132,7 +132,7 @@
             <tr id="user-anchor-<%= h(user.getUsername()) %>" style="border:none;"><td></td></tr>
             <tr style="border: none;">
                 <th colspan="6"  style="float: left; padding-top: 5px; font-size: 14px; width: 200px; color: #000; background: <%=h(color)%>;">
-                    <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>user=<%=h(user.getUsername())%>&datainclude=train"><%=h(user.getUsername())%></a>
+                    <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c).addParameter("user", user.getUsername()).addParameter("datainclude", "train"))%>"><%=h(user.getUsername())%></a>
                 </th>
                 <th>
                     <% if (user.isActive()) { %>
@@ -183,7 +183,7 @@
         <% for (User user : noRunsForUser) { %>
         <tr style="border: none;">
             <th colspan="6" style="float: left; padding-top: 5px; font-size: 11px; width: 200px; color: #247BA0;">
-                <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c))%>user=<%=h(user.getUsername())%>">
+                <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c).addParameter("user", user.getUsername()))%>">
                     <%=h(user.getUsername())%>
                 </a>
             </th>
@@ -203,7 +203,10 @@
         var row = link.closest("tr");
         var undo = link.text() === 'Undo';
         link.text("Working...");
-        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId='+runId+'&train=' + (!undo ? 'false' : 'true'), csrf_header, function(data) {
+        let url = <%=jsURL(new ActionURL(TestResultsController.TrainRunAction.class, c))%>;
+        url.searchParams.set('runId', runId);
+        url.searchParams.set('train', (!undo ? 'false' : 'true'));
+        $.post(url.toString(), csrf_header, function(data) {
             if (data.Success) {
                 if (!undo) {
                     row.children('td').css('background', '#aaa');
@@ -223,7 +226,7 @@
         if (data.Response == "false") {
             $("#email-cron-button").attr('value', 'Start');
             $("#email-cron-button").click(function() {
-                $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=start', csrf_header, function(data){
+                $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c).addParameter("action", "start"))%>', csrf_header, function(data){
                     $('#cron-message').text(data.Message);
                     location.reload();
                 }, "json")
@@ -231,7 +234,7 @@
         } else {
             $("#email-cron-button").attr('value', 'Stop');
             $("#email-cron-button").click(function() {
-                $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=stop', csrf_header, function(data){
+                $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c).addParameter("action", "stop"))%>', csrf_header, function(data){
                     $('#cron-message').text(data.Message);
                     location.reload();
                 }, "json")
@@ -242,8 +245,9 @@
     $("#generate-email-datepicker").datepicker();
     $("#generate-email-datepicker").datepicker("setDate", new Date());
     $("#html-button").click(function() {
-        var params = '&generatedate=' + $("#generate-email-datepicker").val();
-        $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>'+'action=<%=h(SendTestResultsEmail.TEST_GET_HTML_EMAIL)%>' + params, csrf_header, function(data) {
+        let url = <%=jsURL(new ActionURL(TestResultsController.SetEmailCronAction.class, c).addParameter("action", SendTestResultsEmail.TEST_GET_HTML_EMAIL))%>;
+        url.searchParams.set("generatedate", $("#generate-email-datepicker").val());
+        $.post(url.toString(), csrf_header, function(data) {
             var win = window.open("", data.subject,
                 "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes," +
                 "width=800,height=600");
@@ -252,29 +256,37 @@
     });
 
     $("#send-button").click(function() {
-        var params = '&emailF=' + $('#emailFrom').val() + '&emailT=' + $('#emailTo').val() + '&generatedate=' + $("#generate-email-datepicker").val();
-        $.post('<%=h(new ActionURL(TestResultsController.SetEmailCronAction.class, c))%>' + 'action=<%=h(SendTestResultsEmail.TEST_CUSTOM)%>' + params, csrf_header, function (data) {
+        let url = <%=jsURL(new ActionURL(TestResultsController.SetEmailCronAction.class, c).addParameter("action", SendTestResultsEmail.TEST_CUSTOM))%>;
+        url.searchParams.set('emailF', $('#emailFrom').val());
+        url.searchParams.set('emailT', $('#emailTo').val());
+        url.searchParams.set('generatedate', $('#generate-email-datepicker').val());
+        $.post(url.toString(), csrf_header, function (data) {
             $('#send-email-msg').text(data.Message);
         }, "json");
     });
 
     $("#submit-button").click(function () {
         //post to the backend
-        $.post('<%=h(new ActionURL(TestResultsController.ChangeBoundaries.class, c))%>' + 'warningb='+$('#warningb').val()+'&errorb='+$('#errorb').val(), csrf_header, function (data) {
+        let url = <%=jsURL(new ActionURL(TestResultsController.ChangeBoundaries.class, c))%>;
+        url.searchParams.set('warningb', $('#warningb').val());
+        url.searchParams.set('errorb', $('#errorb').val());
+        $.post(url.toString(), csrf_header, function (data) {
             $('#send-boundaries-msg').text(data.Message);
         }, "json");
     });
 
     $('.deactivate-user').click(function(obj) {
-        var userId = this.getAttribute("userid");
-        $.post('<%=h(new ActionURL(TestResultsController.SetUserActive.class, c))%>'+'active=false&userId='+userId, csrf_header, function(data) {
+        let url = <%=jsURL(new ActionURL(TestResultsController.SetUserActive.class, c).addParameter("active", false))%>;
+        url.searchParams.set('userId', userId);
+        $.post(url.toString(), csrf_header, function(data) {
             location.reload();
         }, "json")
     });
 
     $('.activate-user').click(function(obj) {
-        var userId = this.getAttribute("userid");
-        $.post('<%=h(new ActionURL(TestResultsController.SetUserActive.class, c))%>'+'active=true&userId='+userId, csrf_header, function(data) {
+        let url = <%=jsURL(new ActionURL(TestResultsController.SetUserActive.class, c).addParameter("active", true))%>;
+        url.searchParams.set('userId', userId);
+        $.post(url.toString(), csrf_header, function(data) {
             location.reload();
         }, "json")
     });
@@ -294,7 +306,9 @@
         var runId = el.closest(".stats-row").data("runid");
         el.remove();
         cell.text("working...");
-        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId='+runId+'&train=force', csrf_header, function(data) {
+        let url = <%=jsURL(new ActionURL(TestResultsController.TrainRunAction.class, c).addParameter("train", "force"))%>;
+        url.searchParams.set('runId', runId);
+        $.post(url.toString(), csrf_header, function(data) {
             cell.text(data.Success ? "done" : "error");
         });
     }

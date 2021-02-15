@@ -33,11 +33,11 @@
         win.document.write('<pre>' + data + '</pre>');
     };
     var showLog = function() {
-        $.get('<%=h(new ActionURL(TestResultsController.ViewLogAction.class, c))%>runid=<%= h(runId) %>', csrf_header,
+        $.get('<%=h(new ActionURL(TestResultsController.ViewLogAction.class, c).addParameter("runid", runId))%>', csrf_header,
             function(data) { popupData(data.log); }, "json");
     };
     var showXml = function() {
-        $.get('<%=h(new ActionURL(TestResultsController.ViewXmlAction.class, c))%>runid=<%= h(runId) %>', csrf_header,
+        $.get('<%=h(new ActionURL(TestResultsController.ViewXmlAction.class, c).addParameter("runid", runId))%>', csrf_header,
             function(data) { popupData(data.xml); }, "json");
     };
 </script>
@@ -76,7 +76,7 @@
     </h2>
     <p>
         Run Id: <%=run.getId()%><br>
-        User : <a href="<%=h(urlFor(TestResultsController.ShowUserAction.class))%>user=<%=h(run.getUserName())%>"><%=h(run.getUserName())%></a><br>
+        User : <a href="<%=h(urlFor(TestResultsController.ShowUserAction.class).addParameter("user", run.getUserName()))%>"><%=h(run.getUserName())%></a><br>
         OS: <%=h(run.getOs())%><br>
         Revision: <%=h(run.getRevisionFull())%><br>
         Passed Tests : <%=run.getPasses().length%><br>
@@ -108,13 +108,13 @@
                 "Press 'Ok' to flag this run.  You will be able to unflag the run but while the run " +
                 "remains flagged it will not be used in analyses across the module."
                 <% } %>)) {
-                    window.location.href = "<%=h(new ActionURL(TestResultsController.FlagRunAction.class, c))%>" + "runId=<%=run.getId()%>" + "&flag=<%=!run.isFlagged()%>";
+                    window.location.href = "<%=h(new ActionURL(TestResultsController.FlagRunAction.class, c).addParameter("runId", run.getId()).addParameter("flag", !run.isFlagged()))%>";
                 }
             }
         });
         $('#deleteRun').click(function() {
             if (confirm("Press 'Ok' to delete this run and all associated passes, leaks, failures, and hangs."))
-                window.location.href = "<%=h(new ActionURL(TestResultsController.DeleteRunAction.class, c))%>" + "runId=<%=run.getId()%>";
+                window.location.href = "<%=h(new ActionURL(TestResultsController.DeleteRunAction.class, c).addParameter("runId", run.getId()))%>";
         });
     </script>
 </div>
@@ -129,7 +129,7 @@
     </tr>
     <% for (TestFailDetail f: failures) { %>
     <tr>
-        <td><a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>failedTest=<%=h(f.getTestName())%>&viewType=wk"><%=h(f.getTestName())%></a> <br />
+        <td><a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c).addParameter("failedTest", f.getTestName()).addParameter("viewType", "wk"))%>"><%=h(f.getTestName())%></a> <br />
             Language: <%=h(f.getLanguage())%><br/>
             TimeStamp: <%=h((f.getTimestamp() == null) ? "N/A" : dfMDHM.format(f.getTimestamp()))%>
         </td>
@@ -153,10 +153,10 @@ if (testmemoryleaks.length > 0) { %>
 <table class="decoratedtable" style="float:left;">
     <tr>
         <td>Test | Sort by:
-            <a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(runId)%>">None</a>,
-            <a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(runId)%>&filter=duration">Duration</a>,
-            <a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(runId)%>&filter=managed">Managed Memory</a>,
-            <a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c))%>runId=<%=h(runId)%>&filter=total">Total Memory</a></td>
+            <a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c).addParameter("runId", runId))%>">None</a>,
+            <a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c).addParameter("runId", runId).addParameter("filter", "duration"))%>">Duration</a>,
+            <a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c).addParameter("runId", runId).addParameter("filter", "managed"))%>">Managed Memory</a>,
+            <a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, c).addParameter("runId", runId).addParameter("filter", "total"))%>">Total Memory</a></td>
         <td>Pass</td>
         <td>Language</td>
         <td>Duration</td>
@@ -182,7 +182,7 @@ if (testmemoryleaks.length > 0) { %>
     $('#trainset').click(function() {
         var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
         $(this).off().text("Please wait...");
-        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c))%>runId=<%=run.getId()%>&train=<%=h(run.isTrainRun() ? "false" : "true")%>', csrf_header, function(data){
+        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c).addParameter("runId", run.getId()).addParameter("train", run.isTrainRun() ? "false" : "true"))%>', csrf_header, function(data){
             if (data.Success) {
                 location.reload();
             } else {
