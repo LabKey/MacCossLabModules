@@ -193,6 +193,19 @@
                     boxLabel: 'Check this box for tests so that we get an ID from the ProteomeXchange test database rather than their production database.'
                 },
                 {
+                    xtype: 'checkbox',
+                    fieldLabel: "Assign Digital Object Identifier",
+                    checked: <%=bean.isAssignDoi()%>,
+                    name: 'assignDoi'
+                },
+                {
+                    xtype: 'checkbox',
+                    fieldLabel: "Use DataCite Test API for creating DOI",
+                    checked: <%=bean.isUseDataCiteTestApi()%>,
+                    name: 'useDataCiteTestApi',
+                    boxLabel: 'Check this box for tests so that we get a DOI with the DataCite test API.'
+                },
+                {
                     xtype: 'textfield',
                     hidden: <%=!je.isKeepPrivate() || isRecopy%>,
                     fieldLabel: "Reviewer Email Prefix",

@@ -76,6 +76,7 @@ public class ExperimentAnnotations
     private String _submitterAffiliation;
     private String _pxid;
     private String _pubmedId;
+    private String _doi;
 
     private static Pattern taxIdPattern = Pattern.compile("(.*)\\(taxid:(\\d+)\\)");
 
@@ -516,5 +517,20 @@ public class ExperimentAnnotations
     public boolean isFinal()
     {
         return isPublic() && isPublished();
+    }
+
+    public String getDoi()
+    {
+        return _doi;
+    }
+
+    public void setDoi(String doi)
+    {
+        _doi = doi;
+    }
+
+    public boolean hasDoi()
+    {
+        return !StringUtils.isBlank(_doi);
     }
 }

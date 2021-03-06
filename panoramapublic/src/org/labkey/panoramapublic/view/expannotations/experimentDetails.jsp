@@ -184,15 +184,14 @@
         <a class="button-small button-small-red" style="float:left; margin:0px 5px 0px 2px;" href="<%=h(publishUrl)%>"><%=h(publishButtonText)%></a>
     <%}%>
     <%if(canEdit){%>
-    <a style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>">[Edit]</a>
-    <a style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(deleteUrl)%>">[Delete]</a>
+    <a style="margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>">[Edit]</a>
+    <a style="margin-top:2px; margin-left:2px;" href="<%=h(deleteUrl)%>">[Delete]</a>
     <%}%>
     <%if(!showingFullDetails) {%>
-    <a style="float:left; margin-top:2px; margin-left:2px;" href="<%=h(experimentDetailsUrl)%>">[More Details...]</a>
+    <a style="margin-top:2px; margin-left:2px;" href="<%=h(experimentDetailsUrl)%>">[More Details...]</a>
     <%}%>
 </div>
 
-<br/>
 <% if(!StringUtils.isBlank(accessUrl)) {%>
     <div class="link">
        <strong><%=h(linkText)%>: </strong>
@@ -200,11 +199,6 @@
        <a class="button-small button-small-green" style="margin:0px 5px 0px 2px;" href="" onclick="showShareLink(this, '<%=h(accessUrl)%>'); return false;">Share</a>
     </div>
  <% } %>
-<%if(license != null){%>
-<div class="link">
-    <strong>Data License: </strong> <%=license.getDisplayLinkHtml()%>
-</div>
-<%}%>
 <%if(annot.getCitation() != null && annot.getPublicationLink() != null){%>
     <div class="link"><%=h(annot.getCitation())%> <strong><br />[<a href="<%=h(annot.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
 <%}%>
@@ -214,18 +208,26 @@
 <%if(annot.getCitation() == null && annot.getPublicationLink() != null){%>
     <div class="link"><strong><br />[<a href="<%=h(annot.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
 <%}%>
-<%if(annot.getPxid() != null){%>
-    <div class="link">
-        <strong>ProteomeXchange ID: </strong> <a href="http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=<%=h(annot.getPxid())%>" target="_blank"><%=h(annot.getPxid())%></a>
-    </div>
-<%}%>
-
-<%if(getUser().hasSiteAdminPermission()) {
-    ActionURL pxActionsUrl = urlFor(GetPxActionsAction.class);
-    pxActionsUrl.addParameter("id", annot.getId());
-%>
-<br/><div><%=link("ProteomeXchange Actions", pxActionsUrl)%></div>
-<%}%>
+<div>
+    <% boolean addSep = false; %>
+    <% if(license != null){%>
+    <span class="link">
+        <strong>License: </strong> <%=license.getDisplayLinkHtml()%>
+    </span>
+    <% addSep = true; }%>
+    <%if(annot.getPxid() != null){%>
+    <%if(addSep) {%> <span style="margin-right:10px;margin-left:10px;">|</span> <%}%>
+    <span class="link">
+        <a href="http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=<%=h(annot.getPxid())%>" target="_blank"><%=h(annot.getPxid())%></a>
+    </span>
+    <% addSep = true; }%>
+    <%if(annot.hasDoi()){%>
+    <%if(addSep) {%> <span style="margin-right:10px;margin-left:10px;">|</span> <%}%>
+    <span class="link">
+        <strong>DOI: </strong> <a href="https://doi.org/<%=h(annot.getDoi())%>" target="_blank"><%=h(annot.getDoi())%></a>
+    </span>
+    <%}%>
+</div>
 
 <ul>
     <%if(annot.getOrganism() != null){%>

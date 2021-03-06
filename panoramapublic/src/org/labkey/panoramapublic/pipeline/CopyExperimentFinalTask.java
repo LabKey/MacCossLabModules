@@ -15,10 +15,9 @@
  */
 package org.labkey.panoramapublic.pipeline;
 
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
@@ -57,6 +56,9 @@ import org.labkey.api.view.Portal;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicNotification;
+import org.labkey.panoramapublic.datacite.DataCiteException;
+import org.labkey.panoramapublic.datacite.DataCiteService;
+import org.labkey.panoramapublic.datacite.DataCiteService.Doi;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
@@ -182,6 +184,27 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                     catch(ProteomeXchangeServiceException e)
                     {
                         throw new PipelineJobException("Could not get a ProteomeXchange ID.", e);
+                    }
+                }
+            }
+            if(jobSupport.assignDoi())
+            {
+                if(previousCopy != null && previousCopy.getDoi() != null)
+                {
+                    log.info("Copying DOI from the previous copy of the data.");
+                    targetExperiment.setDoi(previousCopy.getDoi());
+                }
+                else
+                {
+                    log.info("Assigning a DOI.");
+                    try
+                    {
+                        assignDoi(targetExperiment, jobSupport.useDataCiteTestApi());
+                        log.info("Assigned DOI: " + targetExperiment.getDoi());
+                    }
+                    catch(DataCiteException e)
+                    {
+                        throw new DataCiteException("Could not assign a DOI.", e);
                     }
                 }
             }
@@ -359,6 +382,12 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         {
             throw new ProteomeXchangeServiceException("Could not find ProteomeXchange credentials");
         }
+    }
+
+    private void assignDoi(ExperimentAnnotations targetExpt, boolean useTestDb) throws DataCiteException
+    {
+        Doi doi = DataCiteService.create(useTestDb);
+        targetExpt.setDoi(doi.getDoi());
     }
 
     private void postEmailNotification(CopyExperimentJobSupport jobSupport, User pipelineJobUser, Logger log, ExperimentAnnotations sourceExperiment,

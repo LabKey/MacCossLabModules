@@ -417,6 +417,12 @@ public class ExperimentAnnotationsManager
                         " SET pxId = ? WHERE Id = ?", pxId, expAnnotations.getId());
     }
 
+    public static void updateDoi(ExperimentAnnotations expAnnotations)
+    {
+        new SqlExecutor(PanoramaPublicManager.getSchema()).execute("UPDATE " + PanoramaPublicManager.getTableInfoExperimentAnnotations() +
+                " SET doi = ? WHERE Id = ?", expAnnotations.getDoi(), expAnnotations.getId());
+    }
+
     public static DataLicense getLicenseSelectedForSubmission(Integer submittedExperimentId)
     {
         if(submittedExperimentId == null) return null;
