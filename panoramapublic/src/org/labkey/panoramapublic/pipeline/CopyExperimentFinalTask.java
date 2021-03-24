@@ -58,7 +58,7 @@ import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicNotification;
 import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
-import org.labkey.panoramapublic.datacite.DataCiteService.Doi;
+import org.labkey.panoramapublic.datacite.Doi;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;

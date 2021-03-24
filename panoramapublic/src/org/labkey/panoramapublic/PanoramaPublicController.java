@@ -113,7 +113,8 @@ import org.labkey.api.view.*;
 import org.labkey.api.view.template.ClientDependency;
 import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
-import org.labkey.panoramapublic.datacite.DataCiteService.Doi;
+import org.labkey.panoramapublic.datacite.Doi;
+import org.labkey.panoramapublic.datacite.DoiMetadata;
 import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
@@ -3499,7 +3500,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class PublishDoiAction extends DoiAction
     {
         private JournalExperiment _journalExperiment;
-        private DataCiteService.DoiMetadata _metadata;
+        private DoiMetadata _metadata;
         @Override
         public ModelAndView getConfirmView(DoiForm form, BindException errors)
         {
@@ -3525,7 +3526,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             try
             {
-                _metadata = DataCiteService.DoiMetadata.from(_expAnnot, _journalExperiment);
+                _metadata = DoiMetadata.from(_expAnnot);
             }
             catch (DataCiteException e)
             {
@@ -3542,7 +3543,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean doPost(DoiForm form, BindException errors) throws DataCiteException
         {
-            DataCiteService.publish(_expAnnot, _journalExperiment);
+            DataCiteService.publish(_expAnnot);
             return true;
         }
     }

@@ -6,7 +6,7 @@ import org.labkey.api.util.HtmlString;
 
 public class DataCiteException extends Exception
 {
-    DataCiteService.DataCiteResponse _response;
+    private DataCiteResponse _response;
 
     public DataCiteException(String message)
     {
@@ -18,7 +18,7 @@ public class DataCiteException extends Exception
         super(message, cause);
     }
 
-    public DataCiteException(@NotNull String message, @NotNull DataCiteService.DataCiteResponse response)
+    public DataCiteException(@NotNull String message, @NotNull DataCiteResponse response)
     {
         super("Request failed." + message + ". Code: " + response.getResponseCode() + "; Message " + response.getMessage() + "; Body: " + response.getResponseBody());
         _response = response;

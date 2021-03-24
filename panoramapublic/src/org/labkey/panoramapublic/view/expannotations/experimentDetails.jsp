@@ -212,19 +212,19 @@
     <% boolean addSep = false; %>
     <% if(license != null){%>
     <span class="link">
-        <strong>License: </strong> <%=license.getDisplayLinkHtml()%>
+        <strong>Data License: </strong> <%=license.getDisplayLinkHtml()%>
     </span>
     <% addSep = true; }%>
     <%if(annot.getPxid() != null){%>
     <%if(addSep) {%> <span style="margin-right:10px;margin-left:10px;">|</span> <%}%>
     <span class="link">
-        <a href="http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=<%=h(annot.getPxid())%>" target="_blank"><%=h(annot.getPxid())%></a>
+        <strong>ProteomeXchange: </strong><a href="http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=<%=h(annot.getPxid())%>" target="_blank"><%=h(annot.getPxid())%></a>
     </span>
     <% addSep = true; }%>
     <%if(annot.hasDoi()){%>
     <%if(addSep) {%> <span style="margin-right:10px;margin-left:10px;">|</span> <%}%>
     <span class="link">
-        <strong>DOI: </strong> <a href="https://doi.org/<%=h(annot.getDoi())%>" target="_blank"><%=h(annot.getDoi())%></a>
+        <strong>doi:</strong><a href="https://doi.org/<%=h(annot.getDoi())%>" target="_blank"><%=h(annot.getDoi())%></a>
     </span>
     <%}%>
 </div>

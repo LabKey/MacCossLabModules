@@ -4,37 +4,35 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.json.JSONArray;
 import org.json.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 import org.labkey.api.data.PropertyManager;
-import org.labkey.api.security.User;
-import org.labkey.api.util.DOM;
-import org.labkey.api.util.DateUtil;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
-import org.labkey.panoramapublic.model.JournalExperiment;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import static org.labkey.api.util.DOM.BR;
-import static org.labkey.api.util.DOM.DIV;
-
 /**
- * Class for creating, deleting or publishing DOIs with the DataCite API
- * https://support.datacite.org/reference/dois-2
+ * Class for creating, deleting or publishing Digital Object Identifiers (DOIs) with the DataCite API.
+ * DataCite is a DOI registration organization, primarily for research data. https://datacite.org/
+ * DataCite REST API Guide: https://support.datacite.org/docs/api
+ * DataCite API Reference: https://support.datacite.org/reference/dois-2
+ * DataCite Metadata schema: https://schema.datacite.org/meta/kernel-4.3/
+ * What is a DOI: https://en.wikipedia.org/wiki/Digital_object_identifier
+ *
+ * DOIs have the form: prefix/suffix
+ * The prefix/suffix combination uniquely identify a resource (e.g. a Panorama Public dataset).
+ * A 'prefix' is assigned to each member (e.g. UW Libraries) of DataCite.  There is a prefix for the live account, and
+ * another prefix for the test account.
+ * The DataCite account details are entered through the Panorama Public Admin Console link.
  */
 public class DataCiteService
 {
@@ -46,6 +44,8 @@ public class DataCiteService
     public static final String TEST_USER = "Test DataCite User";
     public static final String TEST_PASSWORD = "Test DataCite Password";
     public static final String TEST_PREFIX = "Test DOI Prefix";
+
+    enum METHOD {GET, POST, PUT, DELETE}
 
     /**
      * This will create a 'draft' DOI using either the live or the test DataCite API
@@ -86,12 +86,12 @@ public class DataCiteService
      * This will publish a DOI, i.e make it 'findable'. The DataCite API (live or test) that will be used is determined by looking
      * at the DOI prefix in the DOI assigned to the given ExperimentAnnotations
      */
-    public static void publish(@NotNull ExperimentAnnotations expAnnot, @NotNull JournalExperiment je) throws DataCiteException
+    public static void publish(@NotNull ExperimentAnnotations expAnnot) throws DataCiteException
     {
         // # PUT /dois/:id
         //$ curl -X PUT -H "Content-Type: application/vnd.api+json" --user YOUR_REPOSITORY_ID:YOUR_PASSWORD -d @my_doi_update.json https://api.test.datacite.org/dois/:id
         METHOD method = METHOD.PUT;
-        DataCiteResponse response = doRequest(getDataCiteConfig(expAnnot.getDoi()), DoiMetadata.from(expAnnot, je).getJson(), method);
+        DataCiteResponse response = doRequest(getDataCiteConfig(expAnnot.getDoi()), DoiMetadata.from(expAnnot).getJson(), method);
         if(!response.success(method))
         {
             throw new DataCiteException("DOI could not be published", response);
@@ -183,10 +183,12 @@ public class DataCiteService
     }
 
     /**
-     * This will return the DataCiteConfig object containing the account name, password, DOI prefix and API URL for the DataCite API
-     * that should be used for managing the given DOI. The DOI prefix is used to determine if the live or test API should be used.
-     * @param doi
+     * This will return the DataCiteConfig object containing the account name, password, DOI prefix and URL for the DataCite API
+     * that should be used for managing the given DOI. The prefix part of the given DOI is used to determine if the live or test API should be used.
+     * @param doi the doi for which the appropriate (test or live) DataCite configuration is returned.
+     * @throws DataCiteException if a configuration could not be found for the given DOI.
      */
+    @NotNull
     private static DataCiteConfig getDataCiteConfig(@NotNull String doi) throws DataCiteException
     {
         PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, false);
@@ -209,16 +211,16 @@ public class DataCiteService
         {
             throw new DataCiteException("DataCite configuration is not saved");
         }
-        String testUrl = test ? "https://api.test.datacite.org/dois" : "https://api.datacite.org/dois";
+        String url = test ? "https://api.test.datacite.org/dois" : "https://api.datacite.org/dois";
         if(doi != null)
         {
-            testUrl += "/" + doi;
+            url += "/" + doi;
         }
         String user = map.get(test ? DataCiteService.TEST_USER : DataCiteService.USER);
         String passwd = map.get(test ? DataCiteService.TEST_PASSWORD : DataCiteService.PASSWORD);
         String doiPrefix = map.get(test ? DataCiteService.TEST_PREFIX : DataCiteService.PREFIX);
 
-        DataCiteConfig config = new DataCiteConfig(user, passwd, doiPrefix, testUrl);
+        DataCiteConfig config = new DataCiteConfig(user, passwd, doiPrefix, url);
         if(!config.valid())
         {
             List<String> missing = new ArrayList<>();
@@ -231,140 +233,14 @@ public class DataCiteService
     }
 
     /**
-     * This class encapsulates the metadata that will be submitted to DataCite when a DOI is made 'findable'
+     * Class encapsulating the DataCite account name, password, url, and prefix assigned to the DataCite account (test or live)
      */
-    public static class DoiMetadata
-    {
-        private String _url; // The Panorama Public access URL for the data
-        private String _labHead;
-        private String _submitter;
-        private String _title;
-        private String _abstract;
-        private int _year;
-        private String _doi;
-
-        private DoiMetadata() {}
-
-        public static DoiMetadata from(ExperimentAnnotations expAnnot, JournalExperiment je) throws DataCiteException
-        {
-            DoiMetadata metadata = new DoiMetadata();
-            metadata._url = expAnnot.getShortUrl().renderShortURL();
-            User labHead = expAnnot.getLabHeadUser();
-            if(labHead != null)
-            {
-                metadata._labHead = getUserName(labHead, "Lab Head");
-            }
-            User submitter = expAnnot.getSubmitterUser();
-            if(submitter == null)
-            {
-                throw new DataCiteException("Submitter not found for experiment");
-            }
-            metadata._submitter = getUserName(submitter, "Submitter");
-            metadata._title = expAnnot.getTitle();
-            metadata._abstract = expAnnot.getAbstract();
-            metadata._year = DateUtil.now().get(Calendar.YEAR);
-            metadata._doi = expAnnot.getDoi();
-
-            return metadata;
-        }
-
-        private static String getUserName(@NotNull User user, @NotNull String userType) throws DataCiteException
-        {
-            if(StringUtils.isBlank(user.getFirstName()))
-            {
-                throw new DataCiteException("First name missing for " + userType + " " + user.getEmail());
-            }
-            if(StringUtils.isBlank(user.getLastName()))
-            {
-                throw new DataCiteException("Last name missing for " + userType + " " + user.getEmail());
-            }
-            return user.getLastName() + ", " + user.getFirstName();
-        }
-
-        public JSONObject getJson()
-        {
-            /* Example
-                {
-                  "data": {
-                    "id": "10.5438/0012",
-                    "type": "dois",
-                    "attributes": {
-                      "event": "publish",
-                      "doi": "10.5438/0012",
-                      "creators": [{
-                        "name": "DataCite Metadata Working Group"
-                      }],
-                      "titles": [{
-                        "title": "DataCite Metadata Schema Documentation for the Publication and Citation of Research Data v4.0"
-                      }],
-                      "publisher": "DataCite e.V.",
-                      "publicationYear": 2016,
-                      "types": {
-                        "resourceTypeGeneral": "Text"
-                      },
-                      "url": "https://schema.datacite.org/meta/kernel-4.0/index.html",
-                      "schemaVersion": "http://datacite.org/schema/kernel-4"
-                    }
-                  }
-                }
-             */
-            JSONObject data = new JSONObject();
-            data.put("id", _doi);
-            data.put("type", "dois");
-            data.put("attributes", getAttributes());
-
-            return new JSONObject().put("data", data);
-        }
-
-        private JSONObject getAttributes()
-        {
-            JSONObject attribs = new JSONObject();
-            attribs.put("event", "publish");
-            attribs.put("doi", _doi);
-            attribs.put("publisher", "Panorama Public");
-            attribs.put("publicationYear", _year);
-            attribs.put("url", _url);
-            attribs.put("types", new JSONObject().put("resourceTypeGeneral", "Dataset"));
-            JSONArray creators = new JSONArray();
-            creators.put(new JSONObject().put("name", _submitter).put("nameType", "Personal"));
-            if(_labHead != null)
-            {
-                creators.put(new JSONObject().put("name", _labHead).put("nameType", "Personal"));
-            }
-            attribs.put("creators", creators);
-            attribs.put("titles", new JSONArray().put(new JSONObject().put("title", _title)));
-
-            JSONArray descriptions = new JSONArray();
-            descriptions.put(new JSONObject().put("description", _abstract).put("descriptionType", "Abstract"));
-            attribs.put("descriptions", descriptions);
-
-            return attribs;
-        }
-
-        public @NotNull DOM.Renderable getHtmlString()
-        {
-            String creators = _submitter;
-            if(_labHead != null)
-            {
-                creators += ", " + _labHead;
-            }
-            return DIV("DOI: " + _doi,
-                    BR(), "Publisher: Panorama Public",
-                    BR(), "Publication Year: " + _year,
-                    BR(), "URL " + _url,
-                    BR(), "Type: Dataset",
-                    BR(), "Title: " + _title,
-                    BR(), "Creators: " + creators,
-                    BR(), "JSON: " + getJson().toString());
-        }
-    }
-
     private static class DataCiteConfig
     {
         private final String _name;
         private final String _password;
-        private final String _prefix; // The DOI prefix
-        private final String _url; // The API URL
+        private final String _prefix; // The DOI prefix; different prefixes are assigned to the test and live DataCite account.
+        private final String _url; // The API URL; different for the test and live DataCite accounts.
 
         public DataCiteConfig(String name, String password, String prefix, String url)
         {
@@ -402,110 +278,6 @@ public class DataCiteService
         public boolean hasPrefix(String doi)
         {
             return doi != null && doi.startsWith(getPrefix());
-        }
-    }
-
-    private enum METHOD {GET, POST, PUT, DELETE}
-
-    static class DataCiteResponse
-    {
-        private final int _responseCode;
-        private final String _message;
-        private final String _responseBody;
-
-        public DataCiteResponse(int responseCode, String message, String responseBody)
-        {
-            _responseCode = responseCode;
-            _message = message;
-            _responseBody = responseBody;
-        }
-
-        public int getResponseCode()
-        {
-            return _responseCode;
-        }
-
-        public String getMessage()
-        {
-            return _message;
-        }
-
-        public String getResponseBody()
-        {
-            return _responseBody;
-        }
-
-        public boolean success(METHOD method)
-        {
-            switch (method)
-            {
-                case GET: case PUT: return _responseCode == 200;
-                case POST: return _responseCode == 201;
-                case DELETE: return _responseCode == 204;
-                default:
-                    throw new IllegalStateException("Unexpected method: " + method);
-            }
-        }
-
-        public Doi getDoi() throws DataCiteException
-        {
-            return _responseBody == null ? null : Doi.fromJson(getJsonObject(_responseBody));
-        }
-
-        private org.json.simple.JSONObject getJsonObject(String response) throws DataCiteException
-        {
-            JSONParser parser = new JSONParser();
-            try
-            {
-                return (org.json.simple.JSONObject) parser.parse(new StringReader(response));
-            }
-            catch (IOException | ParseException e)
-            {
-                throw new DataCiteException("Error parsing JSON from response: " + response);
-            }
-        }
-    }
-
-    public static class Doi
-    {
-        private final String _doi;
-        private final String _state; // e.g. 'draft', 'findable' etc.
-
-        private Doi(String doi, String state)
-        {
-            _doi = doi;
-            _state = state;
-        }
-
-        public String getDoi()
-        {
-            return _doi;
-        }
-
-        public String getState()
-        {
-            return _state;
-        }
-
-        public boolean isFindable()
-        {
-            return "findable".equals(_state);
-        }
-
-        static Doi fromJson(@NotNull org.json.simple.JSONObject json)
-        {
-            if(json.containsKey("data"))
-            {
-                org.json.simple.JSONObject data = (org.json.simple.JSONObject) json.get("data");
-                org.json.simple.JSONObject attribs = (org.json.simple.JSONObject) data.get("attributes");
-                if(attribs != null)
-                {
-                    String doi = (String) attribs.get("doi");
-                    String state = (String) attribs.get("state");
-                    return new Doi(doi, state);
-                }
-            }
-            return null;
         }
     }
 }
