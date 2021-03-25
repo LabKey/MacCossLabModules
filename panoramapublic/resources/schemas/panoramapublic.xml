@@ -118,6 +118,7 @@
                 <columnTitle>PX ID</columnTitle>
             </column>
             <column columnName="PubmedId"/>
+            <column columnName="doi"/>
         </columns>
     </table>
 
