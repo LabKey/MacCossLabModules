@@ -794,12 +794,12 @@ public class PanoramaPublicController extends SpringActionController
                 PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, false);
                 if(map != null)
                 {
+                    // Force the user to re-enter the passwords; do not set them in the form
+
                     form.setUser(map.get(DataCiteService.USER));
-                    form.setPassword(map.get(DataCiteService.PASSWORD));
                     form.setDoiPrefix(map.get(DataCiteService.PREFIX));
 
                     form.setTestUser(map.get(DataCiteService.TEST_USER));
-                    form.setTestPassword(map.get(DataCiteService.TEST_PASSWORD));
                     form.setTestDoiPrefix(map.get(DataCiteService.TEST_PREFIX));
                 }
             }
