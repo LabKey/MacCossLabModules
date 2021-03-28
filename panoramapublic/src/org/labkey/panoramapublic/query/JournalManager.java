@@ -39,6 +39,7 @@ import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.UserPrincipal;
+import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.security.roles.EditorRole;
 import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ProjectAdminRole;
@@ -262,6 +263,18 @@ public class JournalManager
     {
         ShortURLRecord shortAccessUrlRecord = sourceJournalExp.getShortAccessUrl();
         ActionURL targetUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(targetExperiment.getContainer());
+
+        if(shortAccessUrlRecord != null)
+        {
+            // If the user is not the one that created this shortUrl (e.g. the experiment is being resubmitted by a different lab member)
+            // then we need to add this user as an editor to the record's SecurityPolicy.
+            MutableSecurityPolicy policy = new MutableSecurityPolicy(SecurityPolicyManager.getPolicy(shortAccessUrlRecord));
+            if (!policy.hasPermission(user, UpdatePermission.class))
+            {
+                policy.addRoleAssignment(user, EditorRole.class);
+                SecurityPolicyManager.savePolicy(policy);
+            }
+        }
 
         ShortURLService shortURLService = ShortURLService.get();
         shortAccessUrlRecord = shortURLService.saveShortURL(shortAccessUrlRecord.getShortURL(), targetUrl, user);
