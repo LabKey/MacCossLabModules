@@ -2,6 +2,8 @@
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
+<%@ page import="org.labkey.testresults.model.TestLeakDetail" %>
+<%@ page import="org.labkey.testresults.model.TestHandleLeakDetail" %>
 <%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
 <%@ page import="org.labkey.testresults.model.TestPassDetail" %>
 <%@ page import="org.labkey.testresults.view.TestsDataBean" %>
@@ -53,7 +55,7 @@
     RunDetail run = data.getRuns()[0];
     TestFailDetail[] failures = run.getFailures();
     Arrays.sort(failures); // sorts by timestamp
-    TestMemoryLeakDetail[] testmemoryleaks = run.getTestmemoryleaks();
+    TestLeakDetail[] leaks = run.getLeaks();
     TestPassDetail[] passes = run.getPasses();
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
     DateFormat dfMDHM = new SimpleDateFormat("MM/dd HH:mm");
@@ -82,7 +84,7 @@
         Passed Tests : <%=run.getPasses().length%><br>
         Memory : <%=h(run.getAverageMemory())%><br>
         Failures : <%=failures.length%><br>
-        Leaks : <%=testmemoryleaks.length%><br>
+        Leaks : <%=leaks.length%><br>
         Timestamp:  <%=h((run.getTimestamp() == null) ? "N/A" : run.getTimestamp())%><br>
         <a id="trainset" style="cursor: pointer;"><%=h((run.isTrainRun()) ? "Remove from training set" : "Add to training set")%></a>
     </p>
@@ -138,13 +140,14 @@
     <% } %>
 </table>
 <% }
-if (testmemoryleaks.length > 0) { %>
+if (leaks.length > 0) { %>
 <table class="decoratedtable" style="float: left;">
-    <tr><td>Leaks</td><td>Bytes</td></tr>
-    <% for (TestMemoryLeakDetail l: testmemoryleaks) { %>
+    <tr><td>Leaks</td><td>Bytes</td><td>Handles</td></tr>
+    <% for (TestLeakDetail l: leaks) { %>
     <tr>
         <td><%=h(l.getTestName())%></td>
-        <td><%=h(l.getBytes()/1000 + "kb")%></td>
+        <td><% if (l instanceof TestMemoryLeakDetail) { %><%= h(((TestMemoryLeakDetail)l).getBytes()/1000) %> kb<% } %></td>
+        <td><% if (l instanceof TestHandleLeakDetail) { %><%= h(((TestHandleLeakDetail)l).getHandles()) %><% } %></td>
     </tr>
     <% } %>
 </table>

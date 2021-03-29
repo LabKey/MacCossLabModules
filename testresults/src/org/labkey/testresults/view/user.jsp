@@ -1,5 +1,4 @@
 <%@ page import="org.json.JSONObject" %>
-<%@ page import="org.labkey.api.data.TableSelector" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.testresults.TestResultsController.ShowRunAction" %>
@@ -9,13 +8,12 @@
 <%@ page import="org.labkey.testresults.view.TestsDataBean" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="java.util.Arrays" %>
 <%@ page import="java.util.Calendar" %>
-<%@ page import="java.util.Collections" %>
 <%@ page import="java.util.Comparator" %>
 <%@ page import="java.util.Date" %>
 <%@ page import="java.util.HashSet" %>
 <%@ page import="java.util.Iterator" %>
-<%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.TreeMap" %>
 <%@ page import="java.util.TreeSet" %>
@@ -89,8 +87,8 @@
 <%--        <input type="file" name="xml_file"><input type="submit" value="submit">This form is meant to parse and store xml files into the database--%>
 <%--    </form>--%>
     <%
-        List<User> users = new TableSelector(TestResultsSchema.getInstance().getTableInfoUser(), null, null).getArrayList(User.class);
-        Collections.sort(users, Comparator.comparing(User::getUsername)); %>
+        User[] users = TestResultsController.getUsers(null, null);
+        Arrays.sort(users, Comparator.comparing(User::getUsername)); %>
     <div style="margin: 12px 0;">
         <select id="users">
             <option disabled selected> -- select an option -- </option>
