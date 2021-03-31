@@ -136,6 +136,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         // Enter the name of the destination folder in the Panorama Public project
         setFormElement(Locator.tagWithName("input", "destContainerName"), DESTINATION_FOLDER);
         _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Send Email to Submitter:"));
+        _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Assign Digital Object Identifier:")); // Don't try to assign a DOI
         // Locator.extButton("Begin Copy"); // Locator.extButton() does not work.
         click(Ext4Helper.Locators.ext4Button("Begin Copy"));
 
@@ -193,6 +194,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         // Enter the name of the destination folder in the Panorama Public project
         setFormElement(Locator.tagWithName("input", "destContainerName"), DESTINATION_FOLDER);
         _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Send Email to Submitter:"));
+        _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Assign Digital Object Identifier:")); // Don't try to assign a DOI
         click(Ext4Helper.Locators.ext4Button("Begin Copy"));
 
         // Wait for the pipeline job to finish

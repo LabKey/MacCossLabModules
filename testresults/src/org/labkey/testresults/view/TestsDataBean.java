@@ -18,10 +18,13 @@ package org.labkey.testresults.view;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.labkey.api.data.SQLFragment;
+import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.SqlSelector;
+import org.labkey.api.data.TableSelector;
+import org.labkey.api.query.FieldKey;
 import org.labkey.testresults.TestResultsSchema;
-import org.labkey.testresults.model.GlobalSettings;
 import org.labkey.testresults.model.RunDetail;
+import org.labkey.testresults.model.TestLeakDetail;
 import org.labkey.testresults.model.TestMemoryLeakDetail;
 import org.labkey.testresults.model.User;
 import org.labkey.testresults.model.TestFailDetail;
@@ -102,7 +105,7 @@ public class TestsDataBean
 
     // Getters and Setters for fields
     public RunDetail[] getRuns() {
-        RunDetail[] r = runs.values().toArray(new RunDetail[runs.size()]);
+        RunDetail[] r = runs.values().toArray(new RunDetail[0]);
         Arrays.sort(r);
         return r;
     }
@@ -112,7 +115,7 @@ public class TestsDataBean
             if (!excludeRun(run.getId()))
                 statRuns.add(run);
         Collections.sort(statRuns);
-        return statRuns.toArray(new RunDetail[statRuns.size()]);
+        return statRuns.toArray(new RunDetail[0]);
     }
 
     public RunDetail[] getStatRuns() {
@@ -157,35 +160,34 @@ public class TestsDataBean
         statRuns = setStatRuns();
     }
 
-    public TestMemoryLeakDetail[] getLeaks() {
+    public List<TestLeakDetail> getLeaks() {
+        List<TestLeakDetail> leaks = new ArrayList<>();
+        for (RunDetail r: runs.values()) {
+            leaks.addAll(Arrays.asList(r.getLeaks()));
+        }
+        return leaks;
+    }
+
+    public TestMemoryLeakDetail[] getMemoryLeaks() {
         List<TestMemoryLeakDetail> leaks = new ArrayList<>();
         for (RunDetail r: runs.values()) {
-            leaks.addAll(Arrays.asList(r.getTestmemoryleaks()));
+            leaks.addAll(Arrays.asList(r.getMemoryLeaks()));
         }
-        return leaks.toArray(new TestMemoryLeakDetail[leaks.size()]);
+        return leaks.toArray(new TestMemoryLeakDetail[0]);
     }
 
     public TestFailDetail[] getFailures() {
         List<TestFailDetail> fails = new ArrayList<>();
         for (RunDetail r: runs.values())
             fails.addAll(Arrays.asList(r.getFailures()));
-        return fails.toArray(new TestFailDetail[fails.size()]);
-    }
-
-    public TestFailDetail[] getFailuresByName(String testName) {
-        List<TestFailDetail> fails = new ArrayList<>();
-        for (RunDetail r: runs.values())
-            for (TestFailDetail f: r.getFailures())
-                if (f.getTestName().equals(testName))
-                    fails.add(f);
-        return fails.toArray(new TestFailDetail[fails.size()]);
+        return fails.toArray(new TestFailDetail[0]);
     }
 
     public TestPassDetail[] getPasses() {
         List<TestPassDetail> passes = new ArrayList<>();
         for (RunDetail run : runs.values())
             passes.addAll(Arrays.asList(run.getPasses()));
-        return passes.toArray(new TestPassDetail[passes.size()]);
+        return passes.toArray(new TestPassDetail[0]);
     }
 
     private void addRuns(RunDetail[] runs) {
@@ -223,17 +225,6 @@ public class TestsDataBean
                 return u;
         }
         return null;
-    }
-    // failures and leaks arent referenced to users to this method can be used to find user of failure or leak
-    public User getUserByRunId(int runId) {
-        RunDetail r = getRunDetailById(runId);
-        return r != null ? getUserById(r.getUserid()) : null;
-    }
-
-    // returns array of failures in a specified run
-    public TestFailDetail[] getFailuresByRunId(int runId) {
-        RunDetail f = getRunDetailById(runId);
-        return f != null ? f.getFailures() : new TestFailDetail[0];
     }
 
     // gets run detail by id
