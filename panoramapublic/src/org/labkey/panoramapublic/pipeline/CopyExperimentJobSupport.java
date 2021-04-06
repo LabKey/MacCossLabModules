@@ -39,6 +39,9 @@ public interface CopyExperimentJobSupport
     boolean assignPxId();
     boolean usePxTestDb();
 
+    boolean assignDoi();
+    boolean useDataCiteTestApi();
+
     boolean emailSubmitter();
     List<String> toEmailAddresses();
     String replyToAddress();

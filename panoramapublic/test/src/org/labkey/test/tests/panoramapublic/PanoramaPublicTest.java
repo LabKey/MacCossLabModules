@@ -115,7 +115,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         testSubmitWithMissingRawFiles(portalHelper, expWebPart);
 
         // Submit the experiment by clicking the "Continue without a ProteomeXchange ID" link
-        portalHelper.click(Locator.folderTab("Panorama Dashboard"));
+        clickAndWait(Locator.folderTab("Panorama Dashboard"));
         expWebPart.submitWithoutPXId();
         assertTextPresent("Copy Pending!");
 
@@ -136,6 +136,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         // Enter the name of the destination folder in the Panorama Public project
         setFormElement(Locator.tagWithName("input", "destContainerName"), DESTINATION_FOLDER);
         _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Send Email to Submitter:"));
+        _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Assign Digital Object Identifier:")); // Don't try to assign a DOI
         // Locator.extButton("Begin Copy"); // Locator.extButton() does not work.
         click(Ext4Helper.Locators.ext4Button("Begin Copy"));
 
@@ -193,6 +194,7 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
         // Enter the name of the destination folder in the Panorama Public project
         setFormElement(Locator.tagWithName("input", "destContainerName"), DESTINATION_FOLDER);
         _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Send Email to Submitter:"));
+        _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Assign Digital Object Identifier:")); // Don't try to assign a DOI
         click(Ext4Helper.Locators.ext4Button("Begin Copy"));
 
         // Wait for the pipeline job to finish
@@ -291,12 +293,12 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
 
         public void submitWithoutPXId()
         {
-            findElement(Locator.linkContainingText("Submit")).click();
-            waitAndClick(Locator.linkContainingText("Continue without a ProteomeXchange ID"));
+            clickAndWait(Locator.linkContainingText("Submit"));
+            clickAndWait(Locator.linkContainingText("Continue without a ProteomeXchange ID"));
             getWrapper()._ext4Helper.selectComboBoxItem(Ext4Helper.Locators.formItemWithInputNamed("journalId"), PANORAMA_PUBLIC);
-            waitAndClick(Ext4Helper.Locators.ext4Button("Submit"));
-            waitAndClick(Locator.lkButton("OK")); // Confirm to proceed with the submission.
-            waitAndClick(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
+            clickAndWait(Ext4Helper.Locators.ext4Button("Submit"));
+            clickAndWait(Locator.lkButton("OK")); // Confirm to proceed with the submission.
+            clickAndWait(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
         }
 
         public void clickSubmit()
@@ -309,13 +311,13 @@ public class PanoramaPublicTest extends TargetedMSTest implements PostgresOnlyTe
             Locator.XPathLocator resubmitLink = Locator.linkContainingText("Resubmit");
             assertNotNull("Expected to see a \"Resubmit\" button", resubmitLink);
             clickAndWait(resubmitLink);
-            waitAndClick(Locator.linkContainingText("Continue without a ProteomeXchange ID"));
+            clickAndWait(Locator.linkContainingText("Continue without a ProteomeXchange ID"));
             waitForText("Resubmit Request to ");
-            click(Ext4Helper.Locators.ext4Button(("Resubmit")));
+            clickAndWait(Ext4Helper.Locators.ext4Button(("Resubmit")));
             waitForText("Confirm resubmission request to");
-            click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
+            clickAndWait(Locator.lkButton("OK")); // Confirm to proceed with the submission.
             waitForText("Request resubmitted to");
-            click(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
+            clickAndWait(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
         }
     }
 

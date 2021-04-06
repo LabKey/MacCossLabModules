@@ -6,12 +6,10 @@ import org.labkey.api.data.statistics.MathStat;
 import org.labkey.api.data.statistics.StatsService;
 import org.labkey.api.services.ServiceRegistry;
 import org.labkey.testresults.TestResultsController;
-import org.labkey.testresults.model.TestHangDetail;
-import org.labkey.testresults.model.TestMemoryLeakDetail;
-import org.labkey.testresults.model.User;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestFailDetail;
 import org.labkey.testresults.model.TestMemoryLeakDetail;
+import org.labkey.testresults.model.User;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,12 +51,13 @@ public class RunDownBean extends TestsDataBean
         Date dateBefore1Day = cal.getTime();
 
         for (RunDetail run: getRuns()) {  // Currently uses getPostTime() (time of post) for same day instead of getTimestamp() which is the actual timestamp run started
-            Date runDate = run.getPostTime();
-            boolean isSameDay = (runDate.getTime() < selectedDate.getTime() && runDate.getTime() > dateBefore1Day.getTime());
-            if (!isSameDay)
-                continue;
-            map.computeIfAbsent(getUserById(run.getUserid()), k -> new ArrayList<>());
-            map.get(getUserById(run.getUserid())).add(run);
+            long runTime = run.getPostTime().getTime();
+            if (dateBefore1Day.getTime() < runTime && runTime < selectedDate.getTime())
+            {
+                User u = getUserById(run.getUserid());
+                map.computeIfAbsent(u, k -> new ArrayList<>());
+                map.get(u).add(run);
+            }
         }
         return map;
     }
@@ -72,7 +71,7 @@ public class RunDownBean extends TestsDataBean
             ? new TestsDataBean(getRuns(), new User[0])
             : new TestsDataBean(getStatRuns(), new User[0]);
         Map<String, List<TestMemoryLeakDetail>> m = new HashMap<>();
-        TestMemoryLeakDetail[] leaks = runs.getLeaks();
+        TestMemoryLeakDetail[] leaks = runs.getMemoryLeaks();
         for (TestMemoryLeakDetail leak: leaks) {
             List<TestMemoryLeakDetail> list = m.get(leak.getTestName());
             if (list == null) {

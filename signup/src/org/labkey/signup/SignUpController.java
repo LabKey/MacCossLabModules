@@ -17,15 +17,14 @@
 package org.labkey.signup;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import org.labkey.api.action.ReadOnlyApiAction;
-import org.labkey.api.action.MutatingApiAction;
+import org.apache.logging.log4j.Logger;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabKeyError;
+import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.ReturnUrlForm;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
@@ -96,7 +95,7 @@ public class SignUpController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Sign Up Admin", null);
+            PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Sign Up Admin", getClass(), getContainer());
         }
     }
 

@@ -5,7 +5,6 @@ public class TestHandleLeakDetail extends TestLeakDetail
     double handles;
 
     public TestHandleLeakDetail() {
-
     }
 
     public TestHandleLeakDetail(int testRunId, String name, String type, double handles) {
@@ -20,7 +19,7 @@ public class TestHandleLeakDetail extends TestLeakDetail
         return handles;
     }
 
-    public void setHandles(float handles)
+    public void setHandles(double handles)
     {
         this.handles = handles;
     }

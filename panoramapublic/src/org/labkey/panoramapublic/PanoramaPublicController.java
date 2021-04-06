@@ -101,6 +101,7 @@ import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.Button;
+import org.labkey.api.util.DOM;
 import org.labkey.api.util.DOM.LK;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
@@ -110,6 +111,10 @@ import org.labkey.api.util.TestContext;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.*;
 import org.labkey.api.view.template.ClientDependency;
+import org.labkey.panoramapublic.datacite.DataCiteException;
+import org.labkey.panoramapublic.datacite.DataCiteService;
+import org.labkey.panoramapublic.datacite.Doi;
+import org.labkey.panoramapublic.datacite.DoiMetadata;
 import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
@@ -222,10 +227,9 @@ public class PanoramaPublicController extends SpringActionController
                 view.addView(new HtmlView("<div><a href=\"" + newJournalUrl + "\">Create a new journal group </a></div>"));
             }
 
-            ModelAndView pxCredentialsLink = getPXCredentialsLink();
-
             view.addView(qView);
-            view.addView(pxCredentialsLink);
+            view.addView(getPXCredentialsLink());
+            view.addView(getDataCiteCredentialsLink());
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Journal groups");
             return view;
@@ -236,6 +240,13 @@ public class PanoramaPublicController extends SpringActionController
             ActionURL url = new ActionURL(ManageProteomeXchangeCredentials.class, getContainer());
             return new HtmlView(DIV(at(style, "margin-top:20px;"),
                     new Link.LinkBuilder("Set ProteomeXchange Credentials").href(url).build()));
+        }
+
+        private ModelAndView getDataCiteCredentialsLink()
+        {
+            ActionURL url = new ActionURL(ManageDataCiteCredentials.class, getContainer());
+            return new HtmlView(DIV(at(style, "margin-top:20px;"),
+                    new Link.LinkBuilder("Set DataCite Credentials").href(url).build()));
         }
 
         @Override
@@ -706,6 +717,176 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
+    public class ManageDataCiteCredentials extends FormViewAction<DataCiteCredentialsForm>
+    {
+        @Override
+        public void validateCommand(DataCiteCredentialsForm form, Errors errors)
+        {
+            String user = form.getUser();
+            String password = form.getPassword();
+            String doiPrefix = form.getDoiPrefix();
+
+            if (StringUtils.isBlank(user))
+            {
+                errors.reject(ERROR_MSG, "User name cannot be blank");
+            }
+            if (StringUtils.isBlank(password))
+            {
+                errors.reject(ERROR_MSG, "Password cannot be blank");
+            }
+            if (StringUtils.isBlank(doiPrefix))
+            {
+                errors.reject(ERROR_MSG, "DOI prefix cannot be blank");
+            }
+
+            String testUser = form.getTestUser();
+            String testPassword = form.getTestPassword();
+            String testDoiPrefix = form.getTestDoiPrefix();
+            if (StringUtils.isBlank(testUser))
+            {
+                errors.reject(ERROR_MSG, "Test user name cannot be blank");
+            }
+            if (StringUtils.isBlank(testPassword))
+            {
+                errors.reject(ERROR_MSG, "Test password cannot be blank");
+            }
+            if (StringUtils.isBlank(testDoiPrefix))
+            {
+                errors.reject(ERROR_MSG, "Test DOI prefix cannot be blank");
+            }
+        }
+
+        @Override
+        public boolean handlePost(DataCiteCredentialsForm form, BindException errors)
+        {
+            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, true);
+            map.put(DataCiteService.USER, form.getUser());
+            map.put(DataCiteService.PASSWORD, form.getPassword());
+            map.put(DataCiteService.PREFIX, form.getDoiPrefix());
+            map.put(DataCiteService.TEST_USER, form.getTestUser());
+            map.put(DataCiteService.TEST_PASSWORD, form.getTestPassword());
+            map.put(DataCiteService.TEST_PREFIX, form.getTestDoiPrefix());
+            map.save();
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(DataCiteCredentialsForm form)
+        {
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(DataCiteCredentialsForm form)
+        {
+            ActionURL adminUrl = new ActionURL(JournalGroupsAdminViewAction.class, getContainer());
+            return new HtmlView(
+                    DIV("DataCite credentials saved!",
+                    BR(),
+                    new Link.LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
+        }
+
+        @Override
+        public ModelAndView getView(DataCiteCredentialsForm form, boolean reshow, BindException errors)
+        {
+            if(!reshow)
+            {
+                PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, false);
+                if(map != null)
+                {
+                    // Force the user to re-enter the passwords; do not set them in the form
+
+                    form.setUser(map.get(DataCiteService.USER));
+                    form.setDoiPrefix(map.get(DataCiteService.PREFIX));
+
+                    form.setTestUser(map.get(DataCiteService.TEST_USER));
+                    form.setTestDoiPrefix(map.get(DataCiteService.TEST_PREFIX));
+                }
+            }
+            JspView view = new JspView<>("/org/labkey/panoramapublic/view/manageDataCiteCredentials.jsp", form, errors);
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            view.setTitle("DataCite Credentials");
+            return view;
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Set DataCite Credentials");
+        }
+    }
+
+    public static class DataCiteCredentialsForm
+    {
+        private String _user;
+        private String _password;
+        private String _doiPrefix;
+        private String _testUser;
+        private String _testPassword;
+        private String _testDoiPrefix;
+
+        public String getTestUser()
+        {
+            return _testUser;
+        }
+
+        public void setTestUser(String testUser)
+        {
+            _testUser = testUser;
+        }
+
+        public String getTestPassword()
+        {
+            return _testPassword;
+        }
+
+        public void setTestPassword(String testPassword)
+        {
+            _testPassword = testPassword;
+        }
+
+        public String getUser()
+        {
+            return _user;
+        }
+
+        public void setUser(String user)
+        {
+            _user = user;
+        }
+
+        public String getPassword()
+        {
+            return _password;
+        }
+
+        public void setPassword(String password)
+        {
+            _password = password;
+        }
+
+        public String getTestDoiPrefix()
+        {
+            return _testDoiPrefix;
+        }
+
+        public void setTestDoiPrefix(String testDoiPrefix)
+        {
+            _testDoiPrefix = testDoiPrefix;
+        }
+
+        public String getDoiPrefix()
+        {
+            return _doiPrefix;
+        }
+
+        public void setDoiPrefix(String doiPrefix)
+        {
+            _doiPrefix = doiPrefix;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
     public class ManageProteomeXchangeCredentials extends FormViewAction<PXCredentialsForm>
     {
         @Override
@@ -986,6 +1167,8 @@ public class PanoramaPublicController extends SpringActionController
                 CopyExperimentPipelineJob job = new CopyExperimentPipelineJob(info, root, _experiment, _journal);
                 job.setAssignPxId(form.isAssignPxId());
                 job.setUsePxTestDb(form.isUsePxTestDb());
+                job.setAssignDoi(form.isAssignDoi());
+                job.setUseDataCiteTestApi(form.isUseDataCiteTestApi());
                 job.setReviewerEmailPrefix(form.getReviewerEmailPrefix());
                 job.setEmailSubmitter(form.isSendEmail());
                 job.setToEmailAddresses(recipientEmails);
@@ -1036,6 +1219,8 @@ public class PanoramaPublicController extends SpringActionController
         private String _reviewerEmailPrefix;
         private boolean _assignPxId;
         private boolean _usePxTestDb; // Use the test database for getting a PX ID if true
+        private boolean _assignDoi;
+        private boolean _useDataCiteTestApi;
         private boolean _sendEmail;
         private String _toEmailAddresses;
         private String _replyToAddress;
@@ -1050,6 +1235,9 @@ public class PanoramaPublicController extends SpringActionController
 
             form.setAssignPxId(je.isPxidRequested());
             form.setUsePxTestDb(false);
+
+            form.setAssignDoi(true);
+            form.setUseDataCiteTestApi(false);
 
             form.setSendEmail(true);
             Set<String> toEmailAddresses = new HashSet<>();
@@ -1174,6 +1362,26 @@ public class PanoramaPublicController extends SpringActionController
         public void setUsePxTestDb(boolean usePxTestDb)
         {
             _usePxTestDb = usePxTestDb;
+        }
+
+        public boolean isAssignDoi()
+        {
+            return _assignDoi;
+        }
+
+        public void setAssignDoi(boolean assignDoi)
+        {
+            _assignDoi = assignDoi;
+        }
+
+        public boolean isUseDataCiteTestApi()
+        {
+            return _useDataCiteTestApi;
+        }
+
+        public void setUseDataCiteTestApi(boolean useDataCiteTestApi)
+        {
+            _useDataCiteTestApi = useDataCiteTestApi;
         }
 
         public boolean isSendEmail()
@@ -3067,6 +3275,374 @@ public class PanoramaPublicController extends SpringActionController
     // ------------------------------------------------------------------------
 
     // ------------------------------------------------------------------------
+    // BEGIN Actions for DataCite DOI assignment
+    // ------------------------------------------------------------------------
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class DoiOptionsAction extends SimpleViewAction<ExperimentIdForm>
+    {
+        private ExperimentAnnotations _expAnnot;
+
+        @Override
+        public ModelAndView getView(ExperimentIdForm form, BindException errors)
+        {
+            _expAnnot = form.lookupExperiment();
+            if(_expAnnot == null)
+            {
+                errors.reject(ERROR_MSG, "Cannot find experiment with ID " + form.getId());
+                return new SimpleErrorView(errors);
+            }
+            ensureCorrectContainer(getContainer(), _expAnnot.getContainer(), getViewContext());
+            if(!_expAnnot.isJournalCopy())
+            {
+                // DOIs can only be assigned to data on Panorama Public
+                errors.reject(ERROR_MSG, "DOIs can only be assigned to data in the Panorama Public project");
+                return new SimpleErrorView(errors);
+            }
+
+            DOM.Renderable updateDoiForm = DIV(at(style, "margin-top:10px;"),FORM(at(method, "GET", action, new ActionURL(UpdateDoiAction.class, getContainer())),
+                    SPAN(cl("labkey-form-label"), "DOI"),
+                    INPUT(at(type, "hidden", name, "id", value, _expAnnot.getId())),
+                    INPUT(at(type, "Text", name, "doi", value, _expAnnot.getDoi())),
+                    SPAN(at(style, "margin:5px;")),
+                    new Button.ButtonBuilder("Submit").submit(true).build()));
+
+            if(_expAnnot.hasDoi())
+            {
+                return new HtmlView(
+                        DIV(DIV(at(style, "margin-bottom:10px;"), "DOI assigned to the data is " + _expAnnot.getDoi()),
+                                DIV(
+                                new Link.LinkBuilder("Publish DOI").clearClasses().addClass("btn btn-default").href(new ActionURL(PublishDoiAction.class, getContainer()).addParameter("id", _expAnnot.getId())),
+                                SPAN(at(style, "margin:5px;")),
+                                new Link.LinkBuilder("Delete DOI").clearClasses().addClass("btn btn-default").href(new ActionURL(DeleteDoiAction.class, getContainer()).addParameter("id", _expAnnot.getId()))),
+                                updateDoiForm));
+
+            }
+            else
+            {
+               return new HtmlView(
+                       DIV(DIV(new Link.LinkBuilder("Assign New DOI").clearClasses().addClass("btn btn-default").href(getAssignDoiUrl(_expAnnot, getContainer(), false)),
+                       SPAN(at(style, "margin:5px;")),
+                       new Link.LinkBuilder("Assign New Test DOI").clearClasses().addClass("btn btn-default").href(getAssignDoiUrl(_expAnnot, getContainer(), true))),
+                       updateDoiForm));
+            }
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("DOI Actions");
+        }
+    }
+
+    private static ActionURL getAssignDoiUrl(ExperimentAnnotations expAnnot, Container container, boolean testMode)
+    {
+        return new ActionURL(AssignDoiAction.class, container).addParameter("id", expAnnot.getId()).addParameter("testMode", testMode);
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static abstract class DoiAction extends ConfirmAction<DoiForm>
+    {
+        ExperimentAnnotations _expAnnot;
+        // JournalExperiment _journalExperiment;
+        DataCiteException _exception;
+
+        @Override
+        public void validateCommand(DoiForm form, Errors errors)
+        {
+            _expAnnot = form.lookupExperiment();
+            if(_expAnnot == null)
+            {
+                errors.reject(ERROR_MSG, "Cannot find experiment with ID " + form.getId());
+                return;
+            }
+            ensureCorrectContainer(getContainer(), _expAnnot.getContainer(), getViewContext());
+            if(!_expAnnot.isJournalCopy())
+            {
+                errors.reject(ERROR_MSG, "DOIs actions are only allowed on experiments in the Panorama Public project");
+                return;
+            }
+        }
+
+        @Override
+        public boolean handlePost(DoiForm form, BindException errors)
+        {
+            if(errors.getErrorCount() > 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                return doPost(form, errors);
+            }
+            catch (DataCiteException e)
+            {
+                _exception = e;
+                LOG.error(e);
+                return false;
+            }
+        }
+
+        @Override
+        public @NotNull URLHelper getSuccessURL(DoiForm form)
+        {
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(DoiForm form)
+        {
+            return new HtmlView(
+                    DIV(getSuccessMessage(),
+                            BR(),
+                            DIV(new Link.LinkBuilder("Back to folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
+        }
+
+        protected abstract DOM.Renderable getSuccessMessage();
+        protected abstract boolean doPost(DoiForm form, BindException errors) throws DataCiteException;
+
+        public ModelAndView getFailView(DoiForm form, BindException errors)
+        {
+            if(_exception != null)
+            {
+                return new HtmlView(_exception.getHtmlString());
+            }
+            else
+            {
+                return super.getFailView(form, errors);
+            }
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public class AssignDoiAction extends DoiAction
+    {
+        private Doi _doi;
+
+        @Override
+        public ModelAndView getConfirmView(DoiForm form, BindException errors)
+        {
+            return new HtmlView(DIV("Are you sure you want to assign a DOI with the DataCite ", SPAN(at(style, "font-weight:bold;color:red"), form.isTestMode() ? "Test" : "Live"), " API?"));
+        }
+
+        @Override
+        public void validateCommand(DoiForm form, Errors errors)
+        {
+            super.validateCommand(form, errors);
+            if(errors.getErrorCount() > 0)
+            {
+                return;
+            }
+            if(_expAnnot.hasDoi())
+            {
+                errors.reject(ERROR_MSG, "This data is already assigned a DOI: " + _expAnnot.getDoi());
+            }
+        }
+
+        @Override
+        protected HtmlString getSuccessMessage()
+        {
+            return HtmlString.of("DOI assigned: " + _expAnnot.getDoi() + "; State: " + _doi.getState() + "; Findable: " + _doi.isFindable());
+        }
+
+        @Override
+        public boolean doPost(DoiForm form, BindException errors) throws DataCiteException
+        {
+            _doi = DataCiteService.create(form.isTestMode());
+            _expAnnot.setDoi(_doi.getDoi());
+            ExperimentAnnotationsManager.updateDoi(_expAnnot);
+            return true;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class DeleteDoiAction extends DoiAction
+    {
+        private String _doi;
+        @Override
+        public ModelAndView getConfirmView(DoiForm form, BindException errors)
+        {
+            return new HtmlView(DIV("Are you sure you want to delete the DOI: " + _expAnnot.getDoi()));
+        }
+
+        @Override
+        public void validateCommand(DoiForm form, Errors errors)
+        {
+            super.validateCommand(form, errors);
+            if(errors.getErrorCount() > 0)
+            {
+                return;
+            }
+            if(!_expAnnot.hasDoi())
+            {
+                errors.reject(ERROR_MSG,"This data is not assigned a DOI");
+            }
+        }
+
+        @Override
+        protected HtmlString getSuccessMessage()
+        {
+            return HtmlString.of("DOI deleted: " + _doi);
+        }
+
+        @Override
+        public boolean doPost(DoiForm form, BindException errors) throws DataCiteException
+        {
+            _doi = _expAnnot.getDoi();
+            DataCiteService.delete(_expAnnot.getDoi());
+            _expAnnot.setDoi(null);
+            ExperimentAnnotationsManager.updateDoi(_expAnnot);
+            return true;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class PublishDoiAction extends DoiAction
+    {
+        private JournalExperiment _journalExperiment;
+        private DoiMetadata _metadata;
+        @Override
+        public ModelAndView getConfirmView(DoiForm form, BindException errors)
+        {
+            return new HtmlView(DIV("Are you sure you want to publish the DOI: " + _expAnnot.getDoi(), BR(), _metadata.getHtmlString()));
+        }
+
+        @Override
+        public void validateCommand(DoiForm form, Errors errors)
+        {
+            super.validateCommand(form, errors);
+            if(errors.getErrorCount() > 0)
+            {
+                return;
+            }
+            _journalExperiment = JournalManager.getRowForJournalCopy(_expAnnot);
+            if(_journalExperiment == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find a row in JournalExperiment for copied experiment " + _expAnnot.getId());
+            }
+            if(!_expAnnot.hasDoi())
+            {
+                errors.reject(ERROR_MSG,"This data is not assigned a DOI");
+            }
+            try
+            {
+                _metadata = DoiMetadata.from(_expAnnot);
+            }
+            catch (DataCiteException e)
+            {
+                errors.reject(ERROR_MSG, e.getMessage());
+            }
+        }
+
+        @Override
+        protected HtmlString getSuccessMessage()
+        {
+            return HtmlString.of("DOI published: " + _expAnnot.getDoi());
+        }
+
+        @Override
+        public boolean doPost(DoiForm form, BindException errors) throws DataCiteException
+        {
+            DataCiteService.publish(_expAnnot);
+            return true;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class UpdateDoiAction extends DoiAction
+    {
+        @Override
+        public void validateCommand(DoiForm form, Errors errors)
+        {
+            super.validateCommand(form, errors);
+            if(errors.getErrorCount() > 0)
+            {
+                return;
+            }
+            if(_expAnnot.getDoi() == null && StringUtils.isBlank(form.getDoi()))
+            {
+                errors.reject(ERROR_MSG,"Please enter a DOI");
+            }
+            if(_expAnnot.getDoi() != null && _expAnnot.getDoi().equals(form.getDoi()))
+            {
+                errors.reject(ERROR_MSG, "DOI entered is the same as the DOI already assigned to the experiment");
+            }
+        }
+
+        @Override
+        public ModelAndView getConfirmView(DoiForm form, BindException errors)
+        {
+            return _expAnnot.getDoi() != null ?
+                   new HtmlView(DIV("This experiment is assigned the DOI: " + _expAnnot.getDoi() + " Are you sure you want to" +
+                           (StringUtils.isBlank(form.getDoi()) ? " remove it?"
+                                   : " overwrite it with: " + form.getDoi() + "?"),
+                           BR(),
+                           SPAN(at(style, "color:red; font-weight:bold;"), (StringUtils.isBlank(form.getDoi()) ?
+                                   " The DOI " : " The old DOI"), " will NOT be deleted from DataCite.")))
+                    : new HtmlView(DIV("Are you sure you want to set the DOI for this experiment to: " + form.getDoi() + "?"));
+        }
+
+        @Override
+        protected HtmlString getSuccessMessage()
+        {
+            return HtmlString.of("DOI updated to: " + _expAnnot.getDoi());
+        }
+
+        @Override
+        public boolean doPost(DoiForm form, BindException errors)
+        {
+            // TODO: If there is a DOI in the form we should check if it is valid.
+            // All DOI related actions requires AdminOperationsPermission, so for now we assume that the admin knows what they are doing.
+            _expAnnot.setDoi(StringUtils.isBlank(form.getDoi()) ? null : form.getDoi());
+            ExperimentAnnotationsManager.updateDoi(_expAnnot);
+
+            return true;
+        }
+    }
+
+    public static class DoiForm extends ExperimentIdForm
+    {
+        private boolean _testMode;
+        private String _method;
+
+        private String _doi;
+
+        public boolean isTestMode()
+        {
+            return _testMode;
+        }
+
+        public void setTestMode(boolean testMode)
+        {
+            _testMode = testMode;
+        }
+
+        public String getMethod()
+        {
+            return _method;
+        }
+
+        public void setMethod(String method)
+        {
+            _method = method;
+        }
+
+        public String getDoi()
+        {
+            return _doi;
+        }
+
+        public void setDoi(String doi)
+        {
+            _doi = doi;
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // END Actions for DataCite DOI assignment
+    // ------------------------------------------------------------------------
+
+    // ------------------------------------------------------------------------
     // BEGIN Experiment annotation actions
     // ------------------------------------------------------------------------
     private static final String ADD_SELECTED_RUNS = "addSelectedRuns";
@@ -3314,11 +3890,11 @@ public class PanoramaPublicController extends SpringActionController
 
 
             // Experiment details
-            ExperimentAnnotationsDetails exptDetails = new ExperimentAnnotationsDetails(getUser(), exptAnnotations, true);
-            JspView<ExperimentAnnotationsDetails> experimentDetailsView = new JspView<>("/org/labkey/panoramapublic/view/expannotations/experimentDetails.jsp", exptDetails);
-            VBox result = new VBox(experimentDetailsView);
+            TargetedMSExperimentWebPart experimentDetailsView = new TargetedMSExperimentWebPart(exptAnnotations, getViewContext(), true);
             experimentDetailsView.setFrame(WebPartView.FrameType.PORTAL);
             experimentDetailsView.setTitle(TargetedMSExperimentWebPart.WEB_PART_NAME);
+            VBox result = new VBox(experimentDetailsView);
+
 
             // List of runs in the experiment.
             PanoramaPublicRunListView runListView = PanoramaPublicRunListView.createView(getViewContext(), exptAnnotations);

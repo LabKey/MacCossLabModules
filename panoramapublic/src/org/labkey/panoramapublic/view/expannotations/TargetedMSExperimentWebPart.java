@@ -16,14 +16,11 @@
 package org.labkey.panoramapublic.view.expannotations;
 
 import org.labkey.api.data.Container;
-import org.labkey.api.data.SQLFragment;
-import org.labkey.api.data.TableInfo;
-import org.labkey.api.exp.api.ExperimentService;
-import org.labkey.api.query.FilteredTable;
-import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
+import org.labkey.api.view.NavTree;
 import org.labkey.api.view.VBox;
 import org.labkey.api.view.ViewContext;
 import org.labkey.panoramapublic.PanoramaPublicController;
@@ -41,10 +38,14 @@ public class TargetedMSExperimentWebPart extends VBox
 
     public TargetedMSExperimentWebPart(ViewContext portalCtx)
     {
+        this(ExperimentAnnotationsManager.getExperimentIncludesContainer(portalCtx.getContainer()), // TargetedMSExperiment in this container.
+                portalCtx, false);
+    }
+
+    public TargetedMSExperimentWebPart(ExperimentAnnotations expAnnotations, ViewContext portalCtx, boolean fullDetails)
+    {
         Container container = portalCtx.getContainer();
 
-        // Get an experiment that includes data in this container.
-        ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.getExperimentIncludesContainer(container);
         if(expAnnotations == null)
         {
             // There is no experiment defined in this container, or in a parent container that is configured
@@ -60,11 +61,18 @@ public class TargetedMSExperimentWebPart extends VBox
         else if(expAnnotations.getContainer().equals(container))
         {
             // There is already an experiment defined in this container.
-            PanoramaPublicController.ExperimentAnnotationsDetails experimentDetails = new PanoramaPublicController.ExperimentAnnotationsDetails(getViewContext().getUser(), expAnnotations, false);
+            PanoramaPublicController.ExperimentAnnotationsDetails experimentDetails = new PanoramaPublicController.ExperimentAnnotationsDetails(getViewContext().getUser(), expAnnotations, fullDetails);
             JspView<PanoramaPublicController.ExperimentAnnotationsDetails> view = new JspView<>("/org/labkey/panoramapublic/view/expannotations/experimentDetails.jsp", experimentDetails);
             addView(view);
             ActionURL url = PanoramaPublicController.getViewExperimentDetailsURL(expAnnotations.getId(), container);
             setTitleHref(url);
+            if (portalCtx.hasPermission(AdminOperationsPermission.class))
+            {
+                NavTree navTree = new NavTree();
+                navTree.addChild("ProteomeXchange", new ActionURL(PanoramaPublicController.GetPxActionsAction.class, container).addParameter("id", expAnnotations.getId()));
+                navTree.addChild("DOI", new ActionURL(PanoramaPublicController.DoiOptionsAction.class, container).addParameter("id", expAnnotations.getId()));
+                setNavMenu(navTree);
+            }
         }
         else
         {

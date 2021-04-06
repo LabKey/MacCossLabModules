@@ -54,6 +54,9 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     private boolean _assignPxId;
     private boolean _usePxTestDb = true;
 
+    private boolean _assignDoi;
+    private boolean _useDataCiteTestApi;
+
     private boolean _emailSubmitter;
     private List<String> _toEmailAddresses;
     private String _replyToAddress;
@@ -177,6 +180,18 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     }
 
     @Override
+    public boolean assignDoi()
+    {
+        return _assignDoi;
+    }
+
+    @Override
+    public boolean useDataCiteTestApi()
+    {
+        return _useDataCiteTestApi;
+    }
+
+    @Override
     public boolean emailSubmitter()
     {
         return _emailSubmitter;
@@ -213,6 +228,16 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     public void setUsePxTestDb(boolean usePxTestDb)
     {
         _usePxTestDb = usePxTestDb;
+    }
+
+    public void setAssignDoi(boolean assignDoi)
+    {
+        _assignDoi = assignDoi;
+    }
+
+    public void setUseDataCiteTestApi(boolean useDataCiteTestApi)
+    {
+        _useDataCiteTestApi = useDataCiteTestApi;
     }
 
     public void setEmailSubmitter(boolean emailSubmitter)

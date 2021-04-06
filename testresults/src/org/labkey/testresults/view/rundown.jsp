@@ -129,7 +129,7 @@
                             <%
                                 int passes =  run.getPassedtests();
                                 int failures = run.getFailedtests();
-                                int testmemoryleaks = run.getLeakedtests();
+                                int testmemoryleaks = run.getLeaks().length;
                                 int runStatus = 0; // -1 = unknown, 0 = good, 1 = warn, 2 = error
                                 int durationStatus = 0;
                                 int passStatus = 0;
@@ -172,7 +172,7 @@
                                         failStatus = 2;
                                         runStatus = 2;
                                     }
-                                    if (run.getTestmemoryleaks().length > 0) {
+                                    if (run.getLeaks().length > 0) {
                                         leakStatus = 2;
                                         runStatus = 2;
                                     }
@@ -260,7 +260,17 @@
                             <% for (RunDetail run : problemRuns) { %>
                             <td class="highlightrun highlighttd-<%=run.getId()%>" style="width: 60px; overflow: hidden; padding: 0;">
                                 <% if (problems.isFail(run, test)) { %><img src="<%=h(contextPath)%>/TestResults/img/fail.png"><% } %>
-                                <% if (problems.isLeak(run, test)) { %><img src="<%=h(contextPath)%>/TestResults/img/leak.png"><% } %>
+                                <%
+                                    boolean leakMem = problems.isMemoryLeak(run, test);
+                                    boolean leakHandle = problems.isHandleLeak(run, test);
+                                    String leakCssClass = "";
+                                    if (leakMem && leakHandle) leakCssClass = "matrix-leak-both";
+                                    else if (leakMem) leakCssClass = "matrix-leak-mem";
+                                    else if (leakHandle) leakCssClass = "matrix-leak-handle";
+                                    if (!leakCssClass.isEmpty()) {
+                                %>
+                                <img src="<%=h(contextPath)%>/TestResults/img/leak.png" class="<%=h(leakCssClass)%>">
+                                <% } %>
                                 <% if (problems.isHang(run, test)) { %><img src="<%=h(contextPath)%>/TestResults/img/hangicon.png"><% } %>
                             </td>
                             <% } %>
@@ -523,6 +533,14 @@ $(function() {
             alert("Failure removing run. Contact Yuval");
         }, "json");
     })
+
+    // tooltips for leaks in matrix
+    $(".matrix-leak-both").each(function() { $(this).attr("title", "Memory and handle leak"); });
+    $(".matrix-leak-both").tooltip();
+    $(".matrix-leak-mem").each(function() { $(this).attr("title", "Memory leak"); });
+    $(".matrix-leak-mem").tooltip();
+    $(".matrix-leak-handle").each(function() { $(this).attr("title", "Handle leak"); });
+    $(".matrix-leak-handle").tooltip();
 });
 </script>
 <script type="text/javascript">
