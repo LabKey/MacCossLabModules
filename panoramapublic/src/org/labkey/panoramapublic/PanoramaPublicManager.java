@@ -30,8 +30,10 @@ import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.User;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
+import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
+import org.labkey.panoramapublic.chromlib.ChromLibStateManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -88,27 +90,39 @@ public class PanoramaPublicManager
         return PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container, TargetedMSService.RAW_FILES_TAB);
     }
 
-    public static void makePanoramaExperimentalDataFolder(Container container, Container sourceContainer, User user)
+    public static void makePanoramaExperimentalDataFolder(Container container, User user)
     {
         Module targetedMSModule = ModuleLoader.getInstance().getModule(TargetedMSService.MODULE_NAME);
+        ModuleProperty moduleProperty = targetedMSModule.getModuleProperties().get(TargetedMSService.FOLDER_TYPE_PROP_NAME);
         if(container.getActiveModules().contains(targetedMSModule))
+        {
+            moduleProperty.saveValue(user, container, TargetedMSService.FolderType.Experiment.toString());
+        }
+    }
+
+    public static void makePanoramaLibraryFolder(Container container, Container sourceContainer, User user)
+    {
+        Module targetedMSModule = ModuleLoader.getInstance().getModule(TargetedMSService.MODULE_NAME);
+        if (container.getActiveModules().contains(targetedMSModule))
         {
             ModuleProperty moduleProperty = targetedMSModule.getModuleProperties().get(TargetedMSService.FOLDER_TYPE_PROP_NAME);
             String sourceValue = moduleProperty.getValueContainerSpecific(sourceContainer);
             String targetValue = moduleProperty.getValueContainerSpecific(container);
-            if(TargetedMSService.FolderType.Library.name().equals(sourceValue) || TargetedMSService.FolderType.LibraryProtein.name().equals(sourceValue))
+            if (TargetedMSService.FolderType.Library.name().equals(sourceValue) || TargetedMSService.FolderType.LibraryProtein.name().equals(sourceValue))
             {
-                PropertyManager.PropertyMap propMap = PropertyManager.getProperties(sourceContainer, "TargetedMS");
-                String versionStr = propMap.get("chromLibRevision");
-                if(null != versionStr)
+                PropertyManager.PropertyMap sourcePropMap = PropertyManager.getProperties(sourceContainer, "TargetedMS");
+                moduleProperty.saveValue(user, container, sourceValue);
+
+                String versionStr = sourcePropMap.get("chromLibRevision");
+                if (null != versionStr)
                 {
                     // int version = Integer.parseInt(versionStr);
-                    propMap = PropertyManager.getWritableProperties(container, "TargetedMS", true);
-                    propMap.put("chromLibRevision", versionStr);
-                    propMap.save();
+                    sourcePropMap = PropertyManager.getWritableProperties(container, "TargetedMS", true);
+                    sourcePropMap.put("chromLibRevision", versionStr);
+                    sourcePropMap.save();
 
                     Path chromLibDir = getChromLibDir(container);
-                    if(Files.exists(chromLibDir))
+                    if (Files.exists(chromLibDir))
                     {
                         try
                         {
@@ -119,15 +133,19 @@ public class PanoramaPublicManager
                                 }
                                 catch (IOException e)
                                 {
-                                    e.printStackTrace();
+                                    e.printStackTrace(); // TODO
                                 }
                             });
                         }
                         catch (IOException e)
                         {
-                            e.printStackTrace();
+                            e.printStackTrace(); // TODO
                         }
                     }
+
+                    Path chromLibExportFile = chromLibDir.resolve(FileUtil.makeFileNameWithTimestamp("chrom_lib_export_" + sourceContainer.getRowId(), "tsv"));
+                    ChromLibStateManager libManager = new ChromLibStateManager();
+                    libManager.exportLibState(sourceContainer, chromLibExportFile.toFile());
                 }
             }
 

@@ -248,10 +248,10 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             SecurityPolicyManager.savePolicy(newPolicy);
 
-            // We are only allowing 'Experimental Data' type folders to be submitted to Panorama Public.
-            // If this changes we will have to get the value of the FOLDER_TYPE_PROPERTY on the source container and set it on the target container.
-            log.info("Setting the TargetedMS folder type to 'Experimental Data'");
-            updateFolderType(target, sourceExperiment.getContainer(), user);
+            if(!updateFolderType(target, sourceExperiment.getContainer(), user, log))
+            {
+                throw new PipelineJobException("Unable to update the folder type.");
+            }
 
             FileContentService service = FileContentService.get();
             if(service != null)
@@ -495,12 +495,39 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return true;
     }
 
-    private void updateFolderType(Container c, Container sourceContainer, User user)
+    private boolean updateFolderType(Container c, Container sourceContainer, User user, Logger log)
     {
-        Set<Container> children = ContainerManager.getAllChildren(c); // Includes parent
+        TargetedMSService svc = TargetedMSService.get();
+        updateFolderType(c, sourceContainer, user, svc, log);
+
+        List<Container> children = ContainerManager.getChildren(c);
         for(Container child: children)
         {
-            PanoramaPublicManager.makePanoramaExperimentalDataFolder(child, sourceContainer, user);
+            Container source = ContainerManager.getChild(sourceContainer, child.getName());
+            if(source == null)
+            {
+                log.error("Could not find the source container for " + child.getPath());
+                return false;
+            }
+            if(!updateFolderType(child, sourceContainer, user, log))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void updateFolderType(Container c, Container sourceContainer, User user, TargetedMSService svc, Logger log)
+    {
+        TargetedMSService.FolderType folderType = svc.getFolderType(c);
+        if(TargetedMSService.FolderType.Experiment.equals(folderType))
+        {
+            log.info("Setting the TargetedMS folder type to 'Experimental Data' for container " + c.getPath());
+            PanoramaPublicManager.makePanoramaExperimentalDataFolder(c, user);
+        }
+        else if(TargetedMSService.FolderType.Library.equals(folderType) || TargetedMSService.FolderType.LibraryProtein.equals(folderType))
+        {
+            PanoramaPublicManager.makePanoramaLibraryFolder(c, sourceContainer, user);
         }
     }
 

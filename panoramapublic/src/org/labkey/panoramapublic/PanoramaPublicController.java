@@ -158,6 +158,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.labkey.api.targetedms.TargetedMSService.FolderType.*;
 import static org.labkey.api.util.DOM.Attribute.action;
 import static org.labkey.api.util.DOM.Attribute.method;
 import static org.labkey.api.util.DOM.Attribute.name;
@@ -340,7 +341,7 @@ public class PanoramaPublicController extends SpringActionController
                 // Make this an "Experiment data" folder.
                 Module targetedMSModule = ModuleLoader.getInstance().getModule(TargetedMSService.MODULE_NAME);
                 ModuleProperty moduleProperty = targetedMSModule.getModuleProperties().get(TargetedMSService.FOLDER_TYPE_PROP_NAME);
-                moduleProperty.saveValue(getUser(), container, TargetedMSService.FolderType.Experiment.toString());
+                moduleProperty.saveValue(getUser(), container, Experiment.toString());
                 // Display only the "Targeted MS Experiment List" webpart.
                 Portal.WebPart webPart = Portal.getPortalPart(TargetedMSExperimentsWebPart.WEB_PART_NAME).createWebPart();
                 List<Portal.WebPart> newWebParts = Collections.singletonList(webPart);
@@ -1469,7 +1470,7 @@ public class PanoramaPublicController extends SpringActionController
             {
                 // Cannot publish if this is not an "Experimental data" folder.
                 TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(_experimentAnnotations.getContainer());
-                if (folderType != TargetedMSService.FolderType.Experiment)
+                if (!isSupportedFolderType(folderType))
                 {
                     errors.reject(ERROR_MSG, "Only Targeted MS folders of type \"Experimental data\" can be submitted to " + _journal.getName() + ".");
                     return new SimpleErrorView(errors);
@@ -1557,6 +1558,13 @@ public class PanoramaPublicController extends SpringActionController
             if (_experimentAnnotations == null)
             {
                 errors.reject(ERROR_MSG, "No experiment found for Id " + form.getId());
+                return false;
+            }
+
+            _journal = form.lookupJournal();
+            if(_journal == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find a journal with Id " + form.getJournalId());
                 return false;
             }
 
@@ -3964,7 +3972,7 @@ public class PanoramaPublicController extends SpringActionController
 
             Container c = _experimentAnnotations.getContainer();
             TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(c);
-            if(folderType == TargetedMSService.FolderType.Experiment)
+            if(isSupportedFolderType(folderType))
             {
                 _lastPublishedRecord = JournalManager.getLastPublishedRecord(_experimentAnnotations.getId());
 
@@ -4014,6 +4022,11 @@ public class PanoramaPublicController extends SpringActionController
         {
             _lastPublishedRecord = lastPublishedRecord;
         }
+    }
+
+    private static boolean isSupportedFolderType(TargetedMSService.FolderType folderType)
+    {
+        return folderType == Experiment || folderType == Library || folderType == LibraryProtein;
     }
 
     public static class ViewExperimentAnnotationsForm
