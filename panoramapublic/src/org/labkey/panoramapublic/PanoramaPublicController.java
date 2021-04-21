@@ -30,6 +30,7 @@ import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabKeyError;
 import org.labkey.api.action.ReadOnlyApiAction;
+import org.labkey.api.action.ReturnUrlForm;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleStreamAction;
 import org.labkey.api.action.SimpleViewAction;
@@ -157,6 +158,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.labkey.api.util.DOM.Attribute.action;
 import static org.labkey.api.util.DOM.Attribute.method;
@@ -172,6 +174,7 @@ import static org.labkey.api.util.DOM.LK.CHECKBOX;
 import static org.labkey.api.util.DOM.LK.ERRORS;
 import static org.labkey.api.util.DOM.LK.FORM;
 import static org.labkey.api.util.DOM.SPAN;
+import static org.labkey.api.util.DOM.UL;
 import static org.labkey.api.util.DOM.at;
 import static org.labkey.api.util.DOM.cl;
 import static org.labkey.api.util.DOM.createHtmlFragment;
@@ -1462,6 +1465,36 @@ public class PanoramaPublicController extends SpringActionController
 
             if(!reshow)
             {
+                if(form.doSubfolderCheck())
+                {
+                    List<Container> allSubfolders = getAllSubfolders(_experimentAnnotations.getContainer());
+                    List<Container> hiddenFolders = getHiddenFolders(allSubfolders, getUser());
+                    if(!_experimentAnnotations.isIncludeSubfolders() && allSubfolders.size() > 0)
+                    {
+                        // Experiment is not configured to include subfolders but there are subfolders.
+                        ActionURL skipSubfolderCheckUrl = getViewContext().getActionURL().clone();
+                        skipSubfolderCheckUrl.addParameter("doSubfolderCheck", "false");
+                        if(hiddenFolders.size() == 0)
+                        {
+                            // Return a view to make the user confirm their intention to include / exclude subfolders from the experiment.
+                            return getConfirmIncludeSubfoldersView(_experimentAnnotations, allSubfolders, skipSubfolderCheckUrl);
+                        }
+                        else
+                        {
+                            // There are subfolders where the user does not have read permissions. Subfolders can only be included if the
+                            // user has read permissions in all of them. Return a view that lets them with go back to the folder home page
+                            // or continue with the submission without including subfolders.
+                            return getNoPermsInSubfoldersView(_experimentAnnotations, hiddenFolders, skipSubfolderCheckUrl);
+                        }
+                    }
+                    else if(_experimentAnnotations.isIncludeSubfolders() && hiddenFolders.size() > 0)
+                    {
+                        // Experiment is already configured to include subfolders but there are subfolders where this user does
+                        // not have read permissions.
+                        return getExperimentIncludesHiddenFoldersView(_experimentAnnotations, hiddenFolders);
+                    }
+                }
+
                 populateForm(form, _experimentAnnotations);
             }
 
@@ -1515,6 +1548,61 @@ public class PanoramaPublicController extends SpringActionController
             {
                 return getPublishFormView(form, _experimentAnnotations, errors);
             }
+        }
+
+        private HtmlView getConfirmIncludeSubfoldersView(ExperimentAnnotations expAnnotations, List<Container> allSubfolders, ActionURL skipSubfolderCheckUrl)
+        {
+            ActionURL includeSubfoldersUrl = new ActionURL(IncludeSubFoldersInExperimentAction.class, _experimentAnnotations.getContainer())
+                    .addParameter("id", expAnnotations.getId())
+                    .addReturnURL(skipSubfolderCheckUrl);
+            HtmlView confirmView = new HtmlView(DIV("Would you like to include data from the following subfolders in the experiment?",
+                    getSubfolderListHtml(expAnnotations.getContainer(), allSubfolders),
+                    new Button.ButtonBuilder("Include Subfolders and Continue").href(includeSubfoldersUrl).usePost().build(),
+                    HtmlString.NBSP,
+                    getSkipSubfoldersAndContinueButton(skipSubfolderCheckUrl)));
+
+            confirmView.setTitle("Confirm Include Subfolders");
+            confirmView.setFrame(WebPartView.FrameType.PORTAL);
+            return confirmView;
+        }
+
+        private HtmlView getNoPermsInSubfoldersView(ExperimentAnnotations expAnnotations, List<Container> hiddenSubfolders,  ActionURL skipSubfolderCheckUrl)
+        {
+            return new HtmlView(DIV("This folder has the following subfolders in which you do not have read permissions: ",
+                            getSubfolderListHtml(expAnnotations.getContainer(), hiddenSubfolders),
+                            "If you want to include data from subfolders in this experiment " +
+                                    "please contact the folder or project administrator to give you the required permissions. " +
+                                    "Otherwise, click the \"Skip Subfolders And Continue\" button below.",
+                            BR(),
+                            DIV(at(style, "margin-top:10px;"),
+                                getBackToFolderButton(expAnnotations.getContainer()),
+                                HtmlString.NBSP,
+                                getSkipSubfoldersAndContinueButton(skipSubfolderCheckUrl))));
+        }
+
+        private ModelAndView getExperimentIncludesHiddenFoldersView(ExperimentAnnotations expAnnotations, List<Container> hiddenSubfolders)
+        {
+            return new HtmlView(DIV("This experiment is configured to include subfolders but you do not have read permissions in the following folders:",
+                    getSubfolderListHtml(expAnnotations.getContainer(), hiddenSubfolders),
+                    "Read permissions are required in all subfolders to include data from subfolders in a submission request. " +
+                            "Please contact the folder or project administrator to give you the required permissions " +
+                            " or exclude subfolders from the experiment before submitting.",
+                    BR(),
+                    DIV(at(style, "margin-top:10px;"), getBackToFolderButton(expAnnotations.getContainer()),
+                    HtmlString.NBSP,
+                    getExcludeSubfoldersButton(expAnnotations).build())));
+        }
+
+        @NotNull
+        private Button getBackToFolderButton(Container container)
+        {
+            return new Button.ButtonBuilder("Back to Folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container)).build();
+        }
+
+        @NotNull
+        private Button getSkipSubfoldersAndContinueButton(ActionURL skipSubfolderCheckUrl)
+        {
+            return new Button.ButtonBuilder("Skip Subfolders and Continue").href(skipSubfolderCheckUrl).build();
         }
 
         private HtmlView getAccountInfoIncompleteView(BindException errors)
@@ -1833,6 +1921,35 @@ public class PanoramaPublicController extends SpringActionController
         {
             root.addChild("Submit Experiment");
         }
+    }
+
+    @NotNull
+    private static List<Container> getAllSubfolders(Container parent)
+    {
+        return ContainerManager.getAllChildren(parent).stream().filter(child -> !child.equals(parent)).collect(Collectors.toList());
+    }
+    
+    // Returns a list of folders from the given folders where the user does not have read permissions
+    @NotNull
+    private static List<Container> getHiddenFolders(List<Container> folders, User user)
+    {
+        return folders.stream().filter(c -> !c.hasPermission(user, ReadPermission.class)).collect(Collectors.toList());
+    }
+
+    private static DOM.Renderable getSubfolderListHtml(Container parent, List<Container> children)
+    {
+        return UL(children.stream()
+                .filter(child -> !child.equals(parent))
+                .map(child -> DOM.LI(new Link.LinkBuilder(parent.getParsedPath().relativize(child.getParsedPath()).toString())
+                        .href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(child))
+                        .clearClasses())));
+    }
+
+    private static Button.ButtonBuilder getExcludeSubfoldersButton(ExperimentAnnotations exptAnnotations)
+    {
+        return new Button.ButtonBuilder("Exclude Subfolders")
+                .href(new ActionURL(ExcludeSubFoldersInExperimentAction.class, exptAnnotations.getContainer()).addParameter("id", exptAnnotations.getId()))
+                .usePost();
     }
 
     private static final int RANDOM_URL_SIZE = 6;
@@ -2693,10 +2810,16 @@ public class PanoramaPublicController extends SpringActionController
     {
         private boolean _notSubmitting;
         private SubmissionDataStatus _validationStatus;
+        private boolean _doSubfolderCheck = true;
 
         public boolean isNotSubmitting()
         {
             return _notSubmitting;
+        }
+
+        public boolean isSubmitting()
+        {
+            return !_notSubmitting;
         }
 
         public void setNotSubmitting(boolean notSubmitting)
@@ -2712,6 +2835,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setValidationStatus(SubmissionDataStatus validationStatus)
         {
             _validationStatus = validationStatus;
+        }
+
+        public boolean doSubfolderCheck()
+        {
+            return _doSubfolderCheck;
+        }
+
+        public void setDoSubfolderCheck(boolean doSubfolderCheck)
+        {
+            _doSubfolderCheck = doSubfolderCheck;
         }
     }
     // ------------------------------------------------------------------------
@@ -3895,6 +4028,41 @@ public class PanoramaPublicController extends SpringActionController
             experimentDetailsView.setTitle(TargetedMSExperimentWebPart.WEB_PART_NAME);
             VBox result = new VBox(experimentDetailsView);
 
+            // Show a list of subfolders, if any
+            List<Container> children = getAllSubfolders(exptAnnotations.getContainer());
+            HtmlView subfoldersView = null;
+            if(exptAnnotations.isIncludeSubfolders())
+            {
+                if(children.size() == 0)
+                {
+                   subfoldersView = new HtmlView(DIV(cl("labkey-error"),"Experiment is configured to include subfolders but no subfolders were found.",
+                           BR(),
+                           getExcludeSubfoldersButton(exptAnnotations).build()));
+                }
+                else
+                {
+                    subfoldersView = new HtmlView(DIV("This experiment includes data in the following subfolders:",
+                            getSubfolderListHtml(exptAnnotations.getContainer(), children),
+                            getExcludeSubfoldersButton(exptAnnotations).build()));
+                }
+            }
+            else if(children.size() > 0)
+            {
+                subfoldersView = new HtmlView(DIV("This folder contains " + children.size() + " subfolders. " +
+                                "Data from the subfolders is not included in this experiment. Click the button below to include subfolders.",
+                    BR(),
+                    new Button.ButtonBuilder("Include Subfolders")
+                            .usePost()
+                            .href(new ActionURL(IncludeSubFoldersInExperimentAction.class, getContainer()).addParameter("id", exptAnnotations.getId()))
+                            .build()));
+                
+            }
+            if(subfoldersView != null)
+            {
+                subfoldersView.setTitle("Subfolders");
+                subfoldersView.setFrame(WebPartView.FrameType.PORTAL);
+                result.addView(subfoldersView);
+            }
 
             // List of runs in the experiment.
             PanoramaPublicRunListView runListView = PanoramaPublicRunListView.createView(getViewContext(), exptAnnotations);
@@ -4292,59 +4460,91 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(InsertPermission.class)
-    public class IncludeSubFoldersInExperimentAction extends FormHandlerAction<ExperimentForm>
+    public static class IncludeSubFoldersInExperimentAction extends FormHandlerAction<ExperimentForm>
     {
         private ExperimentAnnotations _expAnnot;
+        private ActionURL _returnPublishExptUrl;
 
         @Override
         public void validateCommand(ExperimentForm form, Errors errors)
-        {
-        }
-
-        @Override
-        public boolean handlePost(ExperimentForm form, BindException errors)
         {
             _expAnnot = form.lookupExperiment();
             if(_expAnnot == null)
             {
                 errors.reject(ERROR_MSG, "Failed to lookup experiment annotations with ID " + form.getId());
-                return false;
+                return;
             }
 
             ExpExperiment experiment = _expAnnot.getExperiment();
             if(experiment == null)
             {
                 errors.reject(ERROR_MSG, "Failed to lookup base experiment for experimentAnnotations with ID " + _expAnnot.getTitle());
-                return false;
+                return;
             }
 
             ensureCorrectContainer(getContainer(), experiment.getContainer(), getViewContext());
 
-            if(!experiment.getContainer().hasPermission(getUser(), InsertPermission.class))
-            {
-                errors.reject(ERROR_MSG, "User does not have permissions to perform the requested action.");
-                return false;
-            }
-
-            if(ExperimentAnnotationsManager.hasExperimentsInSubfolders(_expAnnot.getContainer(), getUser()))
+            if (ExperimentAnnotationsManager.hasExperimentsInSubfolders(_expAnnot.getContainer(), getUser()))
             {
                 errors.reject(ERROR_MSG, "At least one of the subfolders contains an experiment. Cannot add subfolder data to this experiment.");
-                return false;
+                return;
             }
 
+            List<Container> allSubfolders = getAllSubfolders(_expAnnot.getContainer());
+            if (allSubfolders.size() == 0)
+            {
+                errors.reject(ERROR_MSG, "No subfolders were found.");
+                return;
+            }
+
+            List<Container> hiddenSubfolders = getHiddenFolders(allSubfolders, getUser());
+            if (hiddenSubfolders.size() > 0)
+            {
+                errors.reject(ERROR_MSG, "User needs read permissions in all the subfolders to be able to include them in the experiment.");
+            }
+
+            ActionURL returnUrl = form.getReturnActionURL();
+            if (returnUrl != null)
+            {
+                String action = returnUrl.getAction();
+                if(SpringActionController.getActionName(PublishExperimentAction.class).equals(action) ||
+                        SpringActionController.getActionName(RepublishJournalExperimentAction.class).equals(action) ||
+                        SpringActionController.getActionName(UpdateJournalExperimentAction.class).equals(action))
+                _returnPublishExptUrl = returnUrl;
+            }
+        }
+
+        @Override
+        public boolean handlePost(ExperimentForm form, BindException errors)
+        {
             ExperimentAnnotationsManager.includeSubfoldersInExperiment(_expAnnot, getUser());
+
+            // Add the Subfolders webpart if it is not already there
+            String webpartName = "Subfolders";
+            List<Portal.WebPart> parts = Portal.getParts(_expAnnot.getContainer(), DefaultFolderType.DEFAULT_DASHBOARD);
+            boolean hasSubfolderPart = parts.stream().anyMatch(p -> webpartName.equals(p.getName()));
+
+            if(!hasSubfolderPart)
+            {
+                WebPartFactory webPartFactory = Portal.getPortalPart(webpartName);
+                if(webPartFactory != null)
+                {
+                    Portal.addPart(_expAnnot.getContainer(), DefaultFolderType.DEFAULT_DASHBOARD, webPartFactory, WebPartFactory.LOCATION_BODY);
+                }
+            }
+
             return true;
         }
 
         @Override
         public ActionURL getSuccessURL(ExperimentForm form)
         {
-            return getViewExperimentDetailsURL(_expAnnot.getId(), getContainer());
+            return _returnPublishExptUrl != null ? _returnPublishExptUrl : getViewExperimentDetailsURL(_expAnnot.getId(), _expAnnot.getContainer());
         }
     }
 
     @RequiresPermission(InsertPermission.class)
-    public class ExcludeSubFoldersInExperimentAction extends FormHandlerAction<ExperimentForm>
+    public static class ExcludeSubFoldersInExperimentAction extends FormHandlerAction<ExperimentForm>
     {
         private ExperimentAnnotations _expAnnot;
 
@@ -4390,7 +4590,7 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    public static class ExperimentForm
+    public static class ExperimentForm extends ReturnUrlForm
     {
         private Integer _id;
 

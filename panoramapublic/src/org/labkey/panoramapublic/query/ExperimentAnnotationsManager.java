@@ -34,7 +34,7 @@ import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
-import org.labkey.api.security.permissions.InsertPermission;
+import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.GUID;
@@ -162,7 +162,7 @@ public class ExperimentAnnotationsManager
         // Get all the runs contained in the folder and its subfolders.
         List<ExpRun> runs = new ArrayList<>();
         // 'children' includes the root container.
-        List<Container> children = ContainerManager.getAllChildren(experiment.getContainer(), user, InsertPermission.class);
+        List<Container> children = ContainerManager.getAllChildren(experiment.getContainer(), user, ReadPermission.class);
         for(Container child: children)
         {
             runs.addAll(expService.getExpRuns(child, null, null));
