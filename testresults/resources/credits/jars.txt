@@ -1,4 +1,4 @@
 {table}
-Filename|Component|Version|Source|License|Purpose
-commons-fileupload-1.3.1.jar|Commons File Upload|1.3.1|{link:Apache|http://jakarta.apache.org/commons/fileupload/}|{link:Apache 2.0|http://www.apache.org/licenses/LICENSE-2.0}|Parses HTTP multipart/form-data POSTs
+Filename|Component|Source|License|Purpose
+commons-fileupload-1.4.jar|Commons File Upload|{link:Apache|http://jakarta.apache.org/commons/fileupload/}|{link:Apache 2.0|http://www.apache.org/licenses/LICENSE-2.0}|Parses HTTP multipart/form-data POSTs
 {table}
