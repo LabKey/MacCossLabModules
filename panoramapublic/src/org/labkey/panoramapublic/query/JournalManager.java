@@ -269,7 +269,7 @@ public class JournalManager
             // If the user is not the one that created this shortUrl (e.g. the experiment is being resubmitted by a different lab member)
             // then we need to add this user as an editor to the record's SecurityPolicy.
             MutableSecurityPolicy policy = new MutableSecurityPolicy(SecurityPolicyManager.getPolicy(shortAccessUrlRecord));
-            if (!policy.hasPermission(user, UpdatePermission.class))
+            if (!policy.getOwnPermissions(user).contains(UpdatePermission.class))
             {
                 policy.addRoleAssignment(user, EditorRole.class);
                 SecurityPolicyManager.savePolicy(policy);
@@ -345,7 +345,7 @@ public class JournalManager
     private static void addPermission(Container folder, UserPrincipal journalGroup)
     {
         SecurityPolicy oldPolicy = folder.getPolicy();
-        if(oldPolicy.hasPermission(journalGroup, FolderExportPermission.class))
+        if (oldPolicy.getOwnPermissions(journalGroup).contains(FolderExportPermission.class))
             return;
         MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(folder, oldPolicy);
 
@@ -380,7 +380,7 @@ public class JournalManager
     private static void removePermission(Container folder, UserPrincipal journalGroup)
     {
         SecurityPolicy oldPolicy = folder.getPolicy();
-        if(!oldPolicy.hasPermission(journalGroup, FolderExportPermission.class))
+        if (!oldPolicy.getOwnPermissions(journalGroup).contains(FolderExportPermission.class))
             return;
         List<Role> roles = oldPolicy.getAssignedRoles(journalGroup);
 
