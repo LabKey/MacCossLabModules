@@ -119,12 +119,12 @@ public class LincsModule extends SpringModule
         // add a container listener so we'll know when our container is deleted:
         ContainerManager.addContainerListener(new LincsContainerListener());
 
-        DocImportListenter docImportListenter = new DocImportListenter();
+        DocImportListener docImportListener = new DocImportListener();
         ExperimentService service = ExperimentService.get();
-        service.addExperimentListener(docImportListenter);
+        service.addExperimentListener(docImportListener);
 
         TargetedMSService tmsService = TargetedMSService.get();
-        tmsService.registerSkylineDocumentImportListener(docImportListenter);
+        tmsService.registerSkylineDocumentImportListener(docImportListener);
 
         AdminLinkManager.getInstance().addListener((adminNavTree, container, user) -> {
             if (container.hasPermission(user, AdminPermission.class) && container.getActiveModules().contains(LincsModule.this))
