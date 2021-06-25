@@ -32,7 +32,7 @@ public class DocImportListener implements ExperimentListener, SkylineDocumentImp
     private static Logger _log = LogManager.getLogger(DocImportListener.class);
 
     @Override
-    public void beforeRunDelete(ExpProtocol protocol, ExpRun run)
+    public void beforeRunDelete(ExpProtocol protocol, ExpRun run, User user)
     {
         Container c = run.getContainer();
         // Check if the LINCS module is enabled.
