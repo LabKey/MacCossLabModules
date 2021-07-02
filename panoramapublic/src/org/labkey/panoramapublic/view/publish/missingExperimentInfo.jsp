@@ -27,6 +27,7 @@
 <%@ page import="java.util.Map" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
+<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -79,7 +80,7 @@
         <%=h(continueSubmissionText)%> <br><br>
     <% } %>
     The following information is required for a "complete" ProteomeXchange submission. <span style="margin-left:10px;">
-    <% if(!bean.isNotSubmitting()) {%> <%=link(continueSubmissionText).onClick("submitForm();")%></span> <% } %>
+    <% if(bean.isSubmitting()) {%> <%=button(continueSubmissionText).onClick("submitForm();")%></span> <% } %>
 
     <% if(status.hasMissingMetadata()) { %>
     <div style="margin-top:10px;margin-bottom:20px;">
@@ -218,7 +219,9 @@
         <%=button("Upload Library Source Data").href(rawFilesUrl).build()%> <span>(Drag and drop to the files browser in the Raw Data tab to upload files)</span>
     </div>
     <%}%>
-
+<div style="margin-top:30px;">
+    <%=button("Cancel").href(urlProvider(ProjectUrls.class).getBeginURL(getContainer())).build()%>
+</div>
 </div>
 <div id="publishExperimentForm"></div>
 <script type="text/javascript">
@@ -256,6 +259,11 @@
                     xtype: 'hidden',
                     name: 'incompletePxSubmission',
                     value: <%=doIncompletePxSubmission%>,
+                },
+                {
+                    xtype: 'hidden',
+                    name: 'doSubfolderCheck',
+                    value: <%=bean.doSubfolderCheck()%>
                 }
             ]
         });

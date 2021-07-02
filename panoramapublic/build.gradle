@@ -1,4 +1,5 @@
 import org.labkey.gradle.util.BuildUtils;
+import org.labkey.gradle.util.ExternalDependency;
 
 plugins {
     id 'org.labkey.build.module'
@@ -6,7 +7,18 @@ plugins {
 
 dependencies {
     implementation "com.sun.mail:jakarta.mail:${javaMailVersion}"
-    external "org.apache.httpcomponents:httpmime:${httpmimeVersion}"
+    BuildUtils.addExternalDependency(
+            project,
+            new ExternalDependency(
+                    "org.apache.httpcomponents:httpmime:${httpmimeVersion}",
+                    "Apache HTTP Mime",
+                    "Apache",
+                    "http://hc.apache.org/httpcomponents-client-ga",
+                    ExternalDependency.APACHE_2_LICENSE_NAME,
+                    ExternalDependency.APACHE_2_LICENSE_URL,
+                    "HTTP client for requests of remote servers"
+            )
+    )
     BuildUtils.addLabKeyDependency(project: project, config: "implementation", depProjectPath:  BuildUtils.getCommonAssayModuleProjectPath(project.gradle, "ms2"), depProjectConfig: "apiJarFile")
     BuildUtils.addLabKeyDependency(project: project, config: "jspImplementation", depProjectPath: BuildUtils.getCommonAssayModuleProjectPath(project.gradle, "ms2"), depProjectConfig: "apiJarFile")
     BuildUtils.addLabKeyDependency(project: project, config: "modules", depProjectPath: BuildUtils.getCommonAssayModuleProjectPath(project.gradle, "ms2"), depProjectConfig: "published", depExtension: "module")

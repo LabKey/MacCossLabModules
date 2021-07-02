@@ -27,12 +27,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
-public class DocImportListenter implements ExperimentListener, SkylineDocumentImportListener
+public class DocImportListener implements ExperimentListener, SkylineDocumentImportListener
 {
-    private static Logger _log = LogManager.getLogger(DocImportListenter.class);
+    private static Logger _log = LogManager.getLogger(DocImportListener.class);
 
     @Override
-    public void beforeRunDelete(ExpProtocol protocol, ExpRun run)
+    public void beforeRunDelete(ExpProtocol protocol, ExpRun run, User user)
     {
         Container c = run.getContainer();
         // Check if the LINCS module is enabled.

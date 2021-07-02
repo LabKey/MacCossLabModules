@@ -501,7 +501,7 @@ public class ExperimentAnnotations
     public boolean isPublic()
     {
         // If the container where this experiment lives is readable to site:guests then the data is public.
-        return getContainer().getPolicy().hasPermissions(SecurityManager.getGroup(Group.groupGuests), ReadPermission.class);
+        return getContainer().hasPermission(SecurityManager.getGroup(Group.groupGuests), ReadPermission.class);
     }
 
     public DataLicense getDataLicense()

@@ -170,6 +170,11 @@
                 },
                 {
                     xtype: 'hidden',
+                    name: 'doSubfolderCheck',
+                    value: <%=bean.getForm().doSubfolderCheck()%>
+                },
+                {
+                    xtype: 'hidden',
                     name: 'dataValidated',
                     value: <%=bean.getForm().isDataValidated()%>
                 },
