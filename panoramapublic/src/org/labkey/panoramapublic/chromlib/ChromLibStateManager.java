@@ -12,6 +12,7 @@ import org.labkey.api.targetedms.IPeptideGroup;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.writer.PrintWriters;
+import org.postgresql.PGRefCursorResultSet;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -34,12 +35,14 @@ public class ChromLibStateManager
             return;
         }
 
+//        IPeptideGroup pepGrp = null;
+//        IGeneralPrecursor precursor = null;
         try(PrintWriter writer = PrintWriters.getPrintWriter(file))
         {
-            List<String> values = List.of("FileName", "Representative_Run",
-                    pepGrp.getLabel(), (pepGrp.getSequenceId() == null ? "" : String.valueOf(pepGrp.getSequenceId())), pepGrp.getRepresentativeDataState().toString(),
-                    String.valueOf(precursor.getMz()), String.valueOf(precursor.getCharge()), precursor.getRepresentativeDataState().toString());
-            writer.write(StringUtils.join(values, "\t"));
+//            List<String> values = List.of("FileName", "Representative_Run",
+//                    pepGrp.getLabel(), (pepGrp.getSequenceId() == null ? "" : String.valueOf(pepGrp.getSequenceId())), pepGrp.getRepresentativeDataState().toString(),
+//                    String.valueOf(precursor.getMz()), String.valueOf(precursor.getCharge()), precursor.getRepresentativeDataState().toString());
+//            writer.write(StringUtils.join(values, "\t"));
             // Get a list of runs in the folder
             List<ITargetedMSRun> runs = svc.getRuns(container);
             for (ITargetedMSRun run : runs)
