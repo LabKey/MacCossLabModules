@@ -56,6 +56,7 @@ import org.labkey.api.view.Portal;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicNotification;
+import org.labkey.panoramapublic.chromlib.ChromLibStateException;
 import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.datacite.Doi;
@@ -498,18 +499,21 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     private boolean updateFolderType(Container c, Container sourceContainer, User user, Logger log)
     {
         TargetedMSService svc = TargetedMSService.get();
-        updateFolderType(c, sourceContainer, user, svc, log);
+        if (!updateFolderType(c, sourceContainer, user, svc, log))
+        {
+            return false;
+        }
 
         List<Container> children = ContainerManager.getChildren(c);
-        for(Container child: children)
+        for (Container child: children)
         {
             Container source = ContainerManager.getChild(sourceContainer, child.getName());
-            if(source == null)
+            if (source == null)
             {
                 log.error("Could not find the source container for " + child.getPath());
                 return false;
             }
-            if(!updateFolderType(child, sourceContainer, user, log))
+            if (!updateFolderType(child, sourceContainer, user, log))
             {
                 return false;
             }
@@ -517,18 +521,27 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return true;
     }
 
-    private void updateFolderType(Container c, Container sourceContainer, User user, TargetedMSService svc, Logger log)
+    private boolean updateFolderType(Container c, Container sourceContainer, User user, TargetedMSService svc, Logger log)
     {
-        TargetedMSService.FolderType folderType = svc.getFolderType(c);
-        if(TargetedMSService.FolderType.Experiment.equals(folderType))
+        TargetedMSService.FolderType folderType = svc.getFolderType(sourceContainer);
+        if (TargetedMSService.FolderType.Experiment.equals(folderType))
         {
             log.info("Setting the TargetedMS folder type to 'Experimental Data' for container " + c.getPath());
             PanoramaPublicManager.makePanoramaExperimentalDataFolder(c, user);
         }
-        else if(TargetedMSService.FolderType.Library.equals(folderType) || TargetedMSService.FolderType.LibraryProtein.equals(folderType))
+        else if (TargetedMSService.FolderType.Library.equals(folderType) || TargetedMSService.FolderType.LibraryProtein.equals(folderType))
         {
-            PanoramaPublicManager.makePanoramaLibraryFolder(c, sourceContainer, user);
+            try
+            {
+                PanoramaPublicManager.makePanoramaLibraryFolder(c, sourceContainer, user);
+            }
+            catch (ChromLibStateException e)
+            {
+                log.error(String.format("Error copying chromatogram library state from source folder '%s' to '%s'", sourceContainer, c), e);
+                return false;
+            }
         }
+        return true;
     }
 
     private boolean addMissingDatas(List<ExpData> allData, ITargetedMSRun tmsRun, Logger logger)

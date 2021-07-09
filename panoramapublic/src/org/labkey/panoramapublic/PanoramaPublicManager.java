@@ -33,6 +33,7 @@ import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
+import org.labkey.panoramapublic.chromlib.ChromLibStateException;
 import org.labkey.panoramapublic.chromlib.ChromLibStateManager;
 
 import java.io.IOException;
@@ -100,7 +101,7 @@ public class PanoramaPublicManager
         }
     }
 
-    public static void makePanoramaLibraryFolder(Container container, Container sourceContainer, User user)
+    public static void makePanoramaLibraryFolder(Container container, Container sourceContainer, User user) throws ChromLibStateException
     {
         Module targetedMSModule = ModuleLoader.getInstance().getModule(TargetedMSService.MODULE_NAME);
         if (container.getActiveModules().contains(targetedMSModule))
@@ -146,6 +147,7 @@ public class PanoramaPublicManager
                     Path chromLibExportFile = chromLibDir.resolve(FileUtil.makeFileNameWithTimestamp("chrom_lib_export_" + sourceContainer.getRowId(), "tsv"));
                     ChromLibStateManager libManager = new ChromLibStateManager();
                     libManager.exportLibState(sourceContainer, chromLibExportFile.toFile());
+                    libManager.importLibState(container, chromLibExportFile.toFile());
                 }
             }
 

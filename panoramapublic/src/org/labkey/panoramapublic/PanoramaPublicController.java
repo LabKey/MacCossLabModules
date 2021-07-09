@@ -1649,13 +1649,6 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
-            _journal = form.lookupJournal();
-            if(_journal == null)
-            {
-                errors.reject(ERROR_MSG, "Could not find a journal with Id " + form.getJournalId());
-                return false;
-            }
-
             ensureCorrectContainer(getContainer(), _experimentAnnotations.getContainer(), getViewContext());
 
             return true;
