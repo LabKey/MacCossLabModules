@@ -146,12 +146,10 @@ public class PanoramaPublicManager
 
                     Path chromLibExportFile = chromLibDir.resolve(FileUtil.makeFileNameWithTimestamp("chrom_lib_export_" + sourceContainer.getRowId(), "tsv"));
                     ChromLibStateManager libManager = new ChromLibStateManager();
-                    libManager.exportLibState(sourceContainer, chromLibExportFile.toFile());
-                    libManager.importLibState(container, chromLibExportFile.toFile());
+                    libManager.exportLibState(chromLibExportFile.toFile(), sourceContainer, user);
+                    libManager.importLibState(chromLibExportFile.toFile(), container, user);
                 }
             }
-
-            // moduleProperty.saveValue(user, container, TargetedMSService.FolderType.Experiment.toString());
         }
     }
 
