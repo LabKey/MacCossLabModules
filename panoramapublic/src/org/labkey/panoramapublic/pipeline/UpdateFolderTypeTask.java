@@ -14,10 +14,8 @@ import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.module.ModuleProperty;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
-import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
-import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.RecordedActionSet;
 import org.labkey.api.security.User;
 import org.labkey.api.targetedms.TargetedMSService;
@@ -34,9 +32,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.Experiment;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.Library;
@@ -75,7 +72,7 @@ public class UpdateFolderTypeTask extends PipelineJob.Task<UpdateFolderTypeTask.
     private void updateFolderType(PipelineJob job, CopyExperimentJobSupport jobSupport) throws PipelineJobException
     {
         // Get the experiment that was just created in the target folder as part of the folder import.
-        Container container = job.getContainer();
+        var container = job.getContainer();
         User user = job.getUser();
         List<? extends ExpExperiment> experiments = ExperimentService.get().getExperiments(container, user, false, false);
         if (experiments.size() == 0)
@@ -146,37 +143,32 @@ public class UpdateFolderTypeTask extends PipelineJob.Task<UpdateFolderTypeTask.
             targetPropMap.put(TargetedMSService.PROP_CHROM_LIB_REVISION, versionStr);
             targetPropMap.save();
 
-            Path chromLibDir = getChromLibDir(container);
+            Path chromLibDir = ChromLibStateManager.getChromLibDir(container);
             if (Files.exists(chromLibDir))
             {
-                List<Path> chromlibFiles;
-                try
+                try(Stream<Path> files = Files.list(chromLibDir).filter(p -> FileUtil.getFileName(p).endsWith(TargetedMSService.CHROM_LIB_FILE_EXT)))
                 {
-                    chromlibFiles = Files.list(chromLibDir).filter(p -> p.endsWith(TargetedMSService.CHROM_LIB_FILE_EXT)).collect(Collectors.toList());
+                    for (Path libFile : files.collect(Collectors.toSet()))
+                    {
+                        try
+                        {
+                            changeFileName(libFile, container, svc, log);
+                        }
+                        catch (IOException e)
+                        {
+                            throw new PipelineJobException("Error changing chromatogram library file name", e);
+                        }
+                    }
                 }
                 catch (IOException e)
                 {
                     throw new PipelineJobException(String.format("Error listing chromatogram library files in folder '%s'.", chromLibDir), e);
                 }
-                for (Path libFile : chromlibFiles)
-                {
-                    try
-                    {
-                        changeFileName(libFile, container, svc, log);
-                    }
-                    catch (IOException e)
-                    {
-                        throw new PipelineJobException("Error changing chromatogram library file name", e);
-                    }
-                }
             }
 
-            Path chromLibExportFile = chromLibDir.resolve(FileUtil.makeFileNameWithTimestamp("chrom_lib_state_export_" + sourceContainer.getRowId(), "tsv"));
-            ChromLibStateManager libManager = new ChromLibStateManager();
             try
             {
-                libManager.exportLibState(chromLibExportFile.toFile(), sourceContainer, user);
-                libManager.importLibState(chromLibExportFile.toFile(), container, user);
+                new ChromLibStateManager().copyLibraryState(sourceContainer, container, log, user);
             }
             catch (ChromLibStateException e)
             {
@@ -185,28 +177,17 @@ public class UpdateFolderTypeTask extends PipelineJob.Task<UpdateFolderTypeTask.
         }
     }
 
-    // Example: chromlib_314_rev1.clib
-    private static final Pattern chromlibPattern = Pattern.compile(TargetedMSService.CHROM_LIB_FILE_BASE_NAME + "_\\d+_rev(\\d+)\\." + TargetedMSService.CHROM_LIB_FILE_EXT);
-
     private static void changeFileName(Path path, Container container, TargetedMSService svc, Logger log) throws IOException
     {
-        Matcher match = chromlibPattern.matcher(path.getFileName().toString());
-        if(match.matches())
+        Integer revision = svc.parseChromLibRevision(path.getFileName().toString());
+        if(revision != null)
         {
-            int revision = Integer.parseInt(match.group(1));
             String newFileName = svc.getChromLibFileName(container, revision);
             Path targetFile = path.getParent().resolve(newFileName);
 
             log.info(String.format("Changing chromatogram library file name from '%s' to '%s'.", path.getFileName().toString(), newFileName));
             FileUtils.moveFile(path.toFile(), targetFile.toFile());
         }
-    }
-
-    private static Path getChromLibDir(Container container)
-    {
-        PipeRoot root = PipelineService.get().getPipelineRootSetting(container);
-        assert root != null;
-        return root.getRootNioPath().resolve(TargetedMSService.CHROM_LIB_FILE_DIR);
     }
 
     public static class Factory extends AbstractTaskFactory<AbstractTaskFactorySettings, UpdateFolderTypeTask.Factory>
