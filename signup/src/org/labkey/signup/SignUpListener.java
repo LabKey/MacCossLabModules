@@ -47,24 +47,6 @@ public class SignUpListener implements ContainerListener, UserManager.UserListen
     }
 
     @Override
-    public void userAddedToSite(User user)
-    {
-        // Do nothing
-    }
-
-    @Override
-    public void userAccountDisabled(User user)
-    {
-        // Do nothing.
-    }
-
-    @Override
-    public void userAccountEnabled(User user)
-    {
-        // Do nothing
-    }
-
-    @Override
     public void containerCreated(Container c, User user)
     {
     }
