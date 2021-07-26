@@ -19,11 +19,7 @@ package org.labkey.panoramapublic;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.TableInfo;
-import org.labkey.api.module.Module;
-import org.labkey.api.module.ModuleLoader;
-import org.labkey.api.module.ModuleProperty;
 import org.labkey.api.portal.ProjectUrls;
-import org.labkey.api.security.User;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.PageFlowUtil;
@@ -76,15 +72,5 @@ public class PanoramaPublicManager
     public static ActionURL getRawDataTabUrl(Container container)
     {
         return PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container, TargetedMSService.RAW_FILES_TAB);
-    }
-
-    public static void makePanoramaExperimentalDataFolder(Container container, User user)
-    {
-        Module targetedMSModule = ModuleLoader.getInstance().getModule(TargetedMSService.MODULE_NAME);
-        ModuleProperty moduleProperty = targetedMSModule.getModuleProperties().get(TargetedMSService.FOLDER_TYPE_PROP_NAME);
-        if(container.getActiveModules().contains(targetedMSModule))
-        {
-            moduleProperty.saveValue(user, container, TargetedMSService.FolderType.Experiment.toString());
-        }
     }
 }
