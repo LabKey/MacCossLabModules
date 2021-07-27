@@ -31,7 +31,7 @@
             Collections.reverse(Arrays.asList(runs));
             for(RunDetail run: runs) {%>
         <tr>
-            <td><a href="<%=h(urlFor(ShowRunAction.class).addParameter("runId", run.getId()))%>">  id: <%=run.getId()%> / <%=run.getUserid()%> / <%=run.getPostTime()%></a></td>
+            <td><a href="<%=h(urlFor(ShowRunAction.class).addParameter("runId", run.getId()))%>">  id: <%=run.getId()%> / <%=run.getUserid()%> / <%=formatDateTime(run.getPostTime())%></a></td>
         </tr>
         <%}%>
     </table>
