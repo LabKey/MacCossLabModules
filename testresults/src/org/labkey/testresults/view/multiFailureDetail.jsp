@@ -112,7 +112,7 @@
                 <%=h(run.getUserName())%> <br />
                 Duration: <%=run.getDuration()%> <br />
                 OS: <%=h(run.getOs())%> <br />
-                Post Time: <%=run.getPostTime()%> <br />
+                Post Time: <%=formatDateTime(run.getPostTime())%> <br />
                 Rev: <%=run.getRevision()%> <br />
                 Run Failures: <%=run.getFailures().length%>
                 </a></p>
