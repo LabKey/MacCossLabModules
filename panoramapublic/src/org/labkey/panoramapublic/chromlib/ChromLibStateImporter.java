@@ -50,8 +50,8 @@ public abstract class ChromLibStateImporter
     private Map<LibPeptideGroup.LibPeptideGroupKey, Long> _pepGrpKeyMap;
     private final Logger _log;
 
+    abstract String libTypeString();
     abstract List<String> getExpectedColumns() throws ChromLibStateException;
-    // abstract void onNewRunSeen(ITargetedMSRun run, TargetedMSService svc);
 
     public ChromLibStateImporter(Logger log)
     {
@@ -78,6 +78,8 @@ public abstract class ChromLibStateImporter
 
     void importFromFile(Container container, User user, File libStateFile, TargetedMSService svc) throws ChromLibStateException
     {
+        _log.info(String.format("Importing %s library state in container '%s' to file '%s'.", libTypeString(), container.getPath(), libStateFile.getPath()));
+
         try (TabLoader reader = new TabLoader(libStateFile, true))
         {
             CloseableIterator<Map<String, Object>> iterator = reader.iterator();
@@ -95,6 +97,7 @@ public abstract class ChromLibStateImporter
                 parseLibStateRow(iterator.next(), container, user, svc, _log);
             }
         }
+        _log.info("Done importing library state.");
     }
 
     private void verifyLibColumns(ColumnDescriptor[] columns, List<String> expectedColulmns) throws ChromLibStateException
@@ -122,18 +125,24 @@ public abstract class ChromLibStateImporter
             var map = new HashMap<String, RunRepresentativeDataState>();
             map.put(REPRESENTATIVEDATASTATE, RunRepresentativeDataState.valueOf(runState));
             Table.update(null, svc.getTableInfoRuns(), map, _currentRun.getId());
+            _log.info(String.format("Importing library state of %ss in '%s'.", libTypeString(), run.getFileName()));
 
-            if(_pepGrpKeyMap != null)
-            {
-                _pepGrpKeyMap.clear();
-            }
-            else
-            {
-                _pepGrpKeyMap = new HashMap<>();
-            }
+            onRunChanged();
 
             List<LibPeptideGroup> dbPepGrps = getPeptideGroups(run, svc);
             dbPepGrps.forEach(p -> _pepGrpKeyMap.put(p.getKey(), p.getId()));
+        }
+    }
+
+    void onRunChanged()
+    {
+        if(_pepGrpKeyMap != null)
+        {
+            _pepGrpKeyMap.clear();
+        }
+        else
+        {
+            _pepGrpKeyMap = new HashMap<>();
         }
     }
 
@@ -172,6 +181,12 @@ public abstract class ChromLibStateImporter
         public ProteinLibStateImporter(Logger log)
         {
             super(log);
+        }
+
+        @Override
+        String libTypeString()
+        {
+            return "protein";
         }
 
         @Override
@@ -218,7 +233,7 @@ public abstract class ChromLibStateImporter
         }
     }
 
-    private static class PeptideLibStateImporter extends ProteinLibStateImporter
+    private static class PeptideLibStateImporter extends ChromLibStateImporter
     {
         private LibPeptideGroup _currentPepGrp;
         private Map<LibGeneralPrecursor.LibPrecursorKey, Long> _precursorKeyMap;
@@ -226,6 +241,12 @@ public abstract class ChromLibStateImporter
         public PeptideLibStateImporter(Logger log)
         {
             super(log);
+        }
+
+        @Override
+        String libTypeString()
+        {
+            return "peptide";
         }
 
         @Override
@@ -269,6 +290,13 @@ public abstract class ChromLibStateImporter
             var map = new HashMap<String, RepresentativeDataState>();
             map.put(REPRESENTATIVEDATASTATE, precursor.getRepresentativeDataState());
             Table.update(null, svc.getTableInfoGeneralPrecursor(), map, generalPrecursorId);
+        }
+
+        @Override
+        void onRunChanged()
+        {
+            super.onRunChanged();
+            _currentPepGrp = null;
         }
 
         private LibGeneralPrecursor parsePrecursor(Map<String, Object> row, long peptideGroupId)

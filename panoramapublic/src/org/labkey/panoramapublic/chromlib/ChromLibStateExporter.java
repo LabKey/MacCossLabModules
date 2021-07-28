@@ -64,9 +64,9 @@ public abstract class ChromLibStateExporter
                 if(run.getRepresentativeDataState() == RunRepresentativeDataState.NotRepresentative)
                 {
                     _log.info(String.format("'%s' does not contain any library %ss. Ignoring.", run.getFileName(), libTypeString()));
-                    continue; // TODO: Check if this is OK
+                    continue;
                 }
-                _log.info(String.format("Exporting library state of %s in '%s'.", libTypeString(), run.getFileName()));
+                _log.info(String.format("Exporting library state of %ss in '%s'.", libTypeString(), run.getFileName()));
                 exportLibStateForRun(run, svc, _log, writer, container, user);
             }
         }

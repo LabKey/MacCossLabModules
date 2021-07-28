@@ -17,6 +17,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 public class ChromLibTestHelper
 {
     private static final String TARGETEDMS = "targetedms";
@@ -156,6 +160,61 @@ public class ChromLibTestHelper
         }
     }
 
+    public static void compareLibState(ChromLibState source, ChromLibState target)
+    {
+        List<LibRun> runsSource = source.getRuns();
+        List<LibRun> runsTarget = target.getRuns();
+        assertEquals("Number of runs don't match.  Source: %d; Target: %d", runsSource.size(), runsTarget.size());
+
+        for(LibRun runS: runsSource)
+        {
+            LibRun runT = runsTarget.stream().filter(r -> runS._fileName.equals(r._fileName)).findFirst().orElse(null);
+            assertNotNull("Run '" + runS._fileName + "' was not found in the target list", runT);
+            compareRuns(runS, runT);
+        }
+    }
+
+    private static void compareRuns(LibRun runS, LibRun runT)
+    {
+        assertEqualsWithMsg("File names", runS._fileName, runT._fileName);
+        assertEqualsWithMsg("Representative states", runT._fileName, runS._representativeDataState, runT._representativeDataState);
+
+        Map<LibPeptideGroupKey, Pair<Integer, Map<LibPrecursorKey, Integer>>> pepGrpsS = runS._peptideGroups;
+        Map<LibPeptideGroupKey, Pair<Integer, Map<LibPrecursorKey, Integer>>> pepGrpsT = runT._peptideGroups;
+        assertEqualsWithMsg("Number of peptide groups", runT._fileName, pepGrpsS.size(), pepGrpsT.size());
+        for(LibPeptideGroupKey pepGrpKey: pepGrpsS.keySet())
+        {
+            assertTrue("Target run '" + runT._fileName + "' does not contain peptide group '" + pepGrpKey + "'", pepGrpsT.containsKey(pepGrpKey));
+            comparePeptideGroups(pepGrpKey, pepGrpsS.get(pepGrpKey), pepGrpsT.get(pepGrpKey));
+        }
+    }
+
+    private static void comparePeptideGroups(LibPeptideGroupKey key, Pair<Integer, Map<LibPrecursorKey, Integer>> pepGrpS, Pair<Integer, Map<LibPrecursorKey, Integer>> pepGrpT)
+    {
+        assertEqualsWithMsg("Peptide group states", key.toString(), pepGrpS.first, pepGrpT.first);
+        Map<LibPrecursorKey, Integer> _precursorsS = pepGrpS.second;
+        Map<LibPrecursorKey, Integer> _precursorsT = pepGrpT.second;
+
+        assertEqualsWithMsg("Number of precursors", key.toString(), _precursorsS.size(), _precursorsT.size());
+        for(LibPrecursorKey precursor: _precursorsS.keySet())
+        {
+            assertTrue("Target peptide group " + key + " does not contain precursor " + precursor.toString(), _precursorsT.containsKey(precursor));
+            assertEqualsWithMsg("Precursor states", precursor.toString(), _precursorsS.get(precursor), _precursorsT.get(precursor));
+        }
+    }
+
+    private static void assertEqualsWithMsg(String message, Object sourceVal, Object targetVal)
+    {
+        assertEqualsWithMsg(message, null, sourceVal, targetVal);
+    }
+
+    private static void assertEqualsWithMsg(String message, String entity, Object sourceVal, Object targetVal)
+    {
+        assertEquals(String.format("%s do not match%s. Source: %s; Target: %s.", message, entity == null ? "" : " for " + entity,
+                sourceVal, targetVal), sourceVal, targetVal);
+    }
+
+
     public static class ChromLibState
     {
 //        private String _libType;
@@ -283,8 +342,8 @@ public class ChromLibTestHelper
         public String toString()
         {
             return "LibPeptideGroupKey{" +
-                    "_label='" + _label + '\'' +
-                    ", _seqId=" + _seqId +
+                    "label='" + _label + '\'' +
+                    ", seqId=" + _seqId +
                     '}';
         }
     }
@@ -321,9 +380,9 @@ public class ChromLibTestHelper
         public String toString()
         {
             return "LibPrecursorKey{" +
-                    "_mz=" + _mz +
-                    ", _charge=" + _charge +
-                    ", _key='" + _precursorKey + '\'' +
+                    "mz=" + _mz +
+                    ", charge=" + _charge +
+                    ", key='" + _precursorKey + '\'' +
                     '}';
         }
     }

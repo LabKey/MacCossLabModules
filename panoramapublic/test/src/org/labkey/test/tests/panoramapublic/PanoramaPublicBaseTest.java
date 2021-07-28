@@ -104,14 +104,9 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         setupSourceFolder(projectName, folderName, FolderType.Experiment, adminUsers);
     }
 
-    void setupProteinLibraryFolder(String projectName, String folderName, String ... adminUsers)
+    void setupLibraryFolder(String projectName, String folderName, FolderType folderType, String ... adminUsers)
     {
-        setupSourceFolder(projectName, folderName, FolderType.LibraryProtein, adminUsers);
-    }
-
-    void setupPeptideLibraryFolder(String projectName, String folderName, String ... adminUsers)
-    {
-        setupSourceFolder(projectName, folderName, FolderType.Library, adminUsers);
+        setupSourceFolder(projectName, folderName, folderType, adminUsers);
     }
 
     private void setupSourceFolder(String projectName, String folderName, FolderType folderType, String ... adminUsers)
