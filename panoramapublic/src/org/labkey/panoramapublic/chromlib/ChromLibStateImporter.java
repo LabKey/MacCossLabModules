@@ -3,6 +3,7 @@ package org.labkey.panoramapublic.chromlib;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.DbScope;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SqlExecutor;
 import org.labkey.api.data.Table;
@@ -14,6 +15,7 @@ import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.RepresentativeDataState;
 import org.labkey.api.targetedms.RunRepresentativeDataState;
 import org.labkey.api.targetedms.TargetedMSService;
+import org.labkey.panoramapublic.PanoramaPublicSchema;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,22 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PEP_GRP;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PEP_GRP_SEQ_ID;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PEP_GRP_STATE;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PEP_LIB_HEADERS;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PREC_CHARGE;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PREC_MOD_SEQ;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PREC_MOL_CUSTOM_ION_NAME;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PREC_MOL_ION_FORMULA;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PREC_MOL_MASS_AVERAGE;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PREC_MOL_MASS_MONOISOTOPIC;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PREC_MZ;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PREC_STATE;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.PROTEIN_LIB_HEADERS;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.REPRESENTATIVEDATASTATE;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.RUN;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.RUN_STATE;
+import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.*;
 import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.getMoleculePrecursors;
 import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.getPeptideGroups;
 import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.getPrecursors;
@@ -51,7 +38,8 @@ public abstract class ChromLibStateImporter
     private final Logger _log;
 
     abstract String libTypeString();
-    abstract List<String> getExpectedColumns() throws ChromLibStateException;
+    abstract List<String> getExpectedColumns();
+    abstract List<Header<?>> getHeaders();
 
     public ChromLibStateImporter(Logger log)
     {
@@ -78,6 +66,12 @@ public abstract class ChromLibStateImporter
 
     void importFromFile(Container container, User user, File libStateFile, TargetedMSService svc) throws ChromLibStateException
     {
+        DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().getCurrentTransaction();
+        if (transaction == null)
+        {
+            throw new IllegalStateException("Callers should start their own transaction");
+        }
+
         _log.info(String.format("Importing %s library state in container '%s' to file '%s'.", libTypeString(), container.getPath(), libStateFile.getPath()));
 
         try (TabLoader reader = new TabLoader(libStateFile, true))
@@ -86,7 +80,9 @@ public abstract class ChromLibStateImporter
             try
             {
                 // Verify that we have the right column headers
-                verifyLibColumns(reader.getColumns(), getExpectedColumns());
+                var columns = reader.getColumns();
+                verifyLibColumns(columns, getExpectedColumns());
+                setColumnTypes(columns);
             }
             catch (IOException e)
             {
@@ -108,6 +104,12 @@ public abstract class ChromLibStateImporter
             throw new ChromLibStateException(String.format("Required column headers not found. Expected columns: %s.  Found columns: %s",
                     StringUtils.join(expectedColulmns, ","), StringUtils.join(columnsInFile, ",")));
         }
+    }
+
+    protected void setColumnTypes(ColumnDescriptor[] columns)
+    {
+        var columnMap = getHeaders().stream().collect(Collectors.toMap(h -> h._name, h -> h._type));
+        Arrays.stream(columns).filter(col -> columnMap.containsKey(col.name)).forEach(col -> col.clazz = columnMap.get(col.name));
     }
 
     void parseLibStateRow(Map<String, Object> row, Container container, User user, TargetedMSService svc, Logger log) throws ChromLibStateException
@@ -148,13 +150,9 @@ public abstract class ChromLibStateImporter
 
     LibPeptideGroup parsePeptideGroup(Map<String, Object> row, long runId, Container container) throws ChromLibStateException
     {
-        String peptideGrp = String.valueOf(row.get(PEP_GRP));
-        Integer seqId = null;
-        if(row.get(PEP_GRP_SEQ_ID) != null)
-        {
-            seqId = Integer.parseInt(String.valueOf(row.get(PEP_GRP_SEQ_ID)));
-        }
-        String pepGrpState = String.valueOf(row.get(PEP_GRP_STATE));
+        String peptideGrp = (String) row.get(PEP_GRP);
+        Integer seqId = (Integer) row.get(PEP_GRP_SEQ_ID);
+        String pepGrpState = (String) row.get(PEP_GRP_STATE);
         var pepGrp = new LibPeptideGroup(runId, peptideGrp, seqId, RepresentativeDataState.valueOf(pepGrpState));
         LibPeptideGroup.LibPeptideGroupKey pepGrpKey = pepGrp.getKey();
         Long dbId = _pepGrpKeyMap.get(pepGrpKey);
@@ -168,7 +166,7 @@ public abstract class ChromLibStateImporter
 
     String getSkyFile(Map<String, Object> row)
     {
-        return String.valueOf(row.get(RUN));
+        return (String) row.get(RUN);
     }
 
     ITargetedMSRun getCurrentRun()
@@ -191,6 +189,12 @@ public abstract class ChromLibStateImporter
 
         @Override
         List<String> getExpectedColumns()
+        {
+            return PROTEIN_LIB_COLS;
+        }
+
+        @Override
+        List<Header<?>> getHeaders()
         {
             return PROTEIN_LIB_HEADERS;
         }
@@ -252,6 +256,12 @@ public abstract class ChromLibStateImporter
         @Override
         List<String> getExpectedColumns()
         {
+            return PEP_LIB_COLS;
+        }
+
+        @Override
+        List<Header<?>> getHeaders()
+        {
             return PEP_LIB_HEADERS;
         }
 
@@ -301,20 +311,21 @@ public abstract class ChromLibStateImporter
 
         private LibGeneralPrecursor parsePrecursor(Map<String, Object> row, long peptideGroupId)
         {
-            double precursorMz = Double.parseDouble(String.valueOf(row.get(PREC_MZ)));
-            int precursorCharge = Integer.parseInt(String.valueOf(row.get(PREC_CHARGE)));
-            String precursorState = String.valueOf(row.get(PREC_STATE));
-            String modifiedSeq = String.valueOf(row.get(PREC_MOD_SEQ));
+            double precursorMz = (Double) row.get(PREC_MZ);
+            int precursorCharge = (Integer) row.get(PREC_CHARGE);
+            String precursorState = (String) row.get(PREC_STATE);
+            String modifiedSeq = (String) row.get(PREC_MOD_SEQ);
+
             if(!StringUtils.isBlank(modifiedSeq))
             {
                 return new LibPrecursor(peptideGroupId, precursorMz, precursorCharge, RepresentativeDataState.valueOf(precursorState), modifiedSeq);
             }
             else
             {
-                String customIonName = String.valueOf(row.get(PREC_MOL_CUSTOM_ION_NAME));
-                String ionFormula = String.valueOf(row.get(PREC_MOL_ION_FORMULA));
-                Double massMonoIsotopic = Double.parseDouble(String.valueOf(row.get(PREC_MOL_MASS_MONOISOTOPIC)));
-                Double massAverage = Double.parseDouble(String.valueOf(row.get(PREC_MOL_MASS_AVERAGE)));
+                String customIonName = (String) row.get(PREC_MOL_CUSTOM_ION_NAME);
+                String ionFormula = (String) row.get(PREC_MOL_ION_FORMULA);
+                Double massMonoIsotopic = (Double) row.get(PREC_MOL_MASS_MONOISOTOPIC);
+                Double massAverage = (Double) row.get(PREC_MOL_MASS_AVERAGE);
                 return new LibMoleculePrecursor(peptideGroupId, precursorMz, precursorCharge, RepresentativeDataState.valueOf(precursorState),
                         customIonName, ionFormula, massMonoIsotopic, massAverage);
             }

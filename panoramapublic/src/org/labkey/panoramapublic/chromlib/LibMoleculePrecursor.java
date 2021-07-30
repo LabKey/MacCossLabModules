@@ -5,7 +5,7 @@ import org.labkey.api.targetedms.RepresentativeDataState;
 
 public class LibMoleculePrecursor extends LibGeneralPrecursor
 {
-    // Fields from the Molecule table
+    // Fields from the MoleculePrecursor table
     private String _customIonName;
     private String _ionFormula;
     private Double _massMonoisotopic; // not null

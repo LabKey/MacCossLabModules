@@ -143,29 +143,6 @@ public class UpdateFolderTypeTask extends PipelineJob.Task<UpdateFolderTypeTask.
             targetPropMap.put(TargetedMSService.PROP_CHROM_LIB_REVISION, versionStr);
             targetPropMap.save();
 
-            Path chromLibDir = ChromLibStateManager.getChromLibDir(container);
-            if (Files.exists(chromLibDir))
-            {
-                try(Stream<Path> files = Files.list(chromLibDir).filter(p -> FileUtil.getFileName(p).endsWith(TargetedMSService.CHROM_LIB_FILE_EXT)))
-                {
-                    for (Path libFile : files.collect(Collectors.toSet()))
-                    {
-                        try
-                        {
-                            changeFileName(libFile, container, svc, log);
-                        }
-                        catch (IOException e)
-                        {
-                            throw new PipelineJobException("Error changing chromatogram library file name", e);
-                        }
-                    }
-                }
-                catch (IOException e)
-                {
-                    throw new PipelineJobException(String.format("Error listing chromatogram library files in folder '%s'.", chromLibDir), e);
-                }
-            }
-
             try
             {
                 new ChromLibStateManager().copyLibraryState(sourceContainer, container, log, user);
@@ -174,19 +151,15 @@ public class UpdateFolderTypeTask extends PipelineJob.Task<UpdateFolderTypeTask.
             {
                 throw new PipelineJobException(String.format("Error copying chromatogram library state from source folder '%s' to '%s'", sourceContainer, container), e);
             }
-        }
-    }
 
-    private static void changeFileName(Path path, Container container, TargetedMSService svc, Logger log) throws IOException
-    {
-        Integer revision = svc.parseChromLibRevision(path.getFileName().toString());
-        if(revision != null)
-        {
-            String newFileName = svc.getChromLibFileName(container, revision);
-            Path targetFile = path.getParent().resolve(newFileName);
-
-            log.info(String.format("Changing chromatogram library file name from '%s' to '%s'.", path.getFileName().toString(), newFileName));
-            FileUtils.moveFile(path.toFile(), targetFile.toFile());
+            try
+            {
+                ChromLibStateManager.renameClibFileForContainer(container, svc, log);
+            }
+            catch (ChromLibStateException e)
+            {
+                throw new PipelineJobException(String.format("Error renaming .clib files to match target container '%s'", container), e);
+            }
         }
     }
 

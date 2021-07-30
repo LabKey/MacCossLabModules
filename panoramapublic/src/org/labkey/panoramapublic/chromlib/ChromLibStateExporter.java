@@ -1,7 +1,7 @@
 package org.labkey.panoramapublic.chromlib;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.security.User;
@@ -93,7 +93,7 @@ public abstract class ChromLibStateExporter
         @Override
         List<String> headers()
         {
-            return ChromLibStateManager.PROTEIN_LIB_HEADERS;
+            return ChromLibStateManager.PROTEIN_LIB_COLS;
         }
 
         @Override
@@ -132,7 +132,7 @@ public abstract class ChromLibStateExporter
         @Override
         List<String> headers()
         {
-            return ChromLibStateManager.PEP_LIB_HEADERS;
+            return ChromLibStateManager.PEP_LIB_COLS;
         }
 
         @Override
@@ -161,7 +161,7 @@ public abstract class ChromLibStateExporter
         {
             // For each run / peptide group / precursor write the representative state
             // - run, run_state
-            // - peptidegroup_label, peptidegroup_sequenceid
+            // - peptidegroup_label, peptidegroup_sequenceid, peptidegroup_state
             // - precursor_mz, precursor_charge, precursor_state
             // - precursor_modified_sequence (for Precursors; empty for MoleculePrecursors)
             // - mol_precursor_custom_ion_name, mol_precursor_ion_formula, mol_precursor_mass_monoisotopic, mol_precursor_mass_average (for MoleculePrecursors; empty for Precursors)
