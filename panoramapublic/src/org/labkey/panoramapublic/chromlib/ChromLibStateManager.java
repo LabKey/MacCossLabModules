@@ -197,11 +197,11 @@ public class ChromLibStateManager
 
         long conflictCount = 0;
 
-        if(folderType == TargetedMSService.FolderType.LibraryProtein)
+        if (folderType == TargetedMSService.FolderType.LibraryProtein)
         {
             conflictCount = getProteinConflictCount(user, container);
         }
-        else if(folderType == TargetedMSService.FolderType.Library)
+        else if (folderType == TargetedMSService.FolderType.Library)
         {
             conflictCount = getGeneralMoleculeConflictCount(container, user);
         }

@@ -44,8 +44,8 @@ public class PanoramaPublicChromLibTest extends PanoramaPublicBaseTest
                 "Experiment to test Peptide library copy", // TargetedMSExperiment title
                 -1, // library protein count
                 93, // library peptide count
-                3, // -1, // molecule count
-                619 // 607 // library transition count
+                3, // molecule count
+                619 // library transition count
                 );
     }
 
@@ -71,12 +71,15 @@ public class PanoramaPublicChromLibTest extends PanoramaPublicBaseTest
             revision++;
             if(count == 2)
             {
+                // After uploading the second Skyline document there should be a library conflict.  User should not be
+                // able to submit a library folder in a conflicted state.
                 trySubmitWithConflicts(expWebPart);
             }
             if(count > 1 && resolveConflicts())
             {
+                // Library revision is incremented after conflicts are resolved.
                 revision++;
-            };
+            }
         }
         // Download link, library statistics and revision in the ChromatogramLibraryDownloadWebpart
         verifyChromLibDownloadWebPart(folderType, proteinCount, peptideCount, moleculeCount, transitionCount, revision);
@@ -107,7 +110,6 @@ public class PanoramaPublicChromLibTest extends PanoramaPublicBaseTest
         var resolveConflictsLink = Locator.tagWithClass("div", "labkey-download").descendant(Locator.linkWithText("RESOLVE CONFLICTS"));
         if(resolveConflictsLink.findElementOrNull(getDriver()) != null)
         {
-            // assertElementPresent(resolveConflictsLink);
             clickAndWait(resolveConflictsLink);
             clickButton("Apply Changes");
             return true;

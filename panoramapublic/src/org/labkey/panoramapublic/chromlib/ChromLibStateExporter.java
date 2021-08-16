@@ -34,7 +34,7 @@ public abstract class ChromLibStateExporter
     {
         TargetedMSService svc = TargetedMSService.get();
         TargetedMSService.FolderType folderType = svc.getFolderType(container);
-        if(TargetedMSService.FolderType.LibraryProtein.equals(folderType))
+        if (TargetedMSService.FolderType.LibraryProtein.equals(folderType))
         {
             new ProteinLibStateExporter(log).exportLibraryState(container, file, user, svc);
         }
@@ -61,7 +61,7 @@ public abstract class ChromLibStateExporter
             List<ITargetedMSRun> runs = svc.getRuns(container);
             for (ITargetedMSRun run : runs)
             {
-                if(run.getRepresentativeDataState() == RunRepresentativeDataState.NotRepresentative)
+                if (run.getRepresentativeDataState() == RunRepresentativeDataState.NotRepresentative)
                 {
                     _log.info(String.format("'%s' does not contain any library %ss. Ignoring.", run.getFileName(), libTypeString()));
                     continue;
@@ -144,13 +144,13 @@ public abstract class ChromLibStateExporter
             {
                 // For each peptide group get a list of precursors
                 List<LibPrecursor> precursors = ChromLibStateManager.getPrecursors(pepGrp, container, user, svc);
-                for(LibPrecursor precursor: precursors)
+                for (LibPrecursor precursor: precursors)
                 {
                     writePeptideLibRow(writer, run, pepGrp, precursor);
                 }
                 // For each peptide group get a list of molecule precursors
                 List<LibMoleculePrecursor> moleculePrecursors = ChromLibStateManager.getMoleculePrecursors(pepGrp, container, user, svc);
-                for(LibMoleculePrecursor precursor: moleculePrecursors)
+                for (LibMoleculePrecursor precursor: moleculePrecursors)
                 {
                     writePeptideLibRow(writer, run, pepGrp, precursor);
                 }
@@ -168,7 +168,7 @@ public abstract class ChromLibStateExporter
             var values = new ArrayList<>(List.of(run.getFileName(), run.getRepresentativeDataState().toString(),
                     pepGrp.getLabel(), (pepGrp.getSequenceId() == null ? "" : String.valueOf(pepGrp.getSequenceId())), pepGrp.getRepresentativeDataState().toString(),
                     String.valueOf(precursor.getMz()), String.valueOf(precursor.getCharge()), precursor.getRepresentativeDataState().toString()));
-            if(precursor instanceof LibPrecursor)
+            if (precursor instanceof LibPrecursor)
             {
                 values.add(((LibPrecursor) precursor).getModifiedSequence());
                 values.add(""); // custom ion name (only for molecule precursors)
@@ -176,7 +176,7 @@ public abstract class ChromLibStateExporter
                 values.add(""); // mass monoisotopic (only for molecule precursors)
                 values.add(""); // mass averate (only for molecule precursors)
             }
-            else if(precursor instanceof LibMoleculePrecursor)
+            else if (precursor instanceof LibMoleculePrecursor)
             {
                 values.add(""); // modified sequence (only for proteomic precursors)
                 values.add(((LibMoleculePrecursor) precursor).getCustomIonName());
