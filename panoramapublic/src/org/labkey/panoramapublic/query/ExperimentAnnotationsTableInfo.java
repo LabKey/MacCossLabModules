@@ -519,8 +519,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         public AutoCompleteColumn(ColumnInfo col, ActionURL autocompletionUrl, boolean prefetch, String placeHolderText)
         {
             super(col);
-            _autoCompletionUrl = autocompletionUrl.getLocalURIString() + (!prefetch ? "token=%QUERY" : "");
-            _autoCompletionUrl = PageFlowUtil.jsString(_autoCompletionUrl);
+            _autoCompletionUrl = PageFlowUtil.jsString(prefetch ? autocompletionUrl: autocompletionUrl.addParameter("token", "__QUERY__"));
             _prefetch = prefetch;
             _placeholderText = placeHolderText;
         }

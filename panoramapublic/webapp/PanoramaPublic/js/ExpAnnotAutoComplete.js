@@ -60,7 +60,7 @@ function createStore(url, prefetch)
             local: localOrgStore,
             remote: {
                 url: url,
-                wildcard: '%QUERY',
+                wildcard: '__QUERY__',
                 transform: function (response) {
                     // console.log(response.completions);
                     return response.completions;
