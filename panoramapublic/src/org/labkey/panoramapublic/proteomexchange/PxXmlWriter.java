@@ -21,7 +21,7 @@ import org.jetbrains.annotations.Nullable;
 import org.labkey.api.security.User;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
-import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
 
 import javax.xml.stream.XMLOutputFactory;
@@ -297,7 +297,7 @@ public class PxXmlWriter extends PxWriter
     }
 
     @Override
-    void writeContactList(ExperimentAnnotations expAnnotations, JournalExperiment je) throws PxException
+    void writeContactList(ExperimentAnnotations expAnnotations, JournalSubmission js) throws PxException
     {
         /*
         <ContactList>
@@ -326,7 +326,7 @@ public class PxXmlWriter extends PxWriter
         }
         String labHeadName = labHead != null ? labHead.getFullName() : null;
         String labHeadEmail = labHead != null ? labHead.getEmail() : null;
-        Submission submission = je.getNewestSubmission();
+        Submission submission = js.getNewestSubmission();
         // Check if there is a form override
         if(submission.hasLabHeadDetails())
         {
@@ -608,7 +608,7 @@ public class PxXmlWriter extends PxWriter
     }
 
     @Override
-    void writeDatasetSummary(ExperimentAnnotations annotations, JournalExperiment journalExperiment) throws PxException
+    void writeDatasetSummary(ExperimentAnnotations annotations, JournalSubmission js) throws PxException
     {
         Element el = new Element("DatasetSummary");
         List<Attribute> attributes = new ArrayList<>(3);
@@ -631,7 +631,7 @@ public class PxXmlWriter extends PxWriter
         SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(annotations);
         final CvParamElement completeEl = new CvParamElement("MS", "MS:1002856", "Supported dataset by repository");
         final CvParamElement incompleteEl = new CvParamElement("MS", "MS:1003087", "supported by repository but incomplete data and/or metadata");
-        Submission submission = journalExperiment.getNewestSubmission();
+        Submission submission = js.getNewestSubmission();
         if(status.isComplete())
         {
             repoSupport.addChild(completeEl);

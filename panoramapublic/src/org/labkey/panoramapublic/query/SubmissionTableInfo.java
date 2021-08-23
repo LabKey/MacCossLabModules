@@ -33,7 +33,7 @@ import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.model.DataLicense;
-import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
@@ -68,8 +68,10 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
 
         var accessUrlCol = getMutableColumn(FieldKey.fromParts("ShortAccessUrl"));
         accessUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
-        var copyUrlCol = getMutableColumn(FieldKey.fromParts("ShortCopyUrl"));
-        copyUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
+//
+//
+//        var copyUrlCol = getMutableColumn(FieldKey.fromParts("ShortCopyUrl"));
+//        copyUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
 
         var licenseCol = getMutableColumn(FieldKey.fromParts("DataLicense"));
         licenseCol.setURLTargetWindow("_blank");
@@ -145,7 +147,7 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
             // This means, however, that when the container filter is changed to "All Folders", the user will see duplicate rows for a row in JournalExperiment
             // if they have read permissions in both containers.
             joinSql.append("exp.id = ").append("je.ExperimentAnnotationsId");
-            joinSql.append(" OR exp.id = ").append("CopiedExperimentId");
+            joinSql.append(" OR exp.id = ").append("X.CopiedExperimentId");
             joinSql.append(" ) ");
 
             sql.append(joinSql);
@@ -224,7 +226,7 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
                         //Integer journalId = ctx.get(FieldKey.fromParts("JournalId"), Integer.class);
                         //Integer experimentAnnotationsId = ctx.get(FieldKey.fromParts("ExperimentAnnotationsId"), Integer.class);
 
-                        JournalExperiment je = SubmissionManager.getJournalExperiment(s.getJournalExperimentId());
+                        JournalSubmission je = SubmissionManager.getJournalSubmission(s.getJournalExperimentId());
                         if(je.isNewestSubmission(s.getId()))
                         {
                             // Show the "Resubmit" or "Edit" links only if this is the most recent submission request for the experiment.

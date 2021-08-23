@@ -31,11 +31,11 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.GetPxActionsAction" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
-<%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page import="org.labkey.panoramapublic.query.SubmissionManager" %>
 <%@ page import="org.labkey.panoramapublic.model.Submission" %>
+<%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -53,9 +53,9 @@
     CopyExperimentForm bean = me.getModelBean();
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
     Journal journal = bean.lookupJournal();
-    JournalExperiment je = SubmissionManager.getJournalExperiment(expAnnot.getId(), journal.getId());
-    Submission currentSubmission = je.getNewestSubmission();
-    Submission previousSubmission = je.getLastCopiedSubmission();
+    JournalSubmission js = SubmissionManager.getJournalSubmission(expAnnot.getId(), journal.getId());
+    Submission currentSubmission = js.getNewestSubmission();
+    Submission previousSubmission = js.getLastCopiedSubmission();
     ExperimentAnnotations previousCopy = previousSubmission != null ? ExperimentAnnotationsManager.get(previousSubmission.getCopiedExperimentId()) : null;
     boolean isRecopy = previousCopy != null;
 
@@ -73,7 +73,7 @@
     pxActionsUrl.addParameter("id", expAnnot.getId());
 
     ActionURL pxValidationUrl = PanoramaPublicController.getPrePublishExperimentCheckURL(expAnnot.getId(), expAnnot.getContainer(), true);
-    pxValidationUrl.addParameter(ActionURL.Param.returnUrl, je.getShortCopyUrl().getFullURL());
+    pxValidationUrl.addParameter(ActionURL.Param.returnUrl, js.getShortCopyUrl().getFullURL());
 %>
 
 <% if(previousCopy != null) { %>

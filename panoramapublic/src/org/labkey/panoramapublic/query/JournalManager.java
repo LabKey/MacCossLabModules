@@ -56,6 +56,7 @@ import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
 
@@ -276,8 +277,8 @@ public class JournalManager
             // Return the short access URL of the most recent JournalExperiment record
             // On panoramaweb.org jeList will have only one entry, since we only have one 'journal' (Panorama Public)
             // and an experiment can be published to a 'journal' only once.
-            JournalExperiment je = SubmissionManager.getNewestJournalExperiment(expAnnotations);
-            return je == null ? null : je.getShortAccessUrl().renderShortURL();
+            JournalSubmission js = SubmissionManager.getNewestJournalSubmission(expAnnotations);
+            return js == null ? null : js.getShortAccessUrl().renderShortURL();
         }
         return null;
     }
@@ -303,7 +304,7 @@ public class JournalManager
         {
             return false;
         }
-        if(SubmissionManager.getJournalExperiments(experimentAnnotations).size() == 0)
+        if(SubmissionManager.getAllJournalSubmissions(experimentAnnotations).size() == 0)
         {
             return false;
         }
@@ -394,7 +395,7 @@ public class JournalManager
         SubmissionManager.updateJournalExperiment(sourceJournalExp, user);
     }
 
-    public static JournalExperiment setupJournalAccess(PanoramaPublicController.PanoramaPublicRequest request, User user) throws ValidationException
+    public static JournalSubmission setupJournalAccess(PanoramaPublicController.PanoramaPublicRequest request, User user) throws ValidationException
     {
         Journal journal = request.getJournal();
         ExperimentAnnotations exptAnnotations = request.getExperimentAnnotations();
@@ -428,8 +429,9 @@ public class JournalManager
         s.setLabHeadEmail(request.getLabHeadEmail());
         s.setLabHeadAffiliation(request.getLabHeadAffiliation());
         s.setDataLicense(DataLicense.resolveLicense(request.getDataLicense()));
+        s.setShortAccessUrl(je.getShortAccessUrl());
 
-        return SubmissionManager.saveJournalExperiment(je, s, user);
+        return SubmissionManager.saveNewJournalSubmission(je, s, user);
     }
 
     private static void changeJournalPermissions(ExperimentAnnotations exptAnnotations, UserPrincipal journalGroup, User user, boolean add)
@@ -545,7 +547,7 @@ public class JournalManager
 
     public static void removeJournalAccess(ExperimentAnnotations expAnnotations, Journal journal, User user)
     {
-        JournalExperiment je = SubmissionManager.getJournalExperiment(expAnnotations.getId(), journal.getId());
+        JournalSubmission je = SubmissionManager.getJournalSubmission(expAnnotations.getId(), journal.getId());
         Submission submission = je.getNewestSubmission();
         if(submission != null)
         {
@@ -636,13 +638,14 @@ public class JournalManager
 //                , null).getObject(JournalExperiment.class);
 //    }
 
-    public static void updateJournalExperimentUrls(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException
+    public static void updateJournalExperimentUrls(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, Submission submission, String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException
     {
-        updateJournalExperimentUrls(expAnnotations, journal, je, shortAccessUrl, shortCopyUrl, user, true);
+        updateJournalExperimentUrls(expAnnotations, journal, je, submission, shortAccessUrl, shortCopyUrl, user, true);
     }
 
-    public static void updateJournalExperimentUrls(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, String shortAccessUrl,
-                                                   @Nullable String shortCopyUrl, User user, boolean deleteOld) throws ValidationException
+    public static void updateJournalExperimentUrls(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, Submission submission,
+                                                   String shortAccessUrl, @Nullable String shortCopyUrl,
+                                                   User user, boolean deleteOld) throws ValidationException
     {
         ShortURLRecord oldAccessUrl = je.getShortAccessUrl();
         ShortURLRecord oldCopyUrl = je.getShortCopyUrl();
@@ -668,6 +671,8 @@ public class JournalManager
         }
 
         SubmissionManager.updateJournalExperiment(je, user);
+        submission.setShortAccessUrl(je.getShortAccessUrl());
+        SubmissionManager.updateSubmission(submission, user);
 
         if(deleteOld)
         {

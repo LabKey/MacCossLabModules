@@ -35,9 +35,8 @@
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
 <%@ page import="java.util.Set" %>
-<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page import="org.labkey.panoramapublic.query.SubmissionManager" %>
-<%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
+<%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -79,8 +78,8 @@
 
     boolean getLabHeadUserInfo = form.isGetPxid() && expAnnotations.getLabHeadUser() == null;
 
-    JournalExperiment je = SubmissionManager.getJournalExperiment(expAnnotations.getId(), journalId);
-    boolean allowEditAccessUrl = je == null ? true : je.getCopiedSubmissions().size() == 0;
+    JournalSubmission js = SubmissionManager.getJournalSubmission(expAnnotations.getId(), journalId);
+    boolean allowEditAccessUrl = js == null ? true : js.getCopiedSubmissions().size() == 0;
 %>
 
 <div id="publishExperimentForm"></div>

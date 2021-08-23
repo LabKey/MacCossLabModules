@@ -18,6 +18,7 @@ import org.labkey.api.view.NotFoundException;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
@@ -37,19 +38,19 @@ public class PanoramaPublicNotification
 
     private enum ACTION {NEW, UPDATED, DELETED, COPIED, RESUBMITTED, RECOPIED}
 
-    public static void notifyCreated(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, User user)
+    public static void notifyCreated(ExperimentAnnotations expAnnotations, Journal journal, JournalSubmission js, User user)
     {
-        StringBuilder messageBody = getCreateUpdateMessageBody(expAnnotations, journal, je, ACTION.NEW, user);
-        postNotification(expAnnotations, journal, je, messageBody.toString());
+        StringBuilder messageBody = getCreateUpdateMessageBody(expAnnotations, journal, js, ACTION.NEW, user);
+        postNotification(expAnnotations, journal, js, messageBody.toString());
     }
 
-    public static void notifyUpdated(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, User user)
+    public static void notifyUpdated(ExperimentAnnotations expAnnotations, Journal journal, JournalSubmission js, User user)
     {
-        StringBuilder messageBody = getCreateUpdateMessageBody(expAnnotations, journal, je, ACTION.UPDATED, user);
-        postNotification(expAnnotations, journal, je, messageBody.toString());
+        StringBuilder messageBody = getCreateUpdateMessageBody(expAnnotations, journal, js, ACTION.UPDATED, user);
+        postNotification(expAnnotations, journal, js, messageBody.toString());
     }
 
-    public static void notifyDeleted(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, User user)
+    public static void notifyDeleted(ExperimentAnnotations expAnnotations, Journal journal, JournalSubmission js, User user)
     {
         StringBuilder messageBody = new StringBuilder();
         appendRequestName(expAnnotations, journal, ACTION.DELETED, messageBody);
@@ -57,13 +58,13 @@ public class PanoramaPublicNotification
         messageBody.append(NL).append("* User Folder: ").append(getContainerLink(expAnnotations.getContainer()));
         appendActionSubmitterDetails(expAnnotations, user, messageBody);
 
-        postNotification(expAnnotations, journal, je, messageBody.toString());
+        postNotification(expAnnotations, journal, js, messageBody.toString());
     }
 
-    public static void notifyResubmitted(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, ExperimentAnnotations currentJournalExpt, User user)
+    public static void notifyResubmitted(ExperimentAnnotations expAnnotations, Journal journal, JournalSubmission js, ExperimentAnnotations currentJournalExpt, User user)
     {
         StringBuilder messageBody = new StringBuilder();
-        appendFullMessageBody(expAnnotations, journal, je, ACTION.RESUBMITTED, user, messageBody);
+        appendFullMessageBody(expAnnotations, journal, js, ACTION.RESUBMITTED, user, messageBody);
         if(currentJournalExpt != null)
         {
             messageBody.append(NL2).append(bold(String.format("Current %s Folder:", journal.getName()))).append(" ").append(getContainerLink(currentJournalExpt.getContainer()));
@@ -73,16 +74,16 @@ public class PanoramaPublicNotification
             messageBody.append(NL2).append(bold(String.format("Could not find the current %s folder.", journal.getName())));
         }
 
-        postNotification(expAnnotations, journal, je, messageBody.toString());
+        postNotification(expAnnotations, journal, js, messageBody.toString());
     }
 
     public static void notifyCopied(ExperimentAnnotations srcExpAnnotations, ExperimentAnnotations targetExpAnnotations, Journal journal,
-                                    JournalExperiment je, User reviewer, String reviewerPassword, User user, boolean isRecopy)
+                                    JournalSubmission js, User reviewer, String reviewerPassword, User user, boolean isRecopy)
     {
         StringBuilder messageBody = new StringBuilder();
         appendRequestName(srcExpAnnotations, journal, isRecopy ? ACTION.RECOPIED : ACTION.COPIED, messageBody);
-        Submission submission = je.getNewestSubmission();
-        appendSubmissionDetails(srcExpAnnotations, je, submission, messageBody);
+        Submission submission = js.getNewestSubmission();
+        appendSubmissionDetails(srcExpAnnotations, js, submission, messageBody);
         messageBody.append(NL);
         messageBody.append(NL).append(String.format("Experiment has been %scopied to ", isRecopy ? "re": "")).append(escape(journal.getName()));
         messageBody.append(NL).append("Folder: ").append(getContainerLink(targetExpAnnotations.getContainer()));
@@ -112,10 +113,10 @@ public class PanoramaPublicNotification
             messageBody.append(NL2).append(bold("ProteomeXchange ID:")).append(" ").append(targetExpAnnotations.getPxid());
         }
 
-        postNotification(srcExpAnnotations, journal, je, messageBody.toString(), user /* User is either a site admin or a Panorama Public admin, and should have permissions to post*/);
+        postNotification(srcExpAnnotations, journal, js, messageBody.toString(), user /* User is either a site admin or a Panorama Public admin, and should have permissions to post*/);
     }
 
-    public static void postNotification(ExperimentAnnotations experimentAnnotations, Journal journal, JournalExperiment je, String messageBody)
+    public static void postNotification(ExperimentAnnotations experimentAnnotations, Journal journal, JournalSubmission js, String messageBody)
     {
         // The user submitting the request does not have permissions to post in the journal's support container.  So the
         // announcement will be posted by the journal admin user.
@@ -125,42 +126,42 @@ public class PanoramaPublicNotification
             throw new NotFoundException(String.format("Could not find an admin user for %s.", journal.getName()));
         }
 
-        postNotification(experimentAnnotations, journal, je, messageBody, journalAdmin);
+        postNotification(experimentAnnotations, journal, js, messageBody, journalAdmin);
     }
 
-    public static void postNotification(ExperimentAnnotations experimentAnnotations, Journal journal, JournalExperiment je, String messageBody, User messagePoster)
+    public static void postNotification(ExperimentAnnotations experimentAnnotations, Journal journal, JournalSubmission js, String messageBody, User messagePoster)
     {
         AnnouncementService svc = AnnouncementService.get();
         Container supportContainer = journal.getSupportContainer();
         String messageTitle = "ID: " + experimentAnnotations.getId() +" " + experimentAnnotations.getContainer().getPath();
 
-        if(je.getAnnouncementId() != null)
+        if(js.getAnnouncementId() != null)
         {
-            svc.insertAnnouncement(supportContainer, messagePoster, messageTitle, messageBody, true, je.getAnnouncementId());
+            svc.insertAnnouncement(supportContainer, messagePoster, messageTitle, messageBody, true, js.getAnnouncementId());
         }
         else
         {
             Announcement announcement = svc.insertAnnouncement(supportContainer, messagePoster, messageTitle, messageBody, true);
-            je.setAnnouncementId(announcement.getRowId());
-            SubmissionManager.updateJournalExperiment(je, messagePoster);
+            js.getJournalExperiment().setAnnouncementId(announcement.getRowId());
+            SubmissionManager.updateJournalExperiment(js.getJournalExperiment(), messagePoster);
         }
     }
 
-    private static StringBuilder getCreateUpdateMessageBody(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment journalExperiment, ACTION action, User user)
+    private static StringBuilder getCreateUpdateMessageBody(ExperimentAnnotations expAnnotations, Journal journal, JournalSubmission js, ACTION action, User user)
     {
         StringBuilder text = new StringBuilder();
-        appendFullMessageBody(expAnnotations, journal, journalExperiment, action, user, text);
+        appendFullMessageBody(expAnnotations, journal, js, action, user, text);
         return text;
     }
 
-    private static void appendFullMessageBody(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment journalExperiment, ACTION action,
+    private static void appendFullMessageBody(ExperimentAnnotations expAnnotations, Journal journal, JournalSubmission js, ACTION action,
                                               User user, StringBuilder text)
     {
         appendRequestName(expAnnotations, journal, action, text);
-        Submission submission = journalExperiment.getPendingSubmission();
+        Submission submission = js.getPendingSubmission();
         if(submission != null)
         {
-            appendSubmissionDetails(expAnnotations, journalExperiment, submission, text);
+            appendSubmissionDetails(expAnnotations, js, submission, text);
         }
         appendUserDetails(expAnnotations.getSubmitterUser(), expAnnotations.getContainer(), "Submitter", text);
         appendUserDetails(expAnnotations.getLabHeadUser(), expAnnotations.getContainer(), "Lab Head", text);
@@ -190,7 +191,7 @@ public class PanoramaPublicNotification
                 .append(NL).append("Target: ").append(escape(journal.getName()));
     }
 
-    private static void appendSubmissionDetails(ExperimentAnnotations exptAnnotations, JournalExperiment journalExperiment, Submission submission, @NotNull StringBuilder text)
+    private static void appendSubmissionDetails(ExperimentAnnotations exptAnnotations, JournalSubmission js, Submission submission, @NotNull StringBuilder text)
     {
         text.append(NL);
         text.append(NL).append("* Experiment ID: ").append(exptAnnotations.getId());
@@ -200,9 +201,9 @@ public class PanoramaPublicNotification
         {
             text.append(" (Incomplete Submission)");
         }
-        text.append(NL).append("* Access URL: ").append(journalExperiment.getShortAccessUrl().renderShortURL());
+        text.append(NL).append("* Access URL: ").append(js.getShortAccessUrl().renderShortURL());
         text.append(NL).append("* User Folder: ").append(getContainerLink(exptAnnotations.getContainer()));
-        text.append(NL).append("* **[[Copy Link](").append(journalExperiment.getShortCopyUrl().renderShortURL()).append(")]**");
+        text.append(NL).append("* **[[Copy Link](").append(js.getShortCopyUrl().renderShortURL()).append(")]**");
     }
 
     private static void appendUserDetails(User user, Container container, String userType, StringBuilder text)
@@ -292,7 +293,7 @@ public class PanoramaPublicNotification
 
     public static String getExperimentCopiedEmailBody(ExperimentAnnotations sourceExperiment,
                                                       ExperimentAnnotations targetExperiment,
-                                                      JournalExperiment jExperiment,
+                                                      JournalSubmission js,
                                                       Journal journal,
                                                       User reviewer,
                                                       String reviewerPassword,
@@ -314,7 +315,7 @@ public class PanoramaPublicNotification
                 .append(" Please take a moment to verify that the copy is accurate.")
                 .append(" Let us know right away if you notice any discrepancies.");
 
-        Submission lastSubmission = jExperiment.getNewestSubmission();
+        Submission lastSubmission = js.getNewestSubmission();
         if(reviewer != null)
         {
             emailMsg.append(NL2)
@@ -378,7 +379,7 @@ public class PanoramaPublicNotification
                 .append(NL).append("Reviewer account requested: ").append(lastSubmission.isKeepPrivate() ? "Yes" : "No")
                 .append(NL).append("PX ID requested: ").append(lastSubmission.isPxidRequested() ? "Yes" : "No")
                 .append(NL).append("Short Access URL: ").append(targetExperiment.getShortUrl().renderShortURL())
-                .append(NL).append("Message ID: ").append(jExperiment.getAnnouncementId());
+                .append(NL).append("Message ID: ").append(js.getAnnouncementId());
         if(recopy)
         {
             emailMsg.append(NL).append("Resubmit request");
@@ -388,19 +389,19 @@ public class PanoramaPublicNotification
     }
 
     public static void postEmailContents(String subject, String emailBody, Set<String> toAddresses, User sender,
-                                         ExperimentAnnotations sourceExperiment, JournalExperiment jExperiment, Journal journal, boolean emailSent)
+                                         ExperimentAnnotations sourceExperiment, JournalSubmission js, Journal journal, boolean emailSent)
     {
-        postEmailContents(subject, emailBody, toAddresses, sender, sourceExperiment, jExperiment, journal, null, emailSent);
+        postEmailContents(subject, emailBody, toAddresses, sender, sourceExperiment, js, journal, null, emailSent);
     }
 
     public static void postEmailContentsWithError(String subject, String emailBody, Set<String> toAddresses, User sender,
-                                                  ExperimentAnnotations sourceExperiment, JournalExperiment jExperiment, Journal journal, String errorMessage)
+                                                  ExperimentAnnotations sourceExperiment, JournalSubmission js, Journal journal, String errorMessage)
     {
-        postEmailContents(subject, emailBody, toAddresses, sender, sourceExperiment, jExperiment, journal, errorMessage, false);
+        postEmailContents(subject, emailBody, toAddresses, sender, sourceExperiment, js, journal, errorMessage, false);
     }
 
     private static void postEmailContents(String subject, String emailBody, Set<String> toAddresses, User sender,
-                                         ExperimentAnnotations sourceExperiment, JournalExperiment jExperiment, Journal journal, String errorMessage,
+                                         ExperimentAnnotations sourceExperiment, JournalSubmission js, Journal journal, String errorMessage,
                                           boolean emailSent)
     {
         StringBuilder messageBody = new StringBuilder();
@@ -419,7 +420,7 @@ public class PanoramaPublicNotification
                 .append(NL2).append("Subject: ").append(escape(subject))
                 .append(NL2).append(escape(emailBody));
 
-        postNotification(sourceExperiment, journal, jExperiment, messageBody.toString(), sender /* User is either a site admin or a Panorama Public admin, and should have permissions to post*/);
+        postNotification(sourceExperiment, journal, js, messageBody.toString(), sender /* User is either a site admin or a Panorama Public admin, and should have permissions to post*/);
     }
     public static class TestCase extends Assert
     {

@@ -25,16 +25,15 @@
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.ExperimentAnnotationsDetails" %>
-<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.GetPxActionsAction" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.ShowExperimentAnnotationsAction" %>
 <%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
-<%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page import="org.labkey.panoramapublic.query.SubmissionManager" %>
+<%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -72,19 +71,19 @@
     Journal journal = null;
     boolean journalCopyPending = false;
     ShortURLRecord accessUrlRecord = annot.getShortUrl(); // Will have a value if this is a journal copy of an experiment.
-    JournalExperiment je = me.getModelBean().getLastPublishedRecord(); // Will be non-null if this experiment is in a user (not journal) project.
+    JournalSubmission journalSubmission = me.getModelBean().getLastPublishedRecord(); // Will be non-null if this experiment is in a user (not journal) project.
     String publishButtonText = "Submit";
-    if(je != null)
+    if(journalSubmission != null)
     {
-        journal = JournalManager.getJournal(je.getJournalId());
-        Submission submission = je.getNewestSubmission();
+        journal = JournalManager.getJournal(journalSubmission.getJournalId());
+        Submission submission = journalSubmission.getNewestSubmission();
         journalCopyPending = submission.getCopiedExperimentId() == null;
-        accessUrlRecord = je.getShortAccessUrl();
+        accessUrlRecord = journalSubmission.getShortAccessUrl();
 
         if(!journalCopyPending)
         {
             publishButtonText = "Resubmit";
-            publishUrl = PanoramaPublicController.getRePublishExperimentURL(annot.getId(), je.getJournalId(), getContainer(), submission.isKeepPrivate(), true); // Has been copied; User is re-submitting
+            publishUrl = PanoramaPublicController.getRePublishExperimentURL(annot.getId(), journalSubmission.getJournalId(), getContainer(), submission.isKeepPrivate(), true); // Has been copied; User is re-submitting
         }
     }
     String accessUrl = accessUrlRecord == null ? null : accessUrlRecord.renderShortURL();
@@ -94,9 +93,9 @@
     String version = null;
     if(annot.isJournalCopy())
     {
-        JournalExperiment journalExperiment = SubmissionManager.getRowForJournalCopy(annot);
-        Submission thisSubmission = journalExperiment.getSubmissionForJournalCopy(annot.getId());
-        Integer v = thisSubmission.getVersion();
+        JournalSubmission js = SubmissionManager.getSubmissionForJournalCopy(annot);
+        Submission s = js.getSubmissionForJournalCopy(annot.getId());
+        Integer v = s.getVersion();
         version = v == null ? "Current" : String.valueOf(v);
     }
 %>

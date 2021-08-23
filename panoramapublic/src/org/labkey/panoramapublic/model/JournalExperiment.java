@@ -48,7 +48,7 @@ public class JournalExperiment
     private Date _modified;
     private int _modifiedBy;
     private Integer _announcementId;
-    private List<Submission> _submissions;
+    // private List<Submission> _submissions;
 
 //    private Date _copied;
 //    private boolean _keepPrivate;
@@ -161,72 +161,7 @@ public class JournalExperiment
         _announcementId = announcementId;
     }
 
-    public void setSubmissions(List<Submission> submissions)
-    {
-        _submissions = submissions;
-        if(_submissions != null)
-        {
-            // Sort by date created; newest first
-            _submissions.sort(new ReverseComparator(Comparator.comparing(Submission::getCreated)));
-        }
-        else
-        {
-            _submissions = Collections.emptyList();
-        }
-    }
 
-    public @NotNull List<Submission> getSubmissions()
-    {
-        return _submissions;
-    }
-
-    public @Nullable Submission getNewestSubmission()
-    {
-        return _submissions.size() > 0 ? _submissions.get(0) : null;
-    }
-
-    public @Nullable Submission getPendingSubmission()
-    {
-        return _submissions.stream().filter(s -> s.getCopiedExperimentId() == null).findFirst().orElse(null);
-    }
-
-    public boolean isPendingSubmission()
-    {
-        return getPendingSubmission() != null;
-    }
-
-    public @NotNull List<Submission> getCopiedSubmissions()
-    {
-        return _submissions.stream().filter(s -> s.getCopiedExperimentId() != null).collect(Collectors.toList());
-    }
-
-    public @Nullable Submission getLastCopiedSubmission()
-    {
-        return _submissions.stream().filter(s -> s.getCopiedExperimentId() != null).findFirst().orElse(null);
-    }
-
-    public Submission getSubmissionForJournalCopy(int copiedExperimentId)
-    {
-        return _submissions.stream().filter(s -> s.getCopiedExperimentId() != null && s.getCopiedExperimentId() == copiedExperimentId).findFirst().orElse(null);
-    }
-
-    public int getNextVersion()
-    {
-        List<Submission> previousVersions = getCopiedSubmissions();
-        return previousVersions.size() == 0 ? 1 : previousVersions.get(0).getVersion() + 1;
-    }
-
-    public boolean isLastCopiedSubmission(int copiedExperimentId)
-    {
-        Submission lastCopied = getLastCopiedSubmission();
-        return lastCopied != null && copiedExperimentId == lastCopied.getCopiedExperimentId();
-    }
-
-    public boolean isNewestSubmission(int submissionId)
-    {
-        Submission submission = getNewestSubmission();
-        return submission != null && submission.getId() == submissionId;
-    }
 
 //    public @Nullable Date getCopied()
 //    {

@@ -41,9 +41,8 @@ import org.labkey.api.util.GUID;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.PanoramaPublicManager;
-import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
-import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
 
 import java.util.ArrayList;
@@ -265,11 +264,12 @@ public class ExperimentAnnotationsManager
         }
         else
         {
-            List<JournalExperiment> jeList = SubmissionManager.getJournalExperiments(expAnnotations);
-            for(JournalExperiment je: jeList)
+            JournalSubmission js = SubmissionManager.getSubmissionForJournalCopy(expAnnotations);
+            if (js != null)
             {
+                Submission s = js.getSubmissionForJournalCopy(expAnnotations.getId());
                 // if this experiment has been submitted but not yet copied delete the row in the Submission and JournalExperiment tables
-                SubmissionManager.deleteSubmission(je.getNewestSubmission(), user);
+                SubmissionManager.deleteSubmission(s /*js.getNewestSubmission()*/, user);
 //                // Delete the row in JournalExperiment where journalExperimentId = expAnnotations.getId()
 //                JournalManager.deleteRowForJournalCopy(expAnnotations);
 //                if (je.getShortCopyUrl() != null)
@@ -453,16 +453,16 @@ public class ExperimentAnnotationsManager
         {
             return false;
         }
-        JournalExperiment journalExperiment = SubmissionManager.getNewestJournalExperiment(expAnnotations);
-        if(journalExperiment != null)
+        JournalSubmission journalSubmission = SubmissionManager.getNewestJournalSubmission(expAnnotations);
+        if(journalSubmission != null)
         {
-            if(journalExperiment.isPendingSubmission())
+            if(journalSubmission.isPendingSubmission())
             {
                 return false;
             }
             // If this experiment has already been copied and the journal copy is final (paper published and data public)
             // then the user should not be able to re-submit this data.
-            Submission lastCopiedSubmission = journalExperiment.getLastCopiedSubmission();
+            Submission lastCopiedSubmission = journalSubmission.getLastCopiedSubmission();
             if(lastCopiedSubmission != null)
             {
                 ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.get(lastCopiedSubmission.getCopiedExperimentId());

@@ -64,7 +64,7 @@ import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.datacite.Doi;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
-import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
@@ -148,7 +148,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // Create a new entry in panoramapublic.ExperimentAnnotations and link it to the new experiment created during folder import.
             log.info("Creating a new TargetedMS experiment entry in panoramapublic.ExperimentAnnotations.");
             ExperimentAnnotations sourceExperiment = jobSupport.getExpAnnotations();
-            JournalExperiment jExperiment = SubmissionManager.getJournalExperiment(sourceExperiment.getId(), jobSupport.getJournal().getId());
+            JournalSubmission js = SubmissionManager.getJournalSubmission(sourceExperiment.getId(), jobSupport.getJournal().getId());
 
             ExperimentAnnotations targetExperiment = new ExperimentAnnotations(sourceExperiment);
             targetExperiment.setExperimentId(experiment.getRowId());
@@ -156,10 +156,10 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             targetExperiment.setJournalCopy(true);
             targetExperiment.setSourceExperimentId(sourceExperiment.getId());
             targetExperiment.setSourceExperimentPath(sourceExperiment.getContainer().getPath());
-            targetExperiment.setShortUrl(jExperiment.getShortAccessUrl());
+            targetExperiment.setShortUrl(js.getShortAccessUrl());
 
             ExperimentAnnotations previousCopy = null;
-            Submission lastCopiedSubmission = jExperiment.getLastCopiedSubmission();
+            Submission lastCopiedSubmission = js.getLastCopiedSubmission();
             if(lastCopiedSubmission != null)
             {
                 previousCopy = ExperimentAnnotationsManager.get(lastCopiedSubmission.getCopiedExperimentId());
@@ -169,10 +169,10 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                             "Previous experiment ID " + lastCopiedSubmission.getCopiedExperimentId());
                 }
                 // Change the shortAccessUrl for the existing copy of the experiment in the journal's project
-                lastCopiedSubmission = updateLastCopiedSubmission(jExperiment, lastCopiedSubmission, jobSupport.getJournal(), previousCopy, user);
+                lastCopiedSubmission = updateLastCopiedSubmission(js, lastCopiedSubmission, jobSupport.getJournal(), previousCopy, user);
                 previousCopy.setShortUrl(lastCopiedSubmission.getShortAccessUrl());
                 ExperimentAnnotationsManager.save(previousCopy, user);
-                jExperiment = SubmissionManager.getJournalExperiment(jExperiment.getId());
+                js = SubmissionManager.getJournalSubmission(js.getJournalExperimentId());
             }
 
             if(jobSupport.assignPxId() // We can get isPxidRequested from the JournalExperiment but sometimes we may have to override that settting.
@@ -225,11 +225,11 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             // Update the target of the short access URL to the journal's copy of the experiment.
             log.info("Updating access URL to point to the new copy of the data.");
-            JournalManager.updateAccessUrl(targetExperiment, jExperiment, user);
+            JournalManager.updateAccessUrl(targetExperiment, js.getJournalExperiment(), user);
 
             // Update the row in the Submission table -- set the 'copied' timestamp and the copiedExperimentId
             log.info("Setting the 'copied' timestamp and copiedExperimentId on the Submission.");
-            Submission currentSubmission = jExperiment.getNewestSubmission();
+            Submission currentSubmission = js.getNewestSubmission();
             currentSubmission.setCopied(new Date());
             currentSubmission.setCopiedExperimentId(targetExperiment.getId());
             SubmissionManager.updateSubmission(currentSubmission, user);
@@ -317,11 +317,11 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             }
 
             // Create notifications. Do this at the end after everything else is done.
-            jExperiment = SubmissionManager.getJournalExperiment(jExperiment.getId());
-            PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), jExperiment,
+            js = SubmissionManager.getJournalSubmission(js.getJournalExperimentId());
+            PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), js,
                     reviewer, reviewerPassword, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
 
-            postEmailNotification(jobSupport, user, log, sourceExperiment, jExperiment, targetExperiment, reviewer, reviewerPassword, previousCopy != null);
+            postEmailNotification(jobSupport, user, log, sourceExperiment, js, targetExperiment, reviewer, reviewerPassword, previousCopy != null);
 
             transaction.commit();
         }
@@ -397,7 +397,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     }
 
     private void postEmailNotification(CopyExperimentJobSupport jobSupport, User pipelineJobUser, Logger log, ExperimentAnnotations sourceExperiment,
-                                       JournalExperiment jExperiment, ExperimentAnnotations targetExperiment,
+                                       JournalSubmission js, ExperimentAnnotations targetExperiment,
                                        User reviewer, String reviewerPassword, boolean recopy)
     {
         // This is the user that was selected as the "Submitter" in the ExperimentAnnotations form, and will be used in the "Submitter" field
@@ -406,7 +406,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         // This is the user that clicked the "Submit" button.  Typically this is the same as the user above.
         // If not, send email to both
-        User formSubmitter = UserManager.getUser(jExperiment.getCreatedBy());
+        User formSubmitter = UserManager.getUser(js.getCreatedBy());
         assert formSubmitter != null;
 
         Set<String> toAddresses = new HashSet<>();
@@ -415,7 +415,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         toAddresses.addAll(jobSupport.toEmailAddresses());
 
         String subject = String.format("Submission to %s: %s", jobSupport.getJournal().getName(), targetExperiment.getShortUrl().renderShortURL());
-        String emailBody = PanoramaPublicNotification.getExperimentCopiedEmailBody(sourceExperiment, targetExperiment, jExperiment, jobSupport.getJournal(),
+        String emailBody = PanoramaPublicNotification.getExperimentCopiedEmailBody(sourceExperiment, targetExperiment, js, jobSupport.getJournal(),
                     reviewer, reviewerPassword,
                     formSubmitter,
                     pipelineJobUser,
@@ -427,18 +427,18 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             try
             {
                 PanoramaPublicNotification.sendEmailNotification(subject, emailBody, targetExperiment.getContainer(), pipelineJobUser, toAddresses, jobSupport.replyToAddress());
-                PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), true);
+                PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, js, jobSupport.getJournal(), true);
             }
             catch (Exception e)
             {
                 log.info("Could not send email to submitter. Error was: " + e.getMessage(), e);
-                PanoramaPublicNotification.postEmailContentsWithError(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), e.getMessage());
+                PanoramaPublicNotification.postEmailContentsWithError(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, js, jobSupport.getJournal(), e.getMessage());
             }
         }
         else
         {
             // Post the email contents to the message board.
-            PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), false);
+            PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, js, jobSupport.getJournal(), false);
         }
     }
 
@@ -631,9 +631,9 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return intIds;
     }
 
-    private Submission updateLastCopiedSubmission(JournalExperiment journalExperiment, Submission lastCopiedSubmission, Journal journal, ExperimentAnnotations previousCopy, User user) throws PipelineJobException, ValidationException
+    private Submission updateLastCopiedSubmission(JournalSubmission js, Submission lastCopiedSubmission, Journal journal, ExperimentAnnotations previousCopy, User user) throws PipelineJobException, ValidationException
     {
-        int version = journalExperiment.getNextVersion();
+        int version = js.getNextVersion();
         lastCopiedSubmission.setVersion(version);
 
         // Append a version to the original short URL

@@ -25,11 +25,10 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicManager" %>
 <%@ page import="org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter" %>
 <%@ page import="java.util.Map" %>
-<%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
-<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page import="org.labkey.panoramapublic.query.SubmissionManager" %>
 <%@ page import="org.labkey.panoramapublic.model.Submission" %>
+<%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -48,14 +47,14 @@
     SubmissionDataStatus status = bean.getValidationStatus();
 
     ExperimentAnnotations expAnnotations = status.getExperimentAnnotations();
-    JournalExperiment je = SubmissionManager.getNewestJournalExperiment(expAnnotations);
-    Submission lastSubmission = je != null ? je.getNewestSubmission() : null;
+    JournalSubmission js = SubmissionManager.getNewestJournalSubmission(expAnnotations);
+    Submission lastSubmission = js != null ? js.getNewestSubmission() : null;
     boolean requestPxId = status.canSubmitToPx(); // Request a PX ID if the data validates for a PX submission.
     boolean doIncompletePxSubmission = status.isIncomplete();
 
     ActionURL rawFilesUrl = PanoramaPublicManager.getRawDataTabUrl(getContainer());
     boolean keepPrivate = lastSubmission == null ? true : lastSubmission.isKeepPrivate();
-    int journalId = je == null ? 0 : je.getJournalId();
+    int journalId = js == null ? 0 : js.getJournalId();
 
     ActionURL submitUrl = lastSubmission == null ? new ActionURL(PanoramaPublicController.PublishExperimentAction.class, getContainer()) // Data has not yet been submitted.
             : (lastSubmission.getCopied()) == null ?

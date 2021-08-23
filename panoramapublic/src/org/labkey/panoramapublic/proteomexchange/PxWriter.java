@@ -18,7 +18,7 @@ package org.labkey.panoramapublic.proteomexchange;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
-import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.JournalSubmission;
 
 import java.util.List;
 import java.util.Map;
@@ -75,13 +75,13 @@ public abstract class PxWriter
     abstract void end() throws PxException;
     abstract void close() throws PxException;
     abstract void writeChangeLog(String pxChangeLog) throws PxException;
-    abstract void writeDatasetSummary(ExperimentAnnotations expAnnotations, JournalExperiment journalExperiment) throws PxException;
+    abstract void writeDatasetSummary(ExperimentAnnotations expAnnotations, JournalSubmission js) throws PxException;
     abstract void writeDatasetIdentifierList(String pxId, int version, ShortURLRecord accessUrl) throws PxException;
     abstract void writeDatasetOriginList() throws PxException;
     abstract void writeSpeciesList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeInstrumentList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeModificationList(ExperimentAnnotations experimentAnnotations) throws PxException;
-    abstract void writeContactList(ExperimentAnnotations experimentAnnotationsn, JournalExperiment je) throws PxException;
+    abstract void writeContactList(ExperimentAnnotations experimentAnnotationsn, JournalSubmission js) throws PxException;
     abstract void writePublicationList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeKeywordList(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void writeDatasetLinkList(ShortURLRecord accessUrl) throws PxException;

@@ -170,16 +170,6 @@ public class Submission
         _copiedExperimentId = copiedExperimentId;
     }
 
-    public Date getCopied()
-    {
-        return _copied;
-    }
-
-    public void setCopied(Date copied)
-    {
-        _copied = copied;
-    }
-
     public Integer getVersion()
     {
         return _version;
@@ -200,7 +190,17 @@ public class Submission
         _shortAccessUrl = shortAccessUrl;
     }
 
-    public boolean isCopied()
+    public Date getCopied()
+    {
+        return _copied;
+    }
+
+    public void setCopied(Date copied)
+    {
+        _copied = copied;
+    }
+
+    public boolean wasCopied()
     {
         return _copiedExperimentId != null;
     }

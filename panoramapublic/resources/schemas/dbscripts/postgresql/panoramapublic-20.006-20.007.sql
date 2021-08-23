@@ -30,7 +30,7 @@ CREATE TABLE panoramapublic.Submission
     Id                     SERIAL NOT NULL,
     JournalExperimentId    INT    NOT NULL,
     CopiedExperimentId     INT,
-    Copied TIMESTAMP,
+    Copied                 TIMESTAMP,
     PxIdRequested          boolean,
     KeepPrivate            boolean,
     IncompletePxSubmission boolean,
