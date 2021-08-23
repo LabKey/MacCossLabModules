@@ -27,6 +27,7 @@ import org.labkey.api.security.UserManager;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+import org.labkey.panoramapublic.query.SubmissionManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -511,7 +512,8 @@ public class ExperimentAnnotations
         {
             return null;
         }
-        return ExperimentAnnotationsManager.getLicenseSelectedForSubmission(getSourceExperimentId());
+        Submission submission = SubmissionManager.getSubmissionForCopiedExperiment(_id);
+        return submission == null ? null : submission.getDataLicense();
     }
 
     public boolean isFinal()

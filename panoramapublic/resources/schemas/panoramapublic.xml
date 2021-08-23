@@ -234,16 +234,50 @@
                     <fkTable>ShortUrl</fkTable>
                 </fk>
             </column>
-            <column columnName="Copied"/>
-            <column columnName="KeepPrivate"/>
-            <column columnName="PxidRequested"/>
-            <column columnName="labHeadName"/>
-            <column columnName="labHeadEmail"/>
-            <column columnName="labHeadAffiliation"/>
-            <column columnName="DataLicense">
-                <columnTitle>License</columnTitle>
-            </column>
             <column columnName="AnnouncementId"/>
+            <column columnName="Modified"/>
+            <column columnName="ModifiedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+        </columns>
+    </table>
+
+    <table tableName="Submission" tableDbType="TABLE">
+        <columns>
+            <column columnName="_ts">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Created"/>
+            <column columnName="CreatedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+            <column columnName="Modified"/>
+            <column columnName="ModifiedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+            <column columnName="Id">
+                <description>Contains a unique id for this Submission.</description>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="JournalExperimentId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>JournalExperiment</fkTable>
+                </fk>
+            </column>
             <column columnName="CopiedExperimentId">
                 <columnTitle>Data Copy</columnTitle>
                 <fk>
@@ -253,13 +287,23 @@
                 </fk>
                 <url>/panoramapublic-showExperimentAnnotations.view?id=${CopiedExperimentId}</url>
             </column>
+            <column columnName="Copied"/>
+            <column columnName="PxidRequested"/>
+            <column columnName="KeepPrivate"/>
             <column columnName="IncompletePxSubmission"/>
-            <column columnName="Modified"/>
-            <column columnName="ModifiedBy">
+            <column columnName="labHeadName"/>
+            <column columnName="labHeadEmail"/>
+            <column columnName="labHeadAffiliation"/>
+            <column columnName="DataLicense">
+                <columnTitle>License</columnTitle>
+            </column>
+            <column columnName="Version"/>
+            <column columnName="ShortAccessURL">
+                <columnTitle>Access Link</columnTitle>
                 <fk>
-                    <fkColumnName>UserId</fkColumnName>
+                    <fkColumnName>EntityId</fkColumnName>
                     <fkDbSchema>core</fkDbSchema>
-                    <fkTable>UsersData</fkTable>
+                    <fkTable>ShortUrl</fkTable>
                 </fk>
             </column>
         </columns>

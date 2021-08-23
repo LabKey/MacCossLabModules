@@ -35,6 +35,7 @@ import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsTableInfo;
 import org.labkey.panoramapublic.query.JournalExperimentTableInfo;
+import org.labkey.panoramapublic.query.SubmissionTableInfo;
 
 import java.util.Set;
 
@@ -45,6 +46,7 @@ public class PanoramaPublicSchema extends UserSchema
 
     public static final String TABLE_JOURNAL = "Journal";
     public static final String TABLE_JOURNAL_EXPERIMENT = "JournalExperiment";
+    public static final String TABLE_SUBMISSION = "Submission";
     public static final String TABLE_EXPERIMENT_ANNOTATIONS = "ExperimentAnnotations";
     public static final String TABLE_PX_XML = "PxXml";
 
@@ -85,6 +87,10 @@ public class PanoramaPublicSchema extends UserSchema
         if (TABLE_JOURNAL_EXPERIMENT.equalsIgnoreCase(name))
         {
             return new JournalExperimentTableInfo(this, cf);
+        }
+        if (TABLE_SUBMISSION.equalsIgnoreCase(name))
+        {
+            return new SubmissionTableInfo(this, cf);
         }
 
         if (TABLE_JOURNAL.equalsIgnoreCase(name))
@@ -155,6 +161,7 @@ public class PanoramaPublicSchema extends UserSchema
         CaseInsensitiveHashSet hs = new CaseInsensitiveHashSet();
         hs.add(TABLE_JOURNAL);
         hs.add(TABLE_JOURNAL_EXPERIMENT);
+        hs.add(TABLE_SUBMISSION);
         hs.add(TABLE_EXPERIMENT_ANNOTATIONS);
         hs.add(TABLE_PX_XML);
 

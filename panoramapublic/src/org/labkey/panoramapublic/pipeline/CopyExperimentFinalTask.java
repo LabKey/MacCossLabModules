@@ -35,6 +35,7 @@ import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
 import org.labkey.api.pipeline.RecordedActionSet;
 import org.labkey.api.query.BatchValidationException;
+import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.SecurityManager;
@@ -53,6 +54,8 @@ import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.view.Portal;
+import org.labkey.api.view.ShortURLRecord;
+import org.labkey.api.view.ShortURLService;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicNotification;
@@ -60,11 +63,14 @@ import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.datacite.Doi;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
+import org.labkey.panoramapublic.query.SubmissionManager;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -142,7 +148,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // Create a new entry in panoramapublic.ExperimentAnnotations and link it to the new experiment created during folder import.
             log.info("Creating a new TargetedMS experiment entry in panoramapublic.ExperimentAnnotations.");
             ExperimentAnnotations sourceExperiment = jobSupport.getExpAnnotations();
-            JournalExperiment jExperiment = JournalManager.getJournalExperiment(sourceExperiment, jobSupport.getJournal());
+            JournalExperiment jExperiment = SubmissionManager.getJournalExperiment(sourceExperiment.getId(), jobSupport.getJournal().getId());
 
             ExperimentAnnotations targetExperiment = new ExperimentAnnotations(sourceExperiment);
             targetExperiment.setExperimentId(experiment.getRowId());
@@ -153,14 +159,20 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             targetExperiment.setShortUrl(jExperiment.getShortAccessUrl());
 
             ExperimentAnnotations previousCopy = null;
-            if(jExperiment.getCopiedExperimentId() != null)
+            Submission lastCopiedSubmission = jExperiment.getLastCopiedSubmission();
+            if(lastCopiedSubmission != null)
             {
-                previousCopy = ExperimentAnnotationsManager.get(jExperiment.getCopiedExperimentId());
+                previousCopy = ExperimentAnnotationsManager.get(lastCopiedSubmission.getCopiedExperimentId());
                 if(previousCopy == null)
                 {
                     throw new PipelineJobException("Could not find and entry for the previous copy of the experiment.  " +
-                            "Previous experiment ID " + jExperiment.getCopiedExperimentId());
+                            "Previous experiment ID " + lastCopiedSubmission.getCopiedExperimentId());
                 }
+                // Change the shortAccessUrl for the existing copy of the experiment in the journal's project
+                lastCopiedSubmission = updateLastCopiedSubmission(jExperiment, lastCopiedSubmission, jobSupport.getJournal(), previousCopy, user);
+                previousCopy.setShortUrl(lastCopiedSubmission.getShortAccessUrl());
+                ExperimentAnnotationsManager.save(previousCopy, user);
+                jExperiment = SubmissionManager.getJournalExperiment(jExperiment.getId());
             }
 
             if(jobSupport.assignPxId() // We can get isPxidRequested from the JournalExperiment but sometimes we may have to override that settting.
@@ -215,11 +227,12 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             log.info("Updating access URL to point to the new copy of the data.");
             JournalManager.updateAccessUrl(targetExperiment, jExperiment, user);
 
-            // Update the JournalExperiment table -- set the 'copied' timestamp and the journalExperimentId
-            log.info("Setting the 'copied' timestamp and journalExperimentId on the JournalExperiment table.");
-            jExperiment.setCopied(new Date());
-            jExperiment.setCopiedExperimentId(targetExperiment.getId());
-            JournalManager.updateJournalExperiment(jExperiment, user);
+            // Update the row in the Submission table -- set the 'copied' timestamp and the copiedExperimentId
+            log.info("Setting the 'copied' timestamp and copiedExperimentId on the Submission.");
+            Submission currentSubmission = jExperiment.getNewestSubmission();
+            currentSubmission.setCopied(new Date());
+            currentSubmission.setCopiedExperimentId(targetExperiment.getId());
+            SubmissionManager.updateSubmission(currentSubmission, user);
 
             // Remove the copy permissions given to the journal.
             log.info("Removing copy permissions given to journal.");
@@ -267,7 +280,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             User reviewer = null;
             String reviewerPassword = null;
-            if(jExperiment.isKeepPrivate())
+            if(currentSubmission.isKeepPrivate())
             {
                 if (previousCopy == null || previousCopy.isPublic())
                 {
@@ -304,6 +317,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             }
 
             // Create notifications. Do this at the end after everything else is done.
+            jExperiment = SubmissionManager.getJournalExperiment(jExperiment.getId());
             PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), jExperiment,
                     reviewer, reviewerPassword, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
 
@@ -615,6 +629,23 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             intIds[i] = expRunRowIds.get(i);
         }
         return intIds;
+    }
+
+    private Submission updateLastCopiedSubmission(JournalExperiment journalExperiment, Submission lastCopiedSubmission, Journal journal, ExperimentAnnotations previousCopy, User user) throws PipelineJobException, ValidationException
+    {
+        int version = journalExperiment.getNextVersion();
+        lastCopiedSubmission.setVersion(version);
+
+        // Append a version to the original short URL
+        String versionedShortUrl = lastCopiedSubmission.getShortAccessUrl().getShortURL() + "_v" + lastCopiedSubmission.getVersion();
+        ShortURLService shortUrlService = ShortURLService.get();
+        ShortURLRecord shortURLRecord = shortUrlService.resolveShortURL(versionedShortUrl);
+        if(shortURLRecord != null)
+        {
+            throw new PipelineJobException("Error appending a version to the short URL.  The short URL is already in use " + "'" + versionedShortUrl + "'");
+        }
+        SubmissionManager.updateSubmissionUrl(lastCopiedSubmission, previousCopy, journal, versionedShortUrl, user);
+        return SubmissionManager.getSubmission(lastCopiedSubmission.getId()); // Requery to get the updated values
     }
 
     public static class Factory extends AbstractTaskFactory<AbstractTaskFactorySettings, Factory>

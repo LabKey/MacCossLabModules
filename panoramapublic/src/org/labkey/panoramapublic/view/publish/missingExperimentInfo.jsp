@@ -28,6 +28,8 @@
 <%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page import="org.labkey.api.portal.ProjectUrls" %>
+<%@ page import="org.labkey.panoramapublic.query.SubmissionManager" %>
+<%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -46,16 +48,17 @@
     SubmissionDataStatus status = bean.getValidationStatus();
 
     ExperimentAnnotations expAnnotations = status.getExperimentAnnotations();
-    JournalExperiment je = JournalManager.getLastPublishedRecord(expAnnotations.getId());
+    JournalExperiment je = SubmissionManager.getNewestJournalExperiment(expAnnotations);
+    Submission lastSubmission = je != null ? je.getNewestSubmission() : null;
     boolean requestPxId = status.canSubmitToPx(); // Request a PX ID if the data validates for a PX submission.
     boolean doIncompletePxSubmission = status.isIncomplete();
 
     ActionURL rawFilesUrl = PanoramaPublicManager.getRawDataTabUrl(getContainer());
-    boolean keepPrivate = je == null ? true : je.isKeepPrivate();
+    boolean keepPrivate = lastSubmission == null ? true : lastSubmission.isKeepPrivate();
     int journalId = je == null ? 0 : je.getJournalId();
 
-    ActionURL submitUrl = je == null ? new ActionURL(PanoramaPublicController.PublishExperimentAction.class, getContainer()) // Data has not yet been submitted.
-            : (je.getCopied()) == null ?
+    ActionURL submitUrl = lastSubmission == null ? new ActionURL(PanoramaPublicController.PublishExperimentAction.class, getContainer()) // Data has not yet been submitted.
+            : (lastSubmission.getCopied()) == null ?
             new ActionURL(PanoramaPublicController.UpdateJournalExperimentAction.class, getContainer()) // Data submitted but not copied yet.
             :
             new ActionURL(PanoramaPublicController.RepublishJournalExperimentAction.class, getContainer()); // Data has been copied to Panorama Public.  This is a re-submit.

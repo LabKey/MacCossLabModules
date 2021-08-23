@@ -18,7 +18,9 @@ import org.labkey.api.view.NotFoundException;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.query.JournalManager;
+import org.labkey.panoramapublic.query.SubmissionManager;
 
 import javax.mail.Message;
 import javax.mail.MessagingException;
@@ -79,7 +81,8 @@ public class PanoramaPublicNotification
     {
         StringBuilder messageBody = new StringBuilder();
         appendRequestName(srcExpAnnotations, journal, isRecopy ? ACTION.RECOPIED : ACTION.COPIED, messageBody);
-        appendSubmissionDetails(srcExpAnnotations, je, messageBody);
+        Submission submission = je.getNewestSubmission();
+        appendSubmissionDetails(srcExpAnnotations, je, submission, messageBody);
         messageBody.append(NL);
         messageBody.append(NL).append(String.format("Experiment has been %scopied to ", isRecopy ? "re": "")).append(escape(journal.getName()));
         messageBody.append(NL).append("Folder: ").append(getContainerLink(targetExpAnnotations.getContainer()));
@@ -94,7 +97,7 @@ public class PanoramaPublicNotification
         }
         else
         {
-            if(isRecopy && je.isKeepPrivate())
+            if(isRecopy && submission.isKeepPrivate())
             {
                 messageBody.append(NL2).append(bolditalics("Reviewer account is the same as the previous copy of this data."));
             }
@@ -139,7 +142,7 @@ public class PanoramaPublicNotification
         {
             Announcement announcement = svc.insertAnnouncement(supportContainer, messagePoster, messageTitle, messageBody, true);
             je.setAnnouncementId(announcement.getRowId());
-            JournalManager.updateJournalExperiment(je, messagePoster);
+            SubmissionManager.updateJournalExperiment(je, messagePoster);
         }
     }
 
@@ -154,22 +157,29 @@ public class PanoramaPublicNotification
                                               User user, StringBuilder text)
     {
         appendRequestName(expAnnotations, journal, action, text);
-        appendSubmissionDetails(expAnnotations, journalExperiment, text);
+        Submission submission = journalExperiment.getPendingSubmission();
+        if(submission != null)
+        {
+            appendSubmissionDetails(expAnnotations, journalExperiment, submission, text);
+        }
         appendUserDetails(expAnnotations.getSubmitterUser(), expAnnotations.getContainer(), "Submitter", text);
         appendUserDetails(expAnnotations.getLabHeadUser(), expAnnotations.getContainer(), "Lab Head", text);
 
-        if(journalExperiment.hasLabHeadDetails())
+        if(submission != null)
         {
-            text.append(NL);
-            text.append(NL).append(bold("Lab Head details provided in submission form:"));
-            text.append(NL).append("Lab Head: ").append(escape(journalExperiment.getLabHeadName()));
-            text.append(NL).append("Lab Head Email: ").append(escape(journalExperiment.getLabHeadEmail()));
-            text.append(NL).append("Lab Head Affiliation: ").append(escape(journalExperiment.getLabHeadAffiliation()));
-        }
+            if (submission.hasLabHeadDetails())
+            {
+                text.append(NL);
+                text.append(NL).append(bold("Lab Head details provided in submission form:"));
+                text.append(NL).append("Lab Head: ").append(escape(submission.getLabHeadName()));
+                text.append(NL).append("Lab Head Email: ").append(escape(submission.getLabHeadEmail()));
+                text.append(NL).append("Lab Head Affiliation: ").append(escape(submission.getLabHeadAffiliation()));
+            }
 
-        if(expAnnotations.getLabHeadUser() == null && !journalExperiment.hasLabHeadDetails() && journalExperiment.isPxidRequested())
-        {
-            text.append(NL2).append(bolditalics("Lab Head details were not provided. Submitter's details will be used in the Lab Head field for announcing data to ProteomeXchange."));
+            if (expAnnotations.getLabHeadUser() == null && !submission.hasLabHeadDetails() && submission.isPxidRequested())
+            {
+                text.append(NL2).append(bolditalics("Lab Head details were not provided. Submitter's details will be used in the Lab Head field for announcing data to ProteomeXchange."));
+            }
         }
         appendActionSubmitterDetails(expAnnotations, user, text);
     }
@@ -180,13 +190,13 @@ public class PanoramaPublicNotification
                 .append(NL).append("Target: ").append(escape(journal.getName()));
     }
 
-    private static void appendSubmissionDetails(ExperimentAnnotations exptAnnotations, JournalExperiment journalExperiment, @NotNull StringBuilder text)
+    private static void appendSubmissionDetails(ExperimentAnnotations exptAnnotations, JournalExperiment journalExperiment, Submission submission, @NotNull StringBuilder text)
     {
         text.append(NL);
         text.append(NL).append("* Experiment ID: ").append(exptAnnotations.getId());
-        text.append(NL).append("* Reviewer Account Requested: ").append(bold(journalExperiment.isKeepPrivate() ? "Yes" : "No"));
-        text.append(NL).append("* PX ID Requested: ").append(bold(journalExperiment.isPxidRequested() ? "Yes" : "No"));
-        if(journalExperiment.isIncompletePxSubmission())
+        text.append(NL).append("* Reviewer Account Requested: ").append(bold(submission.isKeepPrivate() ? "Yes" : "No"));
+        text.append(NL).append("* PX ID Requested: ").append(bold(submission.isPxidRequested() ? "Yes" : "No"));
+        if(submission.isIncompletePxSubmission())
         {
             text.append(" (Incomplete Submission)");
         }
@@ -304,7 +314,7 @@ public class PanoramaPublicNotification
                 .append(" Please take a moment to verify that the copy is accurate.")
                 .append(" Let us know right away if you notice any discrepancies.");
 
-
+        Submission lastSubmission = jExperiment.getNewestSubmission();
         if(reviewer != null)
         {
             emailMsg.append(NL2)
@@ -314,7 +324,7 @@ public class PanoramaPublicNotification
         }
         else
         {
-            if(jExperiment.isKeepPrivate() && recopy)
+            if(lastSubmission.isKeepPrivate() && recopy)
             {
                 emailMsg.append(NL2).append("As requested, your data on ").append(journalName).append(" is private.  The reviewer account details remain unchanged.");
             }
@@ -331,7 +341,7 @@ public class PanoramaPublicNotification
                     .append(NL).append(targetExperiment.getPxid())
                     .append(" (http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=").append(targetExperiment.getPxid()).append(")");
 
-            if(jExperiment.isIncompletePxSubmission())
+            if(lastSubmission.isIncompletePxSubmission())
             {
                 emailMsg.append(NL).append("The data will be submitted as \"supported by repository but incomplete data and/or metadata\" when it is made public on ProteomeXchange.");
             }
@@ -344,7 +354,7 @@ public class PanoramaPublicNotification
                 .append(StringUtils.isBlank(targetExperiment.getPxid()) ? "" : " and the ProteomeXchange ID ")
                 .append(" in your manuscript. ");
 
-        if(jExperiment.isKeepPrivate())
+        if(lastSubmission.isKeepPrivate())
         {
             emailMsg.append(NL2)
                     .append("Please respond to this email when you are ready to make your data public.");
@@ -365,8 +375,8 @@ public class PanoramaPublicNotification
         emailMsg.append(NL2).append(NL)
                 .append("Submission Details:")
                 .append(NL).append("Experiment ID: ").append(sourceExperiment.getId())
-                .append(NL).append("Reviewer account requested: ").append(jExperiment.isKeepPrivate() ? "Yes" : "No")
-                .append(NL).append("PX ID requested: ").append(jExperiment.isPxidRequested() ? "Yes" : "No")
+                .append(NL).append("Reviewer account requested: ").append(lastSubmission.isKeepPrivate() ? "Yes" : "No")
+                .append(NL).append("PX ID requested: ").append(lastSubmission.isPxidRequested() ? "Yes" : "No")
                 .append(NL).append("Short Access URL: ").append(targetExperiment.getShortUrl().renderShortURL())
                 .append(NL).append("Message ID: ").append(jExperiment.getAnnouncementId());
         if(recopy)

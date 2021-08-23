@@ -51,6 +51,7 @@ import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.SimpleNamedObject;
+import org.labkey.api.util.StringExpressionFactory;
 import org.labkey.api.util.UniqueID;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HttpView;
@@ -111,6 +112,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                     {
                         return PageFlowUtil.set(
                                 ClientDependency.fromPath("internal/jQuery"),
+                                ClientDependency.fromPath("Ext4"),
                                 ClientDependency.fromPath("/PanoramaPublic/css/dropDown.css"),
                                 ClientDependency.fromPath("/PanoramaPublic/js/dropDownUtil.js"));
                     }
@@ -298,6 +300,26 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         });
         addColumn(licenseCol);
 
+        SQLFragment versionSql = new SQLFragment("(SELECT Version FROM ");
+        versionSql.append(PanoramaPublicManager.getTableInfoSubmission(), "s");
+        versionSql.append(" WHERE s.copiedexperimentid = ");
+        versionSql.append(ExprColumn.STR_TABLE_ALIAS);
+        versionSql.append(".Id)");
+        ExprColumn versionCol = new ExprColumn(this, "Version", versionSql, JdbcType.INTEGER);
+        addColumn(versionCol);
+
+        SQLFragment sourceExptIdSql = new SQLFragment("(SELECT je.ExperimentAnnotationsId FROM ")
+                .append(PanoramaPublicManager.getTableInfoJournalExperiment(), "je")
+                .append(" INNER JOIN ").append(PanoramaPublicManager.getTableInfoSubmission(), "s")
+                .append(" ON (s.JournalExperimentId = je.Id) ")
+                .append(" WHERE s.copiedexperimentid = ")
+                .append(ExprColumn.STR_TABLE_ALIAS).append(".Id)");
+        ExprColumn sourceExptCol = new ExprColumn(this, "SourceExperiment", sourceExptIdSql, JdbcType.INTEGER);
+        ActionURL exptDetailsUrl = new ActionURL(PanoramaPublicController.ShowExperimentAnnotationsAction.class, getContainer());
+        exptDetailsUrl.addParameter("id", "${SourceExperiment}");
+        sourceExptCol.setURL(StringExpressionFactory.createURL(exptDetailsUrl));
+        addColumn(sourceExptCol);
+
         List<FieldKey> visibleColumns = new ArrayList<>();
         visibleColumns.add(FieldKey.fromParts("Share"));
         visibleColumns.add(FieldKey.fromParts("Title"));
@@ -308,6 +330,8 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         visibleColumns.add(FieldKey.fromParts("Keywords"));
         visibleColumns.add(FieldKey.fromParts("Citation"));
         visibleColumns.add(FieldKey.fromParts("pxid"));
+        visibleColumns.add(FieldKey.fromParts("Version"));
+        visibleColumns.add(FieldKey.fromParts("SourceExperiment"));
 
         setDefaultVisibleColumns(visibleColumns);
     }

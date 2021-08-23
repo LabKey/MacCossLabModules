@@ -65,7 +65,7 @@
 
 <div>
     <%if(form.isResubmit()) { %>
-    This experiment has already been copied by <%=h(journal)%>. If you click OK the existing copy on <%=h(journal)%> will be deleted and a request will be sent to make a new copy.
+    This experiment has already been copied by <%=h(journal)%>. If you click OK the existing copy on <%=h(journal)%> will be renamed and a request will be sent to make a new copy.
     <br>
     <% } else if(form.isUpdate()) { %>
     You are updating your submission request to <%=h(journal)%>.
@@ -130,7 +130,7 @@
 <div>
 <labkey:form action="<%=getActionURL().clone().deleteParameters()%>" method="POST">
     <%= button("Cancel").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnotations.getContainer())) %>
-    <%= button("OK").submit(true) %>
+    <%= button("OK").disableOnClick(true).submit(true) %>
     <input type="hidden" name="update" value="<%=form.isUpdate()%>"/>
     <input type="hidden" name="dataValidated" value="<%=form.isDataValidated()%>"/>
     <input type="hidden" name="resubmit" value="<%=form.isResubmit()%>"/>

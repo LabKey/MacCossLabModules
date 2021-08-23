@@ -22,6 +22,7 @@ import org.labkey.api.security.User;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.Submission;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -325,12 +326,13 @@ public class PxXmlWriter extends PxWriter
         }
         String labHeadName = labHead != null ? labHead.getFullName() : null;
         String labHeadEmail = labHead != null ? labHead.getEmail() : null;
+        Submission submission = je.getNewestSubmission();
         // Check if there is a form override
-        if(je.hasLabHeadDetails())
+        if(submission.hasLabHeadDetails())
         {
-            labHeadName = je.getLabHeadName();
-            labHeadEmail = je.getLabHeadEmail();
-            labHeadAffiliation = je.getLabHeadAffiliation();
+            labHeadName = submission.getLabHeadName();
+            labHeadEmail = submission.getLabHeadEmail();
+            labHeadAffiliation = submission.getLabHeadAffiliation();
         }
 
         Element labHeadEl = new Element("Contact");
@@ -629,13 +631,14 @@ public class PxXmlWriter extends PxWriter
         SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(annotations);
         final CvParamElement completeEl = new CvParamElement("MS", "MS:1002856", "Supported dataset by repository");
         final CvParamElement incompleteEl = new CvParamElement("MS", "MS:1003087", "supported by repository but incomplete data and/or metadata");
+        Submission submission = journalExperiment.getNewestSubmission();
         if(status.isComplete())
         {
             repoSupport.addChild(completeEl);
         }
         else if(status.isIncomplete())
         {
-            repoSupport.addChild(journalExperiment.isIncompletePxSubmission() ? incompleteEl :
+            repoSupport.addChild(submission.isIncompletePxSubmission() ? incompleteEl :
                     // Data validator tell us that his is an incomplete submission but there was an admin override
                     // to submit this as a complete submission.
                     // Use case: data for .blib spectrum libraries was not uploaded to Panorama Public but
@@ -650,7 +653,7 @@ public class PxXmlWriter extends PxWriter
             // them to collect everything in .wiff files.  However, this is not a setting recommended by SCIEX.  It is not
             // easy to determine, just by looking at the Skyline document, that a .wiff file contains all the scans. We will continue
             // to require .wiff.scan files but make an exception for the Whiteaker group.
-            repoSupport.addChild(journalExperiment.isIncompletePxSubmission() ? incompleteEl : completeEl);
+            repoSupport.addChild(submission.isIncompletePxSubmission() ? incompleteEl : completeEl);
         }
         else if(_submittingToPx)
         {

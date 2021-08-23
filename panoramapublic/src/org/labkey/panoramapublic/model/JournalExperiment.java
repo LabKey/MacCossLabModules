@@ -16,10 +16,20 @@
 package org.labkey.panoramapublic.model;
 
 
+import org.apache.commons.collections4.comparators.ReverseComparator;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.labkey.api.util.NumberUtilsLabKey;
 import org.labkey.api.view.ShortURLRecord;
+import org.labkey.panoramapublic.query.JournalManager;
 
+import javax.validation.constraints.Null;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * User: vsharma
@@ -37,16 +47,19 @@ public class JournalExperiment
     private int _createdBy;
     private Date _modified;
     private int _modifiedBy;
-    private Date _copied;
-    private boolean _keepPrivate;
-    private boolean _pxidRequested;
-    private boolean _incompletePxSubmission;
-    private String _labHeadName;
-    private String _labHeadEmail;
-    private String _labHeadAffiliation;
-    private DataLicense _dataLicense;
     private Integer _announcementId;
-    private Integer _copiedExperimentId;
+    private List<Submission> _submissions;
+
+//    private Date _copied;
+//    private boolean _keepPrivate;
+//    private boolean _pxidRequested;
+//    private boolean _incompletePxSubmission;
+//    private String _labHeadName;
+//    private String _labHeadEmail;
+//    private String _labHeadAffiliation;
+//    private DataLicense _dataLicense;
+//    private Integer _copiedExperimentId;
+//    private Integer _version;
 
     public int getId()
     {
@@ -118,16 +131,6 @@ public class JournalExperiment
         _createdBy = createdBy;
     }
 
-    public Date getCopied()
-    {
-        return _copied;
-    }
-
-    public void setCopied(Date copied)
-    {
-        _copied = copied;
-    }
-
     public Date getModified()
     {
         return _modified;
@@ -148,81 +151,6 @@ public class JournalExperiment
         _modifiedBy = modifiedBy;
     }
 
-    public boolean isKeepPrivate()
-    {
-        return _keepPrivate;
-    }
-
-    public void setKeepPrivate(boolean keepPrivate)
-    {
-        _keepPrivate = keepPrivate;
-    }
-
-    public boolean isPxidRequested()
-    {
-        return _pxidRequested;
-    }
-
-    public void setPxidRequested(boolean pxidRequested)
-    {
-        _pxidRequested = pxidRequested;
-    }
-
-    public boolean isIncompletePxSubmission()
-    {
-        return _incompletePxSubmission;
-    }
-
-    public void setIncompletePxSubmission(boolean incompletePxSubmission)
-    {
-        this._incompletePxSubmission = incompletePxSubmission;
-    }
-
-    public String getLabHeadName()
-    {
-        return _labHeadName;
-    }
-
-    public void setLabHeadName(String labHeadName)
-    {
-        _labHeadName = labHeadName;
-    }
-
-    public String getLabHeadEmail()
-    {
-        return _labHeadEmail;
-    }
-
-    public void setLabHeadEmail(String labHeadEmail)
-    {
-        _labHeadEmail = labHeadEmail;
-    }
-
-    public boolean hasLabHeadDetails()
-    {
-        return !(StringUtils.isBlank(_labHeadName) && StringUtils.isBlank(_labHeadEmail) && StringUtils.isBlank(_labHeadAffiliation));
-    }
-
-    public String getLabHeadAffiliation()
-    {
-        return _labHeadAffiliation;
-    }
-
-    public void setLabHeadAffiliation(String labHeadAffiliation)
-    {
-        _labHeadAffiliation = labHeadAffiliation;
-    }
-
-    public DataLicense getDataLicense()
-    {
-        return _dataLicense;
-    }
-
-    public void setDataLicense(DataLicense dataLicense)
-    {
-        _dataLicense = dataLicense;
-    }
-
     public Integer getAnnouncementId()
     {
         return _announcementId;
@@ -233,13 +161,174 @@ public class JournalExperiment
         _announcementId = announcementId;
     }
 
-    public Integer getCopiedExperimentId()
+    public void setSubmissions(List<Submission> submissions)
     {
-        return _copiedExperimentId;
+        _submissions = submissions;
+        if(_submissions != null)
+        {
+            // Sort by date created; newest first
+            _submissions.sort(new ReverseComparator(Comparator.comparing(Submission::getCreated)));
+        }
+        else
+        {
+            _submissions = Collections.emptyList();
+        }
     }
 
-    public void setCopiedExperimentId(Integer copiedExperimentId)
+    public @NotNull List<Submission> getSubmissions()
     {
-        _copiedExperimentId = copiedExperimentId;
+        return _submissions;
     }
+
+    public @Nullable Submission getNewestSubmission()
+    {
+        return _submissions.size() > 0 ? _submissions.get(0) : null;
+    }
+
+    public @Nullable Submission getPendingSubmission()
+    {
+        return _submissions.stream().filter(s -> s.getCopiedExperimentId() == null).findFirst().orElse(null);
+    }
+
+    public boolean isPendingSubmission()
+    {
+        return getPendingSubmission() != null;
+    }
+
+    public @NotNull List<Submission> getCopiedSubmissions()
+    {
+        return _submissions.stream().filter(s -> s.getCopiedExperimentId() != null).collect(Collectors.toList());
+    }
+
+    public @Nullable Submission getLastCopiedSubmission()
+    {
+        return _submissions.stream().filter(s -> s.getCopiedExperimentId() != null).findFirst().orElse(null);
+    }
+
+    public Submission getSubmissionForJournalCopy(int copiedExperimentId)
+    {
+        return _submissions.stream().filter(s -> s.getCopiedExperimentId() != null && s.getCopiedExperimentId() == copiedExperimentId).findFirst().orElse(null);
+    }
+
+    public int getNextVersion()
+    {
+        List<Submission> previousVersions = getCopiedSubmissions();
+        return previousVersions.size() == 0 ? 1 : previousVersions.get(0).getVersion() + 1;
+    }
+
+    public boolean isLastCopiedSubmission(int copiedExperimentId)
+    {
+        Submission lastCopied = getLastCopiedSubmission();
+        return lastCopied != null && copiedExperimentId == lastCopied.getCopiedExperimentId();
+    }
+
+    public boolean isNewestSubmission(int submissionId)
+    {
+        Submission submission = getNewestSubmission();
+        return submission != null && submission.getId() == submissionId;
+    }
+
+//    public @Nullable Date getCopied()
+//    {
+//        Submission submission = getNewestSubmission();
+//        return submission != null ? submission.getCopied() : null;
+//    }
+//
+//
+//    public boolean isKeepPrivate()
+//    {
+//        return _keepPrivate;
+//    }
+//
+//    public void setKeepPrivate(boolean keepPrivate)
+//    {
+//        _keepPrivate = keepPrivate;
+//    }
+//
+//    public boolean isPxidRequested()
+//    {
+//        return _pxidRequested;
+//    }
+//
+//    public void setPxidRequested(boolean pxidRequested)
+//    {
+//        _pxidRequested = pxidRequested;
+//    }
+//
+//    public boolean isIncompletePxSubmission()
+//    {
+//        return _incompletePxSubmission;
+//    }
+//
+//    public void setIncompletePxSubmission(boolean incompletePxSubmission)
+//    {
+//        this._incompletePxSubmission = incompletePxSubmission;
+//    }
+//
+//    public String getLabHeadName()
+//    {
+//        return _labHeadName;
+//    }
+//
+//    public void setLabHeadName(String labHeadName)
+//    {
+//        _labHeadName = labHeadName;
+//    }
+//
+//    public String getLabHeadEmail()
+//    {
+//        return _labHeadEmail;
+//    }
+//
+//    public void setLabHeadEmail(String labHeadEmail)
+//    {
+//        _labHeadEmail = labHeadEmail;
+//    }
+
+//    public boolean hasLabHeadDetails()
+//    {
+//        return !(StringUtils.isBlank(_labHeadName) && StringUtils.isBlank(_labHeadEmail) && StringUtils.isBlank(_labHeadAffiliation));
+//    }
+
+//    public String getLabHeadAffiliation()
+//    {
+//        return _labHeadAffiliation;
+//    }
+//
+//    public void setLabHeadAffiliation(String labHeadAffiliation)
+//    {
+//        _labHeadAffiliation = labHeadAffiliation;
+//    }
+//
+//    public DataLicense getDataLicense()
+//    {
+//        return _dataLicense;
+//    }
+//
+//    public void setDataLicense(DataLicense dataLicense)
+//    {
+//        _dataLicense = dataLicense;
+//    }
+
+//    public Integer getCopiedExperimentId()
+//    {
+//        return _copiedExperimentId;
+//    }
+//
+//    public void setCopiedExperimentId(Integer copiedExperimentId)
+//    {
+//        _copiedExperimentId = copiedExperimentId;
+//    }
+//
+//    public Integer getVersion()
+//    {
+//        return _version;
+//    }
+//
+//    public void setVersion(Integer version)
+//    {
+//        _version = version;
+//    }
+
+
 }

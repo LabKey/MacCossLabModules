@@ -44,6 +44,7 @@ import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.Submission;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -264,12 +265,17 @@ public class ExperimentAnnotationsManager
         }
         else
         {
-            JournalExperiment je = JournalManager.getRowForJournalCopy(expAnnotations);
-            if(je != null)
+            List<JournalExperiment> jeList = SubmissionManager.getJournalExperiments(expAnnotations);
+            for(JournalExperiment je: jeList)
             {
-                // Delete the row in JournalExperiment where journalExperimentId = expAnnotations.getId()
-                JournalManager.deleteRowForJournalCopy(expAnnotations);
-                JournalManager.tryDeleteShortUrl(je.getShortCopyUrl(), user);
+                // if this experiment has been submitted but not yet copied delete the row in the Submission and JournalExperiment tables
+                SubmissionManager.deleteSubmission(je.getNewestSubmission(), user);
+//                // Delete the row in JournalExperiment where journalExperimentId = expAnnotations.getId()
+//                JournalManager.deleteRowForJournalCopy(expAnnotations);
+//                if (je.getShortCopyUrl() != null)
+//                {
+//                    JournalManager.tryDeleteShortUrl(je.getShortCopyUrl(), user);
+//                }
             }
         }
 
@@ -423,12 +429,12 @@ public class ExperimentAnnotationsManager
                 " SET doi = ? WHERE Id = ?", expAnnotations.getDoi(), expAnnotations.getId());
     }
 
-    public static DataLicense getLicenseSelectedForSubmission(Integer submittedExperimentId)
-    {
-        if(submittedExperimentId == null) return null;
-        JournalExperiment je = JournalManager.getLastPublishedRecord(submittedExperimentId);
-        return je != null ? je.getDataLicense() : null;
-    }
+//    public static DataLicense getLicenseSelectedForSubmission(Integer submittedExperimentId)
+//    {
+//        if(submittedExperimentId == null) return null;
+//        JournalExperiment je = JournalManager.getLastPublishedRecord(submittedExperimentId);
+//        return je != null ? je.getDataLicense() : null;
+//    }
 
     public static boolean canSubmitExperiment(int expAnnotationsId)
     {
@@ -447,26 +453,26 @@ public class ExperimentAnnotationsManager
         {
             return false;
         }
-        JournalExperiment journalExperiment = JournalManager.getLastPublishedRecord(expAnnotations.getId());
+        JournalExperiment journalExperiment = SubmissionManager.getNewestJournalExperiment(expAnnotations);
         if(journalExperiment != null)
         {
+            if(journalExperiment.isPendingSubmission())
+            {
+                return false;
+            }
             // If this experiment has already been copied and the journal copy is final (paper published and data public)
             // then the user should not be able to re-submit this data.
-            ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.get(journalExperiment.getCopiedExperimentId());
-            return journalCopy == null || !journalCopy.isFinal();
+            Submission lastCopiedSubmission = journalExperiment.getLastCopiedSubmission();
+            if(lastCopiedSubmission != null)
+            {
+                ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.get(lastCopiedSubmission.getCopiedExperimentId());
+                return journalCopy == null || !journalCopy.isFinal();
+            }
+//            ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.get(journalExperiment.getCopiedExperimentId());
+//            return journalCopy == null || !journalCopy.isFinal();
         }
-        return true;
-    }
 
-    @Nullable
-    public static ExperimentAnnotations getJournalCopy(@Nullable ExperimentAnnotations expAnnotations)
-    {
-        if(expAnnotations != null)
-        {
-            JournalExperiment journalExperiment = JournalManager.getLastPublishedRecord(expAnnotations.getId());
-            return journalExperiment != null ? ExperimentAnnotationsManager.get(journalExperiment.getCopiedExperimentId()): null;
-        }
-        return null;
+        return true;
     }
 
     public static boolean hasProteomicData(ExperimentAnnotations experimentAnnotations, User user)

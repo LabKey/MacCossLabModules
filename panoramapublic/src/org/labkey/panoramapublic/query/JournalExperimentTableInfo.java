@@ -55,63 +55,65 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
 
         wrapAllColumns(true);
 
-        var editColumn = wrapColumn("Edit", getRealTable().getColumn("ExperimentAnnotationsId"));
-        editColumn.setLabel("");
-        editColumn.setDisplayColumnFactory(new EditUrlDisplayColumnFactory(getContainer()));
-        addColumn(editColumn);
-
-        var deleteColumn = wrapColumn("Delete", getRealTable().getColumn("ExperimentAnnotationsId"));
-        deleteColumn.setLabel("");
-        deleteColumn.setDisplayColumnFactory(new DeleteUrlDisplayColumnFactory(getContainer()));
-        addColumn(deleteColumn);
+//        var editColumn = wrapColumn("Edit", getRealTable().getColumn("Id"));
+//        editColumn.setLabel("");
+//        editColumn.setDisplayColumnFactory(new EditUrlDisplayColumnFactory(getContainer()));
+//        addColumn(editColumn);
+//
+//        var deleteColumn = wrapColumn("Delete", getRealTable().getColumn("Id"));
+//        deleteColumn.setLabel("");
+//        deleteColumn.setDisplayColumnFactory(new DeleteUrlDisplayColumnFactory(getContainer()));
+//        addColumn(deleteColumn);
 
         var accessUrlCol = getMutableColumn(FieldKey.fromParts("ShortAccessUrl"));
         accessUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
         var copyUrlCol = getMutableColumn(FieldKey.fromParts("ShortCopyUrl"));
         copyUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
 
-        var licenseCol = getMutableColumn(FieldKey.fromParts("DataLicense"));
-        licenseCol.setURLTargetWindow("_blank");
-        licenseCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo){
-            @Override
-            public DataLicense getValue(RenderContext ctx)
-            {
-                return ctx.get(FieldKey.fromParts("DataLicense"), DataLicense.class);
-            }
-
-            @Override
-            public Object getDisplayValue(RenderContext ctx)
-            {
-                DataLicense license = getValue(ctx);
-                return license != null ? license.getDisplayName() : super.getDisplayValue(ctx);
-            }
-
-            @Override
-            public @NotNull HtmlString getFormattedHtml(RenderContext ctx)
-            {
-                DataLicense license = getValue(ctx);
-                return license != null ? HtmlString.of(license.getDisplayName()) : super.getFormattedHtml(ctx);
-            }
-
-            @Override
-            public String renderURL(RenderContext ctx)
-            {
-                DataLicense license = getValue(ctx);
-                return license != null ? license.getUrl() : super.renderURL(ctx);
-            }
-        });
+//        var licenseCol = getMutableColumn(FieldKey.fromParts("DataLicense"));
+//        licenseCol.setURLTargetWindow("_blank");
+//        licenseCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo){
+//            @Override
+//            public DataLicense getValue(RenderContext ctx)
+//            {
+//                return ctx.get(FieldKey.fromParts("DataLicense"), DataLicense.class);
+//            }
+//
+//            @Override
+//            public Object getDisplayValue(RenderContext ctx)
+//            {
+//                DataLicense license = getValue(ctx);
+//                return license != null ? license.getDisplayName() : super.getDisplayValue(ctx);
+//            }
+//
+//            @Override
+//            public @NotNull HtmlString getFormattedHtml(RenderContext ctx)
+//            {
+//                DataLicense license = getValue(ctx);
+//                return license != null ? HtmlString.of(license.getDisplayName()) : super.getFormattedHtml(ctx);
+//            }
+//
+//            @Override
+//            public String renderURL(RenderContext ctx)
+//            {
+//                DataLicense license = getValue(ctx);
+//                return license != null ? license.getUrl() : super.renderURL(ctx);
+//            }
+//        });
 
         List<FieldKey> columns = new ArrayList<>();
+        columns.add(FieldKey.fromParts("Id"));
         columns.add(FieldKey.fromParts("CreatedBy"));
         columns.add(FieldKey.fromParts("Created"));
+        // columns.add(FieldKey.fromParts("Version"));
         columns.add(FieldKey.fromParts("JournalId"));
         columns.add(FieldKey.fromParts("ShortAccessURL"));
-        columns.add(FieldKey.fromParts("Copied"));
-        columns.add(FieldKey.fromParts("Edit"));
-        columns.add(FieldKey.fromParts("Delete"));
-        columns.add(FieldKey.fromParts("DataLicense"));
-        columns.add(FieldKey.fromParts("PxidRequested"));
-        columns.add(FieldKey.fromParts("CopiedExperimentId"));
+        // columns.add(FieldKey.fromParts("Copied"));
+        // columns.add(FieldKey.fromParts("Edit"));
+        // columns.add(FieldKey.fromParts("Delete"));
+        // columns.add(FieldKey.fromParts("DataLicense"));
+        // columns.add(FieldKey.fromParts("PxidRequested"));
+        // columns.add(FieldKey.fromParts("CopiedExperimentId"));
         setDefaultVisibleColumns(columns);
     }
 
@@ -140,7 +142,7 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
             // This means, however, that when the container filter is changed to "All Folders", the user will see duplicate rows for a row in JournalExperiment
             // if they have read permissions in both containers.
             joinToExpAnnotSql.append("exp.id = ").append("ExperimentAnnotationsId");
-            joinToExpAnnotSql.append(" OR exp.id = ").append("CopiedExperimentId");
+            // joinToExpAnnotSql.append(" OR exp.id = ").append("CopiedExperimentId");
             joinToExpAnnotSql.append(" ) ");
 
             sql.append(joinToExpAnnotSql);
@@ -154,94 +156,104 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
         return sql;
     }
 
-    public static class DeleteUrlDisplayColumnFactory implements DisplayColumnFactory
-    {
-        private final ActionURL _url;
+//    public static class DeleteUrlDisplayColumnFactory implements DisplayColumnFactory
+//    {
+//        private final ActionURL _url;
+//
+//        DeleteUrlDisplayColumnFactory(Container container)
+//        {
+//            _url = new ActionURL(PanoramaPublicController.DeleteJournalExperimentAction.class, container);
+//        }
+//
+//        @Override
+//        public DisplayColumn createRenderer(ColumnInfo colInfo)
+//        {
+//            return new DataColumn(colInfo)
+//            {
+//                @Override
+//                public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+//                {
+//                    Integer id = ctx.get(colInfo.getFieldKey(), Integer.class);
+//                    JournalExperiment je = JournalManager.getJournalExperiment(id);
+//                    if(je != null && je.getVersion() == null)
+//                    {
+//                        Integer copiedExperimentId = ctx.get(FieldKey.fromParts("CopiedExperimentId"), Integer.class);
+//                        if (copiedExperimentId == null)
+//                        {
+//                            // Show the delete link only if the experiment has not yet been copied
+//                            _url.replaceParameter("id", id);
+//                            out.write(PageFlowUtil.link("Delete").href(_url).toString());
+//                        }
+//                    }
+//                }
+//
+//                @Override
+//                public void addQueryFieldKeys(Set<FieldKey> keys)
+//                {
+//                    super.addQueryFieldKeys(keys);
+//                    keys.add(FieldKey.fromParts("CopiedExperimentId"));
+//                }
+//            };
+//        }
+//    }
 
-        DeleteUrlDisplayColumnFactory(Container container)
-        {
-            _url = new ActionURL(PanoramaPublicController.DeleteJournalExperimentAction.class, container);
-        }
-
-        @Override
-        public DisplayColumn createRenderer(ColumnInfo colInfo)
-        {
-            return new DataColumn(colInfo)
-            {
-                @Override
-                public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
-                {
-                    Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
-                    Integer journalId = ctx.get(FieldKey.fromParts("JournalId"), Integer.class);
-                    Integer copiedExperimentId = ctx.get(FieldKey.fromParts("CopiedExperimentId"), Integer.class);
-                    if(copiedExperimentId == null)
-                    {
-                        // Show the delete link only if the experiment has not yet been copied
-                        _url.replaceParameter("id", experimentAnnotationsId);
-                        _url.replaceParameter("journalId", journalId);
-                        out.write(PageFlowUtil.link("Delete").href(_url).toString());
-                    }
-                }
-
-                @Override
-                public void addQueryFieldKeys(Set<FieldKey> keys)
-                {
-                    super.addQueryFieldKeys(keys);
-                    keys.add(FieldKey.fromParts("JournalId"));
-                    keys.add(FieldKey.fromParts("CopiedExperimentId"));
-                }
-            };
-        }
-    }
-
-    public static class EditUrlDisplayColumnFactory implements DisplayColumnFactory
-    {
-        private final Container _container;
-
-        EditUrlDisplayColumnFactory(Container container)
-        {
-            _container = container;
-        }
-
-        @Override
-        public DisplayColumn createRenderer(ColumnInfo colInfo)
-        {
-            return new DataColumn(colInfo)
-            {
-                @Override
-                public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
-                {
-                    Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
-                    Integer journalId = ctx.get(FieldKey.fromParts("JournalId"), Integer.class);
-                    JournalExperiment je = JournalManager.getJournalExperiment(experimentAnnotationsId, journalId);
-                    if(je != null)
-                    {
-                        if(je.getCopied() != null)
-                        {
-                            // Show the resubmit link if the experiment has already been copied by a journal
-                            // but NOT if the journal copy is final.
-                            if(ExperimentAnnotationsManager.canSubmitExperiment(experimentAnnotationsId))
-                            {
-                                ActionURL resubmitUrl = PanoramaPublicController.getRePublishExperimentURL(experimentAnnotationsId, journalId, _container, je.isKeepPrivate(),
-                                        true /*check if data is valid for PXD. Always do this check on a resubmit.*/);
-                                out.write(PageFlowUtil.link("Resubmit").href(resubmitUrl).toString());
-                            }
-                        }
-                        else
-                        {
-                            ActionURL ediUrl = PanoramaPublicController.getUpdateJournalExperimentURL(experimentAnnotationsId, journalId, _container, je.isKeepPrivate(), true);
-                            out.write(PageFlowUtil.link("Edit").href(ediUrl).toString());
-                        }
-                    }
-                }
-
-                @Override
-                public void addQueryFieldKeys(Set<FieldKey> keys)
-                {
-                    super.addQueryFieldKeys(keys);
-                    keys.add(FieldKey.fromParts("JournalId"));
-                }
-            };
-        }
-    }
+//    public static class EditUrlDisplayColumnFactory implements DisplayColumnFactory
+//    {
+//        private final Container _container;
+//
+//        EditUrlDisplayColumnFactory(Container container)
+//        {
+//            _container = container;
+//        }
+//
+//        @Override
+//        public DisplayColumn createRenderer(ColumnInfo colInfo)
+//        {
+//            return new DataColumn(colInfo)
+//            {
+//                @Override
+//                public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+//                {
+//                    Integer id = ctx.get(colInfo.getFieldKey(), Integer.class);
+//                    JournalExperiment je = JournalManager.getJournalExperiment(id);
+//                    if(je != null && je.getVersion() == null)
+//                    {
+//                        Integer journalId = ctx.get(FieldKey.fromParts("JournalId"), Integer.class);
+//                        Integer experimentAnnotationsId = ctx.get(FieldKey.fromParts("ExperimentAnnotationsId"), Integer.class);
+//
+//                        JournalExperiment lastSubmission = JournalManager.getLastSubmission(je.getExperimentAnnotationsId());
+//                        if(lastSubmission.getId() == je.getId())
+//                        {
+//                            // Show the "Resubmit" or "Edit" links only if this is the most recent submission request for the experiment.
+//                            if (je.getCopied() != null)
+//                            {
+//                                // Show the resubmit link if the experiment has already been copied by a journal
+//                                // but NOT if the journal copy is final.
+//                                if (ExperimentAnnotationsManager.canSubmitExperiment(experimentAnnotationsId))
+//                                {
+//                                    ActionURL resubmitUrl = PanoramaPublicController.getRePublishExperimentURL(experimentAnnotationsId, journalId, _container, je.isKeepPrivate(),
+//                                            true /*check if data is valid for PXD. Always do this check on a resubmit.*/);
+//                                    out.write(PageFlowUtil.link("Resubmit").href(resubmitUrl).toString());
+//                                }
+//                            }
+//                            else
+//                            {
+//                                ActionURL ediUrl = PanoramaPublicController.getUpdateJournalExperimentURL(experimentAnnotationsId, journalId, _container, je.isKeepPrivate(), true);
+//                                out.write(PageFlowUtil.link("Edit").href(ediUrl).toString());
+//                            }
+//                        }
+//                    }
+//                }
+//
+//                @Override
+//                public void addQueryFieldKeys(Set<FieldKey> keys)
+//                {
+//                    super.addQueryFieldKeys(keys);
+//                    keys.add(FieldKey.fromParts("JournalId"));
+//                    keys.add(FieldKey.fromParts("ExperimentAnnotationsId"));
+//                    keys.add(FieldKey.fromParts("Version"));
+//                }
+//            };
+//        }
+//    }
 }

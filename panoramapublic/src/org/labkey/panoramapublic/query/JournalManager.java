@@ -15,14 +15,14 @@
  */
 package org.labkey.panoramapublic.query;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.admin.FolderExportPermission;
 import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
-import org.labkey.api.data.Sort;
 import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableSelector;
@@ -56,6 +56,7 @@ import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
 
 import java.util.Collections;
@@ -99,7 +100,7 @@ public class JournalManager
 
     public static List<Journal> getJournalsForExperiment(int expAnnotationsId)
     {
-        SQLFragment sql = new SQLFragment("SELECT j.* FROM ");
+        SQLFragment sql = new SQLFragment("SELECT DISTINCT (j.*) FROM ");
         sql.append(PanoramaPublicManager.getTableInfoJournal(), "j");
         sql.append(" , ");
         sql.append(PanoramaPublicManager.getTableInfoJournalExperiment(), "je");
@@ -125,31 +126,141 @@ public class JournalManager
         return new SqlSelector(PanoramaPublicManager.getSchema(), sql).getArrayList(ExperimentAnnotations.class);
     }
 
-    public static JournalExperiment getJournalExperiment(Integer experimentAnnotationsId, Integer journalId)
-    {
-        if(experimentAnnotationsId == null || journalId == null)
-            return null;
-        SimpleFilter filter = new SimpleFilter();
-        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
-        filter.addCondition(FieldKey.fromParts("JournalId"), journalId);
-        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, null).getObject(JournalExperiment.class);
-    }
+//    public static JournalExperiment getJournalExperiment(int id)
+//    {
+//        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), null, null).getObject(id, JournalExperiment.class);
+//    }
+//
+//    public static List<JournalExperiment> getJournalExperiment(ExperimentAnnotations expAnnotations)
+//    {
+//        SimpleFilter filter = new SimpleFilter();
+//        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId());
+//        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, null).getArrayList(JournalExperiment.class);
+//    }
+//
+//    public static JournalExperiment getJournalExperiment(ExperimentAnnotations expAnnotations, Journal journal)
+//    {
+//        SimpleFilter filter = new SimpleFilter();
+//        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId());
+//        filter.addCondition(FieldKey.fromParts("JournalId"), journal.getId());
+//        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, null).getObject(JournalExperiment.class);
+//    }
 
-    private static List<JournalExperiment> getJournalExperiments(int experimentAnnotationsId)
-    {
-        SimpleFilter filter = new SimpleFilter();
-        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
-        Sort sort = new Sort();
-        sort.appendSortColumn(FieldKey.fromParts("Created"), Sort.SortDirection.DESC, true);
-        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, sort).getArrayList(JournalExperiment.class);
-    }
+//    /**
+//     * @param experimentAnnotationsId
+//     * @param journalId
+//     * @return list of older submitted requests that have a version, ordered by the version in descending order.
+//     * The last submitted request, copied or not, does not have a version
+//     */
+//    public static @NotNull ArrayList<JournalExperiment> getPreviousVersions(int experimentAnnotationsId, int journalId)
+//    {
+//        SimpleFilter filter = new SimpleFilter();
+//        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
+//        filter.addCondition(FieldKey.fromParts("JournalId"), journalId);
+//        filter.addCondition(FieldKey.fromParts("Version"), null, CompareType.NONBLANK);
+//        Sort sort = new Sort();
+//        sort.appendSortColumn(FieldKey.fromParts("Version"), Sort.SortDirection.DESC, false);
+//        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, null).getArrayList(JournalExperiment.class);
+//    }
 
-    public static JournalExperiment getLastPublishedRecord(int experimentAnnotationsId)
-    {
-        // Get the JournalExperiment entries for the experiment (sorted by date created, descending)
-        List<JournalExperiment> jeList = getJournalExperiments(experimentAnnotationsId);
-        return jeList.size() > 0 ? jeList.get(0) : null;
-    }
+//    public static JournalExperiment getJournalExperimentForCopiedExpt(ExperimentAnnotations experimentAnnotations)
+//    {
+//        SimpleFilter filter = new SimpleFilter();
+//        filter.addCondition(FieldKey.fromParts("CopiedExperimentId"), experimentAnnotations.getId());
+//        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, null).getObject(JournalExperiment.class);
+//    }
+
+//    public static List<JournalExperiment> getJournalExperiments(Integer experimentAnnotationsId, Integer journalId)
+//    {
+//        if(experimentAnnotationsId == null || journalId == null)
+//            return null;
+//        SimpleFilter filter = new SimpleFilter();
+//        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
+//        filter.addCondition(FieldKey.fromParts("JournalId"), journalId);
+//        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, null).getArrayList(JournalExperiment.class);
+//    }
+
+//    /**
+//     * @param experimentAnnotationsId
+//     * @return the row for the last submission request for the given experimentAnnotationsId.  This will return null if
+//     * the experiment has not yet been submitted.
+//     */
+//    public static JournalExperiment getLastSubmission(int experimentAnnotationsId)
+//    {
+//        // Get the JournalExperiment entries for the experiment (sorted by date created, descending)
+//        List<JournalExperiment> jeList = getJournalExperiments(experimentAnnotationsId);
+//        return jeList.size() > 0 ? jeList.get(0) : null;
+//    }
+
+//    /**
+//     * @param experimentAnnotationsId
+//     * @return the row for the last submission request for the given experimentAnnotationsId that was copied to
+//     * a journal project (PanoramaPublic on PanoramaWeb).  This will return null if the experiment was submitted
+//     * but not yet copied, and there are no previous copied submission requests.
+//     */
+//    public static @Nullable JournalExperiment getLastCopiedSubmission(int experimentAnnotationsId)
+//    {
+//        List<JournalExperiment> copiedSubmissions = getCopiedSubmissions(experimentAnnotationsId);
+//        return copiedSubmissions.size() > 0 ? copiedSubmissions.get(0) : null;
+//    }
+
+//    /**
+//     * @param experimentAnnotationsId
+//     * @return a list of submission requests for the given experimentAnnotationsId that were copied to a journal
+//     * project (PanoramaPublic on PanoramaWeb). The list is sorted by the copied date, in descending order.
+//     */
+//    public static @NotNull List<JournalExperiment> getCopiedSubmissions(int experimentAnnotationsId)
+//    {
+//        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
+//        filter.addCondition(FieldKey.fromParts("Copied"), null, CompareType.NONBLANK);
+//        Sort sort = new Sort();
+//        sort.insertSortColumn(FieldKey.fromParts("Copied"), Sort.SortDirection.DESC);
+//        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, sort).getArrayList(JournalExperiment.class);
+//    }
+
+//    /**
+//     * @param experimentAnnotationsId
+//     * @return the row for the latest submission request for the given experimentAnnotationsId to a journal project
+//     * (Panorama Public on PanoramaWeb) that has not yet been copied. This will return null if there is no pending request.
+//     */
+//    @Nullable
+//    public static JournalExperiment getCurrentSubmission(int experimentAnnotationsId)
+//    {
+//        SimpleFilter filter = new SimpleFilter();
+//        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
+//        filter.addCondition(FieldKey.fromParts("Copied"), null, CompareType.ISBLANK);
+//        Sort sort = new Sort();
+//        sort.appendSortColumn(FieldKey.fromParts("Created"), Sort.SortDirection.DESC, false);
+//        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, sort).setMaxRows(1).getObject(JournalExperiment.class);
+//    }
+
+//    /**
+//     * @param experimentAnnotationsId
+//     * @return a list of submissions for an experiment with the given id, sorted descending by the create date.
+//     */
+//    public static List<JournalExperiment> getJournalExperiments(int experimentAnnotationsId)
+//    {
+//        SimpleFilter filter = new SimpleFilter();
+//        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
+//        Sort sort = new Sort();
+//        sort.appendSortColumn(FieldKey.fromParts("Created"), Sort.SortDirection.DESC, true);
+//        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, sort).getArrayList(JournalExperiment.class);
+//    }
+
+//    public static ExperimentAnnotations getSubmittedExperiment(ExperimentAnnotations exptAnnotations)
+//    {
+//        SimpleFilter filter = new SimpleFilter();
+//        filter.addCondition(FieldKey.fromParts("CopiedExperimentId"), exptAnnotations.getId());
+//        JournalExperiment je = new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, null).getObject(JournalExperiment.class);
+//        return je != null ? ExperimentAnnotationsManager.get(je.getExperimentAnnotationsId()) : null;
+//    }
+
+//    public static JournalExperiment getLastPublishedRecord(int experimentAnnotationsId) // TODO
+//    {
+//        // Get the JournalExperiment entries for the experiment (sorted by date created, descending)
+//        List<JournalExperiment> jeList = getJournalExperiments(experimentAnnotationsId);
+//        return jeList.size() > 0 ? jeList.get(0) : null;
+//    }
 
     public static String getExperimentShortUrl(ExperimentAnnotations expAnnotations)
     {
@@ -165,7 +276,7 @@ public class JournalManager
             // Return the short access URL of the most recent JournalExperiment record
             // On panoramaweb.org jeList will have only one entry, since we only have one 'journal' (Panorama Public)
             // and an experiment can be published to a 'journal' only once.
-            JournalExperiment je = JournalManager.getLastPublishedRecord(expAnnotations.getId());
+            JournalExperiment je = SubmissionManager.getNewestJournalExperiment(expAnnotations);
             return je == null ? null : je.getShortAccessUrl().renderShortURL();
         }
         return null;
@@ -192,8 +303,7 @@ public class JournalManager
         {
             return false;
         }
-        JournalExperiment je = getJournalExperiment(experimentAnnotations, journal);
-        if(je == null)
+        if(SubmissionManager.getJournalExperiments(experimentAnnotations).size() == 0)
         {
             return false;
         }
@@ -235,16 +345,16 @@ public class JournalManager
         Table.delete(PanoramaPublicManager.getTableInfoJournal(), new SimpleFilter(FieldKey.fromParts("id"), journal.getId()));
     }
 
-    public static JournalExperiment saveJournalExperiment(JournalExperiment je, User user)
-    {
-        Table.insert(user, PanoramaPublicManager.getTableInfoJournalExperiment(), je);
-        return je;
-    }
+//    private static JournalExperiment saveJournalExperiment(JournalExperiment je, User user)
+//    {
+//        Table.insert(user, PanoramaPublicManager.getTableInfoJournalExperiment(), je);
+//        return je;
+//    }
 
-    public static void updateJournalExperiment(JournalExperiment journalExperiment, User user)
-    {
-        Table.update(user, PanoramaPublicManager.getTableInfoJournalExperiment(), journalExperiment, journalExperiment.getId());
-    }
+//    private static JournalExperiment updateJournalExperiment(JournalExperiment journalExperiment, User user)
+//    {
+//        return Table.update(user, PanoramaPublicManager.getTableInfoJournalExperiment(), journalExperiment, journalExperiment.getId());
+//    }
 
     public static boolean journalHasAccess(Journal journal, ExperimentAnnotations experiment)
     {
@@ -281,12 +391,7 @@ public class JournalManager
 
         sourceJournalExp.setShortAccessUrl(shortAccessUrlRecord);
 
-        updateJournalExperiment(sourceJournalExp, user);
-    }
-
-    public static JournalExperiment getJournalExperiment(ExperimentAnnotations experiment, Journal journal)
-    {
-        return getJournalExperiment(experiment.getId(), journal.getId());
+        SubmissionManager.updateJournalExperiment(sourceJournalExp, user);
     }
 
     public static JournalExperiment setupJournalAccess(PanoramaPublicController.PanoramaPublicRequest request, User user) throws ValidationException
@@ -313,16 +418,18 @@ public class JournalManager
         je.setExperimentAnnotationsId(exptAnnotations.getId());
         je.setShortAccessUrl(accessUrlRecord);
         je.setShortCopyUrl(copyUrlRecord);
-        je.setPxidRequested(request.isGetPxid());
-        je.setIncompletePxSubmission(request.isIncompletePxSubmission());
-        je.setKeepPrivate(request.isKeepPrivate());
-        je.setLabHeadName(request.getLabHeadName());
-        je.setLabHeadEmail(request.getLabHeadEmail());
-        je.setLabHeadAffiliation(request.getLabHeadAffiliation());
-        je.setDataLicense(DataLicense.resolveLicense(request.getDataLicense()));
 
-        je = JournalManager.saveJournalExperiment(je, user);
-        return je;
+        // Create a new row in the Submission table
+        Submission s = new Submission();
+        s.setPxidRequested(request.isGetPxid());
+        s.setIncompletePxSubmission(request.isIncompletePxSubmission());
+        s.setKeepPrivate(request.isKeepPrivate());
+        s.setLabHeadName(request.getLabHeadName());
+        s.setLabHeadEmail(request.getLabHeadEmail());
+        s.setLabHeadAffiliation(request.getLabHeadAffiliation());
+        s.setDataLicense(DataLicense.resolveLicense(request.getDataLicense()));
+
+        return SubmissionManager.saveJournalExperiment(je, s, user);
     }
 
     private static void changeJournalPermissions(ExperimentAnnotations exptAnnotations, UserPrincipal journalGroup, User user, boolean add)
@@ -401,12 +508,18 @@ public class JournalManager
         changeJournalPermissions(exptAnnotations, journalGroup, user, true);
     }
 
+    public static void removeJournalPermissions(ExperimentAnnotations exptAnnotations, Journal journal, User user)
+    {
+        Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
+        changeJournalPermissions(exptAnnotations, journalGroup, user, false);
+    }
+
     public static void removeJournalPermissions(ExperimentAnnotations exptAnnotations, UserPrincipal journalGroup, User user)
     {
         changeJournalPermissions(exptAnnotations, journalGroup, user, false);
     }
 
-    private static ShortURLRecord saveShortURL(ActionURL longURL, String shortUrl, Group journalGroup, User user) throws ValidationException
+    static ShortURLRecord saveShortURL(ActionURL longURL, String shortUrl, Group journalGroup, User user) throws ValidationException
     {
         ShortURLService shortUrlService = ShortURLService.get();
         ShortURLRecord shortAccessURLRecord;
@@ -432,33 +545,65 @@ public class JournalManager
 
     public static void removeJournalAccess(ExperimentAnnotations expAnnotations, Journal journal, User user)
     {
-        JournalExperiment je = getJournalExperiment(expAnnotations, journal);
-
-        if(je.getCopiedExperimentId() == null)
+        JournalExperiment je = SubmissionManager.getJournalExperiment(expAnnotations.getId(), journal.getId());
+        Submission submission = je.getNewestSubmission();
+        if(submission != null)
         {
-            // This experiment has not yet been copied to Panorama Public so we can delete the row in JournalExperiment
-            SimpleFilter filter = new SimpleFilter();
-            filter.addCondition(FieldKey.fromParts("JournalId"), journal.getId());
-            filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId());
-            Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(), filter);
-
-            // Try to delete the short copy URL. Since we just deleted the entry in table JournalExperiment
-            // that references this URL we should not get a foreign key constraint error.
-            tryDeleteShortUrl(je.getShortCopyUrl(), user);
-            // Try to delete the short access URL only if the experiment has not yet been copied (accessURL points to journal's folder after copy)
-            // OR the access url is no longer referenced in the ExperimentAnnotations table.
-            if(je.getCopied() == null || ExperimentAnnotationsManager.getExperimentForShortUrl(je.getShortAccessUrl()) == null)
-            {
-                tryDeleteShortUrl(je.getShortAccessUrl(), user);
-            }
+            SubmissionManager.deleteSubmission(submission, user);
         }
-
+//
+//        if(je != null && je.getCopiedExperimentId() == null)
+//        {
+//            // This experiment has not yet been copied to Panorama Public so we can delete the row in JournalExperiment
+//            SimpleFilter filter = new SimpleFilter();
+//            filter.addCondition(FieldKey.fromParts("Id"), je.getId());
+//            Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(), filter);
+//
+//            // Try to delete the short copy URL. Since we just deleted the entry in table JournalExperiment
+//            // that references this URL we should not get a foreign key constraint error.
+//            tryDeleteShortUrl(je.getShortCopyUrl(), user);
+//            // Try to delete the short access URL only if the experiment has not yet been copied (accessURL points to journal's folder after copy)
+//            // OR the access url is no longer referenced in the ExperimentAnnotations table.
+//            if(je.getCopied() == null || ExperimentAnnotationsManager.getExperimentForShortUrl(je.getShortAccessUrl()) == null)
+//            {
+//                tryDeleteShortUrl(je.getShortAccessUrl(), user);
+//            }
+//        }
         Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
         removeJournalPermissions(expAnnotations, journalGroup, user);
     }
 
+//    public static void removeJournalAccess(JournalExperiment je, Submission submission, ExperimentAnnotations expAnnotations, Journal journal, User user)
+//    {
+//        if(je != null && je.getCopiedExperimentId() == null)
+//        {
+//            // This experiment has not yet been copied to Panorama Public so we can delete the row in JournalExperiment
+//            SimpleFilter filter = new SimpleFilter();
+//            filter.addCondition(FieldKey.fromParts("Id"), je.getId());
+//            Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(), filter);
+//
+//            // Try to delete the short copy URL. Since we just deleted the entry in table JournalExperiment
+//            // that references this URL we should not get a foreign key constraint error.
+//            tryDeleteShortUrl(je.getShortCopyUrl(), user);
+//            // Try to delete the short access URL only if the experiment has not yet been copied (accessURL points to journal's folder after copy)
+//            // OR the access url is no longer referenced in the ExperimentAnnotations table.
+//            if(je.getCopied() == null || ExperimentAnnotationsManager.getExperimentForShortUrl(je.getShortAccessUrl()) == null)
+//            {
+//                tryDeleteShortUrl(je.getShortAccessUrl(), user);
+//            }
+//        }
+//
+//        Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
+//        removeJournalPermissions(expAnnotations, journalGroup, user);
+//    }
+
     static void tryDeleteShortUrl(ShortURLRecord shortUrl, User user)
     {
+        if(shortUrl == null)
+        {
+            return;
+        }
+
         ShortURLService shortURLService = ShortURLService.get();
         try
         {
@@ -484,14 +629,20 @@ public class JournalManager
                 new SimpleFilter().addCondition(FieldKey.fromParts("CopiedExperimentId"), journalCopy.getId()));
     }
 
-    public static JournalExperiment getRowForJournalCopy(ExperimentAnnotations journalCopy)
-    {
-        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment()
-                , new SimpleFilter().addCondition(FieldKey.fromParts("CopiedExperimentId"), journalCopy.getId())
-                , null).getObject(JournalExperiment.class);
-    }
+//    public static JournalExperiment getRowForJournalCopy(ExperimentAnnotations journalCopy)
+//    {
+//        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment()
+//                , new SimpleFilter().addCondition(FieldKey.fromParts("CopiedExperimentId"), journalCopy.getId())
+//                , null).getObject(JournalExperiment.class);
+//    }
 
     public static void updateJournalExperimentUrls(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException
+    {
+        updateJournalExperimentUrls(expAnnotations, journal, je, shortAccessUrl, shortCopyUrl, user, true);
+    }
+
+    public static void updateJournalExperimentUrls(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, String shortAccessUrl,
+                                                   @Nullable String shortCopyUrl, User user, boolean deleteOld) throws ValidationException
     {
         ShortURLRecord oldAccessUrl = je.getShortAccessUrl();
         ShortURLRecord oldCopyUrl = je.getShortCopyUrl();
@@ -499,7 +650,7 @@ public class JournalManager
         Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
 
         ShortURLService shortURLService = ShortURLService.get();
-        if (!shortAccessUrl.equalsIgnoreCase(oldAccessUrl.getShortURL()))
+        if (!shortAccessUrl.equals(oldAccessUrl.getShortURL())) // TODO: replace with equals()
         {
             // Save the new short access URL
             ActionURL accessUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnotations.getContainer());
@@ -507,7 +658,7 @@ public class JournalManager
             je.setShortAccessUrl(accessUrlRecord);
         }
 
-        if (!shortCopyUrl.equalsIgnoreCase(oldCopyUrl.getShortURL()))
+        if (shortCopyUrl != null && !shortCopyUrl.equalsIgnoreCase(oldCopyUrl.getShortURL())) // TODO: replace with equals()
         {
             // Save the new short copy URL.
             ActionURL copyUrl = PanoramaPublicController.getCopyExperimentURL(expAnnotations.getId(), journal.getId(), expAnnotations.getContainer());
@@ -516,17 +667,20 @@ public class JournalManager
 
         }
 
-        updateJournalExperiment(je, user);
+        SubmissionManager.updateJournalExperiment(je, user);
 
-        // Delete the old short URLs
-        if (!shortAccessUrl.equalsIgnoreCase(oldAccessUrl.getShortURL()))
+        if(deleteOld)
         {
-            shortURLService.deleteShortURL(oldAccessUrl, user);
-        }
+            // Delete the old short URLs
+            if (!shortAccessUrl.equalsIgnoreCase(oldAccessUrl.getShortURL()))
+            {
+                shortURLService.deleteShortURL(oldAccessUrl, user);
+            }
 
-        if (!shortCopyUrl.equalsIgnoreCase(oldCopyUrl.getShortURL()))
-        {
-            shortURLService.deleteShortURL(oldCopyUrl, user);
+            if (shortCopyUrl != null && !shortCopyUrl.equalsIgnoreCase(oldCopyUrl.getShortURL()))
+            {
+                shortURLService.deleteShortURL(oldCopyUrl, user);
+            }
         }
     }
 

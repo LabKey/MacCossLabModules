@@ -34,6 +34,8 @@
 <%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
+<%@ page import="org.labkey.panoramapublic.query.SubmissionManager" %>
+<%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -51,8 +53,10 @@
     CopyExperimentForm bean = me.getModelBean();
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
     Journal journal = bean.lookupJournal();
-    JournalExperiment je = JournalManager.getJournalExperiment(expAnnot.getId(), journal.getId());
-    ExperimentAnnotations previousCopy = je.getCopiedExperimentId() != null ? ExperimentAnnotationsManager.get(je.getCopiedExperimentId()) : null;
+    JournalExperiment je = SubmissionManager.getJournalExperiment(expAnnot.getId(), journal.getId());
+    Submission currentSubmission = je.getNewestSubmission();
+    Submission previousSubmission = je.getLastCopiedSubmission();
+    ExperimentAnnotations previousCopy = previousSubmission != null ? ExperimentAnnotationsManager.get(previousSubmission.getCopiedExperimentId()) : null;
     boolean isRecopy = previousCopy != null;
 
     String selectedFolder = "Please select a destination folder...";
@@ -207,7 +211,7 @@
                 },
                 {
                     xtype: 'textfield',
-                    hidden: <%=!je.isKeepPrivate() || isRecopy%>,
+                    hidden: <%=!currentSubmission.isKeepPrivate() || isRecopy%>,
                     fieldLabel: "Reviewer Email Prefix",
                     value: <%=q(bean.getReviewerEmailPrefix())%>,
                     name: 'reviewerEmailPrefix',

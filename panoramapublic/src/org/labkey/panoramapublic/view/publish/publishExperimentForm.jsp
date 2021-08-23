@@ -35,6 +35,9 @@
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
 <%@ page import="java.util.Set" %>
+<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
+<%@ page import="org.labkey.panoramapublic.query.SubmissionManager" %>
+<%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -74,8 +77,10 @@
 
     ActionURL cancelUrl = PanoramaPublicController.getViewExperimentDetailsURL(bean.getForm().getId(), getContainer());
 
-    boolean siteAdmin = getUser().hasSiteAdminPermission();
     boolean getLabHeadUserInfo = form.isGetPxid() && expAnnotations.getLabHeadUser() == null;
+
+    JournalExperiment je = SubmissionManager.getJournalExperiment(expAnnotations.getId(), journalId);
+    boolean allowEditAccessUrl = je == null ? true : je.getCopiedSubmissions().size() == 0;
 %>
 
 <div id="publishExperimentForm"></div>
@@ -219,7 +224,7 @@
                     },
                 <%}%>
                 // If the user is resubmitting the experiment we will not change the short access url
-                <%if(isResubmit) { %>
+                <%if(!allowEditAccessUrl) { %>
                 {
                     xtype: 'displayfield',
                     fieldLabel: "Short Access URL",

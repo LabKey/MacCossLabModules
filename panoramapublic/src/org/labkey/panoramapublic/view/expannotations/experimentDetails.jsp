@@ -33,6 +33,8 @@
 <%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="org.labkey.panoramapublic.model.Submission" %>
+<%@ page import="org.labkey.panoramapublic.query.SubmissionManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -75,18 +77,28 @@
     if(je != null)
     {
         journal = JournalManager.getJournal(je.getJournalId());
-        journalCopyPending = je.getCopied() == null;
+        Submission submission = je.getNewestSubmission();
+        journalCopyPending = submission.getCopiedExperimentId() == null;
         accessUrlRecord = je.getShortAccessUrl();
 
         if(!journalCopyPending)
         {
             publishButtonText = "Resubmit";
-            publishUrl = PanoramaPublicController.getRePublishExperimentURL(annot.getId(), je.getJournalId(), getContainer(), je.isKeepPrivate(), true); // Has been copied; User is re-submitting
+            publishUrl = PanoramaPublicController.getRePublishExperimentURL(annot.getId(), je.getJournalId(), getContainer(), submission.isKeepPrivate(), true); // Has been copied; User is re-submitting
         }
     }
     String accessUrl = accessUrlRecord == null ? null : accessUrlRecord.renderShortURL();
     String linkText = accessUrl == null ? null : (annot.isJournalCopy() ? "Link" : (journalCopyPending ? "Access link" : journal.getName() + " link"));
     DataLicense license = annot.getDataLicense();
+
+    String version = null;
+    if(annot.isJournalCopy())
+    {
+        JournalExperiment journalExperiment = SubmissionManager.getRowForJournalCopy(annot);
+        Submission thisSubmission = journalExperiment.getSubmissionForJournalCopy(annot.getId());
+        Integer v = thisSubmission.getVersion();
+        version = v == null ? "Current" : String.valueOf(v);
+    }
 %>
 <style>
  #title
@@ -197,6 +209,10 @@
        <strong><%=h(linkText)%>: </strong>
        <span id="accessUrl" style="margin-top:5px;"><a href="<%=h(accessUrl)%>"><%=h(accessUrl)%></a></span>
        <a class="button-small button-small-green" style="margin:0px 5px 0px 2px;" href="" onclick="showShareLink(this, '<%=h(accessUrl)%>'); return false;">Share</a>
+
+        <% if(version != null) {%>
+            <span class="link" style="margin-right:10px;"><strong>Version: <span style="color:red;"><%=h(version)%></span></strong> </span>
+        <% } %>
     </div>
  <% } %>
 <%if(annot.getCitation() != null && annot.getPublicationLink() != null){%>
