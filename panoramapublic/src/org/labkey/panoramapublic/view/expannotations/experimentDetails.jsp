@@ -34,6 +34,9 @@
 <%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page import="org.labkey.panoramapublic.query.SubmissionManager" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
+<%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
+<%@ page import="org.labkey.api.util.PageFlowUtil" %>
+<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -91,6 +94,7 @@
     DataLicense license = annot.getDataLicense();
 
     String version = null;
+    ActionURL currentVersionUrl = null;
     if(annot.isJournalCopy())
     {
         JournalSubmission js = SubmissionManager.getSubmissionForJournalCopy(annot);
@@ -98,8 +102,19 @@
         {
             // Display the version only if there is more than one version of this dataset on Panorama Public
             Submission s = js.getSubmissionForCopiedExperiment(annot.getId());
-            Integer v = s.getVersion();
-            version = v == null ? "Current" : String.valueOf(v);
+            int ver = s.getVersion();
+            int currentVersion = js.getCurrentVersion();
+            version = ver == currentVersion ? "Current" : String.valueOf(ver);
+            if(ver != currentVersion)
+            {
+                Submission lastCopied = js.getLastCopiedSubmission();
+                ExperimentAnnotations lastCopy = ExperimentAnnotationsManager.get(lastCopied.getCopiedExperimentId());
+                if(lastCopy != null)
+                {
+                    currentVersionUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(lastCopy.getContainer());
+                }
+            }
+
         }
     }
 %>
@@ -214,7 +229,10 @@
        <a class="button-small button-small-green" style="margin:0px 5px 0px 2px;" href="" onclick="showShareLink(this, '<%=h(accessUrl)%>'); return false;">Share</a>
 
         <% if(version != null) {%>
-            <span class="link" style="margin-right:10px;"><strong>Version: <span style="color:red;"><%=h(version)%></span></strong> </span>
+            <span class="link" style="margin-right:10px;"><strong>Version:
+                <% if (currentVersionUrl == null) { %><span style="color:green;"><%=h(version)%></span>
+                <% } else { %><span style="color:red;"><%=h(version)%></span> <span><a href="<%=h(currentVersionUrl)%>">[Current Version]</a></span><% } %>
+            </strong> </span>
         <% } %>
     </div>
  <% } %>

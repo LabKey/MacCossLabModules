@@ -114,10 +114,17 @@ public class JournalSubmission
         return _submissions.stream().filter(s -> s.getCopiedExperimentId() != null && s.getCopiedExperimentId() == copiedExperimentId).findFirst().orElse(null);
     }
 
+    public int getCurrentVersion()
+    {
+//        List<Submission> previousVersions = getCopiedSubmissions().stream().filter(s -> s.getVersion() != null).collect(Collectors.toList());
+//        return previousVersions.size() == 0 ? 1 : previousVersions.get(0).getVersion() + 1;
+        List<Submission> previousVersions = getCopiedSubmissions();
+        return previousVersions.size() == 0 ? 0 : previousVersions.get(0).getVersion();
+    }
+
     public int getNextVersion()
     {
-        List<Submission> previousVersions = getCopiedSubmissions().stream().filter(s -> s.getVersion() != null).collect(Collectors.toList());
-        return previousVersions.size() == 0 ? 1 : previousVersions.get(0).getVersion() + 1;
+        return getCurrentVersion() + 1;
     }
 
     public boolean isLastCopiedSubmission(int copiedExperimentId)

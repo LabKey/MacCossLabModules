@@ -34,6 +34,7 @@ import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
 import org.labkey.api.pipeline.RecordedActionSet;
+import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.Group;
@@ -53,6 +54,8 @@ import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.Portal;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.api.view.ShortURLService;
@@ -217,7 +220,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             }
 
             // Change the shortAccessUrl for the existing copy of the experiment in the journal's project
-            updateLastCopiedSubmissionAndExperiment(js, lastCopiedSubmission, jobSupport.getJournal(), previousCopy, user, log);
+            updateLastCopiedExperiment(previousCopy, lastCopiedSubmission, jobSupport.getJournal(), user, log);
             js = SubmissionManager.getJournalSubmission(js.getJournalExperimentId());
 
             targetExperiment = ExperimentAnnotationsManager.save(targetExperiment, user);
@@ -226,9 +229,11 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             log.info("Updating access URL to point to the new copy of the data.");
             SubmissionManager.updateAccessUrlTarget(targetExperiment, js.getJournalExperiment(), user);
 
-            // Update the row in the Submission table -- set the 'copied' timestamp and the copiedExperimentId
-            log.info("Setting the 'copied' timestamp and copiedExperimentId on the Submission.");
+            // Update the row in the Submission table -- set the 'copied' timestamp, copiedExperimentId and version
+            int version = js.getNextVersion();
+            log.info("Updating Submission. Setting copiedExperimentId to " + targetExperiment.getId() +". Setting version to " + version);
             Submission currentSubmission = js.getNewestSubmission();
+            currentSubmission.setVersion(version);
             currentSubmission.setCopied(new Date());
             currentSubmission.setCopiedExperimentId(targetExperiment.getId());
             SubmissionManager.updateSubmission(currentSubmission, user);
@@ -630,18 +635,15 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return intIds;
     }
 
-    private void updateLastCopiedSubmissionAndExperiment(JournalSubmission js, Submission lastCopiedSubmission, Journal journal, ExperimentAnnotations previousCopy, User user, Logger log) throws PipelineJobException, ValidationException
+    private void updateLastCopiedExperiment(ExperimentAnnotations previousCopy, Submission lastCopiedSubmission, Journal journal, User user, Logger log) throws PipelineJobException, ValidationException
     {
         if(lastCopiedSubmission == null)
         {
             return;
         }
 
-        int version = js.getNextVersion();
-        lastCopiedSubmission.setVersion(version);
-
         // Append a version to the original short URL
-        String versionedShortUrl = lastCopiedSubmission.getShortAccessUrl().getShortURL() + "_v" + lastCopiedSubmission.getVersion();
+        String versionedShortUrl = previousCopy.getShortUrl().getShortURL() + "_v" + lastCopiedSubmission.getVersion();
         log.info("Creating a new versioned URL for the previous copy of the data: " + versionedShortUrl);
         ShortURLService shortUrlService = ShortURLService.get();
         ShortURLRecord shortURLRecord = shortUrlService.resolveShortURL(versionedShortUrl);
@@ -649,10 +651,12 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         {
             throw new PipelineJobException("Error appending a version to the short URL.  The short URL is already in use " + "'" + versionedShortUrl + "'");
         }
-        SubmissionManager.updateSubmissionUrl(lastCopiedSubmission, previousCopy, journal, versionedShortUrl, user);
+        // Save the new short access URL
+        ActionURL projectUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(previousCopy.getContainer());
+        ShortURLRecord newShortUrl = JournalManager.saveShortURL(projectUrl, versionedShortUrl, journal, user);
 
-        log.info("Setting the short access URL on the previous copy to " + lastCopiedSubmission.getShortAccessUrl().getShortURL());
-        previousCopy.setShortUrl(lastCopiedSubmission.getShortAccessUrl());
+        log.info("Setting the short access URL on the previous copy to " + newShortUrl.getShortURL());
+        previousCopy.setShortUrl(newShortUrl);
 
         if(previousCopy.getDoi() != null)
         {

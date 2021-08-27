@@ -23,7 +23,6 @@ public class Submission
     private Integer _copiedExperimentId;
     private Date _copied;
     private Integer _version;
-    private ShortURLRecord _shortAccessUrl;
 
     public int getId()
     {
@@ -178,16 +177,6 @@ public class Submission
     public void setVersion(Integer version)
     {
         _version = version;
-    }
-
-    public ShortURLRecord getShortAccessUrl()
-    {
-        return _shortAccessUrl;
-    }
-
-    public void setShortAccessUrl(ShortURLRecord shortAccessUrl)
-    {
-        _shortAccessUrl = shortAccessUrl;
     }
 
     public Date getCopied()

@@ -1230,7 +1230,7 @@ public class PanoramaPublicController extends SpringActionController
                 Container prevContainer = previousCopy.getContainer();
                 try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
                 {
-                    int version = jSubmission.getNextVersion();
+                    int version = previousSubmission.getVersion();
 
 //                    previousSubmission.setVersion(version);
 //                    previousSubmission.setShortCopyUrl(null);
@@ -2814,7 +2814,6 @@ public class PanoramaPublicController extends SpringActionController
         {
             Submission submission = new Submission();
             submission.setJournalExperimentId(journalExperiment.getId());
-            submission.setShortAccessUrl(journalExperiment.getShortAccessUrl());
             submission.setKeepPrivate(form.isKeepPrivate());
             submission.setPxidRequested(form.isGetPxid());
             submission.setIncompletePxSubmission(form.isIncompletePxSubmission());
@@ -4300,12 +4299,13 @@ public class PanoramaPublicController extends SpringActionController
                 List<Submission> publishedVersions = journalSubmission.getCopiedSubmissions();
                 if (publishedVersions.size() > 0)
                 {
+                    Integer currentVersion = journalSubmission.getCurrentVersion();
                     List<DOM.Renderable> rows = new ArrayList<>();
                     rows.add(THEAD(TR(TH(cl("labkey-column-header"), "Version"), TH("Published"), TH("Link"))));
                     final AtomicInteger cnt = new AtomicInteger();
                     rows.add(TBODY(publishedVersions.stream().map(s ->
                             TR(cl(cnt.getAndIncrement() % 2 == 0, "labkey-alternate-row", "labkey-row"),
-                                    TD(s.getVersion() == null ? "Current" : s.getVersion().toString()),
+                                    TD(s.getVersion() == currentVersion ? "Current" : s.getVersion().toString()),
                                     TD(DateUtil.formatDateTime(s.getCopied(), "MM/dd/yyyy")),
                                     TD(getExperimentShortLink(s))
                             ))));

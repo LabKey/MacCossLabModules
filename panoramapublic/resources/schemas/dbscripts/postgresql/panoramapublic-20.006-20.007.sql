@@ -39,7 +39,6 @@ CREATE TABLE panoramapublic.Submission
     LabHeadAffiliation     VARCHAR(200),
     DataLicense            VARCHAR(10),
     Version                INT,
-    ShortAccessURL EntityId NOT NULL,
 
     CONSTRAINT PK_Submission PRIMARY KEY (Id),
     CONSTRAINT FK_Submission_JournalExperiment FOREIGN KEY (JournalExperimentId) REFERENCES panoramapublic.JournalExperiment(Id),
@@ -50,9 +49,11 @@ CREATE TABLE panoramapublic.Submission
 INSERT INTO panoramapublic.Submission (_ts, CreatedBy, Created, ModifiedBy, Modified,
                                        JournalExperimentId, CopiedExperimentId, Copied, PxIdRequested, KeepPrivate, IncompletePxSubmission,
                                        LabHeadName, LabHeadEmail, LabHeadAffiliation,
-                                       DataLicense, ShortAccessURL)
+                                       DataLicense)
 SELECT _ts, CreatedBy, Created, ModifiedBy, Modified,
         Id, CopiedExperimentId, Copied, PxIdRequested, KeepPrivate, IncompletePxSubmission,
         LabHeadName, LabHeadEmail, LabHeadAffiliation,
-        DataLicense, ShortAccessURL FROM panoramapublic.JournalExperiment;
+        DataLicense FROM panoramapublic.JournalExperiment;
+
+UPDATE panoramapublic.Submission set Version = 1 WHERE CopiedExperimentId IS NOT NULL;
 

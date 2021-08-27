@@ -190,7 +190,6 @@ public class SubmissionManager
         s.setLabHeadEmail(request.getLabHeadEmail());
         s.setLabHeadAffiliation(request.getLabHeadAffiliation());
         s.setDataLicense(DataLicense.resolveLicense(request.getDataLicense()));
-        s.setShortAccessUrl(je.getShortAccessUrl());
 
         je = Table.insert(user, PanoramaPublicManager.getTableInfoJournalExperiment(), je);
         s.setJournalExperimentId(je.getId());
@@ -203,15 +202,15 @@ public class SubmissionManager
         return Table.update(user, PanoramaPublicManager.getTableInfoJournalExperiment(), journalExperiment, journalExperiment.getId());
     }
 
-    public static void updateSubmissionUrl(Submission submission, ExperimentAnnotations expAnnotations, Journal journal, String shortAccessUrl, User user) throws ValidationException
-    {
-        // Save the new short access URL
-        ActionURL accessUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnotations.getContainer());
-        ShortURLRecord accessUrlRecord = JournalManager.saveShortURL(accessUrl, shortAccessUrl, journal, user);
-        submission.setShortAccessUrl(accessUrlRecord);
-
-        updateSubmission(submission, user);
-    }
+//    public static void updateSubmissionUrl(Submission submission, ExperimentAnnotations expAnnotations, Journal journal, String shortAccessUrl, User user) throws ValidationException
+//    {
+//        // Save the new short access URL
+//        ActionURL accessUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnotations.getContainer());
+//        ShortURLRecord accessUrlRecord = JournalManager.saveShortURL(accessUrl, shortAccessUrl, journal, user);
+//        submission.setShortAccessUrl(accessUrlRecord);
+//
+//        updateSubmission(submission, user);
+//    }
 
     public static void updateAccessUrlTarget(ExperimentAnnotations targetExperiment, JournalExperiment sourceJournalExp, User user) throws ValidationException
     {
@@ -274,12 +273,7 @@ public class SubmissionManager
             }
 
             updateJournalExperiment(js.getJournalExperiment(), user);
-            Submission submission = js.getPendingSubmission();
-            if(submission != null)
-            {
-                submission.setShortAccessUrl(js.getShortAccessUrl());
-                updateSubmission(submission, user);
-            }
+
             transaction.commit();
         }
     }
@@ -352,9 +346,8 @@ public class SubmissionManager
                 else
                 {
                     // The journal copy of this data is about to be deleted. We do not want to delete the corresponding row in the Submission table
-                    // Instead we will set the copiedExperimentId, shortAccessUrl and version to null.
+                    // Instead we will set the copiedExperimentId and version to null.
                     submission.setCopiedExperimentId(null);
-                    submission.setShortAccessUrl(null);
                     submission.setVersion(null);
                     updateSubmission(submission, user);
                 }
