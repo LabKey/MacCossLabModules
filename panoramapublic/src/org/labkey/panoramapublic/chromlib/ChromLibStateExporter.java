@@ -34,17 +34,11 @@ public abstract class ChromLibStateExporter
     {
         TargetedMSService svc = TargetedMSService.get();
         TargetedMSService.FolderType folderType = svc.getFolderType(container);
-        if (TargetedMSService.FolderType.LibraryProtein.equals(folderType))
+        switch (folderType)
         {
-            new ProteinLibStateExporter(log).exportLibraryState(container, file, user, svc);
-        }
-        else if (TargetedMSService.FolderType.Library.equals(folderType))
-        {
-            new PeptideLibStateExporter(log).exportLibraryState(container, file, user, svc);
-        }
-        else
-        {
-            throw new ChromLibStateException(String.format("'%s' is not a chromatogram library folder.", container));
+            case LibraryProtein -> new ProteinLibStateExporter(log).exportLibraryState(container, file, user, svc);
+            case Library -> new PeptideLibStateExporter(log).exportLibraryState(container, file, user, svc);
+            default -> throw new ChromLibStateException(String.format("'%s' is not a chromatogram library folder.", container));
         }
     }
 
@@ -174,7 +168,7 @@ public abstract class ChromLibStateExporter
                 values.add(""); // custom ion name (only for molecule precursors)
                 values.add(""); // ion formula (only for molecule precursors)
                 values.add(""); // mass monoisotopic (only for molecule precursors)
-                values.add(""); // mass averate (only for molecule precursors)
+                values.add(""); // mass average (only for molecule precursors)
             }
             else if (precursor instanceof LibMoleculePrecursor)
             {

@@ -112,7 +112,6 @@ public class ChromLibStateManager
     public static Path getChromLibDir(Container container)
     {
         PipeRoot root = PipelineService.get().getPipelineRootSetting(container);
-        assert root != null;
         return root.getRootNioPath().resolve(TargetedMSService.CHROM_LIB_FILE_DIR);
     }
 

@@ -1,6 +1,5 @@
 package org.labkey.panoramapublic.pipeline;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
@@ -21,22 +20,14 @@ import org.labkey.api.security.User;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.targetedms.TargetedMSService.FolderType;
 import org.labkey.api.util.FileType;
-import org.labkey.api.util.FileUtil;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.chromlib.ChromLibStateException;
 import org.labkey.panoramapublic.chromlib.ChromLibStateManager;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import static org.labkey.api.targetedms.TargetedMSService.FolderType.Experiment;
-import static org.labkey.api.targetedms.TargetedMSService.FolderType.Library;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.LibraryProtein;
 
 public class UpdateFolderTypeTask extends PipelineJob.Task<UpdateFolderTypeTask.Factory>
@@ -115,17 +106,20 @@ public class UpdateFolderTypeTask extends PipelineJob.Task<UpdateFolderTypeTask.
     private void doUpdate(Container c, Container sourceContainer, User user, TargetedMSService svc, Logger log) throws PipelineJobException
     {
         FolderType folderType = svc.getFolderType(sourceContainer);
-        if (Experiment.equals(folderType))
+        switch (folderType)
         {
-            log.info(String.format("Setting the TargetedMS folder type to 'Experimental Data' for container '%s'.", c.getPath()));
-            _folderTypeProp.saveValue(user, c, Experiment.toString());
-        }
-        else if (Library.equals(folderType) || LibraryProtein.equals(folderType))
-        {
-            log.info(String.format("Updating the TargetedMS folder type to '%s' for container '%s'.",
-                    (LibraryProtein.equals(folderType) ? "Protein Library" : "Peptide Library"),
-                    c.getPath()));
-            makePanoramaLibraryFolder(c, sourceContainer, folderType, user, svc, log);
+            case Experiment -> {
+                log.info(String.format("Setting the TargetedMS folder type to 'Experimental Data' for folder '%s'.", c.getPath()));
+                _folderTypeProp.saveValue(user, c, folderType.name());
+            }
+            case Library, LibraryProtein -> {
+                log.info(String.format("Updating the TargetedMS folder type to '%s' for folder '%s'.",
+                        (LibraryProtein.equals(folderType) ? "Protein Library" : "Peptide Library"),
+                        c.getPath()));
+                makePanoramaLibraryFolder(c, sourceContainer, folderType, user, svc, log);
+            }
+            default -> log.info(String.format("Source folder '%s' is of the type '%s'.  Target folder '%s' cannot be updated to match source folder.",
+                    sourceContainer.getPath(), folderType.name(), c.getPath()));
         }
     }
 
