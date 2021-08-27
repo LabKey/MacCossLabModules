@@ -199,7 +199,6 @@
             </column>
             <column columnName="Id">
                 <description>Contains a unique id for this JouralExperiment (submission).</description>
-                <isHidden>true</isHidden>
             </column>
             <column columnName="JournalId">
                 <columnTitle>Target</columnTitle>

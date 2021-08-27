@@ -168,11 +168,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                     throw new PipelineJobException("Could not find and entry for the previous copy of the experiment.  " +
                             "Previous experiment ID " + lastCopiedSubmission.getCopiedExperimentId());
                 }
-                // Change the shortAccessUrl for the existing copy of the experiment in the journal's project
-                lastCopiedSubmission = updateLastCopiedSubmission(js, lastCopiedSubmission, jobSupport.getJournal(), previousCopy, user);
-                previousCopy.setShortUrl(lastCopiedSubmission.getShortAccessUrl());
-                ExperimentAnnotationsManager.save(previousCopy, user);
-                js = SubmissionManager.getJournalSubmission(js.getJournalExperimentId());
             }
 
             if(jobSupport.assignPxId() // We can get isPxidRequested from the JournalExperiment but sometimes we may have to override that settting.
@@ -221,11 +216,15 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 }
             }
 
+            // Change the shortAccessUrl for the existing copy of the experiment in the journal's project
+            updateLastCopiedSubmissionAndExperiment(js, lastCopiedSubmission, jobSupport.getJournal(), previousCopy, user, log);
+            js = SubmissionManager.getJournalSubmission(js.getJournalExperimentId());
+
             targetExperiment = ExperimentAnnotationsManager.save(targetExperiment, user);
 
             // Update the target of the short access URL to the journal's copy of the experiment.
             log.info("Updating access URL to point to the new copy of the data.");
-            JournalManager.updateAccessUrl(targetExperiment, js.getJournalExperiment(), user);
+            SubmissionManager.updateAccessUrlTarget(targetExperiment, js.getJournalExperiment(), user);
 
             // Update the row in the Submission table -- set the 'copied' timestamp and the copiedExperimentId
             log.info("Setting the 'copied' timestamp and copiedExperimentId on the Submission.");
@@ -631,13 +630,19 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return intIds;
     }
 
-    private Submission updateLastCopiedSubmission(JournalSubmission js, Submission lastCopiedSubmission, Journal journal, ExperimentAnnotations previousCopy, User user) throws PipelineJobException, ValidationException
+    private void updateLastCopiedSubmissionAndExperiment(JournalSubmission js, Submission lastCopiedSubmission, Journal journal, ExperimentAnnotations previousCopy, User user, Logger log) throws PipelineJobException, ValidationException
     {
+        if(lastCopiedSubmission == null)
+        {
+            return;
+        }
+
         int version = js.getNextVersion();
         lastCopiedSubmission.setVersion(version);
 
         // Append a version to the original short URL
         String versionedShortUrl = lastCopiedSubmission.getShortAccessUrl().getShortURL() + "_v" + lastCopiedSubmission.getVersion();
+        log.info("Creating a new versioned URL for the previous copy of the data: " + versionedShortUrl);
         ShortURLService shortUrlService = ShortURLService.get();
         ShortURLRecord shortURLRecord = shortUrlService.resolveShortURL(versionedShortUrl);
         if(shortURLRecord != null)
@@ -645,7 +650,16 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             throw new PipelineJobException("Error appending a version to the short URL.  The short URL is already in use " + "'" + versionedShortUrl + "'");
         }
         SubmissionManager.updateSubmissionUrl(lastCopiedSubmission, previousCopy, journal, versionedShortUrl, user);
-        return SubmissionManager.getSubmission(lastCopiedSubmission.getId()); // Requery to get the updated values
+
+        log.info("Setting the short access URL on the previous copy to " + lastCopiedSubmission.getShortAccessUrl().getShortURL());
+        previousCopy.setShortUrl(lastCopiedSubmission.getShortAccessUrl());
+
+        if(previousCopy.getDoi() != null)
+        {
+            log.info("Removing DOI from previous copy");
+            previousCopy.setDoi(null);
+        }
+        ExperimentAnnotationsManager.save(previousCopy, user);
     }
 
     public static class Factory extends AbstractTaskFactory<AbstractTaskFactorySettings, Factory>

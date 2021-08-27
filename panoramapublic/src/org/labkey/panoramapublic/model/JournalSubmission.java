@@ -94,7 +94,7 @@ public class JournalSubmission
         return _submissions.stream().filter(s -> s.getCopiedExperimentId() == null).findFirst().orElse(null);
     }
 
-    public boolean isPendingSubmission()
+    public boolean hasPendingSubmission()
     {
         return getPendingSubmission() != null;
     }
@@ -109,7 +109,7 @@ public class JournalSubmission
         return _submissions.stream().filter(s -> s.getCopiedExperimentId() != null).findFirst().orElse(null);
     }
 
-    public Submission getSubmissionForJournalCopy(int copiedExperimentId)
+    public Submission getSubmissionForCopiedExperiment(int copiedExperimentId)
     {
         return _submissions.stream().filter(s -> s.getCopiedExperimentId() != null && s.getCopiedExperimentId() == copiedExperimentId).findFirst().orElse(null);
     }

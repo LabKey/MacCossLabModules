@@ -58,7 +58,7 @@
 
     ActionURL submitUrl = lastSubmission == null ? new ActionURL(PanoramaPublicController.PublishExperimentAction.class, getContainer()) // Data has not yet been submitted.
             : (lastSubmission.getCopied()) == null ?
-            new ActionURL(PanoramaPublicController.UpdateJournalExperimentAction.class, getContainer()) // Data submitted but not copied yet.
+            new ActionURL(PanoramaPublicController.UpdateSubmissionAction.class, getContainer()) // Data submitted but not copied yet.
             :
             new ActionURL(PanoramaPublicController.RepublishJournalExperimentAction.class, getContainer()); // Data has been copied to Panorama Public.  This is a re-submit.
 

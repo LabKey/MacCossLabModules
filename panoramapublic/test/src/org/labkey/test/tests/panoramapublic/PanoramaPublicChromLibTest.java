@@ -102,6 +102,11 @@ public class PanoramaPublicChromLibTest extends PanoramaPublicBaseTest
         ChromLibTestHelper.ChromLibState libStateTarget = libHelper.getLibState(PANORAMA_PUBLIC + "/" + targetFolder);
 
         ChromLibTestHelper.compareLibState(libStateSource, libStateTarget);
+
+        // The submitter should be able to delete the experiment in their folder
+//        goToProjectFolder(projectName, folderName);
+//        impersonate(SUBMITTER);
+//        deleteExperiment();
     }
 
     private boolean resolveConflicts()

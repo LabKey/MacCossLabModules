@@ -94,9 +94,13 @@
     if(annot.isJournalCopy())
     {
         JournalSubmission js = SubmissionManager.getSubmissionForJournalCopy(annot);
-        Submission s = js.getSubmissionForJournalCopy(annot.getId());
-        Integer v = s.getVersion();
-        version = v == null ? "Current" : String.valueOf(v);
+        if(js.getCopiedSubmissions().size() > 1)
+        {
+            // Display the version only if there is more than one version of this dataset on Panorama Public
+            Submission s = js.getSubmissionForCopiedExperiment(annot.getId());
+            Integer v = s.getVersion();
+            version = v == null ? "Current" : String.valueOf(v);
+        }
     }
 %>
 <style>

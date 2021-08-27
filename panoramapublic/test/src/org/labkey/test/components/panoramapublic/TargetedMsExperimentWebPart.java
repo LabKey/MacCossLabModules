@@ -48,4 +48,14 @@ public class TargetedMsExperimentWebPart extends BodyWebPart
         assertNotNull("Expected to see a \"Resubmit\" button", resubmitLink);
         getWrapper().clickAndWait(resubmitLink);
     }
+
+    public void deleteExperiment(String title, String folderPath)
+    {
+//        Locator.XPathLocator deleteLink = getDataRegion().linkContainingText("Delete");
+//        assertNotNull("Expected to see a \"Delete\" link", deleteLink);
+//        getWrapper().clickAndWait(deleteLink);
+//        getWrapper().assertTextPresent("Are you sure you want to delete the following experiment?");
+//        getWrapper().assertTextPresent(title + " in " + folderPath);
+//        findElement(Locator.linkContainingText("Create New Experiment")).click();
+    }
 }

@@ -17,6 +17,7 @@ import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PortalHelper;
 import org.labkey.test.util.PostgresOnlyTest;
+import org.labkey.test.util.UIContainerHelper;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.util.List;
@@ -234,12 +235,25 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         assertTextPresent("Email was not sent to submitter");
     }
 
+    void deleteExperimentInFolder()
+    {
+//        goToDashboard();
+//        Locator.XPathLocator webpart = PortalHelper.Locators.webPart(TargetedMsExperimentWebPart.DEFAULT_TITLE);
+//        assertNotNull("Expected to see a " + TargetedMsExperimentWebPart.DEFAULT_TITLE + " webpart", webpart);
+//        webpart.
+//        TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
+//        TargetedMsExperimentInsertPage insertPage = expWebPart.startInsert();
+//        insertPage.insert(experimentTitle);
+
+    }
+
     @Override
     protected void doCleanup(boolean afterTest) throws TestTimeoutException
     {
-        // these tests use the UIContainerHelper for project creation, but we can use the APIContainerHelper for deletion
-        APIContainerHelper apiContainerHelper = new APIContainerHelper(this);
-        apiContainerHelper.deleteProject(PANORAMA_PUBLIC, afterTest);
+        _containerHelper.deleteProject(PANORAMA_PUBLIC, afterTest);
+//        // these tests use the UIContainerHelper for project creation, but we can use the APIContainerHelper for deletion
+//        APIContainerHelper apiContainerHelper = new APIContainerHelper(this);
+//        apiContainerHelper.deleteProject(PANORAMA_PUBLIC, afterTest);
 
         super.doCleanup(afterTest);
     }

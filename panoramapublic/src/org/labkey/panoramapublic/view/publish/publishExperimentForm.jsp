@@ -29,7 +29,6 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PublishExperimentForm" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PublishExperimentFormBean" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.RepublishJournalExperimentAction" %>
-<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.UpdateJournalExperimentAction" %>
 <%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
@@ -37,6 +36,7 @@
 <%@ page import="java.util.Set" %>
 <%@ page import="org.labkey.panoramapublic.query.SubmissionManager" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.UpdateSubmissionAction" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -69,7 +69,7 @@
     boolean isUpdate = bean.getForm().isUpdate();
     boolean isResubmit = bean.getForm().isResubmit();
     String publishButtonText = isUpdate ? "Update" : (isResubmit ? "Resubmit" : "Submit");
-    ActionURL submitUrl = isUpdate ? new ActionURL(UpdateJournalExperimentAction.class, getContainer())
+    ActionURL submitUrl = isUpdate ? new ActionURL(UpdateSubmissionAction.class, getContainer())
             : (isResubmit ?
               new ActionURL(RepublishJournalExperimentAction.class, getContainer())
             : new ActionURL(PublishExperimentAction.class, getContainer()));

@@ -36,6 +36,7 @@ import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
+import org.labkey.panoramapublic.query.SubmissionManager;
 
 import java.beans.PropertyChangeEvent;
 import java.util.ArrayList;
@@ -70,6 +71,8 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     @Override
     public void containerDeleted(Container c, User user)
     {
+        // TODO: If this container is in a journal project make the admin delete the row in the ExperimentAnnotations first before they can delete the container.
+
         JournalManager.deleteProjectJournal(c, user);
     }
 
@@ -94,7 +97,7 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     @Override
     public List<String> canDelete(ShortURLRecord shortUrl)
     {
-        List<JournalExperiment> journalExperiments = JournalManager.getRecordsForShortUrl(shortUrl);
+        List<JournalExperiment> journalExperiments = SubmissionManager.getJournalExperimentsForShortUrl(shortUrl);  // TODO: Change this later.
         if(journalExperiments.size() > 0)
         {
             List<String> errors = new ArrayList<>();

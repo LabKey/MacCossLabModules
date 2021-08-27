@@ -61,6 +61,7 @@ import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -167,7 +168,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                 Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
                 ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
 
-                String accessUrl = JournalManager.getExperimentShortUrl(expAnnotations);
+                String accessUrl = ExperimentAnnotationsManager.getExperimentShortUrl(expAnnotations);
 
                 if(accessUrl == null)
                 {

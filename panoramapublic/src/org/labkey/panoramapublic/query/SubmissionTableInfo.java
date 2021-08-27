@@ -41,7 +41,6 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * User: vsharma
@@ -66,55 +65,56 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
         deleteColumn.setDisplayColumnFactory(new DeleteUrlDisplayColumnFactory(getContainer()));
         addColumn(deleteColumn);
 
-        var accessUrlCol = getMutableColumn(FieldKey.fromParts("ShortAccessUrl"));
-        accessUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
-//
-//
-//        var copyUrlCol = getMutableColumn(FieldKey.fromParts("ShortCopyUrl"));
-//        copyUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
+        var accessUrlCol = wrapColumn("ShortURL", getRealTable().getColumn("CopiedExperimentId"));
+        accessUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory(FieldKey.fromParts("ShortUrl")));
+        addColumn(accessUrlCol);
 
         var licenseCol = getMutableColumn(FieldKey.fromParts("DataLicense"));
-        licenseCol.setURLTargetWindow("_blank");
-        licenseCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo){
-            @Override
-            public DataLicense getValue(RenderContext ctx)
-            {
-                return ctx.get(FieldKey.fromParts("DataLicense"), DataLicense.class);
-            }
+        if (licenseCol != null)
+        {
+            licenseCol.setURLTargetWindow("_blank");
+            licenseCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo){
+                @Override
+                public DataLicense getValue(RenderContext ctx)
+                {
+                    return ctx.get(FieldKey.fromParts("DataLicense"), DataLicense.class);
+                }
 
-            @Override
-            public Object getDisplayValue(RenderContext ctx)
-            {
-                DataLicense license = getValue(ctx);
-                return license != null ? license.getDisplayName() : super.getDisplayValue(ctx);
-            }
+                @Override
+                public Object getDisplayValue(RenderContext ctx)
+                {
+                    DataLicense license = getValue(ctx);
+                    return license != null ? license.getDisplayName() : super.getDisplayValue(ctx);
+                }
 
-            @Override
-            public @NotNull HtmlString getFormattedHtml(RenderContext ctx)
-            {
-                DataLicense license = getValue(ctx);
-                return license != null ? HtmlString.of(license.getDisplayName()) : super.getFormattedHtml(ctx);
-            }
+                @Override
+                public @NotNull HtmlString getFormattedHtml(RenderContext ctx)
+                {
+                    DataLicense license = getValue(ctx);
+                    return license != null ? HtmlString.of(license.getDisplayName()) : super.getFormattedHtml(ctx);
+                }
 
-            @Override
-            public String renderURL(RenderContext ctx)
-            {
-                DataLicense license = getValue(ctx);
-                return license != null ? license.getUrl() : super.renderURL(ctx);
-            }
-        });
+                @Override
+                public String renderURL(RenderContext ctx)
+                {
+                    DataLicense license = getValue(ctx);
+                    return license != null ? license.getUrl() : super.renderURL(ctx);
+                }
+            });
+        }
 
         List<FieldKey> columns = new ArrayList<>();
         columns.add(FieldKey.fromParts("Id"));
         columns.add(FieldKey.fromParts("CreatedBy"));
         columns.add(FieldKey.fromParts("Created"));
-        columns.add(FieldKey.fromParts("Version"));
-        columns.add(FieldKey.fromParts("JournalExperimentId/JournalId"));
-        columns.add(FieldKey.fromParts("JournalExperimentId/ShortAccessURL"));
-        columns.add(FieldKey.fromParts("Edit"));
-        columns.add(FieldKey.fromParts("Delete"));
+        columns.add(FieldKey.fromParts("JournalExperimentId", "JournalId"));
         columns.add(FieldKey.fromParts("DataLicense"));
         columns.add(FieldKey.fromParts("PxidRequested"));
+        columns.add(FieldKey.fromParts("ShortURL"));
+        columns.add(FieldKey.fromParts("Copied"));
+        columns.add(FieldKey.fromParts("Version"));
+        columns.add(FieldKey.fromParts("Edit"));
+        columns.add(FieldKey.fromParts("Delete"));
         columns.add(FieldKey.fromParts("CopiedExperimentId"));
         setDefaultVisibleColumns(columns);
     }
@@ -141,11 +141,12 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
             joinSql.append(" INNER JOIN ");
             joinSql.append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "exp");
             joinSql.append(" ON ( ");
-            // JournalExperiment table contains two experiment id (table ExperimentAnnotations) columns. One for the source experiment and another for the
-            // experiment copied to Panorama Public. We want to see the JournalExperiment row in the containers of both the source experiment and the
-            // Panorama Public copy so we are filtering on the Container columns of both experiments.
-            // This means, however, that when the container filter is changed to "All Folders", the user will see duplicate rows for a row in JournalExperiment
-            // if they have read permissions in both containers.
+            // JournalExperiment table contains the experiment id (table ExperimentAnnotations) column of the source column.
+            // Submission table contains the experiment id of the Panorama Public copy of the experiment.
+            // We are filtering on the Container columns of both experiments so that in the folder containing the source experiment
+            // we can see all the rows from the Submission table that correspond to the source experiment.
+            // In the folder containing the Panorama Public copy we will see the row corresponding to the Panorama Public
+            // experiment copy.
             joinSql.append("exp.id = ").append("je.ExperimentAnnotationsId");
             joinSql.append(" OR exp.id = ").append("X.CopiedExperimentId");
             joinSql.append(" ) ");
@@ -180,23 +181,12 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
                 {
                     Integer id = ctx.get(colInfo.getFieldKey(), Integer.class);
                     Submission s = SubmissionManager.getSubmission(id);
-                    if(s != null && s.getVersion() == null)
+                    if(s != null && s.getCopiedExperimentId() == null)
                     {
-                        Integer copiedExperimentId = ctx.get(FieldKey.fromParts("CopiedExperimentId"), Integer.class);
-                        if (copiedExperimentId == null)
-                        {
-                            // Show the delete link only if the experiment has not yet been copied
-                            _url.replaceParameter("id", id);
-                            out.write(PageFlowUtil.link("Delete").href(_url).toString());
-                        }
+                        // Show the delete link only if the experiment has not yet been copied
+                        _url.replaceParameter("id", id);
+                        out.write(PageFlowUtil.link("Delete").href(_url).toString());
                     }
-                }
-
-                @Override
-                public void addQueryFieldKeys(Set<FieldKey> keys)
-                {
-                    super.addQueryFieldKeys(keys);
-                    keys.add(FieldKey.fromParts("CopiedExperimentId"));
                 }
             };
         }
@@ -221,42 +211,30 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
                 {
                     Integer id = ctx.get(colInfo.getFieldKey(), Integer.class);
                     Submission s = SubmissionManager.getSubmission(id);
-                    if(s != null && s.getVersion() == null)
+                    if(s != null)
                     {
-                        //Integer journalId = ctx.get(FieldKey.fromParts("JournalId"), Integer.class);
-                        //Integer experimentAnnotationsId = ctx.get(FieldKey.fromParts("ExperimentAnnotationsId"), Integer.class);
-
-                        JournalSubmission je = SubmissionManager.getJournalSubmission(s.getJournalExperimentId());
-                        if(je.isNewestSubmission(s.getId()))
+                        JournalSubmission js = SubmissionManager.getJournalSubmission(s.getJournalExperimentId());
+                        if(js.isNewestSubmission(s.getId()))
                         {
                             // Show the "Resubmit" or "Edit" links only if this is the most recent submission request for the experiment.
                             if (s.getCopiedExperimentId() != null)
                             {
                                 // Show the resubmit link if the experiment has already been copied by a journal
                                 // but NOT if the journal copy is final.
-                                if (ExperimentAnnotationsManager.canSubmitExperiment(je.getExperimentAnnotationsId()))
+                                if (ExperimentAnnotationsManager.canSubmitExperiment(js.getExperimentAnnotationsId(), js))
                                 {
-                                    ActionURL resubmitUrl = PanoramaPublicController.getRePublishExperimentURL(je.getExperimentAnnotationsId(), je.getJournalId(), _container, s.isKeepPrivate(),
+                                    ActionURL resubmitUrl = PanoramaPublicController.getRePublishExperimentURL(js.getExperimentAnnotationsId(), js.getJournalId(), _container, s.isKeepPrivate(),
                                             true /*check if data is valid for PXD. Always do this check on a resubmit.*/);
                                     out.write(PageFlowUtil.link("Resubmit").href(resubmitUrl).toString());
                                 }
                             }
                             else
                             {
-                                ActionURL ediUrl = PanoramaPublicController.getUpdateJournalExperimentURL(je.getExperimentAnnotationsId(), je.getJournalId(), _container, s.isKeepPrivate(), true);
+                                ActionURL ediUrl = PanoramaPublicController.getUpdateJournalExperimentURL(js.getExperimentAnnotationsId(), js.getJournalId(), _container, s.isKeepPrivate(), true);
                                 out.write(PageFlowUtil.link("Edit").href(ediUrl).toString());
                             }
                         }
                     }
-                }
-
-                @Override
-                public void addQueryFieldKeys(Set<FieldKey> keys)
-                {
-                    super.addQueryFieldKeys(keys);
-                    keys.add(FieldKey.fromParts("JournalId"));
-                    keys.add(FieldKey.fromParts("ExperimentAnnotationsId"));
-                    keys.add(FieldKey.fromParts("Version"));
                 }
             };
         }
