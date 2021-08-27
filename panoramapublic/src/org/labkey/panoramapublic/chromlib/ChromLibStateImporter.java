@@ -60,17 +60,11 @@ public abstract class ChromLibStateImporter
     {
         TargetedMSService svc = TargetedMSService.get();
         TargetedMSService.FolderType folderType = svc.getFolderType(container);
-        if (TargetedMSService.FolderType.LibraryProtein.equals(folderType))
+        switch (folderType)
         {
-            new ProteinLibStateImporter(container, user, log, svc).importFromFile(libStateFile);
-        }
-        else if (TargetedMSService.FolderType.Library.equals(folderType))
-        {
-            new PeptideLibStateImporter(container, user, log, svc).importFromFile(libStateFile);
-        }
-        else
-        {
-            throw new ChromLibStateException(String.format("'%s' is not a chromatogram library folder.", container));
+            case LibraryProtein -> new ProteinLibStateImporter(container, user, log, svc).importFromFile(libStateFile);
+            case Library -> new PeptideLibStateImporter(container, user, log, svc).importFromFile(libStateFile);
+            default -> throw new ChromLibStateException(String.format("'%s' is not a chromatogram library folder.", container));
         }
     }
 
@@ -107,13 +101,13 @@ public abstract class ChromLibStateImporter
         _log.info("Done importing library state.");
     }
 
-    private void verifyLibColumns(ColumnDescriptor[] columns, List<String> expectedColulmns) throws ChromLibStateException
+    private void verifyLibColumns(ColumnDescriptor[] columns, List<String> expectedColumns) throws ChromLibStateException
     {
         var columnsInFile = Arrays.stream(columns).map(c -> c.name).collect(Collectors.toSet());
-        if (!columnsInFile.containsAll(expectedColulmns))
+        if (!columnsInFile.containsAll(expectedColumns))
         {
             throw new ChromLibStateException(String.format("Required column headers not found. Expected columns: %s.  Found columns: %s",
-                    StringUtils.join(expectedColulmns, ","), StringUtils.join(columnsInFile, ",")));
+                    StringUtils.join(expectedColumns, ","), StringUtils.join(columnsInFile, ",")));
         }
     }
 
@@ -395,8 +389,8 @@ public abstract class ChromLibStateImporter
             Long generalPrecursorId = _precursorKeyMap.get(precursor.getKey());
             if (generalPrecursorId == null)
             {
-                throw new IllegalStateException(String.format("Expected a row for precursor %s in the peptide group %s. Skyline document '%s'. Container '%s'.",
-                        precursor.getKey().toString(), peptideGroup.getLabel(), getSkyFile(row), _container));
+                throw new IllegalStateException(String.format("Expected a row for precursor %s in the peptide group '%s'. Skyline document '%s'. Folder '%s'.",
+                        precursor.getKey().toString(), peptideGroup.getLabel(), getSkyFile(row), _container.getPath()));
             }
             precursor.setId(generalPrecursorId);
 
