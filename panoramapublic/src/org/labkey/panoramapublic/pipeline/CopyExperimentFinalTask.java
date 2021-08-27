@@ -248,11 +248,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             SecurityPolicyManager.savePolicy(newPolicy);
 
-            // We are only allowing 'Experimental Data' type folders to be submitted to Panorama Public.
-            // If this changes we will have to get the value of the FOLDER_TYPE_PROPERTY on the source container and set it on the target container.
-            log.info("Setting the TargetedMS folder type to 'Experimental Data'");
-            updateFolderType(target, user);
-
             FileContentService service = FileContentService.get();
             if(service != null)
             {
@@ -274,7 +269,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             String reviewerPassword = null;
             if(jExperiment.isKeepPrivate())
             {
-                if (previousCopy == null || (previousCopy != null && previousCopy.isPublic()))
+                if (previousCopy == null || previousCopy.isPublic())
                 {
                     reviewerPassword = createPassword();
                     reviewer = createReviewerAccount(jobSupport.getReviewerEmailPrefix(), reviewerPassword, user, log);
@@ -321,14 +316,11 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     private List<User> getUsersWithRole(Container container, Role role)
     {
         SecurityPolicy securityPolicy = container.getPolicy();
-        List<User> users = new ArrayList<>();
-
-        users.addAll(securityPolicy.getAssignments().stream()
+        return securityPolicy.getAssignments().stream()
                 .filter(r -> r.getRole().equals(role)
                         && UserManager.getUser(r.getUserId()) != null) // Ignore user groups
-                .map(r -> UserManager.getUser(r.getUserId()))
-                .collect(Collectors.toList()));
-        return users;
+                .map(r -> UserManager.getUser(r.getUserId())).collect(Collectors.toList());
+
     }
 
     private User createReviewerAccount(String reviewerEmailPrefix, String password, User user, Logger log) throws ValidEmail.InvalidEmailException, SecurityManager.UserManagementException
@@ -401,6 +393,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         // This is the user that clicked the "Submit" button.  Typically this is the same as the user above.
         // If not, send email to both
         User formSubmitter = UserManager.getUser(jExperiment.getCreatedBy());
+        assert formSubmitter != null;
 
         Set<String> toAddresses = new HashSet<>();
         if(pxSubmitter != null) toAddresses.add(pxSubmitter.getEmail());
@@ -497,15 +490,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return true;
     }
 
-    private void updateFolderType(Container c, User user)
-    {
-        Set<Container> children = ContainerManager.getAllChildren(c); // Includes parent
-        for(Container child: children)
-        {
-            PanoramaPublicManager.makePanoramaExperimentalDataFolder(child, user);
-        }
-    }
-
     private boolean addMissingDatas(List<ExpData> allData, ITargetedMSRun tmsRun, Logger logger)
     {
         Integer skyZipDataId = tmsRun.getDataId();
@@ -527,7 +511,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             {
                 skyZipDataIncluded = true;
             }
-            else if(data.getRowId() == skydDataId)
+            else if((skydDataId != null) && (data.getRowId() == skydDataId))
             {
                 skydDataIncluded = true;
             }

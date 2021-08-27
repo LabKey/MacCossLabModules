@@ -112,6 +112,7 @@ import org.labkey.api.util.TestContext;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.*;
 import org.labkey.api.view.template.ClientDependency;
+import org.labkey.panoramapublic.chromlib.ChromLibStateManager;
 import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.datacite.Doi;
@@ -160,6 +161,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.labkey.api.targetedms.TargetedMSService.FolderType.*;
 import static org.labkey.api.util.DOM.Attribute.action;
 import static org.labkey.api.util.DOM.Attribute.method;
 import static org.labkey.api.util.DOM.Attribute.name;
@@ -343,7 +345,7 @@ public class PanoramaPublicController extends SpringActionController
                 // Make this an "Experiment data" folder.
                 Module targetedMSModule = ModuleLoader.getInstance().getModule(TargetedMSService.MODULE_NAME);
                 ModuleProperty moduleProperty = targetedMSModule.getModuleProperties().get(TargetedMSService.FOLDER_TYPE_PROP_NAME);
-                moduleProperty.saveValue(getUser(), container, TargetedMSService.FolderType.Experiment.toString());
+                moduleProperty.saveValue(getUser(), container, Experiment.toString());
                 // Display only the "Targeted MS Experiment List" webpart.
                 Portal.WebPart webPart = Portal.getPortalPart(TargetedMSExperimentsWebPart.WEB_PART_NAME).createWebPart();
                 List<Portal.WebPart> newWebParts = Collections.singletonList(webPart);
@@ -1500,11 +1502,21 @@ public class PanoramaPublicController extends SpringActionController
 
             if (!form.isDataValidated())
             {
-                // Cannot publish if this is not an "Experimental data" folder.
+                // Cannot publish if this is not an "Experimental data"  or Library folder.
                 TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(_experimentAnnotations.getContainer());
-                if (folderType != TargetedMSService.FolderType.Experiment)
+                if (!isSupportedFolderType(folderType))
                 {
-                    errors.reject(ERROR_MSG, "Only Targeted MS folders of type \"Experimental data\" can be submitted to " + _journal.getName() + ".");
+                    errors.reject(ERROR_MSG, "Targeted MS folders of type \"" + folderType + "\" cannot be submitted.");
+                    return new SimpleErrorView(errors);
+                }
+                
+                // Do not allow submitting a library folder with conflicts.  This check is also done on any library sub-folders
+                // if the experiment is configured to include subfolders.
+                Container libraryFolderWithConflicts = getLibraryFolderWithConflicts(getUser(), _experimentAnnotations);
+                if(libraryFolderWithConflicts != null)
+                {
+                    errors.reject(ERROR_MSG, String.format("The chromatogram library folder '%s' has conflicts. Please resolve the conflicts before submitting.",
+                            libraryFolderWithConflicts.getName()));
                     return new SimpleErrorView(errors);
                 }
 
@@ -1548,6 +1560,23 @@ public class PanoramaPublicController extends SpringActionController
             {
                 return getPublishFormView(form, _experimentAnnotations, errors);
             }
+        }
+
+        private Container getLibraryFolderWithConflicts(User user, ExperimentAnnotations exptAnnotations)
+        {
+            List<Container> containers = exptAnnotations.isIncludeSubfolders() ?
+                    ContainerManager.getAllChildren(exptAnnotations.getContainer(), user)
+                    : Collections.singletonList(exptAnnotations.getContainer());
+
+            for(Container container: containers)
+            {
+                TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(container);
+                if(isLibraryFolder(folderType) && ChromLibStateManager.getConflictCount(user, container, folderType) > 0)
+                {
+                    return container;
+                }
+            }
+            return null;
         }
 
         private HtmlView getConfirmIncludeSubfoldersView(ExperimentAnnotations expAnnotations, List<Container> allSubfolders, ActionURL skipSubfolderCheckUrl)
@@ -4132,7 +4161,7 @@ public class PanoramaPublicController extends SpringActionController
 
             Container c = _experimentAnnotations.getContainer();
             TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(c);
-            if(folderType == TargetedMSService.FolderType.Experiment)
+            if(isSupportedFolderType(folderType))
             {
                 _lastPublishedRecord = JournalManager.getLastPublishedRecord(_experimentAnnotations.getId());
 
@@ -4182,6 +4211,16 @@ public class PanoramaPublicController extends SpringActionController
         {
             _lastPublishedRecord = lastPublishedRecord;
         }
+    }
+
+    private static boolean isSupportedFolderType(TargetedMSService.FolderType folderType)
+    {
+        return folderType == Experiment || isLibraryFolder(folderType);
+    }
+
+    private static boolean isLibraryFolder(TargetedMSService.FolderType folderType)
+    {
+        return folderType == Library || folderType == LibraryProtein;
     }
 
     public static class ViewExperimentAnnotationsForm
