@@ -34,7 +34,9 @@ import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
 import org.labkey.api.pipeline.RecordedActionSet;
+import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.BatchValidationException;
+import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.SecurityManager;
@@ -52,7 +54,12 @@ import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.Pair;
+import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.Portal;
+import org.labkey.api.view.ShortURLRecord;
+import org.labkey.api.view.ShortURLService;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicNotification;
@@ -60,11 +67,14 @@ import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.datacite.Doi;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
-import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.Journal;
+import org.labkey.panoramapublic.model.JournalSubmission;
+import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
+import org.labkey.panoramapublic.query.SubmissionManager;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -139,178 +149,310 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 ExperimentAnnotationsManager.addSelectedRunsToExperiment(experiment, runRowIdsInSubfolders, user);
             }
 
-            // Create a new entry in panoramapublic.ExperimentAnnotations and link it to the new experiment created during folder import.
-            log.info("Creating a new TargetedMS experiment entry in panoramapublic.ExperimentAnnotations.");
+            // Get the ExperimentAnnotations in the source container
             ExperimentAnnotations sourceExperiment = jobSupport.getExpAnnotations();
-            JournalExperiment jExperiment = JournalManager.getJournalExperiment(sourceExperiment, jobSupport.getJournal());
-
-            ExperimentAnnotations targetExperiment = new ExperimentAnnotations(sourceExperiment);
-            targetExperiment.setExperimentId(experiment.getRowId());
-            targetExperiment.setContainer(experiment.getContainer());
-            targetExperiment.setJournalCopy(true);
-            targetExperiment.setSourceExperimentId(sourceExperiment.getId());
-            targetExperiment.setSourceExperimentPath(sourceExperiment.getContainer().getPath());
-            targetExperiment.setShortUrl(jExperiment.getShortAccessUrl());
-
-            ExperimentAnnotations previousCopy = null;
-            if(jExperiment.getCopiedExperimentId() != null)
+            // Get the submission request
+            JournalSubmission js = SubmissionManager.getJournalSubmission(sourceExperiment.getId(), jobSupport.getJournal().getId());
+            if (js == null)
             {
-                previousCopy = ExperimentAnnotationsManager.get(jExperiment.getCopiedExperimentId());
-                if(previousCopy == null)
-                {
-                    throw new PipelineJobException("Could not find and entry for the previous copy of the experiment.  " +
-                            "Previous experiment ID " + jExperiment.getCopiedExperimentId());
-                }
+                throw new PipelineJobException("Could not find a submission request for experiment Id " + sourceExperiment.getId() +" and journal Id " + jobSupport.getJournal().getId());
+            }
+            Submission latestCopiedSubmission = js.getLatestCopiedSubmission();
+            // If there is a previous copy of this data on Panorama Public get it.  Remove the short url from the previous copy so that it
+            // can be assigned to the new copy.
+            ExperimentAnnotations previousCopy = getPreviousCopyRemoveShortUrl(latestCopiedSubmission, user);
+
+            // Create a new row in panoramapublic.ExperimentAnnotations and link it to the new experiment created during folder import.
+            ExperimentAnnotations targetExperiment = createNewExperimentAnnotations(experiment, sourceExperiment, js, previousCopy, jobSupport, user, log);
+
+            // Update the permissions on the source container and the new Panorama Public container
+            updatePermissions(targetExperiment, sourceExperiment, previousCopy, jobSupport.getJournal(), user, log);
+
+            // Update the DataFileUrl in exp.data and FilePathRoot in exp.experimentRun to point to the files in the Panorama Public container file root
+            updateDataPathsAndRawDataTab(targetExperiment, user, log);
+
+            Submission currentSubmission = js.getLatestSubmission();
+            if (currentSubmission == null)
+            {
+                throw new PipelineJobException("Could not find a current submission request");
             }
 
-            if(jobSupport.assignPxId() // We can get isPxidRequested from the JournalExperiment but sometimes we may have to override that settting.
-                                       // This can happen, e.g. if some of the modifications do not have a Unimod ID and the user
-                                       // was unable to do a PX submission.  In this case we might still want to get a PX ID.
-                                       // Let the admin who is copying the data make the decision.
-            )
-            {
-                if(previousCopy != null && previousCopy.getPxid() != null)
-                {
-                    log.info("Copying ProteomeXchange ID from the previous copy of the data.");
-                    targetExperiment.setPxid(previousCopy.getPxid());
-                }
-                else
-                {
-                    log.info("Assigning a ProteomeXchange ID.");
-                    try
-                    {
-                        assignPxId(targetExperiment, jobSupport.usePxTestDb());
-                    }
-                    catch(ProteomeXchangeServiceException e)
-                    {
-                        throw new PipelineJobException("Could not get a ProteomeXchange ID.", e);
-                    }
-                }
-            }
-            if(jobSupport.assignDoi())
-            {
-                if(previousCopy != null && previousCopy.getDoi() != null)
-                {
-                    log.info("Copying DOI from the previous copy of the data.");
-                    targetExperiment.setDoi(previousCopy.getDoi());
-                }
-                else
-                {
-                    log.info("Assigning a DOI.");
-                    try
-                    {
-                        assignDoi(targetExperiment, jobSupport.useDataCiteTestApi());
-                        log.info("Assigned DOI: " + targetExperiment.getDoi());
-                    }
-                    catch(DataCiteException e)
-                    {
-                        throw new DataCiteException("Could not assign a DOI.", e);
-                    }
-                }
-            }
-
-            targetExperiment = ExperimentAnnotationsManager.save(targetExperiment, user);
-
-            // Update the target of the short access URL to the journal's copy of the experiment.
-            log.info("Updating access URL to point to the new copy of the data.");
-            JournalManager.updateAccessUrl(targetExperiment, jExperiment, user);
-
-            // Update the JournalExperiment table -- set the 'copied' timestamp and the journalExperimentId
-            log.info("Setting the 'copied' timestamp and journalExperimentId on the JournalExperiment table.");
-            jExperiment.setCopied(new Date());
-            jExperiment.setCopiedExperimentId(targetExperiment.getId());
-            JournalManager.updateJournalExperiment(jExperiment, user);
-
-            // Remove the copy permissions given to the journal.
-            log.info("Removing copy permissions given to journal.");
-            Group journalGroup = SecurityManager.getGroup(jobSupport.getJournal().getLabkeyGroupId());
-            JournalManager.removeJournalPermissions(jobSupport.getExpAnnotations(), journalGroup, user);
-
-            // Give read permissions to the authors (all users that are folder admins)
-            log.info("Adding read permissions to all users that are folder admins in the source container.");
-            List<User> authors = getUsersWithRole(sourceExperiment.getContainer(), RoleManager.getRole(FolderAdminRole.class));
-
-            Container target = experiment.getContainer();
-            MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
-            for(User author: authors)
-            {
-                newPolicy.addRoleAssignment(author, ReaderRole.class);
-            }
-
-            if(previousCopy != null)
-            {
-                // Users that had read access to the previous copy should be given read access to the new copy. This will include the reviewer
-                // account if one was created for the previous copy.
-                log.info("Adding read permissions to all users that had read access to previous copy.");
-                List<User> previousCopyReaders = getUsersWithRole(previousCopy.getContainer(), RoleManager.getRole(ReaderRole.class));
-                previousCopyReaders.forEach(u -> newPolicy.addRoleAssignment(u, ReaderRole.class));
-            }
-
-            SecurityPolicyManager.savePolicy(newPolicy);
-
-            FileContentService service = FileContentService.get();
-            if(service != null)
-            {
-                // If there is a "Raw Data" tab in the folder and/or one of its subfolders, fix the configuration of the
-                // Files webpart in the tab.
-                log.info("Updating the 'Raw Data' tab configuration");
-                updateRawDataTabConfig(target, service, user);
-
-                // DataFileUrl in exp.data and FilePathRoot in exp.experimentRun point to locations in the 'export' directory.
-                // We are now copying all files from the source container to the target container file root. Update the paths
-                // to point to locations in the target container file root, and delete the 'export' directory
-                if(!updateDataPaths(target, service, user, job.getLogger()))
-                {
-                    throw new PipelineJobException("Unable to update all data file paths.");
-                }
-            }
-
-            User reviewer = null;
-            String reviewerPassword = null;
-            if(jExperiment.isKeepPrivate())
-            {
-                if (previousCopy == null || previousCopy.isPublic())
-                {
-                    reviewerPassword = createPassword();
-                    reviewer = createReviewerAccount(jobSupport.getReviewerEmailPrefix(), reviewerPassword, user, log);
-                    assignReader(reviewer, target);
-                }
-            }
-            else
-            {
-                // Assign Site:Guests to reader role
-                log.info("Making folder public.");
-                assignReader(SecurityManager.getGroup(Group.groupGuests), target);
-            }
+            // Assign a reviewer account if one was requested
+            Pair<User, String> reviewer = assignReviewer(js, targetExperiment, previousCopy, jobSupport, currentSubmission.isKeepPrivate(), user, log);
 
             // Hide the Data Pipeline tab
             log.info("Hiding the Data Pipeline tab.");
             hideDataPipelineTab(targetExperiment.getContainer());
 
-            // Delete the previous copy
-            if(previousCopy != null && jobSupport.deletePreviousCopy())
-            {
-                log.info("Deleting old container " + previousCopy.getContainer().getPath());
-                Container oldContainer = previousCopy.getContainer();
-                try
-                {
-                    ContainerManager.delete(oldContainer, user);
-                }
-                catch(Exception e)
-                {
-                    // Log exception so that the admin doing the copy can review.
-                    log.error("Error deleting previous copy of the data in container " + oldContainer.getPath(), e);
-                }
-            }
+            js = updateSubmissionAndDeletePreviousCopy(js, currentSubmission, latestCopiedSubmission, targetExperiment, previousCopy, jobSupport, user, log);
 
             // Create notifications. Do this at the end after everything else is done.
-            PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), jExperiment,
-                    reviewer, reviewerPassword, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
+            PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), js.getJournalExperiment(), js.getLatestSubmission(),
+                    reviewer.first, reviewer.second, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
 
-            postEmailNotification(jobSupport, user, log, sourceExperiment, jExperiment, targetExperiment, reviewer, reviewerPassword, previousCopy != null);
+            postEmailNotification(jobSupport, user, log, sourceExperiment, js, targetExperiment, reviewer.first, reviewer.second, previousCopy != null);
 
             transaction.commit();
         }
+    }
+
+    private JournalSubmission updateSubmissionAndDeletePreviousCopy(JournalSubmission js, Submission currentSubmission, Submission lastCopiedSubmission,
+                                                                    ExperimentAnnotations targetExperiment, ExperimentAnnotations previousCopy,
+                                                                    CopyExperimentJobSupport jobSupport, User user, Logger log) throws PipelineJobException
+    {
+        if (lastCopiedSubmission != null)
+        {
+            if (jobSupport.deletePreviousCopy())
+            {
+                lastCopiedSubmission.setCopiedExperimentId(null);
+                SubmissionManager.updateSubmission(lastCopiedSubmission, user);
+            }
+            else
+            {
+                // Change the shortAccessUrl for the existing copy of the experiment
+                updateLastCopiedExperiment(previousCopy, js, jobSupport.getJournal(), user, log);
+            }
+        }
+
+        // Update the row in the Submission table -- set the 'copied' timestamp, copiedExperimentId
+        log.info("Updating Submission. Setting copiedExperimentId to " + targetExperiment.getId());
+        currentSubmission.setCopied(new Date());
+        currentSubmission.setCopiedExperimentId(targetExperiment.getId());
+        SubmissionManager.updateSubmission(currentSubmission, user);
+
+        // Delete the previous copy
+        if (previousCopy != null && jobSupport.deletePreviousCopy())
+        {
+            log.info("Deleting old folder " + previousCopy.getContainer().getPath());
+            Container oldContainer = previousCopy.getContainer();
+            try
+            {
+                ContainerManager.delete(oldContainer, user);
+            }
+            catch(Exception e)
+            {
+                // Log exception so that the admin doing the copy can review.
+                log.error("Error deleting previous copy of the data in folder " + oldContainer.getPath(), e);
+            }
+        }
+
+        return SubmissionManager.getJournalSubmission(js.getJournalExperimentId()); // return the updated submission request
+    }
+
+    private Pair<User, String> assignReviewer(JournalSubmission js, ExperimentAnnotations targetExperiment, ExperimentAnnotations previousCopy,
+                                              CopyExperimentJobSupport jobSupport, boolean keepPrivate, User user, Logger log) throws PipelineJobException
+    {
+        if (keepPrivate)
+        {
+            if (previousCopy == null || previousCopy.isPublic())
+            {
+                String reviewerPassword = createPassword();
+                User reviewer;
+                try
+                {
+                    reviewer = createReviewerAccount(jobSupport.getReviewerEmailPrefix(), reviewerPassword, user, log);
+                }
+                catch (ValidEmail.InvalidEmailException e)
+                {
+                    throw new PipelineJobException("Invalid email for reviewer", e);
+                }
+                catch (SecurityManager.UserManagementException e)
+                {
+                    throw new PipelineJobException("Error creating a new account for reviewer", e);
+                }
+                assignReader(reviewer, targetExperiment.getContainer());
+                js.getJournalExperiment().setReviewer(reviewer.getUserId());
+                SubmissionManager.updateJournalExperiment(js.getJournalExperiment(), user);
+            }
+        }
+        else
+        {
+            // Assign Site:Guests to reader role
+            log.info("Making folder public.");
+            assignReader(SecurityManager.getGroup(Group.groupGuests), targetExperiment.getContainer());
+        }
+        return new Pair<>(null, null);
+    }
+
+    private void updateDataPathsAndRawDataTab(ExperimentAnnotations targetExperiment, User user, Logger log) throws BatchValidationException, PipelineJobException
+    {
+        FileContentService service = FileContentService.get();
+        if (service != null)
+        {
+            // If there is a "Raw Data" tab in the folder and/or one of its subfolders, fix the configuration of the
+            // Files webpart in the tab.
+            // TODO: Do we need this? Looks like this was added when some source folders (e.g. from MacCoss lab) were on S3 and
+            // we had to update the file root property on the Files webpart in the Raw Data tab in the Panorama Public copy.
+            log.info("Updating the 'Raw Data' tab configuration");
+            updateRawDataTabConfig(targetExperiment.getContainer(), service, user);
+
+            // DataFileUrl in exp.data and FilePathRoot in exp.experimentRun point to locations in the 'export' directory.
+            // We are now copying all files from the source container to the target container file root. Update the paths
+            // to point to locations in the target container file root, and delete the 'export' directory
+            if (!updateDataPaths(targetExperiment.getContainer(), service, user, log))
+            {
+                throw new PipelineJobException("Unable to update all data file paths.");
+            }
+        }
+    }
+
+    private void assignDoi(CopyExperimentJobSupport jobSupport, Logger log, ExperimentAnnotations targetExperiment, ExperimentAnnotations previousCopy) throws PipelineJobException
+    {
+        if (jobSupport.assignDoi())
+        {
+            if (previousCopy != null && previousCopy.getDoi() != null)
+            {
+                log.info("Copying DOI from the previous copy of the data.");
+                targetExperiment.setDoi(previousCopy.getDoi());
+            }
+            else
+            {
+                log.info("Assigning a DOI.");
+                try
+                {
+                    assignDoi(targetExperiment, jobSupport.useDataCiteTestApi());
+                    log.info("Assigned DOI: " + targetExperiment.getDoi());
+                }
+                catch(DataCiteException e)
+                {
+                    throw new PipelineJobException("Could not assign a DOI.", e);
+                }
+            }
+        }
+    }
+
+    private void assignPxId(CopyExperimentJobSupport jobSupport, Logger log, ExperimentAnnotations targetExperiment, ExperimentAnnotations previousCopy) throws PipelineJobException
+    {
+        if (jobSupport.assignPxId() // We can get isPxidRequested from the Submission row but sometimes we may have to override that setting.
+                                   // This can happen, e.g. if the user submitted .wiff files without any matching .wiff.scan files because their instrument
+                                   // was setup to capture everything in the .wiff files (Paulovich lab).
+                                   // Let the admin who is copying the data make the decision.
+        )
+        {
+            if (previousCopy != null && previousCopy.getPxid() != null)
+            {
+                log.info("Copying ProteomeXchange ID from the previous copy of the data.");
+                targetExperiment.setPxid(previousCopy.getPxid());
+            }
+            else
+            {
+                log.info("Assigning a ProteomeXchange ID.");
+                try
+                {
+                    assignPxId(targetExperiment, jobSupport.usePxTestDb());
+                }
+                catch(ProteomeXchangeServiceException e)
+                {
+                    throw new PipelineJobException("Could not get a ProteomeXchange ID.", e);
+                }
+            }
+        }
+    }
+
+    private ExperimentAnnotations getPreviousCopyRemoveShortUrl(Submission latestCopiedSubmission, User user) throws PipelineJobException
+    {
+        if (latestCopiedSubmission != null)
+        {
+            ExperimentAnnotations previousCopy = ExperimentAnnotationsManager.get(latestCopiedSubmission.getCopiedExperimentId());
+            if (previousCopy == null)
+            {
+                throw new PipelineJobException("Could not find an entry for the previous copy of the experiment.  " +
+                        "Previous experiment ID " + latestCopiedSubmission.getCopiedExperimentId());
+            }
+            previousCopy.setShortUrl(null); // Set the shortUrl to null so we don't get a unique constraint violation when assigning this url to the new copy
+            return ExperimentAnnotationsManager.save(previousCopy, user);
+        }
+        return null;
+    }
+
+    @NotNull
+    private ExperimentAnnotations createNewExperimentAnnotations(ExpExperiment experiment, ExperimentAnnotations sourceExperiment, JournalSubmission js,
+                                                                 ExperimentAnnotations previousCopy, CopyExperimentJobSupport jobSupport,
+                                                                 User user, Logger log) throws PipelineJobException
+    {
+        log.info("Creating a new TargetedMS experiment entry in panoramapublic.ExperimentAnnotations.");
+        ExperimentAnnotations targetExperiment = createExperimentCopy(sourceExperiment);
+        targetExperiment.setExperimentId(experiment.getRowId());
+        targetExperiment.setContainer(experiment.getContainer());
+        targetExperiment.setSourceExperimentId(sourceExperiment.getId());
+        targetExperiment.setSourceExperimentPath(sourceExperiment.getContainer().getPath());
+        targetExperiment.setShortUrl(js.getShortAccessUrl());
+        Integer currentVersion = ExperimentAnnotationsManager.getMaxVersionForExperiment(sourceExperiment.getId());
+        int version =  currentVersion == null ? 1 : currentVersion + 1;
+        log.info("Setting version on new experiment to " + version);
+        targetExperiment.setDataVersion(version);
+
+        assignPxId(jobSupport, log, targetExperiment, previousCopy);
+        assignDoi(jobSupport, log, targetExperiment, previousCopy);
+
+        targetExperiment = ExperimentAnnotationsManager.save(targetExperiment, user);
+
+        // Update the target of the short access URL to the journal's copy of the experiment.
+        log.info("Updating access URL to point to the new copy of the data.");
+        try
+        {
+            SubmissionManager.updateAccessUrlTarget(js.getShortAccessUrl(), targetExperiment, user);
+        }
+        catch (ValidationException e)
+        {
+            throw new PipelineJobException("Error updating the target of the short access URL '" + js.getShortAccessUrl().getShortURL() + "' to '"
+                    + targetExperiment.getContainer().getPath() + "'", e);
+        }
+
+        return targetExperiment;
+    }
+
+    private ExperimentAnnotations createExperimentCopy(ExperimentAnnotations source)
+    {
+        ExperimentAnnotations copy = new ExperimentAnnotations();
+        copy.setTitle(source.getTitle());
+        copy.setExperimentDescription(source.getExperimentDescription());
+        copy.setSampleDescription(source.getSampleDescription());
+        copy.setOrganism(source.getOrganism());
+        copy.setInstrument(source.getInstrument());
+        copy.setSpikeIn(source.getSpikeIn());
+        copy.setCitation(source.getCitation());
+        copy.setAbstract(source.getAbstract());
+        copy.setPublicationLink(source.getPublicationLink());
+        copy.setIncludeSubfolders(source.isIncludeSubfolders());
+        copy.setKeywords(source.getKeywords());
+        copy.setLabHead(source.getLabHead());
+        copy.setSubmitter(source.getSubmitter());
+        copy.setLabHeadAffiliation(source.getLabHeadAffiliation());
+        copy.setSubmitterAffiliation(source.getSubmitterAffiliation());
+        copy.setPubmedId(source.getPubmedId());
+        return copy;
+    }
+
+    private void updatePermissions(ExperimentAnnotations targetExperiment, ExperimentAnnotations sourceExperiment, ExperimentAnnotations previousCopy,
+                                   Journal journal, User user, Logger log)
+    {
+        // Remove the copy permissions given to the journal.
+        log.info("Removing copy permissions given to " + journal.getName());
+        Group journalGroup = SecurityManager.getGroup(journal.getLabkeyGroupId());
+        JournalManager.removeJournalPermissions(sourceExperiment, journalGroup, user);
+
+        // Give read permissions to the authors (all users that are folder admins)
+        log.info("Adding read permissions to all users that are folder admins in the source folder.");
+        List<User> authors = getUsersWithRole(sourceExperiment.getContainer(), RoleManager.getRole(FolderAdminRole.class));
+
+        Container target = targetExperiment.getContainer();
+        MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
+        for (User author: authors)
+        {
+            newPolicy.addRoleAssignment(author, ReaderRole.class);
+        }
+
+        if (previousCopy != null)
+        {
+            // Users that had read access to the previous copy should be given read access to the new copy. This will include the reviewer
+            // account if one was created for the previous copy.
+            log.info("Adding read permissions to all users that had read access to previous copy.");
+            List<User> previousCopyReaders = getUsersWithRole(previousCopy.getContainer(), RoleManager.getRole(ReaderRole.class));
+            previousCopyReaders.forEach(u -> newPolicy.addRoleAssignment(u, ReaderRole.class));
+        }
+
+        SecurityPolicyManager.savePolicy(newPolicy);
     }
 
     private List<User> getUsersWithRole(Container container, Role role)
@@ -383,7 +525,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     }
 
     private void postEmailNotification(CopyExperimentJobSupport jobSupport, User pipelineJobUser, Logger log, ExperimentAnnotations sourceExperiment,
-                                       JournalExperiment jExperiment, ExperimentAnnotations targetExperiment,
+                                       JournalSubmission js, ExperimentAnnotations targetExperiment,
                                        User reviewer, String reviewerPassword, boolean recopy)
     {
         // This is the user that was selected as the "Submitter" in the ExperimentAnnotations form, and will be used in the "Submitter" field
@@ -392,7 +534,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         // This is the user that clicked the "Submit" button.  Typically this is the same as the user above.
         // If not, send email to both
-        User formSubmitter = UserManager.getUser(jExperiment.getCreatedBy());
+        User formSubmitter = UserManager.getUser(js.getCreatedBy());
         assert formSubmitter != null;
 
         Set<String> toAddresses = new HashSet<>();
@@ -401,7 +543,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         toAddresses.addAll(jobSupport.toEmailAddresses());
 
         String subject = String.format("Submission to %s: %s", jobSupport.getJournal().getName(), targetExperiment.getShortUrl().renderShortURL());
-        String emailBody = PanoramaPublicNotification.getExperimentCopiedEmailBody(sourceExperiment, targetExperiment, jExperiment, jobSupport.getJournal(),
+        String emailBody = PanoramaPublicNotification.getExperimentCopiedEmailBody(sourceExperiment, targetExperiment,
+                    js.getJournalExperiment(), js.getLatestSubmission(), jobSupport.getJournal(),
                     reviewer, reviewerPassword,
                     formSubmitter,
                     pipelineJobUser,
@@ -413,18 +556,18 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             try
             {
                 PanoramaPublicNotification.sendEmailNotification(subject, emailBody, targetExperiment.getContainer(), pipelineJobUser, toAddresses, jobSupport.replyToAddress());
-                PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), true);
+                PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, js.getJournalExperiment(), jobSupport.getJournal(), true);
             }
             catch (Exception e)
             {
                 log.info("Could not send email to submitter. Error was: " + e.getMessage(), e);
-                PanoramaPublicNotification.postEmailContentsWithError(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), e.getMessage());
+                PanoramaPublicNotification.postEmailContentsWithError(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, js.getJournalExperiment(), jobSupport.getJournal(), e.getMessage());
             }
         }
         else
         {
             // Post the email contents to the message board.
-            PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, jExperiment, jobSupport.getJournal(), false);
+            PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, js.getJournalExperiment(), jobSupport.getJournal(), false);
         }
     }
 
@@ -473,7 +616,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 {
                     logger.info("Updating dataFileUrl...");
                     logger.info("from: " + data.getDataFileURI().toString());
-                    logger.info("to: " + newDataPath.toUri().toString());
+                    logger.info("to: " + newDataPath.toUri());
                     data.setDataFileURI(newDataPath.toUri());
                     data.save(user);
                 }
@@ -615,6 +758,45 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             intIds[i] = expRunRowIds.get(i);
         }
         return intIds;
+    }
+
+    private void updateLastCopiedExperiment(ExperimentAnnotations previousCopy, JournalSubmission js, Journal journal, User user, Logger log) throws PipelineJobException
+    {
+        if (previousCopy.getDataVersion() == null)
+        {
+            throw new PipelineJobException("Version is not set on the last copied experiment; Id: " + previousCopy.getId());
+        }
+
+        // Append a version to the original short URL
+        String versionedShortUrl = js.getShortAccessUrl().getShortURL() + "_v" + previousCopy.getDataVersion();
+        log.info("Creating a new versioned URL for the previous copy of the data: " + versionedShortUrl);
+        ShortURLService shortUrlService = ShortURLService.get();
+        ShortURLRecord shortURLRecord = shortUrlService.resolveShortURL(versionedShortUrl);
+        if (shortURLRecord != null)
+        {
+            throw new PipelineJobException("Error appending a version to the short URL.  The short URL is already in use " + "'" + versionedShortUrl + "'");
+        }
+        // Save the new short access URL
+        ActionURL projectUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(previousCopy.getContainer());
+        ShortURLRecord newShortUrl;
+        try
+        {
+            newShortUrl = JournalManager.saveShortURL(projectUrl, versionedShortUrl, journal, user);
+        }
+        catch (ValidationException e)
+        {
+            throw new PipelineJobException("Error saving shortUrl '" + versionedShortUrl + "'", e);
+        }
+
+        log.info("Setting the short access URL on the previous copy to " + newShortUrl.getShortURL());
+        previousCopy.setShortUrl(newShortUrl);
+        if (previousCopy.getDoi() != null)
+        {
+            log.info("Removing DOI from the previous copy");
+            previousCopy.setDoi(null);
+        }
+
+        ExperimentAnnotationsManager.save(previousCopy, user);
     }
 
     public static class Factory extends AbstractTaskFactory<AbstractTaskFactorySettings, Factory>

@@ -31,9 +31,10 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.GetPxActionsAction" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
-<%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
-<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
+<%@ page import="org.labkey.panoramapublic.query.SubmissionManager" %>
+<%@ page import="org.labkey.panoramapublic.model.Submission" %>
+<%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -51,8 +52,9 @@
     CopyExperimentForm bean = me.getModelBean();
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
     Journal journal = bean.lookupJournal();
-    JournalExperiment je = JournalManager.getJournalExperiment(expAnnot.getId(), journal.getId());
-    ExperimentAnnotations previousCopy = je.getCopiedExperimentId() != null ? ExperimentAnnotationsManager.get(je.getCopiedExperimentId()) : null;
+    JournalSubmission js = SubmissionManager.getJournalSubmission(expAnnot.getId(), journal.getId());
+    Submission currentSubmission = js.getLatestSubmission();
+    ExperimentAnnotations previousCopy = ExperimentAnnotationsManager.getLatestCopyForSubmission(js);
     boolean isRecopy = previousCopy != null;
 
     String selectedFolder = "Please select a destination folder...";
@@ -69,7 +71,7 @@
     pxActionsUrl.addParameter("id", expAnnot.getId());
 
     ActionURL pxValidationUrl = PanoramaPublicController.getPrePublishExperimentCheckURL(expAnnot.getId(), expAnnot.getContainer(), true);
-    pxValidationUrl.addParameter(ActionURL.Param.returnUrl, je.getShortCopyUrl().getFullURL());
+    pxValidationUrl.addParameter(ActionURL.Param.returnUrl, js.getShortCopyUrl().getFullURL());
 %>
 
 <% if(previousCopy != null) { %>
@@ -207,7 +209,7 @@
                 },
                 {
                     xtype: 'textfield',
-                    hidden: <%=!je.isKeepPrivate() || isRecopy%>,
+                    hidden: <%=!currentSubmission.isKeepPrivate() || isRecopy%>,
                     fieldLabel: "Reviewer Email Prefix",
                     value: <%=q(bean.getReviewerEmailPrefix())%>,
                     name: 'reviewerEmailPrefix',
@@ -251,13 +253,14 @@
             buttons: [{
                     text: 'Begin Copy',
                     cls: 'labkey-button primary',
-                    handler: function() {
+                    handler: function(btn) {
                         var values = form.getForm().getValues();
                         form.submit({
                             url: <%=q(urlFor(CopyExperimentAction.class))%>,
                             method: 'POST',
                             params: values
                         });
+                        btn.setDisabled(true);
                     },
                     margin: '20 10 0 10'
                 },

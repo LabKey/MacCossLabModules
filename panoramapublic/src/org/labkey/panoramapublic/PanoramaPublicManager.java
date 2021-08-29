@@ -59,6 +59,11 @@ public class PanoramaPublicManager
         return getSchema().getTable(PanoramaPublicSchema.TABLE_JOURNAL_EXPERIMENT);
     }
 
+    public static TableInfo getTableInfoSubmission()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_SUBMISSION);
+    }
+
     public static TableInfo getTableInfoPxXml()
     {
         return getSchema().getTable(PanoramaPublicSchema.TABLE_PX_XML);

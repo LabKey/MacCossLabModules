@@ -25,8 +25,9 @@ import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.permissions.ReadPermission;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.view.ShortURLRecord;
-import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+import org.labkey.panoramapublic.query.SubmissionManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,6 +37,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static org.labkey.api.targetedms.TargetedMSService.FolderType.Experiment;
 
 /**
  * User: vsharma
@@ -61,13 +64,11 @@ public class ExperimentAnnotations
     private boolean _includeSubfolders;
     private ExpExperiment _experiment;
 
-    private boolean _journalCopy; // true if this experiment was copied by a journal (e.g. "Panorama Public" on panoramaweb.org)
-    // The following fields (_sourceExperimentId, _sourceExperimentPath, _shortUrl) will be populated only if _journalCopy is true.
+    // The following fields (_sourceExperimentId, _sourceExperimentPath, _shortUrl, _dataVersion) will be populated only if this is a journal copy
     private Integer _sourceExperimentId;
-    private String _sourceExperimentPath; // Store this in case the original source experiment and/or container is deleted by user.
-    // Store the shortAccessUrl if this is a journal copy.  We can get to this by doing a lookup for the sourceExperimentId
-    // in the JournalExperiment table.  But we lose the link if the source experiment gets deleted.
+    private String _sourceExperimentPath; // Store this in case the original source experiment and/or container is deleted
     private ShortURLRecord _shortUrl;
+    private Integer _dataVersion;
 
     private String _keywords;
     private Integer _labHead;
@@ -78,30 +79,9 @@ public class ExperimentAnnotations
     private String _pubmedId;
     private String _doi;
 
-    private static Pattern taxIdPattern = Pattern.compile("(.*)\\(taxid:(\\d+)\\)");
+    private static final Pattern taxIdPattern = Pattern.compile("(.*)\\(taxid:(\\d+)\\)");
 
     public ExperimentAnnotations() {}
-
-    public ExperimentAnnotations(ExperimentAnnotations experiment)
-    {
-        _title = experiment.getTitle();
-        _experimentDescription = experiment.getExperimentDescription();
-        _sampleDescription = experiment.getSampleDescription();
-        _organism = experiment.getOrganism();
-        _instrument = experiment.getInstrument();
-        _spikeIn = experiment.getSpikeIn();
-        _citation = experiment.getCitation();
-        _abstract = experiment.getAbstract();
-        _publicationLink = experiment.getPublicationLink();
-        _includeSubfolders = experiment.isIncludeSubfolders();
-        _keywords = experiment.getKeywords();
-        _labHead = experiment.getLabHead();
-        _submitter = experiment.getSubmitter();
-        _labHeadAffiliation = experiment.getLabHeadAffiliation();
-        _submitterAffiliation = experiment.getSubmitterAffiliation();
-        _pxid = experiment.getPxid();
-        _pubmedId = experiment.getPubmedId();
-    }
 
     public int getId()
     {
@@ -336,12 +316,7 @@ public class ExperimentAnnotations
 
     public boolean isJournalCopy()
     {
-        return _journalCopy;
-    }
-
-    public void setJournalCopy(boolean journalCopy)
-    {
-        _journalCopy = journalCopy;
+        return _sourceExperimentId != null ;
     }
 
     public boolean isIncludeSubfolders()
@@ -372,6 +347,21 @@ public class ExperimentAnnotations
     public void setShortUrl(ShortURLRecord shortAccessUrl)
     {
         _shortUrl = shortAccessUrl;
+    }
+
+    public Integer getDataVersion()
+    {
+        return _dataVersion;
+    }
+
+    public void setDataVersion(Integer dataVersion)
+    {
+        _dataVersion = dataVersion;
+    }
+
+    public String getStringVersion(Integer currentVersion)
+    {
+        return _dataVersion == null ? "" : (_dataVersion.equals(currentVersion) ? "Current" : String.valueOf(_dataVersion));
     }
 
     public String getKeywords()
@@ -511,12 +501,18 @@ public class ExperimentAnnotations
         {
             return null;
         }
-        return ExperimentAnnotationsManager.getLicenseSelectedForSubmission(getSourceExperimentId());
+        Submission submission = SubmissionManager.getSubmissionForCopiedExperiment(_id);
+        return submission != null ? submission.getDataLicense() : null;
     }
 
+    /**
+     * Returns true if the experiment is in an 'Experimental Data' folder that is public and the experiment is
+     * associated with a published paper.
+     */
     public boolean isFinal()
     {
-        return isPublic() && isPublished();
+        TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(getContainer());
+        return Experiment.equals(folderType) && isPublic() && isPublished();
     }
 
     public String getDoi()

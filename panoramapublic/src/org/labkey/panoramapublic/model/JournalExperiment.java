@@ -16,7 +16,6 @@
 package org.labkey.panoramapublic.model;
 
 
-import org.apache.commons.lang3.StringUtils;
 import org.labkey.api.view.ShortURLRecord;
 
 import java.util.Date;
@@ -37,16 +36,8 @@ public class JournalExperiment
     private int _createdBy;
     private Date _modified;
     private int _modifiedBy;
-    private Date _copied;
-    private boolean _keepPrivate;
-    private boolean _pxidRequested;
-    private boolean _incompletePxSubmission;
-    private String _labHeadName;
-    private String _labHeadEmail;
-    private String _labHeadAffiliation;
-    private DataLicense _dataLicense;
     private Integer _announcementId;
-    private Integer _copiedExperimentId;
+    private Integer _reviewer;
 
     public int getId()
     {
@@ -118,16 +109,6 @@ public class JournalExperiment
         _createdBy = createdBy;
     }
 
-    public Date getCopied()
-    {
-        return _copied;
-    }
-
-    public void setCopied(Date copied)
-    {
-        _copied = copied;
-    }
-
     public Date getModified()
     {
         return _modified;
@@ -148,81 +129,6 @@ public class JournalExperiment
         _modifiedBy = modifiedBy;
     }
 
-    public boolean isKeepPrivate()
-    {
-        return _keepPrivate;
-    }
-
-    public void setKeepPrivate(boolean keepPrivate)
-    {
-        _keepPrivate = keepPrivate;
-    }
-
-    public boolean isPxidRequested()
-    {
-        return _pxidRequested;
-    }
-
-    public void setPxidRequested(boolean pxidRequested)
-    {
-        _pxidRequested = pxidRequested;
-    }
-
-    public boolean isIncompletePxSubmission()
-    {
-        return _incompletePxSubmission;
-    }
-
-    public void setIncompletePxSubmission(boolean incompletePxSubmission)
-    {
-        this._incompletePxSubmission = incompletePxSubmission;
-    }
-
-    public String getLabHeadName()
-    {
-        return _labHeadName;
-    }
-
-    public void setLabHeadName(String labHeadName)
-    {
-        _labHeadName = labHeadName;
-    }
-
-    public String getLabHeadEmail()
-    {
-        return _labHeadEmail;
-    }
-
-    public void setLabHeadEmail(String labHeadEmail)
-    {
-        _labHeadEmail = labHeadEmail;
-    }
-
-    public boolean hasLabHeadDetails()
-    {
-        return !(StringUtils.isBlank(_labHeadName) && StringUtils.isBlank(_labHeadEmail) && StringUtils.isBlank(_labHeadAffiliation));
-    }
-
-    public String getLabHeadAffiliation()
-    {
-        return _labHeadAffiliation;
-    }
-
-    public void setLabHeadAffiliation(String labHeadAffiliation)
-    {
-        _labHeadAffiliation = labHeadAffiliation;
-    }
-
-    public DataLicense getDataLicense()
-    {
-        return _dataLicense;
-    }
-
-    public void setDataLicense(DataLicense dataLicense)
-    {
-        _dataLicense = dataLicense;
-    }
-
     public Integer getAnnouncementId()
     {
         return _announcementId;
@@ -233,13 +139,13 @@ public class JournalExperiment
         _announcementId = announcementId;
     }
 
-    public Integer getCopiedExperimentId()
+    public Integer getReviewer()
     {
-        return _copiedExperimentId;
+        return _reviewer;
     }
 
-    public void setCopiedExperimentId(Integer copiedExperimentId)
+    public void setReviewer(Integer reviewer)
     {
-        _copiedExperimentId = copiedExperimentId;
+        _reviewer = reviewer;
     }
 }

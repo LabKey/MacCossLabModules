@@ -23,10 +23,10 @@ import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
+import org.labkey.api.data.Sort;
 import org.labkey.api.data.SqlExecutor;
 import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
-import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExpRun;
@@ -41,15 +41,15 @@ import org.labkey.api.util.GUID;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.PanoramaPublicManager;
-import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
-import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.Journal;
+import org.labkey.panoramapublic.model.JournalSubmission;
+import org.labkey.panoramapublic.model.Submission;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -177,13 +177,7 @@ public class ExperimentAnnotationsManager
         }
 
         // Keep runs that do not already belong to the experiment.
-        Iterator<ExpRun> runIterator = runs.iterator();
-        while(runIterator.hasNext())
-        {
-            ExpRun run = runIterator.next();
-            if(existingRunRowIds.contains(run.getRowId()))
-                runIterator.remove();
-        }
+        runs.removeIf(run -> existingRunRowIds.contains(run.getRowId()));
         int[] rowIds = new int[runs.size()];
         int i = 0;
         for(ExpRun run: runs)
@@ -211,15 +205,14 @@ public class ExperimentAnnotationsManager
             if (run != null)
             {
                 ITargetedMSRun tmsRun = PanoramaPublicManager.getRunByLsid(run.getLSID(), run.getContainer());
-                validateRun(tmsRun, experiment.getContainer());
-
                 if(tmsRun != null)
                 {
+                    validateRun(tmsRun, experiment.getContainer());
                     runs.add(run);
                 }
             }
         }
-        experiment.addRuns(user, runs.toArray(new ExpRun[runs.size()]));
+        experiment.addRuns(user, runs.toArray(new ExpRun[0]));
     }
 
     private static void validateRun(ITargetedMSRun run, Container c)
@@ -257,20 +250,20 @@ public class ExperimentAnnotationsManager
 
     private static void deleteExperiment(ExperimentAnnotations expAnnotations, User user)
     {
-        if(!expAnnotations.isJournalCopy())
+        if (!expAnnotations.isJournalCopy())
         {
             // If any journal were given access to this experiment, remove the access and delete entries from the JournalExperiment table.
-            JournalManager.beforeDeleteTargetedMSExperiment(expAnnotations, user);
+            List<Journal> journals = JournalManager.getJournalsForExperiment(expAnnotations.getId());
+            for (Journal journal: journals)
+            {
+                SubmissionManager.beforeSubmittedExperimentDeleted(expAnnotations, journal, user);
+                JournalManager.removeJournalPermissions(expAnnotations, journal, user);
+            }
         }
         else
         {
-            JournalExperiment je = JournalManager.getRowForJournalCopy(expAnnotations);
-            if(je != null)
-            {
-                // Delete the row in JournalExperiment where journalExperimentId = expAnnotations.getId()
-                JournalManager.deleteRowForJournalCopy(expAnnotations);
-                JournalManager.tryDeleteShortUrl(je.getShortCopyUrl(), user);
-            }
+            // This experiment is a journal copy (i.e. in the Panorama Public project on PanoramaWeb)
+            SubmissionManager.beforeCopiedExperimentDeleted(expAnnotations, user);
         }
 
         Table.delete(PanoramaPublicManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());
@@ -377,21 +370,6 @@ public class ExperimentAnnotationsManager
                 filter, null).getObject(ExperimentAnnotations.class);
     }
 
-    public static void removeShortUrl(int sourceExperimentId, ShortURLRecord shortAccessUrl, User user)
-    {
-        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("sourceExperimentId"), sourceExperimentId);
-        filter.addCondition(FieldKey.fromParts("shortUrl"), shortAccessUrl);
-        TableInfo tInfo = PanoramaPublicManager.getTableInfoExperimentAnnotations();
-
-        ExperimentAnnotations expAnnot = new TableSelector(tInfo, filter, null).getObject(ExperimentAnnotations.class);
-
-        if(expAnnot != null)
-        {
-            expAnnot.setShortUrl(null);
-            Table.update(user, tInfo, expAnnot, expAnnot.getId());
-        }
-    }
-
     public static List<ITargetedMSRun> getTargetedMSRuns(ExperimentAnnotations expAnnotations)
     {
         List<ITargetedMSRun> runs = new ArrayList<>();
@@ -402,7 +380,7 @@ public class ExperimentAnnotationsManager
             for (ExpRun run : expRuns)
             {
                 ITargetedMSRun tRun = PanoramaPublicManager.getRunByLsid(run.getLSID(), run.getContainer());
-                if (run != null)
+                if (tRun != null)
                 {
                     runs.add(tRun);
                 }
@@ -423,17 +401,10 @@ public class ExperimentAnnotationsManager
                 " SET doi = ? WHERE Id = ?", expAnnotations.getDoi(), expAnnotations.getId());
     }
 
-    public static DataLicense getLicenseSelectedForSubmission(Integer submittedExperimentId)
-    {
-        if(submittedExperimentId == null) return null;
-        JournalExperiment je = JournalManager.getLastPublishedRecord(submittedExperimentId);
-        return je != null ? je.getDataLicense() : null;
-    }
-
-    public static boolean canSubmitExperiment(int expAnnotationsId)
+    public static boolean canSubmitExperiment(int expAnnotationsId, JournalSubmission journalSubmission)
     {
         ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(expAnnotationsId);
-        return expAnnotations != null ? canSubmitExperiment(expAnnotations) : false;
+        return expAnnotations != null && canSubmitExperiment(expAnnotations, journalSubmission);
     }
 
     /**
@@ -441,32 +412,30 @@ public class ExperimentAnnotationsManager
      * 1. this is a NOT journal copy (i.e. a folder in the Panorama Public project)
      * 2. AND if this experiment has been copied to Panorama Public, the copy is not final (paper published and data public).
      */
-    public static boolean canSubmitExperiment(@NotNull ExperimentAnnotations expAnnotations)
+    public static boolean canSubmitExperiment(@NotNull ExperimentAnnotations expAnnotations, @Nullable JournalSubmission journalSubmission)
     {
         if(expAnnotations.isJournalCopy())
         {
             return false;
         }
-        JournalExperiment journalExperiment = JournalManager.getLastPublishedRecord(expAnnotations.getId());
-        if(journalExperiment != null)
+
+        if (journalSubmission != null)
         {
+            if (journalSubmission.hasPendingSubmission())
+            {
+                return false;
+            }
             // If this experiment has already been copied and the journal copy is final (paper published and data public)
             // then the user should not be able to re-submit this data.
-            ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.get(journalExperiment.getCopiedExperimentId());
-            return journalCopy == null || !journalCopy.isFinal();
+            Submission lastCopiedSubmission = journalSubmission.getLatestCopiedSubmission();
+            if (lastCopiedSubmission != null)
+            {
+                ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.get(lastCopiedSubmission.getCopiedExperimentId());
+                return journalCopy == null || !journalCopy.isFinal();
+            }
         }
-        return true;
-    }
 
-    @Nullable
-    public static ExperimentAnnotations getJournalCopy(@Nullable ExperimentAnnotations expAnnotations)
-    {
-        if(expAnnotations != null)
-        {
-            JournalExperiment journalExperiment = JournalManager.getLastPublishedRecord(expAnnotations.getId());
-            return journalExperiment != null ? ExperimentAnnotationsManager.get(journalExperiment.getCopiedExperimentId()): null;
-        }
-        return null;
+        return true;
     }
 
     public static boolean hasProteomicData(ExperimentAnnotations experimentAnnotations, User user)
@@ -492,5 +461,62 @@ public class ExperimentAnnotationsManager
         }
 
         return new SqlSelector(targetedmsSchema.getDbSchema(), sql).exists();
+    }
+
+    /**
+     * @return the short URL associated with an experiment rendered as a string. If the experiment is not a journal
+     * copy, the short URL associated with the latest journal copy of this experiment is returned.
+     */
+    public static @Nullable String getExperimentShortUrl(ExperimentAnnotations expAnnotations)
+    {
+        if(expAnnotations.isJournalCopy())
+        {
+            if(expAnnotations.getShortUrl() != null)
+            {
+                return expAnnotations.getShortUrl().renderShortURL();
+            }
+        }
+        else
+        {
+            JournalSubmission js = SubmissionManager.getNewestJournalSubmission(expAnnotations);
+            return js == null ? null : js.getShortAccessUrl().renderShortURL();
+        }
+        return null;
+    }
+
+    /**
+     * @return the latest ExperimentAnnotations copied to the journal project for the given submission request.
+     */
+    public static @Nullable ExperimentAnnotations getLatestCopyForSubmission(JournalSubmission journalSubmission)
+    {
+        if(journalSubmission != null)
+        {
+            Submission previousSubmission = journalSubmission.getLatestCopiedSubmission();
+            return previousSubmission != null ? ExperimentAnnotationsManager.get(previousSubmission.getCopiedExperimentId()) : null;
+        }
+        return null;
+    }
+
+    /**
+     * @return the maximum value of DataVersion associated with ExperimentAnnotation copies of the
+     * given source experimentAnnotationsId, or null if there are no copies of the experiment.
+     */
+    public static @Nullable Integer getMaxVersionForExperiment(int experimentAnnotationsId)
+    {
+        SQLFragment sql = new SQLFragment("SELECT MAX(DataVersion) FROM ")
+                .append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "")
+                .append(" WHERE DataVersion IS NOT NULL AND SourceExperimentId = ? ").add(experimentAnnotationsId);
+        return new SqlSelector(PanoramaPublicManager.getSchema(), sql).getObject(Integer.class);
+    }
+
+    /**
+     * @return a list of ExperimentAnnotation copies for the given sourceExperimentId.
+     */
+    public static List<ExperimentAnnotations> getPublishedVersionsOfExperiment(int sourceExperimentId)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("SourceExperimentId"), sourceExperimentId);
+        Sort sort = new Sort();
+        sort.appendSortColumn(FieldKey.fromParts("Created"), Sort.SortDirection.DESC, true);
+        return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(), filter, sort).getArrayList(ExperimentAnnotations.class);
     }
 }

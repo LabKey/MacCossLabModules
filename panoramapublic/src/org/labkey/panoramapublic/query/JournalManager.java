@@ -15,18 +15,16 @@
  */
 package org.labkey.panoramapublic.query;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.admin.FolderExportPermission;
-import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
-import org.labkey.api.data.Sort;
 import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableSelector;
-import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.Group;
@@ -39,23 +37,18 @@ import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.UserPrincipal;
-import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.security.roles.EditorRole;
 import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
-import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.api.view.ShortURLService;
 import org.labkey.api.view.UnauthorizedException;
-import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
-import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
-import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
 
 import java.util.Collections;
@@ -99,7 +92,7 @@ public class JournalManager
 
     public static List<Journal> getJournalsForExperiment(int expAnnotationsId)
     {
-        SQLFragment sql = new SQLFragment("SELECT j.* FROM ");
+        SQLFragment sql = new SQLFragment("SELECT DISTINCT j.* FROM ");
         sql.append(PanoramaPublicManager.getTableInfoJournal(), "j");
         sql.append(" , ");
         sql.append(PanoramaPublicManager.getTableInfoJournalExperiment(), "je");
@@ -125,63 +118,6 @@ public class JournalManager
         return new SqlSelector(PanoramaPublicManager.getSchema(), sql).getArrayList(ExperimentAnnotations.class);
     }
 
-    public static JournalExperiment getJournalExperiment(Integer experimentAnnotationsId, Integer journalId)
-    {
-        if(experimentAnnotationsId == null || journalId == null)
-            return null;
-        SimpleFilter filter = new SimpleFilter();
-        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
-        filter.addCondition(FieldKey.fromParts("JournalId"), journalId);
-        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, null).getObject(JournalExperiment.class);
-    }
-
-    private static List<JournalExperiment> getJournalExperiments(int experimentAnnotationsId)
-    {
-        SimpleFilter filter = new SimpleFilter();
-        filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotationsId);
-        Sort sort = new Sort();
-        sort.appendSortColumn(FieldKey.fromParts("Created"), Sort.SortDirection.DESC, true);
-        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, sort).getArrayList(JournalExperiment.class);
-    }
-
-    public static JournalExperiment getLastPublishedRecord(int experimentAnnotationsId)
-    {
-        // Get the JournalExperiment entries for the experiment (sorted by date created, descending)
-        List<JournalExperiment> jeList = getJournalExperiments(experimentAnnotationsId);
-        return jeList.size() > 0 ? jeList.get(0) : null;
-    }
-
-    public static String getExperimentShortUrl(ExperimentAnnotations expAnnotations)
-    {
-        if(expAnnotations.isJournalCopy())
-        {
-            if(expAnnotations.getShortUrl() != null)
-            {
-                return expAnnotations.getShortUrl().renderShortURL();
-            }
-        }
-        else
-        {
-            // Return the short access URL of the most recent JournalExperiment record
-            // On panoramaweb.org jeList will have only one entry, since we only have one 'journal' (Panorama Public)
-            // and an experiment can be published to a 'journal' only once.
-            JournalExperiment je = JournalManager.getLastPublishedRecord(expAnnotations.getId());
-            return je == null ? null : je.getShortAccessUrl().renderShortURL();
-        }
-        return null;
-    }
-
-    public static List<JournalExperiment> getRecordsForShortUrl(ShortURLRecord shortUrl)
-    {
-        SimpleFilter.OrClause or = new SimpleFilter.OrClause();
-        or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("shortAccessUrl"), CompareType.EQUAL, shortUrl));
-        or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("shortCopyUrl"), CompareType.EQUAL, shortUrl));
-
-        SimpleFilter filter = new SimpleFilter();
-        filter.addClause(or);
-        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, null).getArrayList(JournalExperiment.class);
-    }
-
     public static boolean userHasCopyAccess(ExperimentAnnotations experimentAnnotations, Journal journal, User user)
     {
         if(user.hasSiteAdminPermission())
@@ -192,8 +128,7 @@ public class JournalManager
         {
             return false;
         }
-        JournalExperiment je = getJournalExperiment(experimentAnnotations, journal);
-        if(je == null)
+        if (SubmissionManager.getJournalSubmission(experimentAnnotations.getId(), journal.getId()) == null)
         {
             return false;
         }
@@ -211,16 +146,6 @@ public class JournalManager
         Table.update(user, PanoramaPublicManager.getTableInfoJournal(), journal, journal.getId());
     }
 
-    public static void beforeDeleteTargetedMSExperiment(ExperimentAnnotations expAnnotations, User user)
-    {
-        List<Journal> journals = getJournalsForExperiment(expAnnotations.getId());
-
-        for(Journal journal: journals)
-        {
-            removeJournalAccess(expAnnotations, journal, user);
-        }
-    }
-
     public static void delete(Journal journal, User user)
     {
         // Get a list of experiments this journal has access to.
@@ -229,21 +154,9 @@ public class JournalManager
         {
             removeJournalAccess(expAnnotation, journal, user);
         }
-        Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(),
-                new SimpleFilter(FieldKey.fromParts("journalId"), journal.getId()));
+        SubmissionManager.deleteAllSubmissionsForJournal(journal.getId());
 
         Table.delete(PanoramaPublicManager.getTableInfoJournal(), new SimpleFilter(FieldKey.fromParts("id"), journal.getId()));
-    }
-
-    public static JournalExperiment saveJournalExperiment(JournalExperiment je, User user)
-    {
-        Table.insert(user, PanoramaPublicManager.getTableInfoJournalExperiment(), je);
-        return je;
-    }
-
-    public static void updateJournalExperiment(JournalExperiment journalExperiment, User user)
-    {
-        Table.update(user, PanoramaPublicManager.getTableInfoJournalExperiment(), journalExperiment, journalExperiment.getId());
     }
 
     public static boolean journalHasAccess(Journal journal, ExperimentAnnotations experiment)
@@ -259,70 +172,12 @@ public class JournalManager
         return (journalId != null);
     }
 
-    public static void updateAccessUrl(ExperimentAnnotations targetExperiment, JournalExperiment sourceJournalExp, User user) throws ValidationException
+    public static void setupJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal, User user) throws ValidationException
     {
-        ShortURLRecord shortAccessUrlRecord = sourceJournalExp.getShortAccessUrl();
-        ActionURL targetUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(targetExperiment.getContainer());
-
-        if(shortAccessUrlRecord != null)
-        {
-            // If the user is not the one that created this shortUrl (e.g. the experiment is being resubmitted by a different lab member)
-            // then we need to add this user as an editor to the record's SecurityPolicy.
-            MutableSecurityPolicy policy = new MutableSecurityPolicy(SecurityPolicyManager.getPolicy(shortAccessUrlRecord));
-            if (!policy.getOwnPermissions(user).contains(UpdatePermission.class))
-            {
-                policy.addRoleAssignment(user, EditorRole.class);
-                SecurityPolicyManager.savePolicy(policy);
-            }
-        }
-
-        ShortURLService shortURLService = ShortURLService.get();
-        shortAccessUrlRecord = shortURLService.saveShortURL(shortAccessUrlRecord.getShortURL(), targetUrl, user);
-
-        sourceJournalExp.setShortAccessUrl(shortAccessUrlRecord);
-
-        updateJournalExperiment(sourceJournalExp, user);
-    }
-
-    public static JournalExperiment getJournalExperiment(ExperimentAnnotations experiment, Journal journal)
-    {
-        return getJournalExperiment(experiment.getId(), journal.getId());
-    }
-
-    public static JournalExperiment setupJournalAccess(PanoramaPublicController.PanoramaPublicRequest request, User user) throws ValidationException
-    {
-        Journal journal = request.getJournal();
-        ExperimentAnnotations exptAnnotations = request.getExperimentAnnotations();
-
         Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
 
         // Grant the journal group read and copy access to the source folder and subfolders
         addJournalPermissions(exptAnnotations, journalGroup, user);
-
-        // Save the short access URL
-        ActionURL accessUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(exptAnnotations.getContainer());
-        ShortURLRecord accessUrlRecord = saveShortURL(accessUrl, request.getShortAccessUrl(), journalGroup, user);
-
-        // Save the short copy URL.
-        ActionURL copyUrl = PanoramaPublicController.getCopyExperimentURL(exptAnnotations.getId(), journal.getId(), exptAnnotations.getContainer());
-        ShortURLRecord copyUrlRecord = saveShortURL(copyUrl, request.getShortCopyUrl(), null, user);
-
-        // Add an entry in the panoramapublic.JournalExperiment table.
-        JournalExperiment je = new JournalExperiment();
-        je.setJournalId(journal.getId());
-        je.setExperimentAnnotationsId(exptAnnotations.getId());
-        je.setShortAccessUrl(accessUrlRecord);
-        je.setShortCopyUrl(copyUrlRecord);
-        je.setPxidRequested(request.isGetPxid());
-        je.setIncompletePxSubmission(request.isIncompletePxSubmission());
-        je.setKeepPrivate(request.isKeepPrivate());
-        je.setLabHeadName(request.getLabHeadName());
-        je.setLabHeadEmail(request.getLabHeadEmail());
-        je.setLabHeadAffiliation(request.getLabHeadAffiliation());
-        je.setDataLicense(DataLicense.resolveLicense(request.getDataLicense()));
-
-        je = JournalManager.saveJournalExperiment(je, user);
-        return je;
     }
 
     private static void changeJournalPermissions(ExperimentAnnotations exptAnnotations, UserPrincipal journalGroup, User user, boolean add)
@@ -401,13 +256,20 @@ public class JournalManager
         changeJournalPermissions(exptAnnotations, journalGroup, user, true);
     }
 
+    public static void removeJournalPermissions(ExperimentAnnotations exptAnnotations, Journal journal, User user)
+    {
+        Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
+        changeJournalPermissions(exptAnnotations, journalGroup, user, false);
+    }
+
     public static void removeJournalPermissions(ExperimentAnnotations exptAnnotations, UserPrincipal journalGroup, User user)
     {
         changeJournalPermissions(exptAnnotations, journalGroup, user, false);
     }
 
-    private static ShortURLRecord saveShortURL(ActionURL longURL, String shortUrl, Group journalGroup, User user) throws ValidationException
+    public static ShortURLRecord saveShortURL(ActionURL longURL, String shortUrl, @Nullable Journal journal, User user) throws ValidationException
     {
+        Group journalGroup = journal != null ? org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId()) : null;
         ShortURLService shortUrlService = ShortURLService.get();
         ShortURLRecord shortAccessURLRecord;
         try
@@ -432,33 +294,17 @@ public class JournalManager
 
     public static void removeJournalAccess(ExperimentAnnotations expAnnotations, Journal journal, User user)
     {
-        JournalExperiment je = getJournalExperiment(expAnnotations, journal);
-
-        if(je.getCopiedExperimentId() == null)
-        {
-            // This experiment has not yet been copied to Panorama Public so we can delete the row in JournalExperiment
-            SimpleFilter filter = new SimpleFilter();
-            filter.addCondition(FieldKey.fromParts("JournalId"), journal.getId());
-            filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId());
-            Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(), filter);
-
-            // Try to delete the short copy URL. Since we just deleted the entry in table JournalExperiment
-            // that references this URL we should not get a foreign key constraint error.
-            tryDeleteShortUrl(je.getShortCopyUrl(), user);
-            // Try to delete the short access URL only if the experiment has not yet been copied (accessURL points to journal's folder after copy)
-            // OR the access url is no longer referenced in the ExperimentAnnotations table.
-            if(je.getCopied() == null || ExperimentAnnotationsManager.getExperimentForShortUrl(je.getShortAccessUrl()) == null)
-            {
-                tryDeleteShortUrl(je.getShortAccessUrl(), user);
-            }
-        }
-
         Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
         removeJournalPermissions(expAnnotations, journalGroup, user);
     }
 
     static void tryDeleteShortUrl(ShortURLRecord shortUrl, User user)
     {
+        if (shortUrl == null)
+        {
+            return;
+        }
+
         ShortURLService shortURLService = ShortURLService.get();
         try
         {
@@ -475,58 +321,6 @@ public class JournalManager
         catch(ValidationException e)
         {
             LOG.info("Cannot delete the shortUrl: " + shortUrl.getShortURL() + ". Error was: " + e.getMessage());
-        }
-    }
-
-    public static void deleteRowForJournalCopy(ExperimentAnnotations journalCopy)
-    {
-        Table.delete(PanoramaPublicManager.getTableInfoJournalExperiment(),
-                new SimpleFilter().addCondition(FieldKey.fromParts("CopiedExperimentId"), journalCopy.getId()));
-    }
-
-    public static JournalExperiment getRowForJournalCopy(ExperimentAnnotations journalCopy)
-    {
-        return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment()
-                , new SimpleFilter().addCondition(FieldKey.fromParts("CopiedExperimentId"), journalCopy.getId())
-                , null).getObject(JournalExperiment.class);
-    }
-
-    public static void updateJournalExperimentUrls(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, String shortAccessUrl, String shortCopyUrl, User user) throws ValidationException
-    {
-        ShortURLRecord oldAccessUrl = je.getShortAccessUrl();
-        ShortURLRecord oldCopyUrl = je.getShortCopyUrl();
-
-        Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
-
-        ShortURLService shortURLService = ShortURLService.get();
-        if (!shortAccessUrl.equalsIgnoreCase(oldAccessUrl.getShortURL()))
-        {
-            // Save the new short access URL
-            ActionURL accessUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnotations.getContainer());
-            ShortURLRecord accessUrlRecord = saveShortURL(accessUrl, shortAccessUrl, journalGroup, user);
-            je.setShortAccessUrl(accessUrlRecord);
-        }
-
-        if (!shortCopyUrl.equalsIgnoreCase(oldCopyUrl.getShortURL()))
-        {
-            // Save the new short copy URL.
-            ActionURL copyUrl = PanoramaPublicController.getCopyExperimentURL(expAnnotations.getId(), journal.getId(), expAnnotations.getContainer());
-            ShortURLRecord copyUrlRecord = saveShortURL(copyUrl, shortCopyUrl, null, user);
-            je.setShortCopyUrl(copyUrlRecord);
-
-        }
-
-        updateJournalExperiment(je, user);
-
-        // Delete the old short URLs
-        if (!shortAccessUrl.equalsIgnoreCase(oldAccessUrl.getShortURL()))
-        {
-            shortURLService.deleteShortURL(oldAccessUrl, user);
-        }
-
-        if (!shortCopyUrl.equalsIgnoreCase(oldCopyUrl.getShortURL()))
-        {
-            shortURLService.deleteShortURL(oldCopyUrl, user);
         }
     }
 

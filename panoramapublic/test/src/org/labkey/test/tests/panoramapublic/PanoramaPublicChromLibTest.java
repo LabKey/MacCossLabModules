@@ -93,7 +93,7 @@ public class PanoramaPublicChromLibTest extends PanoramaPublicBaseTest
 
         // Copy the experiment to the Panorama Public project
         var targetFolder = "Copy of " + folderName;
-        copyExperimentAndVerify(projectName, folderName, null, experimentTitle, false, targetFolder);
+        copyExperimentAndVerify(projectName, folderName, null, experimentTitle, targetFolder);
         // Download link, library statistics and revision in the ChromatogramLibraryDownloadWebpart
         goToProjectFolder(PANORAMA_PUBLIC, targetFolder);
         verifyChromLibDownloadWebPart(folderType, proteinCount, peptideCount, moleculeCount, transitionCount, revision);

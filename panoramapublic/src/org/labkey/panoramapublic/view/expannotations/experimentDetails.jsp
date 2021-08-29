@@ -25,14 +25,14 @@
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.ExperimentAnnotationsDetails" %>
-<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.GetPxActionsAction" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.ShowExperimentAnnotationsAction" %>
 <%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
-<%@ page import="org.labkey.panoramapublic.model.JournalExperiment" %>
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="org.labkey.panoramapublic.model.Submission" %>
+<%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -70,18 +70,22 @@
     Journal journal = null;
     boolean journalCopyPending = false;
     ShortURLRecord accessUrlRecord = annot.getShortUrl(); // Will have a value if this is a journal copy of an experiment.
-    JournalExperiment je = me.getModelBean().getLastPublishedRecord(); // Will be non-null if this experiment is in a user (not journal) project.
+    JournalSubmission js = me.getModelBean().getLastPublishedRecord(); // Will be non-null if this experiment is in a user (not journal) project.
     String publishButtonText = "Submit";
-    if(je != null)
+    if (js != null)
     {
-        journal = JournalManager.getJournal(je.getJournalId());
-        journalCopyPending = je.getCopied() == null;
-        accessUrlRecord = je.getShortAccessUrl();
-
-        if(!journalCopyPending)
+        journal = JournalManager.getJournal(js.getJournalId());
+        Submission submission = js.getLatestSubmission();
+        if (submission != null)
         {
-            publishButtonText = "Resubmit";
-            publishUrl = PanoramaPublicController.getRePublishExperimentURL(annot.getId(), je.getJournalId(), getContainer(), je.isKeepPrivate(), true); // Has been copied; User is re-submitting
+            journalCopyPending = !submission.hasCopy();
+            accessUrlRecord = js.getShortAccessUrl();
+
+            if (!journalCopyPending)
+            {
+                publishButtonText = "Resubmit";
+                publishUrl = PanoramaPublicController.getRePublishExperimentURL(annot.getId(), js.getJournalId(), getContainer(), submission.isKeepPrivate(), true); // Has been copied; User is re-submitting
+            }
         }
     }
     String accessUrl = accessUrlRecord == null ? null : accessUrlRecord.renderShortURL();
@@ -197,6 +201,14 @@
        <strong><%=h(linkText)%>: </strong>
        <span id="accessUrl" style="margin-top:5px;"><a href="<%=h(accessUrl)%>"><%=h(accessUrl)%></a></span>
        <a class="button-small button-small-green" style="margin:0px 5px 0px 2px;" href="" onclick="showShareLink(this, '<%=h(accessUrl)%>'); return false;">Share</a>
+
+        <% if (annotDetails.hasVersion()) {%>
+        <span class="link" id="publishedDataVersion" style="margin-left:10px;"><strong>Version: <span style="color:<%=h(annotDetails.isCurrentVersion() ? "green" : "red")%>;"><%=h(annotDetails.getVersion())%></span>
+                <% if (annotDetails.hasVersionsLink()) { %>
+                   <span><%=link(annotDetails.isCurrentVersion() ? "[All Versions]" : "[Current Version]", annotDetails.getVersionsLink())%></span>
+                <% } %>
+            </strong> </span>
+        <% } %>
     </div>
  <% } %>
 <%if(annot.getCitation() != null && annot.getPublicationLink() != null){%>
