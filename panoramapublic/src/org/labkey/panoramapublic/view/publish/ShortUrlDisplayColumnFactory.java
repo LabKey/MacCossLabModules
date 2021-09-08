@@ -34,6 +34,14 @@ import java.util.Set;
  */
 public class ShortUrlDisplayColumnFactory implements DisplayColumnFactory
 {
+    private FieldKey _shortUrlFieldKey;
+
+    public ShortUrlDisplayColumnFactory() {}
+    public ShortUrlDisplayColumnFactory(FieldKey shortUrlFieldKey)
+    {
+        _shortUrlFieldKey = shortUrlFieldKey;
+    }
+
     @Override
     public DisplayColumn createRenderer(ColumnInfo colInfo)
     {
@@ -63,23 +71,20 @@ public class ShortUrlDisplayColumnFactory implements DisplayColumnFactory
 
         private String getShortUrlDisplayValue(RenderContext ctx)
         {
-            Object shortUrl = ctx.get(FieldKey.fromString(getColumnInfo().getFieldKey(), "ShortUrl"));
-            if(shortUrl != null)
-            {
-                return ShortURLRecord.renderShortURL((String) shortUrl);
-            }
-            else
-            {
-                return null;
-            }
+            String shortUrl = ctx.get(FieldKey.fromString(getParentFieldKey(), "ShortUrl"), String.class);
+            return shortUrl != null ? ShortURLRecord.renderShortURL(shortUrl) : null;
+        }
+
+        private FieldKey getParentFieldKey()
+        {
+            return _shortUrlFieldKey == null ? getColumnInfo().getFieldKey() : FieldKey.fromParts(getColumnInfo().getFieldKey(), _shortUrlFieldKey);
         }
 
         @Override
         public void addQueryFieldKeys(Set<FieldKey> keys)
         {
             super.addQueryFieldKeys(keys);
-            FieldKey parentFieldKey = getColumnInfo().getFieldKey();
-            keys.add(FieldKey.fromString(parentFieldKey, "ShortUrl"));
+            keys.add(FieldKey.fromString(getParentFieldKey(), "ShortUrl"));
         }
     }
 }

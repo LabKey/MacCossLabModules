@@ -51,6 +51,7 @@ import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.SimpleNamedObject;
+import org.labkey.api.util.StringExpressionFactory;
 import org.labkey.api.util.UniqueID;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HttpView;
@@ -60,6 +61,7 @@ import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -111,6 +113,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                     {
                         return PageFlowUtil.set(
                                 ClientDependency.fromPath("internal/jQuery"),
+                                ClientDependency.fromPath("Ext4"),
                                 ClientDependency.fromPath("/PanoramaPublic/css/dropDown.css"),
                                 ClientDependency.fromPath("/PanoramaPublic/js/dropDownUtil.js"));
                     }
@@ -165,7 +168,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                 Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
                 ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
 
-                String accessUrl = JournalManager.getExperimentShortUrl(expAnnotations);
+                String accessUrl = ExperimentAnnotationsManager.getExperimentShortUrl(expAnnotations);
 
                 if(accessUrl == null)
                 {
@@ -298,6 +301,19 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         });
         addColumn(licenseCol);
 
+        var sourceExptCol = wrapColumn("SourceExperiment", getRealTable().getColumn("SourceExperimentId"));
+        ActionURL exptDetailsUrl = new ActionURL(PanoramaPublicController.ShowExperimentAnnotationsAction.class, getContainer());
+        exptDetailsUrl.addParameter("id", "${SourceExperiment}");
+        sourceExptCol.setURL(StringExpressionFactory.createURL(exptDetailsUrl));
+        addColumn(sourceExptCol);
+
+        var accessUrlCol = wrapColumn("Link", getRealTable().getColumn("ShortUrl"));
+        accessUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
+        addColumn(accessUrlCol);
+
+        addColumn(getVersionCol());
+        addColumn(getVersionCountCol());
+
         List<FieldKey> visibleColumns = new ArrayList<>();
         visibleColumns.add(FieldKey.fromParts("Share"));
         visibleColumns.add(FieldKey.fromParts("Title"));
@@ -310,6 +326,39 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         visibleColumns.add(FieldKey.fromParts("pxid"));
 
         setDefaultVisibleColumns(visibleColumns);
+    }
+
+    @NotNull
+    private ExprColumn getVersionCol()
+    {
+        SQLFragment maxVersionSql = new SQLFragment(" SELECT MAX(DataVersion) FROM ")
+                .append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "ea")
+                .append(" WHERE ea.SourceExperimentId IS NOT NULL AND ea.SourceExperimentId = ")
+                .append(ExprColumn.STR_TABLE_ALIAS).append(".SourceExperimentId ");
+
+        SQLFragment versionSql = new SQLFragment(" (SELECT CASE")
+                .append(" WHEN DataVersion Is NULL THEN '' ")
+                .append(" WHEN DataVersion = (").append(maxVersionSql).append(") THEN 'Current' ")
+                .append(" ELSE CAST (DataVersion AS VARCHAR) END ")
+                .append(" FROM ").append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "e")
+                .append(" WHERE e.Id = ").append(ExprColumn.STR_TABLE_ALIAS).append(".Id) ");
+
+        ExprColumn versionCol = new ExprColumn(this, "Version", versionSql, JdbcType.VARCHAR);
+        return versionCol;
+    }
+
+    @NotNull
+    private ExprColumn getVersionCountCol()
+    {
+        SQLFragment versionCountSql = new SQLFragment(" (SELECT COUNT(*) FROM ")
+                .append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "e")
+                .append(" WHERE e.SourceExperimentId = ").append(ExprColumn.STR_TABLE_ALIAS).append(".SourceExperimentId)");
+
+        ExprColumn versionCountCol = new ExprColumn(this, "VersionCount", versionCountSql, JdbcType.VARCHAR);
+        ActionURL allVersionsLink = new ActionURL(PanoramaPublicController.ShowPublishedVersions.class, getContainer());
+        allVersionsLink.addParameter("id", "${Id}");
+        versionCountCol.setURL(StringExpressionFactory.createURL(allVersionsLink));
+        return versionCountCol;
     }
 
     @Override

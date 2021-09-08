@@ -23,7 +23,7 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
-import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.Submission;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -79,7 +79,7 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writeDatasetSummary(ExperimentAnnotations expAnnotations, JournalExperiment journalExperiment)
+    void writeDatasetSummary(ExperimentAnnotations expAnnotations, Submission submission)
     {
         tr("Description", expAnnotations.getAbstract());
         tr("Review Level", (expAnnotations.isPeerReviewed()) ? "Peer Reviewed" : "Not Peer Reviewed");
@@ -117,7 +117,7 @@ public class PxHtmlWriter extends PxWriter
             String submissionTypeTxt;
             if (status.isIncomplete())
             {
-                submissionTypeTxt = journalExperiment.isIncompletePxSubmission() ? incomplete
+                submissionTypeTxt = submission.isIncompletePxSubmission() ? incomplete
                         // Data validator tell us that his is an incomplete submission but there was an admin override
                         // to submit this as a complete submission.
                         // Use case: data for .blib spectrum libraries was not uploaded to Panorama Public but
@@ -132,7 +132,7 @@ public class PxHtmlWriter extends PxWriter
                 // them to collect everything in .wiff files.  However, this is not a setting recommended by SCIEX.  It is not
                 // easy to determine, just by looking at the Skyline document, that a .wiff file contains all the scans. We will continue
                 // to require .wiff.scan files but make an exception for the Whiteaker group.
-                submissionTypeTxt = journalExperiment.isIncompletePxSubmission() ? incomplete + override : complete + override;
+                submissionTypeTxt = submission.isIncompletePxSubmission() ? incomplete + override : complete + override;
             }
             else
             {
@@ -254,14 +254,14 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writeContactList(ExperimentAnnotations experimentAnnotations, JournalExperiment je)
+    void writeContactList(ExperimentAnnotations experimentAnnotations, Submission submission)
     {
         HtmlList contactList = new HtmlList();
 
         User labHead = experimentAnnotations.getLabHeadUser();
-        String labHeadName = labHead != null ? labHead.getFullName() : je.getLabHeadName();
-        String labHeadEmail = labHead != null ? labHead.getEmail() : je.getLabHeadEmail();
-        String labHeadAffiliation = labHead != null ? experimentAnnotations.getLabHeadAffiliation() : je.getLabHeadAffiliation();
+        String labHeadName = labHead != null ? labHead.getFullName() : submission.getLabHeadName();
+        String labHeadEmail = labHead != null ? labHead.getEmail() : submission.getLabHeadEmail();
+        String labHeadAffiliation = labHead != null ? experimentAnnotations.getLabHeadAffiliation() : submission.getLabHeadAffiliation();
 
         boolean contactErr = StringUtils.isBlank(labHeadName);
         contactList.addItem("Lab head name", StringUtils.isBlank(labHeadName) ? "NO LAB HEAD. Submitter details will be used." : labHeadName, contactErr);

@@ -88,9 +88,6 @@
                     <fkTable>Experiment</fkTable>
                 </fk>
             </column>
-            <column columnName="JournalCopy">
-                <isHidden>true</isHidden>
-            </column>
             <column columnName="IncludeSubfolders">
                 <isHidden>true</isHidden>
             </column>
@@ -119,6 +116,7 @@
             </column>
             <column columnName="PubmedId"/>
             <column columnName="doi"/>
+            <column columnName="DataVersion"/>
         </columns>
     </table>
 
@@ -199,7 +197,6 @@
             </column>
             <column columnName="Id">
                 <description>Contains a unique id for this JouralExperiment (submission).</description>
-                <isHidden>true</isHidden>
             </column>
             <column columnName="JournalId">
                 <columnTitle>Target</columnTitle>
@@ -234,16 +231,57 @@
                     <fkTable>ShortUrl</fkTable>
                 </fk>
             </column>
-            <column columnName="Copied"/>
-            <column columnName="KeepPrivate"/>
-            <column columnName="PxidRequested"/>
-            <column columnName="labHeadName"/>
-            <column columnName="labHeadEmail"/>
-            <column columnName="labHeadAffiliation"/>
-            <column columnName="DataLicense">
-                <columnTitle>License</columnTitle>
-            </column>
             <column columnName="AnnouncementId"/>
+            <column columnName="Modified"/>
+            <column columnName="ModifiedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+            <column columnName="Reviewer">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+        </columns>
+    </table>
+
+    <table tableName="Submission" tableDbType="TABLE">
+        <columns>
+            <column columnName="_ts">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Created"/>
+            <column columnName="CreatedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+            <column columnName="Modified"/>
+            <column columnName="ModifiedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
+            <column columnName="Id">
+                <description>Contains a unique id for this Submission.</description>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="JournalExperimentId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>JournalExperiment</fkTable>
+                </fk>
+            </column>
             <column columnName="CopiedExperimentId">
                 <columnTitle>Data Copy</columnTitle>
                 <fk>
@@ -253,14 +291,15 @@
                 </fk>
                 <url>/panoramapublic-showExperimentAnnotations.view?id=${CopiedExperimentId}</url>
             </column>
+            <column columnName="Copied"/>
+            <column columnName="PxidRequested"/>
+            <column columnName="KeepPrivate"/>
             <column columnName="IncompletePxSubmission"/>
-            <column columnName="Modified"/>
-            <column columnName="ModifiedBy">
-                <fk>
-                    <fkColumnName>UserId</fkColumnName>
-                    <fkDbSchema>core</fkDbSchema>
-                    <fkTable>UsersData</fkTable>
-                </fk>
+            <column columnName="labHeadName"/>
+            <column columnName="labHeadEmail"/>
+            <column columnName="labHeadAffiliation"/>
+            <column columnName="DataLicense">
+                <columnTitle>License</columnTitle>
             </column>
         </columns>
     </table>

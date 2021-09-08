@@ -147,17 +147,31 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         clickAndWait(Locator.linkContainingText("Continue without a ProteomeXchange ID"));
     }
 
-    void copyExperimentAndVerify(String projectName, String folderName, String experimentTitle, boolean recopy, String destinationFolder)
+    void copyExperimentAndVerify(String projectName, String folderName, String experimentTitle, String destinationFolder)
     {
-        copyExperimentAndVerify(projectName, folderName, null, experimentTitle, recopy, destinationFolder);
+        copyExperimentAndVerify(projectName, folderName, null, experimentTitle, null, false, true, destinationFolder);
     }
 
-    void copyExperimentAndVerify(String projectName, String folderName, @Nullable String subfolderName, String experimentTitle, boolean recopy, String destinationFolder)
+    void copyExperimentAndVerify(String projectName, String folderName, @Nullable String subfolderName, String experimentTitle, String destinationFolder)
+    {
+        copyExperimentAndVerify(projectName, folderName, subfolderName, experimentTitle, null, false, true, destinationFolder);
+    }
+
+    void copyExperimentAndVerify(String projectName, String folderName, @Nullable String subfolderName, String experimentTitle,
+                                 @Nullable Integer version, boolean recopy, boolean deleteOldCopy, String destinationFolder)
     {
         if(isImpersonating())
         {
             stopImpersonating();
         }
+        makeCopy(projectName, folderName, experimentTitle, recopy, deleteOldCopy, destinationFolder);
+        verifyCopy(experimentTitle, version, projectName, folderName, subfolderName, recopy);
+
+        stopImpersonating();
+    }
+
+    private void makeCopy(String projectName, String folderName, String experimentTitle, boolean recopy, boolean deleteOldCopy, String destinationFolder)
+    {
         goToProjectHome(PANORAMA_PUBLIC);
         impersonateGroup(PANORAMA_PUBLIC_GROUP, false);
 
@@ -178,7 +192,10 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
             assertTextPresent("This experiment was last copied on");
             Locator.XPathLocator deletePreviousCopyCb = Ext4Helper.Locators.checkbox(this, "Delete Previous Copy:");
             assertNotNull("Expected to see \"Delete Previous Copy\" checkbox", deletePreviousCopyCb);
-            _ext4Helper.checkCheckbox(deletePreviousCopyCb);
+            if(deleteOldCopy)
+            {
+                _ext4Helper.checkCheckbox(deletePreviousCopyCb);
+            }
         }
         else
         {
@@ -191,26 +208,25 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         // Wait for the pipeline job to finish
         waitForText("Copying experiment");
         waitForPipelineJobsToComplete(1, "Copying experiment: " + experimentTitle, false);
-
-        verifyCopy(experimentTitle, projectName, folderName, subfolderName, recopy);
-
-        stopImpersonating();
     }
 
-    private void verifyCopy(String experimentTitle, String projectName, String folderName, String subfolderName, boolean recopy)
+    private void verifyCopy(String experimentTitle, @Nullable Integer version, String projectName, String folderName, String subfolderName, boolean recopy)
     {
         // Verify the copy
         goToProjectHome(PANORAMA_PUBLIC);
         DataRegionTable expListTable = DataRegionTable.findDataRegionWithinWebpart(this, "Targeted MS Experiment List");
         expListTable.ensureColumnPresent("Title");
         expListTable.setFilter("Title", "Equals", experimentTitle);
-        // expListTable.setFilter("Share", "Is Not Blank");
+        if (version != null)
+        {
+            expListTable.ensureColumnPresent("DataVersion");
+            expListTable.setFilter("DataVersion", "Equals", String.valueOf(version));
+        }
         assertEquals(1, expListTable.getDataRowCount()); // The table should have one row for the copied experiment.
         expListTable.ensureColumnPresent("Runs");
         expListTable.ensureColumnPresent("Public"); // Column to indicate if the data is public or not
         expListTable.ensureColumnPresent("Data License");
         Assert.assertTrue(expListTable.getDataAsText(0,"Title").contains(experimentTitle));
-        // assertEquals("1", expListTable.getDataAsText(0, "Runs"));
         assertEquals("No", expListTable.getDataAsText(0, "Public"));
         assertEquals("CC BY 4.0", expListTable.getDataAsText(0, "Data License"));
         clickAndWait(expListTable.link(0, "Title"));
