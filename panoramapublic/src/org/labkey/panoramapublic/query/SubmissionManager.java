@@ -5,12 +5,14 @@ import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.CompareType;
+import org.labkey.api.data.Container;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.Sort;
 import org.labkey.api.data.SqlExecutor;
+import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.portal.ProjectUrls;
@@ -42,16 +44,38 @@ public class SubmissionManager
 {
     private static final Logger LOG = LogManager.getLogger(SubmissionManager.class);
 
-    public static Submission getSubmission(int id)
+    /**
+     * @param id database row id of the submission
+     * @param container of the experiment that the submission belongs to
+     * @return a Submission object with the given database row id, that belongs to an experiment in the given container
+     */
+    public static Submission getSubmission(int id, Container container)
     {
-        return new TableSelector(PanoramaPublicManager.getTableInfoSubmission(), null, null).getObject(id, Submission.class);
+        SQLFragment sql = new SQLFragment("SELECT s.* FROM ").append(PanoramaPublicManager.getTableInfoSubmission(), "s")
+                .append(" INNER JOIN ").append(PanoramaPublicManager.getTableInfoJournalExperiment(), "je")
+                .append(" ON s.JournalExperimentId = je.Id ")
+                .append(" INNER JOIN ").append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "e")
+                .append(" ON je.experimentAnnotationsId = e.Id ")
+                .append(" WHERE s.id = ? ").add(id)
+                .append(" AND e.Container = ? ").add(container);
+        return new SqlSelector(PanoramaPublicManager.getSchema().getScope(), sql).getObject(Submission.class);
+    }
+
+    /**
+     * @param copiedExperimentId Id of the experiment copied to a journal project
+     * @return the data license in the submission request associated with a journal copy of an experiment
+     */
+    public static DataLicense getDataLicenseForCopiedExperiment(int copiedExperimentId)
+    {
+        Submission submission = SubmissionManager.getSubmissionForCopiedExperiment(copiedExperimentId);
+        return submission != null ? submission.getDataLicense() : null;
     }
 
     /**
      * @param copiedExperimentId Id of an experiment copied to a journal project
      * @return the Submission associated with the given copiedExperimentId
      */
-    public static Submission getSubmissionForCopiedExperiment(int copiedExperimentId)
+    private static Submission getSubmissionForCopiedExperiment(int copiedExperimentId)
     {
         SimpleFilter filter = new SimpleFilter();
         filter.addCondition(FieldKey.fromParts("CopiedExperimentId"), copiedExperimentId);
@@ -128,7 +152,7 @@ public class SubmissionManager
         }
     }
 
-    public static @Nullable JournalSubmission getJournalSubmission(int id)
+    private static @Nullable JournalSubmission getJournalSubmission(int id)
     {
         return getJournalSubmission(getJournalExperiment(id));
     }
@@ -138,13 +162,25 @@ public class SubmissionManager
         return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), null, null).getObject(id, JournalExperiment.class);
     }
 
-    public static @Nullable JournalSubmission getJournalSubmission(int expeAnnotationsId, int journalId)
+    public static @Nullable JournalSubmission getJournalSubmission(int id, @NotNull Container container)
     {
-        SimpleFilter filter = new SimpleFilter();
-        filter.addCondition(FieldKey.fromParts("experimentAnnotationsId"), expeAnnotationsId);
-        filter.addCondition(FieldKey.fromParts("journalId"), journalId);
-        JournalExperiment je = new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), filter, null).getObject(JournalExperiment.class);
-        return getJournalSubmission(je);
+        return getJournalSubmission(container, new SQLFragment(" je.id = ? ").add(id));
+    }
+
+    public static @Nullable JournalSubmission getJournalSubmission(int expeAnnotationsId, int journalId, @NotNull Container container)
+    {
+        SQLFragment filter = new SQLFragment(" je.experimentAnnotationsId = ? AND je.journalId = ? ").add(expeAnnotationsId).add(journalId);
+        return getJournalSubmission(container, filter);
+    }
+
+    private static JournalSubmission getJournalSubmission(@NotNull Container container, SQLFragment filterSql)
+    {
+        SQLFragment sql = new SQLFragment("SELECT je.* FROM ").append(PanoramaPublicManager.getTableInfoJournalExperiment(), "je")
+                .append(" INNER JOIN ").append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "e")
+                .append(" ON je.experimentAnnotationsId = e.Id ")
+                .append(" WHERE ").append(filterSql)
+                .append(" AND e.Container = ?").add(container);
+        return getJournalSubmission(new SqlSelector(PanoramaPublicManager.getSchema().getScope(), sql).getObject(JournalExperiment.class));
     }
 
     private static JournalSubmission getJournalSubmission(JournalExperiment je)
@@ -375,7 +411,7 @@ public class SubmissionManager
      */
     public static void beforeSubmittedExperimentDeleted(@NotNull ExperimentAnnotations expAnnotations, @NotNull Journal journal, @NotNull User user)
     {
-        JournalSubmission js = getJournalSubmission(expAnnotations.getId(), journal.getId());
+        JournalSubmission js = getJournalSubmission(expAnnotations.getId(), journal.getId(), expAnnotations.getContainer());
         if (js != null)
         {
             if (js.getCopiedSubmissions().size() == 0)

@@ -160,7 +160,7 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
                 public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
                 {
                     Integer id = ctx.get(colInfo.getFieldKey(), Integer.class);
-                    Submission s = SubmissionManager.getSubmission(id);
+                    Submission s = SubmissionManager.getSubmission(id, ctx.getContainer());
                     if (s != null && s.isPending())
                     {
                         // Show the delete link only if the experiment has not yet been copied
@@ -190,10 +190,10 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
                 public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
                 {
                     Integer id = ctx.get(colInfo.getFieldKey(), Integer.class);
-                    Submission s = SubmissionManager.getSubmission(id);
+                    Submission s = SubmissionManager.getSubmission(id, ctx.getContainer());
                     if (s != null)
                     {
-                        JournalSubmission js = SubmissionManager.getJournalSubmission(s.getJournalExperimentId());
+                        JournalSubmission js = SubmissionManager.getJournalSubmission(s.getJournalExperimentId(), ctx.getContainer());
                         if (js != null && js.isLatestSubmission(s.getId()))
                         {
                             // Show the "Resubmit" or "Edit" links only if this is the most recent submission request for the experiment.

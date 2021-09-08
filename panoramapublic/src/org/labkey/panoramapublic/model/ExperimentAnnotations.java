@@ -497,12 +497,11 @@ public class ExperimentAnnotations
     public DataLicense getDataLicense()
     {
         // Return a data license only if this experiment has been copied to Panorama Public (i.e is a "journalCopy").
-        if(!isJournalCopy() || getSourceExperimentId() == null)
+        if(!isJournalCopy())
         {
             return null;
         }
-        Submission submission = SubmissionManager.getSubmissionForCopiedExperiment(_id);
-        return submission != null ? submission.getDataLicense() : null;
+        return SubmissionManager.getDataLicenseForCopiedExperiment(_id);
     }
 
     /**

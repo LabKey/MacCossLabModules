@@ -34,12 +34,14 @@ import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
+import org.labkey.api.security.permissions.DeletePermission;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.GUID;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.api.view.ShortURLRecord;
+import org.labkey.api.view.UnauthorizedException;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
@@ -244,6 +246,10 @@ public class ExperimentAnnotationsManager
         ExperimentAnnotations experimentAnnotations = getForExperiment(experiment.getRowId());
         if(experimentAnnotations != null)
         {
+            if (!experimentAnnotations.getContainer().hasPermission(user, DeletePermission.class))
+            {
+                throw new UnauthorizedException("You are not authorized to delete experiments in the folder '" + experimentAnnotations.getContainer().getPath() + "'");
+            }
             deleteExperiment(experimentAnnotations, user);
         }
     }

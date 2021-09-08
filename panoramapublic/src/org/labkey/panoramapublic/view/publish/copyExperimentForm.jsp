@@ -25,16 +25,15 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.CopyExperimentAction" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.CopyExperimentForm" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.GetPxActionsAction" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
-<%@ page import="org.labkey.panoramapublic.query.SubmissionManager" %>
 <%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
+<%@ page import="static org.labkey.panoramapublic.PanoramaPublicController.*" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -48,19 +47,20 @@
 %>
 
 <%
-    JspView<CopyExperimentForm> me = (JspView<CopyExperimentForm>) HttpView.currentView();
-    CopyExperimentForm bean = me.getModelBean();
-    ExperimentAnnotations expAnnot = bean.lookupExperiment();
-    Journal journal = bean.lookupJournal();
-    JournalSubmission js = SubmissionManager.getJournalSubmission(expAnnot.getId(), journal.getId());
+    JspView<CopyExperimentBean> me = (JspView<CopyExperimentBean>) HttpView.currentView();
+    var bean = me.getModelBean();
+    CopyExperimentForm form = bean.getForm();
+    ExperimentAnnotations expAnnot = form.lookupExperiment();
+    Journal journal = form.lookupJournal();
+    JournalSubmission js = bean.getJournalSubmission();
     Submission currentSubmission = js.getLatestSubmission();
     ExperimentAnnotations previousCopy = ExperimentAnnotationsManager.getLatestCopyForSubmission(js);
     boolean isRecopy = previousCopy != null;
 
     String selectedFolder = "Please select a destination folder...";
-    if(bean.getDestParentContainerId() != null)
+    if(form.getDestParentContainerId() != null)
     {
-        Container destParent = ContainerManager.getForRowId(bean.getDestParentContainerId());
+        Container destParent = ContainerManager.getForRowId(form.getDestParentContainerId());
         if(destParent != null)
         {
             selectedFolder = destParent.getName();
@@ -70,7 +70,7 @@
     ActionURL pxActionsUrl = urlFor(GetPxActionsAction.class);
     pxActionsUrl.addParameter("id", expAnnot.getId());
 
-    ActionURL pxValidationUrl = PanoramaPublicController.getPrePublishExperimentCheckURL(expAnnot.getId(), expAnnot.getContainer(), true);
+    ActionURL pxValidationUrl = getPrePublishExperimentCheckURL(expAnnot.getId(), expAnnot.getContainer(), true);
     pxValidationUrl.addParameter(ActionURL.Param.returnUrl, js.getShortCopyUrl().getFullURL());
 %>
 
@@ -137,7 +137,7 @@
                     name: 'destContainerName',
                     allowBlank: false,
                     width: 650,
-                    value: <%=q(bean.getDestContainerName())%>,
+                    value: <%=q(form.getDestContainerName())%>,
                     afterBodyEl: '<span style="font-size: 0.9em;">A new folder with this name will be created.</span>',
                     msgTarget : 'under'
                 },
@@ -183,27 +183,27 @@
                 {
                     xtype: 'checkbox',
                     fieldLabel: "Assign ProteomeXchange ID",
-                    checked: <%=bean.isAssignPxId()%>,
+                    checked: <%=form.isAssignPxId()%>,
                     name: 'assignPxId',
                     boxLabel: 'This box will be checked if the user requested a ProteomeXchange ID. Admin doing the copy can override if needed.'
                 },
                 {
                     xtype: 'checkbox',
                     fieldLabel: "Use ProteomeXchange Test Database",
-                    checked: <%=bean.isUsePxTestDb()%>,
+                    checked: <%=form.isUsePxTestDb()%>,
                     name: 'usePxTestDb',
                     boxLabel: 'Check this box for tests so that we get an ID from the ProteomeXchange test database rather than their production database.'
                 },
                 {
                     xtype: 'checkbox',
                     fieldLabel: "Assign Digital Object Identifier",
-                    checked: <%=bean.isAssignDoi()%>,
+                    checked: <%=form.isAssignDoi()%>,
                     name: 'assignDoi'
                 },
                 {
                     xtype: 'checkbox',
                     fieldLabel: "Use DataCite Test API for creating DOI",
-                    checked: <%=bean.isUseDataCiteTestApi()%>,
+                    checked: <%=form.isUseDataCiteTestApi()%>,
                     name: 'useDataCiteTestApi',
                     boxLabel: 'Check this box for tests so that we get a DOI with the DataCite test API.'
                 },
@@ -211,7 +211,7 @@
                     xtype: 'textfield',
                     hidden: <%=!currentSubmission.isKeepPrivate() || isRecopy%>,
                     fieldLabel: "Reviewer Email Prefix",
-                    value: <%=q(bean.getReviewerEmailPrefix())%>,
+                    value: <%=q(form.getReviewerEmailPrefix())%>,
                     name: 'reviewerEmailPrefix',
                     width: 450,
                     afterBodyEl: '<span style="font-size: 0.9em;">A new LabKey user account email_prefix(unique numeric suffix)@proteinms.net will be created. </span>',
@@ -220,14 +220,14 @@
                 {
                     xtype: 'checkbox',
                     fieldLabel: "Send Email to Submitter",
-                    checked: <%=bean.isSendEmail()%>,
+                    checked: <%=form.isSendEmail()%>,
                     name: 'sendEmail',
                     boxLabel: 'If checked an email will be sent to the submitter.'
                 },
                 {
                     xtype: 'textarea',
                     fieldLabel: "Email address (To:)",
-                    value: <%=q(bean.getToEmailAddresses())%>,
+                    value: <%=q(form.getToEmailAddresses())%>,
                     name: 'toEmailAddresses',
                     width: 450,
                     height:70,
@@ -236,7 +236,7 @@
                 {
                     xtype: 'textfield',
                     fieldLabel: "Email address (Reply-To:)",
-                    value: <%=q(bean.getReplyToAddress())%>,
+                    value: <%=q(form.getReplyToAddress())%>,
                     name: 'replyToAddress',
                     width: 450
                 },
@@ -244,7 +244,7 @@
                     xtype: 'checkbox',
                     hidden: <%=!isRecopy%>,
                     fieldLabel: "Delete Previous Copy",
-                    checked: <%=bean.isDeleteOldCopy()%>,
+                    checked: <%=form.isDeleteOldCopy()%>,
                     name: 'deleteOldCopy'
                 },
 

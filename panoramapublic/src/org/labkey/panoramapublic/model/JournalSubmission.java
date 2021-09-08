@@ -66,7 +66,7 @@ public class JournalSubmission
 
     public int getModifiedBy()
     {
-        return +_journalExperiment.getModifiedBy();
+        return _journalExperiment.getModifiedBy();
     }
 
     public Integer getAnnouncementId()

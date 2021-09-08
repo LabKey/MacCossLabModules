@@ -128,11 +128,7 @@ public class JournalManager
         {
             return false;
         }
-        if (SubmissionManager.getJournalSubmission(experimentAnnotations.getId(), journal.getId()) == null)
-        {
-            return false;
-        }
-        // The user may no longer have export permissions on the folder, e.g. if the journal has already copied the folder.
+        // The user should have export permissions on the folder. FolderExportPermission given to the journal is revoked after the folder is copied to the journal project.
         return experimentAnnotations.getContainer().hasPermission(user, FolderExportPermission.class);
     }
 

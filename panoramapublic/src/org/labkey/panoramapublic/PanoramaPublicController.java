@@ -1028,7 +1028,7 @@ public class PanoramaPublicController extends SpringActionController
                 CopyExperimentForm.setDefaults(form, _experiment, _journalSubmission);
             }
 
-            JspView view = new JspView("/org/labkey/panoramapublic/view/publish/copyExperimentForm.jsp", form, errors);
+            JspView<CopyExperimentBean> view = new JspView<>("/org/labkey/panoramapublic/view/publish/copyExperimentForm.jsp", new CopyExperimentBean(form, _experiment, _journalSubmission), errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Copy Targeted MS Experiment");
             return view;
@@ -1043,7 +1043,7 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
-            PanoramaPublicController.ensureCorrectContainer(getContainer(), _experiment.getContainer(), getViewContext());
+            ensureCorrectContainer(getContainer(), _experiment.getContainer(), getViewContext());
 
             _journal = form.lookupJournal();
             if(_journal == null)
@@ -1053,16 +1053,16 @@ public class PanoramaPublicController extends SpringActionController
             }
             // User initiating the copy must be a member of a journal that was given access
             // to the experiment.
-            if(!JournalManager.userHasCopyAccess(_experiment, _journal, getUser()))
+            if (!JournalManager.userHasCopyAccess(_experiment, _journal, getUser()))
             {
                 errors.reject(ERROR_MSG,"You do not have permissions to copy this experiment.");
                 return false;
             }
-            _journalSubmission = SubmissionManager.getJournalSubmission(_experiment.getId(), _journal.getId());
+            _journalSubmission = SubmissionManager.getJournalSubmission(_experiment.getId(), _journal.getId(), getContainer());
             if (_journalSubmission == null)
             {
                 errors.reject(ERROR_MSG,"Could not find a submission request for experiment Id " + _experiment.getId()
-                + " and journalId " + _journal.getId());
+                + " and journalId " + _journal.getId() + " in the folder '" + getContainer().getPath() + "'");
                 return false;
             }
 
@@ -1264,6 +1264,35 @@ public class PanoramaPublicController extends SpringActionController
         public void addNavTrail(NavTree root)
         {
             root.addChild("Copy Experiment");
+        }
+    }
+
+    public static class CopyExperimentBean
+    {
+        private final CopyExperimentForm _form;
+        private final ExperimentAnnotations _expAnnotations;
+        private final JournalSubmission _journalSubmission;
+
+        public CopyExperimentBean(CopyExperimentForm form, ExperimentAnnotations expAnnotations, JournalSubmission journalSubmission)
+        {
+            _form = form;
+            _expAnnotations = expAnnotations;
+            _journalSubmission = journalSubmission;
+        }
+
+        public CopyExperimentForm getForm()
+        {
+            return _form;
+        }
+
+        public ExperimentAnnotations getExpAnnotations()
+        {
+            return _expAnnotations;
+        }
+
+        public JournalSubmission getJournalSubmission()
+        {
+            return _journalSubmission;
         }
     }
 
@@ -1750,13 +1779,8 @@ public class PanoramaPublicController extends SpringActionController
 
         private JspView getPublishFormView(PublishExperimentForm form, ExperimentAnnotations exptAnnotations, BindException errors)
         {
-            PublishExperimentFormBean bean = new PublishExperimentFormBean();
-            bean.setForm(form);
-            bean.setJournalList(JournalManager.getJournals());
-            bean.setExperimentAnnotations(exptAnnotations);
-            bean.setDataLicenseList(Arrays.asList(DataLicense.values()));
-
-            JspView view = new JspView("/org/labkey/panoramapublic/view/publish/publishExperimentForm.jsp", bean, errors);
+            PublishExperimentFormBean bean = new PublishExperimentFormBean(form, JournalManager.getJournals(), Arrays.asList(DataLicense.values()), exptAnnotations);
+            JspView<PublishExperimentFormBean> view = new JspView<>("/org/labkey/panoramapublic/view/publish/publishExperimentForm.jsp", bean, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle(getFormViewTitle(form.lookupJournal().getName()));
             return view;
@@ -2062,19 +2086,26 @@ public class PanoramaPublicController extends SpringActionController
 
     public static final class PublishExperimentFormBean
     {
-        private PublishExperimentForm _form;
-        private List<Journal> _journalList;
-        private List<DataLicense> _dataLicenseList;
-        private ExperimentAnnotations _experimentAnnotations;
+        private final PublishExperimentForm _form;
+        private final List<Journal> _journalList;
+        private final List<DataLicense> _dataLicenseList;
+        private final ExperimentAnnotations _experimentAnnotations;
+        private final boolean _accessUrlEditable; // flag which determines if the "Short Access URL" field in the form is editable
+
+        public PublishExperimentFormBean(PublishExperimentForm form, List<Journal> journalList, List<DataLicense> dataLicenseList, ExperimentAnnotations experimentAnnotations)
+        {
+            _form = form;
+            _journalList = journalList;
+            _dataLicenseList = dataLicenseList;
+            _experimentAnnotations = experimentAnnotations;
+            JournalSubmission js = SubmissionManager.getJournalSubmission(experimentAnnotations.getId(), form.getJournalId(), experimentAnnotations.getContainer());
+            // "Short Access URL" field in the form should not be editable if one or more copies of this experiment already exist in the journal project
+            _accessUrlEditable = js == null ? true : js.getCopiedSubmissions().size() == 0;
+        }
 
         public PublishExperimentForm getForm()
         {
             return _form;
-        }
-
-        public void setForm(PublishExperimentForm form)
-        {
-            _form = form;
         }
 
         public List<Journal> getJournalList()
@@ -2082,19 +2113,9 @@ public class PanoramaPublicController extends SpringActionController
             return _journalList;
         }
 
-        public void setJournalList(List<Journal> journalList)
-        {
-            _journalList = journalList;
-        }
-
         public List<DataLicense> getDataLicenseList()
         {
             return _dataLicenseList;
-        }
-
-        public void setDataLicenseList(List<DataLicense> dataLicenseList)
-        {
-            _dataLicenseList = dataLicenseList;
         }
 
         public ExperimentAnnotations getExperimentAnnotations()
@@ -2102,9 +2123,9 @@ public class PanoramaPublicController extends SpringActionController
             return _experimentAnnotations;
         }
 
-        public void setExperimentAnnotations(ExperimentAnnotations experimentAnnotations)
+        public boolean isAccessUrlEditable()
         {
-            _experimentAnnotations = experimentAnnotations;
+            return _accessUrlEditable;
         }
     }
 
@@ -2502,11 +2523,11 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG,"Could not find a journal for Id " + form.getJournalId());
                 return false;
             }
-            _journalSubmission = SubmissionManager.getJournalSubmission(_experimentAnnotations.getId(), _journal.getId());
+            _journalSubmission = SubmissionManager.getJournalSubmission(_experimentAnnotations.getId(), _journal.getId(), getContainer());
             if (_journalSubmission == null)
             {
                 errors.reject(ERROR_MSG,"Could not find a submission request for experiment Id " + _experimentAnnotations.getId()
-                        + " to the journal " + _journal.getName());
+                        + " to the journal '" + _journal.getName() + "' in the folder '" + getContainer().getPath() + "'");
                 return false;
             }
             return true;
@@ -2580,10 +2601,10 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void validateCommand(IdForm form, Errors errors)
         {
-            _submission = SubmissionManager.getSubmission(form.getId());
+            _submission = SubmissionManager.getSubmission(form.getId(), getContainer());
             if (_submission == null)
             {
-                errors.reject(ERROR_MSG, "Could not find a submission for Id: " + form.getId());
+                errors.reject(ERROR_MSG, "Could not find a submission for Id: " + form.getId() + " in the folder '" + getContainer().getPath() + "'");
                 return;
             }
             if (_submission.hasCopy())
@@ -2592,10 +2613,10 @@ public class PanoramaPublicController extends SpringActionController
                 return;
             }
 
-            _journalSubmission = SubmissionManager.getJournalSubmission(_submission.getJournalExperimentId());
+            _journalSubmission = SubmissionManager.getJournalSubmission(_submission.getJournalExperimentId(), getContainer());
             if (_journalSubmission == null)
             {
-                errors.reject(ERROR_MSG,"Could not find a row in table JournalExperiment with Id: " + _submission.getJournalExperimentId());
+                errors.reject(ERROR_MSG,"Could not find a JournalExperiment with Id: " + _submission.getJournalExperimentId() + " in the folder '" + getContainer().getPath() + "'");
                 return;
             }
 
@@ -2660,7 +2681,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public URLHelper getSuccessURL(IdForm form)
         {
-            return PanoramaPublicController.getViewExperimentDetailsURL(form.getId(), getContainer());
+            return PanoramaPublicController.getViewExperimentDetailsURL(_experimentAnnotations.getId(), getContainer());
         }
     }
 

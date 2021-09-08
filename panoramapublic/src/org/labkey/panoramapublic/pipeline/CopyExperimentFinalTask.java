@@ -152,10 +152,11 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // Get the ExperimentAnnotations in the source container
             ExperimentAnnotations sourceExperiment = jobSupport.getExpAnnotations();
             // Get the submission request
-            JournalSubmission js = SubmissionManager.getJournalSubmission(sourceExperiment.getId(), jobSupport.getJournal().getId());
+            JournalSubmission js = SubmissionManager.getJournalSubmission(sourceExperiment.getId(), jobSupport.getJournal().getId(), sourceExperiment.getContainer());
             if (js == null)
             {
-                throw new PipelineJobException("Could not find a submission request for experiment Id " + sourceExperiment.getId() +" and journal Id " + jobSupport.getJournal().getId());
+                throw new PipelineJobException("Could not find a submission request for experiment Id " + sourceExperiment.getId() +" and journal Id " + jobSupport.getJournal().getId()
+                        + " in the folder '" + sourceExperiment.getContainer() + "'");
             }
             Submission latestCopiedSubmission = js.getLatestCopiedSubmission();
             // If there is a previous copy of this data on Panorama Public get it.  Remove the short url from the previous copy so that it
@@ -236,7 +237,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             }
         }
 
-        return SubmissionManager.getJournalSubmission(js.getJournalExperimentId()); // return the updated submission request
+        return SubmissionManager.getJournalSubmission(js.getJournalExperimentId(), jobSupport.getExpAnnotations().getContainer()); // return the updated submission request
     }
 
     private Pair<User, String> assignReviewer(JournalSubmission js, ExperimentAnnotations targetExperiment, ExperimentAnnotations previousCopy,
