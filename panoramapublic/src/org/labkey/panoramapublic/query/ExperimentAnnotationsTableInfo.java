@@ -23,6 +23,7 @@ import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
+import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
@@ -30,6 +31,7 @@ import org.labkey.api.data.JdbcType;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.TableInfo;
+import org.labkey.api.data.dialect.SqlDialect;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.DetailsURL;
@@ -93,6 +95,10 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         citationCol.setDisplayColumnFactory(colInfo -> new PublicationLinkDisplayColumn(colInfo));
         citationCol.setURLTargetWindow("_blank");
         citationCol.setLabel("Publication");
+
+        // Add column that combines the citation field with the submitter and lab head display names
+        // to allow searches for author names in the Panorama Public search form
+        addColumn(getAuthorsColumn());
 
         var spikeInColumn = getMutableColumn(FieldKey.fromParts("SpikeIn"));
         spikeInColumn.setDisplayColumnFactory(colInfo -> new YesNoDisplayColumn(colInfo));
@@ -326,6 +332,25 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         visibleColumns.add(FieldKey.fromParts("pxid"));
 
         setDefaultVisibleColumns(visibleColumns);
+    }
+
+    private ExprColumn getAuthorsColumn()
+    {
+        // Concatenate the citation column with the display names of the submitter and the lab head associated with the experiment.
+        // This column will not be included in the list of default columns.  It is added only to enable expanded searches for author names
+        // in the Panorama Public search form.
+        SqlDialect dialect = PanoramaPublicSchema.getSchema().getSqlDialect();
+        SQLFragment usersSql = new SQLFragment(" SELECT DISTINCT displayname FROM ").append(CoreSchema.getInstance().getTableInfoUsersData(), "users")
+                .append(" WHERE ")
+                .append(" users.userid = ").append(ExprColumn.STR_TABLE_ALIAS).append(".submitter")
+                .append(" OR")
+                .append(" users.userid = ").append(ExprColumn.STR_TABLE_ALIAS).append(".labhead");
+        SQLFragment authorsSql = dialect.concatenate(
+                new SQLFragment(" (COALESCE(").append(ExprColumn.STR_TABLE_ALIAS).append(".citation, '') "),
+                new SQLFragment("','"),
+                new SQLFragment(" (SELECT ").append(dialect.getSelectConcat(usersSql, ",")).append(")) ")
+                );
+        return new ExprColumn(this, "Authors", authorsSql, JdbcType.VARCHAR);
     }
 
     @NotNull
