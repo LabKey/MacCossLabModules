@@ -82,10 +82,6 @@ public class CromwellGctTask extends PipelineJob.Task<CromwellGctTask.Factory>
             {
                 submitJob(cromwellConfig, assayType, run, session.getApiKey(), log);
             }
-            catch (IOException e)
-            {
-                throw new PipelineJobException(e);
-            }
         }
         else
         {
