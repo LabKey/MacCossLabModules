@@ -20,7 +20,6 @@ import org.jetbrains.annotations.NotNull;
 import org.labkey.api.collections.CaseInsensitiveHashSet;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
-import org.labkey.api.data.ContainerForeignKey;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.DbSchemaType;
 import org.labkey.api.data.SQLFragment;
@@ -32,6 +31,7 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.QuerySchema;
 import org.labkey.api.query.UserSchema;
+import org.labkey.api.query.column.BuiltInColumnTypes;
 import org.labkey.api.security.User;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsTableInfo;
 import org.labkey.panoramapublic.query.JournalExperimentTableInfo;
@@ -98,9 +98,9 @@ public class PanoramaPublicSchema extends UserSchema
             FilteredTable<PanoramaPublicSchema> result = new FilteredTable<>(getSchema().getTable(name), this, cf);
             result.wrapAllColumns(true);
             var projectCol = result.getMutableColumn(FieldKey.fromParts("Project"));
-            ContainerForeignKey.initColumn(projectCol, this);
+            projectCol.setConceptURI(BuiltInColumnTypes.CONTAINERID_CONCEPT_URI);
             var supportContainerCol = result.getMutableColumn(FieldKey.fromParts("SupportContainer"));
-            ContainerForeignKey.initColumn(supportContainerCol, this);
+            supportContainerCol.setConceptURI(BuiltInColumnTypes.CONTAINERID_CONCEPT_URI);
             return result;
         }
 

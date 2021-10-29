@@ -17,6 +17,7 @@ package org.labkey.panoramapublic.view.expannotations;
 
 import org.labkey.api.data.Container;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
+import org.labkey.api.util.Link;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
@@ -26,6 +27,10 @@ import org.labkey.api.view.ViewContext;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+
+import static org.labkey.api.util.DOM.Attribute.style;
+import static org.labkey.api.util.DOM.DIV;
+import static org.labkey.api.util.DOM.at;
 
 /**
  * User: vsharma
@@ -50,12 +55,12 @@ public class TargetedMSExperimentWebPart extends VBox
         {
             // There is no experiment defined in this container, or in a parent container that is configured
             // to include subfolders.
-            StringBuilder html = new StringBuilder("<div>This folder does not contain an experiment.</div>");
-            ActionURL url = new ActionURL(PanoramaPublicController.ShowNewExperimentAnnotationFormAction.class, container);
-            html.append("<div style=\"margin-top: 20px;\">");
-            html.append("<a href=\"").append(url).append("\">Create New Experiment</a>");
-            html.append("</div>");
-            HtmlView view = new HtmlView(html.toString());
+            HtmlView view = new HtmlView(DIV(
+                    DIV("This folder does not contain an experiment."),
+                    DIV(at(style, "margin-top:20px;"),
+                            new Link.LinkBuilder("Create New Experiment")
+                                    .href(new ActionURL(PanoramaPublicController.ShowNewExperimentAnnotationFormAction.class, container))
+                                    .build())));
             addView(view);
         }
         else if(expAnnotations.getContainer().equals(container))
@@ -71,18 +76,20 @@ public class TargetedMSExperimentWebPart extends VBox
                 NavTree navTree = new NavTree();
                 navTree.addChild("ProteomeXchange", new ActionURL(PanoramaPublicController.GetPxActionsAction.class, container).addParameter("id", expAnnotations.getId()));
                 navTree.addChild("DOI", new ActionURL(PanoramaPublicController.DoiOptionsAction.class, container).addParameter("id", expAnnotations.getId()));
+                navTree.addChild("Make Data Public", new ActionURL(PanoramaPublicController.MakePublicAction.class, container).addParameter("id", expAnnotations.getId()));
                 setNavMenu(navTree);
             }
         }
         else
         {
             // There is an experiment defined in a parent container that is configured to include subfolders.
-            StringBuilder html = new StringBuilder("<div>A parent folder contains an experiment that includes data in this folder.</div>");
-            ActionURL url = PanoramaPublicController.getViewExperimentDetailsURL(expAnnotations.getId(), container);
-            html.append("<div style=\"margin-top: 20px;\">");
-            html.append("<a href=\"").append(url.getEncodedLocalURIString()).append("\">View Experiment Details</a>");
-            html.append("</div>");
-            HtmlView view = new HtmlView(html.toString());
+            HtmlView view = new HtmlView(DIV(
+                    DIV("A parent folder contains an experiment that includes data in this folder."),
+                    DIV(at(style, "margin-top: 20px;"),
+                            new Link.LinkBuilder("View Experiment Details")
+                                    .href(PanoramaPublicController.getViewExperimentDetailsURL(expAnnotations.getId(), container))
+                                    .build() )
+            ));
             addView(view);
         }
         setTitle("Targeted MS Experiment");
