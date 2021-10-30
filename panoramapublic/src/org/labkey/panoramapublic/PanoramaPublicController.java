@@ -4008,6 +4008,11 @@ public class PanoramaPublicController extends SpringActionController
             addExperimentViewDependencies(view);
             view.setTitle(TargetedMSExperimentWebPart.WEB_PART_NAME);
             view.setInitialValue(SUBMITTER, getUser().getUserId());
+            List<PsiInstrumentParser.PsiInstrument> instruments = ExperimentAnnotationsManager.getContainerInstruments(getContainer(), getUser());
+            if (instruments.size() > 0)
+            {
+                view.setInitialValue("instrument", StringUtils.join(instruments.stream().map(i -> i.getName()).collect(Collectors.toList()), ","));
+            }
             return view;
         }
 
