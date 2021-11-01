@@ -514,6 +514,11 @@ public class ExperimentAnnotations
         return Experiment.equals(folderType) && isPublic() && isPublished();
     }
 
+    public boolean hasCompletePublicationInfo()
+    {
+        return isPeerReviewed() && hasPubmedId();
+    }
+
     public String getDoi()
     {
         return _doi;

@@ -15,6 +15,7 @@ import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.NotFoundException;
+import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
@@ -35,7 +36,7 @@ public class PanoramaPublicNotification
     private static final String NL = "\n";
     private static final String NL2 = "\n\n";
 
-    private enum ACTION {NEW, UPDATED, DELETED, COPIED, RESUBMITTED, RECOPIED}
+    private enum ACTION {NEW, UPDATED, DELETED, COPIED, RESUBMITTED, RECOPIED, PUBLISHED}
 
     public static void notifyCreated(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, Submission submission, User user)
     {
@@ -112,6 +113,37 @@ public class PanoramaPublicNotification
         }
 
         postNotification(srcExpAnnotations, journal, je, messageBody.toString(), user /* User is either a site admin or a Panorama Public admin, and should have permissions to post*/);
+    }
+
+    public static void notifyDataPublished(ExperimentAnnotations srcExperiment, ExperimentAnnotations journalCopy, Journal journal,
+                                           JournalExperiment je, DataCiteException doiError, User user)
+    {
+        StringBuilder messageBody = new StringBuilder();
+        appendRequestName(journalCopy, journal, ACTION.PUBLISHED, messageBody);
+        messageBody.append(NL).append("* Copied Folder: ").append(getContainerLink(journalCopy.getContainer()));
+        messageBody.append(NL).append("* User Folder: ").append(getContainerLink(srcExperiment.getContainer()));
+        if (journalCopy.hasPubmedId())
+        {
+            messageBody.append(NL).append("* PubMed ID: ").append(journalCopy.getPubmedId());
+        }
+        if (journalCopy.isPublished())
+        {
+            StringBuilder link = new StringBuilder("[").append(escape(journalCopy.getPublicationLink())).append("]");
+            link.append("(").append(journalCopy.getPublicationLink()).append(")");
+            messageBody.append(NL).append("* Publication Link: ").append(link);
+        }
+        if (journalCopy.hasCitation())
+        {
+            messageBody.append(NL).append("* Citation: ").append(escape(journalCopy.getCitation()));
+        }
+        if (doiError != null)
+        {
+            messageBody.append(NL).append("--------------------------------------------------------------------------------------------");
+            messageBody.append(NL).append("There was an error making the DOI findable. The error was: " + escape(doiError.getMessage()));
+        }
+        appendActionSubmitterDetails(srcExperiment, user, messageBody);
+
+        postNotification(srcExperiment, journal, je, messageBody.toString());
     }
 
     public static void postNotification(ExperimentAnnotations experimentAnnotations, Journal journal, JournalExperiment je, String messageBody)

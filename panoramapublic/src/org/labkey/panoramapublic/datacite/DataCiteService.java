@@ -98,6 +98,27 @@ public class DataCiteService
         }
     }
 
+    public static void publishIfDraftDoi(@NotNull ExperimentAnnotations expAnnot) throws DataCiteException
+    {
+        if (!StringUtils.isBlank(expAnnot.getDoi()) && !isPublished(expAnnot.getDoi()))
+        {
+            publish(expAnnot);
+        }
+    }
+
+    private static boolean isPublished (@NotNull String experimentDoi) throws DataCiteException
+    {
+        // curl --request GET --url https://api.test.datacite.org/dois/id --header 'Accept: application/vnd.api+json'
+        METHOD method = METHOD.GET;
+        DataCiteResponse response = doRequest(getDataCiteConfig(experimentDoi), null, method);
+        if(!response.success(method))
+        {
+            throw new DataCiteException("Request to get DOI status failed", response);
+        }
+        Doi doi = response.getDoi();
+        return (doi != null && doi.getDoi() != null && doi.isFindable());
+    }
+
     private static DataCiteResponse doRequest(DataCiteConfig config, @Nullable JSONObject json, METHOD method) throws DataCiteException
     {
         String auth = Base64.getEncoder().encodeToString((config.getName() + ":" + config.getPassword()).getBytes(StandardCharsets.UTF_8));
