@@ -10,7 +10,7 @@
     JspView<JournalManager.PublicDataUser> me = (JspView<JournalManager.PublicDataUser>) HttpView.currentView();
     var publicDataUser = me.getModelBean();
     // NOTE: This is a link to the data download documentation page on PanoramaWeb.  It will not work on any other server.
-    var downloadDataDocHref = "/wiki/home/page.view?name=download_public_data";
+    var downloadDataDocHref = "/home/wiki-page.view?name=download_public_data";
     // WebDAV URL to the RawFiles folder in the file root
     var webdavUrl = AppProps.getInstance().getBaseServerUrl() + PageFlowUtil.encodePath("_webdav" + getContainer().getPath() + "/@files/RawFiles/");
 %>
