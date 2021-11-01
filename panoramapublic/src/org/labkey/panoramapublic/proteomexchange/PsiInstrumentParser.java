@@ -15,11 +15,14 @@
  */
 package org.labkey.panoramapublic.proteomexchange;
 
+import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.resource.FileResource;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.Path;
+import org.labkey.api.util.logging.LogHelper;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -39,20 +42,43 @@ import java.util.Map;
 public class PsiInstrumentParser
 {
     private Map<String, PsiInstrument> _instruments;
+    private static final Logger log = LogHelper.getLogger(PsiInstrumentParser.class, "Messages about reading mass spec instruments from psi-ms-PARSED.xml");
 
-    public PsiInstrument getInstrument(String instrumentName) throws PxException
+    /**
+     * @return a PsiInstrument object if a match was found in the PSI-MS CV for the given instrument name
+     * @throws PxException if there was an error reading from psi-ms-PARSED.xml
+     */
+    public @Nullable PsiInstrument getInstrument(String instrumentName) throws PxException
     {
         if(_instruments == null)
         {
-            _instruments = new HashMap<>();
-            List<PsiInstrument> allInstruments = getInstruments();
-
-            for(PsiInstrument instrument: allInstruments)
-            {
-               _instruments.put(instrument.getName(), instrument);
-            }
+            buildInstrumentMap();
         }
         return _instruments.get(instrumentName);
+    }
+
+    private void buildInstrumentMap() throws PxException
+    {
+        _instruments = new HashMap<>();
+        List<PsiInstrument> allInstruments = getInstruments();
+        allInstruments.forEach(i -> _instruments.put(i.getName(), i));
+    }
+
+    /**
+     * @return a PsiInstrument object if a match was found in the PSI-MS CV for the given instrument name.
+     * Returns null if an exception is thrown while reading from the psi-ms-PARSED.xml file.  The exception is logged.
+     */
+    public @Nullable PsiInstrument tryGetInstrument(String instrumentName)
+    {
+        try
+        {
+            return getInstrument(instrumentName);
+        }
+        catch (PxException e)
+        {
+            log.error("Error reading MS instruments from psi-ms-PARSED.xml", e);
+        }
+        return null;
     }
 
     public static List<PsiInstrument> getInstruments() throws PxException
