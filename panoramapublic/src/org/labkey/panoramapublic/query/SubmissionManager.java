@@ -294,6 +294,8 @@ public class SubmissionManager
                 ShortURLRecord accessUrlRecord = JournalManager.saveShortURL(fullAccessUrl, newShortAccessUrl, journal, user);
                 je.setShortAccessUrl(accessUrlRecord);
 
+                updateJournalExperiment(je, user); // Save with the new URL before deleting the old short URL
+
                 // Delete the old one
                 shortURLService.deleteShortURL(oldAccessUrl, user);
             }
@@ -305,11 +307,11 @@ public class SubmissionManager
                 ShortURLRecord copyUrlRecord = JournalManager.saveShortURL(fullCopyUrl, newShortCopyUrl, null, user);
                 je.setShortCopyUrl(copyUrlRecord);
 
+                updateJournalExperiment(je, user); // Save with the new URL before deleting the old short URL
+
                 // Delete the old one
                 shortURLService.deleteShortURL(oldCopyUrl, user);
             }
-
-            updateJournalExperiment(je, user);
 
             transaction.commit();
         }

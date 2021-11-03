@@ -32,16 +32,19 @@ import org.labkey.api.settings.AdminConsole;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.BaseWebPartFactory;
+import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.Portal;
 import org.labkey.api.view.ShortURLService;
 import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartFactory;
 import org.labkey.api.view.WebPartView;
+import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.SkylineVersion;
 import org.labkey.panoramapublic.proteomexchange.SubmissionDataValidator;
 import org.labkey.panoramapublic.query.ExperimentTitleDisplayColumn;
+import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentsWebPart;
@@ -53,9 +56,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.labkey.api.util.DOM.DIV;
+
 public class PanoramaPublicModule extends SpringModule
 {
     public static final String NAME = "PanoramaPublic";
+    public static final String DOWNLOAD_DATA_INFO_WP = "Download Data";
 
     @Override
     public String getName()
@@ -168,11 +174,48 @@ public class PanoramaPublicModule extends SpringModule
             }
         };
 
+        BaseWebPartFactory dataDownloadInfoFactory = new BaseWebPartFactory(DOWNLOAD_DATA_INFO_WP)
+        {
+            @Override
+            public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
+            {
+                Container project = portalCtx.getContainer().getProject();
+                if (project != null)
+                {
+                    Journal journal = JournalManager.getJournal(project);
+                    if (journal != null)
+                    {
+                        JournalManager.PublicDataUser publicDataUser = JournalManager.getPublicDataUser(journal);
+                        if (publicDataUser != null)
+                        {
+                            JspView view = new JspView("/org/labkey/panoramapublic/view/publish/dataDownloadInfo.jsp", publicDataUser);
+                            view.setTitle(DOWNLOAD_DATA_INFO_WP);
+                            return view;
+                        }
+                        else
+                        {
+                            HtmlView view = new HtmlView(DIV("Public data download user is not configured for " + journal.getName()));
+                            return view;
+                        }
+                    }
+                }
+                return new HtmlView(DIV(DOWNLOAD_DATA_INFO_WP + " webpart can only be added in projects setup as a Journal"));
+            }
+            @Override
+            public boolean isAvailable(Container c, String scope, String location)
+            {
+                // This webpart should be available only in subfolders of projects configured as Journal projects (e.g. Panorama Public)
+                Container project = c.getProject();
+                return project != null && JournalManager.getJournal(project) != null;
+            }
+        };
+
         List<WebPartFactory> webpartFactoryList = new ArrayList<>();
         webpartFactoryList.add(experimentAnnotationsListFactory);
         webpartFactoryList.add(containerExperimentFactory);
         webpartFactoryList.add(proteinSearchFactory);
         webpartFactoryList.add(peptideSearchFactory);
+        webpartFactoryList.add(dataDownloadInfoFactory);
         return webpartFactoryList;
     }
 

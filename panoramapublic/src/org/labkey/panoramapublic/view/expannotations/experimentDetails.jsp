@@ -17,7 +17,6 @@
 %>
 <%@ page import="org.apache.commons.lang3.StringUtils" %>
 <%@ page import="org.labkey.api.data.Container" %>
-<%@ page import="org.labkey.api.security.permissions.InsertPermission" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
@@ -33,6 +32,7 @@
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
+<%@ page import="org.labkey.api.security.permissions.AdminPermission" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -59,7 +59,7 @@
 
     ActionURL publishUrl = PanoramaPublicController.getPublishExperimentURL(annot.getId(), getContainer(), true, true);
     Container experimentContainer = annot.getContainer();
-    final boolean canEdit = (!annot.isJournalCopy() || getUser().hasSiteAdminPermission()) && experimentContainer.hasPermission(getUser(), InsertPermission.class);
+    final boolean canEdit = (!annot.isJournalCopy() || getUser().hasSiteAdminPermission()) && experimentContainer.hasPermission(getUser(), AdminPermission.class);
     // User needs to be the folder admin to publish an experiment.
     final boolean canPublish = annotDetails.isCanPublish();
     final boolean showingFullDetails = annotDetails.isFullDetails();
@@ -187,6 +187,12 @@
     <%if(canPublish && !journalCopyPending){%>
         <a class="button-small button-small-red" style="float:left; margin:0px 5px 0px 2px;" href="<%=h(publishUrl)%>"><%=h(publishButtonText)%></a>
     <%}%>
+    <% if (annotDetails.canAddPublishLink(getUser())) { %>
+        <%=link(annotDetails.getPublishButtonText(), new ActionURL(PanoramaPublicController.MakePublicAction.class,getContainer())
+                .addParameter("id", annot.getId()))
+                .clearClasses().addClass("button-small button-small-red")
+                .style("margin:0px 5px 0px 2px;")%>
+    <% } %>
     <%if(canEdit){%>
     <a style="margin-top:2px; margin-left:2px;" href="<%=h(editUrl)%>">[Edit]</a>
     <a style="margin-top:2px; margin-left:2px;" href="<%=h(deleteUrl)%>">[Delete]</a>

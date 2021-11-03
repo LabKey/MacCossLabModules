@@ -47,13 +47,16 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
+import org.labkey.panoramapublic.proteomexchange.PsiInstrumentParser;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * User: vsharma
@@ -70,7 +73,11 @@ public class ExperimentAnnotationsManager
         return experimentAnnotationsId == null ? null : new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),null, null).getObject(experimentAnnotationsId, ExperimentAnnotations.class);
     }
 
-    public static ExperimentAnnotations getForExperiment(int experimentId)
+    /**
+     * @param experimentId FK -> exp.experiment.rowId
+     * @return ExperimentAnnotations object with the given experimentId
+     */
+    private static ExperimentAnnotations getForExperimentId(int experimentId)
     {
         return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),
                 new SimpleFilter(FieldKey.fromParts("ExperimentId"), experimentId), null).getObject(ExperimentAnnotations.class);
@@ -243,7 +250,7 @@ public class ExperimentAnnotationsManager
     {
         if(experiment == null)
             return;
-        ExperimentAnnotations experimentAnnotations = getForExperiment(experiment.getRowId());
+        ExperimentAnnotations experimentAnnotations = getForExperimentId(experiment.getRowId());
         if(experimentAnnotations != null)
         {
             if (!experimentAnnotations.getContainer().hasPermission(user, DeletePermission.class))
@@ -524,5 +531,34 @@ public class ExperimentAnnotationsManager
         Sort sort = new Sort();
         sort.appendSortColumn(FieldKey.fromParts("Created"), Sort.SortDirection.DESC, true);
         return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(), filter, sort).getArrayList(ExperimentAnnotations.class);
+    }
+
+    /**
+     * @param container
+     * @param user
+     * @return List of instruments that were used to acquire the data for the Skyline documents in the given container.
+     * The list will only include instrument model names that have a match in the PSI-MS controlled vocabulary. We are not able
+     * to get specific instrument model names from Bruker, Agilent or Waters raw data. The instrument name for data from these
+     * vendors is usually reported in the Skyline documents as - e.g. "Waters instrument model".
+     */
+    public static @NotNull List<PsiInstrumentParser.PsiInstrument> getContainerInstruments(@NotNull Container container, User user)
+    {
+        List<ITargetedMSRun> runs = TargetedMSService.get().getRuns(container);
+        List<Long> runIds = runs.stream().map(ITargetedMSRun::getId).collect(Collectors.toList());
+        List<String> modelNames = getInstrumentModelNames(runIds, user, container);
+
+        PsiInstrumentParser parser = new PsiInstrumentParser();
+        return modelNames.stream().map(parser::tryGetInstrument).filter(Objects::nonNull).collect(Collectors.toList());
+    }
+
+    private static List<String> getInstrumentModelNames(List<Long> runIds, User user, Container container)
+    {
+        if (runIds.size() > 0)
+        {
+            SimpleFilter filter = new SimpleFilter().addInClause(FieldKey.fromParts("runId"), runIds);
+            return new TableSelector(TargetedMSService.get().getUserSchema(user, container).getTable("instrument"),
+                    Set.of("model"), filter, null).getArrayList(String.class);
+        }
+        return Collections.emptyList();
     }
 }
