@@ -99,7 +99,7 @@ public class UpdateFolderTypeTask extends PipelineJob.Task<UpdateFolderTypeTask.
             {
                throw new PipelineJobException(String.format("Cannot update folder type. Could not find the source container for the subfolder '%s'.", child.getPath()));
             }
-            updateFolderType(child, sourceContainer, user, svc, log);
+            updateFolderType(child, source, user, svc, log);
         }
     }
 
