@@ -17,8 +17,8 @@ package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 import org.labkey.api.data.CompareType;
@@ -28,12 +28,15 @@ import org.labkey.api.data.TableSelector;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.query.FieldKey;
-import org.labkey.api.targetedms.BlibSourceFile;
+import org.labkey.api.targetedms.ISpectrumLibrary;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+import org.labkey.panoramapublic.speclib.LibSourceFile;
+import org.labkey.panoramapublic.speclib.SpecLibReader;
+import org.labkey.panoramapublic.speclib.SpecLibReaderException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -245,11 +248,35 @@ public class SubmissionDataValidator
                 submissionStatus.addMissingRawPath(missingFile, run.getFileName());
             }
 
-            // Get missing blib source files
+            // Get missing library source files
             java.nio.file.Path rawFilesDir = getRawFilesDirPath(run.getContainer());
-            for(Map.Entry<String, List<BlibSourceFile>> entry : targetedMsSvc.getBlibSourceFiles(run).entrySet())
+            List<? extends ISpectrumLibrary> libraries = targetedMsSvc.getLibraries(run);
+            for(ISpectrumLibrary library: libraries)
             {
-                if(isPrositLibrary(entry, run))
+                SpecLibReader libReader = SpecLibReader.getReader(library);
+                if (libReader == null)
+                {
+                    continue; // Unsupported library type
+                }
+                List<LibSourceFile> sourceFiles;
+                try
+                {
+                    sourceFiles = libReader.readLibSourceFiles(run, library);
+                }
+                catch (SpecLibReaderException e)
+                {
+                    // TODO: In the next iteration of the data validation code, this library will be flagged and reported to the submitter.
+                    LOG.warn("Error reading source files for library " + library.getFileNameHint(), e);
+                    continue;
+                }
+                if (sourceFiles == null)
+                {
+                    // TODO: In the next iteration of the data validation code, this library will be flagged and reported to the submitter.
+                    LOG.warn("Source files could not be read for library " + library.getFileNameHint());
+                    return;
+                }
+
+                if(isPrositLibrary(library, sourceFiles))
                 {
                     // Prosit libraries are built from predictions, so no raw files or search results need to be uploaded.
                     continue;
@@ -257,7 +284,7 @@ public class SubmissionDataValidator
                 Set<String> checkedFiles = new HashSet<>();
                 Set<String> ssfMissing = new HashSet<>();
                 Set<String> idFilesMissing = new HashSet<>();
-                for(BlibSourceFile file: entry.getValue())
+                for(LibSourceFile file: sourceFiles)
                 {
                     String ssf = file.getSpectrumSourceFile();
                     if (file.hasSpectrumSourceFile() && !checkedFiles.contains(ssf))
@@ -281,29 +308,25 @@ public class SubmissionDataValidator
                 for(String file: idFilesMissing)
                     ssfMissing.remove(file);
 
-                submissionStatus.addMissingLibFile(entry.getKey(), run.getFileName(), ssfMissing, idFilesMissing);
+                submissionStatus.addMissingLibFile(library.getFileNameHint(), run.getFileName(), ssfMissing, idFilesMissing);
             }
         }
     }
 
-    private static boolean isPrositLibrary(Map.Entry<String, List<BlibSourceFile>> entry, ITargetedMSRun run)
+    private static boolean isPrositLibrary(ISpectrumLibrary library, List<LibSourceFile> sourceFiles)
     {
-        List<BlibSourceFile> sourceFiles = entry.getValue();
+        if (SpecLibReader.isBiblioSpec(library))
+    {
         // For a library based on Prosit we only expect one row in the SpectrumSourceFiles table,
         // We expect idFileName to be blank amd the value in the fileName column to be "Prositintensity_prosit_publication_v1".
         // The value in the fileName column may be different in Skyline 21.1. This code will be have to be updated then.
         if(sourceFiles.size() == 1 && !sourceFiles.get(0).hasIdFile())
         {
             String fileName = sourceFiles.get(0).getSpectrumSourceFile();
-            return "Prositintensity_prosit_publication_v1".equals(fileName) && preSkyline21(run);
+                return "Prositintensity_prosit_publication_v1".equals(fileName);
+            }
         }
         return false;
-    }
-
-    private static boolean preSkyline21(ITargetedMSRun run)
-    {
-        SkylineVersion version = SkylineVersion.parse(run.getSoftwareVersion());
-        return version != null && version.getMajorVersion() < 21;
     }
 
     private static List<String> getMissingFilesForRun(ITargetedMSRun run, Container rootExpContainer, Set<String> existingRawFiles)
