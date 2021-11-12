@@ -96,6 +96,9 @@ public class ExperimentImportTask extends PipelineJob.Task<ExperimentImportTask.
 
         FolderImporterImpl importer = new FolderImporterImpl(job);
         importer.process(job, importCtx, importJobRoot);
+
+        FilesMetadataImporter filesMetadataImporter = new FilesMetadataImporter();
+        filesMetadataImporter.doImport(container, jobSupport.getExpAnnotations().isIncludeSubfolders(), importJobRoot, user, job.getLogger());
     }
 
     public static class Factory extends AbstractTaskFactory<AbstractTaskFactorySettings, Factory>

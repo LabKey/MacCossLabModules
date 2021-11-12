@@ -15,7 +15,6 @@
  */
 package org.labkey.panoramapublic.pipeline;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.admin.FolderExportContext;
@@ -124,7 +123,10 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
             throw new Exception("Could not create directory " + exportDir.getAbsolutePath());
         }
 
-        writer.write(source, ctx, new FileSystemFile(exportDir));
+        FileSystemFile vf = new FileSystemFile(exportDir);
+        writer.write(source, ctx, vf);
+        FilesMetadataWriter filesMetadataWriter = new FilesMetadataWriter();
+        filesMetadataWriter.write(exptAnnotations.getContainer(), exptAnnotations.isIncludeSubfolders(), vf, user, getJob().getLogger());
     }
 
     public static class Factory extends AbstractTaskFactory<AbstractTaskFactorySettings, Factory>
