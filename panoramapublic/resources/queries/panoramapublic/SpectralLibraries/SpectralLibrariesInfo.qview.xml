@@ -1,0 +1,31 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <columns>
+        <column name="Name" />
+        <column name="FileNameHint">
+            <properties>
+                <property name="columnTitle" value="File Name" />
+            </properties>
+        </column>
+        <column name="SkylineDocLibraries" />
+        <column name="SpecLibInfoId/SourceType/Value">
+            <properties>
+                <property name="columnTitle" value="Library Source" />
+            </properties>
+        </column>
+        <column name="SpecLibInfoId/SourceUrl">
+            <properties>
+                <property name="columnTitle" value="Library URL" />
+            </properties>
+        </column>
+        <column name="SpecLibInfoId/SourceAccession">
+            <properties>
+                <property name="columnTitle" value="External Accession" />
+            </properties>
+        </column>
+        <column name="SpecLibInfoId/DependencyType/Value">
+            <properties>
+                <property name="columnTitle" value="Library Dependency" />
+            </properties>
+        </column>
+    </columns>
+</customView>
