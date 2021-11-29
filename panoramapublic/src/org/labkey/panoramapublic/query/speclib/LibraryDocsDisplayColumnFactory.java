@@ -11,7 +11,7 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.PageFlowUtil;
-import org.labkey.panoramapublic.model.speclib.SpectrumLibrary;
+import org.labkey.panoramapublic.model.speclib.SpectralLibrary;
 import org.labkey.panoramapublic.query.SpecLibInfoManager;
 
 import java.io.IOException;
@@ -50,16 +50,19 @@ public class LibraryDocsDisplayColumnFactory implements DisplayColumnFactory
                             .map(s -> NumberUtils.toLong(s, 0))
                             .filter(l -> l != 0)
                             .collect(Collectors.toSet());
-                    List<SpectrumLibrary> libraries = SpecLibInfoManager.getLibraries(ids, user);
+                    List<SpectralLibrary> libraries = SpecLibInfoManager.getLibraries(ids, user);
                     if (libraries.size() > 0)
                     {
                         Integer specLibInfoId = ctx.get(SPECLIB_INFO_ID, Integer.class);
                         List<DOM.Renderable> runLibraryLinks = new ArrayList<>();
-                        for (SpectrumLibrary library: libraries)
+                        for (SpectralLibrary library: libraries)
                         {
-                              runLibraryLinks.add(TR(TD(at(style, "padding:2px 2px 2px 5px;"), library.getRunLink(user)),
+                              runLibraryLinks.add(TR(
+                                      TD(at(style, "padding:2px 2px 2px 5px;"), library.getRunLink(user)),
                                       TD(at(style, "padding:2px;"),
-                                              library.getViewLibInfoAndDownloadLink(user, Map.of("allSpecLibIds", specLibIds, "specLibInfoId", String.valueOf(specLibInfoId)))))
+                                              library.getViewLibInfoAndDownloadLink(user, Map.of(
+                                                      "allSpecLibIds", StringUtils.join(ids, ","),
+                                                      "specLibInfoId", String.valueOf(specLibInfoId)))))
                               );
                         }
                         DOM.TABLE(runLibraryLinks).appendTo(out);

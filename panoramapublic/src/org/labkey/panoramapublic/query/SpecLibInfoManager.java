@@ -13,7 +13,7 @@ import org.labkey.api.targetedms.ISpectrumLibrary;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
-import org.labkey.panoramapublic.model.speclib.SpectrumLibrary;
+import org.labkey.panoramapublic.model.speclib.SpectralLibrary;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -28,7 +28,7 @@ public class SpecLibInfoManager
 
     public static SpecLibInfo get(int id, Container container)
     {
-        SQLFragment sql = new SQLFragment("SELECT slib.* FROM ")
+        var sql = new SQLFragment("SELECT slib.* FROM ")
                 .append(PanoramaPublicManager.getTableInfoSpecLibInfo(), "slib")
                 .append(" INNER JOIN ")
                 .append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "exp")
@@ -59,17 +59,17 @@ public class SpecLibInfoManager
         return Collections.emptyList();
     }
 
-    public static @Nullable SpectrumLibrary getSpectrumLibrary(long specLibId, @Nullable Container container, User user)
+    public static @Nullable SpectralLibrary getSpectralLibrary(long specLibId, @Nullable Container container, User user)
     {
-        ISpectrumLibrary library = TargetedMSService.get().getLibrary(specLibId, container, user);
-        return library != null ? new SpectrumLibrary(library) : null;
+        var library = TargetedMSService.get().getLibrary(specLibId, container, user);
+        return library != null ? new SpectralLibrary(library) : null;
     }
 
-    public static List<SpectrumLibrary> getLibraries(Collection<Long> specLibIds, User user)
+    public static List<SpectralLibrary> getLibraries(Collection<Long> specLibIds, User user)
     {
-        List<ISpectrumLibrary> libraries = new ArrayList<>();
-        TargetedMSService svc = TargetedMSService.get();
+        var libraries = new ArrayList<ISpectrumLibrary>();
+        var svc = TargetedMSService.get();
         specLibIds.forEach(id -> libraries.add(svc.getLibrary(id, null, user)));
-        return libraries.stream().filter(Objects::nonNull).map(SpectrumLibrary::new).collect(Collectors.toList());
+        return libraries.stream().filter(Objects::nonNull).map(SpectralLibrary::new).collect(Collectors.toList());
     }
 }

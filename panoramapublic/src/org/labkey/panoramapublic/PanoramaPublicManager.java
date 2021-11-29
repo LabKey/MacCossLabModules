@@ -17,23 +17,14 @@
 package org.labkey.panoramapublic;
 
 import org.labkey.api.data.Container;
-import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbSchema;
-import org.labkey.api.data.SimpleFilter;
+import org.labkey.api.data.DbSchemaType;
 import org.labkey.api.data.TableInfo;
-import org.labkey.api.data.TableSelector;
 import org.labkey.api.portal.ProjectUrls;
-import org.labkey.api.query.FieldKey;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class PanoramaPublicManager
 {
@@ -51,7 +42,7 @@ public class PanoramaPublicManager
 
     public static DbSchema getSchema()
     {
-        return DbSchema.get(PanoramaPublicSchema.SCHEMA_NAME);
+        return DbSchema.get(PanoramaPublicSchema.SCHEMA_NAME, DbSchemaType.Module);
     }
 
     public static TableInfo getTableInfoExperimentAnnotations()

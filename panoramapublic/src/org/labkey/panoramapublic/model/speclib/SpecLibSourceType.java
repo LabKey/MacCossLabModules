@@ -34,7 +34,7 @@ public enum SpecLibSourceType implements SafeToRenderEnum
         }
     }
 
-    public static SpecLibSourceType[] valuesForLibrary(SpectrumLibrary library)
+    public static SpecLibSourceType[] valuesForLibrary(SpectralLibrary library)
     {
         if (library.isSupported())
         {

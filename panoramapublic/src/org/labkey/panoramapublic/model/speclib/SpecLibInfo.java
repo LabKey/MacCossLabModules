@@ -1,8 +1,6 @@
 package org.labkey.panoramapublic.model.speclib;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Date;;
 
 public class SpecLibInfo
 {
@@ -33,22 +31,7 @@ public class SpecLibInfo
 
     public SpecLibKey getLibraryKey()
     {
-        return new SpecLibKey(_name, _fileNameHint, _skylineLibraryId, _libraryType, _revision);
-    }
-
-    public String getStringKey()
-    {
-        return getLibraryKey().getStringKey();
-    }
-
-    public static Map<SpecLibKey, SpecLibInfo> toMap(SpecLibInfo[] specLibInfos)
-    {
-        Map<SpecLibKey, SpecLibInfo> m = new HashMap<>();
-        for (SpecLibInfo specLibInfo : specLibInfos)
-        {
-            m.put(specLibInfo.getLibraryKey(), specLibInfo);
-        }
-        return m;
+        return new SpecLibKey(_name, _fileNameHint, _skylineLibraryId, _revision, _libraryType);
     }
 
     public int getId()

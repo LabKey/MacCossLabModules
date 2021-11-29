@@ -4,7 +4,6 @@
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.model.speclib.SpecLibSourceType" %>
 <%@ page import="org.labkey.panoramapublic.model.speclib.SpecLibDependencyType" %>
-<%@ page import="org.labkey.panoramapublic.model.speclib.SpectrumLibrary" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
@@ -18,9 +17,9 @@
 %>
 <%
     JspView<PanoramaPublicController.SpecLibInfoBean> view = (JspView<PanoramaPublicController.SpecLibInfoBean>) HttpView.currentView();
-    PanoramaPublicController.SpecLibInfoBean bean = view.getModelBean();
-    PanoramaPublicController.EditSpecLibInfoForm form = bean.getForm();
-    SpectrumLibrary library = bean.getLibrary();
+    var bean = view.getModelBean();
+    var form = bean.getForm();
+    var library = bean.getLibrary();
     boolean supportedLibrary = library.isSupported();
     var returnUrl = form.getReturnURLHelper(getContainer().getStartURL(getUser()));
 %>
@@ -44,7 +43,7 @@
             frame: false,
             defaults: {
                 labelWidth: 150,
-                width: 600,
+                width: 500,
                 labelStyle: 'background-color: #E0E6EA; padding: 5px;'
             },
             items: [
@@ -139,7 +138,7 @@
                     allowBlank: true,
                     editable: false,
                     value: <%=form.getDependencyType() != null ? q(form.getDependencyType()) : null%>,
-                    afterLabelTextTpl: <%=q(helpPopup("Level of dependence on the library."))%>,
+                    afterLabelTextTpl: <%=q(helpPopup("How the library was used with the Skyline document."))%>,
                     store: [
                         <% for (SpecLibDependencyType sourceType: SpecLibDependencyType.values()) { %>
                         [ <%= q(sourceType.name()) %>, <%= q(sourceType.getLabel()) %> ],

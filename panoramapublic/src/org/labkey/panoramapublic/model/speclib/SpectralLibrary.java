@@ -31,13 +31,13 @@ import static org.labkey.api.util.DOM.EM;
 import static org.labkey.api.util.DOM.SPAN;
 import static org.labkey.api.util.DOM.at;
 
-public class SpectrumLibrary implements ISpectrumLibrary
+public class SpectralLibrary implements ISpectrumLibrary
 {
     private final long _id;
     private final long _runId;
     private final String _name;
     private final String _fileNameHint;
-    private final String _skylineLibraryId;  // lsid in <bibliospec_lite_library> element, id in others
+    private final String _skylineLibraryId;
     private final String _revision;
     private final String _libraryType;
 
@@ -47,7 +47,7 @@ public class SpectrumLibrary implements ISpectrumLibrary
     private boolean _pathInitialized;
     private long _fileSize = 0L;
 
-    public SpectrumLibrary(@NotNull ISpectrumLibrary library)
+    public SpectralLibrary(@NotNull ISpectrumLibrary library)
     {
         _id = library.getId();
         _runId = library.getRunId();
@@ -102,7 +102,7 @@ public class SpectrumLibrary implements ISpectrumLibrary
 
     public SpecLibKey getKey()
     {
-        return new SpecLibKey(getName(), getFileNameHint(), getSkylineLibraryId(), getLibraryType(), getRevision());
+        return new SpecLibKey(getName(), getFileNameHint(), getSkylineLibraryId(), getRevision(), getLibraryType());
     }
 
     public LibraryType getType()
@@ -115,7 +115,7 @@ public class SpectrumLibrary implements ISpectrumLibrary
         return getType().isSupported();
     }
 
-    public ITargetedMSRun getRun(User user)
+    public @Nullable ITargetedMSRun getRun(User user)
     {
         initRun(user);
         return _run;
@@ -130,12 +130,6 @@ public class SpectrumLibrary implements ISpectrumLibrary
         }
     }
 
-    public Path getLibFilePath(User user)
-    {
-        initLibPath(user);
-        return _libFilePath;
-    }
-
     private void initLibPath(User user)
     {
         if (_libFilePath == null && !_pathInitialized)
@@ -143,7 +137,7 @@ public class SpectrumLibrary implements ISpectrumLibrary
             initRun(user);
             if (_run != null)
             {
-                Path path = TargetedMSService.get().getLibraryFilePath(_run, this);
+                var path = TargetedMSService.get().getLibraryFilePath(_run, this);
                 _pathInitialized = true;
                 if (path != null && FileUtil.isFileAndExists(path))
                 {
@@ -168,13 +162,12 @@ public class SpectrumLibrary implements ISpectrumLibrary
         {
             return SPAN(at(style, "color:red;"), "Run not found");
         }
-        ActionURL runUrl = PageFlowUtil.urlProvider(TargetedMSUrls.class).getShowRunUrl(_run.getContainer(), _run.getId());
+        var runUrl = PageFlowUtil.urlProvider(TargetedMSUrls.class).getShowRunUrl(_run.getContainer(), _run.getId());
 
         return new Link.LinkBuilder(_run.getFileName()).href(runUrl).clearClasses().build();
     }
 
-    @NotNull
-    public DOM.Renderable getViewLibInfoAndDownloadLink(@NotNull User user, @NotNull Map<String, String> viewSpecLibParams)
+    public @NotNull DOM.Renderable getViewLibInfoAndDownloadLink(@NotNull User user, @NotNull Map<String, String> viewSpecLibParams)
     {
         return SPAN(getViewLibInfoLink(viewSpecLibParams), getDownloadLink(user));
     }
@@ -182,12 +175,9 @@ public class SpectrumLibrary implements ISpectrumLibrary
     @NotNull
     private DOM.Renderable getViewLibInfoLink(@NotNull Map<String, String> viewSpecLibParams)
     {
-        ActionURL viewSpecLibAction = new ActionURL(PanoramaPublicController.ViewSpecLibAction.class, _run.getContainer());
+        var viewSpecLibAction = new ActionURL(PanoramaPublicController.ViewSpecLibAction.class, _run.getContainer());
         viewSpecLibAction.addParameter("specLibId", getId());
-        for (Map.Entry<String, String> param : viewSpecLibParams.entrySet())
-        {
-            viewSpecLibAction.replaceParameter(param.getKey(), param.getValue());
-        }
+        viewSpecLibParams.forEach(viewSpecLibAction::replaceParameter);
         return new Link.LinkBuilder("Library").href(viewSpecLibAction).tooltip("View library details").build();
     }
 
@@ -207,7 +197,10 @@ public class SpectrumLibrary implements ISpectrumLibrary
                     return SPAN(
                             new Link.LinkBuilder().href(webdavUrl).iconCls("fa fa-download").build(),
                             HtmlString.NBSP,
-                            new Link.LinkBuilder(displaySize).href(webdavUrl).tooltip("Download library file included in the Skyline document").clearClasses().build()
+                            new Link.LinkBuilder(displaySize)
+                                    .href(webdavUrl)
+                                    .tooltip("Download library file included in the Skyline document")
+                                    .clearClasses().build()
                     );
                 }
                 else
@@ -215,7 +208,7 @@ public class SpectrumLibrary implements ISpectrumLibrary
                     return missingLibrary("Cannot build WebDAV URL");
                 }
             }
-            return missingLibrary("Library file not included in the Skyline document zip file");
+            return missingLibrary("Library not included in the Skyline document zip file");
         }
         return SPAN(at(style, "color:red;"), "Run not found");
     }
@@ -230,7 +223,7 @@ public class SpectrumLibrary implements ISpectrumLibrary
 
     private @Nullable String getWebdavUrl(@NotNull Container container, @NotNull Path file)
     {
-        FileContentService fcs = FileContentService.get();
+        var fcs = FileContentService.get();
         if (fcs != null)
         {
             var fileRootPath = fcs.getFileRootPath(container, FileContentService.ContentType.files);

@@ -35,18 +35,21 @@ public enum LibraryType
         return _extension;
     }
 
+    /**
+     * @return true if the library can be read.
+     */
     public boolean isSupported()
     {
         return _supported;
     }
 
-    public static LibraryType getType(@NotNull String typeName)
+    public static @NotNull LibraryType getType(String typeName)
     {
         try
         {
             return valueOf(typeName);
         }
-        catch(IllegalArgumentException e)
+        catch(IllegalArgumentException | NullPointerException e)
         {
             return unknown;
         }

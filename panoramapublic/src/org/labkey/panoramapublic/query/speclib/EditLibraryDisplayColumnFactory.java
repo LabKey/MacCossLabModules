@@ -6,7 +6,7 @@ import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.query.FieldKey;
-import org.labkey.api.security.permissions.AdminPermission;
+import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.panoramapublic.PanoramaPublicController;
@@ -32,29 +32,30 @@ public class EditLibraryDisplayColumnFactory implements DisplayColumnFactory
             @Override
             public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
             {
-                // Show the link only to users that have have admin permissions in the container
-                if (ctx.getContainer().hasPermission(ctx.getViewContext().getUser(), AdminPermission.class))
+                if (ctx.getContainer().hasPermission(ctx.getViewContext().getUser(), UpdatePermission.class))
                 {
                     Long specLibId = ctx.get(colInfo.getFieldKey(), Long.class);
-                    Integer specLibInfoId = ctx.get(SPECLIB_INFO_ID, Integer.class);
-                    int experimentAnnotationsId;
-                    if (specLibInfoId != null)
+                    if (specLibId != null)
                     {
-                        experimentAnnotationsId = ctx.get(EXPT_ANNOT_ID, Integer.class);
+                        Integer specLibInfoId = ctx.get(SPECLIB_INFO_ID, Integer.class);
+                        Integer experimentAnnotationsId;
+                        if (specLibInfoId != null)
+                        {
+                            experimentAnnotationsId = ctx.get(EXPT_ANNOT_ID, Integer.class);
+                        }
+                        else
+                        {
+                            ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(ctx.getContainer());
+                            experimentAnnotationsId = exptAnnotations != null ? exptAnnotations.getId() : null;
+                        }
+                        if (experimentAnnotationsId != null)
+                        {
+                            ActionURL editUrl = PanoramaPublicController.getEditSpecLibInfoURL(experimentAnnotationsId, specLibId, specLibInfoId, ctx.getContainer());
+                            editUrl.addReturnURL(ctx.getViewContext().getActionURL());
+                            out.write(PageFlowUtil.link(specLibInfoId != null ? "Edit" : "Add").href(editUrl).toString());
+                            return;
+                        }
                     }
-                    else
-                    {
-                        ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.getInContainer(ctx.getContainer());
-                        experimentAnnotationsId = exptAnnotations != null ? exptAnnotations.getId() : 0;
-                    }
-                    if (experimentAnnotationsId != 0)
-                    {
-                        ActionURL editUrl = PanoramaPublicController.getEditSpecLibInfoURL(experimentAnnotationsId, specLibId, specLibInfoId, ctx.getContainer());
-                        editUrl.addReturnURL(ctx.getViewContext().getActionURL());
-                        out.write(PageFlowUtil.link(specLibInfoId != null ? "Edit" : "Add").href(editUrl).toString());
-                        return;
-                    }
-
                 }
                 out.write("<em>Not Editable</em>");
             }

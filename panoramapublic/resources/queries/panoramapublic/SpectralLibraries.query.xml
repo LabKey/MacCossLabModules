@@ -1,10 +1,22 @@
 <query xmlns="http://labkey.org/data/xml/query">
     <metadata>
         <tables xmlns="http://labkey.org/data/xml">
-            <table tableName="SpectralLibraries" tableDbType="TABLE">
+            <table tableName="SpectralLibraries" tableDbType="NOT_IN_DB">
                 <columns>
                     <column columnName="FileNameHint">
                         <columnTitle>File Name</columnTitle>
+                    </column>
+                    <column columnName="SpecLibInfoId/SourceType/Value">
+                        <columnTitle>Library Source</columnTitle>
+                    </column>
+                    <column columnName="SpecLibInfoId/SourceUrl">
+                        <columnTitle>Library URL</columnTitle>
+                    </column>
+                    <column columnName="SpecLibInfoId/SourceAccession">
+                        <columnTitle>External Accession</columnTitle>
+                    </column>
+                    <column columnName="SpecLibInfoId/DependencyType/Value">
+                        <columnTitle>Library Dependency</columnTitle>
                     </column>
                     <column columnName="SkylineDocLibraries">
                         <columnTitle>Skyline Documents With Library</columnTitle>

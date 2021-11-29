@@ -121,12 +121,6 @@ public class SpecLibInfoTableInfo extends PanoramaPublicTable
                 {
                     return HtmlString.of(getValue(ctx));
                 }
-
-                @Override
-                public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
-                {
-                    super.renderGridCellContents(ctx, out);
-                }
             };
         }
     }

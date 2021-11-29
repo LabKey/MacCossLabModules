@@ -184,8 +184,8 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         Locator.tagWithClass("span", "x4-tree-node-text").withText(PANORAMA_PUBLIC).waitForElement(new WebDriverWait(getDriver(), 5)).click();
         // Enter the name of the destination folder in the Panorama Public project
         setFormElement(Locator.tagWithName("input", "destContainerName"), destinationFolder);
-        _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Send Email to Submitter:"));
-        _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, "Assign Digital Object Identifier:")); // Don't try to assign a DOI
+        uncheck("Send Email to Submitter:");
+        uncheck("Assign Digital Object Identifier:");
 
         if(recopy)
         {
@@ -208,6 +208,22 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         // Wait for the pipeline job to finish
         waitForText("Copying experiment");
         waitForPipelineJobsToComplete(1, "Copying experiment: " + experimentTitle, false);
+    }
+
+    private void uncheck(String label)
+    {
+        scrollIntoView(Ext4Helper.Locators.checkbox(this, label));
+        int tries = 1;
+        while(_ext4Helper.isChecked(Ext4Helper.Locators.checkbox(this, label)) && tries <= 5)
+        {
+            _ext4Helper.uncheckCheckbox(Ext4Helper.Locators.checkbox(this, label));
+            tries++;
+            sleep(250);
+        }
+        if(_ext4Helper.isChecked(Ext4Helper.Locators.checkbox(this, label)))
+        {
+            Assert.fail("Did not uncheck checkbox '" + label + "'");
+        }
     }
 
     private void verifyCopy(String experimentTitle, @Nullable Integer version, String projectName, String folderName, String subfolderName, boolean recopy)

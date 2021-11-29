@@ -26,7 +26,7 @@ CREATE TABLE panoramapublic.speclibinfo
 
     -- Columns from the targetedms.spectrumlibrary table. The same spectral library can be used in more than one
     -- document. We assume that libraries with identical values for these columns are the same library.
-    -- The VARCHAR column in the targetedms schema have a limit.  Here they are defined without a limit in case
+    -- The VARCHAR columns in the targetedms schema have a limit.  Here they are defined without a limit in case
     -- the column definitions for name, filenamehint and skylinelibraryid change in the targetedms schema.
     librarytype               VARCHAR(20)  NOT NULL,
     name                      VARCHAR NOT NULL, -- VARCHAR(400) NOT NULL,
