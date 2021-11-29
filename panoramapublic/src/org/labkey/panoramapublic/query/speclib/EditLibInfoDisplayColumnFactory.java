@@ -17,12 +17,12 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Set;
 
-public class EditLibraryDisplayColumnFactory implements DisplayColumnFactory
+public class EditLibInfoDisplayColumnFactory implements DisplayColumnFactory
 {
     private static final FieldKey SPECLIB_INFO_ID = FieldKey.fromParts("specLibInfoId");
     private static final FieldKey EXPT_ANNOT_ID = FieldKey.fromParts("specLibInfoId", "experimentAnnotationsId");
 
-    public EditLibraryDisplayColumnFactory() {}
+    public EditLibInfoDisplayColumnFactory() {}
 
     @Override
     public DisplayColumn createRenderer(ColumnInfo colInfo)

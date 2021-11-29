@@ -175,9 +175,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -5714,7 +5714,7 @@ public class PanoramaPublicController extends SpringActionController
                     form.setSourceAccession(_specLibInfo.getSourceAccession());
                     form.setSourceUsername(_specLibInfo.getSourceUsername());
                     form.setSourcePassword(_specLibInfo.getSourcePassword());
-                    if (form.getDependencyType() == null && _specLibInfo.getDependencyType() != null)
+                    if (_specLibInfo.getDependencyType() != null)
                     {
                         form.setDependencyType(_specLibInfo.getDependencyType().name());
                     }
@@ -5760,7 +5760,7 @@ public class PanoramaPublicController extends SpringActionController
             var run = spectralLibrary.getRun(getUser());
             if (run == null)
             {
-                errors.reject(ERROR_MSG, String.format("Could not find a Skyline document (Id: %d) linked to the spectral library with Id: %d",
+                errors.reject(ERROR_MSG, String.format("Could not find the Skyline document (Id: %d) linked to the spectral library with Id: %d",
                         spectralLibrary.getRunId(), spectralLibrary.getId()));
                 return null;
             }
@@ -6117,18 +6117,21 @@ public class PanoramaPublicController extends SpringActionController
                         .filter(l -> l != 0 && library.getId() != l)
                         .collect(Collectors.toSet());
                 List<SpectralLibrary> otherLibraries = SpecLibInfoManager.getLibraries(ids, getUser());
-                TargetedMSService svc = TargetedMSService.get();
                 if (otherLibraries.size() > 0)
                 {
                     List<DOM.Renderable> otherDocs = new ArrayList<>();
-                    Integer specLibInfoId = specLibInfo != null ? specLibInfo.getId() : null;
                     for (SpectralLibrary otherLib: otherLibraries)
                     {
-                        otherDocs.add(DIV(otherLib.getRunLibraryLink(getUser(),
-                                Map.of("allSpecLibIds", form.getAllSpecLibIds(), "specLibInfoId", String.valueOf(specLibInfoId)))));
+                        var params = new HashMap<String, String>();
+                        params.put("allSpecLibIds", form.getAllSpecLibIds());
+                        if (specLibInfo != null)
+                        {
+                            params.put("specLibInfoId", String.valueOf(specLibInfo.getId()));
+                        }
+                        otherDocs.add(DIV(otherLib.getRunLibraryLink(getUser(), params)));
                     }
 
-                    rows.add(TR(TD(cl("labkey-form-label"), String.format("Other Document%s With Library: ", otherLibraries.size() > 1 ? "s" : ""),
+                    rows.add(TR(TD(cl("labkey-form-label"), String.format("Other Document%s With Library: ", otherDocs.size() > 1 ? "s" : ""),
                             TD(otherDocs))));
                 }
             }
@@ -6159,8 +6162,8 @@ public class PanoramaPublicController extends SpringActionController
             VBox view = new VBox();
             view.setTitle("Library Source Files");
             view.setFrame(WebPartView.FrameType.PORTAL);
-            Path libPath = TargetedMSService.get().getLibraryFilePath(run, specLib);
-            if (libPath == null || !Files.exists(libPath))
+            Path libPath = specLib.getLibPath(getUser());
+            if (libPath == null)
             {
                 view.addView(new HtmlView(DIV(at(style, "color:red; font-weight:bold;"), "Library file is missing from the Skyline document")));
             }
@@ -6195,8 +6198,8 @@ public class PanoramaPublicController extends SpringActionController
                     }
                     catch (SpecLibReaderException e)
                     {
-                        view.addView(new HtmlView(DIV(at(style, "color:red; font-weight:bold;"), "Error reading library source files.",
-                                DIV(ExceptionUtil.getExtendedMessage(e)))));
+                        view.addView(new HtmlView(DIV(DIV(at(style, "color:red; font-weight:bold;"), "Error reading library source files."),
+                                DIV(ExceptionUtil.renderException(e)))));
                     }
                 }
             }

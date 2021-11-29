@@ -130,6 +130,12 @@ public class SpectralLibrary implements ISpectrumLibrary
         }
     }
 
+    public @Nullable Path getLibPath(User user)
+    {
+        initLibPath(user);
+        return _libFilePath;
+    }
+
     private void initLibPath(User user)
     {
         if (_libFilePath == null && !_pathInitialized)
@@ -163,7 +169,6 @@ public class SpectralLibrary implements ISpectrumLibrary
             return SPAN(at(style, "color:red;"), "Run not found");
         }
         var runUrl = PageFlowUtil.urlProvider(TargetedMSUrls.class).getShowRunUrl(_run.getContainer(), _run.getId());
-
         return new Link.LinkBuilder(_run.getFileName()).href(runUrl).clearClasses().build();
     }
 

@@ -24,9 +24,9 @@
                             <className>org.labkey.panoramapublic.query.speclib.LibraryDocsDisplayColumnFactory</className>
                         </displayColumnFactory>
                     </column>
-                    <column columnName="Details">
+                    <column columnName="LibraryInfo">
                         <displayColumnFactory>
-                            <className>org.labkey.panoramapublic.query.speclib.EditLibraryDisplayColumnFactory</className>
+                            <className>org.labkey.panoramapublic.query.speclib.EditLibInfoDisplayColumnFactory</className>
                         </displayColumnFactory>
                     </column>
                     <column columnName="SpecLibId">

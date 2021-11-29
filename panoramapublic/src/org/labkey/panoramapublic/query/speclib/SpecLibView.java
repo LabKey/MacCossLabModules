@@ -8,6 +8,7 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.QuerySettings;
 import org.labkey.api.query.QueryView;
 import org.labkey.api.security.permissions.AdminPermission;
+import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.view.ViewContext;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
@@ -66,12 +67,13 @@ public class SpecLibView extends QueryView
     {
         List<DisplayColumn> displayCols = super.getDisplayColumns();
         if (_exptAnnotations != null && !_exptAnnotations.isJournalCopy()
-                && _exptAnnotations.getContainer().hasPermission(getUser(), AdminPermission.class))
+                && _exptAnnotations.getContainer().hasPermission(getUser(), UpdatePermission.class))
         {
             TableInfo table = getTable();
             if (table != null)
             {
-                var col = table.getColumn(FieldKey.fromParts("Details")).getRenderer();
+                // Show the column for adding / editing library info
+                var col = table.getColumn(FieldKey.fromParts("LibraryInfo")).getRenderer();
                 displayCols.add(col);
             }
         }

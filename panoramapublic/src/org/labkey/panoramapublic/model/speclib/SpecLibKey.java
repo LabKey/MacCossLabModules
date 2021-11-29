@@ -1,6 +1,11 @@
 package org.labkey.panoramapublic.model.speclib;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.junit.Assert;
+import org.junit.Test;
+import org.labkey.panoramapublic.speclib.LibraryType;
+
 import java.util.Objects;
 
 public class SpecLibKey
@@ -31,17 +36,20 @@ public class SpecLibKey
 
     }
 
-    public static SpecLibKey from(String key)
+    public static @Nullable SpecLibKey from(String key)
     {
-        var parts = key.split(SEP);
-        if (parts.length > 1)
+        if (key != null)
         {
-            var libraryType = parts[0];
-            var name = parts[1];
-            var fileNameHint = parts.length > 2 ? parts[2] : null;
-            var skylineLibId = parts.length > 3 ? parts[3] : null;
-            var revision = parts.length > 4 ? parts[4] : null;
-            return new SpecLibKey(name, fileNameHint, skylineLibId, revision, libraryType);
+            var parts = key.split(SEP);
+            if (parts.length > 1)
+            {
+                var libraryType = parts[0];
+                var name = parts[1];
+                var fileNameHint = parts.length > 2 ? parts[2] : null;
+                var skylineLibId = parts.length > 3 ? parts[3] : null;
+                var revision = parts.length > 4 ? parts[4] : null;
+                return new SpecLibKey(name, fileNameHint, skylineLibId, revision, libraryType);
+            }
         }
         return null;
     }
@@ -63,5 +71,34 @@ public class SpecLibKey
     public int hashCode()
     {
         return Objects.hash(_name, _fileNameHint, _skylineLibraryId, _libraryType, _revision);
+    }
+
+    public static class TestCase extends Assert
+    {
+        @Test
+        public void testSpecLibKey()
+        {
+            var key = new SpecLibKey("BSA Library", null, null, null, LibraryType.nist.getName());
+            var keyString =  LibraryType.nist.getName() + SEP + "BSA Library";
+            assertEquals(keyString, key.toString());
+            assertEquals(SpecLibKey.from(keyString), key);
+
+            key = new SpecLibKey("1593Lumos_1229",
+                    "CFP10_MRM.blib",
+                    "urn:lsid:proteome.gs.washington.edu:spectral_library:bibliospec:nr:CFP10_MRM", "1",
+                    LibraryType.bibliospec_lite.getName());
+            keyString = String.format("%s%s%s%s%s%s%s%s%s",
+                    LibraryType.bibliospec_lite.getName(), SEP,
+                    "1593Lumos_1229", SEP,
+                    "CFP10_MRM.blib", SEP,
+                    "urn:lsid:proteome.gs.washington.edu:spectral_library:bibliospec:nr:CFP10_MRM", SEP,
+                    "1");
+            assertEquals(keyString, key.toString());
+            assertEquals(SpecLibKey.from(keyString), key);
+
+            assertNull(SpecLibKey.from(null));
+            assertNull(SpecLibKey.from("BSA Library"));
+            assertNull(SpecLibKey.from("BSA Library" + SEP));
+        }
     }
 }

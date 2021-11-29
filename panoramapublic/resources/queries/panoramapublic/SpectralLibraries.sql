@@ -1,6 +1,6 @@
 SELECT lib.*,
        lib.SpecLibIds AS SkylineDocLibraries,
-       lib.SpecLibId AS Details,
+       lib.SpecLibId AS LibraryInfo,
        libinfo.id AS specLibInfoId
 FROM
 (SELECT librarytype,
