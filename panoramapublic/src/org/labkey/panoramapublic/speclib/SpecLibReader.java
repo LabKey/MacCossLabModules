@@ -19,6 +19,16 @@ import static org.labkey.panoramapublic.speclib.LibraryType.*;
 
 public abstract class SpecLibReader
 {
+    static
+    {
+        try {
+            Class.forName("org.sqlite.JDBC");
+        }
+        catch(ClassNotFoundException e)
+        {
+            throw new RuntimeException("Could not find SQLite driver", e);
+        }
+    }
 
     public static SpecLibReader getReader(ISpectrumLibrary library)
     {

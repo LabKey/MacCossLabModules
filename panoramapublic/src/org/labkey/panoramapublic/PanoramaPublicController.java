@@ -6080,7 +6080,7 @@ public class PanoramaPublicController extends SpringActionController
             List<DOM.Renderable> rows = new ArrayList<>();
             rows.add(getSummaryRow("Name:", library.getName()));
             rows.add(getSummaryRow("File Name: ", SPAN(library.getFileNameHint(),
-                    SPAN(at(style, "margin-left:5px;"), library.getDownloadLink(getUser())))));
+                    SPAN(at(style, "margin-left:5px; white-space: nowrap;"), library.getDownloadLink(getUser())))));
             rows.add(getSummaryRow("Skyline Document: ",  new Link.LinkBuilder(run.getFileName())
                     .href(PageFlowUtil.urlProvider(TargetedMSUrls.class).getShowRunUrl(run.getContainer(), run.getId()))
                     .clearClasses().build()));
@@ -6165,14 +6165,14 @@ public class PanoramaPublicController extends SpringActionController
             Path libPath = specLib.getLibPath(getUser());
             if (libPath == null)
             {
-                view.addView(new HtmlView(DIV(at(style, "color:red; font-weight:bold;"), "Library file is missing from the Skyline document")));
+                view.addView(new HtmlView(DIV(cl("labkey-error"), "Library file is missing from the Skyline document")));
             }
             else
             {
                 SpecLibReader reader = SpecLibReader.getReader(specLib);
                 if (reader == null)
                 {
-                    view.addView(new HtmlView(DIV(at(style, "color:red; font-weight:bold;"), "Unsupported library. Could not read library source file names.")));
+                    view.addView(new HtmlView(DIV(cl("labkey-error"), "Unsupported library. Could not read library source file names.")));
                 }
                 else
                 {
@@ -6181,7 +6181,7 @@ public class PanoramaPublicController extends SpringActionController
                         List<LibSourceFile> libSourceFiles = reader.readLibSourceFiles(run, specLib);
                         if (libSourceFiles == null || libSourceFiles.size() == 0)
                         {
-                            view.addView(new HtmlView(DIV(at(style, "color:red; font-weight:bold;"), "No library source file names were found.")));
+                            view.addView(new HtmlView(DIV(cl("labkey-error"), "No library source file names were found.")));
                         }
                         else
                         {
@@ -6198,7 +6198,7 @@ public class PanoramaPublicController extends SpringActionController
                     }
                     catch (SpecLibReaderException e)
                     {
-                        view.addView(new HtmlView(DIV(DIV(at(style, "color:red; font-weight:bold;"), "Error reading library source files."),
+                        view.addView(new HtmlView(DIV(DIV(cl("labkey-error"), "Error reading library source files."),
                                 DIV(ExceptionUtil.renderException(e)))));
                     }
                 }

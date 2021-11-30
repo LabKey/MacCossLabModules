@@ -59,7 +59,7 @@ public class LibraryDocsDisplayColumnFactory implements DisplayColumnFactory
                         {
                               runLibraryLinks.add(TR(
                                       TD(at(style, "padding:2px 2px 2px 5px;"), library.getRunLink(user)),
-                                      TD(at(style, "padding:2px;"),
+                                      TD(at(style, "padding:2px; vertical-align:top;"),
                                               library.getViewLibInfoAndDownloadLink(user, Map.of(
                                                       "allSpecLibIds", StringUtils.join(ids, ","),
                                                       "specLibInfoId", String.valueOf(specLibInfoId)))))

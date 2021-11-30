@@ -30,6 +30,7 @@ import static org.labkey.api.util.DOM.Attribute.style;
 import static org.labkey.api.util.DOM.EM;
 import static org.labkey.api.util.DOM.SPAN;
 import static org.labkey.api.util.DOM.at;
+import static org.labkey.api.util.DOM.cl;
 
 public class SpectralLibrary implements ISpectrumLibrary
 {
@@ -166,7 +167,7 @@ public class SpectralLibrary implements ISpectrumLibrary
         initRun(user);
         if (_run == null)
         {
-            return SPAN(at(style, "color:red;"), "Run not found");
+            return SPAN(cl("labkey-error"), "Run not found");
         }
         var runUrl = PageFlowUtil.urlProvider(TargetedMSUrls.class).getShowRunUrl(_run.getContainer(), _run.getId());
         return new Link.LinkBuilder(_run.getFileName()).href(runUrl).clearClasses().build();
@@ -174,7 +175,7 @@ public class SpectralLibrary implements ISpectrumLibrary
 
     public @NotNull DOM.Renderable getViewLibInfoAndDownloadLink(@NotNull User user, @NotNull Map<String, String> viewSpecLibParams)
     {
-        return SPAN(getViewLibInfoLink(viewSpecLibParams), getDownloadLink(user));
+        return SPAN(at(style, "white-space: nowrap;"), getViewLibInfoLink(viewSpecLibParams), getDownloadLink(user));
     }
 
     @NotNull
@@ -215,19 +216,18 @@ public class SpectralLibrary implements ISpectrumLibrary
             }
             return missingLibrary("Library not included in the Skyline document zip file");
         }
-        return SPAN(at(style, "color:red;"), "Run not found");
+        return SPAN(cl("labkey-error"), "Run not found");
     }
 
     @NotNull
     private DOM.Renderable missingLibrary(String popupText)
     {
-        return EM(at(style, "color:red;",
-                DOM.Attribute.title, popupText),
-                "(Missing Library)");
+        return SPAN(cl("labkey-error"), EM(at(DOM.Attribute.title, popupText), "(Missing Library)"));
     }
 
     private @Nullable String getWebdavUrl(@NotNull Container container, @NotNull Path file)
     {
+        // NOTE: There are no exp.data rows for spectral library files. Otherwise we could use ExpData.getWebDavURL()
         var fcs = FileContentService.get();
         if (fcs != null)
         {

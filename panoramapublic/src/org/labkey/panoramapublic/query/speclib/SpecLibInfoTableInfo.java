@@ -30,14 +30,13 @@ import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
 import org.labkey.panoramapublic.query.PanoramaPublicTable;
 import org.springframework.validation.Errors;
 
-import java.io.IOException;
-import java.io.Writer;
-
 public class SpecLibInfoTableInfo extends PanoramaPublicTable
 {
+    private static final String EXP = "Exp";
+
     public SpecLibInfoTableInfo(PanoramaPublicSchema schema, ContainerFilter cf)
     {
-        super(PanoramaPublicManager.getTableInfoSpecLibInfo(), schema, cf, getJoinSql(), new SQLFragment(" exp.Container "));
+        super(PanoramaPublicManager.getTableInfoSpecLibInfo(), schema, cf, getJoinSql(), new SQLFragment(EXP + ".Container"));
 
         var dependencyTypeCol = getMutableColumn("DependencyType");
         if (dependencyTypeCol != null)
@@ -87,8 +86,8 @@ public class SpecLibInfoTableInfo extends PanoramaPublicTable
     private static SQLFragment getJoinSql()
     {
         SQLFragment joinToExpAnnotSql = new SQLFragment(" INNER JOIN ");
-        joinToExpAnnotSql.append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "exp");
-        joinToExpAnnotSql.append(" ON (exp.id = experimentAnnotationsId) ");
+        joinToExpAnnotSql.append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), EXP);
+        joinToExpAnnotSql.append(" ON (" + EXP + ".id = experimentAnnotationsId) ");
         return joinToExpAnnotSql;
     }
 
