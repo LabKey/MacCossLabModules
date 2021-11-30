@@ -18,6 +18,7 @@ package org.labkey.panoramapublic;
 
 import org.labkey.api.data.Container;
 import org.labkey.api.data.DbSchema;
+import org.labkey.api.data.DbSchemaType;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.targetedms.ITargetedMSRun;
@@ -41,7 +42,7 @@ public class PanoramaPublicManager
 
     public static DbSchema getSchema()
     {
-        return DbSchema.get(PanoramaPublicSchema.SCHEMA_NAME);
+        return DbSchema.get(PanoramaPublicSchema.SCHEMA_NAME, DbSchemaType.Module);
     }
 
     public static TableInfo getTableInfoExperimentAnnotations()
@@ -72,6 +73,11 @@ public class PanoramaPublicManager
     public static ITargetedMSRun getRunByLsid(String lsid, Container container)
     {
         return TargetedMSService.get().getRunByLsid(lsid, container);
+    }
+
+    public static TableInfo getTableInfoSpecLibInfo()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_SPEC_LIB_INFO);
     }
 
     public static ActionURL getRawDataTabUrl(Container container)

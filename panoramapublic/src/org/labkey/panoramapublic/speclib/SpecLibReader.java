@@ -15,11 +15,19 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
 
+import static org.labkey.panoramapublic.speclib.LibraryType.*;
+
 public abstract class SpecLibReader
 {
-    private enum LibraryTypes
+    static
     {
-        bibliospec_lite, bibliospec, elib, hunter, midas, nist, spectrast, chromatogram
+        try {
+            Class.forName("org.sqlite.JDBC");
+        }
+        catch(ClassNotFoundException e)
+        {
+            throw new RuntimeException("Could not find SQLite driver", e);
+        }
     }
 
     public static SpecLibReader getReader(ISpectrumLibrary library)
@@ -80,13 +88,13 @@ public abstract class SpecLibReader
 
     public static boolean isBiblioSpec(ISpectrumLibrary library)
     {
-        return LibraryTypes.bibliospec_lite.name().equalsIgnoreCase(library.getLibraryType())
-                || LibraryTypes.bibliospec.name().equalsIgnoreCase(library.getLibraryType());
+        return bibliospec_lite.name().equalsIgnoreCase(library.getLibraryType())
+                || bibliospec.name().equalsIgnoreCase(library.getLibraryType());
     }
 
     public static boolean isEncyclopeDia(ISpectrumLibrary library)
     {
-        return LibraryTypes.elib.name().equalsIgnoreCase(library.getLibraryType());
+        return elib.name().equalsIgnoreCase(library.getLibraryType());
     }
 
     Connection getConnection(String libFile) throws SQLException

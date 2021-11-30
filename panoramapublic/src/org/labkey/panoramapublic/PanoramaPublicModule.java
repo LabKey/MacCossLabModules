@@ -40,11 +40,13 @@ import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartFactory;
 import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.model.Journal;
+import org.labkey.panoramapublic.model.speclib.SpecLibKey;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.SkylineVersion;
 import org.labkey.panoramapublic.proteomexchange.SubmissionDataValidator;
 import org.labkey.panoramapublic.query.ExperimentTitleDisplayColumn;
 import org.labkey.panoramapublic.query.JournalManager;
+import org.labkey.panoramapublic.query.speclib.SpecLibView;
 import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentsWebPart;
@@ -72,7 +74,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 21.001;
+        return 21.002;
     }
 
     @Override
@@ -210,12 +212,22 @@ public class PanoramaPublicModule extends SpringModule
             }
         };
 
+        BaseWebPartFactory spectralLibrariesFactory = new BaseWebPartFactory("Spectral Libraries")
+        {
+            @Override
+            public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
+            {
+                return new SpecLibView(portalCtx);
+            }
+        };
+
         List<WebPartFactory> webpartFactoryList = new ArrayList<>();
         webpartFactoryList.add(experimentAnnotationsListFactory);
         webpartFactoryList.add(containerExperimentFactory);
         webpartFactoryList.add(proteinSearchFactory);
         webpartFactoryList.add(peptideSearchFactory);
         webpartFactoryList.add(dataDownloadInfoFactory);
+        webpartFactoryList.add(spectralLibrariesFactory);
         return webpartFactoryList;
     }
 
@@ -302,6 +314,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(SubmissionDataValidator.TestCase.class);
         set.add(PanoramaPublicNotification.TestCase.class);
         set.add(SkylineVersion.TestCase.class);
+        set.add(SpecLibKey.TestCase.class);
         return set;
 
     }

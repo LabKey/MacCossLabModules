@@ -17,11 +17,14 @@
 package org.labkey.panoramapublic;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.collections.CaseInsensitiveHashSet;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
+import org.labkey.api.data.ContainerForeignKey;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.DbSchemaType;
+import org.labkey.api.data.EnumTableInfo;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.dialect.SqlDialect;
@@ -30,12 +33,18 @@ import org.labkey.api.query.DefaultSchema;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.QuerySchema;
+import org.labkey.api.query.QuerySettings;
+import org.labkey.api.query.QueryView;
 import org.labkey.api.query.UserSchema;
-import org.labkey.api.query.column.BuiltInColumnTypes;
 import org.labkey.api.security.User;
+import org.labkey.api.view.ViewContext;
+import org.labkey.panoramapublic.model.speclib.SpecLibDependencyType;
+import org.labkey.panoramapublic.model.speclib.SpecLibSourceType;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsTableInfo;
 import org.labkey.panoramapublic.query.JournalExperimentTableInfo;
 import org.labkey.panoramapublic.query.SubmissionTableInfo;
+import org.labkey.panoramapublic.query.speclib.SpecLibInfoTableInfo;
+import org.springframework.validation.BindException;
 
 import java.util.Set;
 
@@ -49,6 +58,10 @@ public class PanoramaPublicSchema extends UserSchema
     public static final String TABLE_SUBMISSION = "Submission";
     public static final String TABLE_EXPERIMENT_ANNOTATIONS = "ExperimentAnnotations";
     public static final String TABLE_PX_XML = "PxXml";
+    public static final String TABLE_SPEC_LIB_INFO = "SpecLibInfo";
+
+    public static final String TABLE_LIB_DEPENDENCY_TYPE = "SpecLibDependencyType";
+    public static final String TABLE_LIB_SOURCE_TYPE = "SpecLibSourceType";
 
     public PanoramaPublicSchema(User user, Container container)
     {
@@ -98,15 +111,48 @@ public class PanoramaPublicSchema extends UserSchema
             FilteredTable<PanoramaPublicSchema> result = new FilteredTable<>(getSchema().getTable(name), this, cf);
             result.wrapAllColumns(true);
             var projectCol = result.getMutableColumn(FieldKey.fromParts("Project"));
-            projectCol.setConceptURI(BuiltInColumnTypes.CONTAINERID_CONCEPT_URI);
+            projectCol.setFk(new ContainerForeignKey(result.getUserSchema()));
             var supportContainerCol = result.getMutableColumn(FieldKey.fromParts("SupportContainer"));
-            supportContainerCol.setConceptURI(BuiltInColumnTypes.CONTAINERID_CONCEPT_URI);
+            supportContainerCol.setFk(new ContainerForeignKey(result.getUserSchema()));
             return result;
         }
 
         if(TABLE_PX_XML.equalsIgnoreCase(name))
         {
             return getFilteredPxXmlTable(name, cf);
+        }
+
+        if (TABLE_SPEC_LIB_INFO.equalsIgnoreCase(name))
+        {
+            return new SpecLibInfoTableInfo(this, cf);
+        }
+
+        if (TABLE_LIB_DEPENDENCY_TYPE.equalsIgnoreCase(name))
+        {
+            EnumTableInfo<SpecLibDependencyType> tableInfo = new EnumTableInfo<>(
+                    SpecLibDependencyType.class,
+                    this,
+                    SpecLibDependencyType::getLabel,
+                    true,
+                    "Types of dependencies on a spectral library");
+
+            var viewColumn = tableInfo.getMutableColumn("Value");
+            viewColumn.setLabel("Dependency Type");
+            return tableInfo;
+        }
+
+        if (TABLE_LIB_SOURCE_TYPE.equalsIgnoreCase(name))
+        {
+            EnumTableInfo<SpecLibSourceType> tableInfo = new EnumTableInfo<>(
+                    SpecLibSourceType.class,
+                    this,
+                    SpecLibSourceType::getLabel,
+                    true,
+                    "Spectral library source types");
+
+            var viewColumn = tableInfo.getMutableColumn("Value");
+            viewColumn.setLabel("Library Source");
+            return tableInfo;
         }
         return null;
     }
@@ -156,6 +202,16 @@ public class PanoramaPublicSchema extends UserSchema
     }
 
     @Override
+    public @NotNull QueryView createView(ViewContext context, @NotNull QuerySettings settings, @Nullable BindException errors)
+    {
+        if (TABLE_SPEC_LIB_INFO.equalsIgnoreCase(settings.getQueryName()))
+        {
+            return new SpecLibInfoTableInfo.UserSchemaView(this, settings, errors);
+        }
+        return super.createView(context, settings, errors);
+    }
+
+    @Override
     public Set<String> getTableNames()
     {
         CaseInsensitiveHashSet hs = new CaseInsensitiveHashSet();
@@ -164,6 +220,7 @@ public class PanoramaPublicSchema extends UserSchema
         hs.add(TABLE_SUBMISSION);
         hs.add(TABLE_EXPERIMENT_ANNOTATIONS);
         hs.add(TABLE_PX_XML);
+        hs.add(TABLE_SPEC_LIB_INFO);
 
         return hs;
     }

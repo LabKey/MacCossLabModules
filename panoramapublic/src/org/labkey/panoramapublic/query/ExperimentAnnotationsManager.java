@@ -279,6 +279,10 @@ public class ExperimentAnnotationsManager
             SubmissionManager.beforeCopiedExperimentDeleted(expAnnotations, user);
         }
 
+        // Delete any rows in the panoramapublic.speclibinfo table associated with this experiment
+        Table.delete(PanoramaPublicManager.getTableInfoSpecLibInfo(),
+                new SimpleFilter().addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId()));
+
         Table.delete(PanoramaPublicManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());
 
         if(expAnnotations.isJournalCopy() && expAnnotations.getShortUrl() != null)
@@ -311,7 +315,7 @@ public class ExperimentAnnotationsManager
         Container leaf = container;
         while(container != null && !container.isRoot())
         {
-            ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(container);
+            ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(container);
             if(expAnnotations == null)
             {
                 container = container.getParent();
@@ -333,7 +337,7 @@ public class ExperimentAnnotationsManager
         return null;
     }
 
-    private static ExperimentAnnotations get(Container container)
+    public static ExperimentAnnotations getExperimentInContainer(Container container)
     {
         SimpleFilter filter = container != null ? SimpleFilter.createContainerFilter(container) : null;
         List<ExperimentAnnotations> expAnnotations = new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),

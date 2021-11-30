@@ -70,10 +70,12 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
+import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
+import org.labkey.panoramapublic.query.SpecLibInfoManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
 
 import java.nio.file.Files;
@@ -178,6 +180,9 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 throw new PipelineJobException("Could not find a current submission request");
             }
 
+            // Copy any Spectral library information provided by the user in the source container
+            copySpecLibInfos(sourceExperiment, targetExperiment, user);
+
             // Assign a reviewer account if one was requested
             Pair<User, String> reviewer = assignReviewer(js, targetExperiment, previousCopy, jobSupport, currentSubmission.isKeepPrivate(), user, log);
 
@@ -194,6 +199,17 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             postEmailNotification(jobSupport, user, log, sourceExperiment, js, targetExperiment, reviewer.first, reviewer.second, previousCopy != null);
 
             transaction.commit();
+        }
+    }
+
+    private void copySpecLibInfos(ExperimentAnnotations sourceExperiment, ExperimentAnnotations targetExperiment, User user)
+    {
+        List<SpecLibInfo> specLibInfos = SpecLibInfoManager.getForExperiment(sourceExperiment.getId(), sourceExperiment.getContainer());
+        for (SpecLibInfo info: specLibInfos)
+        {
+            info.setId(0);
+            info.setExperimentAnnotationsId(targetExperiment.getId());
+            SpecLibInfoManager.save(info, user);
         }
     }
 

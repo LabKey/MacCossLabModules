@@ -354,4 +354,58 @@
         </columns>
     </table>
 
+    <table tableName="SpecLibInfo" tableDbType="TABLE">
+        <columns>
+            <column columnName="_ts">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Created">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="CreatedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Modified">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="ModifiedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Id"/>
+            <column columnName="librarytype">
+                <nullable>false</nullable>
+            </column>
+            <column columnName="name">
+                <nullable>false</nullable>
+            </column>
+            <column columnName="filenamehint"/>
+            <column columnName="skylinelibraryid"/>
+            <column columnName="revision"/>
+            <column columnName="experimentAnnotationsId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>ExperimentAnnotations</fkTable>
+                </fk>
+            </column>
+            <column columnName="SourceType"/>
+            <column columnName="SourceUrl"/>
+            <column columnName="SourceAccession"/>
+            <column columnName="SourceUsername"/>
+            <column columnName="SourcePassword">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="DependencyType"/>
+        </columns>
+    </table>
 </tables>
