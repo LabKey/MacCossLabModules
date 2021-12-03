@@ -25,5 +25,6 @@ dependencies {
     BuildUtils.addLabKeyDependency(project: project, config: "modules", depProjectPath: BuildUtils.getPlatformModuleProjectPath(project.gradle, "experiment"), depProjectConfig: "published", depExtension: "module")
     BuildUtils.addLabKeyDependency(project: project, config: "modules", depProjectPath: BuildUtils.getPlatformModuleProjectPath(project.gradle, "pipeline"), depProjectConfig: "published", depExtension: "module")
     BuildUtils.addLabKeyDependency(project: project, config: "implementation", depProjectPath: ":server:modules:targetedms", depProjectConfig: "apiJarFile")
+    BuildUtils.addLabKeyDependency(project: project, config: "jspImplementation", depProjectPath: ":server:modules:targetedms", depProjectConfig: "apiJarFile")
     BuildUtils.addLabKeyDependency(project: project, config: "modules", depProjectPath: ":server:modules:targetedms", depProjectConfig: "published", depExtension: "module")
 }
