@@ -295,7 +295,7 @@ public class SubmissionDataValidator
         if(sourceFiles.size() == 1 && !sourceFiles.get(0).hasIdFile())
         {
             String fileName = sourceFiles.get(0).getSpectrumSourceFile();
-            return "Prositintensity_prosit_publication_v1".equals(fileName) && preSkyline21(run);
+            return "Prositintensity_prosit_publication_v1".equals(fileName);
         }
         return false;
     }
