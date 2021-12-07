@@ -386,7 +386,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                 .append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "e")
                 .append(" WHERE e.SourceExperimentId = ").append(ExprColumn.STR_TABLE_ALIAS).append(".SourceExperimentId)");
 
-        ExprColumn versionCountCol = new ExprColumn(this, "VersionCount", versionCountSql, JdbcType.VARCHAR);
+        ExprColumn versionCountCol = new ExprColumn(this, "VersionCount", versionCountSql, JdbcType.INTEGER);
         ActionURL allVersionsLink = new ActionURL(PanoramaPublicController.ShowPublishedVersions.class, getContainer());
         allVersionsLink.addParameter("id", "${Id}");
         versionCountCol.setURL(StringExpressionFactory.createURL(allVersionsLink));
