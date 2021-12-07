@@ -114,6 +114,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
                 _containerHelper.doesContainerExist(PANORAMA_PUBLIC + "/" + v1Folder));
 
         // Verify versions
+        verifyVersionCount(experimentTitle, 2);
         verifyExperimentVersion(PANORAMA_PUBLIC, targetFolder, "Current");
         verifyExperimentVersion(PANORAMA_PUBLIC, v1Folder, "1");
 
@@ -349,6 +350,16 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
         waitForText("Request resubmitted to");
         click(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
+    }
+
+    public void verifyVersionCount(String experimentTitle, int count)
+    {
+        goToProjectHome(PANORAMA_PUBLIC);
+        DataRegionTable expListTable = DataRegionTable.findDataRegionWithinWebpart(this, "Targeted MS Experiment List");
+        expListTable.ensureColumnPresent("VersionCount");
+        expListTable.setFilter("VersionCount", "Equals", "2");
+        expListTable.setFilter("Title", "Equals", experimentTitle);
+        assertEquals(count, expListTable.getDataRowCount()); // One row per version of the data
     }
 
     @Override
