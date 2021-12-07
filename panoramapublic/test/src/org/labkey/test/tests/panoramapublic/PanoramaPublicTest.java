@@ -355,11 +355,14 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
     public void verifyVersionCount(String experimentTitle, int count)
     {
         goToProjectHome(PANORAMA_PUBLIC);
-        DataRegionTable expListTable = DataRegionTable.findDataRegionWithinWebpart(this, "Targeted MS Experiment List");
+        var expListTable = DataRegionTable.findDataRegionWithinWebpart(this, "Targeted MS Experiment List");
         expListTable.ensureColumnPresent("VersionCount");
-        expListTable.setFilter("VersionCount", "Equals", "2");
         expListTable.setFilter("Title", "Equals", experimentTitle);
         assertEquals(count, expListTable.getDataRowCount()); // One row per version of the data
+        for (var row = 0; row < count; row++)
+        {
+            assertEquals("Unexpected VersionCount", String.valueOf(count), expListTable.getRowDataAsText(row, "VersionCount").get(0).trim());
+        }
     }
 
     @Override
