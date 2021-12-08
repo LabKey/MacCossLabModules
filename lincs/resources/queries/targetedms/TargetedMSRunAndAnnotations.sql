@@ -15,9 +15,9 @@
  */
 SELECT
 runs.*,
-(SELECT GROUP_CONCAT(DISTINCT(Value), ',') AS Values FROM replicateAnnotation WHERE Name='cell_id' AND replicateId IN (SELECT Id FROM replicate where runId = runs.Id)) AS CellLine,
+(SELECT GROUP_CONCAT(DISTINCT(Value), ', ') FROM replicateAnnotation WHERE Name='cell_id' AND replicateId IN (SELECT Id FROM replicate where runId = runs.Id)) AS CellLine,
 -- Added DetPlate column to enable sorting on plate
-(SELECT GROUP_CONCAT(DISTINCT(Value), ',') AS Values FROM replicateAnnotation WHERE Name='det_plate' AND replicateId IN (SELECT Id FROM replicate where runId = runs.Id)) AS DetPlate,
+(SELECT GROUP_CONCAT(DISTINCT(Value), ', ') FROM replicateAnnotation WHERE Name='det_plate' AND replicateId IN (SELECT Id FROM replicate where runId = runs.Id)) AS DetPlate,
 metadata.Label,
 metadata.Token
 FROM runs

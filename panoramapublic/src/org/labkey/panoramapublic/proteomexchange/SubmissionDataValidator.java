@@ -316,13 +316,13 @@ public class SubmissionDataValidator
     private static boolean isPrositLibrary(ISpectrumLibrary library, List<LibSourceFile> sourceFiles)
     {
         if (SpecLibReader.isBiblioSpec(library))
-    {
-        // For a library based on Prosit we only expect one row in the SpectrumSourceFiles table,
-        // We expect idFileName to be blank amd the value in the fileName column to be "Prositintensity_prosit_publication_v1".
-        // The value in the fileName column may be different in Skyline 21.1. This code will be have to be updated then.
-        if(sourceFiles.size() == 1 && !sourceFiles.get(0).hasIdFile())
         {
-            String fileName = sourceFiles.get(0).getSpectrumSourceFile();
+            // For a library based on Prosit we only expect one row in the SpectrumSourceFiles table,
+            // We expect idFileName to be blank amd the value in the fileName column to be "Prositintensity_prosit_publication_v1".
+            // The value in the fileName column may be different in Skyline 21.1. This code will be have to be updated then.
+            if (sourceFiles.size() == 1 && !sourceFiles.get(0).hasIdFile())
+            {
+                String fileName = sourceFiles.get(0).getSpectrumSourceFile();
                 return "Prositintensity_prosit_publication_v1".equals(fileName);
             }
         }
