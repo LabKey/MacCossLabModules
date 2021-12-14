@@ -264,6 +264,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 assignReader(reviewer, targetExperiment.getContainer());
                 js.getJournalExperiment().setReviewer(reviewer.getUserId());
                 SubmissionManager.updateJournalExperiment(js.getJournalExperiment(), user);
+                return new Pair<>(reviewer, reviewerPassword);
             }
         }
         else
