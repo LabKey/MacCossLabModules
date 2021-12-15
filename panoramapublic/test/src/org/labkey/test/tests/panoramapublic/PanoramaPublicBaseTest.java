@@ -6,6 +6,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
+import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.components.SubfoldersWebPart;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentInsertPage;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
@@ -17,6 +18,7 @@ import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PortalHelper;
 import org.labkey.test.util.PostgresOnlyTest;
+import org.labkey.test.util.TextSearcher;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.util.List;
@@ -248,6 +250,14 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         clickAndWait(Locator.linkContainingText("/" + projectName + "/" + folderName));
         assertTextPresent((recopy ? "RECOPIED": "COPIED") + ": Experiment ID ");
         assertTextPresent("Email was not sent to submitter");
+        var text = "As requested, your data on " + PANORAMA_PUBLIC + " is private.";
+        text += recopy ? " The reviewer account details remain unchanged." : " Here are the reviewer account details:";
+        if (!recopy)
+        {
+            text += "\nEmail: " + REVIEWER_PREFIX;
+        }
+        String messageText = new BodyWebPart(getDriver(), "View Message").getComponentElement().getText();
+        assertTextPresent(new TextSearcher(messageText), text);
     }
 
     @Override
