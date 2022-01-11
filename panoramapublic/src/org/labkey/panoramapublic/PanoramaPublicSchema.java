@@ -134,16 +134,16 @@ public class PanoramaPublicSchema extends UserSchema
                 if (getContainerFilter() != ContainerFilter.EVERYTHING)
                 {
                     SQLFragment joinToExpAnnotSql = new SQLFragment("INNER JOIN ");
-                    joinToExpAnnotSql.append(PanoramaPublicManager.getTableInfoJournalExperiment(), "je");
-                    joinToExpAnnotSql.append(" ON (je.id = JournalExperimentId) ");
+                    joinToExpAnnotSql.append(PanoramaPublicManager.getTableInfoSubmission(), "s");
+                    joinToExpAnnotSql.append(" ON (s.journalExperimentId = X.JournalExperimentId) ");
                     joinToExpAnnotSql.append(" INNER JOIN ");
                     joinToExpAnnotSql.append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "exp");
-                    joinToExpAnnotSql.append(" ON (exp.id = je.CopiedExperimentId) ");
+                    joinToExpAnnotSql.append(" ON (exp.id = s.CopiedExperimentId) ");
 
                     sql.append(joinToExpAnnotSql);
 
                     sql.append(" WHERE ");
-                    sql.append(getContainerFilter().getSQLFragment(getSchema(), new SQLFragment("exp.Container"), getContainer()));
+                    sql.append(getContainerFilter().getSQLFragment(getSchema(), new SQLFragment("exp.Container")));
                 }
                 sql.append(") ");
                 sql.append(alias);
