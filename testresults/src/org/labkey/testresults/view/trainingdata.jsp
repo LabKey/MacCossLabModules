@@ -136,9 +136,9 @@
                 </th>
                 <th>
                     <% if (user.isActive()) { %>
-                    <input type='button' value='Deactivate user' class='deactivate-user' style="margin-left: 5px;" userid="<%=user.getId()%>">
+                    <input type='button' value='Deactivate user' class='deactivate-user' style="margin-left: 5px;" data-userid="<%=user.getId()%>">
                     <% } else { %>
-                    <input type='button' value='Activate user' class='activate-user' style="margin-left: 5px;" userid="<%=user.getId()%>">
+                    <input type='button' value='Activate user' class='activate-user' style="margin-left: 5px;" data-userid="<%=user.getId()%>">
                     <% } %>
                 </th>
             </tr>
@@ -277,7 +277,7 @@
 
     $('.deactivate-user').click(function(obj) {
         let url = <%=jsURL(new ActionURL(TestResultsController.SetUserActive.class, c).addParameter("active", false))%>;
-        url.searchParams.set('userId', userId);
+        url.searchParams.set('userId', this.getAttribute("data-userid"));
         $.post(url.toString(), csrf_header, function(data) {
             location.reload();
         }, "json")
@@ -285,7 +285,7 @@
 
     $('.activate-user').click(function(obj) {
         let url = <%=jsURL(new ActionURL(TestResultsController.SetUserActive.class, c).addParameter("active", true))%>;
-        url.searchParams.set('userId', userId);
+        url.searchParams.set('userId', this.getAttribute("data-userid"));
         $.post(url.toString(), csrf_header, function(data) {
             location.reload();
         }, "json")
