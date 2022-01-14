@@ -76,7 +76,7 @@
 
     ActionURL cancelUrl = PanoramaPublicController.getViewExperimentDetailsURL(bean.getForm().getId(), getContainer());
 
-    boolean getLabHeadUserInfo = form.isGetPxid() && expAnnotations.getLabHeadUser() == null;
+    boolean getLabHeadUserInfo = expAnnotations.getLabHeadUser() == null;
 %>
 
 <div id="publishExperimentForm"></div>

@@ -4648,6 +4648,26 @@ public class PanoramaPublicController extends SpringActionController
             }
             return "";
         }
+
+        public @Nullable String getLabHeadName()
+        {
+            var labHeadName = _experimentAnnotations.getLabHeadName(); // User selected as the lab head in the experiment annotations
+            if (labHeadName == null)
+            {
+                // If the lab head does not have an account on the server, the submitter can enter the lab head's name etc.
+                // in the submission form. Check if this was the case.
+                if (_experimentAnnotations.isJournalCopy())
+                {
+                    var js  = SubmissionManager.getSubmissionForJournalCopy(_experimentAnnotations);
+                    labHeadName = js != null ? js.getLabHeadNameForCopy(_experimentAnnotations.getId()) : null;
+                }
+                else if (_lastPublishedRecord != null)
+                {
+                    labHeadName = _lastPublishedRecord.getLabHeadName();
+                }
+            }
+            return labHeadName;
+        }
     }
 
     @RequiresPermission(ReadPermission.class)

@@ -158,4 +158,28 @@ public class JournalSubmission
         Submission submission = getLatestSubmission();
         return submission != null && submission.getId() == submissionId;
     }
+
+    /**
+     * @param copiedExperimentId
+     * @return The lab head name entered in the submission request that was copied with the given copiedExperimentId.
+     * Returns null if no lab head information was entered in the submission form.
+     */
+    public @Nullable String getLabHeadNameForCopy(int copiedExperimentId)
+    {
+        return getLabHeadNameInSubmission(getSubmissionForCopiedExperiment(copiedExperimentId));
+    }
+
+    /**
+     * @return The lab head name entered in the latest submission request. Returns null if no lab head information was
+     * entered in the submission form.
+     */
+    public @Nullable String getLabHeadName()
+    {
+        return getLabHeadNameInSubmission(getLatestSubmission());
+    }
+
+    private @Nullable String getLabHeadNameInSubmission(Submission submission)
+    {
+        return submission != null ? submission.getLabHeadName() : null;
+    }
 }
