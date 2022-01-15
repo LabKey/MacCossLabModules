@@ -16,6 +16,7 @@
 package org.labkey.panoramapublic.model;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.exp.api.ExpExperiment;
@@ -26,6 +27,8 @@ import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.targetedms.TargetedMSService;
+import org.labkey.api.util.HtmlString;
+import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.query.SubmissionManager;
 
@@ -80,6 +83,7 @@ public class ExperimentAnnotations
     private String _doi;
 
     private static final Pattern taxIdPattern = Pattern.compile("(.*)\\(taxid:(\\d+)\\)");
+    private static final Pattern HTML_TAG = Pattern.compile("<[^>]+>");
 
     public ExperimentAnnotations() {}
 
@@ -242,6 +246,29 @@ public class ExperimentAnnotations
     public String getCitation()
     {
         return _citation;
+    }
+
+    public @NotNull HtmlString getHtmlCitation()
+    {
+        return getHtmlCitation(_citation);
+    }
+
+    public static @NotNull HtmlString getHtmlCitation(String citation)
+    {
+        if (citation != null)
+        {
+            var matcher = HTML_TAG.matcher(citation);
+            if (matcher.find())
+            {
+                var errors = new ArrayList<String>();
+                PageFlowUtil.validateHtml(citation, errors,
+                        false); // errors will be returned if there are <script> tags or any parsing errors
+                var sanitized = PageFlowUtil.sanitizeHtml(citation, errors);
+                return errors.isEmpty() ? HtmlString.unsafe(sanitized) : HtmlString.of(matcher.replaceAll(""));
+            }
+            else return HtmlString.of(citation);
+        }
+        return HtmlString.EMPTY_STRING;
     }
 
     public boolean hasCitation()
