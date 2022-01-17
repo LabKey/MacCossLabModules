@@ -5555,6 +5555,11 @@ public class PanoramaPublicController extends SpringActionController
             return _citation;
         }
 
+        public HtmlString getHtmlCitation()
+        {
+            return ExperimentAnnotations.getHtmlCitation(_citation);
+        }
+
         public void setCitation(String citation)
         {
             _citation = citation;
