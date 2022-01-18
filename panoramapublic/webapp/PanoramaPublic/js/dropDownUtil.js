@@ -19,8 +19,8 @@ viewExperimentDetails = function (obj, experimentContainer, id, detailsPageURL)
     var abstract = null;
     var expDetails = null;
     var sampleDetails = null;
-    var loaded = obj.getAttribute('loaded');
-    var active = obj.getAttribute('active');
+    var loaded = obj.getAttribute('data-loaded');
+    var active = obj.getAttribute('data-active');
     var currentRow = $(obj).closest('tr');
     var bgColor =  $(obj).closest('tr').css('background');
     var styles = 'style="background:'+bgColor+'; border-bottom:4px solid #DDDDDD;"';
@@ -54,7 +54,7 @@ viewExperimentDetails = function (obj, experimentContainer, id, detailsPageURL)
             }
         }
 
-        $(obj).attr("loaded", "false");
+        $(obj).attr("data-loaded", "false");
     }
 
     function verifyNewCol(object, type, rowNum)
@@ -111,7 +111,7 @@ viewExperimentDetails = function (obj, experimentContainer, id, detailsPageURL)
             var newRow = html.join("");
             currentRow.after(newRow);
             fadeIn();
-            $(obj).attr("loaded", "true");
+            $(obj).attr("data-loaded", "true");
         }
     }
 
@@ -145,15 +145,15 @@ viewExperimentDetails = function (obj, experimentContainer, id, detailsPageURL)
     function fadeIn()
     {
         currentRow.next().fadeIn(500)
-        $(obj).attr("active", "true");
-        $('#expandcontract-'+id).attr('src', '/labkey/_images/minus.gif');
+        $(obj).attr("data-active", "true");
+        $('#expandcontract-'+id).attr('src', LABKEY.contextPath + '/_images/minus.gif');
     }
 
     function fadeOut()
     {
         currentRow.next().fadeOut(200);
-        $(obj).attr("active", "false");
-        $('#expandcontract-'+id).attr('src', '/labkey/_images/plus.gif');
+        $(obj).attr("data-active", "false");
+        $('#expandcontract-'+id).attr('src', LABKEY.contextPath + '/_images/plus.gif');
     }
 }
 }(jQuery);
