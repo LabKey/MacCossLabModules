@@ -3621,7 +3621,12 @@ public class PanoramaPublicController extends SpringActionController
 
             StringBuilder summaryHtml = new StringBuilder();
             PxHtmlWriter writer = new PxHtmlWriter(summaryHtml);
-            Submission submission = expAnnot.isJournalCopy() ? js.getSubmissionForCopiedExperiment(expAnnot.getId()) : js.getLatestCopiedSubmission();
+            Submission submission = expAnnot.isJournalCopy() ? js.getSubmissionForCopiedExperiment(expAnnot.getId()) : js.getLatestSubmission();
+            if (submission == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find a " + (expAnnot.isJournalCopy() ? "copied" : "current") + " submission request for experiment Id: " + experimentId);
+                return new SimpleErrorView(errors);
+            }
             PxExperimentAnnotations pxInfo = new PxExperimentAnnotations(expAnnot, js.getJournalExperiment(), submission);
             pxInfo.setPxChangeLog(form.getChangeLog());
             pxInfo.setVersion(PxXmlManager.getNextVersion(js.getJournalExperimentId()));
@@ -5583,6 +5588,11 @@ public class PanoramaPublicController extends SpringActionController
         public String getCitation()
         {
             return _citation;
+        }
+
+        public HtmlString getHtmlCitation()
+        {
+            return ExperimentAnnotations.getHtmlCitation(_citation);
         }
 
         public void setCitation(String citation)
