@@ -38,7 +38,7 @@
         }
         if (<%=form.hasLinkAndCitation()%>) {
             items.push({xtype: 'component', html: '<b>Link:</b> ' + <%=qh(form.getLink())%>});
-            items.push({xtype: 'component', html: '<b>Citation:</b> <i>' + <%=qh(form.getCitation())%> + '</i>'});
+            items.push({xtype: 'component', html: '<b>Citation:</b> <i>' + <%=q(form.getHtmlCitation())%> + '</i>'});
         }
         else {
             items.push({xtype: 'component', html: 'Publication details were not entered.'});

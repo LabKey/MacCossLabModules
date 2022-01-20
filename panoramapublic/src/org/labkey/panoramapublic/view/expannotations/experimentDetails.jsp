@@ -218,15 +218,12 @@
         <% } %>
     </div>
  <% } %>
-<%if(annot.getCitation() != null && annot.getPublicationLink() != null){%>
-    <div class="link"><%=h(annot.getCitation())%> <strong><br />[<a href="<%=h(annot.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
-<%}%>
-<%if(annot.getCitation() != null && annot.getPublicationLink() == null){%>
-    <div class="link"><%=h(annot.getCitation())%> </div>
-<%}%>
-<%if(annot.getCitation() == null && annot.getPublicationLink() != null){%>
-    <div class="link"><strong><br />[<a href="<%=h(annot.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div>
-<%}%>
+<% if(annot.getCitation() != null || annot.getPublicationLink() != null) { %>
+    <div class="link">
+        <% if (annot.hasCitation()) { %> <%=annot.getHtmlCitation() %> <% } %>
+        <% if (annot.getPublicationLink() != null) { %> <div><strong>[<a href="<%=h(annot.getPublicationLink())%>" target="_blank">Publication</a>]</strong></div> <% } %>
+    </div>
+<% } %>
 <div>
     <% boolean addSep = false; %>
     <% if(license != null){%>
