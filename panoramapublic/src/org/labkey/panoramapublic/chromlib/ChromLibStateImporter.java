@@ -41,7 +41,10 @@ public abstract class ChromLibStateImporter
     protected final User _user;
     protected final TargetedMSService _svc;
     protected ITargetedMSRun _currentRun;
-    private Map<LibPeptideGroup.LibPeptideGroupKey, Long> _pepGrpKeyMap;
+    // Issue 44819: Duplicate proteins in a Skyline document cause an error in importing chromatogram library state
+    // There may be more than one protein in a Skyline document with the same key (label, sequenceId). Keep the database
+    // ids of all proteins in the document with the same key.
+    protected Map<LibPeptideGroup.LibPeptideGroupKey, List<Long>> _pepGrpKeyMap;
 
     abstract String libTypeString();
     abstract List<String> getExpectedColumns();
@@ -137,7 +140,11 @@ public abstract class ChromLibStateImporter
             onNextRun();
 
             List<LibPeptideGroup> dbPepGrps = getPeptideGroups(run, _svc);
-            dbPepGrps.forEach(p -> _pepGrpKeyMap.put(p.getKey(), p.getId()));
+            for (var dbPepGrp: dbPepGrps)
+            {
+                var dbIds = _pepGrpKeyMap.computeIfAbsent(dbPepGrp.getKey(), l -> new ArrayList<>());
+                dbIds.add(dbPepGrp.getId());
+            }
         }
     }
 
@@ -154,20 +161,23 @@ public abstract class ChromLibStateImporter
         }
     }
 
-    LibPeptideGroup parsePeptideGroup(Map<String, Object> row, long runId, Container container) throws ChromLibStateException
+    LibPeptideGroup parsePeptideGroup(Map<String, Object> row, long runId)
     {
         String peptideGrp = (String) row.get(PEP_GRP);
         Integer seqId = (Integer) row.get(PEP_GRP_SEQ_ID);
         String pepGrpState = (String) row.get(PEP_GRP_STATE);
-        var pepGrp = new LibPeptideGroup(runId, peptideGrp, seqId, RepresentativeDataState.valueOf(pepGrpState));
-        LibPeptideGroup.LibPeptideGroupKey pepGrpKey = pepGrp.getKey();
-        Long dbId = _pepGrpKeyMap.get(pepGrpKey);
-        if (dbId == null)
+        return new LibPeptideGroup(runId, peptideGrp, seqId, RepresentativeDataState.valueOf(pepGrpState));
+    }
+
+    List<LibPeptideGroup> getPeptideGroupDbMatches(LibPeptideGroup tsvPepGrp, String skyFile, Container container) throws ChromLibStateException
+    {
+        var dbIds = _pepGrpKeyMap.get(tsvPepGrp.getKey());
+        if (dbIds == null || dbIds.size() == 0)
         {
-            throw new ChromLibStateException(String.format("Expected a row for peptide group %s in the Skyline document '%s'. Container '%s'.", pepGrp.getLabel(), getSkyFile(row), container));
+            throw new ChromLibStateException(String.format("Expected a db row for peptide group '%s' in the Skyline document '%s'. Container '%s'.",
+                    tsvPepGrp.getLabel(), skyFile, container.getPath()));
         }
-        pepGrp.setId(dbId);
-        return pepGrp;
+        return dbIds.stream().map(dbId -> new LibPeptideGroup(dbId, tsvPepGrp)).collect(Collectors.toList());
     }
 
     String getSkyFile(Map<String, Object> row)
@@ -237,7 +247,17 @@ public abstract class ChromLibStateImporter
         {
             super.parseLibStateRow(row);
 
-            LibPeptideGroup pepGrp = parsePeptideGroup(row, _currentRun.getId(), _container);
+            var pepGrpMatches = getPeptideGroupDbMatches(parsePeptideGroup(row, _currentRun.getId()), getSkyFile(row), _container);
+            if (pepGrpMatches.size() > 1)
+            {
+                // We do not expect duplicate proteins in a Skyline document in a protein library folder.
+                // This is enforced during document import (SkylineDocImporter.insertPeptideGroup).
+                throw new ChromLibStateException(String.format("Expected one db row for peptide group '%s' in the Skyline document '%s'. Container '%s'. " +
+                                "Found %d rows (Ids: %s).",
+                        pepGrpMatches.get(0).getLabel(), getSkyFile(row), _container.getPath(), pepGrpMatches.size(),
+                        StringUtils.join(pepGrpMatches.stream().map(LibPeptideGroup::getId).collect(Collectors.toList()), ',')));
+            }
+            var pepGrp = pepGrpMatches.get(0);
             if (pepGrp.getRepresentativeDataState() != RepresentativeDataState.NotRepresentative)
             {
                 List<Long> pepGrpIdsForState = _pepGrpsForState.computeIfAbsent(pepGrp.getRepresentativeDataState(), l -> new ArrayList<>());
@@ -280,8 +300,7 @@ public abstract class ChromLibStateImporter
 
     private static class PeptideLibStateImporter extends ChromLibStateImporter
     {
-        private LibPeptideGroup _currentPepGrp;
-        private Map<LibGeneralPrecursor.LibPrecursorKey, Long> _precursorKeyMap;
+        private PeptideGroupKeyPrecursorMatches _currentPepGrpMatches;
         private Map<RepresentativeDataState, List<Long>> _precursorsForState;
 
         public PeptideLibStateImporter(Container container, User user, Logger log, TargetedMSService svc)
@@ -313,32 +332,36 @@ public abstract class ChromLibStateImporter
         {
             super.parseLibStateRow(row);
 
-            LibPeptideGroup pepGrp = parsePeptideGroup(row, _currentRun.getId(), _container);
-            if (_currentPepGrp == null || !_currentPepGrp.getKey().equals(pepGrp.getKey()))
+            LibPeptideGroup tsvPepGrp = parsePeptideGroup(row, _currentRun.getId());
+            if (_currentPepGrpMatches == null || !_currentPepGrpMatches.getKey().equals(tsvPepGrp.getKey()))
             {
-                _currentPepGrp = pepGrp;
-
-                if (_precursorKeyMap != null)
-                {
-                    _precursorKeyMap.clear();
-                }
-                else
-                {
-                    _precursorKeyMap = new HashMap<>();
-                }
-
-                List<LibPrecursor> dbPrecursors = getPrecursors(_currentPepGrp, _container, _user, _svc);
-                dbPrecursors.forEach(p -> _precursorKeyMap.put(p.getKey(), p.getId()));
-                List<LibMoleculePrecursor> dbMoleculePrecursors = getMoleculePrecursors(_currentPepGrp, _container, _user, _svc);
-                dbMoleculePrecursors.forEach(p -> _precursorKeyMap.put(p.getKey(), p.getId()));
+                _currentPepGrpMatches = getPepGrpPrecursorMatches(tsvPepGrp, getSkyFile(row), _container);
             }
 
-            LibGeneralPrecursor precursor = parsePrecursor(row, _currentPepGrp);
+            LibGeneralPrecursor precursor = _currentPepGrpMatches.getPrecursorDbMatch(parsePrecursor(row), getSkyFile(row), _container);
             if (RepresentativeDataState.NotRepresentative != precursor.getRepresentativeDataState())
             {
                 List<Long> precursorIdsForState = _precursorsForState.computeIfAbsent(precursor.getRepresentativeDataState(), l -> new ArrayList<>());
                 precursorIdsForState.add(precursor.getId());
             }
+        }
+
+        private PeptideGroupKeyPrecursorMatches getPepGrpPrecursorMatches(LibPeptideGroup tsvPepGrp, String skyFile, Container container) throws ChromLibStateException
+        {
+            var pepGrps = getPeptideGroupDbMatches(tsvPepGrp, skyFile, container);
+            var pepGrpPrecursors = new ArrayList<PeptideGroupPrecursors>();
+            for (var pepGrp: pepGrps)
+            {
+                var precursorKeyMap = new HashMap<LibGeneralPrecursor.LibPrecursorKey, Long>();
+
+                List<LibPrecursor> dbPrecursors = getPrecursors(pepGrp, _container, _user, _svc);
+                dbPrecursors.forEach(p -> precursorKeyMap.put(p.getKey(), p.getId()));
+                List<LibMoleculePrecursor> dbMoleculePrecursors = getMoleculePrecursors(pepGrp, _container, _user, _svc);
+                dbMoleculePrecursors.forEach(p -> precursorKeyMap.put(p.getKey(), p.getId()));
+
+                pepGrpPrecursors.add(new PeptideGroupPrecursors(pepGrp, precursorKeyMap));
+            }
+            return new PeptideGroupKeyPrecursorMatches(tsvPepGrp.getKey(), pepGrpPrecursors);
         }
 
         private void updatePrecursorState(List<Long> precursorIds, RepresentativeDataState state, Container container, User user, TargetedMSService svc, Logger log)
@@ -350,7 +373,7 @@ public abstract class ChromLibStateImporter
         void onNextRun()
         {
             super.onNextRun();
-            _currentPepGrp = null;
+            _currentPepGrpMatches = null;
             _precursorsForState = new HashMap<>();
         }
 
@@ -364,7 +387,7 @@ public abstract class ChromLibStateImporter
             _precursorsForState.clear();
         }
 
-        private LibGeneralPrecursor parsePrecursor(Map<String, Object> row, LibPeptideGroup peptideGroup)
+        private LibGeneralPrecursor parsePrecursor(Map<String, Object> row)
         {
             double precursorMz = (Double) row.get(PREC_MZ);
             int precursorCharge = (Integer) row.get(PREC_CHARGE);
@@ -374,7 +397,7 @@ public abstract class ChromLibStateImporter
             LibGeneralPrecursor precursor;
             if (!StringUtils.isBlank(modifiedSeq))
             {
-                precursor = new LibPrecursor(peptideGroup.getId(), precursorMz, precursorCharge, RepresentativeDataState.valueOf(precursorState), modifiedSeq);
+                precursor = new LibPrecursor(0, precursorMz, precursorCharge, RepresentativeDataState.valueOf(precursorState), modifiedSeq);
             }
             else
             {
@@ -382,19 +405,84 @@ public abstract class ChromLibStateImporter
                 String ionFormula = (String) row.get(PREC_MOL_ION_FORMULA);
                 Double massMonoIsotopic = (Double) row.get(PREC_MOL_MASS_MONOISOTOPIC);
                 Double massAverage = (Double) row.get(PREC_MOL_MASS_AVERAGE);
-                precursor = new LibMoleculePrecursor(peptideGroup.getId(), precursorMz, precursorCharge, RepresentativeDataState.valueOf(precursorState),
+                precursor = new LibMoleculePrecursor(0, precursorMz, precursorCharge, RepresentativeDataState.valueOf(precursorState),
                         customIonName, ionFormula, massMonoIsotopic, massAverage);
             }
 
-            Long generalPrecursorId = _precursorKeyMap.get(precursor.getKey());
-            if (generalPrecursorId == null)
-            {
-                throw new IllegalStateException(String.format("Expected a row for precursor %s in the peptide group '%s'. Skyline document '%s'. Folder '%s'.",
-                        precursor.getKey().toString(), peptideGroup.getLabel(), getSkyFile(row), _container.getPath()));
-            }
-            precursor.setId(generalPrecursorId);
-
             return precursor;
+        }
+    }
+
+    // Class that stores information for database precursors in peptide groups that match the given peptide group key.
+    // In a peptide library folder, duplicate proteins having the same key are allowed. When we are looking for a
+    // database match for a precursor read from the TSV, we should look at all the peptide groups that match the
+    // peptide group key (label, sequenceId) in the TSV row. Precursors in a document imported to a peptide library
+    // should be unique (SkylineDocImporter.insertPrecursor) so we expect to find only one match for each precursor.
+    // Issue 44819: Duplicate proteins in a Skyline document cause an error in importing chromatogram library state
+    private static class PeptideGroupKeyPrecursorMatches
+    {
+        private final LibPeptideGroup.LibPeptideGroupKey _pepGrpKey;
+        private final List<PeptideGroupPrecursors> _pepGrpPrecursorsList;
+
+        public PeptideGroupKeyPrecursorMatches(LibPeptideGroup.LibPeptideGroupKey pepGrpKey, List<PeptideGroupPrecursors> pepGrpPrecursorsList)
+        {
+            _pepGrpKey = pepGrpKey;
+            _pepGrpPrecursorsList = pepGrpPrecursorsList;
+        }
+
+        LibPeptideGroup.LibPeptideGroupKey getKey()
+        {
+            return _pepGrpKey;
+        }
+
+        LibGeneralPrecursor getPrecursorDbMatch(LibGeneralPrecursor tsvPrecursor, String skyFile, Container container)
+        {
+            var dbPepGrpMatches = _pepGrpPrecursorsList.stream().filter(p -> p.hasPrecursorDbMatch(tsvPrecursor)).collect(Collectors.toList());
+
+            if (dbPepGrpMatches.size() == 0)
+            {
+                throw new IllegalStateException(String.format("Expected a db row for precursor %s in the peptide group '%s'. Skyline document '%s'. Folder '%s'.",
+                        tsvPrecursor.getKey(), _pepGrpKey.toString(), skyFile, container.getPath()));
+            }
+            if (dbPepGrpMatches.size() > 1)
+            {
+                // We do not expect duplicate precursors in a peptide library.
+                // This is enforced during document import (SkylineDocImporter.insertPrecursor).
+                throw new IllegalStateException(String.format("Expected one db row for precursor %s in the peptide group '%s'. Skyline document '%s'. Folder '%s'. Found %d matches.",
+                        tsvPrecursor.getKey(), _pepGrpKey.toString(), skyFile, container.getPath(), dbPepGrpMatches.size()));
+            }
+
+            var pepGrpMatch = dbPepGrpMatches.get(0);
+            tsvPrecursor.setPeptideGroupId(pepGrpMatch.getDbPepGrpId());
+            tsvPrecursor.setId(pepGrpMatch.getPrecursorDbId(tsvPrecursor));
+            return tsvPrecursor;
+        }
+    }
+
+    private static class PeptideGroupPrecursors
+    {
+        private final LibPeptideGroup _pepGrp;
+        private final Map<LibGeneralPrecursor.LibPrecursorKey, Long> _precursorKeyMap;
+
+        public PeptideGroupPrecursors(LibPeptideGroup pepGrp, Map<LibGeneralPrecursor.LibPrecursorKey, Long> precursorKeyMap)
+        {
+            _pepGrp = pepGrp;
+            _precursorKeyMap = precursorKeyMap;
+        }
+
+        boolean hasPrecursorDbMatch(LibGeneralPrecursor precursor)
+        {
+            return _precursorKeyMap.get(precursor.getKey()) != null;
+        }
+
+        public long getDbPepGrpId()
+        {
+            return _pepGrp.getId();
+        }
+
+        public Long getPrecursorDbId(LibGeneralPrecursor precursor)
+        {
+            return _precursorKeyMap.get(precursor.getKey());
         }
     }
 }

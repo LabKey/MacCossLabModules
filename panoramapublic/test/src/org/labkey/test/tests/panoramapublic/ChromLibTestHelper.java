@@ -1,7 +1,6 @@
 package org.labkey.test.tests.panoramapublic;
 
 import org.apache.commons.lang3.StringUtils;
-import org.labkey.api.util.Pair;
 import org.labkey.remoteapi.CommandException;
 import org.labkey.remoteapi.Connection;
 import org.labkey.remoteapi.query.Filter;
@@ -179,8 +178,8 @@ public class ChromLibTestHelper
         assertEqualsWithMsg("File names", runS._fileName, runT._fileName);
         assertEqualsWithMsg("Representative states", runT._fileName, runS._representativeDataState, runT._representativeDataState);
 
-        Map<LibPeptideGroupKey, Pair<Integer, Map<LibPrecursorKey, Integer>>> pepGrpsS = runS._peptideGroups;
-        Map<LibPeptideGroupKey, Pair<Integer, Map<LibPrecursorKey, Integer>>> pepGrpsT = runT._peptideGroups;
+        Map<LibPeptideGroupKey, List<PeptideGroupPrecursors>> pepGrpsS = runS._peptideGroups;
+        Map<LibPeptideGroupKey, List<PeptideGroupPrecursors>> pepGrpsT = runT._peptideGroups;
         assertEqualsWithMsg("Number of peptide groups", runT._fileName, pepGrpsS.size(), pepGrpsT.size());
         for(LibPeptideGroupKey pepGrpKey: pepGrpsS.keySet())
         {
@@ -189,11 +188,20 @@ public class ChromLibTestHelper
         }
     }
 
-    private static void comparePeptideGroups(LibPeptideGroupKey key, Pair<Integer, Map<LibPrecursorKey, Integer>> pepGrpS, Pair<Integer, Map<LibPrecursorKey, Integer>> pepGrpT)
+    private static void comparePeptideGroups(LibPeptideGroupKey key, List<PeptideGroupPrecursors> pepGrpSList, List<PeptideGroupPrecursors> pepGrpTList)
     {
-        assertEqualsWithMsg("Peptide group states", key.toString(), pepGrpS.first, pepGrpT.first);
-        Map<LibPrecursorKey, Integer> _precursorsS = pepGrpS.second;
-        Map<LibPrecursorKey, Integer> _precursorsT = pepGrpT.second;
+        assertEqualsWithMsg("Peptide group count for precursor key " + key.toString(), pepGrpSList.size(), pepGrpTList.size());
+        for (var i = 0; i < pepGrpSList.size(); i++)
+        {
+            comparePeptideGroups(key, pepGrpSList.get(i), pepGrpTList.get(i));
+        }
+    }
+
+    private static void comparePeptideGroups(LibPeptideGroupKey key, PeptideGroupPrecursors pepGrpS, PeptideGroupPrecursors pepGrpT)
+    {
+        assertEqualsWithMsg("Peptide group states", key.toString(), pepGrpS._representativeDataState, pepGrpT._representativeDataState);
+        Map<LibPrecursorKey, Integer> _precursorsS = pepGrpS._precursorKeyStateMap;
+        Map<LibPrecursorKey, Integer> _precursorsT = pepGrpT._precursorKeyStateMap;
 
         assertEqualsWithMsg("Number of precursors", key.toString(), _precursorsS.size(), _precursorsT.size());
         for(LibPrecursorKey precursor: _precursorsS.keySet())
@@ -246,7 +254,7 @@ public class ChromLibTestHelper
         private int _id;
         private String _fileName;
         private int _representativeDataState;
-        private final Map<LibPeptideGroupKey, Pair<Integer, Map<LibPrecursorKey, Integer>>>_peptideGroups;
+        private final Map<LibPeptideGroupKey, List<PeptideGroupPrecursors>> _peptideGroups;
 
         private LibRun()
         {
@@ -255,11 +263,8 @@ public class ChromLibTestHelper
 
         public void addPeptideGroup(LibPeptideGroup group)
         {
-            if(_peptideGroups.containsKey(group.getKey()))
-            {
-                throw new RuntimeException(String.format("Duplicate peptide group '%s' found for run %s.", group.getKey(), _fileName));
-            }
-            _peptideGroups.put(group.getKey(), new Pair<>(group._representativeDataState, group.getPrecursorStates()));
+            var peptideGroupPrecursors = _peptideGroups.computeIfAbsent(group.getKey(), p -> new ArrayList<>());
+            peptideGroupPrecursors.add(new PeptideGroupPrecursors(group._representativeDataState, group.getPrecursorStates()));
         }
 
         @Override
@@ -276,6 +281,18 @@ public class ChromLibTestHelper
         public int hashCode()
         {
             return Objects.hash(_id, _fileName, _representativeDataState, _peptideGroups);
+        }
+    }
+
+    private static class PeptideGroupPrecursors
+    {
+        private final int _representativeDataState;
+        private final Map<LibPrecursorKey, Integer> _precursorKeyStateMap;
+
+        public PeptideGroupPrecursors(int representativeDataState, Map<LibPrecursorKey, Integer> precursorKeyStateMap)
+        {
+            _representativeDataState = representativeDataState;
+            _precursorKeyStateMap = precursorKeyStateMap;
         }
     }
 
