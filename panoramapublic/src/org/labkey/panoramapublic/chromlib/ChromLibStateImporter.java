@@ -67,7 +67,7 @@ public abstract class ChromLibStateImporter
         {
             case LibraryProtein -> new ProteinLibStateImporter(container, user, log, svc).importFromFile(libStateFile);
             case Library -> new PeptideLibStateImporter(container, user, log, svc).importFromFile(libStateFile);
-            default -> throw new ChromLibStateException(String.format("'%s' is not a chromatogram library folder.", container));
+            default -> throw new ChromLibStateException(String.format("'%s' is not a chromatogram library folder.", container.getPath()));
         }
     }
 
@@ -129,7 +129,7 @@ public abstract class ChromLibStateImporter
             ITargetedMSRun run = _svc.getRunByFileName(skyFile, _container);
             if (run == null)
             {
-                throw new ChromLibStateException(String.format("Expected a row for Skyline document '%s' in the container '%s'.", skyFile, _container));
+                throw new ChromLibStateException(String.format("Expected a row for Skyline document '%s' in the container '%s'.", skyFile, _container.getPath()));
             }
             _currentRun = run;
             var map = new HashMap<String, RunRepresentativeDataState>();
@@ -354,9 +354,9 @@ public abstract class ChromLibStateImporter
             {
                 var precursorKeyMap = new HashMap<LibGeneralPrecursor.LibPrecursorKey, Long>();
 
-                List<LibPrecursor> dbPrecursors = getPrecursors(pepGrp, _container, _user, _svc);
+                List<LibPrecursor> dbPrecursors = getPrecursors(pepGrp, container, _user, _svc);
                 dbPrecursors.forEach(p -> precursorKeyMap.put(p.getKey(), p.getId()));
-                List<LibMoleculePrecursor> dbMoleculePrecursors = getMoleculePrecursors(pepGrp, _container, _user, _svc);
+                List<LibMoleculePrecursor> dbMoleculePrecursors = getMoleculePrecursors(pepGrp, container, _user, _svc);
                 dbMoleculePrecursors.forEach(p -> precursorKeyMap.put(p.getKey(), p.getId()));
 
                 pepGrpPrecursors.add(new PeptideGroupPrecursors(pepGrp, precursorKeyMap));

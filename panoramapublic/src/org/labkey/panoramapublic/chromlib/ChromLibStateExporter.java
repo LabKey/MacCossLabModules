@@ -38,7 +38,7 @@ public abstract class ChromLibStateExporter
         {
             case LibraryProtein -> new ProteinLibStateExporter(log).exportLibraryState(container, file, user, svc);
             case Library -> new PeptideLibStateExporter(log).exportLibraryState(container, file, user, svc);
-            default -> throw new ChromLibStateException(String.format("'%s' is not a chromatogram library folder.", container));
+            default -> throw new ChromLibStateException(String.format("'%s' is not a chromatogram library folder.", container.getPath()));
         }
     }
 
