@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Category({External.class, MacCossLabModules.class})
-@BaseWebDriverTest.ClassTimeout(minutes = 5)
+@BaseWebDriverTest.ClassTimeout(minutes = 7)
 public class PanoramaPublicChromLibTest extends PanoramaPublicBaseTest
 {
 
@@ -20,6 +20,7 @@ public class PanoramaPublicChromLibTest extends PanoramaPublicBaseTest
     private static final String SKY_FILE2 = "Stergachis-SupplementaryData_2_b.sky.zip";
     private static final String SMALL_MOL_FILE1 = "SmMolLibA.sky.zip";
     private static final String SMALL_MOL_FILE2 = "SmMolLibB.sky.zip";
+    private static final String DUP_PROTEINS_FILE = "duplicate_protein.sky.zip";
 
     @Test
     public void testProteinLibraryCopy()
@@ -47,6 +48,40 @@ public class PanoramaPublicChromLibTest extends PanoramaPublicBaseTest
                 3, // molecule count
                 619 // library transition count
                 );
+    }
+
+    @Test
+    public void testDuplicateProteinsCopy()
+    {
+        var projectName = getProjectName();
+        var folderName = "Duplicate Protein Peptide Library";
+        var experimentTitle = "Test Duplicate Protein in a Peptide Library Folder";
+        setupLibraryFolder(projectName, folderName, FolderType.Library, SUBMITTER);
+        importData(DUP_PROTEINS_FILE, 1);
+        // Download link, library statistics and revision in the ChromatogramLibraryDownloadWebpart
+        verifyChromLibDownloadWebPart(FolderType.Library, -1, 10, -1, 87, 1);
+        // Read the state of the library in the source folder
+        ChromLibTestHelper libHelper = new ChromLibTestHelper(this);
+        ChromLibTestHelper.ChromLibState libStateSource = libHelper.getLibState(projectName + "/" + folderName);
+
+        impersonate(SUBMITTER);
+        updateSubmitterAccountInfo("One");
+        // Add the "Targeted MS Experiment" webpart
+        TargetedMsExperimentWebPart expWebPart = createTargetedMsExperimentWebPart(experimentTitle);
+        // Submit the experiment
+        submitExperiment(expWebPart);
+
+        // Copy the experiment to the Panorama Public project
+        var targetFolder = "Copy of " + folderName;
+        copyExperimentAndVerify(projectName, folderName, null, experimentTitle, targetFolder);
+        // Download link, library statistics and revision in the ChromatogramLibraryDownloadWebpart
+        goToProjectFolder(PANORAMA_PUBLIC, targetFolder);
+        verifyChromLibDownloadWebPart(FolderType.Library, -1, 10, -1, 87, 1);
+
+        // Read the state of the library in the Panorama Public folder and compare the states
+        ChromLibTestHelper.ChromLibState libStateTarget = libHelper.getLibState(PANORAMA_PUBLIC + "/" + targetFolder);
+
+        ChromLibTestHelper.compareLibState(libStateSource, libStateTarget);
     }
 
     private void testLibraryCopy(String folderName, FolderType folderType, List<String> skyFiles,
