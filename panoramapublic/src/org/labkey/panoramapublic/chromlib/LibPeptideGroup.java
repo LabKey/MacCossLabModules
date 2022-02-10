@@ -24,6 +24,12 @@ public class LibPeptideGroup
         _representativeDataState = representativeDataState;
     }
 
+    LibPeptideGroup(long dbId, LibPeptideGroup source)
+    {
+        this(source.getRunId(), source.getLabel(), source.getSequenceId(), source.getRepresentativeDataState());
+       _id = dbId;
+    }
+
     public long getId()
     {
         return _id;
