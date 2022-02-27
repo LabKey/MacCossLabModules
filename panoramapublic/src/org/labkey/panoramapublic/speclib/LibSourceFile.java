@@ -1,24 +1,22 @@
 package org.labkey.panoramapublic.speclib;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.jetbrains.annotations.Nullable;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
 public class LibSourceFile
 {
-    private final Path spectrumSourceFile;
-    private final Path idFile;
+    private final String spectrumSourceFile;
+    private final String idFile;
     private final Set<String> scoreTypes;
 
     public LibSourceFile(String spectrumSourceFile, String idFile, Set<String> scoreTypes)
     {
-        this.spectrumSourceFile = !StringUtils.isBlank(spectrumSourceFile) ? Paths.get(spectrumSourceFile) : null;
-        this.idFile = !StringUtils.isBlank(idFile) ? Paths.get(idFile) : null;
+        this.spectrumSourceFile = spectrumSourceFile;
+        this.idFile = idFile;
         this.scoreTypes = scoreTypes != null && !scoreTypes.isEmpty() ? scoreTypes : null;
     }
 
@@ -29,7 +27,7 @@ public class LibSourceFile
 
     public @Nullable String getSpectrumSourceFile()
     {
-        return hasSpectrumSourceFile() ? spectrumSourceFile.getFileName().toString() : null;
+        return hasSpectrumSourceFile() ? getFileName(spectrumSourceFile) : null;
     }
 
     public boolean hasIdFile()
@@ -39,7 +37,16 @@ public class LibSourceFile
 
     public @Nullable String getIdFile()
     {
-        return hasIdFile() ? idFile.getFileName().toString() : null;
+        return hasIdFile() ? getFileName(idFile) : null;
+    }
+
+    private String getFileName(String path)
+    {
+        // File paths in .blib will be in Windows format. Path.getFileName() does not work correctly with Windows paths
+        // when running on Unix. For example: Paths.get("V:\\Allie\\RasPhos\\MY20170124_ARC_RasPhosHmix_500fmol_01.mzXML").getFileName()
+        // returns the full path on Unix. FileNameUtils.getName() will handle a file in either Unix or Windows format
+        // https://commons.apache.org/proper/commons-io/apidocs/org/apache/commons/io/FilenameUtils.html#getName-java.lang.String-
+        return FilenameUtils.getName(path);
     }
 
     public boolean containsScoreType(String scoreType)

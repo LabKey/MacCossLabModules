@@ -27,8 +27,8 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
 
     private void expandValidationRows()
     {
-        var gridRowExapnder = Locator.XPathLocator.tagWithClass("div", "x4-grid-row-expander");
-        var els = gridRowExapnder.findElements(getDriver());
+        var gridRowExpander = Locator.XPathLocator.tagWithClass("div", "x4-grid-row-expander");
+        var els = gridRowExpander.findElements(getDriver());
         assertTrue("Expected to find grid expander elements", els.size() > 0);
         for (var el: els)
         {
