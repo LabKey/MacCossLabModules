@@ -5,11 +5,12 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
-import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
+import org.labkey.test.components.panoramapublic.TargetedMsExperimentInsertPage;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
+import org.labkey.test.pages.panoramapublic.DataValidationPage;
 import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
@@ -17,7 +18,6 @@ import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PortalHelper;
 
-import java.io.File;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,6 +31,8 @@ import static org.junit.Assert.assertTrue;
 @BaseWebDriverTest.ClassTimeout(minutes = 7)
 public class PanoramaPublicTest extends PanoramaPublicBaseTest
 {
+    public static final String SAMPLEDATA_FOLDER = "panoramapublic/";
+
     private static final String SKY_FILE_1 = "Study9S_Site52_v1.sky.zip";
     private static final String RAW_FILE_WIFF = "Site52_041009_Study9S_Phase-I.wiff";
     private static final String RAW_FILE_WIFF_SCAN = RAW_FILE_WIFF + ".scan";
@@ -40,9 +42,10 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
     private static final String INCLUDE_SUBFOLDERS_AND_SUBMIT = "Include Subfolders And Continue";
     private static final String EXCLUDE_SUBFOLDERS_AND_SUBMIT = "Skip Subfolders And Continue";
 
-    protected File getSampleDataPath(String file)
+    @Override
+    public String getSampleDataFolder()
     {
-        return TestFileUtils.getSampleData("TargetedMS/" + file);
+        return SAMPLEDATA_FOLDER;
     }
 
     @Test
@@ -58,7 +61,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         impersonate(SUBMITTER);
 
         // Add the "Targeted MS Experiment" webpart
-        TargetedMsExperimentWebPart expWebPart = createTargetedMsExperimentWebPart(experimentTitle);
+        TargetedMsExperimentWebPart expWebPart = createExperiment(experimentTitle);
 
         // Should show error message since there are no Skyline documents in the folder.
         testSubmitWithNoSkyDocs(expWebPart);
@@ -70,8 +73,10 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         testSubmitWithIncompleteAccountInfo(expWebPart);
         updateSubmitterAccountInfo("One");
 
-        // Click Submit.  Expect to see the missing information page. Submit the experiment by clicking the
-        // "Continue without a ProteomeXchange ID" link
+        experimentTitle = "This is a test experiment without subfolders";
+        testSubmitWithMissingMetadata(expWebPart, experimentTitle);
+
+        // Run validation job and submit without ProteomeXchange ID
         String shortAccessLink = testSubmitWithMissingRawFiles(portalHelper, expWebPart);
 
         // Verify rows in Submission table
@@ -131,7 +136,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         goToProjectFolder(projectName, folderName);
         impersonate(SUBMITTER);
         apiContainerHelper.deleteFolder(projectName, folderName);
-        assertFalse("Expected the submitters's container to have been deleted",
+        assertFalse("Expected the submitter's container to have been deleted",
                 _containerHelper.doesContainerExist(projectName + "/" + folderName));
     }
 
@@ -229,14 +234,14 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         String sourceFolder = "Folder 2";
         String subfolder = "Subfolder_for_test";
         String targetFolder = "Test Copy 2";
-        String experimentTitle = "Test experiment with subfolders";
+        String experimentTitle = "This is a test experiment with subfolders";
 
         setupSourceFolder(projectName, sourceFolder, SUBMITTER, SUBMITTER_2);
         impersonate(SUBMITTER);
         updateSubmitterAccountInfo("One");
 
         // Add the "Targeted MS Experiment" webpart
-        TargetedMsExperimentWebPart expWebPart = createTargetedMsExperimentWebPart(experimentTitle);
+        TargetedMsExperimentWebPart expWebPart = createExperimentCompleteMetadata(experimentTitle);
 
         // Import a Skyline document to the folder
         importData(SKY_FILE_1, 1);
@@ -298,23 +303,43 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         assertTextPresent("There are no Skyline documents included in this experiment");
     }
 
-    private String testSubmitWithMissingRawFiles(PortalHelper portal, TargetedMsExperimentWebPart expWebPart)
+    private void testSubmitWithMissingMetadata(TargetedMsExperimentWebPart expWebPart, String newExperimentTitle)
     {
         goToDashboard();
         expWebPart.clickSubmit();
-        assertTextPresent("Missing raw data");
-        assertTextPresent(RAW_FILE_WIFF);
-        assertTextPresent(RAW_FILE_WIFF_SCAN);
+
+        var expectedTexts = new String[] {
+                "The following information is required", "for submitting data to Panorama Public.",
+                "Title should be at least 30 characters.",
+                "Organism is required.",
+                "Instrument is required.",
+                "Keywords are required",
+                "Submitter affiliation is required."
+        };
+        assertTextPresent(expectedTexts);
+        clickAndWait(Locator.lkButton("Update Experiment Metadata"));
+        var experimentUpdatePage = new TargetedMsExperimentInsertPage(getDriver(), true);
+        experimentUpdatePage.setRequired(newExperimentTitle);
+
+        goToDashboard();
+        expWebPart.clickSubmit();
+        // We should not see any missing metadata warnings anymore
+        assertTextPresent("Click the button to start a new data validation job");
+    }
+
+    private String testSubmitWithMissingRawFiles(PortalHelper portal, TargetedMsExperimentWebPart expWebPart)
+    {
+        var validationPage = submitValidationJob();
+        validationPage.verifySampleFileStatus(SKY_FILE_1, List.of(), List.of(RAW_FILE_WIFF, RAW_FILE_WIFF_SCAN));
 
         portal.click(Locator.folderTab("Raw Data"));
         _fileBrowserHelper.uploadFile(getSampleDataPath(RAW_FILE_WIFF));
-        goToDashboard();
-        expWebPart.clickSubmit();
-        assertTextPresent("Missing raw data");
-        assertTextPresent(RAW_FILE_WIFF_SCAN);
-        assertEquals(1, countText(RAW_FILE_WIFF));
+        _fileBrowserHelper.fileIsPresent(RAW_FILE_WIFF);
 
-        submitWithoutPXId();
+        validationPage = submitValidationJob();
+        validationPage.verifySampleFileStatus(SKY_FILE_1, List.of(RAW_FILE_WIFF), List.of(RAW_FILE_WIFF_SCAN));
+
+        submitWithoutPxIdButton();
 
         goToDashboard();
         assertTextPresent("Copy Pending!");
@@ -322,6 +347,18 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         String accessLink = expWebPart.getAccessLink();
         assertNotNull("Expected a short access URL", accessLink);
         return accessLink;
+    }
+
+    private DataValidationPage submitValidationJob()
+    {
+        goToDashboard();
+        var expWebPart = new TargetedMsExperimentWebPart(this);
+        expWebPart.clickSubmit();
+        assertTextPresent("Click the button to start a new data validation job",
+                "Validate Data for ProteomeXchange",
+                "Submit without a ProteomeXchange ID");
+        clickButton("Validate Data for ProteomeXchange");
+        return new DataValidationPage(this);
     }
 
     private void testSubmitWithSubfolders(TargetedMsExperimentWebPart expWebPart)
@@ -341,9 +378,9 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         assertTextPresent("Copy Pending!");
     }
 
-    public void resubmitWithoutPxd()
+    private void resubmitWithoutPxd()
     {
-        clickContinueWithoutPxId();
+        clickButton("Submit without a ProteomeXchange ID");
         waitForText("Resubmit Request to ");
         click(Ext4Helper.Locators.ext4Button(("Resubmit")));
         waitForText("Confirm resubmission request to");
@@ -352,7 +389,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         click(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
     }
 
-    public void verifyVersionCount(String experimentTitle, int count)
+    private void verifyVersionCount(String experimentTitle, int count)
     {
         goToProjectHome(PANORAMA_PUBLIC);
         var expListTable = DataRegionTable.findDataRegionWithinWebpart(this, "Targeted MS Experiment List");

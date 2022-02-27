@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.labkey.test.Locator;
+import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
 import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.components.SubfoldersWebPart;
@@ -15,12 +16,15 @@ import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.Ext4Helper;
+import org.labkey.test.util.LogMethod;
+import org.labkey.test.util.LoggedParam;
 import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PortalHelper;
 import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.TextSearcher;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.io.File;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -88,7 +92,18 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     }
 
     @NotNull
-    TargetedMsExperimentWebPart createTargetedMsExperimentWebPart(String experimentTitle)
+    TargetedMsExperimentWebPart createExperiment(String experimentTitle)
+    {
+        return createTargetedMsExperiment(experimentTitle, false);
+    }
+
+    @NotNull
+    TargetedMsExperimentWebPart createExperimentCompleteMetadata(String experimentTitle)
+    {
+        return createTargetedMsExperiment(experimentTitle, true);
+    }
+
+    private TargetedMsExperimentWebPart createTargetedMsExperiment(String experimentTitle, boolean completeMetadata)
     {
         goToDashboard();
         portalHelper.enterAdminMode();
@@ -97,7 +112,14 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         // Create a new experiment
         TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
         TargetedMsExperimentInsertPage insertPage = expWebPart.startInsert();
-        insertPage.insert(experimentTitle);
+        if (completeMetadata)
+        {
+            insertPage.insertAllRequired(experimentTitle);
+        }
+        else
+        {
+            insertPage.insert(experimentTitle);
+        }
         return expWebPart;
     }
 
@@ -135,18 +157,22 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
     void submitWithoutPXId()
     {
-        clickContinueWithoutPxId();
+        clickAndWait(Locator.linkContainingText("Submit without a ProteomeXchange ID"));
+        submitForm();
+    }
+
+    void submitWithoutPxIdButton()
+    {
+        clickButton("Submit without a ProteomeXchange ID");
+        submitForm();
+    }
+
+    private void submitForm()
+    {
         _ext4Helper.selectComboBoxItem(Ext4Helper.Locators.formItemWithInputNamed("journalId"), PanoramaPublicTest.PANORAMA_PUBLIC);
         clickAndWait(Ext4Helper.Locators.ext4Button("Submit"));
         clickAndWait(Locator.lkButton("OK")); // Confirm to proceed with the submission.
         clickAndWait(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
-    }
-
-    void clickContinueWithoutPxId()
-    {
-        // Expect to be on the missing information page
-        assertTextPresent("Missing Information in Submission Request");
-        clickAndWait(Locator.linkContainingText("Continue without a ProteomeXchange ID"));
     }
 
     void copyExperimentAndVerify(String projectName, String folderName, String experimentTitle, String destinationFolder)
@@ -274,6 +300,23 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         }
         String messageText = new BodyWebPart(getDriver(), "View Message").getComponentElement().getText();
         assertTextPresent(new TextSearcher(messageText), text);
+    }
+
+    @Override
+    @LogMethod
+    protected void importData(@LoggedParam String file, int jobCount)
+    {
+        importData(getSampleDataFolder() + file, jobCount, false);
+    }
+
+    public String getSampleDataFolder()
+    {
+        return "";
+    }
+
+    public File getSampleDataPath(String file)
+    {
+        return TestFileUtils.getSampleData("TargetedMS/" + getSampleDataFolder() + file);
     }
 
     @Override

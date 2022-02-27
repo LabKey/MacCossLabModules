@@ -18,8 +18,12 @@ package org.labkey.panoramapublic.proteomexchange;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.*;
 
 public class UnimodModifications
 {
@@ -91,9 +95,10 @@ public class UnimodModifications
         return list;
     }
 
-    public UnimodModification getMatch(String normalizedFormula, String[] sites, boolean structural)
+    List<UnimodModification> getMatches(String normalizedFormula, String[] sites, Terminus terminus, boolean structural)
     {
         List<UnimodModification> uMods = getByFormula(normalizedFormula);
+        List<UnimodModification> matches = new ArrayList<>();
         for(UnimodModification uMod: uMods)
         {
             if (structural && !uMod.isStructural())
@@ -105,12 +110,20 @@ public class UnimodModifications
                 continue;
             }
 
-            if(uMod.matches(normalizedFormula, sites, structural))
+            Set<Specificity> specificities = new HashSet<>();
+            for (String site: sites)
             {
-                return uMod;
+                // If a terminus is given, the modification occurs on the specified amino acids at the specified terminus.
+                // If no sites are given then the modification can occur on any amino acid at the specified terminus.
+                Position pos = Terminus.N == terminus ? Position.AnyNterm : Terminus.C == terminus ? Position.AnyCterm : Position.Anywhere;
+                specificities.add(new Specificity(site, pos));
+            }
+            if(uMod.matches(normalizedFormula, specificities, terminus))
+            {
+                matches.add(uMod);
             }
         }
-        return null;
+        return matches;
     }
 
     public String buildIsotopicModFormula(char aminoAcid, boolean label2h, boolean label13c, boolean label15n, boolean label18o)

@@ -132,7 +132,7 @@
     <%= button("Cancel").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnotations.getContainer())) %>
     <%= button("OK").disableOnClick(true).submit(true) %>
     <input type="hidden" name="update" value="<%=form.isUpdate()%>"/>
-    <input type="hidden" name="dataValidated" value="<%=form.isDataValidated()%>"/>
+    <input type="hidden" name="validationId" value="<%=h(form.getValidationId())%>"/>
     <input type="hidden" name="resubmit" value="<%=form.isResubmit()%>"/>
     <input type="hidden" name="requestConfirmed" value="true"/>
     <input type="hidden" name="id" value="<%=form.getId()%>"/>

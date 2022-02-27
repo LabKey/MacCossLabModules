@@ -1,15 +1,9 @@
 package org.labkey.panoramapublic.model.speclib;
 
-import java.util.Date;
+import org.labkey.panoramapublic.model.DbEntity;
 
-public class SpecLibInfo
+public class SpecLibInfo extends DbEntity
 {
-    private int _id;
-    private int _createdBy;
-    private Date _created;
-    private int _modifiedBy;
-    private Date _modified;
-
     private int _experimentAnnotationsId;
 
     private String _name;
@@ -34,16 +28,6 @@ public class SpecLibInfo
         return new SpecLibKey(_name, _fileNameHint, _skylineLibraryId, _revision, _libraryType);
     }
 
-    public int getId()
-    {
-        return _id;
-    }
-
-    public void setId(int id)
-    {
-        _id = id;
-    }
-
     public int getExperimentAnnotationsId()
     {
         return _experimentAnnotationsId;
@@ -52,46 +36,6 @@ public class SpecLibInfo
     public void setExperimentAnnotationsId(int experimentAnnotationsId)
     {
         _experimentAnnotationsId = experimentAnnotationsId;
-    }
-
-    public int getCreatedBy()
-    {
-        return _createdBy;
-    }
-
-    public void setCreatedBy(int createdBy)
-    {
-        _createdBy = createdBy;
-    }
-
-    public Date getCreated()
-    {
-        return _created;
-    }
-
-    public void setCreated(Date created)
-    {
-        _created = created;
-    }
-
-    public int getModifiedBy()
-    {
-        return _modifiedBy;
-    }
-
-    public void setModifiedBy(int modifiedBy)
-    {
-        _modifiedBy = modifiedBy;
-    }
-
-    public Date getModified()
-    {
-        return _modified;
-    }
-
-    public void setModified(Date modified)
-    {
-        _modified = modified;
     }
 
     public String getName()

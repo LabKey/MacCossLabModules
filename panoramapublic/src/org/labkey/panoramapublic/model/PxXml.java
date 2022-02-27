@@ -1,13 +1,8 @@
 package org.labkey.panoramapublic.model;
 
-import java.util.Date;
-
-public class PxXml
+public class PxXml extends DbEntity
 {
-    private int _id;
     private int _journalExperimentId;
-    private Date _created;
-    private int _createdBy;
     private String _xml;
     private int _version;
     private String _updateLog;
@@ -22,16 +17,6 @@ public class PxXml
         _updateLog = updateLog;
     }
 
-    public int getId()
-    {
-        return _id;
-    }
-
-    public void setId(int id)
-    {
-        _id = id;
-    }
-
     public int getJournalExperimentId()
     {
         return _journalExperimentId;
@@ -40,26 +25,6 @@ public class PxXml
     public void setJournalExperimentId(int journalExperimentId)
     {
         _journalExperimentId = journalExperimentId;
-    }
-
-    public Date getCreated()
-    {
-        return _created;
-    }
-
-    public void setCreated(Date created)
-    {
-        _created = created;
-    }
-
-    public int getCreatedBy()
-    {
-        return _createdBy;
-    }
-
-    public void setCreatedBy(int createdBy)
-    {
-        _createdBy = createdBy;
     }
 
     public String getXml()

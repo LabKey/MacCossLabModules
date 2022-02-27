@@ -408,4 +408,228 @@
             <column columnName="DependencyType"/>
         </columns>
     </table>
+    <table tableName="DataValidation" tableDbType="TABLE">
+        <columns>
+            <column columnName="_ts">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Created">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="CreatedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Modified">
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="ModifiedBy">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="Id"/>
+            <column columnName="ExperimentAnnotationsId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>ExperimentAnnotations</fkTable>
+                </fk>
+                <url>panoramapublic-showExperimentAnnotations.view?id=${experimentAnnotationsId}</url>
+            </column>
+            <column columnName="JobId">
+                <fk>
+                    <fkColumnName>RowId</fkColumnName>
+                    <fkDbSchema>pipeline</fkDbSchema>
+                    <fkTable>StatusFiles</fkTable>
+                </fk>
+                <url>pipeline-status-details.view?rowId=${jobId}</url>
+            </column>
+            <column columnName="Status">
+                <description>Data status for a ProteomeXchange submission</description>
+            </column>
+        </columns>
+    </table>
+    <table tableName="SkylineDocValidation" tableDbType="TABLE">
+        <titleColumn>name</titleColumn>
+        <columns>
+            <column columnName="Id"/>
+            <column columnName="ValidationId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>DataValidation</fkTable>
+                </fk>
+            </column>
+            <column columnName="Name"/>
+            <column columnName="RunId">
+                <fk>
+                    <fkColumnName>id</fkColumnName>
+                    <fkDbSchema>targetedms</fkDbSchema>
+                    <fkTable>runs</fkTable>
+                </fk>
+            </column>
+            <column columnName="Container">
+                <columnTitle>Folder</columnTitle>
+                <fk>
+                    <fkColumnName>EntityId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>containers</fkTable>
+                </fk>
+                <description>Folder that contains the run</description>
+            </column>
+        </columns>
+    </table>
+    <table tableName="SkylineDocSampleFile" tableDbType="TABLE">
+        <titleColumn>Name</titleColumn>
+        <columns>
+            <column columnName="Id"/>
+            <column columnName="SkylineDocValidationId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>SkylineDocValidation</fkTable>
+                </fk>
+            </column>
+            <column columnName="Name"/>
+            <column columnName="FilePathImported">
+                <description>Path of the file imported into the Skyline document</description>
+            </column>
+            <column columnName="Path">
+                <description>File path on the server</description>
+            </column>
+        </columns>
+    </table>
+    <table tableName="ModificationValidation" tableDbType="TABLE">
+        <titleColumn>SkylineModName</titleColumn>
+        <columns>
+            <column columnName="Id"/>
+            <column columnName="ValidationId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>DataValidation</fkTable>
+                </fk>
+            </column>
+            <column columnName="SkylineModName">
+                <description>Name of the modification in the Skyline document</description>
+            </column>
+            <column columnName="DbModId"/>
+            <column columnName="ModType">
+                <description>Structural / Isotopic</description>
+            </column>
+            <column columnName="UnimodId">
+                <url>https://www.unimod.org/modifications_view.php?editid1=${unimodid}</url>
+            </column>
+            <column columnName="UnimodName">
+                <description>Name of the modification in unimod.xml, as expected by ProteomeXchange</description>
+            </column>
+            <column columnName="Inferred">
+                <description>True if the Unimod Id was inferred</description>
+            </column>
+            <column columnName="UnimodMatches">
+                <isHidden>true</isHidden>
+                <description>Possible Unimod matches if a single match was not found</description>
+            </column>
+        </columns>
+    </table>
+    <table tableName="SkylineDocModification" tableDbType="TABLE">
+        <columns>
+            <column columnName="Id"/>
+            <column columnName="SkylineDocValidationId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>SkylineDocValidation</fkTable>
+                </fk>
+            </column>
+            <column columnName="ModificationValidationId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>ModificationValidation</fkTable>
+                </fk>
+            </column>
+        </columns>
+    </table>
+    <table tableName="SpecLibValidation" tableDbType="TABLE">
+        <titleColumn>FileName</titleColumn>
+        <columns>
+            <column columnName="Id"/>
+            <column columnName="ValidationId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>DataValidation</fkTable>
+                </fk>
+            </column>
+            <column columnName="LibName">
+                <description>Name of the library in the Skyline document</description>
+            </column>
+            <column columnName="FileName">
+                <description>Name of the library file</description>
+            </column>
+            <column columnName="Size">
+                <description>File size on disk</description>
+            </column>
+            <column columnName="LibType">
+                <description>Library type: BiblioSpec, EncyclopeDIA, SpectraST, NIST etc.</description>
+            </column>
+        </columns>
+    </table>
+    <table tableName="SpecLibSourceFile" tableDbType="TABLE">
+        <titleColumn>Name</titleColumn>
+        <columns>
+            <column columnName="Id"/>
+            <column columnName="SpecLibValidationId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>SpecLibValidation</fkTable>
+                </fk>
+            </column>
+            <column columnName="Name"/>
+            <column columnName="Path">
+                <description>File path on the server</description>
+            </column>
+            <column columnName="SourceType">
+                <description>Spectrum file / Peptide Id file</description>
+            </column>
+        </columns>
+    </table>
+    <table tableName="SkylineDocSpecLib" tableDbType="TABLE">
+        <columns>
+            <column columnName="Id"/>
+            <column columnName="SkylineDocValidationId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>SkylineDocValidation</fkTable>
+                </fk>
+            </column>
+            <column columnName="SpecLibValidationId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>panoramapublic</fkDbSchema>
+                    <fkTable>SpecLibValidation</fkTable>
+                </fk>
+            </column>
+            <column columnName="Included"/>
+            <column columnName="SpectrumLibraryId">
+                <description>Row Id from targetedms.spectrumlibrary</description>
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>targetedms</fkDbSchema>
+                    <fkTable>SpectrumLibrary</fkTable>
+                </fk>
+            </column>
+        </columns>
+    </table>
 </tables>

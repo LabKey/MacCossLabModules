@@ -57,7 +57,7 @@
             PanoramaPublicController.getViewExperimentDetailsURL(annot.getId(), getContainer()));
     ActionURL deleteUrl = PanoramaPublicController.getDeleteExperimentURL(getContainer(), annot.getId(), getContainer().getStartURL(getUser()));
 
-    ActionURL publishUrl = PanoramaPublicController.getPublishExperimentURL(annot.getId(), getContainer(), true, true);
+    ActionURL publishUrl = PanoramaPublicController.getSubmitExperimentURL(annot.getId(), getContainer());
     Container experimentContainer = annot.getContainer();
     final boolean canEdit = (!annot.isJournalCopy() || getUser().hasSiteAdminPermission()) && experimentContainer.hasPermission(getUser(), AdminPermission.class);
     // User needs to be the folder admin to publish an experiment.
@@ -70,7 +70,7 @@
     Journal journal = null;
     boolean journalCopyPending = false;
     ShortURLRecord accessUrlRecord = annot.getShortUrl(); // Will have a value if this is a journal copy of an experiment.
-    JournalSubmission js = me.getModelBean().getLastPublishedRecord(); // Will be non-null if this experiment is in a user (not journal) project.
+    JournalSubmission js = annotDetails.getLastPublishedRecord(); // Will be non-null if this experiment is in a user (not journal) project.
     String publishButtonText = "Submit";
     if (js != null)
     {
@@ -84,7 +84,7 @@
             if (!journalCopyPending)
             {
                 publishButtonText = "Resubmit";
-                publishUrl = PanoramaPublicController.getRePublishExperimentURL(annot.getId(), js.getJournalId(), getContainer(), submission.isKeepPrivate(), true); // Has been copied; User is re-submitting
+                publishUrl = PanoramaPublicController.getResubmitExperimentURL(annot.getId(), js.getJournalId(), getContainer(), submission.isKeepPrivate(), true); // Has been copied; User is re-submitting
             }
         }
     }
@@ -186,7 +186,9 @@
 <div id="title"><%=h(annot.getTitle())%></div>
 <div>
     <%if(canPublish && !journalCopyPending){%>
-        <a class="button-small button-small-red" style="float:left; margin:0px 5px 0px 2px;" href="<%=h(publishUrl)%>"><%=h(publishButtonText)%></a>
+        <span style="float:left; margin:0px 5px 0px 2px;">
+            <%=link(publishButtonText, publishUrl).clearClasses().addClass("button-small").addClass("button-small-red")%>
+        </span>
     <%}%>
     <% if (annotDetails.canAddPublishLink(getUser())) { %>
         <%=link(annotDetails.getPublishButtonText(), new ActionURL(PanoramaPublicController.MakePublicAction.class,getContainer())

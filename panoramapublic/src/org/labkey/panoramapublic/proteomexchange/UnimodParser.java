@@ -33,6 +33,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class UnimodParser
 {
@@ -131,14 +132,15 @@ public class UnimodParser
         }
     }
 
-    private UnimodModification parseModification(Element modEl)
+    private UnimodModification parseModification(Element modEl) throws PxException
     {
         String title = modEl.getAttribute("title");
         Integer id = Integer.parseInt(modEl.getAttribute("record_id"));
 
-        String formula = getFormula(modEl.getElementsByTagName("delta"));
+        NodeList deltaEl = modEl.getElementsByTagName("delta");
+        UnimodModification uMod = new UnimodModification(id, title, getFormula(deltaEl));
 
-        UnimodModification uMod = new UnimodModification(id, title, formula);
+        boolean isIsotopic = false;
 
         NodeList nl = modEl.getElementsByTagName("specificity");
         for(int i = 0; i < nl.getLength(); i++)
@@ -146,21 +148,65 @@ public class UnimodParser
             Element specEl = (Element) nl.item(i);
             String site = specEl.getAttribute("site");
             String cls = specEl.getAttribute("classification");
+            String pos = specEl.getAttribute("position");
+            Position position = Position.forName(pos);
             if(site.equalsIgnoreCase("N-term"))
             {
-                uMod.setNterm(true);
+                uMod.setNterm(position);
             }
             else if(site.equalsIgnoreCase("C-term"))
             {
-                uMod.setCterm(true);
+                uMod.setCterm(position);
             }
             else
             {
-                uMod.addSite(site, cls);
+                uMod.addSite(site, position);
+            }
+            if ("Isotopic label".equals(cls))
+            {
+                isIsotopic = true;
+            }
+        }
+        isIsotopic = isIsotopic && checkTrueIsotopeMod(deltaEl);
+        uMod.setIsotopic(isIsotopic);
+
+        return uMod;
+    }
+
+    // From Skyline/Executables/UnimodCompiler
+    private boolean checkTrueIsotopeMod(NodeList nl)
+    {
+        int label15N = 0;
+        int label13C = 0;
+        int label18O = 0;
+        int label2H = 0;
+        boolean has15N = false;
+        boolean has13C = false;
+        boolean has18O = false;
+        boolean has2H = false;
+
+        if(nl.getLength() > 0)
+        {
+            nl = ((Element)nl.item(0)).getElementsByTagName("element");
+            for(int i = 0; i < nl.getLength(); i++)
+            {
+                Element el = (Element)nl.item(i);
+                String symbol = el.getAttribute("symbol");
+                int number = Integer.parseInt(el.getAttribute("number"));
+                has15N = has15N || "15N".equals(symbol);
+                has13C = has13C || "13C".equals(symbol);
+                has18O = has18O || "18O".equals(symbol);
+                has2H = has2H || "2H".equals(symbol);
+                label15N += "15N".equals(symbol) || "N".equals(symbol) ? 0 : number;
+                label13C += "13C".equals(symbol) || "C".equals(symbol) ? 0 : number;
+                label18O += "18O".equals(symbol) || "O".equals(symbol) ? 0 : number;
+                label2H += "2H".equals(symbol) || "H".equals(symbol) ? 0 : number;
             }
         }
 
-        return uMod;
+        return (has15N || has13C || has18O || has2H) &&
+                (!has15N || label15N == 0) && (!has13C || label13C == 0)
+                && (!has18O || label18O == 0) && (!has2H || label2H == 0);
     }
 
     private String getFormula(NodeList nl)
@@ -208,5 +254,113 @@ public class UnimodParser
             formula = formula + sep + formula_neg;
         }
         return UnimodModification.normalizeFormula(formula);
+    }
+
+    static class Specificity
+    {
+        private final String _site;
+        private final Position _position;
+
+        public Specificity(String site, Position position)
+        {
+            _site = site;
+            _position = position;
+        }
+
+        public String getSite()
+        {
+            return _site;
+        }
+
+        public Position getPosition()
+        {
+            return _position;
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Specificity that = (Specificity) o;
+            return getSite().equals(that.getSite()) && getPosition() == that.getPosition();
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(getSite(), getPosition());
+        }
+    }
+
+    static class TermSpecificity
+    {
+        private final Terminus _term;
+        private final Position _position;
+
+        public TermSpecificity(Terminus term, Position position)
+        {
+            _term = term;
+            _position = position;
+        }
+
+        public Terminus getTerm()
+        {
+            return _term;
+        }
+
+        public Position getPosition()
+        {
+            return _position;
+        }
+    }
+
+    enum Position {
+
+        Anywhere("Anywhere", true),
+        AnyNterm("Any N-term", true),
+        AnyCterm("Any C-term", true),
+        ProteinNTerm("Protein N-term", false),
+        ProteinCTerm("Protein C-term", false);
+
+        private final String _name;
+        private final boolean _anywhere;
+        Position(String name, boolean anywhere)
+        {
+            _name = name;
+            _anywhere = anywhere;
+        }
+        static Position forName(String name) throws PxException
+        {
+            for (Position p: values())
+            {
+                if (p._name.matches(name))
+                {
+                    return p;
+                }
+            }
+            throw new PxException("Cannot find a match for specificity position seen in Unimod.xml: " + name);
+        }
+
+        public boolean isAnywhere()
+        {
+            return _anywhere;
+        }
+    }
+
+    enum Terminus
+    {
+        N("N-term"), C("C-term");
+
+        private final String fullName;
+        Terminus(String fullName)
+        {
+            this.fullName = fullName;
+        }
+
+        public String getFullName()
+        {
+            return fullName;
+        }
     }
 }

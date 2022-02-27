@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.junit.Test;
+import org.labkey.api.targetedms.ISpectrumLibrary;
 import org.labkey.panoramapublic.speclib.LibraryType;
 
 import java.util.Objects;
@@ -52,6 +53,11 @@ public class SpecLibKey
             }
         }
         return null;
+    }
+
+    public static @NotNull SpecLibKey fromLibrary(@NotNull ISpectrumLibrary library)
+    {
+        return new SpecLibKey(library.getName(), library.getFileNameHint(), library.getSkylineLibraryId(), library.getRevision(), library.getLibraryType());
     }
 
     @Override

@@ -42,8 +42,12 @@ import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
+import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
+import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
 import org.labkey.panoramapublic.proteomexchange.SkylineVersion;
-import org.labkey.panoramapublic.proteomexchange.SubmissionDataValidator;
+import org.labkey.panoramapublic.proteomexchange.validator.SkylineDocValidator;
+import org.labkey.panoramapublic.proteomexchange.validator.SpecLibValidator;
+import org.labkey.panoramapublic.query.ContainerJoin;
 import org.labkey.panoramapublic.query.ExperimentTitleDisplayColumn;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.speclib.SpecLibView;
@@ -74,7 +78,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 21.002;
+        return 22.001;
     }
 
     @Override
@@ -95,6 +99,7 @@ public class PanoramaPublicModule extends SpringModule
     {
         PipelineService service = PipelineService.get();
         service.registerPipelineProvider(new CopyExperimentPipelineProvider(this));
+        service.registerPipelineProvider(new PxValidationPipelineProvider(this));
 
         // Register the CopyExperimentRole
         RoleManager.registerRole(new CopyTargetedMSExperimentRole());
@@ -311,10 +316,13 @@ public class PanoramaPublicModule extends SpringModule
     {
         Set<Class> set = new HashSet<>();
         set.add(PanoramaPublicController.TestCase.class);
-        set.add(SubmissionDataValidator.TestCase.class);
         set.add(PanoramaPublicNotification.TestCase.class);
         set.add(SkylineVersion.TestCase.class);
         set.add(SpecLibKey.TestCase.class);
+        set.add(SkylineDocValidator.TestCase.class);
+        set.add(SpecLibValidator.TestCase.class);
+        set.add(ExperimentModificationGetter.TestCase.class);
+        set.add(ContainerJoin.TestCase.class);
         return set;
 
     }

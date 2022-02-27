@@ -22,6 +22,9 @@ import org.labkey.api.security.User;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Submission;
+import org.labkey.panoramapublic.model.validation.Modification;
+import org.labkey.panoramapublic.model.validation.PxStatus;
+import org.labkey.panoramapublic.model.validation.Status;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -109,7 +112,6 @@ public class PxXmlWriter extends PxWriter
             _writer.writeCharacters("\n");
             _writer.writeEndElement();
             _writer.writeEndDocument();
-
         }
         catch (XMLStreamException e)
         {
@@ -373,7 +375,7 @@ public class PxXmlWriter extends PxWriter
     }
 
     @Override
-    void writeModificationList(ExperimentAnnotations expAnnotations) throws PxException
+    void writeModificationList(Status validationStatus) throws PxException
     {
         /*
         <ModificationList>
@@ -388,28 +390,28 @@ public class PxXmlWriter extends PxWriter
         </ModificationList>
          */
         Element mod_list = new Element("ModificationList");
-        List<ExperimentModificationGetter.PxModification> mods = ExperimentModificationGetter.getModifications(expAnnotations);
+        var mods = validationStatus.getModifications();
         if(mods.size() == 0)
         {
             mod_list.addChild(new CvParamElement("MS", "MS:1002864", "No PTMs are included in the dataset"));
         }
         Set<String> seen = new HashSet<>();
-        for(ExperimentModificationGetter.PxModification mod: mods)
+        for(Modification mod: mods)
         {
-            if(seen.contains(mod.getName()))
+            if(seen.contains(mod.getNameString()))
             {
                 continue;
             }
-            seen.add(mod.getName());
-            if(mod.hasUnimodId())
+            seen.add(mod.getNameString());
+            if(mod.isValid())
             {
                 // Include only modifications that have a UNIMOD ID so that we can do an "incomplete" submissions.
-                mod_list.addChild(new CvParamElement("UNIMOD", mod.getUnimodId(), mod.getName()));
+                mod_list.addChild(new CvParamElement("UNIMOD", mod.getUnimodIdStr(), mod.getUnimodName()));
             }
             else if(!_submittingToPx)
             {
                 // We are not submitting this to ProteomeXchange. We want to see which modifications don't have a Unimod Id
-                mod_list.addChild(new CvParamElement("UNIMOD", NO_UNIMOD_ID, mod.getName()));
+                mod_list.addChild(new CvParamElement("UNIMOD", NO_UNIMOD_ID, mod.getUnimodIdStr()));
             }
         }
 
@@ -606,7 +608,7 @@ public class PxXmlWriter extends PxWriter
     }
 
     @Override
-    void writeDatasetSummary(ExperimentAnnotations annotations, Submission submission) throws PxException
+    void writeDatasetSummary(ExperimentAnnotations annotations, Submission submission, Status validationStatus) throws PxException
     {
         Element el = new Element("DatasetSummary");
         List<Attribute> attributes = new ArrayList<>(3);
@@ -626,16 +628,16 @@ public class PxXmlWriter extends PxWriter
         el.addChild(reviewLevel);
 
         Element repoSupport = new Element("RepositorySupport");
-        SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(annotations);
         final CvParamElement completeEl = new CvParamElement("MS", "MS:1002856", "Supported dataset by repository");
         final CvParamElement incompleteEl = new CvParamElement("MS", "MS:1003087", "supported by repository but incomplete data and/or metadata");
-        if(status.isComplete())
+        PxStatus pxStatus = validationStatus.getValidation().getStatus();
+        if(pxStatus == PxStatus.Complete)
         {
             repoSupport.addChild(completeEl);
         }
-        else if(status.isIncomplete())
+        else if(pxStatus == PxStatus.IncompleteMetadata)
         {
-            repoSupport.addChild(submission.isIncompletePxSubmission() ? incompleteEl :
+            repoSupport.addChild((submission.isPxidRequested() && submission.isIncompletePxSubmission()) ? incompleteEl :
                     // Data validator tell us that his is an incomplete submission but there was an admin override
                     // to submit this as a complete submission.
                     // Use case: data for .blib spectrum libraries was not uploaded to Panorama Public but
