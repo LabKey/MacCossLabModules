@@ -148,7 +148,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
 
         // RasPhos_20170125.blib is used with both SKY_FILE_3 and  SKY_FILE_4
         // The .blib is missing in SKY_FILE_3. We expect to see two rows for this library since the library key includes the file size of the library
-        validationPage.verifySpectralLibraryStatus("RasPhos_20170125.blib", "0",
+        validationPage.verifySpectralLibraryStatus("RasPhos_20170125.blib", "-",
                 "Status: Library file missing from Skyline .zip",
                 List.of(SKY_FILE_3),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());

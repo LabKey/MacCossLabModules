@@ -22,18 +22,6 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         waitForElement(Locators.bodyTitle().withText("Data Validation Status"));
         assertTextNotPresent("Could not find job status for job");
         waitForTextToDisappear("This page will automatically refresh", WAIT_FOR_PAGE);
-        expandValidationRows();
-    }
-
-    private void expandValidationRows()
-    {
-        var gridRowExpander = Locator.XPathLocator.tagWithClass("div", "x4-grid-row-expander");
-        var els = gridRowExpander.findElements(getDriver());
-        assertTrue("Expected to find grid expander elements", els.size() > 0);
-        for (var el: els)
-        {
-            el.click(); // Expand all the rows
-        }
     }
 
     public void verifyInvalidStatus()
@@ -79,10 +67,13 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
 
     public void verifySampleFileStatus(String skylineDocName, List<String> found, List<String> missing)
     {
-        scrollIntoView(elementCache().skyDocsPanel);
+        var panel = elementCache().skyDocsPanel;
+        scrollIntoView(panel);
+        expandSkyDocRow(panel, skylineDocName);
+
         verifySkyDocStatus(skylineDocName, missing.size() == 0 ? "COMPLETE" : "INCOMPLETE");
 
-        var sampleFilesTable = elementCache().skyDocsPanel.findElement(getFilesTableLocator(skylineDocName, "pxv-tpl-table"));
+        var sampleFilesTable = panel.findElement(getFilesTableLocator(skylineDocName, "pxv-tpl-table"));
         for (var file: missing)
         {
             verifyFileStatus(sampleFilesTable, file, true);
@@ -96,6 +87,13 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
     private void verifySkyDocStatus(String skylineDocName, String status)
     {
         elementCache().skyDocsPanel.findElement(Locator.XPathLocator.tag("td").withText(skylineDocName).followingSibling("td").withText(status));
+    }
+
+    private void expandSkyDocRow(WebElement panel, String fileName)
+    {
+        var expander = panel.findElement(Locator.XPathLocator.tag("td").withText(fileName)
+                .precedingSibling("td").descendant("div").withClass("x4-grid-row-expander"));
+        expander.click();
     }
 
     private Locator getFilesTableLocator(String skylineDocName, String clsName)
@@ -120,19 +118,28 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
                                             List<String> spectrumFiles, List<String> spectrumFilesMissing,
                                             List<String> idFiles, List<String> idFilesMissing)
     {
-        scrollIntoView(elementCache().specLibsPanel);
+        var panel = elementCache().specLibsPanel;
+        scrollIntoView(panel);
+        expandLibraryRow(panel, libraryFile, fileSize);
         verifySpecLibStatus(libraryFile, fileSize,
                 (spectrumFiles.size() == 0 || idFiles.size() == 0
                         || spectrumFilesMissing.size() > 0 || idFilesMissing.size() > 0) ? "INCOMPLETE" : "CPMPLETE");
 
-        var panelText = elementCache().specLibsPanel.getText();
+        var panelText = panel.getText();
         List<String> expectedTexts = new ArrayList<>(skylineDocNames);
         expectedTexts.add(statusText);
         assertTextPresent(new TextSearcher(panelText), expectedTexts.toArray(new String[]{}));
 
-        var panel = elementCache().specLibsPanel;
         verifyLibrarySourceFiles(libraryFile, spectrumFiles, spectrumFilesMissing, panel, "lib-spectrum-files-status");
         verifyLibrarySourceFiles(libraryFile, idFiles, idFilesMissing, panel, "lib-id-files-status");
+    }
+
+    private void expandLibraryRow(WebElement panel, String libraryName, String librarySize)
+    {
+        var expander = panel.findElement(Locator.XPathLocator.tag("td").withText(libraryName)
+                .followingSibling("td").withText(librarySize)
+                .parent("tr").descendant("div").withClass("x4-grid-row-expander"));
+        expander.click();
     }
 
     private void verifyLibrarySourceFiles(String libraryName, List<String> files, List<String> filesMissing, WebElement specLibsPanel, String tblCls)
