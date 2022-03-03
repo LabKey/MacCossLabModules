@@ -68,7 +68,7 @@
     <!--Header content, username run Id, and other information about the run-->
     <h2>
         <%=h(run.getUserName() + " : " + df.format(run.getPostTime()))%> &nbsp;
-        <img id="flagged" src="<%=h(contextPath)%>/TestResults/img/<% if (run.isFlagged()) { %>flagon<% } else { %>flagoff<% } %>.png"
+        <img id="flagged" src="<%=getWebappURL("/TestResults/img/" + (run.isFlagged() ? "flagon" : "flagoff") + ".png")%>"
             title="Click to <% if (run.isFlagged()) { %>unflag<% } else { %>flag<% } %> run"
             style="width: 30px; height: 30px; cursor: pointer;"> &nbsp;
         <button id="deleteRun">Delete Run</button>
