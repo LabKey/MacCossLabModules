@@ -181,7 +181,7 @@ public class PanoramaPublicSchema extends UserSchema
 
         if (TABLE_SKYLINE_DOC_VALIDATION.equalsIgnoreCase(name))
         {
-            var table = new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSkylineDocValidation(), this, cf, ContainerJoin.DataValidatoinJoin);
+            var table = new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSkylineDocValidation(), this, cf, ContainerJoin.DataValidationJoin, true);
             var sampleFileCountsCol = DataValidationTableInfo.createCountsColumn(table,
                     PanoramaPublicManager.getTableInfoSkylineDocSampleFile(), "SkylineDocValidationId",
                     PanoramaPublicSchema.TABLE_SKYLINE_DOC_SAMPLE_FILE, "SampleFiles", table.getContainerContext());
@@ -194,12 +194,12 @@ public class PanoramaPublicSchema extends UserSchema
 
         if (TABLE_SKYLINE_DOC_SAMPLE_FILE.equalsIgnoreCase(name))
         {
-            return new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSkylineDocSampleFile(), this, cf, ContainerJoin.SkyDocValidationJoin);
+            return new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSkylineDocSampleFile(), this, cf, ContainerJoin.SkyDocValidationJoin, true);
         }
 
         if (TABLE_SPEC_LIB_VALIDATION.equalsIgnoreCase(name))
         {
-            var table = new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSpecLibValidation(), this, cf, ContainerJoin.DataValidatoinJoin);
+            var table = new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSpecLibValidation(), this, cf, ContainerJoin.DataValidationJoin, true);
             var sourceFileCountCol = DataValidationTableInfo.createCountsColumn(table,
                     PanoramaPublicManager.getTableInfoSpecLibSourceFile(), "SpecLibValidationId",
                     PanoramaPublicSchema.TABLE_SPEC_LIB_SOURCE_FILE, "SourceFiles", table.getContainerContext());
@@ -216,7 +216,7 @@ public class PanoramaPublicSchema extends UserSchema
 
         if (TABLE_SPEC_LIB_SOURCE_FILE.equalsIgnoreCase(name))
         {
-            var table = new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSpecLibSourceFile(), this, cf, ContainerJoin.SpecLibValidationJoin);
+            var table = new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSpecLibSourceFile(), this, cf, ContainerJoin.SpecLibValidationJoin, true);
             var sourceTypeCol = table.getMutableColumn("SourceType");
             if (sourceTypeCol != null)
             {
@@ -227,12 +227,12 @@ public class PanoramaPublicSchema extends UserSchema
 
         if (TABLE_SKYLINE_DOC_SPEC_LIB.equalsIgnoreCase(name))
         {
-            return new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSkylineDocSpecLib(), this, cf, ContainerJoin.SpecLibValidationJoin);
+            return new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSkylineDocSpecLib(), this, cf, ContainerJoin.SpecLibValidationJoin, true);
         }
 
         if (TABLE_MODIFICATION_VALIDATION.equalsIgnoreCase(name))
         {
-            var table = new PanoramaPublicTable(PanoramaPublicManager.getTableInfoModificationValidation(), this, cf, ContainerJoin.DataValidatoinJoin);
+            var table = new PanoramaPublicTable(PanoramaPublicManager.getTableInfoModificationValidation(), this, cf, ContainerJoin.DataValidationJoin, true);
             var modTypeCol = table.getMutableColumn("ModType");
             if (modTypeCol != null)
             {
@@ -249,7 +249,7 @@ public class PanoramaPublicSchema extends UserSchema
         }
         if (TABLE_SKYLINE_DOC_MODIFICATION.equalsIgnoreCase(name))
         {
-            return new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSkylineDocModification(), this, cf, ContainerJoin.ModificationJoin);
+            return new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSkylineDocModification(), this, cf, ContainerJoin.ModificationJoin, true);
         }
 
         if (TABLE_PX_STATUS.equalsIgnoreCase(name))
@@ -335,12 +335,11 @@ public class PanoramaPublicSchema extends UserSchema
     @Override
     public @NotNull QueryView createView(ViewContext context, @NotNull QuerySettings settings, @Nullable BindException errors)
     {
-        QueryView view;
         if (TABLE_SPEC_LIB_INFO.equalsIgnoreCase(settings.getQueryName())
         || TABLE_DATA_VALIDATION.equalsIgnoreCase(settings.getQueryName()))
         {
             // Show the delete icon in the toolbar but not the insert or update icons
-            view = new QueryView(this, settings, errors)
+            return new QueryView(this, settings, errors)
             {
                 @Override
                 protected boolean canDelete()
@@ -367,22 +366,8 @@ public class PanoramaPublicSchema extends UserSchema
                 }
             };
         }
-        else
-        {
-            view = super.createView(context, settings, errors);
-        }
 
-        if (TABLE_SKYLINE_DOC_VALIDATION.equalsIgnoreCase(settings.getQueryName())
-                || TABLE_SKYLINE_DOC_SAMPLE_FILE.equalsIgnoreCase(settings.getQueryName())
-                || TABLE_MODIFICATION_VALIDATION.equalsIgnoreCase(settings.getQueryName())
-                || TABLE_SKYLINE_DOC_MODIFICATION.equalsIgnoreCase(settings.getQueryName())
-                || TABLE_SPEC_LIB_VALIDATION.equalsIgnoreCase(settings.getQueryName())
-                || TABLE_SPEC_LIB_SOURCE_FILE.equalsIgnoreCase(settings.getQueryName())
-                || TABLE_SKYLINE_DOC_SPEC_LIB.equalsIgnoreCase(settings.getQueryName()))
-        {
-            view.disableContainerFilterSelection(); // No need for a container filter on these tables
-        }
-        return view;
+        return super.createView(context, settings, errors);
     }
 
     @Override

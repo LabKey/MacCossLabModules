@@ -22,10 +22,10 @@ public class ContainerJoin
     private static final String JOIN_TABLE_ALIAS_PREFIX = "J";
 
     public static final ContainerJoin ExpAnnotJoin = new ContainerJoin("ExperimentAnnotationsId", PanoramaPublicManager.getTableInfoExperimentAnnotations());
-    public static final ContainerJoin DataValidatoinJoin = ExpAnnotJoin.addJoin("ValidationId", PanoramaPublicManager.getTableInfoDataValidation());
-    public static final ContainerJoin SpecLibValidationJoin = DataValidatoinJoin.addJoin("SpecLibValidationId", PanoramaPublicManager.getTableInfoSpecLibValidation());
-    public static final ContainerJoin SkyDocValidationJoin = DataValidatoinJoin.addJoin("SkylineDocValidationId", PanoramaPublicManager.getTableInfoSkylineDocValidation());
-    public static final ContainerJoin ModificationJoin = DataValidatoinJoin.addJoin("ModificationValidationId", PanoramaPublicManager.getTableInfoModificationValidation());
+    public static final ContainerJoin DataValidationJoin = ExpAnnotJoin.addJoin("ValidationId", PanoramaPublicManager.getTableInfoDataValidation());
+    public static final ContainerJoin SpecLibValidationJoin = DataValidationJoin.addJoin("SpecLibValidationId", PanoramaPublicManager.getTableInfoSpecLibValidation());
+    public static final ContainerJoin SkyDocValidationJoin = DataValidationJoin.addJoin("SkylineDocValidationId", PanoramaPublicManager.getTableInfoSkylineDocValidation());
+    public static final ContainerJoin ModificationJoin = DataValidationJoin.addJoin("ModificationValidationId", PanoramaPublicManager.getTableInfoModificationValidation());
 
     private ContainerJoin(List<InnerJoinClause> joinList)
     {

@@ -249,13 +249,16 @@
         });
     }
 
+    const PX_COMPLETE = 3;
+    const PX_INCOMPLETE = 2;
+
     // -----------------------------------------------------------
     // Displays the main validation summary panel
     // -----------------------------------------------------------
     function validationInfo(json) {
 
         function getStatusCls(statusId) {
-            return statusId === 3 ? 'pxv-valid' : (statusId !== -1 ? 'pxv-invalid' : '');
+            return statusId === PX_COMPLETE ? 'pxv-valid' : (statusId !== -1 ? 'pxv-invalid' : '');
         }
 
         function getMissingMetadataFields(missingFields) {
@@ -301,24 +304,24 @@
         }
 
         function getStatusDetails(statusId, json) {
-            var html =  statusId === 3 ? getStatusValidHtml(json)
-                        : statusId === 2 ? getIncompleteDataHtml(json) : getStatusInvalidHtml(json);
+            var html =  statusId === PX_COMPLETE ? getStatusValidHtml(json)
+                        : statusId === PX_INCOMPLETE ? getIncompleteDataHtml(json) : getStatusInvalidHtml(json);
             return '<div>' + html + '</div>';
         }
 
         function getButtonText(statusId) {
-            return statusId === 3 ? "Continue Submission"
-                    : statusId === 2 ? "Continue with an Incomplete PX Submission" : "Submit without a ProteomeXchange ID";
+            return statusId === PX_COMPLETE ? "Continue Submission"
+                    : statusId === PX_INCOMPLETE ? "Continue with an Incomplete PX Submission" : "Submit without a ProteomeXchange ID";
         }
 
         function getButtonCls(statusId) {
             var cls = "pxv-btn-submit";
-            return cls + (statusId === 3 ? " pxv-btn-green"  : statusId === 2 ? " pxv-btn-orange" : " pxv-btn-red");
+            return cls + (statusId === PX_COMPLETE ? " pxv-btn-green"  : statusId === PX_INCOMPLETE ? " pxv-btn-orange" : " pxv-btn-red");
         }
 
         function getButtonLink(statusId, json) {
             var params = {id: json["experimentAnnotationsId"], validationId: json["id"], "doSubfolderCheck": false};
-            if (statusId === 0 || statusId === 1) { params["getPxid"] = false; }
+            if (statusId < PX_INCOMPLETE) { params["getPxid"] = false; }
             else { params["getPxid"] = true; }
 
             <% if(journalId != null) { %>
@@ -696,6 +699,10 @@
                     },
                     {
                         property: 'libType',
+                        direction: 'ASC'
+                    },
+                    {
+                        property: 'fileName',
                         direction: 'ASC'
                     }
                 ]

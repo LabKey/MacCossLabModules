@@ -2469,8 +2469,9 @@ public class PanoramaPublicController extends SpringActionController
         {
             componentList.add(DIV(at(style, "margin-bottom:10px;"), message));
         }
-        componentList.add(DIV(at(style, "margin-bottom:10px; margin-right:10px;"), "Click the button to start a new data validation job.",
-                getStartDataValidationButton(experimentAnnotations, container, "Validate Data for ProteomeXchange", null, forSubmit).build()));
+        componentList.add(DIV(at(style, "margin-bottom:10px;"), "Click the button to start a new data validation job.",
+                SPAN(at(style, "margin-left:10px;"),
+                        getStartDataValidationButton(experimentAnnotations, container, "Validate Data for ProteomeXchange", null, forSubmit).build())));
 
         if (forSubmit && submitUrl != null)
         {
@@ -2751,8 +2752,6 @@ public class PanoramaPublicController extends SpringActionController
         private Integer _validationId;
 
         private boolean _doSubfolderCheck = true;
-        // private boolean _skipPxCheck = false;
-
 
         public int getJournalId()
         {
@@ -2918,16 +2917,6 @@ public class PanoramaPublicController extends SpringActionController
         {
             return !_getPxid;
         }
-
-//        public boolean isSkipPxCheck()
-//        {
-//            return _skipPxCheck;
-//        }
-
-//        public void setSkipPxCheck(boolean skipPxCheck)
-//        {
-//            _skipPxCheck = skipPxCheck;
-//        }
     }
     // ------------------------------------------------------------------------
     // END Action for publishing an experiment (provide copy access to a journal)
@@ -3476,6 +3465,10 @@ public class PanoramaPublicController extends SpringActionController
             form.setLabHeadAffiliation(submission.getLabHeadAffiliation());
             DataLicense license = submission.getDataLicense();
             form.setDataLicense(license == null ? DataLicense.defaultLicense().name() : license.name());
+            if (_dataValidation != null)
+            {
+                form.setIncompletePxSubmission(_dataValidation.getStatus().incompleteSubmission());
+            }
         }
 
         void setValuesInSubmission(PublishExperimentForm form, Submission submission)
@@ -7315,7 +7308,6 @@ public class PanoramaPublicController extends SpringActionController
         result.addParameter("journalId", journalId);
         result.addParameter("keepPrivate", keepPrivate);
         result.addParameter("getPxid", getPxId);
-        result.addParameter("update", "true");
         return result;
     }
 
@@ -7334,7 +7326,6 @@ public class PanoramaPublicController extends SpringActionController
         result.addParameter("journalId", journalId);
         result.addParameter("keepPrivate", keepPrivate);
         result.addParameter("getPxid", getPxId);
-        result.addParameter("resubmit", "true");
         return result;
     }
 

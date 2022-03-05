@@ -17,15 +17,28 @@ public class PanoramaPublicTable extends FilteredTable<PanoramaPublicSchema>
     private final SQLFragment _joinSql;
     private final SQLFragment _containerSql;
     private final FieldKey _containerFieldKey;
+    private final boolean _noContainerFilter;
 
     public PanoramaPublicTable(TableInfo table, PanoramaPublicSchema schema, ContainerFilter cf, @NotNull ContainerJoin joinType)
     {
-        super(table, schema, cf);
+        this(table, schema, cf, joinType, false);
+    }
+
+    public PanoramaPublicTable(TableInfo table, PanoramaPublicSchema schema, ContainerFilter cf, @NotNull ContainerJoin joinType, boolean noContainerFilter)
+    {
+        super(table, schema, noContainerFilter ? null : cf);
         _joinSql = joinType.getJoinSql();
         _containerSql = joinType.getContainerSql();
         _containerFieldKey = joinType.getContainerFieldKey() != null ? joinType.getContainerFieldKey() : getContainerFieldKey();
         wrapAllColumns(true);
         addQueryFKs();
+        _noContainerFilter = noContainerFilter;
+    }
+
+    @Override
+    public boolean supportsContainerFilter()
+    {
+        return _noContainerFilter ? false : super.supportsContainerFilter();
     }
 
     @Override

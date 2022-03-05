@@ -119,7 +119,7 @@ public class DataValidationManager
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("Created"), validation.getCreated(), CompareType.GT);
             filter.addCondition(FieldKey.fromParts("Container"), container.getId());
-            if (AuditLogService.get().getAuditEvents(expAnnotations.getContainer(), user, FileSystemAuditProvider.EVENT_TYPE, filter, null).size() > 0)
+            if (AuditLogService.get().getAuditEvents(container, user, FileSystemAuditProvider.EVENT_TYPE, filter, null).size() > 0)
             {
                 return true;
             }
