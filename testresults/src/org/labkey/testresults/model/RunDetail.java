@@ -149,12 +149,16 @@ public class RunDetail implements Comparable<RunDetail>
 
     public TestMemoryLeakDetail[] getMemoryLeaks()
     {
-        return Arrays.stream(leaks).filter(leak -> leak instanceof TestMemoryLeakDetail).toArray(TestMemoryLeakDetail[]::new);
+        return leaks != null
+            ? Arrays.stream(leaks).filter(leak -> leak instanceof TestMemoryLeakDetail).toArray(TestMemoryLeakDetail[]::new)
+            : new TestMemoryLeakDetail[0];
     }
 
     public TestHandleLeakDetail[] getHandleLeaks()
     {
-        return Arrays.stream(leaks).filter(leak -> leak instanceof TestHandleLeakDetail).toArray(TestHandleLeakDetail[]::new);
+        return leaks != null
+            ? Arrays.stream(leaks).filter(leak -> leak instanceof TestHandleLeakDetail).toArray(TestHandleLeakDetail[]::new)
+            : new TestHandleLeakDetail[0];
     }
 
     public void setLeaks(TestLeakDetail[] leaks)

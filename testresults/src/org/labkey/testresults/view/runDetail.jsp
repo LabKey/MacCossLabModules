@@ -68,8 +68,7 @@
     <!--Header content, username run Id, and other information about the run-->
     <h2>
         <%=h(run.getUserName() + " : " + df.format(run.getPostTime()))%> &nbsp;
-        <img id="flagged" flagged="false"
-            src="<%=h(contextPath)%>/TestResults/img/<% if (run.isFlagged()) { %>flagon<% } else { %>flagoff<% } %>.png"
+        <img id="flagged" src="<%=getWebappURL("/TestResults/img/" + (run.isFlagged() ? "flagon" : "flagoff") + ".png")%>"
             title="Click to <% if (run.isFlagged()) { %>unflag<% } else { %>flag<% } %> run"
             style="width: 30px; height: 30px; cursor: pointer;"> &nbsp;
         <button id="deleteRun">Delete Run</button>
@@ -103,20 +102,40 @@
             "mouseover": function() { this.src = opposite; },
             "mouseout": function() { this.src= current; },
             "click": function() {
-                if (confirm(
-                <% if (run.isFlagged()) { %>
-                "Press 'Ok' to unflag this run so that it will be used in analyses across the module."
-                <% } else { %>
-                "Press 'Ok' to flag this run.  You will be able to unflag the run but while the run " +
-                "remains flagged it will not be used in analyses across the module."
-                <% } %>)) {
-                    window.location.href = "<%=h(new ActionURL(TestResultsController.FlagRunAction.class, c).addParameter("runId", run.getId()).addParameter("flag", !run.isFlagged()))%>";
-                }
+                if (!confirm("<%= h(run.isFlagged()
+                    ? "Press Ok to unflag this run so that it will be used in analyses across the module."
+                    : "Press Ok to flag this run.  You will be able to unflag the run but while the run remains flagged it will not be used in analyses across the module.")%>"))
+                    return;
+
+                let postData = {
+                    "X-LABKEY-CSRF": LABKEY.CSRF,
+                    "runId": <%=h(run.getId())%>,
+                    "flag": <%=h(!run.isFlagged())%>
+                };
+                $.post(<%=jsURL(new ActionURL(TestResultsController.FlagRunAction.class, c))%>, postData, function(data) {
+                    if (data.error) {
+                        alert("error: " + data.error);
+                        return;
+                    }
+                    location.reload();
+                }, "json");
             }
         });
         $('#deleteRun').click(function() {
-            if (confirm("Press 'Ok' to delete this run and all associated passes, leaks, failures, and hangs."))
-                window.location.href = "<%=h(new ActionURL(TestResultsController.DeleteRunAction.class, c).addParameter("runId", run.getId()))%>";
+            if (!confirm("Press 'Ok' to delete this run and all associated passes, leaks, failures, and hangs."))
+                return;
+
+            let postData = {
+                "X-LABKEY-CSRF": LABKEY.CSRF,
+                "runId": <%=h(run.getId())%>
+            };
+            $.post(<%=jsURL(new ActionURL(TestResultsController.DeleteRunAction.class, c))%>, postData, function(data) {
+                if (data.error) {
+                    alert("error: " + data.error);
+                    return;
+                }
+                location.reload();
+            }, "json");
         });
     </script>
 </div>
