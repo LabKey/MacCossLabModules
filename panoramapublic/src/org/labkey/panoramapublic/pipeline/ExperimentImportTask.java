@@ -89,7 +89,7 @@ public class ExperimentImportTask extends PipelineJob.Task<ExperimentImportTask.
         User user = job.getUser();
         Container container = job.getContainer();
         VirtualFile importJobRoot = new FileSystemFile(folderXml.getParentFile());
-        FolderImportContext importCtx = new FolderImportContext(user, container, folderXml,
+        FolderImportContext importCtx = new FolderImportContext(user, container, folderXml.toPath(),
                 null, new PipelineJobLoggerGetter(job),
                 importJobRoot);
         importCtx.setSkipQueryValidation(true);
