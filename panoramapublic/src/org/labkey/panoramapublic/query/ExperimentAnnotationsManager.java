@@ -561,7 +561,7 @@ public class ExperimentAnnotationsManager
         {
             SimpleFilter filter = new SimpleFilter().addInClause(FieldKey.fromParts("runId"), runIds);
             return new TableSelector(TargetedMSService.get().getUserSchema(user, container).getTable("instrument"),
-                    Set.of("model"), filter, null).getArrayList(String.class);
+                    Collections.singleton("model"), filter, null).getArrayList(String.class);
         }
         return Collections.emptyList();
     }
