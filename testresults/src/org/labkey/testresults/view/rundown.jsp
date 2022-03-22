@@ -17,6 +17,7 @@
 <%@ page import="java.util.List" %>
 <%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="java.util.Arrays" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     /*
@@ -255,7 +256,11 @@
                         <% for (String test : problemTests) { %>
                         <tr>
                             <td style="width: 200px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; padding: 0;">
+                                <% if (Arrays.stream(problemRuns).anyMatch(run -> problems.isFail(run, test))) { %>
                                 <a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c).addParameter("end", df.format(selectedDate)).addParameter("failedTest", test))%>" target="_blank"><%=h(test)%></a>
+                                <% } else { %>
+                                <%= h(test) %>
+                                <% } %>
                             </td>
                             <% for (RunDetail run : problemRuns) { %>
                             <td class="highlightrun highlighttd-<%=run.getId()%>" style="width: 60px; overflow: hidden; padding: 0;">
