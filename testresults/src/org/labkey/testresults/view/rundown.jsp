@@ -257,9 +257,9 @@
                         <tr>
                             <td style="width: 200px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; padding: 0;">
                                 <% if (Arrays.stream(problemRuns).anyMatch(run -> problems.isFail(run, test))) { %>
-                                <a href="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c).addParameter("end", df.format(selectedDate)).addParameter("failedTest", test))%>" target="_blank"><%=h(test)%></a>
+                                <%=link(test).href(new ActionURL(TestResultsController.ShowFailures.class, c).addParameter("end", df.format(selectedDate)).addParameter("failedTest", test)).target("_blank").clearClasses()%>
                                 <% } else { %>
-                                <%= h(test) %>
+                                <%=h(test)%>
                                 <% } %>
                             </td>
                             <% for (RunDetail run : problemRuns) { %>
