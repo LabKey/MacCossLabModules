@@ -672,11 +672,12 @@ public class TestResultsController extends SpringActionController
      * action for deleting a run ex:'deleteRun.view?runId=x'
      */
     @RequiresPermission(AdminPermission.class)
-    public class DeleteRunAction extends BeginAction {
-
+    public static class DeleteRunAction extends MutatingApiAction {
         @Override
-        public ModelAndView getView(Object o, BindException errors) throws Exception
+        public Object execute(Object o, BindException errors)
         {
+            ApiSimpleResponse response = new ApiSimpleResponse();
+
             int rowId = Integer.parseInt(getViewContext().getRequest().getParameter("runId"));
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("testrunid"), rowId);
@@ -687,22 +688,23 @@ public class TestResultsController extends SpringActionController
                 Table.delete(TestResultsSchema.getTableInfoHangs(), filter);
                 Table.delete(TestResultsSchema.getTableInfoTestRuns(), rowId); // delete run last because of foreign key
                 transaction.commit();
+            } catch (Exception x) {
+                response.put("success", false);
+                response.put("error", x.getMessage());
+                return response;
             }
-            return super.getView(o, errors);
-        }
-
-        @Override
-        public void addNavTrail(NavTree root)
-        {
+            response.put("success", true);
+            return response;
         }
     }
 
     @RequiresPermission(AdminPermission.class)
-    public class FlagRunAction extends ShowRunAction {
-
+    public static class FlagRunAction extends MutatingApiAction {
         @Override
-        public ModelAndView getView(Object o, BindException errors) throws Exception
+        public Object execute(Object o, BindException errors)
         {
+            ApiSimpleResponse response = new ApiSimpleResponse();
+
             int rowId = Integer.parseInt(getViewContext().getRequest().getParameter("runId"));
             boolean flag = Boolean.parseBoolean(getViewContext().getRequest().getParameter("flag"));
 
@@ -716,14 +718,13 @@ public class TestResultsController extends SpringActionController
                 detail.setFlagged(flag);
                 Table.update(null, TestResultsSchema.getTableInfoTestRuns(), detail, detail.getId());
                 transaction.commit();
+            } catch (Exception x) {
+                response.put("success", false);
+                response.put("error", x.getMessage());
+                return response;
             }
-            getViewContext().getRequest().setAttribute("runId",rowId);
-            return super.getView(o, errors);
-        }
-
-        @Override
-        public void addNavTrail(NavTree root)
-        {
+            response.put("success", true);
+            return response;
         }
     }
 
