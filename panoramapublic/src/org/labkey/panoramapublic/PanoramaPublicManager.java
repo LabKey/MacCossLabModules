@@ -120,6 +120,16 @@ public class PanoramaPublicManager
         return getSchema().getTable(PanoramaPublicSchema.TABLE_SPEC_LIB_INFO);
     }
 
+    public static TableInfo getTableInfoExperimentStructuralModInfo()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_EXPT_STRUCTURAL_MOD_INFO);
+    }
+
+    public static TableInfo getTableInfoExperimentIsotopeModInfo()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_EXPT_ISOTOPE_MOD_INFO);
+    }
+
     public static ActionURL getRawDataTabUrl(Container container)
     {
         return PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container, TargetedMSService.RAW_FILES_TAB);

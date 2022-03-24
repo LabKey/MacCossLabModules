@@ -6,11 +6,14 @@ import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
-import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
 import org.labkey.test.pages.panoramapublic.DataValidationPage;
+import org.labkey.test.util.DataRegionTable;
+import org.labkey.test.util.TextSearcher;
 
 import java.util.Collections;
 import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 7)
@@ -55,8 +58,12 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Upload a document, not any raw files. Status should indicate that a PXD cannot be assigned.
         jobCount = verifyInvalidStatus(jobCount);
 
-        // Upload missing raw files. Status should indicate that data is valid for a "complete" PX submission.
+        // Upload missing raw files. The Carboxymethylcysteine modification in the document does not have a Unimod Id.
+        // Status should indicate that data is valid for an "incomplete" PX submission.
         jobCount = uploadRawFilesVerifyCompleteStatus(jobCount);
+
+        // Save the Unimod match for Carboxymethylcysteine. Status should indicate that data is valid for a "complete" PX submission.
+        saveUnimodMatchVerifyCompleteStatus();
 
         // Import another document and upload its raw files. This document has a library. Since we have not uploaded
         // any of the source files used to build the library, the status should indicate that the data can be
@@ -84,9 +91,51 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Run validation job and verify the results
         DataValidationPage validationPage = submitValidationJob();
         jobCount++;
-        validationPage.verifyCompleteStatus();
+
+        validationPage.verifyIncompleteStatus();
         validationPage.verifySampleFileStatus(SKY_FILE_1, List.of(WIFF_1, WIFF_SCAN_1), Collections.emptyList());
         return jobCount;
+    }
+
+    private void saveUnimodMatchVerifyCompleteStatus()
+    {
+        var validationPage = goToValidationDetails();
+
+        // The Carboxymethylcysteine modification in the document does not have a Unimod Id. We should see the "Continue with an Incomplete PX Submission" button
+        validationPage.verifyIncompleteStatus();
+        validationPage.verifyModificationStatus("Carboxymethylcysteine", false, null, null);
+
+        goToExperimentDetailsPage();
+
+        DataRegionTable modsTable = new DataRegionTable("Structural Modifications",getDriver());
+        assertEquals("Unexpected number of rows in Structural Modifications table", 1, modsTable.getDataRowCount());
+        var row = modsTable.findRow(0);
+        var findMatchLink = Locator.XPathLocator.tag("a").withText("Find Match").findElement(row);
+        clickAndWait(findMatchLink);
+        assertTextPresent("Unimod Match Options ");
+        clickButton("Unimod Match");
+        var unimodMatchWebPart = portalHelper.getBodyWebPart("Unimod Match");
+        assertTextPresent(new TextSearcher(unimodMatchWebPart.getComponentElement().getText()),
+                "The modification matches 1 Unimod modification", "Carboxymethyl", "UNIMOD:6");
+        clickButton("Save Match");
+
+        validationPage = goToValidationDetailsFromExpDetails();
+        validationPage.verifyCompleteStatus();
+        validationPage.verifyModificationStatus("Carboxymethylcysteine", true, "UNIMOD:6", "Carboxymethyl");
+    }
+
+    private DataValidationPage goToValidationDetails()
+    {
+        goToExperimentDetailsPage();
+        return goToValidationDetailsFromExpDetails();
+    }
+
+    private DataValidationPage goToValidationDetailsFromExpDetails()
+    {
+        var validationSumaryWebPart = portalHelper.getBodyWebPart("Data Validation for ProteomeXchange");
+        var detailsLink = Locator.XPathLocator.tag("a").withText("[Details]").findElement(validationSumaryWebPart);
+        clickAndWait(detailsLink);
+        return new DataValidationPage(this);
     }
 
     private int verifyIncompleteStatus(int jobCount)
@@ -164,18 +213,6 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 
         return jobCount;
-    }
-
-    private DataValidationPage submitValidationJob()
-    {
-        goToDashboard();
-        var expWebPart = new TargetedMsExperimentWebPart(this);
-        expWebPart.clickSubmit();
-        assertTextPresent("Click the button to start a new data validation job",
-                "Validate Data for ProteomeXchange",
-                "Submit without a ProteomeXchange ID");
-        clickButton("Validate Data for ProteomeXchange");
-        return new DataValidationPage(this);
     }
 
     private void uploadRawFiles(String... files)

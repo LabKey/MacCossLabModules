@@ -11,6 +11,7 @@ import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.components.SubfoldersWebPart;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentInsertPage;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
+import org.labkey.test.pages.panoramapublic.DataValidationPage;
 import org.labkey.test.tests.targetedms.TargetedMSTest;
 import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.ApiPermissionsHelper;
@@ -153,6 +154,24 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         setFormElement(Locator.name("quf_FirstName"), "Submitter");
         setFormElement(Locator.name("quf_LastName"), lastName);
         clickButton("Submit");
+    }
+
+    void goToExperimentDetailsPage()
+    {
+        goToDashboard();
+        new TargetedMsExperimentWebPart(this).clickMoreDetails();
+    }
+
+    DataValidationPage submitValidationJob()
+    {
+        goToDashboard();
+        var expWebPart = new TargetedMsExperimentWebPart(this);
+        expWebPart.clickSubmit();
+        assertTextPresent("Click the button to start a new data validation job",
+                "Validate Data for ProteomeXchange",
+                "Submit without a ProteomeXchange ID");
+        clickButton("Validate Data for ProteomeXchange");
+        return new DataValidationPage(this);
     }
 
     void submitWithoutPXId()

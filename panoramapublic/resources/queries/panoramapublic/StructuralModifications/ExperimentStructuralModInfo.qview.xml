@@ -1,0 +1,18 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            canOverride="true">
+    <columns>
+        <column name="ModId/Name" />
+        <column name="NormalizedFormula"/>
+        <column name="ModId/AminoAcid">
+            <properties>
+                <property name="columnTitle" value="Sites"/>
+            </properties>
+        </column>
+        <column name="ModId/Terminus" />
+        <column name="UnimodMatch" />
+        <column name="RunIds" />
+    </columns>
+    <sorts>
+        <sort column="UnimodMatch" descending="false" />
+    </sorts>
+</customView>
