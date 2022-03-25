@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.labkey.panoramapublic.proteomexchange.UnimodParser.*;
 
@@ -39,6 +40,16 @@ public class UnimodModifications
         _modIdModIdxMap = new HashMap<>();
         _formulaModIdxMap = new HashMap<>();
         _aminoAcids = new HashMap<>();
+    }
+
+    public List<UnimodModification> getModifications()
+    {
+        return Collections.unmodifiableList(_modifications);
+    }
+
+    public List<UnimodModification> getStructuralModifications()
+    {
+        return Collections.unmodifiableList(_modifications.stream().filter(mod -> mod.isStructural()).collect(Collectors.toList()));
     }
 
     public void add(UnimodModification uMod) throws PxException
@@ -154,7 +165,7 @@ public class UnimodModifications
                 }
             }
         }
-        return UnimodModification.normalizeFormula(formulaPos.append(formulaNeg.length() > 3 ? formulaNeg : "").toString());
+        return Formula.normalizeFormula(formulaPos.append(formulaNeg.length() > 3 ? formulaNeg : "").toString());
     }
 
     private void addElementAndCount(String element, int count, StringBuilder formulaPos, StringBuilder formulaNeg)

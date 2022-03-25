@@ -349,18 +349,6 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         return accessLink;
     }
 
-    private DataValidationPage submitValidationJob()
-    {
-        goToDashboard();
-        var expWebPart = new TargetedMsExperimentWebPart(this);
-        expWebPart.clickSubmit();
-        assertTextPresent("Click the button to start a new data validation job",
-                "Validate Data for ProteomeXchange",
-                "Submit without a ProteomeXchange ID");
-        clickButton("Validate Data for ProteomeXchange");
-        return new DataValidationPage(this);
-    }
-
     private void testSubmitWithSubfolders(TargetedMsExperimentWebPart expWebPart)
     {
         goToDashboard();

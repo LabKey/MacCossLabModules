@@ -44,12 +44,15 @@ import org.labkey.panoramapublic.model.speclib.SpecLibKey;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
 import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
+import org.labkey.panoramapublic.proteomexchange.Formula;
 import org.labkey.panoramapublic.proteomexchange.SkylineVersion;
+import org.labkey.panoramapublic.proteomexchange.UnimodModification;
 import org.labkey.panoramapublic.proteomexchange.validator.SkylineDocValidator;
 import org.labkey.panoramapublic.proteomexchange.validator.SpecLibValidator;
 import org.labkey.panoramapublic.query.ContainerJoin;
 import org.labkey.panoramapublic.query.ExperimentTitleDisplayColumn;
 import org.labkey.panoramapublic.query.JournalManager;
+import org.labkey.panoramapublic.query.modification.ModificationsView;
 import org.labkey.panoramapublic.query.speclib.SpecLibView;
 import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
@@ -78,7 +81,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 22.001;
+        return 22.002;
     }
 
     @Override
@@ -226,6 +229,24 @@ public class PanoramaPublicModule extends SpringModule
             }
         };
 
+        BaseWebPartFactory structuralModsFactory = new BaseWebPartFactory("Structural Modifications")
+        {
+            @Override
+            public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
+            {
+                return new ModificationsView.StructuralModsView(portalCtx);
+            }
+        };
+
+        BaseWebPartFactory isotopeModsFactory = new BaseWebPartFactory("Isotope Modifications")
+        {
+            @Override
+            public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
+            {
+                return new ModificationsView.IsotopeModsView(portalCtx);
+            }
+        };
+
         List<WebPartFactory> webpartFactoryList = new ArrayList<>();
         webpartFactoryList.add(experimentAnnotationsListFactory);
         webpartFactoryList.add(containerExperimentFactory);
@@ -233,6 +254,8 @@ public class PanoramaPublicModule extends SpringModule
         webpartFactoryList.add(peptideSearchFactory);
         webpartFactoryList.add(dataDownloadInfoFactory);
         webpartFactoryList.add(spectralLibrariesFactory);
+        webpartFactoryList.add(structuralModsFactory);
+        webpartFactoryList.add(isotopeModsFactory);
         return webpartFactoryList;
     }
 
@@ -323,6 +346,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(SpecLibValidator.TestCase.class);
         set.add(ExperimentModificationGetter.TestCase.class);
         set.add(ContainerJoin.TestCase.class);
+        set.add(Formula.TestCase.class);
         return set;
 
     }

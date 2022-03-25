@@ -32,15 +32,16 @@ import org.labkey.panoramapublic.model.validation.SkylineDoc;
 import org.labkey.panoramapublic.model.validation.SkylineDocModification;
 import org.labkey.panoramapublic.model.validation.SkylineDocSampleFile;
 import org.labkey.panoramapublic.model.validation.SkylineDocSpecLib;
-import org.labkey.panoramapublic.proteomexchange.validator.SpecLibValidator;
-import org.labkey.panoramapublic.proteomexchange.validator.ValidatorSampleFile;
-import org.labkey.panoramapublic.proteomexchange.validator.SkylineDocValidator;
 import org.labkey.panoramapublic.model.validation.SpecLib;
 import org.labkey.panoramapublic.model.validation.SpecLibSourceFile;
 import org.labkey.panoramapublic.model.validation.Status;
-import org.labkey.panoramapublic.proteomexchange.validator.ValidatorStatus;
 import org.labkey.panoramapublic.proteomexchange.PsiInstrumentParser;
 import org.labkey.panoramapublic.proteomexchange.PxException;
+import org.labkey.panoramapublic.proteomexchange.validator.SkylineDocValidator;
+import org.labkey.panoramapublic.proteomexchange.validator.SpecLibValidator;
+import org.labkey.panoramapublic.proteomexchange.validator.ValidatorSampleFile;
+import org.labkey.panoramapublic.proteomexchange.validator.ValidatorStatus;
+import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -234,6 +235,14 @@ public class DataValidationManager
         return new TableSelector(PanoramaPublicManager.getTableInfoSkylineDocModification(), filter, null).getArrayList(SkylineDocModification.class);
     }
 
+    private static Modification getModification(int dataValidationId, long dbModId, Modification.ModType modType)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("ValidationId"), dataValidationId);
+        filter.addCondition(FieldKey.fromParts("DbModId"), dbModId);
+        filter.addCondition(FieldKey.fromParts("modType"), modType.ordinal());
+        return new TableSelector(PanoramaPublicManager.getTableInfoModificationValidation(), filter, null).getObject(Modification.class);
+    }
+
     private static List<SpecLib> getSpectrumLibraries(SimpleFilter filter)
     {
         List<SpecLib> specLibs = new TableSelector(PanoramaPublicManager.getTableInfoSpecLibValidation(), filter, null).getArrayList(SpecLib.class);
@@ -283,6 +292,64 @@ public class DataValidationManager
     public static DataValidation updateDataValidation(DataValidation validation, User user)
     {
         return Table.update(user, PanoramaPublicManager.getTableInfoDataValidation(), validation, validation.getId());
+    }
+
+    public static void removeModInfo(@NotNull ExperimentAnnotations expAnnotations, Container container, long modId, Modification.ModType modType, User user)
+    {
+        updateModInfo(expAnnotations, container, modId, modType, null, user);
+    }
+
+    public static void addModInfo(@NotNull ExperimentAnnotations expAnnotations, Container container, @NotNull ExperimentModInfo modInfo,
+                                  Modification.ModType modType, User user)
+    {
+        updateModInfo(expAnnotations, container, modInfo.getModId(), modType, modInfo.getId(), user);
+    }
+
+    private static void updateModInfo(ExperimentAnnotations expAnnotations, Container container, long modId, Modification.ModType modType, Integer modInfoId, User user)
+    {
+        var latestValidation = DataValidationManager.getLatestValidation(expAnnotations.getId(), container);
+        if (latestValidation != null)
+        {
+            var modification = DataValidationManager.getModification(latestValidation.getId(), modId, modType);
+            if (modification != null)
+            {
+                if (modInfoId != null || modification.getModInfoId() != null)
+                {
+                    modification.setModInfoId(modInfoId);
+                    modification.setInferred(modInfoId != null);
+                }
+                try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
+                {
+                    Table.update(user, PanoramaPublicManager.getTableInfoModificationValidation(), modification, modification.getId());
+                    modsChangedRecalculateStatus(latestValidation, user);
+                    transaction.commit();
+                }
+            }
+        }
+    }
+
+    private static void modsChangedRecalculateStatus(DataValidation validation, User user)
+    {
+        PxStatus status = validation.getStatus();
+        if (status != null && status.ordinal() >= PxStatus.IncompleteMetadata.ordinal())
+        {
+            // If the current status is < PxStatus.IncompleteMetadata it means that there are missing raw data files.
+            // In this case any changes to modification validation will not change the final status.
+            // Update the status only if the current status is PxStatus.IncompleteMetadata or PxStatus.Complete
+            SimpleFilter validationIdFilter = new SimpleFilter(FieldKey.fromParts("ValidationId"), validation.getId());
+            var specLibs = getSpectrumLibraries(validationIdFilter);
+            if (specLibs.stream().anyMatch(lib -> !lib.isValid()))
+            {
+                return; // If there are any incomplete spectral libraries then status will remain PxStatus.IncompleteMetadata
+            }
+            var validationMods = getModifications(validationIdFilter);
+            PxStatus modsStatus = validationMods.stream().anyMatch(mod -> !mod.isValid()) ? PxStatus.IncompleteMetadata : PxStatus.Complete;
+            if (!status.equals(modsStatus))
+            {
+                validation.setStatus(modsStatus);
+                updateValidationStatus(validation, user);
+            }
+        }
     }
 
     public static void saveSkylineDocStatus(ValidatorStatus status, User user)

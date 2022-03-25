@@ -1,0 +1,19 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            canOverride="true">
+    <columns>
+        <column name="ModId/Name" />
+        <column name="ModId/Formula" />
+        <column name="ModId/AminoAcid">
+            <properties>
+                <property name="columnTitle" value="Sites"/>
+            </properties>
+        </column>
+        <column name="ModId/Terminus" />
+        <column name="SkylineUnimodId">
+            <properties>
+                <property name="columnTitle" value="Unimod Id"/>
+            </properties>
+        </column>
+        <column name="RunIds" />
+    </columns>
+</customView>

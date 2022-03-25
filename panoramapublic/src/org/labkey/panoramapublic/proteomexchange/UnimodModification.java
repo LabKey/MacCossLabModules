@@ -17,33 +17,33 @@ package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.labkey.api.util.Link;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.labkey.panoramapublic.proteomexchange.UnimodParser.*;
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.Position;
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.Specificity;
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.TermSpecificity;
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.Terminus;
 
 public class UnimodModification
 {
     private final int _id;
     private final String _name;
-    private final String _normFormula;
+    private final Formula _formula;
     private final Set<Specificity> _modSites;
     private TermSpecificity _nTerm;
     private TermSpecificity _cTerm;
     private boolean _isIsotopic;
 
-    public UnimodModification(int id, String name, String normalizedFormula)
+    public UnimodModification(int id, String name, Formula formula)
     {
         _id = id;
         _name = name;
-        _normFormula = normalizedFormula;
+        _formula = formula;
         _modSites = new HashSet<>();
     }
 
@@ -57,9 +57,14 @@ public class UnimodModification
         return _name;
     }
 
+    public Formula getFormula()
+    {
+        return _formula;
+    }
+
     public String getNormalizedFormula()
     {
-        return _normFormula;
+        return _formula.getFormula();
     }
 
     public void setNterm(@NotNull Position position)
@@ -104,7 +109,7 @@ public class UnimodModification
     }
 
     /**
-     * @param normFormula normalized formula for the modification {@link UnimodModification#normalizeFormula(String)}
+     * @param normFormula normalized formula for the modification {@link Formula#normalizeFormula(String)}
      * @param sites sites (amino acids + terminus) where this modification occurs
      * @param terminus terminus (N-term / C-term) where this modification occurs if no sites are specified.
      * @return true if the given normalized formula matches this Unimod modification's composition, and the given sites are in the
@@ -155,117 +160,12 @@ public class UnimodModification
 
     public boolean formulaMatches(String normFormula)
     {
-        return _normFormula.equals(normFormula);
+        return _formula.getFormula().equals(normFormula);
     }
 
-    public static String normalizeFormula(String formula)
+    public static Formula getCombinedFormula(UnimodModification mod1, UnimodModification mod2)
     {
-        if(StringUtils.isBlank(formula))
-        {
-            return formula;
-        }
-
-        // Assume formulas are of the form H'6C'8N'4 - H2C6N4.
-        // The part of the formula following ' - ' are the element masses that will be subtracted
-        // from the total mass.  Only one negative part is allowed. We will parse the positive and negative parts separately.
-        String[] parts = formula.split("-");
-        if(parts.length > 2)
-        {
-            throw new IllegalArgumentException("Formula inconsistent with required form: " + formula);
-        }
-
-        Map<String, Integer> composition = getComposition(parts[0]);
-        if(parts.length > 1)
-        {
-            Map<String, Integer> negComposition = getComposition(parts[1]);
-            for(String element: negComposition.keySet())
-            {
-                int posCount = composition.get(element) == null ? 0 : composition.get(element);
-                int totalCount = posCount - negComposition.get(element);
-                if(totalCount != 0)
-                {
-                    composition.put(element, totalCount);
-                }
-                else
-                {
-                    composition.remove(element);
-                }
-            }
-        }
-
-        List<String> sortedElements = new ArrayList<>(composition.keySet());
-        Collections.sort(sortedElements);
-        StringBuilder posForm = new StringBuilder();
-        StringBuilder negForm = new StringBuilder();
-        for(String element: sortedElements)
-        {
-            Integer count = composition.get(element);
-            if(count > 0)
-            {
-                posForm.append(element).append(composition.get(element));
-            }
-            else
-            {
-                negForm.append(element).append(-(composition.get(element)));
-            }
-        }
-        String totalFormula = posForm.toString();
-        if(negForm.length() > 0)
-        {
-            totalFormula = totalFormula + (totalFormula.length() > 0 ? " - " : "-") + negForm.toString();
-        }
-        return totalFormula;
-    }
-
-    private static Map<String, Integer> getComposition(String formula)
-    {
-        Map<String, Integer> composition = new HashMap<>();
-
-        String currElem = null;
-        Integer currCount = null;
-        char[] chars = formula.toCharArray();
-        for (char c : chars)
-        {
-            if (Character.isDigit(c))
-            {
-                currCount = ((currCount == null ? 0 : currCount) * 10 + (c - '0'));
-            }
-            else if (Character.isUpperCase(c))
-            {
-                if (currElem != null)
-                {
-                    updateElementCount(composition, currElem, currCount);
-                }
-                currElem = "" + c;
-                currCount = null;
-            }
-            else if (!Character.isWhitespace(c)) // e.g. Na, C'
-            {
-                currElem += c;
-            }
-        }
-
-        // last one
-        if(currElem != null)
-        {
-            updateElementCount(composition, currElem, currCount);
-        }
-
-        return composition;
-    }
-
-    private static void updateElementCount(Map<String, Integer> composition, String currElem, Integer currCount)
-    {
-        int oldCount = composition.get(currElem) == null ? 0 : composition.get(currElem);
-        Integer newCount = oldCount + (currCount == null ? 1 : currCount);
-        if(newCount == 0)
-        {
-            composition.remove(currElem);
-        }
-        else
-        {
-            composition.put(currElem, newCount);
-        }
+        return mod1.getFormula().addFormula(mod2.getFormula());
     }
 
     public String toString()
@@ -290,12 +190,63 @@ public class UnimodModification
         return sb.toString();
     }
 
-    public String getModSites()
+    public TermSpecificity getNterm()
+    {
+        return _nTerm;
+    }
+
+    public TermSpecificity getcTerm()
+    {
+        return _cTerm;
+    }
+
+    public String getModSitesWithPosition()
     {
         if(_modSites.size() > 0)
         {
-            return StringUtils.join(_modSites.stream().map(s -> s.getSite()).collect(Collectors.toSet()), ":");
+            return StringUtils.join(_modSites.stream().map(Specificity::toString).collect(Collectors.toSet()), ":");
         }
         return "";
+    }
+
+    public Set<Specificity> getModSpecificities()
+    {
+        return Collections.unmodifiableSet(_modSites);
+    }
+
+    public String getTerminus()
+    {
+        String terminus = "";
+        if (_nTerm != null)
+        {
+            terminus += _nTerm.toString();
+        }
+        if (_cTerm != null)
+        {
+            terminus = terminus + (terminus.length() > 0 ? ", " : "") + _cTerm.toString();
+        }
+        return terminus;
+    }
+
+    public Link getLink()
+    {
+       return getLink(_id);
+    }
+
+    public static Link getLink(int unimodId)
+    {
+        return getLink(unimodId, false);
+    }
+
+    public static Link getLink(int unimodId, boolean clearClasses)
+    {
+        var link = new Link.LinkBuilder("UNIMOD:" + unimodId)
+                .href("https://www.unimod.org/modifications_view.php?editid1=" + unimodId)
+                .target("_blank");
+        if (clearClasses)
+        {
+            link = link.clearClasses();
+        }
+        return link.build();
     }
 }
