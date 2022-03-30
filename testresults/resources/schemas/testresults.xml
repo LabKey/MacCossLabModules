@@ -113,7 +113,6 @@
         <columns>
             <column columnName="id"/>
             <column columnName="username"/>
-            <column columnName="active"/>
         </columns>
     </table>
     <table tableName="userdata" tableDbType="TABLE">
@@ -125,6 +124,7 @@
             <column columnName="meanmemory"/>
             <column columnName="stddevtestsrun"/>
             <column columnName="stddevmemory"/>
+            <column columnName="active"/>
         </columns>
     </table>
 </tables>
