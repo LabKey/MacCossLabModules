@@ -394,8 +394,13 @@
 
     function link(text, href, cssCls, sameTab) {
         const cls = cssCls ? ' class="' + cssCls + '" ' : '';
-        const target = sameTab && sameTab === true ? '' : ' target="_blank" ';
-        return '<a ' + cls + ' href="' + htmlEncode(href) + '" ' + target + ' >' + htmlEncode(text) + '</a>';
+        let target = ' target="_blank" ';
+        let rel = ' rel="noopener noreferrer" ';
+        if (sameTab && sameTab === true) {
+            target = "";
+            rel = "";
+        }
+        return '<a ' + cls + ' href="' + htmlEncode(href) + '" ' + target + rel + ' >' + htmlEncode(text) + '</a>';
     }
 
     function documentLink(documentName, containerPath, runId) {

@@ -293,7 +293,7 @@
     }
 
     function span(str) {
-        return '<span style="margin: 0 10px 0 10px;font-weight:bold;">' + str + '</span>';
+        return '<span style="margin: 0 10px 0 10px;font-weight:bold;">' + Ext4.util.Format.htmlEncode(str) + '</span>';
     }
 
     function addUnimod(formula, unimodRecord) {

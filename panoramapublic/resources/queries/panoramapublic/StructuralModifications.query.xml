@@ -18,7 +18,7 @@
                         </displayColumnFactory>
                     </column>
                     <column columnName="NormalizedFormula">
-                        <description>Normalized modification formula from the Skyline document</description>
+                        <description>Formula from the Skyline document, normalized</description>
                         <displayColumnFactory>
                             <className>org.labkey.panoramapublic.query.modification.NormalizedFormulaDisplayColumnFactory</className>
                         </displayColumnFactory>

@@ -242,7 +242,8 @@ public class UnimodModification
     {
         var link = new Link.LinkBuilder("UNIMOD:" + unimodId)
                 .href("https://www.unimod.org/modifications_view.php?editid1=" + unimodId)
-                .target("_blank");
+                .target("_blank")
+                .rel("noopener noreferrer");
         if (clearClasses)
         {
             link = link.clearClasses();

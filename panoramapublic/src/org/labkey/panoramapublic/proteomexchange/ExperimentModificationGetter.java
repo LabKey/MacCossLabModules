@@ -353,7 +353,7 @@ public class ExperimentModificationGetter
 
     public static class TestCase extends Assert
     {
-        private static final boolean debug = true;
+        private static final boolean debug = false;
 
         @Test
         public void testStructuralMods() throws IOException
