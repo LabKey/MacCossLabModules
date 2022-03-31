@@ -9,9 +9,15 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCache>
@@ -142,6 +148,49 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         expander.click();
     }
 
+    private int getRowIndexForModification(String modification)
+    {
+        var rowCount = elementCache().getModificationRows().size();
+        for (int i = 0; i < rowCount; i++)
+        {
+            if (elementCache().getModificationRowCells(i).get(1).getText().equals(modification)) return i;
+        }
+        return -1;
+    }
+
+    private String inferredModName(String modification)
+    {
+        return "**" + modification;
+    }
+
+    public void verifyModificationStatus(String modName, boolean inferred, String unimodId, String unimodName)
+    {
+        verifyModificationStatus(modName, inferred, unimodId, unimodName, null, null);
+    }
+
+    public void verifyModificationStatus(String modName, boolean inferred, String unimodId, String unimodName, String unimodId2, String unimodName2)
+    {
+        modName = inferred ? inferredModName(modName) : modName;
+
+        int rowIdx = getRowIndexForModification(modName);
+        assertNotEquals("Expected a row in the modifications validation grid for modification " + modName, -1, rowIdx);
+
+        var cells = elementCache().getModificationRowCells(rowIdx);
+        Set<String> cellValues = new HashSet<>();
+        cells.forEach(cell -> cellValues.add(cell.getText()));
+        assertTrue(modName + " was not found in modification row " + rowIdx, cellValues.contains(modName));
+
+        if (unimodId == null)
+        {
+            assertTrue(cellValues.stream().anyMatch(v -> v.startsWith("MISSING")));
+        }
+        else
+        {
+            assertTrue(cellValues.contains(unimodId + (unimodId2 != null ? " + " +unimodId2 : "")));
+            assertTrue(cellValues.contains(unimodName + (unimodName2 != null ? " + " +unimodName2 : "")));
+        }
+    }
+
     private void verifyLibrarySourceFiles(String libraryName, List<String> files, List<String> filesMissing, WebElement specLibsPanel, String tblCls)
     {
         if (files.size() > 0 || filesMissing.size() > 0)
@@ -177,5 +226,32 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         protected final WebElement skyDocsPanel = Locator.tagWithClass("div", "pxv-skydocs-panel").findWhenNeeded(this);
         protected final WebElement modificationsPanel = Locator.tagWithClass("div", "pxv-modifications-panel").findWhenNeeded(this);
         protected final WebElement specLibsPanel = Locator.tagWithClass("div", "pxv-speclibs-panel").findWhenNeeded(this);
+        private List<WebElement> modificationRows;
+        private Map<Integer, List<WebElement>> modificationRowCells;
+
+        private List<WebElement> getModificationRows()
+        {
+            if (modificationRows == null)
+            {
+                var panel = elementCache().modificationsPanel;
+                scrollIntoView(panel);
+                modificationRows = panel.findElements(Locator.XPathLocator.tag("tr").withClass("x4-grid-data-row"));
+            }
+            return modificationRows;
+        }
+
+        protected WebElement getModificationRow(int row)
+        {
+            return getModificationRows().get(row);
+        }
+
+        protected List<WebElement> getModificationRowCells(int row)
+        {
+            if (modificationRowCells == null)
+            {
+                modificationRowCells = new HashMap<>();
+            }
+            return modificationRowCells.computeIfAbsent(row, r -> Collections.unmodifiableList(Locator.xpath("td").findElements(getModificationRow(r))));
+        }
     }
 }

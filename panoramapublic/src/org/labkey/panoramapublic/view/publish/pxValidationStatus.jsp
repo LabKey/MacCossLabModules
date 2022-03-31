@@ -92,7 +92,7 @@
     table.pxv-tpl-table td,
     table.pxv-tpl-table th
     {
-        border:1px solid black; padding:8px;
+        border:1px solid slategray; padding:8px;
     }
 
 </style>
@@ -371,6 +371,7 @@
                 style:  {margin: '10px'},
                 items:  [
                             {xtype: 'component', padding: '10, 5, 0, 5', html: 'Folder: ' + htmlEncode(validationJson["folder"])},
+                            {xtype: 'component', padding: '0, 5, 0, 5', html: experimentLink()},
                             {xtype: 'component', padding: '0, 5, 10, 5', html: 'Date: ' + htmlEncode(validationJson["date"])},
                             {
                                 xtype:   'component',
@@ -391,13 +392,24 @@
         return {xtype: 'label', text: 'Missing JSON property "validation"'};
     }
 
-    function link(text, href, cssCls) {
+    function link(text, href, cssCls, sameTab) {
         const cls = cssCls ? ' class="' + cssCls + '" ' : '';
-        return '<a ' + cls + ' href="' + htmlEncode(href) + '" target="_blank">' + htmlEncode(text) + '</a>';
+        let target = ' target="_blank" ';
+        let rel = ' rel="noopener noreferrer" ';
+        if (sameTab && sameTab === true) {
+            target = "";
+            rel = "";
+        }
+        return '<a ' + cls + ' href="' + htmlEncode(href) + '" ' + target + rel + ' >' + htmlEncode(text) + '</a>';
     }
 
     function documentLink(documentName, containerPath, runId) {
-        return link(documentName, LABKEY.ActionURL.buildURL('targetedms', 'showPrecursorList.view', containerPath, {id: runId}));
+        return link(documentName, LABKEY.ActionURL.buildURL('targetedms', 'showPrecursorList', containerPath, {id: runId}));
+    }
+
+    function experimentLink() {
+        return link("[View experiment details]", LABKEY.ActionURL.buildURL('panoramapublic', 'showExperimentAnnotations',
+                LABKEY.ActionURL.getContainer(), {id: <%=experimentAnnotationsId%>}), 'labkey-text-link', true);
     }
 
     function unimodLink(unimodId, cls) {
@@ -408,6 +420,21 @@
         return '<span class="pxv-invalid">MISSING</span>';
     }
 
+    function assignUnimodLink(dbModId, modType, experimentAnnotationsId) {
+        if (!modType) return;
+        const modTypeUpper = modType.toUpperCase();
+        const action = modTypeUpper === 'STRUCTURAL' ? 'structuralModToUnimodOptions' : 'matchToUnimodIsotope';
+        const params = {
+            'id': experimentAnnotationsId,
+            'modificationId': dbModId,
+            'returnUrl': LABKEY.ActionURL.buildURL(LABKEY.ActionURL.getController(), LABKEY.ActionURL.getAction(),
+                    LABKEY.ActionURL.getContainer(), LABKEY.ActionURL.getParameters())
+        };
+
+        var href = LABKEY.ActionURL.buildURL('panoramapublic', action, LABKEY.ActionURL.getContainer(), params);
+        return '<span style="margin-left:5px;">'  + link("Find Match", href, 'labkey-text-link', true) + '</span>';
+    }
+
     // -----------------------------------------------------------
     // Displays the modifications validation grid
     // -----------------------------------------------------------
@@ -416,21 +443,25 @@
         if (json["modifications"]) {
             const modificationsStore = Ext4.create('Ext.data.Store', {
                 storeId: 'modificationsStore',
-                fields:  ['id', 'skylineModInfo', 'unimodId', 'unimodName', 'inferred', 'valid', 'modType', 'dbModId', 'documents', 'possibleUnimodMatches'],
+                fields:  ['id', 'skylineModInfo', 'unimodId', 'unimodName', 'inferred', 'valid', 'modType', 'dbModId', 'documents', 'unimodMatches'],
                 data:    json,
                 proxy:   { type: 'memory', reader: { type: 'json', root: 'modifications' }},
                 sorters: [
-                    {
-                        property: 'valid',
-                        direction: 'ASC'
-                    },
                     {
                         property: 'modType',
                         direction: 'DESC' // Structural modifications first
                     },
                     {
+                        property: 'valid',
+                        direction: 'DESC'
+                    },
+                    {
                         property: 'unimodId',
-                        direction: 'ASC'
+                        direction: 'DESC'
+                    },
+                    {
+                        property: 'unimodMatches',
+                        direction: 'DESC'
                     }
                 ]
             });
@@ -467,17 +498,37 @@
                         text: 'Unimod Id',
                         dataIndex: 'unimodId',
                         flex: 2,
-                        renderer: function (value) {
-                            // Can do metadata.style = "color:green;" or metadata.tdCls = 'green'
+                        renderer: function (value, metadata, record) {
                             if (value) return unimodLink(value, 'pxv-valid');
-                            else return missing();
+                            else if (record.data['unimodMatches']) {
+                                var ret = ''; var sep = '';
+                                var matches = record.data['unimodMatches'];
+                                for (var i = 0; i < matches.length; i++) {
+                                    ret += sep + unimodLink(matches[i]['unimodId'], 'pxv-valid');
+                                    sep = ' + ';
+                                }
+                                return ret;
+                            }
+                            else return missing() + assignUnimodLink(record.data['dbModId'], record.data['modType'], <%=experimentAnnotationsId%>);
                         }
                     },
                     {
                         text: 'Unimod Name',
                         dataIndex: 'unimodName',
                         flex: 3,
-                        renderer: function (v) { return htmlEncode(v); }
+                        renderer: function (value, metadata, record) {
+                            if (value) return htmlEncode(value);
+                            else if (record.data['unimodMatches']) {
+                                var ret = ''; var sep = '';
+                                var matches = record.data['unimodMatches'];
+                                for (var i = 0; i < matches.length; i++) {
+                                    ret += sep + htmlEncode(matches[i]['name']);
+                                    sep = ' + ';
+                                }
+                                return ret;
+                            }
+                            else return '';
+                        }
                     },
                     {
                         text: 'Type',
@@ -501,18 +552,6 @@
                     rowBodyTpl: new Ext4.XTemplate(
 
                             '<div class="pxv-grid-expanded-row">',
-
-                            // Possible Unimod matches
-                            '<tpl if="possibleUnimodMatches.length &gt; 0">',
-                            '<div class="pxv-tpl-table-title">Possible Unimod Matches</div>',
-                            '<table class="pxv-tpl-table">',
-                            headerRowTpl.apply(["Unimod Id", "Name", "Composition", "Sites"]),
-                            '<tbody>',
-                            '<tpl for="possibleUnimodMatches">',
-                            '<tr> <td>{[this.unimodLink(values)]}</td> <td>{name}</td> <td>{formula}</td> <td>{sites}</td> </tr>',
-                            '</tpl>',
-                            '</tbody></table>',
-                            '</tpl>',
 
                             // Skyline documents with this modification
                             '<div class="pxv-tpl-table-title">Skyline documents with the modification</div>',
@@ -548,11 +587,9 @@
                 }]
             });
             if (hasInferred) {
-                var noteHtml = "Modifications ending with <strong>**</strong> in the Name column did not have a Unimod Id in the Skyline document."
-                        + " A Unimod Id was inferred based on the formula, modification site(s) and terminus in the modification definition."
-                        + " If any of the inferred Unimod Ids is incorrect, please choose a modification with a Unimod Id in Skyline and re-upload the document."
-                        + " If you cannot find the modification in Skyline's built-in modification list, please"
-                        + " <a class=\"alert-link\" href=\"https://panoramaweb.org/support.url\" target=\"_blank\">contact the Skyline / Panorama support team</a>.";
+                var noteHtml = "Modification names starting with <strong>**</strong> in the Name column did not have a Unimod Id in the Skyline document."
+                        + " A Unimod match was was inferred based on the formula, modification site(s) and terminus in the modification definition"
+                        + ", or a combination modification was defined.";
                 var note = {
                     xtype: 'component',
                     padding: 10,

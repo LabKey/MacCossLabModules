@@ -18,6 +18,7 @@ import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
 import org.labkey.panoramapublic.proteomexchange.validator.SpecLibValidator.SpecLibKeyWithSize;
 import org.labkey.panoramapublic.query.DataValidationManager;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+import org.labkey.panoramapublic.query.ModificationInfoManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -103,7 +104,8 @@ public class DataValidator
         // sleep();
         try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
         {
-            List<ExperimentModificationGetter.PxModification> mods = ExperimentModificationGetter.getModifications(_expAnnotations);
+            List<ExperimentModificationGetter.PxModification> mods = ExperimentModificationGetter.getModifications(_expAnnotations,
+                    false); // Do not look up Unimod to find a match if the modification does not have a Unimod Id in the Skyline document.
             for (ExperimentModificationGetter.PxModification pxMod : mods)
             {
                 Modification mod = new Modification(pxMod.getSkylineName(), pxMod.getDbModId(),
@@ -111,11 +113,18 @@ public class DataValidator
                         pxMod.isMatchInferred(),
                         pxMod.getName(),
                         pxMod.isIsotopicMod() ? ModType.Isotopic : ModType.Structural);
-                if (pxMod.hasPossibleUnimods())
-                {
-                    mod.setPossibleUnimodMatches(pxMod.getPossibleUnimodMatches());
-                }
                 mod.setValidationId(status.getValidation().getId());
+                if (mod.getUnimodId() == null)
+                {
+                    var modInfo = ModType.Isotopic == mod.getModType() ? ModificationInfoManager.getIsotopeModInfo(mod.getDbModId(), _expAnnotations.getId())
+                            : ModificationInfoManager.getStructuralModInfo(mod.getDbModId(), _expAnnotations.getId());
+                    if (modInfo != null)
+                    {
+                        mod.setModInfoId(modInfo.getId());
+                        mod.setInferred(true);
+                    }
+                }
+
                 DataValidationManager.saveModification(mod, user);
                 status.addModification(mod);
 

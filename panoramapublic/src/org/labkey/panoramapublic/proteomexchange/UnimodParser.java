@@ -15,6 +15,7 @@
  */
 package org.labkey.panoramapublic.proteomexchange;
 
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.resource.FileResource;
@@ -149,7 +150,7 @@ public class UnimodParser
             String site = specEl.getAttribute("site");
             String cls = specEl.getAttribute("classification");
             String pos = specEl.getAttribute("position");
-            Position position = Position.forName(pos);
+            Position position = Position.forLabel(pos);
             if(site.equalsIgnoreCase("N-term"))
             {
                 uMod.setNterm(position);
@@ -209,10 +210,9 @@ public class UnimodParser
                 && (!has18O || label18O == 0) && (!has2H || label2H == 0);
     }
 
-    private String getFormula(NodeList nl)
+    private Formula getFormula(NodeList nl) throws PxException
     {
-        StringBuilder formula_pos = new StringBuilder();
-        StringBuilder formula_neg = new StringBuilder();
+        Formula formula = new Formula();
         if(nl.getLength() > 0)
         {
             nl = ((Element)nl.item(0)).getElementsByTagName("element");
@@ -220,43 +220,27 @@ public class UnimodParser
             {
                 Element el = (Element)nl.item(i);
                 String symbol = el.getAttribute("symbol");
-                switch (symbol)
+                ChemElement chemElement = ChemElement.getElement(symbol);
+//                ChemElement chemElement = switch (symbol)
+//                        {
+//                            case "2H" -> ChemElement.H2;
+//                            case "13C" -> ChemElement.C13;
+//                            case "15N" -> ChemElement.N15;
+//                            case "18O" -> ChemElement.O18;
+//                            default -> ChemElement.getElementForSymbol(symbol);
+//                        };
+                if (chemElement == null)
                 {
-                    case "2H":
-                        symbol = "H'";
-                        break;
-                    case "13C":
-                        symbol = "C'";
-                        break;
-                    case "15N":
-                        symbol = "N'";
-                        break;
-                    case "18O":
-                        symbol = "O'";
-                        break;
+                    throw new PxException("Unrecognized element in formula: " + symbol);
                 }
                 Integer number = Integer.parseInt(el.getAttribute("number"));
-                if(number > 0)
-                {
-                    formula_pos.append(symbol).append(number);
-                }
-                else
-                {
-                    formula_neg.append(symbol).append(-(number));
-                }
+                formula.addElement(chemElement, number);
             }
         }
-
-        String formula = formula_pos.toString();
-        if(formula_neg.length() > 0)
-        {
-            String sep = formula.length() > 0 ? " - " : "-";
-            formula = formula + sep + formula_neg;
-        }
-        return UnimodModification.normalizeFormula(formula);
+        return formula;
     }
 
-    static class Specificity
+    public static class Specificity
     {
         private final String _site;
         private final Position _position;
@@ -291,14 +275,19 @@ public class UnimodParser
         {
             return Objects.hash(getSite(), getPosition());
         }
+
+        public String toString()
+        {
+            return _site + (_position != null && Position.Anywhere != _position ? "(" + getPosition().getLabel() + ")" : "");
+        }
     }
 
-    static class TermSpecificity
+    public static class TermSpecificity
     {
         private final Terminus _term;
         private final Position _position;
 
-        public TermSpecificity(Terminus term, Position position)
+        public TermSpecificity(@NotNull Terminus term, @NotNull Position position)
         {
             _term = term;
             _position = position;
@@ -313,9 +302,14 @@ public class UnimodParser
         {
             return _position;
         }
+
+        public String toString()
+        {
+            return getTerm().getFullName() + " (" + getPosition().getLabel() + ")";
+        }
     }
 
-    enum Position {
+    public enum Position {
 
         Anywhere("Anywhere", true),
         AnyNterm("Any N-term", true),
@@ -323,23 +317,29 @@ public class UnimodParser
         ProteinNTerm("Protein N-term", false),
         ProteinCTerm("Protein C-term", false);
 
-        private final String _name;
+        private final String _label;
         private final boolean _anywhere;
-        Position(String name, boolean anywhere)
+        Position(String label, boolean anywhere)
         {
-            _name = name;
+            _label = label;
             _anywhere = anywhere;
         }
-        static Position forName(String name) throws PxException
+
+        public String getLabel()
+        {
+            return _label;
+        }
+
+        static Position forLabel(String label) throws PxException
         {
             for (Position p: values())
             {
-                if (p._name.matches(name))
+                if (p._label.equals(label))
                 {
                     return p;
                 }
             }
-            throw new PxException("Cannot find a match for specificity position seen in Unimod.xml: " + name);
+            throw new PxException("Cannot find a match for specificity position seen in Unimod.xml: " + label);
         }
 
         public boolean isAnywhere()
@@ -348,7 +348,7 @@ public class UnimodParser
         }
     }
 
-    enum Terminus
+    public enum Terminus
     {
         N("N-term"), C("C-term");
 

@@ -5,14 +5,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.labkey.api.targetedms.IModification;
-import org.labkey.api.targetedms.TargetedMSService;
-import org.labkey.panoramapublic.proteomexchange.UnimodModification;
+import org.labkey.api.util.Pair;
+import org.labkey.panoramapublic.query.ModificationInfoManager;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 // For table panoramapublic.modificationvalidation
 public class Modification
@@ -25,11 +22,7 @@ public class Modification
     private String _unimodName;
     private boolean _inferred;
     private ModType _modType;
-    private String _unimodMatches;
-
-    private static final String MOD_SEPARATOR = "&&";
-    private static final String MOD_INFO_SEPARATOR = ":::";
-    private static final String ERROR = "ERROR";
+    private Integer _modInfoId;
 
     private List<SkylineDocModification> _docsWithModification;
 
@@ -127,9 +120,19 @@ public class Modification
         _modType = modType;
     }
 
+    public Integer getModInfoId()
+    {
+        return _modInfoId;
+    }
+
+    public void setModInfoId(Integer modInfoId)
+    {
+        _modInfoId = modInfoId;
+    }
+
     public boolean isValid()
     {
-        return _unimodId != null;
+        return _unimodId != null || _modInfoId != null;
     }
 
     public String toString()
@@ -145,29 +148,6 @@ public class Modification
     public String getNameString()
     {
         return !StringUtils.isBlank(_unimodName) ? _unimodName + (!_unimodName.equals(_skylineModName) ? " [ " + _skylineModName + " ]" : "") : _skylineModName;
-    }
-
-    public String getUnimodMatches()
-    {
-        return _unimodMatches;
-    }
-
-    public void setUnimodMatches(String unimodMatches)
-    {
-        _unimodMatches = unimodMatches;
-    }
-
-    // Possible Unimod matches if no single Unimod match could be found
-    public void setPossibleUnimodMatches(List<UnimodModification> uModsList)
-    {
-        if (uModsList != null && uModsList.size() > 0)
-        {
-            _unimodMatches = StringUtils.join(uModsList.stream().map(m -> m.getId() + MOD_INFO_SEPARATOR
-                    + m.getName() + MOD_INFO_SEPARATOR
-                    + m.getNormalizedFormula() + MOD_INFO_SEPARATOR
-                    + m.getModSites())
-                    .collect(Collectors.toList()), MOD_SEPARATOR);
-        }
     }
 
     public @NotNull List<SkylineDocModification> getDocsWithModification()
@@ -192,12 +172,18 @@ public class Modification
         jsonObject.put("valid", isValid());
         jsonObject.put("modType", getModType().name());
         jsonObject.put("dbModId", getDbModId());
-        if (getUnimodId() == null)
+        jsonObject.put("modInfoId", getModInfoId());
+        if (getModInfoId() != null)
         {
-            List<List<String>> unimodMatches = getPossibleUnimodMatches();
-            if (unimodMatches.size() > 0)
+            var modInfo = ModType.Isotopic == getModType() ? ModificationInfoManager.getIsotopeModInfo(getModInfoId()) :
+                    ModificationInfoManager.getStructuralModInfo(getModInfoId());
+            if (modInfo != null)
             {
-                jsonObject.put("possibleUnimodMatches", getPossibleUnimodMatchesJSON(unimodMatches));
+                List<Pair<Integer, String>> unimodIdsAndNames = modInfo.getUnimodIdsAndNames();
+                if (unimodIdsAndNames.size() > 0)
+                {
+                    jsonObject.put("unimodMatches", getUnimodMatchesJSON(unimodIdsAndNames));
+                }
             }
         }
         return jsonObject;
@@ -209,67 +195,20 @@ public class Modification
         {
             return getSkylineModName();
         }
-        String info = "";
-        if(ModType.Structural == getModType())
-        {
-            IModification.IStructuralModification mod = TargetedMSService.get().getStructuralModification(getDbModId());
-            if (mod.getFormula() != null) info += mod.getFormula();
-            if (mod.getAminoAcid() != null) info += ", at: " + mod.getAminoAcid();
-            if (mod.getTerminus() != null) info += ", " + mod.getTerminus() + "-term";
-            if (info.startsWith(",")) info = info.substring(1).trim();
-        }
-        else if (ModType.Isotopic == getModType())
-        {
-            IModification.IIsotopeModification mod = TargetedMSService.get().getIsotopeModification(getDbModId());
-            if (mod.getFormula() != null) info += mod.getFormula();
-            else
-            {
-                String labels = "";
-                if (mod.getLabel2H() != null) labels += "2H ";
-                if (mod.getLabel13C() != null) labels += "13C ";
-                if (mod.getLabel15N() != null) labels += "15N ";
-                if (mod.getLabel18O() != null) labels += "18O";
-                if (labels.length() > 0)
-                {
-                    info += "label: " + labels.trim();
-                }
-            }
-            if (mod.getAminoAcid() != null) info += ", at: " + mod.getAminoAcid();
-            if (mod.getTerminus() != null) info += ", " + mod.getTerminus() + "-term";
 
-            if (info.startsWith(",")) info = info.substring(1).trim();
-        }
-        return getSkylineModName() + " (" + info + ")" + (isInferred() ? "**" : "");
+        return (isInferred() ? "**" : "") + getSkylineModName();
     }
 
-    private JSONArray getPossibleUnimodMatchesJSON(List<List<String>> unimodMatches)
+    private JSONArray getUnimodMatchesJSON(List<Pair<Integer, String>> unimodMatches)
     {
-        JSONArray possibleUnimods = new JSONArray();
-        for (List<String> match: unimodMatches)
+        JSONArray jsonArray = new JSONArray();
+        for (Pair<Integer, String> match: unimodMatches)
         {
-            JSONObject possibleUnimod = new JSONObject();
-            possibleUnimod.put("unimodId", match.size() > 0 ? match.get(0) : ERROR);
-            possibleUnimod.put("name", match.size() > 1 ? match.get(1) : ERROR);
-            possibleUnimod.put("formula", match.size() > 2 ? match.get(2) : ERROR);
-            possibleUnimod.put("sites", match.size() > 3 ? match.get(3) : ERROR);
-            possibleUnimods.put(possibleUnimod);
+            JSONObject unimodMatch = new JSONObject();
+            unimodMatch.put("unimodId", match.first);
+            unimodMatch.put("name", match.second);
+            jsonArray.put(unimodMatch);
         }
-        return possibleUnimods;
-    }
-
-    private List<List<String>> getPossibleUnimodMatches()
-    {
-        if (_unimodMatches == null)
-        {
-            return Collections.emptyList();
-        }
-        String[] matches = StringUtils.splitByWholeSeparator(_unimodMatches, MOD_SEPARATOR);
-        List<List<String>> matchList = new ArrayList<>();
-        for (String match: matches)
-        {
-            String[] parts = StringUtils.splitByWholeSeparator(match, MOD_INFO_SEPARATOR);
-            matchList.add(List.of(parts));
-        }
-        return matchList;
+        return jsonArray;
     }
 }
