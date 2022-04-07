@@ -130,6 +130,11 @@ public class PanoramaPublicManager
         return getSchema().getTable(PanoramaPublicSchema.TABLE_EXPT_ISOTOPE_MOD_INFO);
     }
 
+    public static TableInfo getTableInfoIsotopeUnimodInfo()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_ISOTOPE_UNIMOD_INFO);
+    }
+
     public static ActionURL getRawDataTabUrl(Container container)
     {
         return PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container, TargetedMSService.RAW_FILES_TAB);

@@ -136,7 +136,7 @@ public abstract class ModificationDocsDisplayColumnFactory implements DisplayCol
         @Override
         protected String getPeptideModTableName()
         {
-            return "PeptideIsotopeModification";
+            return "PrecursorIsotopeModification";
         }
 
         @Override

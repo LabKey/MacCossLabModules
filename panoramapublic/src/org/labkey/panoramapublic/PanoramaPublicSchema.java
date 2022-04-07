@@ -82,6 +82,7 @@ public class PanoramaPublicSchema extends UserSchema
     public static final String TABLE_SPEC_LIB_INFO = "SpecLibInfo";
     public static final String TABLE_EXPT_STRUCTURAL_MOD_INFO = "ExperimentStructuralModInfo";
     public static final String TABLE_EXPT_ISOTOPE_MOD_INFO = "ExperimentIsotopeModInfo";
+    public static final String TABLE_ISOTOPE_UNIMOD_INFO = "IsotopeUnimodInfo";
 
     public static final String TABLE_LIB_DEPENDENCY_TYPE = "SpecLibDependencyType";
     public static final String TABLE_LIB_SOURCE_TYPE = "SpecLibSourceType";

@@ -5,8 +5,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.labkey.api.util.Pair;
 import org.labkey.panoramapublic.query.ModificationInfoManager;
+import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
 
 import java.util.Collections;
 import java.util.List;
@@ -179,7 +179,7 @@ public class Modification
                     ModificationInfoManager.getStructuralModInfo(getModInfoId());
             if (modInfo != null)
             {
-                List<Pair<Integer, String>> unimodIdsAndNames = modInfo.getUnimodIdsAndNames();
+                List<ExperimentModInfo.UnimodInfo> unimodIdsAndNames = modInfo.getUnimodInfos();
                 if (unimodIdsAndNames.size() > 0)
                 {
                     jsonObject.put("unimodMatches", getUnimodMatchesJSON(unimodIdsAndNames));
@@ -199,14 +199,14 @@ public class Modification
         return (isInferred() ? "**" : "") + getSkylineModName();
     }
 
-    private JSONArray getUnimodMatchesJSON(List<Pair<Integer, String>> unimodMatches)
+    private JSONArray getUnimodMatchesJSON(List<ExperimentModInfo.UnimodInfo> unimodMatches)
     {
         JSONArray jsonArray = new JSONArray();
-        for (Pair<Integer, String> match: unimodMatches)
+        for (ExperimentModInfo.UnimodInfo match: unimodMatches)
         {
             JSONObject unimodMatch = new JSONObject();
-            unimodMatch.put("unimodId", match.first);
-            unimodMatch.put("name", match.second);
+            unimodMatch.put("unimodId", match.getUnimodId());
+            unimodMatch.put("name", match.getUnimodName());
             jsonArray.put(unimodMatch);
         }
         return jsonArray;

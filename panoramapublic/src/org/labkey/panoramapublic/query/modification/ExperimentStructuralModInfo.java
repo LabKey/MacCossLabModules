@@ -1,8 +1,6 @@
 package org.labkey.panoramapublic.query.modification;
 
 
-import org.labkey.api.util.Pair;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -45,14 +43,14 @@ public class ExperimentStructuralModInfo extends ExperimentModInfo
     }
 
     @Override
-    public List<Pair<Integer, String>> getUnimodIdsAndNames()
+    public List<UnimodInfo> getUnimodInfos()
     {
         if (_unimodId2 == null)
         {
-            return super.getUnimodIdsAndNames();
+            return super.getUnimodInfos();
         }
-        var list = new ArrayList<>(super.getUnimodIdsAndNames());
-        list.add(new Pair<>(_unimodId2, _unimodName2));
+        var list = new ArrayList<>(super.getUnimodInfos());
+        list.add(new UnimodInfo(_unimodId2, _unimodName2));
         return Collections.unmodifiableList(list);
     }
 

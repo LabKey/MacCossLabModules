@@ -293,8 +293,7 @@ public class ExperimentAnnotationsManager
         // Delete any rows in the panoramapublic.ExperimentStructuralModInfo and panoramapublic.ExperimentIsotopeModInfo tables
         Table.delete(PanoramaPublicManager.getTableInfoExperimentStructuralModInfo(),
                 new SimpleFilter().addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId()));
-        Table.delete(PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo(),
-                new SimpleFilter().addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId()));
+        ModificationInfoManager.deleteIsotopeModInfoForExperiment(expAnnotations);
 
         // Delete any data validation rows for this experiment
         DataValidationManager.deleteValidations(expAnnotations.getId(), expAnnotations.getContainer());

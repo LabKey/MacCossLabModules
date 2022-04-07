@@ -47,6 +47,7 @@ import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
 import org.labkey.panoramapublic.proteomexchange.Formula;
 import org.labkey.panoramapublic.proteomexchange.SkylineVersion;
 import org.labkey.panoramapublic.proteomexchange.UnimodModification;
+import org.labkey.panoramapublic.proteomexchange.UnimodUtil;
 import org.labkey.panoramapublic.proteomexchange.validator.SkylineDocValidator;
 import org.labkey.panoramapublic.proteomexchange.validator.SpecLibValidator;
 import org.labkey.panoramapublic.query.ContainerJoin;
@@ -81,7 +82,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 22.002;
+        return 22.003;
     }
 
     @Override
@@ -347,6 +348,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(ExperimentModificationGetter.TestCase.class);
         set.add(ContainerJoin.TestCase.class);
         set.add(Formula.TestCase.class);
+        set.add(UnimodUtil.TestCase.class);
         return set;
 
     }

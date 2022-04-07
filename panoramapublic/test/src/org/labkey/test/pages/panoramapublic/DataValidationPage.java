@@ -1,5 +1,6 @@
 package org.labkey.test.pages.panoramapublic;
 
+import org.labkey.api.util.Pair;
 import org.labkey.test.Locator;
 import org.labkey.test.Locators;
 import org.labkey.test.WebDriverWrapper;
@@ -191,6 +192,38 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         }
     }
 
+    public void verifyWildCardModStatus(String modName, boolean inferred, List<Pair<String, String>> unimodMatches)
+    {
+        modName = inferred ? inferredModName(modName) : modName;
+
+        int rowIdx = getRowIndexForModification(modName);
+        assertNotEquals("Expected a row in the modifications validation grid for modification " + modName, -1, rowIdx);
+
+        var cells = elementCache().getModificationRowCells(rowIdx);
+        assertEquals("Unexpected number of columns in the modifications grid: ", MOD_COL_COUNT, cells.size());
+
+        Set<String> cellValues = new HashSet<>();
+        cells.forEach(cell -> cellValues.add(cell.getText()));
+        assertTrue(modName + " was not found in modification row " + rowIdx, cells.get(MOD_COL_NAME).getText().contains(modName));
+
+        if (unimodMatches == null || unimodMatches.size() == 0)
+        {
+            assertTrue(cells.get(MOD_COL_UNIMOD_NAME).getText().startsWith("MISSING"));
+        }
+        else
+        {
+            var unimodIds = cells.get(MOD_COL_UNIMODID).getText();
+            var unimodNames = cells.get(MOD_COL_UNIMOD_NAME).getText();
+            assertEquals("Unexpected match count for Unimod Ids for modification " + modName, unimodMatches.size(), unimodIds.split("\\n").length);
+            assertEquals("Unexpected match count for Unimod Names for modification " + modName, unimodMatches.size(), unimodNames.split("\\n").length);
+            for (Pair<String, String> match: unimodMatches)
+            {
+                assertTrue("Expected " + match.first + " for modification " + modName, unimodIds.contains(match.first));
+                assertTrue("Expected " + match.second + " for modification " + modName, unimodNames.contains(match.second));
+            }
+        }
+    }
+
     private void verifyLibrarySourceFiles(String libraryName, List<String> files, List<String> filesMissing, WebElement specLibsPanel, String tblCls)
     {
         if (files.size() > 0 || filesMissing.size() > 0)
@@ -219,6 +252,11 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
     {
         return new DataValidationPage.ElementCache();
     }
+
+    private final int MOD_COL_COUNT = 6;
+    private final int MOD_COL_NAME = 1;
+    private final int MOD_COL_UNIMODID = 2;
+    private final int MOD_COL_UNIMOD_NAME = 3;
 
     protected class ElementCache extends LabKeyPage.ElementCache
     {

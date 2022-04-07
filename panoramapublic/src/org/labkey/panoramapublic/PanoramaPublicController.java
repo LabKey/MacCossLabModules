@@ -159,7 +159,7 @@ import org.labkey.panoramapublic.proteomexchange.PxHtmlWriter;
 import org.labkey.panoramapublic.proteomexchange.PxXmlWriter;
 import org.labkey.panoramapublic.proteomexchange.UnimodModification;
 import org.labkey.panoramapublic.proteomexchange.UnimodModifications;
-import org.labkey.panoramapublic.proteomexchange.UnimodParser;
+import org.labkey.panoramapublic.proteomexchange.UnimodUtil;
 import org.labkey.panoramapublic.query.DataValidationManager;
 import org.labkey.panoramapublic.query.DataValidationManager.MissingMetadata;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
@@ -168,6 +168,7 @@ import org.labkey.panoramapublic.query.ModificationInfoManager;
 import org.labkey.panoramapublic.query.PxXmlManager;
 import org.labkey.panoramapublic.query.SpecLibInfoManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
+import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfo;
 import org.labkey.panoramapublic.query.modification.ModificationsView;
@@ -7372,7 +7373,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected ExperimentModInfo saveModInfo(UnimodMatchForm form, UnimodModification matchedMod)
         {
-            ExperimentModInfo modInfo = new ExperimentModInfo();
+            var modInfo = new ExperimentIsotopeModInfo();
             modInfo.setExperimentAnnotationsId(form.getId());
             modInfo.setModId(form.getModificationId());
             modInfo.setUnimodId(matchedMod.getId());
@@ -7757,16 +7758,14 @@ public class PanoramaPublicController extends SpringActionController
 
     private static UnimodModifications readUnimod(Errors errors)
     {
-        try
+        UnimodModifications uMods = UnimodUtil.getUnimod();
+        if (uMods.hasParseError())
         {
-            return new UnimodParser().parse();
-        }
-        catch (Exception e)
-        {
-            errors.reject(ERROR_MSG, "There was an error parsing Unimod modifications. The error was: " + e.getMessage()
+            errors.reject(ERROR_MSG, "There was an error parsing Unimod modifications. The error was: " + uMods.getParseError().getMessage()
                     + ". Please try again. If you continue to see this error please contact the server administrator.");
+            return null;
         }
-        return null;
+        return uMods;
     }
 
     @RequiresPermission(UpdatePermission.class)
@@ -7775,8 +7774,7 @@ public class PanoramaPublicController extends SpringActionController
         T _modInfo;
 
         protected abstract T getModInfo(int modInfoId);
-        protected abstract void deleteModInfo(T modInfo, int expAnnotationsId);
-        protected abstract void updateValidationModification(T modInfo);
+        protected abstract void deleteModInfo(T modInfo, ExperimentAnnotations expAnnotations);
 
         @Override
         protected ModelAndView getModelAndView(DeleteModInfoForm form, boolean reshow, BindException errors)
@@ -7810,12 +7808,8 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
-            try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
-            {
-                deleteModInfo(_modInfo, form.getId());
-                updateValidationModification(_modInfo);
-                transaction.commit();
-            }
+            deleteModInfo(_modInfo, _expAnnot);
+
             return true;
         }
 
@@ -7842,37 +7836,25 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected void deleteModInfo(ExperimentStructuralModInfo modInfo, int expAnnotationsId)
+        protected void deleteModInfo(ExperimentStructuralModInfo modInfo, ExperimentAnnotations expAnnotations)
         {
-            ModificationInfoManager.deleteStructuralModInfo(modInfo, expAnnotationsId, getContainer());
-        }
-
-        @Override
-        protected void updateValidationModification(ExperimentStructuralModInfo modInfo)
-        {
-            DataValidationManager.removeModInfo(_expAnnot, getContainer(), modInfo.getModId(), Modification.ModType.Structural, getUser());
+            ModificationInfoManager.deleteStructuralModInfo(modInfo, expAnnotations, getContainer(), getUser());
         }
     }
 
     @RequiresPermission(UpdatePermission.class)
-    public static class DeleteIsotopeModInfoAction extends DeleteModInfoAction<ExperimentModInfo>
+    public static class DeleteIsotopeModInfoAction extends DeleteModInfoAction<ExperimentIsotopeModInfo>
     {
         @Override
-        protected ExperimentModInfo getModInfo(int modInfoId)
+        protected ExperimentIsotopeModInfo getModInfo(int modInfoId)
         {
             return ModificationInfoManager.getIsotopeModInfo(modInfoId);
         }
 
         @Override
-        protected void deleteModInfo(ExperimentModInfo modInfo, int expAnnotationsId)
+        protected void deleteModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations)
         {
-            ModificationInfoManager.deleteIsotopeModInfo(modInfo, expAnnotationsId, getContainer());
-        }
-
-        @Override
-        protected void updateValidationModification(ExperimentModInfo modInfo)
-        {
-            DataValidationManager.removeModInfo(_expAnnot, getContainer(), modInfo.getModId(), Modification.ModType.Isotopic, getUser());
+            ModificationInfoManager.deleteIsotopeModInfo(modInfo, expAnnotations, getContainer(), getUser());
         }
     }
 

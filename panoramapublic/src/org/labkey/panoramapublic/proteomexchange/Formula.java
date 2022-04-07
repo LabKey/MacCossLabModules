@@ -40,7 +40,7 @@ public class Formula
         return Collections.unmodifiableSortedMap(_elementCounts);
     }
 
-    public String getFormula()
+    public @NotNull String getFormula()
     {
         StringBuilder positive = new StringBuilder();
         StringBuilder negative = new StringBuilder();
