@@ -35,26 +35,19 @@ public class UnimodModifications
     private final List<UnimodModification> _modifications;
     private final Map<Integer, Integer> _modIdModIdxMap; // Index in the _modifications array of a Unimod Id
     private final Map<String, List<Integer>> _formulaModIdxMap; // Indices in the _modifications array for modifications with a given formula
-    private final Map<String, List<Integer>> _isotopicDiffFormulaModIdxMap;
     private final Map<String, Integer> _modNameModIdxMap; // Index in the _modifications array for modifications with a given name
-    private final Exception _error;
+    private final Map<String, List<Integer>> _isotopicDiffFormulaModIdxMap;
 
     private final Map<Character, Map<String, Integer>> _aminoAcids;
 
-    public UnimodModifications(Exception error)
+    public UnimodModifications()
     {
         _modifications = new ArrayList<>();
         _modIdModIdxMap = new HashMap<>();
         _formulaModIdxMap = new HashMap<>();
-        _isotopicDiffFormulaModIdxMap = new HashMap<>();
         _modNameModIdxMap = new HashMap<>();
+        _isotopicDiffFormulaModIdxMap = new HashMap<>();
         _aminoAcids = new HashMap<>();
-        _error = error;
-    }
-
-    public UnimodModifications()
-    {
-        this(null);
     }
 
     public List<UnimodModification> getModifications()
@@ -70,16 +63,6 @@ public class UnimodModifications
     public boolean hasModifications()
     {
         return _modifications.size() > 0;
-    }
-
-    public boolean hasParseError()
-    {
-        return _error != null;
-    }
-
-    public Exception getParseError()
-    {
-        return _error;
     }
 
     public void add(UnimodModification uMod) throws PxException
@@ -103,7 +86,7 @@ public class UnimodModifications
         }
     }
 
-    public void updateDiffIsotopeMod(@NotNull UnimodModification uMod, @NotNull Formula diffFormula, @NotNull UnimodModification parentStructuralMod)
+    void updateDiffIsotopeMod(@NotNull UnimodModification uMod, @NotNull Formula diffFormula, @NotNull UnimodModification parentStructuralMod)
     {
         uMod.setDiffIsotopicFormulaAndParent(diffFormula, parentStructuralMod);
         List<Integer> diffIsotopeModIndexes = _isotopicDiffFormulaModIdxMap.computeIfAbsent(diffFormula.getFormula(), k -> new ArrayList<>());

@@ -16,7 +16,6 @@
 package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.junit.Test;
@@ -24,7 +23,6 @@ import org.labkey.api.targetedms.IModification;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.JunitUtil;
-import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
@@ -44,13 +42,10 @@ import static org.labkey.panoramapublic.proteomexchange.UnimodParser.Terminus;
 
 public class ExperimentModificationGetter
 {
-    private static final Logger LOG = LogHelper.getLogger(ExperimentModificationGetter.class, "Looks up the structural and isotopic modifications for documents associated with an experiment");
-
     /**
-     * @return a list of modifications for the runs in the given experiment.  If the Skyline modifications did not have a Unimod Id,
-     * an attempt is made to infer the Unimod Id based on the modification formula, modified sites and terminus.
+     * @return a list of modifications for the runs in the given experiment.
      */
-    public static List<PxModification> getModifications(ExperimentAnnotations expAnnot, boolean lookupUnimod)
+    public static List<PxModification> getModifications(ExperimentAnnotations expAnnot)
     {
         List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(expAnnot);
 
@@ -67,7 +62,7 @@ public class ExperimentModificationGetter
                 PxModification pxMod = strModMap.get(mod.getId());
                 if(pxMod == null)
                 {
-                    pxMod = getStructuralUnimodMod(mod, uMods, lookupUnimod);
+                    pxMod = getStructuralPxMod(mod, uMods);
                     strModMap.put(mod.getId(), pxMod);
                 }
                 pxMod.addSkylineDoc(run);
@@ -79,7 +74,7 @@ public class ExperimentModificationGetter
                 PxModification pxMod = isoModMap.get(mod.getId());
                 if(pxMod == null)
                 {
-                    pxMod = getIsotopicUnimodMod(mod, uMods, lookupUnimod);
+                    pxMod = getIsotopicPxMod(mod, uMods);
                     isoModMap.put(mod.getId(), pxMod);
                 }
                 pxMod.addSkylineDoc(run);
@@ -102,28 +97,26 @@ public class ExperimentModificationGetter
         return mod.getAminoAcid().replaceAll("\\s", "").split(",");
     }
 
-    public static PxModification getStructuralUnimodMod(IModification mod, UnimodModifications uMods)
+    private static PxModification getStructuralPxMod(IModification mod, UnimodModifications uMods)
     {
-        return getStructuralUnimodMod(mod, uMods, true);
-    }
-
-    public static PxModification getStructuralUnimodMod(IModification mod, UnimodModifications uMods, boolean lookupUnimod)
-    {
+        UnimodModification uMod = null;
         if(mod.getUnimodId() != null)
         {
-            UnimodModification uMod = uMods.getById(mod.getUnimodId());
-            return uMod != null ? new PxStructuralMod(mod.getName(), mod.getId(), uMod, false) : new PxStructuralMod(mod.getName(), mod.getId());
+            uMod = uMods.getById(mod.getUnimodId());
         }
-        else
-        {
-            PxStructuralMod pxMod = new PxStructuralMod(mod.getName(), mod.getId());
-            String normFormula = Formula.normalizeIfValid(mod.getFormula());
-            if(normFormula != null && lookupUnimod)
-            {
-                addMatches(mod, uMods, pxMod, normFormula, true);
-            }
-            return pxMod;
-        }
+        return uMod != null ? new PxStructuralMod(mod.getName(), mod.getId(), uMod, false) : new PxStructuralMod(mod.getName(), mod.getId());
+    }
+
+    /**
+     * Finds a Unimod match for the given structural modification.
+     * @throws  IllegalArgumentException if the modification formula could not be parsed.
+     */
+    public static @NotNull PxModification getStructuralUnimodMod(IModification mod, UnimodModifications uMods) throws IllegalArgumentException
+    {
+        PxModification pxMod = new PxStructuralMod(mod.getName(), mod.getId());
+        Formula normFormula = Formula.parse(mod.getFormula());
+        addMatches(mod, uMods, pxMod, normFormula.getFormula(), true);
+        return pxMod;
     }
 
     private static void addMatches(IModification mod, UnimodModifications uMods, PxModification pxMod, String normFormula, boolean structural)
@@ -144,52 +137,53 @@ public class ExperimentModificationGetter
         }
     }
 
-    public static PxModification getIsotopicUnimodMod(IModification.IIsotopeModification mod, UnimodModifications uMods)
+    private static PxModification getIsotopicPxMod(IModification.IIsotopeModification mod, UnimodModifications uMods)
     {
-        return getIsotopicUnimodMod(mod, uMods, true);
-    }
-
-    public static PxModification getIsotopicUnimodMod(IModification.IIsotopeModification mod, UnimodModifications uMods, boolean lookupUnimod)
-    {
+        UnimodModification uMod = null;
         if(mod.getUnimodId() != null)
         {
-            UnimodModification uMod = uMods.getById(mod.getUnimodId());
-            return uMod != null ? new PxIsotopicMod(mod.getName(), mod.getId(), uMod, false) : new PxIsotopicMod(mod.getName(), mod.getId());
+            uMod = uMods.getById(mod.getUnimodId());
+        }
+        return uMod != null ? new PxIsotopicMod(mod.getName(), mod.getId(), uMod, false) : new PxIsotopicMod(mod.getName(), mod.getId());
+    }
+
+    /**
+     * Finds a Unimod match for the given isotope modification. For doing a Unimod lookup, if the modification does not have a formula
+     * then it is built using the amino acid sites and labeled atoms in the modification definition.
+     * @throws IllegalArgumentException if isotopic formula for the modification could not be built, or if the modification
+     * already has a formula and the formula could not be parsed.
+     */
+    public static @NotNull PxModification getIsotopicUnimodMod(IModification.IIsotopeModification mod, UnimodModifications uMods) throws IllegalArgumentException
+    {
+        String normFormula;
+        if(StringUtils.isBlank(mod.getFormula()))
+        {
+            normFormula = buildIsotopeModFormula(mod).getFormula();
         }
         else
         {
-            String normFormula = null;
-            if(StringUtils.isBlank(mod.getFormula()))
-            {
-                try
-                {
-                    var formula = buildIsotopeModFormula(mod);
-                    normFormula = formula != null ? formula.getFormula() : null;
-                }
-                catch (PxException e)
-                {
-                    LOG.error("Error building formula for isotopic mod (Id: " + mod.getId() + ", " + mod.getName() + ")", e);
-                }
-            }
-            else
-            {
-                normFormula = Formula.normalizeIfValid(mod.getFormula());
-            }
-            PxIsotopicMod pxMod = new PxIsotopicMod(mod.getName(), mod.getId());
-            if(normFormula != null && lookupUnimod)
-            {
-                addMatches(mod, uMods, pxMod, normFormula, false);
-            }
-            return pxMod;
+            normFormula = Formula.parse(mod.getFormula()).getFormula();
         }
+        PxIsotopicMod pxMod = new PxIsotopicMod(mod.getName(), mod.getId());
+        if (normFormula != null)
+        {
+            addMatches(mod, uMods, pxMod, normFormula, false);
+        }
+        return pxMod;
     }
 
-    private static Formula buildIsotopeModFormula(IModification.IIsotopeModification mod) throws PxException
+    /**
+     * Builds the formula for an isotope modification based on the amino acid sites and the labeled atoms in the given
+     * modification definition.
+     * @throws IllegalArgumentException if the modification definition does not include any amino acid sites, or if it
+     * includes multiple amino acid sites, and the number of labeled atoms in the amino acids are not the same.
+     */
+    private static Formula buildIsotopeModFormula(IModification.IIsotopeModification mod)
     {
         String aminoAcids = mod.getAminoAcid();
         if (StringUtils.isBlank(aminoAcids))
         {
-            return null;
+            throw new IllegalArgumentException("Cannot build formula for an isotope modification (" + mod.getName() + ") without any modified amino acids.");
         }
 
         // On PanoramaWeb we do not have any isotopic modifications with multiple amino acids as targets.  But Skyline allows it
@@ -208,7 +202,13 @@ public class ExperimentModificationGetter
             }
             else if (!formula.getFormula().equals(f.getFormula()))
             {
-                throw new PxException("Multiple amino acids found for isotopic modification (" + mod.getName() + "). Formulae do not match.");
+                // This will happen if the modification definition includes multiple amino acids, and the number of labeled atoms
+                // in the amino acids are not the same. Skyline allows creating a modification on two amino acids that do not have
+                // the same number of labeled atoms. But we would have to split it into separate modifications to support the use case.
+                // For now, we only support this scenario for the built-in wildcard modifications in Skyline.
+                throw new IllegalArgumentException("Cannot calculate formula for isotope modification '" + mod.getName() + "'. " +
+                        "The modification is defined on multiple amino acids, but the number of labeled atoms in the amino acids are not the same. " +
+                        "To calculate the formula for an isotope modification all amino acids in the modification definition must have the same number of labeled atoms.");
             }
         }
         return formula;
@@ -346,6 +346,27 @@ public class ExperimentModificationGetter
     public static class TestCase extends Assert
     {
         private static final boolean debug = false;
+
+        @Test
+        public void testBuildIsotopeModFormula()
+        {
+            var invalidMod = createisotopicMod("heavyK_R", null,
+                    "K,R",  // K and R have different number of Carbon and Nitrogen atoms so the calculated isotope formula
+                                 // for the two elements will be different.  This should throw an exception.
+                    null, false, LABEL13C, LABEL15N, false);
+            try
+            {
+                buildIsotopeModFormula(invalidMod);
+                fail("Expected error building formula for isotope modification with amino acids that have different number of labeled atoms in their chemical composition");
+            }
+            catch (IllegalArgumentException e)
+            {
+                assertEquals("Cannot calculate formula for isotope modification 'heavyK_R'. " +
+                                "The modification is defined on multiple amino acids, but the number of labeled atoms in the amino acids are not the same. " +
+                                "To calculate the formula for an isotope modification all amino acids in the modification definition must have the same number of labeled atoms.",
+                        e.getMessage());
+            }
+        }
 
         @Test
         public void testStructuralMods() throws IOException
@@ -687,7 +708,7 @@ public class ExperimentModificationGetter
                 if (matches.size() == 0)
                 {
                     assertFalse("Unexpected Unimod match for modification " + pxMod.getSkylineName(), pxMod.hasUnimodId());
-                    assertTrue("Unexpected possible mods for modification " + pxMod.getSkylineName(), pxMod.getPossibleUnimodMatches().size() == 0);
+                    assertEquals("Unexpected possible mods for modification " + pxMod.getSkylineName(), 0, pxMod.getPossibleUnimodMatches().size());
                 }
                 else if (matches.size() == 1)
                 {
@@ -697,7 +718,7 @@ public class ExperimentModificationGetter
                     assertFalse("modification " + pxMod.getSkylineName() + " has a Unimod Id."
                             + " Unexpected " + pxMod.getPossibleUnimodMatches().size() + " possible matches", pxMod.hasPossibleUnimods());
                 }
-                else if (matches.size() > 1)
+                else
                 {
                     List<UnimodModification> possibleMods = pxMod.getPossibleUnimodMatches();
                     assertFalse("Unexpected Unimod Id for modification " + pxMod.getSkylineName(), pxMod.hasUnimodId());
@@ -875,10 +896,24 @@ public class ExperimentModificationGetter
             for(int i = 0; i < mods.size(); i++)
             {
                 IsotopeModification mod = mods.get(i);
+
+                if (mod.getFormula() == null && mod.getAminoAcid() == null)
+                {
+                    try
+                    {
+                        getIsotopicUnimodMod(mod, uMods);
+                        fail("Expected errors since the isotope modification " + mod.getName() + " does not have any amino acids in the modification definition");
+                    }
+                    catch (IllegalArgumentException e)
+                    {
+                        assertEquals("Cannot build formula for an isotope modification (" + mod.getName() + ") without any modified amino acids.", e.getMessage());
+                    }
+                    continue;
+                }
                 PxModification pxMod = getIsotopicUnimodMod(mod, uMods);
 
                 printIsotopicMod(mod, pxMod);
-                
+
                 List<UnimodModification> expectedMatches = matches.get(pxMod.getSkylineName());
 
                 if (expectedMatches.size() == 0)

@@ -225,6 +225,12 @@ public class DataValidationManager
         for (Modification mod: modifications)
         {
             mod.setDocsWithModification(getSkylineDocModifications(mod));
+            if (mod.getModInfoId() != null)
+            {
+                var modInfo = Modification.ModType.Isotopic == mod.getModType() ? ModificationInfoManager.getIsotopeModInfo(mod.getModInfoId()) :
+                        ModificationInfoManager.getStructuralModInfo(mod.getModInfoId());
+                mod.setModInfo(modInfo);
+            }
         }
         return modifications;
     }

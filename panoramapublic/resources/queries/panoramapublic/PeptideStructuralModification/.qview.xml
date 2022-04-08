@@ -1,0 +1,14 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            canOverride="true">
+    <columns>
+        <column name="ModifiedPeptideDisplayColumn" />
+        <column name="StructuralModId">
+            <properties>
+                <property name="columnTitle" value="Modification"/>
+            </properties>
+        </column>
+        <column name="IndexAA" />
+        <column name="PeptideGroupId" />
+        <column name="PeptideGroupId/RunId" />
+    </columns>
+</customView>

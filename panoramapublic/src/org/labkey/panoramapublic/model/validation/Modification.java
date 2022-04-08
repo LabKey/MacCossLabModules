@@ -5,11 +5,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.labkey.panoramapublic.query.ModificationInfoManager;
 import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 // For table panoramapublic.modificationvalidation
 public class Modification
@@ -25,6 +25,7 @@ public class Modification
     private Integer _modInfoId;
 
     private List<SkylineDocModification> _docsWithModification;
+    private ExperimentModInfo _modInfo;
 
     public enum ModType {Structural, Isotopic}
 
@@ -132,17 +133,42 @@ public class Modification
 
     public boolean isValid()
     {
-        return _unimodId != null || _modInfoId != null;
+        return (_unimodId != null && _unimodName != null) || _modInfoId != null;
     }
 
     public String toString()
     {
-        return getNameString() + ": " + getUnimodIdStr();
+        return getSkylineModName() + ": " + getUnimodStr();
     }
 
-    public String getUnimodIdStr()
+    public String getUnimodStr()
     {
-        return isValid() ? "UNIMOD:" + _unimodId : "No UNIMOD Id";
+        return isValid() ? StringUtils.join(getUnimodInfoList().stream()
+                .map(m -> getUnimodStr(m.getUnimodId(), m.getUnimodName()))
+                .collect(Collectors.toList()), ", ") : "No UNIMOD Id";
+    }
+
+    public List<ExperimentModInfo.UnimodInfo> getUnimodInfoList()
+    {
+        if (_unimodId != null)
+        {
+           return Collections.singletonList(new ExperimentModInfo.UnimodInfo(_unimodId, _unimodName));
+        }
+        else if (_modInfo != null)
+        {
+            return _modInfo.getUnimodInfos();
+        }
+        return Collections.emptyList();
+    }
+
+    public static String getUnimodIdStr(int unimodId)
+    {
+        return "UNIMOD:" + unimodId;
+    }
+
+    private static String getUnimodStr(int unimodId, String unimodName)
+    {
+        return getUnimodIdStr(unimodId) + " - " + unimodName;
     }
 
     public String getNameString()
@@ -160,6 +186,16 @@ public class Modification
         _docsWithModification = docsWithModification;
     }
 
+    public ExperimentModInfo getModInfo()
+    {
+        return _modInfo;
+    }
+
+    public void setModInfo(ExperimentModInfo modInfo)
+    {
+        _modInfo = modInfo;
+    }
+
     @NotNull
     public JSONObject toJSON()
     {
@@ -173,17 +209,12 @@ public class Modification
         jsonObject.put("modType", getModType().name());
         jsonObject.put("dbModId", getDbModId());
         jsonObject.put("modInfoId", getModInfoId());
-        if (getModInfoId() != null)
+        if (_modInfo != null)
         {
-            var modInfo = ModType.Isotopic == getModType() ? ModificationInfoManager.getIsotopeModInfo(getModInfoId()) :
-                    ModificationInfoManager.getStructuralModInfo(getModInfoId());
-            if (modInfo != null)
+            List<ExperimentModInfo.UnimodInfo> unimodIdsAndNames = _modInfo.getUnimodInfos();
+            if (unimodIdsAndNames.size() > 0)
             {
-                List<ExperimentModInfo.UnimodInfo> unimodIdsAndNames = modInfo.getUnimodInfos();
-                if (unimodIdsAndNames.size() > 0)
-                {
-                    jsonObject.put("unimodMatches", getUnimodMatchesJSON(unimodIdsAndNames));
-                }
+                jsonObject.put("unimodMatches", getUnimodMatchesJSON(unimodIdsAndNames));
             }
         }
         return jsonObject;

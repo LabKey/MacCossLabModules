@@ -151,15 +151,13 @@ public class UnimodParser
     }
 
     /**
-     * @param diffFormula
-     * @return Returns true if the given formula is a balanced isotopic label, where the only
-     * thing changing is the isotopes of the atoms in question.
+     * @return true if the given formula is a balanced isotopic label, where the only thing changing is the isotopes
+     *  of the atoms in question.
      */
     private static boolean isIsotopicDiff(Formula diffFormula)
     {
         var elementCounts = diffFormula.getElementCounts();
-        Set<ChemElement> elements = new HashSet<>();
-        elements.addAll(elementCounts.keySet());
+        Set<ChemElement> elements = new HashSet<>(elementCounts.keySet());
 
         for (var element: elementCounts.keySet())
         {
@@ -199,8 +197,6 @@ public class UnimodParser
 
         NodeList deltaEl = modEl.getElementsByTagName("delta");
         UnimodModification uMod = new UnimodModification(id, title, getFormula(deltaEl));
-
-        boolean isIsotopic = false;
 
         NodeList nl = modEl.getElementsByTagName("specificity");
         for(int i = 0; i < nl.getLength(); i++)

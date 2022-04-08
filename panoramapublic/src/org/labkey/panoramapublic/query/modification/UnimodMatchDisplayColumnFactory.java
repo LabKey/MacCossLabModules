@@ -191,12 +191,14 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
         protected List<DOM.Renderable> getAssignedUnimodDetails(ExperimentIsotopeModInfo modInfo)
         {
             List<DOM.Renderable> list = new ArrayList<>();
-            boolean first = true;
             for (ExperimentModInfo.UnimodInfo unimodInfo: modInfo.getUnimodInfos())
             {
-                if (!first ) list.add(BR());
-                first = false;
                 list.addAll(super.renderUnimod(unimodInfo.getUnimodId(), unimodInfo.getUnimodName(), true));
+                list.add(BR());
+            }
+            if (list.size() > 1)
+            {
+                list.remove(list.size() - 1); // remove the last <BR>
             }
             return list;
         }

@@ -206,7 +206,7 @@
                                     closable: true,
                                     html: "Isotope modifications in Skyline that are the heavy version of a structural modification " +
                                             "have a formula that is the difference between the formula of the modification and the formula " +
-                                            "of the parent unlabeled structural modification.<br>For example: the isotope formula for Dimethyl:2H(6) is the difference " +
+                                            "of the associated unlabeled structural modification.<br>For example: the isotope formula for Dimethyl:2H(6) is the difference " +
                                             "between the formulas of Dimethyl:2H(6) and Dimethyl.<br>This difference is H'6C2-H2 <b>-</b> H4C2 = <b>H'6-H6.</b>"
                                 });
                             }

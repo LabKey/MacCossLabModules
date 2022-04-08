@@ -9,7 +9,6 @@ import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
-import org.labkey.api.formSchema.Field;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
 import org.labkey.api.targetedms.ITargetedMSRun;
@@ -120,13 +119,21 @@ public class ModificationInfoManager
 
     public static void deleteIsotopeModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations, Container container, User user)
     {
+        deleteIsotopeModInfo(modInfo, expAnnotations, container, user, true);
+    }
+
+    public static void deleteIsotopeModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations, Container container, User user, boolean updateDataValidation)
+    {
         if (modInfo != null && expAnnotations != null && modInfo.getExperimentAnnotationsId() == expAnnotations.getId())
         {
             try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
             {
                 Table.delete(PanoramaPublicManager.getTableInfoIsotopeUnimodInfo(), new SimpleFilter(FieldKey.fromParts("modInfoId"), modInfo.getId()));
                 Table.delete(PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo(), modInfo.getId());
-                DataValidationManager.removeModInfo(expAnnotations, container, modInfo.getModId(), Modification.ModType.Isotopic, user);
+                if (updateDataValidation)
+                {
+                    DataValidationManager.removeModInfo(expAnnotations, container, modInfo.getModId(), Modification.ModType.Isotopic, user);
+                }
                 transaction.commit();
             }
         }
@@ -246,13 +253,14 @@ public class ModificationInfoManager
             SQLFragment sql = new SQLFragment("SELECT DISTINCT substring(pep.sequence, pimod.indexAA + 1, 1) FROM ")
                     .append(svc.getTableInfoPeptideIsotopeModification(), "pimod")
                     .append(" INNER JOIN ")
-                    // Not enough to query the PeptideIsotopeModification table which will have rows for all the isotope label types defined in the document.
-                    // We need to join to the Precursor and RunIsotopeModification tables to return only those rows where there is a precursor with a
-                    // given isotope label type. The user can "pick children" for a peptide in Skyline.  If there are two isotope labels types (e.g. heavy and medium)
-                    // the user may only pick the "heavy" label for a peptide, for example. The document's <peptide> element, however, lists all the label types
-                    // as <implicit_heavy_modifications>. The information in these elements is what goes into the PeptideIsotopeModification table. We have to find
-                    // the precursors for a peptide that have a label type (generalprecursor.isotopeLabelType) which includes the given isotopeModId.  The RunIsotopeModification
-                    // table links label types to the modifications Ids included in that label type.
+                    // Not enough to query the PeptideIsotopeModification table which will have rows for all the isotope label types defined in the document that
+                    // can be applied to the peptide (<peptide> element in .sky). However, the peptide may not have a precursor for a given label type. For example,
+                    // if there are two isotope labels types (e.g. heavy and medium) the user may only pick the "heavy" label for a peptide.  In this case the
+                    // peptide will only have a "heavy" precursor, and not a "medium" precursor.
+                    // We need to join to the Precursor to return only those rows where there is a precursor with a
+                    // given isotope label type.  We also have to join to the RunIsotopeModification table to find the precursors for a peptide that have a
+                    // label type (generalprecursor.isotopeLabelType) which includes the given isotopeModId.  Each label type can include more than one isotope modification.
+                    // The RunIsotopeModification table links label types to the modifications Ids included in that label type.
                     .append(svc.getTableInfoGeneralPrecursor(), "pre")
                     .append(" ON pre.generalMoleculeId = piMod.peptideId ")
                     .append(" INNER JOIN ")

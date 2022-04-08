@@ -579,12 +579,17 @@
                                     if (!modType) return;
                                     var modTypeUpper = modType.toUpperCase();
                                     var params = {
-                                        'schemaName': 'targetedms',
-                                        'query.PeptideId/PeptideGroupId/RunId~eq': doc.runId,
+                                        'schemaName': 'panoramapublic',
                                         'query.queryName': queryName = modTypeUpper === 'STRUCTURAL' ? 'PeptideStructuralModification' : 'PrecursorIsotopeModification'
                                     };
-                                    if (modTypeUpper === 'STRUCTURAL') params['query.StructuralModId/Id~eq'] = dbModId;
-                                    else params['query.IsotopeModId/Id~eq'] = dbModId;
+                                    if (modTypeUpper === 'STRUCTURAL') {
+                                        params['query.StructuralModId/Id~eq'] = dbModId;
+                                        params['query.PeptideGroupId/RunId~eq'] = doc.runId;
+                                    }
+                                    else {
+                                        params['query.IsotopeModId/Id~eq'] = dbModId;
+                                        params['query.PeptideId/PeptideGroupId/RunId~eq'] = doc.runId;
+                                    }
                                     return link('[PEPTIDES]', LABKEY.ActionURL.buildURL('query', 'executeQuery', doc.container, params));
                                 },
                                 compiled: true

@@ -26,7 +26,7 @@ import static org.junit.Assert.assertTrue;
 public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
 {
     private static final String SKY_FILE_1 = "heavy_and_combo_str_mods.sky.zip";
-    private static final String SKY_FILE_2 = "hard-coded-and-wildcard-mods_v2.sky.zip";
+    private static final String SKY_FILE_2 = "hard-coded-and-wildcard-mods_v5.sky.zip";
 
     private static final String STRUCTURAL_MOD = "Structural Modifications";
     private static final String ISOTOPE_MOD = "Isotope Modifications";
@@ -92,14 +92,16 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         testCustomizeGrid(STRUCTURAL_MOD, true);
         testCustomizeGrid(ISOTOPE_MOD, true);
 
+        // Match structural modification
         testSaveMatchForStructuralMod(propionylation, List.of(propionyl, new Unimod(206, "Delta:H(4)C(3)O(1)", propionyl.getFormula())),
                 0);
+        testNoMatchForStructuralMod("Acetyl");
 
         // Heavy structural modifications
         testSaveMatchForStructuralMod(heavyMonoMethyl, List.of(methylHeavy), 0);
         testSaveMatchForStructuralMod(heavyDimethyl, List.of(dimethylHeavy), 0);
 
-
+        // Combination modifications
         String methylPropionylFormula = "H6C4O";
         testDefineCombinationMod(methylPropionyl, methylPropionylFormula, methyl, methyl, "H4C2", "H4C3O", "H2C2O", false);
         testDefineCombinationMod(methylPropionyl, methylPropionylFormula, methyl, propionyl, methylPropionylFormula, "H4C3O", "", true);
@@ -107,7 +109,19 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         // Hard-coded and wild-card modifications
         testWildCardModifications();
 
-         testCopy(projectName, folderName, experimentTitle,  folderName + " Copy");
+        testCopy(projectName, folderName, experimentTitle,  folderName + " Copy");
+    }
+
+    private void testNoMatchForStructuralMod(String modificationName)
+    {
+        var modsTable = new DataRegionTable(STRUCTURAL_MOD, this);
+        int rowIdx = checkModificationRow(modsTable, modificationName, null);
+        clickFindMatchInRow(modsTable, rowIdx);
+        assertTextPresent("Unimod Match Options ");
+        clickButton("Unimod Match");
+        assertTextPresent("Cannot find a Unimod match for a structural modification that does not have modified amino acids or a modified terminus");
+        clickButton("Back");
+        goBack();
     }
 
     private void testDefineCombinationMod(String modificationName, String modFormula, Unimod unimod1, Unimod unimod2, String combinedFormula, String difference1, String difference2, boolean balanced)
@@ -224,6 +238,20 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         checkModificationRow(modsTable, null, "Label:13C");
         checkModificationRow(modsTable, null, "Label:15N");
         checkModificationRow(modsTable, null, "Label:13C15N");
+
+        int rowIdx = checkModificationRow(modsTable, "Label:15N", null);
+        clickFindMatchInRow(modsTable, rowIdx);
+        assertTextPresent("Cannot find a Unimod match for an isotope modification that does not have modified amino acids sites");
+        clickButton("Back");
+
+        // heavyK_R is a dummy modification in the test document that is defined on K and R with heavy C and N.
+        // K and R have different number of Nitrogen atoms so we will not be able to calculate a formula for this modification.
+        rowIdx = checkModificationRow(modsTable, "heavyK_R", null);
+        clickFindMatchInRow(modsTable, rowIdx);
+        assertTextPresent("Error finding Unimod match. Cannot calculate formula for isotope modification 'heavyK_R'. " +
+                "The modification is defined on multiple amino acids, but the number of labeled atoms in the amino acids are not the same. " +
+                "To calculate the formula for an isotope modification all amino acids in the modification definition must have the same number of labeled atoms");
+        clickButton("Back");
 
         var validationPage = submitValidationJob();
         // After running the data validation job the wildcard modifications should have a match

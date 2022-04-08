@@ -108,8 +108,9 @@ public class DataValidator
         // sleep();
         try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
         {
-            List<ExperimentModificationGetter.PxModification> mods = ExperimentModificationGetter.getModifications(_expAnnotations,
-                    false); // Do not look up Unimod to find a match if the modification does not have a Unimod Id in the Skyline document.
+            // Get a list of modifications from the Skyline documents in this experiment.  Do not try to find a Unimod
+            // match if a modification does not have a Unimod Id in the Skyline document.
+            List<ExperimentModificationGetter.PxModification> mods = ExperimentModificationGetter.getModifications(_expAnnotations);
 
             List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(_expAnnotations);
 
@@ -125,7 +126,7 @@ public class DataValidator
                 {
                     var modInfo = ModType.Isotopic == mod.getModType() ? ModificationInfoManager.getIsotopeModInfo(mod.getDbModId(), _expAnnotations.getId())
                             : ModificationInfoManager.getStructuralModInfo(mod.getDbModId(), _expAnnotations.getId());
-                    if (UnimodUtil.isWildcardModification(pxMod) && modInfo instanceof ExperimentIsotopeModInfo)
+                    if (UnimodUtil.isWildcardModification(pxMod))
                     {
                         modInfo = saveModInfoForWildCardSkylineMod(pxMod, (ExperimentIsotopeModInfo) modInfo, _expAnnotations, runs, user);
                     }
@@ -182,9 +183,9 @@ public class DataValidator
             }
             if (savedModInfo != null)
             {
-                // The list of Unimod modifications has changed from what was saved before because the current set of runs in the experiment have different modification sites
-                // Delete the old mod info.
-                ModificationInfoManager.deleteIsotopeModInfo(savedModInfo, expAnnotations, expAnnotations.getContainer(), user);
+                // The list of Unimod modifications may have changed from what was saved before because the current set of runs
+                // in the experiment have different modification sites. Delete the old mod info.
+                ModificationInfoManager.deleteIsotopeModInfo(savedModInfo, expAnnotations, expAnnotations.getContainer(), user, false);
             }
             return ModificationInfoManager.saveIsotopeModInfo(modInfo, user);
         }

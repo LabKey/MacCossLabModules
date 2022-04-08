@@ -150,15 +150,24 @@ public class UnimodModification
         return isIsotopeLabel() ? _name.substring(0, _name.indexOf(":")) : null;
     }
 
+    /**
+     * Isotope modifications in Skyline that are the heavy version of a structural modification have a formula that is
+     * the difference between the formula of the modification and the formula of the associated unlabeled structural modification.
+     * For example: the isotope formula for Dimethyl:2H(6) is the difference between the formulas of Dimethyl:2H(6) and Dimethyl.
+     * This difference is H'6C2-H2 - H4C2 = H'6-H6
+     */
     public @Nullable Formula getDiffIsotopicFormula()
     {
         return _diffFormula;
     }
 
-    public void setDiffIsotopicFormulaAndParent(@NotNull Formula diffFormula, @NotNull UnimodModification parentStructuralMod)
+    void setDiffIsotopicFormulaAndParent(@NotNull Formula diffFormula, @NotNull UnimodModification parentStructuralMod)
     {
-        _diffFormula = diffFormula;
-        _parentStructuralMod = parentStructuralMod;
+        if (diffFormula != null && parentStructuralMod != null)
+        {
+            _diffFormula = diffFormula;
+            _parentStructuralMod = parentStructuralMod;
+        }
     }
 
     public UnimodModification getParentStructuralMod()
@@ -255,7 +264,8 @@ public class UnimodModification
         if (_diffFormula != null)
         {
             sb.append(", Diff isotope formula: ").append(_diffFormula.getFormula())
-                    .append("; Parent mod: ").append(_parentStructuralMod.getName()).append(" Unimod:").append(_parentStructuralMod.getId());
+                    .append("; Parent mod: ").append(_parentStructuralMod != null ? _parentStructuralMod.getName() : "")
+                    .append("; Parent Unimod:").append(_parentStructuralMod.getId());
         }
         return sb.toString();
     }

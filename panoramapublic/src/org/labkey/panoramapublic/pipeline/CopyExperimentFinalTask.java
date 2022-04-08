@@ -78,6 +78,8 @@ import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.ModificationInfoManager;
 import org.labkey.panoramapublic.query.SpecLibInfoManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
+import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfo;
+import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfo;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -219,16 +221,16 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
     private void copyModificationInfos(ExperimentAnnotations sourceExperiment, ExperimentAnnotations targetExperiment, User user)
     {
-        var strModInfos = ModificationInfoManager.getStructuralModInfosForExperiment(sourceExperiment.getId(), sourceExperiment.getContainer());
-        for (var info: strModInfos)
+        List<ExperimentStructuralModInfo> strModInfos = ModificationInfoManager.getStructuralModInfosForExperiment(sourceExperiment.getId(), sourceExperiment.getContainer());
+        for (ExperimentStructuralModInfo info: strModInfos)
         {
             info.setId(0);
             info.setExperimentAnnotationsId(targetExperiment.getId());
             ModificationInfoManager.saveStructuralModInfo(info, user);
         }
 
-        var isotopeModInfos = ModificationInfoManager.getIsotopeModInfosForExperiment(sourceExperiment.getId(), sourceExperiment.getContainer());
-        for (var info: isotopeModInfos)
+        List<ExperimentIsotopeModInfo> isotopeModInfos = ModificationInfoManager.getIsotopeModInfosForExperiment(sourceExperiment.getId(), sourceExperiment.getContainer());
+        for (ExperimentIsotopeModInfo info: isotopeModInfos)
         {
             info.setId(0);
             info.setExperimentAnnotationsId(targetExperiment.getId());

@@ -7199,13 +7199,22 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors);
             }
 
-            UnimodModifications uMods = readUnimod(errors); // Read the Unimod modifications
+            UnimodModifications uMods = readUnimod(); // Read the Unimod modifications
             if (uMods == null)
             {
                 return new SimpleErrorView(errors);
             }
 
-            ExperimentModificationGetter.PxModification matchedMod = getModificationMatch(mod, uMods);
+            ExperimentModificationGetter.PxModification matchedMod;
+            try
+            {
+                matchedMod = getModificationMatch(mod, uMods);
+            }
+            catch(IllegalArgumentException e)
+            {
+                errors.reject(ERROR_MSG, "Error finding Unimod match. " + e.getMessage());
+                return new SimpleErrorView(errors);
+            }
 
             UnimodMatchBean bean = new UnimodMatchBean(form, mod, matchedMod);
             JspView view = new JspView<>("/org/labkey/panoramapublic/view/unimodMatchInfo.jsp", bean, errors);
@@ -7227,6 +7236,7 @@ public class PanoramaPublicController extends SpringActionController
                 }
                 if (hasModInfo(form, mod, errors)) // A Unimod match has already been saved for this modification
                 {
+                    errors.reject(ERROR_MSG, "A Unimod match has already been saved for the modification " + mod.getName());
                     return null;
                 }
             }
@@ -7250,7 +7260,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(UnimodMatchForm form, BindException errors) throws Exception
         {
-            UnimodModifications uMods = readUnimod(errors); // Read the Unimod modifications
+            UnimodModifications uMods = readUnimod(); // Read the Unimod modifications
             if (uMods == null) return false;
 
             UnimodModification matchedMod = uMods.getById(form.getUnimodId());
@@ -7292,6 +7302,16 @@ public class PanoramaPublicController extends SpringActionController
             if (modification == null)
             {
                 errors.reject(ERROR_MSG, "Could not find a structural modification with Id " + form.getModificationId());
+            }
+            if (StringUtils.isBlank(modification.getFormula()))
+            {
+                errors.reject(ERROR_MSG, "Cannot find a Unimod match for a structural modification that does not have a formula");
+                return null;
+            }
+            if (StringUtils.isBlank(modification.getAminoAcid()) && StringUtils.isBlank(modification.getTerminus()))
+            {
+                errors.reject(ERROR_MSG, "Cannot find a Unimod match for a structural modification that does not have modified amino acids or a modified terminus");
+                return null;
             }
             return modification;
         }
@@ -7347,6 +7367,11 @@ public class PanoramaPublicController extends SpringActionController
             if (modification == null)
             {
                 errors.reject(ERROR_MSG, "Could not find an isotope modification with Id " + form.getModificationId());
+            }
+            if (StringUtils.isBlank(modification.getAminoAcid()))
+            {
+                errors.reject(ERROR_MSG, "Cannot find a Unimod match for an isotope modification that does not have modified amino acids sites");
+                return null;
             }
             return modification;
         }
@@ -7574,7 +7599,7 @@ public class PanoramaPublicController extends SpringActionController
                 return;
             }
 
-            _unimodModifications = readUnimod(errors);
+            _unimodModifications = readUnimod();
         }
 
         @Override
@@ -7756,16 +7781,9 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    private static UnimodModifications readUnimod(Errors errors)
+    private static UnimodModifications readUnimod()
     {
-        UnimodModifications uMods = UnimodUtil.getUnimod();
-        if (uMods.hasParseError())
-        {
-            errors.reject(ERROR_MSG, "There was an error parsing Unimod modifications. The error was: " + uMods.getParseError().getMessage()
-                    + ". Please try again. If you continue to see this error please contact the server administrator.");
-            return null;
-        }
-        return uMods;
+        return UnimodUtil.getUnimod();
     }
 
     @RequiresPermission(UpdatePermission.class)

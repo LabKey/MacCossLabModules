@@ -29,6 +29,7 @@ import org.labkey.panoramapublic.model.validation.PxStatus;
 import org.labkey.panoramapublic.model.validation.Status;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -240,12 +241,13 @@ public class PxHtmlWriter extends PxWriter
     @Override
     void writeModificationList(Status validationStatus)
     {
-        var mods = validationStatus.getModifications();
+        List<Modification> mods = new ArrayList(validationStatus.getModifications());
+        mods.sort(Comparator.comparing(Modification::getModType).thenComparing(Modification::isValid).thenComparing(Modification::getSkylineModName));
         HtmlList modList = new HtmlList();
         for(Modification mod: mods)
         {
-            String name = mod.getNameString();
-            String value = mod.getUnimodIdStr();
+            String name = mod.getSkylineModName();
+            String value = mod.getUnimodStr();
             modList.addItem(name, value, !mod.isValid());
         }
         modList.end();

@@ -18,6 +18,7 @@ import org.labkey.api.util.DOM;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.panoramapublic.PanoramaPublicSchema;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -45,6 +46,7 @@ public abstract class ModificationDocsDisplayColumnFactory implements DisplayCol
 
     protected abstract String getPeptideModTableName();
     protected abstract String getModIdQueryParam();
+    protected abstract String getRunIdQueryParam();
 
     @Override
     public DisplayColumn createRenderer(ColumnInfo colInfo)
@@ -110,8 +112,8 @@ public abstract class ModificationDocsDisplayColumnFactory implements DisplayCol
     private @NotNull DOM.Renderable peptidesLink(ITargetedMSRun run, Long modId)
     {
         String query = getPeptideModTableName();
-        var peptidesLink = PageFlowUtil.urlProvider(QueryUrls.class).urlExecuteQuery(run.getContainer(), "targetedms", query);
-        peptidesLink.addParameter("query.PeptideId/PeptideGroupId/RunId~eq", run.getId());
+        var peptidesLink = PageFlowUtil.urlProvider(QueryUrls.class).urlExecuteQuery(run.getContainer(), PanoramaPublicSchema.SCHEMA_NAME, query);
+        peptidesLink.addParameter(getRunIdQueryParam(), run.getId());
         peptidesLink.addParameter(getModIdQueryParam(), modId);
         return new Link.LinkBuilder("[PEPTIDES]").href(peptidesLink).build();
     }
@@ -129,6 +131,12 @@ public abstract class ModificationDocsDisplayColumnFactory implements DisplayCol
         {
             return "query.StructuralModId/Id~eq";
         }
+
+        @Override
+        protected String getRunIdQueryParam()
+        {
+            return "query.PeptideGroupId/RunId~eq";
+        }
     }
 
     public static class IsotopicModDocsColumn extends ModificationDocsDisplayColumnFactory
@@ -143,6 +151,12 @@ public abstract class ModificationDocsDisplayColumnFactory implements DisplayCol
         protected String getModIdQueryParam()
         {
             return "query.IsotopeModId/Id~eq";
+        }
+
+        @Override
+        protected String getRunIdQueryParam()
+        {
+            return "query.PeptideId/PeptideGroupId/RunId~eq";
         }
     }
 }

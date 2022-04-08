@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.labkey.api.cache.BlockingCache;
 import org.labkey.api.cache.CacheManager;
 import org.labkey.api.targetedms.TargetedMSService;
+import org.labkey.api.util.UnexpectedException;
 import org.labkey.api.util.logging.LogHelper;
 
 import java.util.ArrayList;
@@ -25,20 +26,14 @@ public class UnimodUtil
 {
     private static final String UNIMOD = "unimod";
     private static final BlockingCache<String, UnimodModifications> _unimodCache =
-            CacheManager.getBlockingCache(CacheManager.DEFAULT_CACHE_SIZE, CacheManager.DAY, "Unimod Modifications", (key, argument) -> readUnimodMods());
+            CacheManager.getBlockingCache(1, CacheManager.DAY, "Unimod Modifications", (key, argument) -> readUnimodMods());
 
     private static final Logger LOG = LogHelper.getLogger(ExperimentModificationGetter.class, "Reads and caches Unimod modifications");
 
     public static UnimodModifications getUnimod()
     {
-        var unimods = _unimodCache.get(UNIMOD);
-        if (unimods.hasParseError())
-        {
-            _unimodCache.clear(); // clear the cache if there were errors in parsing the unimod XML
-        }
-        return unimods;
+        return _unimodCache.get(UNIMOD);
     }
-
 
     private static UnimodModifications readUnimodMods()
     {
@@ -48,8 +43,10 @@ public class UnimodUtil
         }
         catch (Exception e)
         {
-            LOG.error("There was an error reading UNIMOD modifications.", e);
-            return new UnimodModifications(e);
+            LOG.error("There was an error parsing UNIMOD modifications.", e);
+            throw UnexpectedException.wrap(e,
+                    "There was an error parsing Unimod modifications. The error was: " + e.getMessage()
+                            + " Please try again. If you continue to see this error please contact the server administrator.");
         }
     }
 
@@ -282,7 +279,7 @@ public class UnimodUtil
             {
                 matches.addAll(uMods.getByFormula(formula));
             }
-            matches.sort(Comparator.comparing(m -> m.getName()));
+            matches.sort(Comparator.comparing(UnimodModification::getName));
             return matches;
         }
         return Collections.emptyList();
@@ -320,7 +317,7 @@ public class UnimodUtil
             // "UNIMOD:996, Label:15N(3), N'3 - N3, Sites: H, Isotopic: true"
             // "UNIMOD:897, Label:15N(4), N'4 - N4, Sites: R, Isotopic: true"
             assertEquals(4, matches.size());
-            var matchIds = matches.stream().map(m -> m.getId()).sorted().collect(Collectors.toList());
+            var matchIds = matches.stream().map(UnimodModification::getId).sorted().collect(Collectors.toList());
             var expectedMatchIds = List.of(994, 995, 996, 897).stream().sorted().collect(Collectors.toList());
             assertArrayEquals("Unexpected Unimod Ids for label15N", expectedMatchIds.toArray(), matchIds.toArray());
 
@@ -332,7 +329,7 @@ public class UnimodUtil
             // "UNIMOD:188, Label:13C(6), C'6 - C6, Sites: R:I:L:K, Isotopic: true"
             // "UNIMOD:184, Label:13C(9), C'9 - C9, Sites: Y:F, Isotopic: true"
             assertEquals(5, matches.size());
-            matchIds = matches.stream().map(m -> m.getId()).sorted().collect(Collectors.toList());
+            matchIds = matches.stream().map(UnimodModification::getId).sorted().collect(Collectors.toList());
             expectedMatchIds = List.of(1296, 1266, 772, 188, 184).stream().sorted().collect(Collectors.toList());
             assertArrayEquals("Unexpected Unimod Ids for label13C", expectedMatchIds.toArray(), matchIds.toArray());
 
@@ -346,7 +343,7 @@ public class UnimodUtil
             // "UNIMOD:267, Label:13C(6)15N(4), C'6N'4 - C6N4, Sites: R, Isotopic: true"
             // "UNIMOD:269, Label:13C(9)15N(1), C'9N' - C9N, Sites: F, Isotopic: true"
             assertEquals(7, matches.size());
-            matchIds = matches.stream().map(m -> m.getId()).sorted().collect(Collectors.toList());
+            matchIds = matches.stream().map(UnimodModification::getId).sorted().collect(Collectors.toList());
             expectedMatchIds = List.of(1297, 1298, 268, 695, 259, 267, 269).stream().sorted().collect(Collectors.toList());
             assertArrayEquals("Unexpected Unimod Ids for label13C15N", expectedMatchIds.toArray(), matchIds.toArray());
         }
