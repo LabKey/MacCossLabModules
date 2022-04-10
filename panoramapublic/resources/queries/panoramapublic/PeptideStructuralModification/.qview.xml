@@ -8,6 +8,7 @@
             </properties>
         </column>
         <column name="IndexAA" />
+        <column name="massDiff" />
         <column name="PeptideGroupId" />
         <column name="PeptideGroupId/RunId" />
     </columns>

@@ -2,13 +2,15 @@
             canOverride="true">
     <columns>
         <column name="ModifiedPrecursorDisplayColumn" />
-        <column name="PeptideId/ModifiedPeptideDisplayColumn" />
+        <column name="IsotopeLabelId" />
         <column name="IsotopeModId">
             <properties>
                 <property name="columnTitle" value="Modification"/>
             </properties>
         </column>
         <column name="IndexAA" />
+        <column name="massDiff" />
+        <column name="PeptideId/ModifiedPeptideDisplayColumn" />
         <column name="PeptideId/PeptideGroupId" />
         <column name="PeptideId/PeptideGroupId/RunId" />
     </columns>
