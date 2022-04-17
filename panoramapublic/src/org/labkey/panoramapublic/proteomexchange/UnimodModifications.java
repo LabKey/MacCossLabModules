@@ -60,11 +60,6 @@ public class UnimodModifications
         return _modifications.stream().filter(UnimodModification::isStructural).toList();
     }
 
-    public boolean hasModifications()
-    {
-        return _modifications.size() > 0;
-    }
-
     public void add(UnimodModification uMod) throws PxException
     {
         _modifications.add(uMod);
@@ -129,7 +124,7 @@ public class UnimodModifications
         return getFromMap(formula, _isotopicDiffFormulaModIdxMap);
     }
 
-    public List<UnimodModification> getFromMap(String formula, Map<String, List<Integer>> map)
+    private List<UnimodModification> getFromMap(String formula, Map<String, List<Integer>> map)
     {
         List<Integer> indexes = map.get(formula);
         if(indexes == null)

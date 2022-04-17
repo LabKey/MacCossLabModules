@@ -3,7 +3,6 @@
 <%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.pipeline.PipelineStatusUrls" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
-<%@ page import="org.labkey.api.pipeline.PipelineService" %>
 <%@ page import="org.labkey.api.pipeline.PipelineJob" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.api.action.SpringActionController" %>
@@ -110,7 +109,7 @@
         submitAction = submission.hasCopy() ? SpringActionController.getActionName(PanoramaPublicController.ResubmitExperimentAction.class)
                 : SpringActionController.getActionName(PanoramaPublicController.UpdateSubmissionAction.class);
     }
-    var jobStatus = PipelineService.get().getStatusFile(jobId);
+    var jobStatus = bean.getPipelineJobStatus();
     var onPageLoadMsg = jobStatus != null ? (String.format("Data validation job is %s. This page will automatically refresh with the validation progress.",
             jobStatus.isActive() ? (PipelineJob.TaskStatus.waiting.matches(jobStatus.getStatus()) ? "in the queue" : "running") : "complete"))
             : "Could not find job status for job with Id " + jobId;
@@ -579,14 +578,15 @@
                                     if (!modType) return;
                                     var modTypeUpper = modType.toUpperCase();
                                     var params = {
-                                        'schemaName': 'panoramapublic',
-                                        'query.queryName': queryName = modTypeUpper === 'STRUCTURAL' ? 'PeptideStructuralModification' : 'PrecursorIsotopeModification'
+                                        'schemaName': 'panoramapublic'
                                     };
                                     if (modTypeUpper === 'STRUCTURAL') {
+                                        params['query.queryName'] = 'PeptideStructuralModification';
                                         params['query.StructuralModId/Id~eq'] = dbModId;
                                         params['query.PeptideGroupId/RunId~eq'] = doc.runId;
                                     }
                                     else {
+                                        params['query.queryName'] = 'PrecursorIsotopeModification';
                                         params['query.IsotopeModId/Id~eq'] = dbModId;
                                         params['query.PeptideId/PeptideGroupId/RunId~eq'] = doc.runId;
                                     }

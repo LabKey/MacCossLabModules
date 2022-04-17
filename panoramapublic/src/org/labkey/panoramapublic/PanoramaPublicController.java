@@ -3077,9 +3077,10 @@ public class PanoramaPublicController extends SpringActionController
                         String.format("Could not find a data validation row with Id %d, in the folder '%s'.", form.getValidationId(), getContainer().getPath()));
                 return new SimpleErrorView(errors);
             }
+            PipelineStatusFile status = PipelineService.get().getStatusFile(validation.getJobId());
             JournalSubmission js = SubmissionManager.getNewestJournalSubmission(_experimentAnnotations);
             var view = new JspView<>("/org/labkey/panoramapublic/view/publish/pxValidationStatus.jsp",
-                    new PxValidationStatusBean(validation, js));
+                    new PxValidationStatusBean(validation, js, status));
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Data Validation Status");
             return view;
@@ -3096,11 +3097,13 @@ public class PanoramaPublicController extends SpringActionController
     {
         private final DataValidation _dataValidation;
         private final JournalSubmission _journalSubmission;
+        private final PipelineStatusFile _pipelineJobStatus;
 
-        public PxValidationStatusBean(@NotNull DataValidation dataValidation, @Nullable JournalSubmission journalSubmission)
+        public PxValidationStatusBean(@NotNull DataValidation dataValidation, @Nullable JournalSubmission journalSubmission, @Nullable PipelineStatusFile pipelineJobStatus)
         {
             _dataValidation = dataValidation;
             _journalSubmission = journalSubmission;
+            _pipelineJobStatus = pipelineJobStatus;
         }
 
         public DataValidation getDataValidation()
@@ -3122,6 +3125,11 @@ public class PanoramaPublicController extends SpringActionController
         {
             return _journalSubmission != null ? _journalSubmission.getJournalId() : null;
         }
+
+        public PipelineStatusFile getPipelineJobStatus()
+        {
+            return _pipelineJobStatus;
+        }
     }
 
     @RequiresPermission(AdminPermission.class)
@@ -3131,30 +3139,34 @@ public class PanoramaPublicController extends SpringActionController
         public Object execute(PxDataValidationForm form, BindException errors) throws Exception
         {
             ApiSimpleResponse response = new ApiSimpleResponse();
-            Status validationStatus = DataValidationManager.getStatus(form.getValidationId(), getContainer());
-            if (validationStatus != null)
+            DataValidation validation = DataValidationManager.getValidation(form.getValidationId(), getContainer());
+            if (validation != null)
             {
-                if (!validationStatus.getValidation().isComplete())
-                {
-                    response.put("validationProgress", validationStatus.toProgressSummaryJSON());
-                }
-                else
-                {
-                    JSONObject json = validationStatus.toJSON();
-                    var dataValidation = validationStatus.getValidation();
-                    var expAnnotations = ExperimentAnnotationsManager.get(dataValidation.getExperimentAnnotationsId());
-                    if (DataValidationManager.isValidationOutdated(dataValidation, expAnnotations, getUser()) && expAnnotations != null)
-                    {
-                        json.put("validationOutdated", true);
-                    }
-                    response.put("validationStatus", json);
-                }
-
-                int jobId = validationStatus.getValidation().getJobId();
+                int jobId = validation.getJobId();
                 PipelineStatusFile status = PipelineService.get().getStatusFile(jobId);
                 if (status != null)
                 {
                     response.put("jobStatus", status.getStatus());
+                }
+
+                Status validationStatus = DataValidationManager.getStatus(form.getValidationId(), getContainer());
+                if (validationStatus != null)
+                {
+                    if (!validationStatus.getValidation().isComplete())
+                    {
+                        response.put("validationProgress", validationStatus.toProgressSummaryJSON());
+                    }
+                    else
+                    {
+                        JSONObject json = validationStatus.toJSON();
+                        var dataValidation = validationStatus.getValidation();
+                        var expAnnotations = ExperimentAnnotationsManager.get(dataValidation.getExperimentAnnotationsId());
+                        if (DataValidationManager.isValidationOutdated(dataValidation, expAnnotations, getUser()) && expAnnotations != null)
+                        {
+                            json.put("validationOutdated", true);
+                        }
+                        response.put("validationStatus", json);
+                    }
                 }
             }
             else
@@ -7236,7 +7248,6 @@ public class PanoramaPublicController extends SpringActionController
                 }
                 if (hasModInfo(form, mod, errors)) // A Unimod match has already been saved for this modification
                 {
-                    errors.reject(ERROR_MSG, "A Unimod match has already been saved for the modification " + mod.getName());
                     return null;
                 }
             }
@@ -7370,7 +7381,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             if (StringUtils.isBlank(modification.getAminoAcid()))
             {
-                errors.reject(ERROR_MSG, "Cannot find a Unimod match for an isotope modification that does not have modified amino acids sites");
+                errors.reject(ERROR_MSG, "Cannot find a Unimod match for an isotope modification that does not have modified amino acids");
                 return null;
             }
             return modification;

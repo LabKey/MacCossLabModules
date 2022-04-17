@@ -241,7 +241,7 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
 
         int rowIdx = checkModificationRow(modsTable, "Label:15N", null);
         clickFindMatchInRow(modsTable, rowIdx);
-        assertTextPresent("Cannot find a Unimod match for an isotope modification that does not have modified amino acids sites");
+        assertTextPresent("Cannot find a Unimod match for an isotope modification that does not have modified amino acids");
         clickButton("Back");
 
         // heavyK_R is a dummy modification in the test document that is defined on K and R with heavy C and N.

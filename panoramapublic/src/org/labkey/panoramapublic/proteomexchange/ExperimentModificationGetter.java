@@ -149,8 +149,8 @@ public class ExperimentModificationGetter
 
     /**
      * Finds a Unimod match for the given isotope modification. For doing a Unimod lookup, if the modification does not have a formula
-     * then it is built using the amino acid sites and labeled atoms in the modification definition.
-     * @throws IllegalArgumentException if isotopic formula for the modification could not be built, or if the modification
+     * then the formula is built using the amino acid sites and labeled atoms in the modification definition.
+     * @throws IllegalArgumentException if the isotopic formula for the modification could not be built, or if the modification
      * already has a formula and the formula could not be parsed.
      */
     public static @NotNull PxModification getIsotopicUnimodMod(IModification.IIsotopeModification mod, UnimodModifications uMods) throws IllegalArgumentException
@@ -205,7 +205,8 @@ public class ExperimentModificationGetter
                 // This will happen if the modification definition includes multiple amino acids, and the number of labeled atoms
                 // in the amino acids are not the same. Skyline allows creating a modification on two amino acids that do not have
                 // the same number of labeled atoms. But we would have to split it into separate modifications to support the use case.
-                // For now, we only support this scenario for the built-in wildcard modifications in Skyline.
+                // For now, we only support this scenario for the built-in wildcard modifications in Skyline that implicitly apply to
+                // all amino acids.
                 throw new IllegalArgumentException("Cannot calculate formula for isotope modification '" + mod.getName() + "'. " +
                         "The modification is defined on multiple amino acids, but the number of labeled atoms in the amino acids are not the same. " +
                         "To calculate the formula for an isotope modification all amino acids in the modification definition must have the same number of labeled atoms.");
@@ -1184,8 +1185,8 @@ public class ExperimentModificationGetter
         private static final boolean LABEL15N = true;
         private static final boolean LABEL18O = true;
 
-        public static IsotopeModification createisotopicMod(String name, String formula, String sites, String terminus,
-                                                             boolean label2h, boolean label13c, boolean label15n, boolean label18o)
+        public static IsotopeModification create(String name, String formula, String sites, String terminus,
+                                                 boolean label2h, boolean label13c, boolean label15n, boolean label18o)
         {
             IsotopeModification mod = new IsotopeModification();
             mod.setFormula(formula);
@@ -1202,7 +1203,7 @@ public class ExperimentModificationGetter
         public static IsotopeModification create(IModification.IIsotopeModification iMod)
         {
             return iMod != null ?
-                    createisotopicMod(iMod.getName(), iMod.getFormula(), iMod.getAminoAcid(), iMod.getTerminus(),
+                    create(iMod.getName(), iMod.getFormula(), iMod.getAminoAcid(), iMod.getTerminus(),
                     iMod.getLabel2H() != null ? iMod.getLabel2H().booleanValue() : false,
                     iMod.getLabel13C() != null ? iMod.getLabel13C().booleanValue() : false,
                     iMod.getLabel15N() != null ? iMod.getLabel15N().booleanValue() : false,

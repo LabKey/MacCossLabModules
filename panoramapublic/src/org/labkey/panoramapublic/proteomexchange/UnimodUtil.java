@@ -61,7 +61,7 @@ public class UnimodUtil
         Structural = false, Hidden = false,
     }
      */
-    private static final IsotopeModification label13C615N2_CtermK = IsotopeModification.createisotopicMod("Label:13C(6)15N(2) (C-term K)", null, "K", "C",
+    private static final IsotopeModification label13C615N2_CtermK = IsotopeModification.create("Label:13C(6)15N(2) (C-term K)", null, "K", "C",
             false, true, true, false);
 
     /*
@@ -72,7 +72,7 @@ public class UnimodUtil
          Structural = false, Hidden = false,
     }
     */
-    private static final IsotopeModification label13C615N4_CtermR = IsotopeModification.createisotopicMod("Label:13C(6)15N(4) (C-term R)", null, "R", "C",
+    private static final IsotopeModification label13C615N4_CtermR = IsotopeModification.create("Label:13C(6)15N(4) (C-term R)", null, "R", "C",
             false, true, true, false);
 
     /*
@@ -83,7 +83,7 @@ public class UnimodUtil
          Structural = false, Hidden = false,
     }
      */
-    private static final IsotopeModification label13C6_CtermK = IsotopeModification.createisotopicMod("Label:13C(6) (C-term K)", null, "K", "C",
+    private static final IsotopeModification label13C6_CtermK = IsotopeModification.create("Label:13C(6) (C-term K)", null, "K", "C",
             false, true, false, false);
 
     /*
@@ -94,7 +94,7 @@ public class UnimodUtil
          Structural = false, Hidden = false,
     }
      */
-    private static final IsotopeModification label13C6_CtermR = IsotopeModification.createisotopicMod("Label:13C(6) (C-term R)", null, "R", "C",
+    private static final IsotopeModification label13C6_CtermR = IsotopeModification.create("Label:13C(6) (C-term R)", null, "R", "C",
             false, true, false, false);
 
 
@@ -186,7 +186,7 @@ public class UnimodUtil
          Structural = false, Hidden = false,
     }
     */
-    private static final IsotopeModification label15N = IsotopeModification.createisotopicMod("Label:15N", null, null, null,
+    private static final IsotopeModification label15N = IsotopeModification.create("Label:15N", null, null, null,
             false, false, true, false);
 
     /*
@@ -197,7 +197,7 @@ public class UnimodUtil
          Structural = false, Hidden = false,
     }
     */
-    private static final IsotopeModification label13C = IsotopeModification.createisotopicMod("Label:13C", null, null, null,
+    private static final IsotopeModification label13C = IsotopeModification.create("Label:13C", null, null, null,
             false, true, false, false);
 
     /*
@@ -220,7 +220,7 @@ public class UnimodUtil
          Structural = false, Hidden = false,
     }
     */
-    private static final IsotopeModification label13C15N = IsotopeModification.createisotopicMod("Label:13C15N", null, null, null,
+    private static final IsotopeModification label13C15N = IsotopeModification.create("Label:13C15N", null, null, null,
             false, true, true, false);
 
     /*

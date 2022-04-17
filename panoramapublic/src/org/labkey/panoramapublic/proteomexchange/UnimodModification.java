@@ -163,11 +163,8 @@ public class UnimodModification
 
     void setDiffIsotopicFormulaAndParent(@NotNull Formula diffFormula, @NotNull UnimodModification parentStructuralMod)
     {
-        if (diffFormula != null && parentStructuralMod != null)
-        {
-            _diffFormula = diffFormula;
-            _parentStructuralMod = parentStructuralMod;
-        }
+        _diffFormula = diffFormula;
+        _parentStructuralMod = parentStructuralMod;
     }
 
     public UnimodModification getParentStructuralMod()
@@ -265,7 +262,7 @@ public class UnimodModification
         {
             sb.append(", Diff isotope formula: ").append(_diffFormula.getFormula())
                     .append("; Parent mod: ").append(_parentStructuralMod != null ? _parentStructuralMod.getName() : "")
-                    .append("; Parent Unimod:").append(_parentStructuralMod.getId());
+                    .append("; Parent Unimod:").append(_parentStructuralMod != null ? _parentStructuralMod.getId() : "");
         }
         return sb.toString();
     }

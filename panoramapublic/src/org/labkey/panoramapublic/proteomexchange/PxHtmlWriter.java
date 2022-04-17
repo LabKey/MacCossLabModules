@@ -242,7 +242,9 @@ public class PxHtmlWriter extends PxWriter
     void writeModificationList(Status validationStatus)
     {
         List<Modification> mods = new ArrayList(validationStatus.getModifications());
-        mods.sort(Comparator.comparing(Modification::getModType).thenComparing(Modification::isValid).thenComparing(Modification::getSkylineModName));
+        mods.sort(Comparator.comparing(Modification::getModType)
+                .thenComparing(Modification::isValid)
+                .thenComparing(Modification::getSkylineModName));
         HtmlList modList = new HtmlList();
         for(Modification mod: mods)
         {
