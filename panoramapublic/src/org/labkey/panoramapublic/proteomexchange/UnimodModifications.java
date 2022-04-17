@@ -15,6 +15,9 @@
  */
 package org.labkey.panoramapublic.proteomexchange;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -22,23 +25,28 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-import static org.labkey.panoramapublic.proteomexchange.UnimodParser.*;
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.Position;
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.Specificity;
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.Terminus;
 
 public class UnimodModifications
 {
-    private List<UnimodModification> _modifications;
-    private Map<Integer, Integer> _modIdModIdxMap;
-    private Map<String, List<Integer>> _formulaModIdxMap;
+    private final List<UnimodModification> _modifications;
+    private final Map<Integer, Integer> _modIdModIdxMap; // Index in the _modifications array of a Unimod Id
+    private final Map<String, List<Integer>> _formulaModIdxMap; // Indices in the _modifications array for modifications with a given formula
+    private final Map<String, Integer> _modNameModIdxMap; // Index in the _modifications array for modifications with a given name
+    private final Map<String, List<Integer>> _isotopicDiffFormulaModIdxMap;
 
-    private Map<Character, Map<String, Integer>> _aminoAcids;
+    private final Map<Character, Map<String, Integer>> _aminoAcids;
 
     public UnimodModifications()
     {
         _modifications = new ArrayList<>();
         _modIdModIdxMap = new HashMap<>();
         _formulaModIdxMap = new HashMap<>();
+        _modNameModIdxMap = new HashMap<>();
+        _isotopicDiffFormulaModIdxMap = new HashMap<>();
         _aminoAcids = new HashMap<>();
     }
 
@@ -49,7 +57,7 @@ public class UnimodModifications
 
     public List<UnimodModification> getStructuralModifications()
     {
-        return Collections.unmodifiableList(_modifications.stream().filter(mod -> mod.isStructural()).collect(Collectors.toList()));
+        return _modifications.stream().filter(UnimodModification::isStructural).toList();
     }
 
     public void add(UnimodModification uMod) throws PxException
@@ -62,13 +70,22 @@ public class UnimodModifications
         }
         _modIdModIdxMap.put(uMod.getId(), (_modifications.size() - 1));
 
-        List<Integer> indexes = _formulaModIdxMap.get(uMod.getNormalizedFormula());
-        if(indexes == null)
-        {
-            indexes = new ArrayList<>();
-            _formulaModIdxMap.put(uMod.getNormalizedFormula(), indexes);
-        }
+        List<Integer> indexes = _formulaModIdxMap.computeIfAbsent(uMod.getNormalizedFormula(), k -> new ArrayList<>());
         indexes.add(_modifications.size() - 1);
+
+        _modNameModIdxMap.put(uMod.getName(), _modifications.size() - 1);
+        if (uMod.getDiffIsotopicFormula() != null)
+        {
+            List<Integer> diffIsotopeModIndexes = _isotopicDiffFormulaModIdxMap.computeIfAbsent(uMod.getDiffIsotopicFormula().getFormula(), k -> new ArrayList<>());
+            diffIsotopeModIndexes.add(_modifications.size() - 1);
+        }
+    }
+
+    void updateDiffIsotopeMod(@NotNull UnimodModification uMod, @NotNull Formula diffFormula, @NotNull UnimodModification parentStructuralMod)
+    {
+        uMod.setDiffIsotopicFormulaAndParent(diffFormula, parentStructuralMod);
+        List<Integer> diffIsotopeModIndexes = _isotopicDiffFormulaModIdxMap.computeIfAbsent(diffFormula.getFormula(), k -> new ArrayList<>());
+        diffIsotopeModIndexes.add(_modIdModIdxMap.get(uMod.getId()));
     }
 
     public void addAminoAcid(char aa, Map<String, Integer> composition) throws PxException
@@ -81,7 +98,7 @@ public class UnimodModifications
         _aminoAcids.put(aa, composition);
     }
 
-    public UnimodModification getById(int unimodId)
+    public @Nullable UnimodModification getById(int unimodId)
     {
         Integer idx = _modIdModIdxMap.get(unimodId);
         if(idx != null)
@@ -91,9 +108,25 @@ public class UnimodModifications
         return null;
     }
 
+    public @Nullable UnimodModification getByName(String name)
+    {
+        Integer idx = _modNameModIdxMap.get(name);
+        return idx != null ? _modifications.get(idx) : null;
+    }
+
     public List<UnimodModification> getByFormula(String formula)
     {
-        List<Integer> indexes = _formulaModIdxMap.get(formula);
+        return getFromMap(formula, _formulaModIdxMap);
+    }
+
+    public List<UnimodModification> getByIsotopeDiffFormula(String formula)
+    {
+        return getFromMap(formula, _isotopicDiffFormulaModIdxMap);
+    }
+
+    private List<UnimodModification> getFromMap(String formula, Map<String, List<Integer>> map)
+    {
+        List<Integer> indexes = map.get(formula);
         if(indexes == null)
         {
             return Collections.emptyList();
@@ -108,9 +141,20 @@ public class UnimodModifications
 
     List<UnimodModification> getMatches(String normalizedFormula, String[] sites, Terminus terminus, boolean structural)
     {
-        List<UnimodModification> uMods = getByFormula(normalizedFormula);
+        var matches = getUnimodMatches(normalizedFormula, sites, terminus, structural, getByFormula(normalizedFormula));
+        if (!structural)
+        {
+            var isotopeDiffMatches = getUnimodMatches(normalizedFormula, sites, terminus, false, getByIsotopeDiffFormula(normalizedFormula));
+            matches.addAll(isotopeDiffMatches);
+        }
+        return matches;
+    }
+
+    @NotNull
+    private List<UnimodModification> getUnimodMatches(String normalizedFormula, String[] sites, Terminus terminus, boolean structural, List<UnimodModification> uModCandidates)
+    {
         List<UnimodModification> matches = new ArrayList<>();
-        for(UnimodModification uMod: uMods)
+        for(UnimodModification uMod: uModCandidates)
         {
             if (structural && !uMod.isStructural())
             {
@@ -137,40 +181,13 @@ public class UnimodModifications
         return matches;
     }
 
-    public String buildIsotopicModFormula(char aminoAcid, boolean label2h, boolean label13c, boolean label15n, boolean label18o)
+    public Map<String, Integer> getAminoAcidComposition(char aminoAcid)
     {
-        StringBuilder formulaPos = new StringBuilder();
-        StringBuilder formulaNeg = new StringBuilder(" - ");
-        Map<String, Integer> composition = _aminoAcids.get(aminoAcid);
-        if(composition != null)
-        {
-            for(String element: composition.keySet())
-            {
-                int count = composition.get(element);
-                if(element.equals("H") && label2h)
-                {
-                    addElementAndCount(element, count, formulaPos, formulaNeg);
-                }
-                else if(element.equals("C") && label13c)
-                {
-                    addElementAndCount(element, count, formulaPos, formulaNeg);
-                }
-                else if(element.equals("N") && label15n)
-                {
-                    addElementAndCount(element, count, formulaPos, formulaNeg);
-                }
-                else if(element.equals("O") && label18o)
-                {
-                    addElementAndCount(element, count, formulaPos, formulaNeg);
-                }
-            }
-        }
-        return Formula.normalizeFormula(formulaPos.append(formulaNeg.length() > 3 ? formulaNeg : "").toString());
+        return _aminoAcids.get(aminoAcid);
     }
 
-    private void addElementAndCount(String element, int count, StringBuilder formulaPos, StringBuilder formulaNeg)
+    public List<Character> getAminoAcids()
     {
-        formulaPos.append(element).append("'").append(count);
-        formulaNeg.append(element).append(count);
+        return _aminoAcids.keySet().stream().toList();
     }
 }

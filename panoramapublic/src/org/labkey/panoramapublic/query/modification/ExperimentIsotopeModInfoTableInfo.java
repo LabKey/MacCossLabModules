@@ -3,8 +3,9 @@ package org.labkey.panoramapublic.query.modification;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
-import org.labkey.api.data.Table;
-import org.labkey.api.data.TableSelector;
+import org.labkey.api.data.JdbcType;
+import org.labkey.api.data.SQLFragment;
+import org.labkey.api.query.ExprColumn;
 import org.labkey.api.query.QueryUpdateService;
 import org.labkey.api.query.RowIdQueryUpdateService;
 import org.labkey.api.security.User;
@@ -13,6 +14,7 @@ import org.labkey.api.security.permissions.Permission;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.query.ContainerJoin;
+import org.labkey.panoramapublic.query.ModificationInfoManager;
 import org.labkey.panoramapublic.query.PanoramaPublicTable;
 
 public class ExperimentIsotopeModInfoTableInfo extends PanoramaPublicTable
@@ -20,6 +22,14 @@ public class ExperimentIsotopeModInfoTableInfo extends PanoramaPublicTable
     public ExperimentIsotopeModInfoTableInfo(PanoramaPublicSchema schema, ContainerFilter cf)
     {
         super(PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo(), schema, cf, ContainerJoin.ExpAnnotJoin);
+        var sql = new SQLFragment(" (SELECT unimodIds FROM ")
+                .append(" (SELECT modInfoId, ")
+                .append(getSchema().getSqlDialect().getGroupConcat(new SQLFragment("unimodId"), false, false)).append(" AS unimodIds ")
+                .append(" FROM ").append(PanoramaPublicManager.getTableInfoIsotopeUnimodInfo(), "umodInfo")
+                .append(" WHERE umodInfo.modInfoId = ").append(ExprColumn.STR_TABLE_ALIAS).append(".id ")
+                .append(" GROUP BY modInfoId) X ) ");
+        var additionalMatchesCol = new ExprColumn(this, "AdditionalUnimodIds", sql, JdbcType.VARCHAR);
+        addColumn(additionalMatchesCol);
     }
 
     @Override
@@ -42,13 +52,13 @@ public class ExperimentIsotopeModInfoTableInfo extends PanoramaPublicTable
             @Override
             public ExperimentModInfo get(User user, Container container, int key)
             {
-                return new TableSelector(PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo()).getObject(key, ExperimentModInfo.class);
+                return ModificationInfoManager.getIsotopeModInfo(key, container);
             }
 
             @Override
             public void delete(User user, Container container, int key)
             {
-                Table.delete(PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo(), key);
+                ModificationInfoManager.deleteIsotopeModInfo(key, container, user);
             }
 
             @Override

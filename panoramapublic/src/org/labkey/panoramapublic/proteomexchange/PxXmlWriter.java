@@ -395,23 +395,26 @@ public class PxXmlWriter extends PxWriter
         {
             mod_list.addChild(new CvParamElement("MS", "MS:1002864", "No PTMs are included in the dataset"));
         }
-        Set<String> seen = new HashSet<>();
+        Set<Integer> seen = new HashSet<>();
         for(Modification mod: mods)
         {
-            if(seen.contains(mod.getNameString()))
-            {
-                continue;
-            }
-            seen.add(mod.getNameString());
             if(mod.isValid())
             {
                 // Include only modifications that have a UNIMOD ID so that we can do an "incomplete" submissions.
-                mod_list.addChild(new CvParamElement("UNIMOD", mod.getUnimodIdStr(), mod.getUnimodName()));
+                for (var unimodInfo: mod.getUnimodInfoList())
+                {
+                    if(seen.contains(unimodInfo.getUnimodId()))
+                    {
+                        continue;
+                    }
+                    seen.add(unimodInfo.getUnimodId());
+                    mod_list.addChild(new CvParamElement("UNIMOD", Modification.getUnimodIdStr(unimodInfo.getUnimodId()), unimodInfo.getUnimodName()));
+                }
             }
             else if(!_submittingToPx)
             {
                 // We are not submitting this to ProteomeXchange. We want to see which modifications don't have a Unimod Id
-                mod_list.addChild(new CvParamElement("UNIMOD", NO_UNIMOD_ID, mod.getUnimodIdStr()));
+                mod_list.addChild(new CvParamElement("UNIMOD", NO_UNIMOD_ID, mod.getSkylineModName()));
             }
         }
 

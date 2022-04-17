@@ -159,7 +159,7 @@ import org.labkey.panoramapublic.proteomexchange.PxHtmlWriter;
 import org.labkey.panoramapublic.proteomexchange.PxXmlWriter;
 import org.labkey.panoramapublic.proteomexchange.UnimodModification;
 import org.labkey.panoramapublic.proteomexchange.UnimodModifications;
-import org.labkey.panoramapublic.proteomexchange.UnimodParser;
+import org.labkey.panoramapublic.proteomexchange.UnimodUtil;
 import org.labkey.panoramapublic.query.DataValidationManager;
 import org.labkey.panoramapublic.query.DataValidationManager.MissingMetadata;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
@@ -168,6 +168,7 @@ import org.labkey.panoramapublic.query.ModificationInfoManager;
 import org.labkey.panoramapublic.query.PxXmlManager;
 import org.labkey.panoramapublic.query.SpecLibInfoManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
+import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfo;
 import org.labkey.panoramapublic.query.modification.ModificationsView;
@@ -3076,9 +3077,10 @@ public class PanoramaPublicController extends SpringActionController
                         String.format("Could not find a data validation row with Id %d, in the folder '%s'.", form.getValidationId(), getContainer().getPath()));
                 return new SimpleErrorView(errors);
             }
+            PipelineStatusFile status = PipelineService.get().getStatusFile(validation.getJobId());
             JournalSubmission js = SubmissionManager.getNewestJournalSubmission(_experimentAnnotations);
             var view = new JspView<>("/org/labkey/panoramapublic/view/publish/pxValidationStatus.jsp",
-                    new PxValidationStatusBean(validation, js));
+                    new PxValidationStatusBean(validation, js, status));
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Data Validation Status");
             return view;
@@ -3095,11 +3097,13 @@ public class PanoramaPublicController extends SpringActionController
     {
         private final DataValidation _dataValidation;
         private final JournalSubmission _journalSubmission;
+        private final PipelineStatusFile _pipelineJobStatus;
 
-        public PxValidationStatusBean(@NotNull DataValidation dataValidation, @Nullable JournalSubmission journalSubmission)
+        public PxValidationStatusBean(@NotNull DataValidation dataValidation, @Nullable JournalSubmission journalSubmission, @Nullable PipelineStatusFile pipelineJobStatus)
         {
             _dataValidation = dataValidation;
             _journalSubmission = journalSubmission;
+            _pipelineJobStatus = pipelineJobStatus;
         }
 
         public DataValidation getDataValidation()
@@ -3121,6 +3125,11 @@ public class PanoramaPublicController extends SpringActionController
         {
             return _journalSubmission != null ? _journalSubmission.getJournalId() : null;
         }
+
+        public PipelineStatusFile getPipelineJobStatus()
+        {
+            return _pipelineJobStatus;
+        }
     }
 
     @RequiresPermission(AdminPermission.class)
@@ -3130,30 +3139,34 @@ public class PanoramaPublicController extends SpringActionController
         public Object execute(PxDataValidationForm form, BindException errors) throws Exception
         {
             ApiSimpleResponse response = new ApiSimpleResponse();
-            Status validationStatus = DataValidationManager.getStatus(form.getValidationId(), getContainer());
-            if (validationStatus != null)
+            DataValidation validation = DataValidationManager.getValidation(form.getValidationId(), getContainer());
+            if (validation != null)
             {
-                if (!validationStatus.getValidation().isComplete())
-                {
-                    response.put("validationProgress", validationStatus.toProgressSummaryJSON());
-                }
-                else
-                {
-                    JSONObject json = validationStatus.toJSON();
-                    var dataValidation = validationStatus.getValidation();
-                    var expAnnotations = ExperimentAnnotationsManager.get(dataValidation.getExperimentAnnotationsId());
-                    if (DataValidationManager.isValidationOutdated(dataValidation, expAnnotations, getUser()) && expAnnotations != null)
-                    {
-                        json.put("validationOutdated", true);
-                    }
-                    response.put("validationStatus", json);
-                }
-
-                int jobId = validationStatus.getValidation().getJobId();
+                int jobId = validation.getJobId();
                 PipelineStatusFile status = PipelineService.get().getStatusFile(jobId);
                 if (status != null)
                 {
                     response.put("jobStatus", status.getStatus());
+                }
+
+                Status validationStatus = DataValidationManager.getStatus(form.getValidationId(), getContainer());
+                if (validationStatus != null)
+                {
+                    if (!validationStatus.getValidation().isComplete())
+                    {
+                        response.put("validationProgress", validationStatus.toProgressSummaryJSON());
+                    }
+                    else
+                    {
+                        JSONObject json = validationStatus.toJSON();
+                        var dataValidation = validationStatus.getValidation();
+                        var expAnnotations = ExperimentAnnotationsManager.get(dataValidation.getExperimentAnnotationsId());
+                        if (DataValidationManager.isValidationOutdated(dataValidation, expAnnotations, getUser()) && expAnnotations != null)
+                        {
+                            json.put("validationOutdated", true);
+                        }
+                        response.put("validationStatus", json);
+                    }
                 }
             }
             else
@@ -7198,13 +7211,22 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors);
             }
 
-            UnimodModifications uMods = readUnimod(errors); // Read the Unimod modifications
+            UnimodModifications uMods = readUnimod(); // Read the Unimod modifications
             if (uMods == null)
             {
                 return new SimpleErrorView(errors);
             }
 
-            ExperimentModificationGetter.PxModification matchedMod = getModificationMatch(mod, uMods);
+            ExperimentModificationGetter.PxModification matchedMod;
+            try
+            {
+                matchedMod = getModificationMatch(mod, uMods);
+            }
+            catch(IllegalArgumentException e)
+            {
+                errors.reject(ERROR_MSG, "Error finding Unimod match. " + e.getMessage());
+                return new SimpleErrorView(errors);
+            }
 
             UnimodMatchBean bean = new UnimodMatchBean(form, mod, matchedMod);
             JspView view = new JspView<>("/org/labkey/panoramapublic/view/unimodMatchInfo.jsp", bean, errors);
@@ -7249,7 +7271,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(UnimodMatchForm form, BindException errors) throws Exception
         {
-            UnimodModifications uMods = readUnimod(errors); // Read the Unimod modifications
+            UnimodModifications uMods = readUnimod(); // Read the Unimod modifications
             if (uMods == null) return false;
 
             UnimodModification matchedMod = uMods.getById(form.getUnimodId());
@@ -7291,6 +7313,16 @@ public class PanoramaPublicController extends SpringActionController
             if (modification == null)
             {
                 errors.reject(ERROR_MSG, "Could not find a structural modification with Id " + form.getModificationId());
+            }
+            if (StringUtils.isBlank(modification.getFormula()))
+            {
+                errors.reject(ERROR_MSG, "Cannot find a Unimod match for a structural modification that does not have a formula");
+                return null;
+            }
+            if (StringUtils.isBlank(modification.getAminoAcid()) && StringUtils.isBlank(modification.getTerminus()))
+            {
+                errors.reject(ERROR_MSG, "Cannot find a Unimod match for a structural modification that does not have modified amino acids or a modified terminus");
+                return null;
             }
             return modification;
         }
@@ -7347,6 +7379,11 @@ public class PanoramaPublicController extends SpringActionController
             {
                 errors.reject(ERROR_MSG, "Could not find an isotope modification with Id " + form.getModificationId());
             }
+            if (StringUtils.isBlank(modification.getAminoAcid()))
+            {
+                errors.reject(ERROR_MSG, "Cannot find a Unimod match for an isotope modification that does not have modified amino acids");
+                return null;
+            }
             return modification;
         }
 
@@ -7372,7 +7409,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected ExperimentModInfo saveModInfo(UnimodMatchForm form, UnimodModification matchedMod)
         {
-            ExperimentModInfo modInfo = new ExperimentModInfo();
+            var modInfo = new ExperimentIsotopeModInfo();
             modInfo.setExperimentAnnotationsId(form.getId());
             modInfo.setModId(form.getModificationId());
             modInfo.setUnimodId(matchedMod.getId());
@@ -7573,7 +7610,7 @@ public class PanoramaPublicController extends SpringActionController
                 return;
             }
 
-            _unimodModifications = readUnimod(errors);
+            _unimodModifications = readUnimod();
         }
 
         @Override
@@ -7755,18 +7792,9 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    private static UnimodModifications readUnimod(Errors errors)
+    private static UnimodModifications readUnimod()
     {
-        try
-        {
-            return new UnimodParser().parse();
-        }
-        catch (Exception e)
-        {
-            errors.reject(ERROR_MSG, "There was an error parsing Unimod modifications. The error was: " + e.getMessage()
-                    + ". Please try again. If you continue to see this error please contact the server administrator.");
-        }
-        return null;
+        return UnimodUtil.getUnimod();
     }
 
     @RequiresPermission(UpdatePermission.class)
@@ -7775,8 +7803,7 @@ public class PanoramaPublicController extends SpringActionController
         T _modInfo;
 
         protected abstract T getModInfo(int modInfoId);
-        protected abstract void deleteModInfo(T modInfo, int expAnnotationsId);
-        protected abstract void updateValidationModification(T modInfo);
+        protected abstract void deleteModInfo(T modInfo, ExperimentAnnotations expAnnotations);
 
         @Override
         protected ModelAndView getModelAndView(DeleteModInfoForm form, boolean reshow, BindException errors)
@@ -7810,12 +7837,8 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
-            try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
-            {
-                deleteModInfo(_modInfo, form.getId());
-                updateValidationModification(_modInfo);
-                transaction.commit();
-            }
+            deleteModInfo(_modInfo, _expAnnot);
+
             return true;
         }
 
@@ -7842,37 +7865,25 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected void deleteModInfo(ExperimentStructuralModInfo modInfo, int expAnnotationsId)
+        protected void deleteModInfo(ExperimentStructuralModInfo modInfo, ExperimentAnnotations expAnnotations)
         {
-            ModificationInfoManager.deleteStructuralModInfo(modInfo, expAnnotationsId, getContainer());
-        }
-
-        @Override
-        protected void updateValidationModification(ExperimentStructuralModInfo modInfo)
-        {
-            DataValidationManager.removeModInfo(_expAnnot, getContainer(), modInfo.getModId(), Modification.ModType.Structural, getUser());
+            ModificationInfoManager.deleteStructuralModInfo(modInfo, expAnnotations, getContainer(), getUser());
         }
     }
 
     @RequiresPermission(UpdatePermission.class)
-    public static class DeleteIsotopeModInfoAction extends DeleteModInfoAction<ExperimentModInfo>
+    public static class DeleteIsotopeModInfoAction extends DeleteModInfoAction<ExperimentIsotopeModInfo>
     {
         @Override
-        protected ExperimentModInfo getModInfo(int modInfoId)
+        protected ExperimentIsotopeModInfo getModInfo(int modInfoId)
         {
             return ModificationInfoManager.getIsotopeModInfo(modInfoId);
         }
 
         @Override
-        protected void deleteModInfo(ExperimentModInfo modInfo, int expAnnotationsId)
+        protected void deleteModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations)
         {
-            ModificationInfoManager.deleteIsotopeModInfo(modInfo, expAnnotationsId, getContainer());
-        }
-
-        @Override
-        protected void updateValidationModification(ExperimentModInfo modInfo)
-        {
-            DataValidationManager.removeModInfo(_expAnnot, getContainer(), modInfo.getModId(), Modification.ModType.Isotopic, getUser());
+            ModificationInfoManager.deleteIsotopeModInfo(modInfo, expAnnotations, getContainer(), getUser());
         }
     }
 

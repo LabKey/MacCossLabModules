@@ -78,7 +78,7 @@ import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.ModificationInfoManager;
 import org.labkey.panoramapublic.query.SpecLibInfoManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
-import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
+import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfo;
 
 import java.nio.file.Files;
@@ -229,8 +229,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             ModificationInfoManager.saveStructuralModInfo(info, user);
         }
 
-        List<ExperimentModInfo> isotopeModInfos = ModificationInfoManager.getIsotopeModInfosForExperiment(sourceExperiment.getId(), sourceExperiment.getContainer());
-        for (ExperimentModInfo info: isotopeModInfos)
+        List<ExperimentIsotopeModInfo> isotopeModInfos = ModificationInfoManager.getIsotopeModInfosForExperiment(sourceExperiment.getId(), sourceExperiment.getContainer());
+        for (ExperimentIsotopeModInfo info: isotopeModInfos)
         {
             info.setId(0);
             info.setExperimentAnnotationsId(targetExperiment.getId());

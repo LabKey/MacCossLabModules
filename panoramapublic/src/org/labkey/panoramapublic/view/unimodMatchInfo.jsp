@@ -5,6 +5,7 @@
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.panoramapublic.proteomexchange.UnimodModification" %>
 <%@ page import="org.labkey.panoramapublic.proteomexchange.Formula" %>
+<%@ page import="org.labkey.api.util.HtmlString" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -101,7 +102,18 @@
                     <%=q(unimodMatch.getName())%>,
                     <%=q(unimodMatch.getNormalizedFormula())%>,
                     <%=q(unimodMatch.getModSitesWithPosition())%>,
-                    <%=q(unimodMatch.getTerminus())%>));
+                    <%=q(unimodMatch.getTerminus())%>
+                    <% if (bean.isIsotopicMod() && unimodMatch.getDiffIsotopicFormula() != null) { %>
+                        ,<%=q(unimodMatch.getDiffIsotopicFormula().getFormula())%>,
+                        getDiffIsotopeDesc(<%=qh(unimodMatch.getName())%>,
+                                <%=unimodMatch.getId()%>,
+                                <%=qh(unimodMatch.getFormula().getFormula())%>,
+                                <%=qh(unimodMatch.getParentStructuralMod().getName())%>,
+                                <%=q(UnimodModification.getLink(unimodMatch.getParentStructuralMod().getId()).getHtmlString())%>,
+                                <%=qh(unimodMatch.getParentStructuralModFormula())%>,
+                                <%=qh(unimodMatch.getDiffIsotopicFormula().getFormula())%>),
+                    <% } %>
+                    ));
         <% } %>
 
         Ext4.create('Ext.panel.Panel', {
@@ -117,57 +129,93 @@
         });
     });
 
-    function createForm(index, unimodId, unimodLink, name, formula, sites, terminus)
+    function getDiffIsotopeDesc(name, unimodId, formula, parentName, parentUnimodLink, parentFormula, diffFormula) {
+        var html = '<div style="color:darkslateblue;padding:6px;background-color:#f9f9f9;">'
+                  + 'Difference between<br><b>' + name + '</b> and <b>' + parentName + '</b>' + ' (' + parentUnimodLink + ')'
+                  + '<br><div style="margin-top:7px;">'
+                  + formula + ' - ' + parentFormula + ' = <b>' + diffFormula + '</b>'
+                  + '</div></div>'
+        return html;
+    }
+    function createForm(index, unimodId, unimodLink, name, formula, sites, terminus, diffIsotopeFormula, diffIsotopeModDescription)
     {
-        var form = Ext4.create('Ext.form.Panel', {
-            standardSubmit: true,
-            border: false,
-            frame: false,
-            defaults: {
-                labelWidth: 160,
-                width: 500,
-                labelStyle: 'background-color: #C0C6CA; padding: 5px;'
+        var items = [
+            { xtype: 'hidden', name: 'X-LABKEY-CSRF', value: LABKEY.CSRF },
+            {
+                xtype: 'label',
+                text: '---------------- Unimod Match ' + (index > -1 ? index + 1 : '') + ' ----------------',
+                style: {'text-align': 'left', 'margin': '10px 0 10px 0'}
             },
-            items: [
-                { xtype: 'hidden', name: 'X-LABKEY-CSRF', value: LABKEY.CSRF },
-                {
-                    xtype: 'label',
-                    text: '---------------- Unimod Match ' + (index > -1 ? index + 1 : '') + ' ----------------',
-                    style: {'text-align': 'left', 'margin': '10px 0 10px 0'}
-                },
-                {
-                    xtype: 'hidden',
-                    name: 'id', // ExperimentAnnotationsId
-                    value: <%=form.getId()%>
-                },
-                {
-                    xtype: 'hidden',
-                    name: <%=q(ActionURL.Param.returnUrl.name())%>,
-                    value: <%=q(returnUrl)%>
-                },
-                {
-                    xtype: 'hidden',
-                    name: 'modificationId',
-                    value: <%=form.getModificationId()%>
-                },
-                {
-                    xtype: 'hidden',
-                    name: 'unimodId',
-                    value: unimodId
-                },
+            {
+                xtype: 'hidden',
+                name: 'id', // ExperimentAnnotationsId
+                value: <%=form.getId()%>
+            },
+            {
+                xtype: 'hidden',
+                name: <%=q(ActionURL.Param.returnUrl.name())%>,
+                value: <%=q(returnUrl)%>
+            },
+            {
+                xtype: 'hidden',
+                name: 'modificationId',
+                value: <%=form.getModificationId()%>
+            },
+            {
+                xtype: 'hidden',
+                name: 'unimodId',
+                value: unimodId
+            },
 
-                {
-                    xtype: 'displayfield',
-                    fieldCls: 'display-value',
-                    fieldLabel: "Name",
-                    value: '<div>' + name + ', ' + unimodLink + '</div>'
-                },
-                {
-                    xtype: 'displayfield',
-                    fieldCls: 'display-value',
-                    fieldLabel: "Formula",
-                    value: formula
-                },
+            {
+                xtype: 'displayfield',
+                fieldCls: 'display-value',
+                fieldLabel: "Name",
+                value: '<div>' + name + ', ' + unimodLink + '</div>'
+            },
+            {
+                xtype: 'displayfield',
+                fieldCls: 'display-value',
+                fieldLabel: "Formula",
+                value: formula
+            }
+        ];
+
+        if (diffIsotopeFormula) {
+            items.push(
+                    {
+                        xtype: 'displayfield',
+                        fieldCls: 'display-value',
+                        fieldLabel: "Isotope Formula",
+                        value: diffIsotopeFormula,
+                        afterBodyEl: '<span style="font-size: 0.9em;">' + diffIsotopeModDescription + '</span>',
+                        msgTarget : 'under',
+                        listeners: {
+                            scope: this,
+                            render: function(cmp)
+                            {
+                                Ext4.create('Ext.tip.ToolTip', {
+                                    target: cmp.getEl(),
+                                    anchorToTarget: true,
+                                    anchor: 'right',
+                                    header: {html: "<b>Isotope Formula</b>", style:{padding:'0 0 0 15px',color: '#777777'}},
+                                    frameHeader: true,
+                                    autoHide: false,
+                                    width: 350,
+                                    bodyCls: 'alert alert-info',
+                                    closable: true,
+                                    html: "Isotope modifications in Skyline that are the heavy version of a structural modification " +
+                                            "have a formula that is the difference between the formula of the modification and the formula " +
+                                            "of the associated unlabeled structural modification.<br>For example: the isotope formula for Dimethyl:2H(6) is the difference " +
+                                            "between the formulas of Dimethyl:2H(6) and Dimethyl.<br>This difference is H'6C2-H2 <b>-</b> H4C2 = <b>H'6-H6.</b>"
+                                });
+                            }
+                        }
+                    }
+            )
+        }
+
+        items.push(
                 {
                     xtype: 'displayfield',
                     fieldCls: 'display-value',
@@ -180,7 +228,18 @@
                     fieldLabel: "Terminus",
                     value: terminus
                 }
-            ],
+        );
+
+        var form = Ext4.create('Ext.form.Panel', {
+            standardSubmit: true,
+            border: false,
+            frame: false,
+            defaults: {
+                labelWidth: 160,
+                width: 500,
+                labelStyle: 'background-color: #C0C6CA; padding: 5px;'
+            },
+            items: items,
             buttonAlign: 'left',
             buttons: [
                 {

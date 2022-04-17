@@ -66,6 +66,8 @@ public enum ChemElement
         return titleMap.get(title);
     }
 
+    public static Map<ChemElement, ChemElement> HEAVY_LABELS = Map.of(H2, H, C13, C, N15, N, O18, O);
+
     public static ChemElement getElementForSymbol(String symbol)
     {
         return symbolMap.get(symbol);

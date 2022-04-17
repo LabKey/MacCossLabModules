@@ -186,6 +186,12 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         submitForm();
     }
 
+    void submitIncompletePxButton()
+    {
+        clickButton("Continue with an Incomplete PX Submission");
+        submitForm();
+    }
+
     private void submitForm()
     {
         _ext4Helper.selectComboBoxItem(Ext4Helper.Locators.formItemWithInputNamed("journalId"), PanoramaPublicTest.PANORAMA_PUBLIC);
@@ -231,6 +237,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         Locator.tagWithClass("span", "x4-tree-node-text").withText(PANORAMA_PUBLIC).waitForElement(new WebDriverWait(getDriver(), 5)).click();
         // Enter the name of the destination folder in the Panorama Public project
         setFormElement(Locator.tagWithName("input", "destContainerName"), destinationFolder);
+        uncheck("Assign ProteomeXchange ID:");
         uncheck("Send Email to Submitter:");
         uncheck("Assign Digital Object Identifier:");
 

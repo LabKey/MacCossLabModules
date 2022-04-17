@@ -15,10 +15,14 @@ import org.labkey.panoramapublic.model.validation.Modification;
 import org.labkey.panoramapublic.model.validation.Modification.ModType;
 import org.labkey.panoramapublic.model.validation.SkylineDocModification;
 import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
+import org.labkey.panoramapublic.proteomexchange.UnimodModification;
+import org.labkey.panoramapublic.proteomexchange.UnimodUtil;
 import org.labkey.panoramapublic.proteomexchange.validator.SpecLibValidator.SpecLibKeyWithSize;
 import org.labkey.panoramapublic.query.DataValidationManager;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.ModificationInfoManager;
+import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfo;
+import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -104,8 +108,12 @@ public class DataValidator
         // sleep();
         try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
         {
-            List<ExperimentModificationGetter.PxModification> mods = ExperimentModificationGetter.getModifications(_expAnnotations,
-                    false); // Do not look up Unimod to find a match if the modification does not have a Unimod Id in the Skyline document.
+            // Get a list of modifications from the Skyline documents in this experiment.  Do not try to find a Unimod
+            // match if a modification does not have a Unimod Id in the Skyline document.
+            List<ExperimentModificationGetter.PxModification> mods = ExperimentModificationGetter.getModifications(_expAnnotations);
+
+            List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(_expAnnotations);
+
             for (ExperimentModificationGetter.PxModification pxMod : mods)
             {
                 Modification mod = new Modification(pxMod.getSkylineName(), pxMod.getDbModId(),
@@ -118,6 +126,14 @@ public class DataValidator
                 {
                     var modInfo = ModType.Isotopic == mod.getModType() ? ModificationInfoManager.getIsotopeModInfo(mod.getDbModId(), _expAnnotations.getId())
                             : ModificationInfoManager.getStructuralModInfo(mod.getDbModId(), _expAnnotations.getId());
+                    if (UnimodUtil.isWildcardModification(pxMod))
+                    {
+                        modInfo = saveModInfoForWildCardSkylineMod(pxMod, (ExperimentIsotopeModInfo) modInfo, _expAnnotations, runs, user);
+                    }
+                    else if (modInfo == null)
+                    {
+                        modInfo = saveModInfoIfHardcodedSkylineMod(pxMod, _expAnnotations, user);
+                    }
                     if (modInfo != null)
                     {
                         mod.setModInfoId(modInfo.getId());
@@ -145,6 +161,53 @@ public class DataValidator
             transaction.commit();
         }
         _listener.modificationsValidated(status);
+    }
+
+    private ExperimentModInfo saveModInfoForWildCardSkylineMod(ExperimentModificationGetter.PxModification pxMod, ExperimentIsotopeModInfo savedModInfo,
+                                                               ExperimentAnnotations expAnnotations,
+                                                               List<ITargetedMSRun> runs, User user)
+    {
+        List<Character> sites = ModificationInfoManager.getIsotopeModificationSites(pxMod.getDbModId(), runs, user);
+        var uModsList = UnimodUtil.getMatchesIfWildcardSkylineMod(pxMod, sites);
+        if (uModsList.size() > 0)
+        {
+            var modInfo = new ExperimentIsotopeModInfo();
+            modInfo.setExperimentAnnotationsId(expAnnotations.getId());
+            modInfo.setModId(pxMod.getDbModId());
+            modInfo.setUnimodId(uModsList.get(0).getId());
+            modInfo.setUnimodName(uModsList.get(0).getName());
+            for (int i = 1; i < uModsList.size(); i++)
+            {
+                var uMod = uModsList.get(i);
+                modInfo.addUnimodInfo(new ExperimentModInfo.UnimodInfo(uMod.getId(), uMod.getName()));
+            }
+            if (savedModInfo != null)
+            {
+                // The list of Unimod modifications may have changed from what was saved before because the current set of runs
+                // in the experiment have different modification sites. Delete the old mod info.
+                ModificationInfoManager.deleteIsotopeModInfo(savedModInfo, expAnnotations, expAnnotations.getContainer(), user, false);
+            }
+            return ModificationInfoManager.saveIsotopeModInfo(modInfo, user);
+        }
+        return null;
+    }
+
+    private ExperimentIsotopeModInfo saveModInfoIfHardcodedSkylineMod(ExperimentModificationGetter.PxModification pxMod, ExperimentAnnotations expAnnotations, User user)
+    {
+        if (pxMod.isIsotopicMod())
+        {
+            UnimodModification uMod = UnimodUtil.getMatchIfHardCodedSkylineMod(pxMod);
+            if (uMod != null)
+            {
+                var modInfo = new ExperimentIsotopeModInfo();
+                modInfo.setExperimentAnnotationsId(expAnnotations.getId());
+                modInfo.setModId(pxMod.getDbModId());
+                modInfo.setUnimodId(uMod.getId());
+                modInfo.setUnimodName(uMod.getName());
+                return ModificationInfoManager.saveIsotopeModInfo(modInfo, user);
+            }
+        }
+        return null;
     }
 
     private void validateSampleFiles(ValidatorStatus status, TargetedMSService svc, User user)

@@ -3,8 +3,6 @@ package org.labkey.panoramapublic.query.modification;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
-import org.labkey.api.data.Table;
-import org.labkey.api.data.TableSelector;
 import org.labkey.api.query.QueryUpdateService;
 import org.labkey.api.query.RowIdQueryUpdateService;
 import org.labkey.api.security.User;
@@ -13,6 +11,7 @@ import org.labkey.api.security.permissions.Permission;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.query.ContainerJoin;
+import org.labkey.panoramapublic.query.ModificationInfoManager;
 import org.labkey.panoramapublic.query.PanoramaPublicTable;
 
 public class ExperimentStructuralModInfoTableInfo extends PanoramaPublicTable
@@ -42,13 +41,13 @@ public class ExperimentStructuralModInfoTableInfo extends PanoramaPublicTable
             @Override
             public ExperimentStructuralModInfo get(User user, Container container, int key)
             {
-                return new TableSelector(PanoramaPublicManager.getTableInfoExperimentStructuralModInfo()).getObject(key, ExperimentStructuralModInfo.class);
+                return ModificationInfoManager.getStructuralModInfo(key, container);
             }
 
             @Override
             public void delete(User user, Container container, int key)
             {
-                Table.delete(PanoramaPublicManager.getTableInfoExperimentStructuralModInfo(), key);
+                ModificationInfoManager.deleteStructuralModInfo(key, container, user);
             }
 
             @Override

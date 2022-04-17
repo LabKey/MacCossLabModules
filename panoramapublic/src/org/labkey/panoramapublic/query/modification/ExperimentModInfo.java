@@ -1,6 +1,5 @@
 package org.labkey.panoramapublic.query.modification;
 
-import org.labkey.api.util.Pair;
 import org.labkey.panoramapublic.model.DbEntity;
 
 import java.util.Collections;
@@ -58,13 +57,58 @@ public class ExperimentModInfo extends DbEntity
         return Collections.singletonList(_unimodId);
     }
 
-    public List<Pair<Integer, String>> getUnimodIdsAndNames()
+    public List<UnimodInfo> getUnimodInfos()
     {
-        return Collections.singletonList(new Pair<>(_unimodId, _unimodName));
+        return Collections.singletonList(new UnimodInfo(_unimodId, _unimodName));
     }
 
     public boolean isCombinationMod()
     {
         return false;
+    }
+
+    public static class UnimodInfo
+    {
+        private int _unimodId;
+        private String _unimodName;
+        private int _modInfoId;
+
+        public UnimodInfo() {}
+
+        public UnimodInfo(int unimodId, String unimodName)
+        {
+            this._unimodId = unimodId;
+            this._unimodName = unimodName;
+        }
+
+        public int getUnimodId()
+        {
+            return _unimodId;
+        }
+
+        public void setUnimodId(int unimodId)
+        {
+            _unimodId = unimodId;
+        }
+
+        public String getUnimodName()
+        {
+            return _unimodName;
+        }
+
+        public void setUnimodName(String unimodName)
+        {
+            _unimodName = unimodName;
+        }
+
+        public int getModInfoId()
+        {
+            return _modInfoId;
+        }
+
+        public void setModInfoId(int modInfoId)
+        {
+            _modInfoId = modInfoId;
+        }
     }
 }

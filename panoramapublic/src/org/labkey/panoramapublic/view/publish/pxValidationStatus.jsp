@@ -3,7 +3,6 @@
 <%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.pipeline.PipelineStatusUrls" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
-<%@ page import="org.labkey.api.pipeline.PipelineService" %>
 <%@ page import="org.labkey.api.pipeline.PipelineJob" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.api.action.SpringActionController" %>
@@ -110,7 +109,7 @@
         submitAction = submission.hasCopy() ? SpringActionController.getActionName(PanoramaPublicController.ResubmitExperimentAction.class)
                 : SpringActionController.getActionName(PanoramaPublicController.UpdateSubmissionAction.class);
     }
-    var jobStatus = PipelineService.get().getStatusFile(jobId);
+    var jobStatus = bean.getPipelineJobStatus();
     var onPageLoadMsg = jobStatus != null ? (String.format("Data validation job is %s. This page will automatically refresh with the validation progress.",
             jobStatus.isActive() ? (PipelineJob.TaskStatus.waiting.matches(jobStatus.getStatus()) ? "in the queue" : "running") : "complete"))
             : "Could not find job status for job with Id " + jobId;
@@ -462,6 +461,10 @@
                     {
                         property: 'unimodMatches',
                         direction: 'DESC'
+                    },
+                    {
+                        property: 'skylineModInfo',
+                        direction: 'ASC'
                     }
                 ]
             });
@@ -503,9 +506,10 @@
                             else if (record.data['unimodMatches']) {
                                 var ret = ''; var sep = '';
                                 var matches = record.data['unimodMatches'];
+                                var isotopic = record.data['modType'] === "Isotopic" ? true : false;
                                 for (var i = 0; i < matches.length; i++) {
                                     ret += sep + unimodLink(matches[i]['unimodId'], 'pxv-valid');
-                                    sep = ' + ';
+                                    sep = isotopic ? '</br>' : ' + ';
                                 }
                                 return ret;
                             }
@@ -521,9 +525,10 @@
                             else if (record.data['unimodMatches']) {
                                 var ret = ''; var sep = '';
                                 var matches = record.data['unimodMatches'];
+                                var isotopic = record.data['modType'] === "Isotopic" ? true : false;
                                 for (var i = 0; i < matches.length; i++) {
                                     ret += sep + htmlEncode(matches[i]['name']);
-                                    sep = ' + ';
+                                    sep = isotopic ? '</br>' : ' + ';
                                 }
                                 return ret;
                             }
@@ -573,12 +578,18 @@
                                     if (!modType) return;
                                     var modTypeUpper = modType.toUpperCase();
                                     var params = {
-                                        'schemaName': 'targetedms',
-                                        'query.PeptideId/PeptideGroupId/RunId~eq': doc.runId,
-                                        'query.queryName': queryName = modTypeUpper === 'STRUCTURAL' ? 'PeptideStructuralModification' : 'PeptideIsotopeModification'
+                                        'schemaName': 'panoramapublic'
                                     };
-                                    if (modTypeUpper === 'STRUCTURAL') params['query.StructuralModId/Id~eq'] = dbModId;
-                                    else params['query.IsotopeModId/Id~eq'] = dbModId;
+                                    if (modTypeUpper === 'STRUCTURAL') {
+                                        params['query.queryName'] = 'PeptideStructuralModification';
+                                        params['query.StructuralModId/Id~eq'] = dbModId;
+                                        params['query.PeptideGroupId/RunId~eq'] = doc.runId;
+                                    }
+                                    else {
+                                        params['query.queryName'] = 'PrecursorIsotopeModification';
+                                        params['query.IsotopeModId/Id~eq'] = dbModId;
+                                        params['query.PeptideId/PeptideGroupId/RunId~eq'] = doc.runId;
+                                    }
                                     return link('[PEPTIDES]', LABKEY.ActionURL.buildURL('query', 'executeQuery', doc.container, params));
                                 },
                                 compiled: true

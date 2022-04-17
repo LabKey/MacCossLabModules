@@ -33,8 +33,10 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class UnimodParser
 {
@@ -131,6 +133,61 @@ public class UnimodParser
                 }
             }
         }
+        for (UnimodModification uMod: uMods.getModifications())
+        {
+            if (uMod.isIsotopeLabel())
+            {
+                UnimodModification parentStrMod = uMods.getByName(uMod.getIsotopeLabelName());
+                if (parentStrMod != null)
+                {
+                    Formula diffFormula = uMod.getFormula().subtractFormula(parentStrMod.getFormula());
+                    if (isIsotopicDiff(diffFormula))
+                    {
+                        uMods.updateDiffIsotopeMod(uMod, diffFormula, parentStrMod);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * @return true if the given formula is a balanced isotopic label, where the only thing changing is the isotopes
+     *  of the atoms in question.
+     */
+    private static boolean isIsotopicDiff(Formula diffFormula)
+    {
+        var elementCounts = diffFormula.getElementCounts();
+        Set<ChemElement> elements = new HashSet<>(elementCounts.keySet());
+
+        for (var element: elementCounts.keySet())
+        {
+            int labelCount = elementCounts.get(element);
+            if (ChemElement.HEAVY_LABELS.containsKey(element))
+            {
+                // Must be adding labeled atoms and removing unlabeled atoms
+                if (labelCount < 0)
+                {
+                    return false;
+                }
+
+                var monoEl = ChemElement.HEAVY_LABELS.get(element);
+                if (!elementCounts.containsKey(monoEl))
+                {
+                    return false;
+                }
+
+                int monoCount = elementCounts.get(monoEl);
+
+                if (labelCount + monoCount != 0)
+                {
+                    return false;
+                }
+
+                elements.remove(monoEl);
+                elements.remove(element);
+            }
+        }
+        return elements.size() == 0;
     }
 
     private UnimodModification parseModification(Element modEl) throws PxException
@@ -141,14 +198,11 @@ public class UnimodParser
         NodeList deltaEl = modEl.getElementsByTagName("delta");
         UnimodModification uMod = new UnimodModification(id, title, getFormula(deltaEl));
 
-        boolean isIsotopic = false;
-
         NodeList nl = modEl.getElementsByTagName("specificity");
         for(int i = 0; i < nl.getLength(); i++)
         {
             Element specEl = (Element) nl.item(i);
             String site = specEl.getAttribute("site");
-            String cls = specEl.getAttribute("classification");
             String pos = specEl.getAttribute("position");
             Position position = Position.forLabel(pos);
             if(site.equalsIgnoreCase("N-term"))
@@ -163,13 +217,8 @@ public class UnimodParser
             {
                 uMod.addSite(site, position);
             }
-            if ("Isotopic label".equals(cls))
-            {
-                isIsotopic = true;
-            }
         }
-        isIsotopic = isIsotopic && checkTrueIsotopeMod(deltaEl);
-        uMod.setIsotopic(isIsotopic);
+        uMod.setTrueIsotopic(checkTrueIsotopeMod(deltaEl));
 
         return uMod;
     }
@@ -221,14 +270,6 @@ public class UnimodParser
                 Element el = (Element)nl.item(i);
                 String symbol = el.getAttribute("symbol");
                 ChemElement chemElement = ChemElement.getElement(symbol);
-//                ChemElement chemElement = switch (symbol)
-//                        {
-//                            case "2H" -> ChemElement.H2;
-//                            case "13C" -> ChemElement.C13;
-//                            case "15N" -> ChemElement.N15;
-//                            case "18O" -> ChemElement.O18;
-//                            default -> ChemElement.getElementForSymbol(symbol);
-//                        };
                 if (chemElement == null)
                 {
                     throw new PxException("Unrecognized element in formula: " + symbol);

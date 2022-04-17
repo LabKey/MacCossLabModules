@@ -40,7 +40,7 @@ public class Formula
         return Collections.unmodifiableSortedMap(_elementCounts);
     }
 
-    public String getFormula()
+    public @NotNull String getFormula()
     {
         StringBuilder positive = new StringBuilder();
         StringBuilder negative = new StringBuilder();
@@ -174,7 +174,7 @@ public class Formula
             {
                 if (negative)
                 {
-                    throw new IllegalArgumentException("More than one subtraction operation is not supported if a formula.");
+                    throw new IllegalArgumentException("More than one subtraction operation is not supported in a formula.");
                 }
                 return parse(input.substring(1), formula, true);
             }
@@ -254,7 +254,7 @@ public class Formula
             formula = Formula.tryParse(input, errors); // More than one subtraction operation is not supported
             assertNull(formula);
             assertEquals(1, errors.size());
-            assertEquals("Failed to parse formula '" + input + "'. More than one subtraction operation is not supported if a formula.", errors.get(0));
+            assertEquals("Failed to parse formula '" + input + "'. More than one subtraction operation is not supported in a formula.", errors.get(0));
 
             errors = new ArrayList<>();
             input = C12H8S2O6 + 'X' + SO4;

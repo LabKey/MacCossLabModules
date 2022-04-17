@@ -1,5 +1,6 @@
 package org.labkey.panoramapublic.query.modification;
 
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
@@ -25,6 +26,7 @@ import java.util.Set;
 
 import static org.labkey.api.util.DOM.Attribute.style;
 import static org.labkey.api.util.DOM.B;
+import static org.labkey.api.util.DOM.BR;
 import static org.labkey.api.util.DOM.DIV;
 import static org.labkey.api.util.DOM.SPAN;
 import static org.labkey.api.util.DOM.at;
@@ -66,6 +68,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                         int exptId = modInfo.getExperimentAnnotationsId();
                         var dbMod = getModification(modInfo.getModId());
                         var deleteUrl = getDeleteAction(ctx).addParameter("id", exptId).addParameter("modInfoId", modInfoId);
+                        deleteUrl.addReturnURL(ctx.getViewContext().getActionURL());
                         DIV(at(style, "margin-top:5px;"), new Link.LinkBuilder("[Delete]")
                                 .href(deleteUrl)
                                 .clearClasses().addClass("labkey-error")
@@ -105,10 +108,17 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
 
     protected List<DOM.Renderable> getAssignedUnimodDetails(T modInfo)
     {
+        return renderUnimod(modInfo.getUnimodId(), modInfo.getUnimodName(), true);
+    }
+
+    @NotNull
+    List<DOM.Renderable> renderUnimod(int unimodId, String unimodName, boolean addAsterisk)
+    {
         return List.of(
-                SPAN("**"), UnimodModification.getLink(modInfo.getUnimodId(), true),
+                addAsterisk ? SPAN("**") : HtmlString.EMPTY_STRING,
+                UnimodModification.getLink(unimodId, true),
                 HtmlString.NBSP,
-                SPAN("(" + modInfo.getUnimodName() + ")")
+                SPAN("(" + unimodName + ")")
         );
     }
 
@@ -145,15 +155,13 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
             if (modInfo.isCombinationMod())
             {
                 list.add(SPAN(at(style, "margin:0 10px 0 10px;"), B("+")));
-                list.add(UnimodModification.getLink(modInfo.getUnimodId2(), true));
-                list.add(HtmlString.NBSP);
-                list.add(SPAN("(" + modInfo.getUnimodName2() + ")"));
+                list.addAll(super.renderUnimod(modInfo.getUnimodId2(), modInfo.getUnimodName2(), false));
             }
             return list;
         }
     }
 
-    public static class IsotopeUnimodMatch extends UnimodMatchDisplayColumnFactory<ExperimentModInfo>
+    public static class IsotopeUnimodMatch extends UnimodMatchDisplayColumnFactory<ExperimentIsotopeModInfo>
     {
         @Override
         ActionURL getMatchToUnimodAction(RenderContext ctx)
@@ -168,7 +176,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
         }
 
         @Override
-        ExperimentModInfo getModInfo(int modInfoId)
+        ExperimentIsotopeModInfo getModInfo(int modInfoId)
         {
             return ModificationInfoManager.getIsotopeModInfo(modInfoId);
         }
@@ -176,7 +184,23 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
         @Override
         IModification getModification(long dbModId)
         {
-            return TargetedMSService.get().getStructuralModification(dbModId);
+            return TargetedMSService.get().getIsotopeModification(dbModId);
+        }
+
+        @Override
+        protected List<DOM.Renderable> getAssignedUnimodDetails(ExperimentIsotopeModInfo modInfo)
+        {
+            List<DOM.Renderable> list = new ArrayList<>();
+            for (ExperimentModInfo.UnimodInfo unimodInfo: modInfo.getUnimodInfos())
+            {
+                list.addAll(super.renderUnimod(unimodInfo.getUnimodId(), unimodInfo.getUnimodName(), true));
+                list.add(BR());
+            }
+            if (list.size() > 1)
+            {
+                list.remove(list.size() - 1); // remove the last <BR>
+            }
+            return list;
         }
     }
 }
