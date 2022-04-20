@@ -476,15 +476,6 @@
                     <fkTable>runs</fkTable>
                 </fk>
             </column>
-            <column columnName="Container">
-                <columnTitle>Folder</columnTitle>
-                <fk>
-                    <fkColumnName>EntityId</fkColumnName>
-                    <fkDbSchema>core</fkDbSchema>
-                    <fkTable>containers</fkTable>
-                </fk>
-                <description>Folder that contains the run</description>
-            </column>
         </columns>
     </table>
     <table tableName="SkylineDocSampleFile" tableDbType="TABLE">

@@ -1,8 +1,10 @@
 package org.labkey.panoramapublic.model.validation;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.labkey.api.data.Container;
 
 import java.util.Collections;
 import java.util.List;
@@ -11,6 +13,7 @@ import java.util.List;
 public class SkylineDoc extends SkylineDocValidation<SkylineDocSampleFile>
 {
     private List<SkylineDocSampleFile> _sampleFiles;
+    private Container _container;
 
     public void setSampleFiles(List<SkylineDocSampleFile> sampleFiles)
     {
@@ -23,13 +26,26 @@ public class SkylineDoc extends SkylineDocValidation<SkylineDocSampleFile>
         return _sampleFiles != null ? Collections.unmodifiableList(_sampleFiles) : Collections.emptyList();
     }
 
+    public void setRunContainer(Container container)
+    {
+        _container = container;
+    }
+
+    public @Nullable Container getRunContainer()
+    {
+        return _container;
+    }
+
     @NotNull
     public JSONObject toJSON()
     {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("id", getId());
         jsonObject.put("runId", getRunId());
-        jsonObject.put("container", getContainer().getPath());
+        if (getRunContainer() != null)
+        {
+            jsonObject.put("container", getRunContainer().getPath());
+        }
         jsonObject.put("name", getName());
         jsonObject.put("valid", foundAllSampleFiles());
         jsonObject.put("sampleFiles", getSampleFilesJSON());

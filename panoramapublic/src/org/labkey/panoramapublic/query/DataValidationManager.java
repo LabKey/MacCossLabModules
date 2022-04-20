@@ -20,6 +20,7 @@ import org.labkey.api.pipeline.PipelineStatusFile;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
 import org.labkey.api.targetedms.ITargetedMSRun;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.Pair;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.PanoramaPublicManager;
@@ -151,7 +152,7 @@ public class DataValidationManager
                 && !PipelineJob.TaskStatus.cancelling.matches(status.getStatus());
     }
 
-    public static @Nullable Status getStatusForJobId(int jobId, Container container)
+    public static @Nullable Status getStatusForJobId(int jobId, Container container, User user)
     {
         var expAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(container);
         if (expAnnotations != null)
@@ -159,20 +160,20 @@ public class DataValidationManager
             SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("JobId"), jobId);
             filter.addCondition(FieldKey.fromParts("experimentAnnotationsId"), expAnnotations.getId());
             DataValidation validation = new TableSelector(PanoramaPublicManager.getTableInfoDataValidation(), filter, null).getObject(DataValidation.class);
-            return validation != null ? populateStatus(validation) : null;
+            return validation != null ? populateStatus(validation, user) : null;
         }
         return null;
     }
 
-    public static @Nullable Status getStatus(int validationId, Container container)
+    public static @Nullable Status getStatus(int validationId, Container container, User user)
     {
         DataValidation validation = getValidation(validationId, container);
-        return validation != null ? populateStatus(validation) : null;
+        return validation != null ? populateStatus(validation, user) : null;
     }
 
-    public static @NotNull Status getStatus(@NotNull DataValidation validation)
+    public static @NotNull Status getStatus(@NotNull DataValidation validation, User user)
     {
-        return populateStatus(validation);
+        return populateStatus(validation, user);
     }
 
     private static List<Long> getRunIdsForValidation(int validationId)
@@ -183,12 +184,12 @@ public class DataValidationManager
     }
 
     @NotNull
-    private static Status populateStatus(DataValidation validation)
+    private static Status populateStatus(DataValidation validation, User user)
     {
         Status status = new Status();
         status.setValidation(validation);
         SimpleFilter validationIdFilter = new SimpleFilter(FieldKey.fromParts("ValidationId"), validation.getId());
-        status.setSkylineDocs(getSkylineDocs(validationIdFilter));
+        status.setSkylineDocs(getSkylineDocs(validationIdFilter, user));
         status.setModifications(getModifications(validationIdFilter));
         status.setSpecLibs(getSpectrumLibraries(validationIdFilter));
         ExperimentAnnotations experimentAnnotations = ExperimentAnnotationsManager.get(validation.getExperimentAnnotationsId());
@@ -203,13 +204,18 @@ public class DataValidationManager
         return status;
     }
 
-    private static List<SkylineDoc> getSkylineDocs(SimpleFilter filter)
+    private static List<SkylineDoc> getSkylineDocs(SimpleFilter filter, User user)
     {
         List<SkylineDoc> docs = new TableSelector(PanoramaPublicManager.getTableInfoSkylineDocValidation(), filter, null).getArrayList(SkylineDoc.class);
         for (SkylineDoc doc: docs)
         {
             SimpleFilter skyDocFilter = new SimpleFilter(FieldKey.fromParts("SkylineDocValidationId"), doc.getId());
             doc.setSampleFiles(getSkylineDocSampleFiles(skyDocFilter));
+            ITargetedMSRun run = TargetedMSService.get().getRun(doc.getRunId(), user);
+            if (run != null)
+            {
+                doc.setRunContainer(run.getContainer());
+            }
         }
         return docs;
     }

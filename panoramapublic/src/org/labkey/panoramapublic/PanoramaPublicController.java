@@ -3149,7 +3149,7 @@ public class PanoramaPublicController extends SpringActionController
                     response.put("jobStatus", status.getStatus());
                 }
 
-                Status validationStatus = DataValidationManager.getStatus(form.getValidationId(), getContainer());
+                Status validationStatus = DataValidationManager.getStatus(form.getValidationId(), getContainer(), getUser());
                 if (validationStatus != null)
                 {
                     if (!validationStatus.getValidation().isComplete())
@@ -3240,7 +3240,7 @@ public class PanoramaPublicController extends SpringActionController
                 var latestValidation = DataValidationManager.getLatestValidation(_experimentAnnotations.getId(), getContainer());
                 if (latestValidation != null)
                 {
-                    HtmlView details = getValidationSummary(DataValidationManager.getStatus(latestValidation), _experimentAnnotations, getContainer(), getUser());
+                    HtmlView details = getValidationSummary(DataValidationManager.getStatus(latestValidation, getUser()), _experimentAnnotations, getContainer(), getUser());
                     view.addView(details);
                 }
                 else
@@ -3993,7 +3993,7 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, "Data is not valid for a ProteomeXchange submission.");
                 return;
             }
-            _validationStatus = DataValidationManager.getStatus(validation);
+            _validationStatus = DataValidationManager.getStatus(validation, getUser());
         }
 
         @Override
@@ -4319,7 +4319,7 @@ public class PanoramaPublicController extends SpringActionController
                 }
                 else
                 {
-                    var status = DataValidationManager.getStatus(dataValidation);
+                    var status = DataValidationManager.getStatus(dataValidation, getUser());
                     PxXmlWriter annWriter = new PxXmlWriter(out, false);
                     Submission submission = expAnnot.isJournalCopy() ? js.getSubmissionForCopiedExperiment(expAnnot.getId()) : js.getLatestCopiedSubmission();
                     PxExperimentAnnotations pxInfo = new PxExperimentAnnotations(expAnnot, js.getJournalExperiment(), submission, status);
@@ -4415,7 +4415,7 @@ public class PanoramaPublicController extends SpringActionController
                     return getStartDataValidationView("The last data validation (Id: " + dataValidation.getId() + ") is outdated. Cannot get the PX XML summary.",
                             expAnnot, getContainer());
                 }
-                var status = DataValidationManager.getStatus(dataValidation);
+                var status = DataValidationManager.getStatus(dataValidation, getUser());
                 StringBuilder summaryHtml = new StringBuilder();
                 PxHtmlWriter writer = new PxHtmlWriter(summaryHtml);
                 Submission submission = expAnnot.isJournalCopy() ? js.getSubmissionForCopiedExperiment(expAnnot.getId()) : js.getLatestSubmission();
@@ -5318,7 +5318,7 @@ public class PanoramaPublicController extends SpringActionController
             var latestValidation = DataValidationManager.getLatestValidation(exptAnnotations.getId(), getContainer());
             if (latestValidation != null && getContainer().hasPermission(getUser(), AdminPermission.class))
             {
-                HtmlView details = getValidationSummary(DataValidationManager.getStatus(latestValidation), exptAnnotations, getContainer(), getUser());
+                HtmlView details = getValidationSummary(DataValidationManager.getStatus(latestValidation, getUser()), exptAnnotations, getContainer(), getUser());
                 VBox view = new VBox(details);
                 Button viewAllButton = null;
                 if (DataValidationManager.getValidationJobCount(exptAnnotations.getId()) > 1)

@@ -30,7 +30,8 @@ public class ValidatorListener implements DataValidatorListener
     {
         _job.setStatus("Starting data validation");
         _log.info(String.format("Validating data for %d Skyline documents in %d folders", status.getSkylineDocs().size(),
-                status.getSkylineDocs().stream().map(SkylineDocValidation::getContainer).distinct().count()));
+                status.getSkylineDocs().stream().filter(doc -> doc.getRunContainer() != null)
+                        .map(SkylineDocValidator::getRunContainer).distinct().count()));
     }
 
     @Override

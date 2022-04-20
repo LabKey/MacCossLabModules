@@ -251,7 +251,6 @@ public class DataValidator
             SkylineDocValidator skyDoc = new SkylineDocValidator(run);
             skyDoc.setName(run.getFileName());
             skyDoc.setRunId(run.getId());
-            skyDoc.setContainer(run.getContainer());
             status.addSkylineDoc(skyDoc);
 
             skyDoc.addSampleFiles(targetedMsSvc);

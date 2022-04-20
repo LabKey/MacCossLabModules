@@ -403,7 +403,8 @@
     }
 
     function documentLink(documentName, containerPath, runId) {
-        return link(documentName, LABKEY.ActionURL.buildURL('targetedms', 'showPrecursorList', containerPath, {id: runId}));
+        // If there is no container path it means that the document or the containing container was deleted. Do not render a link in that case
+        return containerPath ? link(documentName, LABKEY.ActionURL.buildURL('targetedms', 'showPrecursorList', containerPath, {id: runId})) : documentName;
     }
 
     function experimentLink() {
@@ -576,6 +577,7 @@
                                 },
                                 peptidesLink: function (doc, dbModId, modType) {
                                     if (!modType) return;
+                                    if (!doc.container) return "Deleted";
                                     var modTypeUpper = modType.toUpperCase();
                                     var params = {
                                         'schemaName': 'panoramapublic'
@@ -699,7 +701,8 @@
                             // metadata.tdCls = iconCls;
                             metadata.style = 'text-align: center';
                             if (record.get('valid') === false) {
-                                return link('[Upload]', LABKEY.ActionURL.buildURL('project', 'begin', value, {pageId: 'Raw Data'}));
+                                // If container value is missing it means that the document or the containing container was deleted.
+                                return value ? link('[Upload]', LABKEY.ActionURL.buildURL('project', 'begin', value, {pageId: 'Raw Data'})) : "Deleted";
                             }
                             return "";
                         }

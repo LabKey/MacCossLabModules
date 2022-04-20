@@ -4,6 +4,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.junit.Test;
+import org.labkey.api.data.Container;
 import org.labkey.api.targetedms.ISampleFile;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
@@ -51,6 +52,11 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
     public ITargetedMSRun getRun()
     {
         return _run;
+    }
+
+    public Container getRunContainer()
+    {
+        return _run != null ? _run.getContainer() : null;
     }
 
     @Override
@@ -170,7 +176,7 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
     void validateSampleFiles(TargetedMSService svc)
     {
         List<ISampleFile> sampleFiles = getSampleFiles().stream().map(ValidatorSampleFile::getSampleFile).collect(Collectors.toList());
-        List<SampleFilePath> paths = svc.getSampleFilePaths(sampleFiles, getContainer(), false);
+        List<SampleFilePath> paths = svc.getSampleFilePaths(sampleFiles, getRunContainer(), false);
         Map<String, Path> pathMap = new HashMap<>();
         paths.forEach(p -> pathMap.put(p.getSampleFile().getFileName(), p.getPath()));
 

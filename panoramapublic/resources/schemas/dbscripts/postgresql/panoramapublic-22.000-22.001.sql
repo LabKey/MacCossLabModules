@@ -38,14 +38,12 @@ CREATE TABLE panoramapublic.SkylineDocValidation
     Id                         SERIAL NOT NULL,
     ValidationId               INT NOT NULL,
     RunId                      BIGINT NOT NULL, -- targetedms.runs.Id
-    Container                  ENTITYID NOT NULL, -- Container where the run lives. This could be a subfolder of the main experiment folder
     Name                       VARCHAR(300) NOT NULL, -- Name of the Skyline file
 
     CONSTRAINT PK_SkylineDocValidation PRIMARY KEY (Id),
     CONSTRAINT FK_SkylineDocValidation_DataValidation FOREIGN KEY (ValidationId) REFERENCES panoramapublic.DataValidation(Id)
 );
 CREATE INDEX IX_SkylineDocValidation_ValidationId ON panoramapublic.SkylineDocValidation(ValidationId);
-CREATE INDEX IX_SkylineDocValidation_Container ON panoramapublic.SkylineDocValidation(Container);
 CREATE INDEX IX_SkylineDocValidation_RunId ON panoramapublic.SkylineDocValidation(runId);
 
 
