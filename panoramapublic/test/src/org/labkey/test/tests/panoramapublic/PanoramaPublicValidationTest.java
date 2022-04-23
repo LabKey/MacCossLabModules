@@ -29,6 +29,13 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
     private static final String WIFF_SCAN_3 = WIFF_3 + ".scan";
     private static final String SKY_FILE_3 = "heavy_light_spectrum_matches_missing_blib.zip";
     private static final String SKY_FILE_4 = "heavy_light_spectrum_matches_w_NIST_BSA.sky.zip";
+    private static final String SKY_FILE_5 = "ambiguous_sample_files1.sky.zip";
+    private static final String SKY_FILE_6 = "ambiguous_sample_files2.sky.zip";
+    private static final String SKY_FILE_7 = "ambiguous_sample_files_replicates.sky.zip";
+    private static final String AGILENT_DATA_1 = "SIS_Data 1.d";
+    private static final String AGILENT_DATA_1_ZIP = AGILENT_DATA_1 + ".zip";
+    private static final String AGILENT_DATA_2 = "File1 A1.d";
+    private static final String AGILENT_DATA_2_ZIP = AGILENT_DATA_2 + ".zip";
 
     @Override
     public String getSampleDataFolder()
@@ -60,7 +67,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
 
         // Upload missing raw files. The Carboxymethylcysteine modification in the document does not have a Unimod Id.
         // Status should indicate that data is valid for an "incomplete" PX submission.
-        jobCount = uploadRawFilesVerifyCompleteStatus(jobCount);
+        jobCount = uploadRawFilesVerifyInCompleteStatus(jobCount);
 
         // Save the Unimod match for Carboxymethylcysteine. Status should indicate that data is valid for a "complete" PX submission.
         saveUnimodMatchVerifyCompleteStatus();
@@ -75,6 +82,51 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         verifyMissingBlibAndUnsupportedLibrary(jobCount);
     }
 
+    @Test
+    public void testSampleFileValidation()
+    {
+        // Set up our source folder.
+        String projectName = getProjectName();
+        String folderName = "Folder 2";
+        String experimentTitle = "This is an experiment to test sample file validation";
+        setupSourceFolder(projectName, folderName, SUBMITTER);
+        impersonate(SUBMITTER);
+        updateSubmitterAccountInfo("One");
+
+        // Upload documents
+        int jobCount = 0;
+        importData(SKY_FILE_5, ++jobCount);
+        importData(SKY_FILE_6, ++jobCount);
+        importData(SKY_FILE_7, ++jobCount);
+
+        // Add the "Targeted MS Experiment" webpart
+        createExperimentCompleteMetadata(experimentTitle);
+
+        // Upload raw data
+        uploadRawFiles(AGILENT_DATA_1_ZIP, AGILENT_DATA_2_ZIP);
+
+        // Run validation job and verify the results
+        DataValidationPage validationPage = submitValidationJob();
+        jobCount++;
+
+        validationPage.verifyInvalidStatus();
+        validationPage.verifySampleFileStatus(SKY_FILE_5,
+                List.of(AGILENT_DATA_2), // File1 A1.d is imported into two documents from different paths but the
+                                         // acquired times of the two files are the same. Will not be marked as "ambiguous".
+                List.of("File1 A10.d"),  // Missing
+                List.of(AGILENT_DATA_1)); // SIS_Data 1.d is imported from different paths into two Skyline documents.
+                                          // The acquired times are also different in the two documents. This will be marked "ambiguous".
+        validationPage.verifySampleFileStatus(SKY_FILE_6,
+                Collections.emptyList(),
+                List.of("File2 A1.d"),    // Missing
+                List.of(AGILENT_DATA_1)); // Marked a ambiguous.
+        validationPage.verifySampleFileStatus(SKY_FILE_7,
+                List.of(AGILENT_DATA_2), // File1 A1.d also imported into another document from a different path. But not marked
+                                         // as ambiguous since the acquired times of the two files are the same.
+                List.of("File2 A1.d"),   // Missing
+                List.of(AGILENT_DATA_1)); // Marked as ambiguous
+    }
+
     private int verifyInvalidStatus(int jobCount)
     {
         var validationPage = submitValidationJob();
@@ -84,7 +136,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         return jobCount;
     }
 
-    private int uploadRawFilesVerifyCompleteStatus(int jobCount)
+    private int uploadRawFilesVerifyInCompleteStatus(int jobCount)
     {
         // Upload the missing raw files
         uploadRawFiles(WIFF_1, WIFF_SCAN_1);

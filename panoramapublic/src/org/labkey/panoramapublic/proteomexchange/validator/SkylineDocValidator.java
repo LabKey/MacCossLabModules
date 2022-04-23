@@ -14,6 +14,8 @@ import org.labkey.panoramapublic.model.validation.SkylineDocValidation;
 import org.labkey.panoramapublic.model.validation.SkylineDocSampleFile;
 
 import java.nio.file.Path;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -24,14 +26,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.labkey.panoramapublic.proteomexchange.validator.ValidatorSampleFile.*;
+
 public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFile>
 {
     private final List<ValidatorSampleFile> _sampleFiles;
     private ITargetedMSRun _run;
-
-    private static final String DOT_WIFF = ".wiff";
-    private static final String DOT_WIFF2 = ".wiff2";
-    private static final String DOT_SCAN = ".scan";
 
     public SkylineDocValidator()
     {
@@ -67,107 +67,80 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
 
     void addSampleFiles(TargetedMSService svc)
     {
-        List<ValidatorSampleFile> docSampleFile = getDocSampleFiles(svc.getSampleFiles(getRunId()));
-        docSampleFile.forEach(this::addSampleFile);
+        var sampleFileList = svc.getSampleFiles(getRunId());
+        List<ValidatorSampleFile> docSampleFiles = new ArrayList<>();
+        for (ISampleFile sf: sampleFileList)
+        {
+            ValidatorSampleFile vsf = new ValidatorSampleFile(sf);
+            docSampleFiles.add(vsf);
+            addWiffScanIfWiff(docSampleFiles, vsf);
+        }
+        docSampleFiles.forEach(this::addSampleFile);
     }
 
-    private static List<ValidatorSampleFile> getDocSampleFiles(List<? extends ISampleFile> sampleFiles)
+    private static List<ValidatorSampleFile> getUniqueDocSampleFiles(List<ValidatorSampleFile> sampleFiles)
     {
-        Set<String> pathsImported = new HashSet<>(); // File paths that were imported in the Skyline document
-                                                     // The same sample file may be imported into more than one replicate
-                                                     // in the same Skyline document.
-        Set<String> sciexWiffFileNames = new HashSet<>();
-
         List<ValidatorSampleFile> docSampleFiles = new ArrayList<>();
+        Set<SampleFileKey> sampleFileKeys = new HashSet<>();
 
-        for (ISampleFile s: sampleFiles)
+        for (ValidatorSampleFile sampleFile: sampleFiles)
         {
-            ValidatorSampleFile sampleFile = new ValidatorSampleFile(s);
-            if (!isSciexWiff(s.getFileName()))
+            if (sampleFileKeys.contains(sampleFile.getKey()))
             {
-                if (!pathsImported.contains(s.getFilePath()))
-                {
-                    docSampleFiles.add(sampleFile);
-                    pathsImported.add(s.getFilePath());
-                }
+                continue;
             }
-            else
-            {
-                String sciexSampleFilePath = getSciexSampleFilePath(s);
-                if (sciexWiffFileNames.contains(sampleFile.getName()) && pathsImported.contains(sciexSampleFilePath))
-                {
-                    // Multi-injection SCIEX wiff files will have the same file name but different file_path attribute in the .sky XML.
-                    // For <sample_file id="_6ProtMix_QC_03_f0" file_path="D:\Data\CPTAC_Study9s\Site52_041009_Study9S_Phase-I.wiff|Site52_STUDY9S_PHASEI_6ProtMix_QC_03|2"
-                    // ISampleFile.getFileName() -> Site52_041009_Study9S_Phase-I.wiff
-                    // ISampleFile.getFilePath() -> D:\Data\CPTAC_Study9s\Site52_041009_Study9S_Phase-I.wiff|Site52_STUDY9S_PHASEI_6ProtMix_QC_03|2
-                    // We don't want to add this again to the list of document sample files if this is from a multi-injection wiff
-                    continue;
-                }
+            sampleFileKeys.add(sampleFile.getKey());
+            docSampleFiles.add(sampleFile);
 
-                sciexWiffFileNames.add(sampleFile.getName());
-                pathsImported.add(sciexSampleFilePath);
-                docSampleFiles.add(sampleFile);
-
-                // For a SCIEX wiff file we will also add a corresponding .wiff.scan file
-                ValidatorSampleFile wiffScanFile = new ValidatorSampleFile(new AbstractSampleFile()
-                {
-                    @Override
-                    public String getFileName()
-                    {
-                        return s.getFileName() + DOT_SCAN;
-                    }
-
-                    @Override
-                    public String getFilePath()
-                    {
-                        return addDotScanToPath(s);
-                    }
-
-                    @Override
-                    public Long getInstrumentId()
-                    {
-                        return s.getInstrumentId();
-                    }
-                });
-                docSampleFiles.add(wiffScanFile);
-            }
+            addWiffScanIfWiff(docSampleFiles, sampleFile);
         }
         return docSampleFiles;
     }
 
-    private static boolean isSciexWiff(String fileName)
+    private static void addWiffScanIfWiff(List<ValidatorSampleFile> docSampleFiles, ValidatorSampleFile sampleFile)
     {
-        return fileName.toLowerCase().endsWith(DOT_WIFF) || fileName.toLowerCase().endsWith(DOT_WIFF2);
+        if (sampleFile.isSciexWiff())
+        {
+            // For a SCIEX wiff file we will also add a corresponding .wiff.scan file
+            ValidatorSampleFile wiffScanFile = new ValidatorSampleFile(new AbstractSampleFile()
+            {
+                @Override
+                public String getFileName()
+                {
+                    return sampleFile.getFileName() + DOT_SCAN;
+                }
+
+                @Override
+                public long getId()
+                {
+                    return sampleFile.getSampleFile().getId();
+                }
+
+                @Override
+                public long getReplicateId()
+                {
+                    return sampleFile.getSampleFile().getReplicateId();
+                }
+
+                @Override
+                public String getFilePath()
+                {
+                    return addDotScanToPath(sampleFile);
+                }
+
+                @Override
+                public Long getInstrumentId()
+                {
+                    return sampleFile.getSampleFile().getInstrumentId();
+                }
+            });
+            docSampleFiles.add(wiffScanFile);
+        }
     }
 
-    // D:\Data\Site52_041009_Study9S_Phase-I.wiff|Site52_STUDY9S_PHASEI_6ProtMix_QC_03|2 -> D:\Data\Site52_041009_Study9S_Phase-I.wiff
-    private static String getSciexSampleFilePath(ISampleFile file)
+    private static String addDotScanToPath(ValidatorSampleFile sampleFile)
     {
-        String filePath = file.getFilePath();
-        int idx = filePath.indexOf(file.getFileName());
-        if (idx != -1)
-        {
-            // Example: D:\Data\Site52_041009_Study9S_Phase-I.wiff|Site52_STUDY9S_PHASEI_6ProtMix_QC_03|2
-            // We want D:\Data\Site52_041009_Study9S_Phase-I.wiff
-            return filePath.substring(0, idx + file.getFileName().length());
-        }
-        return filePath;
-    }
-
-    private static String addDotScanToPath(ISampleFile sampleFile)
-    {
-        String ext = sampleFile.getFileName().toLowerCase().endsWith(DOT_WIFF) ? DOT_WIFF : DOT_WIFF2;
-        String filePath = sampleFile.getFilePath();
-        int idx = filePath.toLowerCase().indexOf(ext);
-        if (idx != -1)
-        {
-            // Path may be for a multi-injection wiff file.
-            // Example: D:\Data\Site52_041009_Study9S_Phase-I.wiff|Site52_STUDY9S_PHASEI_6ProtMix_QC_03|2
-            return filePath.substring(0, idx + ext.length())
-                    + DOT_SCAN
-                    + filePath.substring(idx + ext.length());
-        }
-        return filePath;
+        return ValidatorSampleFile.addDotScanToWiffPath(sampleFile.getFileName(), sampleFile.getFilePathImported());
     }
 
     /**
@@ -180,20 +153,10 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
         Map<String, Path> pathMap = new HashMap<>();
         paths.forEach(p -> pathMap.put(p.getSampleFile().getFileName(), p.getPath()));
 
-        Set<String> duplicateSkylineSampleFileNames = getDuplicateSkylineSampleFileNames(getSampleFiles());
         for (SkylineDocSampleFile sampleFile : getSampleFiles())
         {
-            if (duplicateSkylineSampleFileNames.contains(sampleFile.getName()))
-            {
-                // We do not allow sample files with the same name but different paths imported into separate
-                // replicates. Skyline allows this but it can get confusing even for the user.
-                sampleFile.setPath(DataFile.AMBIGUOUS);
-            }
-            else
-            {
-                Path path = pathMap.get(sampleFile.getName());
-                sampleFile.setPath(path != null ? path.toString() : DataFile.NOT_FOUND);
-            }
+            Path path = pathMap.get(sampleFile.getName());
+            sampleFile.setPath(path != null ? path.toString() : DataFile.NOT_FOUND);
         }
     }
 
@@ -305,54 +268,63 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
 
         private void testAddDotScan(String fileName, String injection, boolean isSciex)
         {
-            ISampleFile file = createFile("D:\\Data\\" + fileName + injection);
+            var file = createFile("D:\\Data\\" + fileName + injection);
             assertEquals("D:\\Data\\" + fileName + (isSciex ? DOT_SCAN : "") + injection, addDotScanToPath(file));
         }
 
         @Test
-        public void testGetDocSampleFiles()
+        public void testGetDocSampleFiles() throws ParseException
         {
+            Date date1 = new SimpleDateFormat("yyyy/MM/dd").parse("2021/03/28");
+            Date date2 = new SimpleDateFormat("yyyy/MM/dd").parse("2021/04/18");
             // file1 and file1_dup are the same file. The file may have been imported into two different replicate in the document. Add it only once
             // Count 1
-            ISampleFile file1 = createFile("D:\\Data\\Thermo1.raw");
-            ISampleFile file1_dup = createFile("D:\\Data\\Thermo1.raw");
+            var file1 = createFile("D:\\Data\\Thermo1.raw");
+            var file1_dup = createFile("D:\\Data\\Thermo1.raw");
             // Sample file has the same file name but different path from file1 and file1_dup. This should get added
             // Count 2
-            ISampleFile file1_dup_diff_path = createFile("D:\\Data\\Subfolder\\Thermo1.raw");
+            var file1_dup_diff_path = createFile("D:\\Data\\Subfolder\\Thermo1.raw");
             // Count 3
-            ISampleFile file2 = createFile("D:\\Data\\Thermo2.raw");
+            var file2 = createFile("D:\\Data\\Thermo2.raw", date1, "SERIAL1");
+            // Sample file has the same file name and path but different date. If the name and file path are the same the files are considered equal
+            var file2_dup_diff_time = createFile("D:\\Data\\Thermo2.raw", date2, "SERIAL2");
+            // Sample file has the same file name, different path but same acquisition date. This will be considered equal
+            var file2_dup_diff_path_same_date = createFile("E:\\Data\\Thermo2.raw", date1, "SERIAL1");
+            // Sample file has the same file different path and acquisition date. This should get added
+            // Count 4
+            var file2_dup_diff_path_diff_date = createFile("E:\\Data\\Thermo2.raw", date2, "SERIAL2");
             // wiff1 and wiff1_dup are the same file. The file may have been imported into two different replicate in the document. Add it only once
             // A wiff.scan will also be added
-            // Count 5
-            ISampleFile wiff1 = createFile("D:\\Data\\Sciex1.wiff");
-            ISampleFile wiff1_dup = createFile("D:\\Data\\Sciex1.wiff");
+            // Count 6
+            var wiff1 = createFile("D:\\Data\\Sciex1.wiff");
+            var wiff1_dup = createFile("D:\\Data\\Sciex1.wiff");
             // Sample file has the same file name but different path from wiff1 and wiff1_dup. This should get added + a wiff.scan
-            // Count 7
-            ISampleFile wiff1_dup_diff_path = createFile("D:\\Data\\Subfolder\\Sciex1.wiff");
-            // Count 9 (wiff + wiff.scan)
-            ISampleFile wiff2 = createFile("D:\\Data\\Sciex2.wiff");
+            // Count 8
+            var wiff1_dup_diff_path = createFile("D:\\Data\\Subfolder\\Sciex1.wiff");
+            // Count 10 (wiff + wiff.scan)
+            var wiff2 = createFile("D:\\Data\\Sciex2.wiff");
             // Multi inject wiff files. Will get added only once + wiff.scan
-            // Count 11
-            ISampleFile multiInjectWiff1_0 = createFile("D:\\Data\\Sciex_multi_1.wiff|injection01|0");
-            ISampleFile multiInjectWiff1_1 = createFile("D:\\Data\\Sciex_multi_1.wiff|injection02|1");
-            ISampleFile multiInjectWiff1_2 = createFile("D:\\Data\\Sciex_multi_1.wiff|injection03|2");
+            // Count 12
+            var multiInjectWiff1_0 = createFile("D:\\Data\\Sciex_multi_1.wiff|injection01|0");
+            var multiInjectWiff1_1 = createFile("D:\\Data\\Sciex_multi_1.wiff|injection02|1");
+            var multiInjectWiff1_2 = createFile("D:\\Data\\Sciex_multi_1.wiff|injection03|2");
             // Sample file has the same file name but different path from the multi injection files above. This should get dded (+ wiff.scan)
-            // Count 13
-            ISampleFile multiInjectWiff1_0_diff_path = createFile("D:\\Data\\Subfolder\\Sciex_multi_1.wiff|injection01|0");
-            // file3 and file3_dup are the same file. The file may have been imported into two different replicate in the document. Add it only once
             // Count 14
-            ISampleFile file3 = createFile("D:\\Data\\Thermo3.raw");
-            ISampleFile file3_dup = createFile("D:\\Data\\Thermo3.raw");
+            var multiInjectWiff1_0_diff_path = createFile("D:\\Data\\Subfolder\\Sciex_multi_1.wiff|injection01|0");
+            // file3 and file3_dup are the same file. The file may have been imported into two different replicate in the document. Add it only once
+            // Count 15
+            var file3 = createFile("D:\\Data\\Thermo3.raw");
+            var file3_dup = createFile("D:\\Data\\Thermo3.raw");
 
-            List<ValidatorSampleFile> docSampleFiles = getDocSampleFiles(List.of(file1, file1_dup, file1_dup_diff_path,
-                    file2,
+            List<ValidatorSampleFile> docSampleFiles = getUniqueDocSampleFiles(List.of(file1, file1_dup, file1_dup_diff_path,
+                    file2, file2_dup_diff_time, file2_dup_diff_path_same_date, file2_dup_diff_path_diff_date,
                     file3, file3_dup,
                     wiff1, wiff1_dup, wiff1_dup_diff_path,
                     wiff2,
                     multiInjectWiff1_0, multiInjectWiff1_1, multiInjectWiff1_2, multiInjectWiff1_0_diff_path));
 
-            List<ISampleFile> expected = List.of(file1, file1_dup_diff_path,
-                    file2,
+            List<ValidatorSampleFile> expected = List.of(file1, file1_dup_diff_path,
+                    file2, file2_dup_diff_path_diff_date,
                     file3,
                     wiff1, wiff1_dup_diff_path,
                     wiff2,
@@ -361,17 +333,21 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
             assertEquals("Unexpected sample file count", expected.size() + 5, docSampleFiles.size());
 
             // Non-Sciex files
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 5; i++)
             {
                 assertEquals("Unexpected sample file name", expected.get(i).getFileName(), docSampleFiles.get(i).getName());
                 assertEquals("Unexpected sample file path", expected.get(i).getFilePath(), docSampleFiles.get(i).getFilePathImported());
+                assertEquals("Unexpected acquisition time", expected.get(i).getSampleFile().getAcquiredTime(),
+                        docSampleFiles.get(i).getSampleFile().getAcquiredTime());
+                assertEquals("Unexpected instrument serial number", expected.get(i).getSampleFile().getInstrumentSerialNumber(),
+                        docSampleFiles.get(i).getSampleFile().getInstrumentSerialNumber());
             }
             // Sciex files
-            int j = 4;
-            for (int i = 4; i < docSampleFiles.size();)
+            int j = 5;
+            for (int i = 5; i < docSampleFiles.size();)
             {
                 assertEquals("Unexpected wiff file name", expected.get(j).getFileName(), docSampleFiles.get(i).getName());
-                assertEquals("Unexpected wiff file path", expected.get(j).getFilePath(), docSampleFiles.get(i).getFilePathImported());
+                assertEquals("Unexpected wiff file path", expected.get(j).getFilePathImported(), docSampleFiles.get(i).getFilePathImported());
                 String wiffScanName = expected.get(j).getFileName() + DOT_SCAN;
                 String wiffScanPath = addDotScanToPath(expected.get(j));
                 assertEquals("Unexpected wiff.scan file name", wiffScanName, docSampleFiles.get(++i).getName());
@@ -380,17 +356,34 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
             }
 
             Set<String> duplicateNames = SkylineDocValidator.getDuplicateSkylineSampleFileNames(docSampleFiles);
-            Set<String> expectedDuplicates = Set.of(file1.getFileName(),
+            Set<String> expectedDuplicates = Set.of(file1.getFileName(),file2.getFileName(),
                     wiff1.getFileName(), wiff1.getFileName() + DOT_SCAN,
                     multiInjectWiff1_0.getFileName(), multiInjectWiff1_0.getFileName() + DOT_SCAN);
             assertEquals(expectedDuplicates.size(), duplicateNames.size());
             assertTrue(duplicateNames.containsAll(expectedDuplicates));
         }
 
-        private ISampleFile createFile(String path)
+        private ValidatorSampleFile createFile(String path)
         {
-            return new AbstractSampleFile()
+            return createFile(path, null, null);
+        }
+
+        private ValidatorSampleFile createFile(String path, Date acquiredTime, String instrumentSerialNumber)
+        {
+            var iSampleFile = new AbstractSampleFile()
             {
+                @Override
+                public long getId()
+                {
+                    return 0;
+                }
+
+                @Override
+                public long getReplicateId()
+                {
+                    return 0;
+                }
+
                 @Override
                 public String getFilePath()
                 {
@@ -402,7 +395,20 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
                 {
                     return null;
                 }
+
+                @Override
+                public Date getAcquiredTime()
+                {
+                    return acquiredTime;
+                }
+
+                @Override
+                public String getInstrumentSerialNumber()
+                {
+                    return instrumentSerialNumber;
+                }
             };
+            return new ValidatorSampleFile(iSampleFile);
         }
     }
 }

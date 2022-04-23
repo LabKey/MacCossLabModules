@@ -74,6 +74,11 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
 
     public void verifySampleFileStatus(String skylineDocName, List<String> found, List<String> missing)
     {
+        verifySampleFileStatus(skylineDocName, found, missing, Collections.emptyList());
+    }
+
+    public void verifySampleFileStatus(String skylineDocName, List<String> found, List<String> missing, List<String> ambiguous)
+    {
         var panel = elementCache().skyDocsPanel;
         scrollIntoView(panel);
         expandSkyDocRow(panel, skylineDocName);
@@ -88,6 +93,10 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         for (var file: found)
         {
             verifyFileStatus(sampleFilesTable, file, false);
+        }
+        for (var file: ambiguous)
+        {
+            verifyFileStatus(sampleFilesTable, file, true, "AMBIGUOUS");
         }
     }
 
@@ -113,11 +122,16 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
 
     private void verifyFileStatus(WebElement sampleFilesTable, String file, boolean missing)
     {
+        verifyFileStatus(sampleFilesTable, file, missing, missing ? "MISSING" : "FOUND");
+    }
+
+    private void verifyFileStatus(WebElement sampleFilesTable, String file, boolean invalid, String statusString)
+    {
         sampleFilesTable.findElement(
                 Locator.XPathLocator.tag("tbody").child("tr")
-                .child(Locator.tag("td").withText(file))
-                .followingSibling("td")
-                .child(Locator.tag("span").withClass(missing ? "pxv-invalid" : "pxv-valid")));
+                        .child(Locator.tag("td").withText(file))
+                        .followingSibling("td")
+                        .child(Locator.tag("span").withClass(invalid ? "pxv-invalid" : "pxv-valid").withText(statusString)));
     }
 
     public void verifySpectralLibraryStatus(String libraryFile, String fileSize, String statusText,

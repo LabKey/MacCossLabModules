@@ -3,6 +3,9 @@ package org.labkey.panoramapublic.model.validation;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.labkey.api.data.Container;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
 import java.util.Collections;
 import java.util.List;
@@ -97,18 +100,21 @@ public class Status extends GenericValidationStatus <SkylineDoc, SpecLib>
         validationJson.put("sampleFilesValid", foundAllSampleFiles());
         validationJson.put("specLibsComplete", specLibsComplete());
 
+        int expAnnotationsId = getValidation().getExperimentAnnotationsId();
+        ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(expAnnotationsId);
+        Container expContainer = expAnnotations != null ? expAnnotations.getContainer() : null;
         jsonObject.put("validation", validationJson);
-        jsonObject.put("skylineDocuments", getSkylineDocsJSON());
+        jsonObject.put("skylineDocuments", getSkylineDocsJSON(expContainer));
         Map<Integer, SkylineDoc> docMap = getSkylineDocs().stream().collect(Collectors.toMap(SkylineDocValidation::getId, Function.identity()));
         jsonObject.put("modifications", getModificationsJSON(docMap));
-        jsonObject.put("spectrumLibraries", getSpectralLibrariesJSON(docMap));
+        jsonObject.put("spectrumLibraries", getSpectralLibrariesJSON(docMap, expContainer));
         return jsonObject;
     }
 
-    private JSONArray getSkylineDocsJSON()
+    private JSONArray getSkylineDocsJSON(Container experimentContainer)
     {
         JSONArray result = new JSONArray();
-        getSkylineDocs().stream().map(SkylineDoc::toJSON).forEach(result::put);
+        getSkylineDocs().stream().map(doc -> doc.toJSON(experimentContainer)).forEach(result::put);
         return result;
     }
 
@@ -146,12 +152,12 @@ public class Status extends GenericValidationStatus <SkylineDoc, SpecLib>
         return docMod;
     }
 
-    private JSONArray getSpectralLibrariesJSON(Map<Integer, SkylineDoc> docMap)
+    private JSONArray getSpectralLibrariesJSON(Map<Integer, SkylineDoc> docMap, Container expContainer)
     {
         JSONArray result = new JSONArray();
         for (SpecLib specLib: getSpectralLibraries())
         {
-            JSONObject json = specLib.toJSON();
+            JSONObject json = specLib.toJSON(expContainer);
             JSONArray docsJson = new JSONArray();
             for (SkylineDocSpecLib skyDocLib: specLib.getDocsWithLibrary())
             {

@@ -5,7 +5,10 @@ import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.labkey.api.data.Container;
+import org.labkey.api.files.FileContentService;
+import org.labkey.panoramapublic.proteomexchange.validator.DataValidator;
 
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
@@ -37,7 +40,7 @@ public class SkylineDoc extends SkylineDocValidation<SkylineDocSampleFile>
     }
 
     @NotNull
-    public JSONObject toJSON()
+    public JSONObject toJSON(Container experimentContainer)
     {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("id", getId());
@@ -45,6 +48,11 @@ public class SkylineDoc extends SkylineDocValidation<SkylineDocSampleFile>
         if (getRunContainer() != null)
         {
             jsonObject.put("container", getRunContainer().getPath());
+            if (experimentContainer != null)
+            {
+                String relPath = "/" + experimentContainer.getParsedPath().relativize(getRunContainer().getParsedPath()).getName();
+                jsonObject.put("rel_container", relPath);
+            }
         }
         jsonObject.put("name", getName());
         jsonObject.put("valid", foundAllSampleFiles());
@@ -58,7 +66,7 @@ public class SkylineDoc extends SkylineDocValidation<SkylineDocSampleFile>
         JSONArray result = new JSONArray();
         for (SkylineDocSampleFile sampleFile: getSampleFiles())
         {
-            result.put(sampleFile.toJSON());
+            result.put(sampleFile.toJSON(getRunContainer()));
         }
         return result;
     }

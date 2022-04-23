@@ -227,24 +227,11 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
     {
         for (Container container: containers)
         {
-            java.nio.file.Path rawFilesDir = getRawFilesDirPath(container, fcs);
+            java.nio.file.Path rawFilesDir = DataValidator.getRawFilesDirPath(container, fcs);
             Path path = findInDirectoryTree(rawFilesDir, name, isMaxquant);
             if (path != null)
             {
                 return path;
-            }
-        }
-        return null;
-    }
-
-    private static java.nio.file.Path getRawFilesDirPath(Container c, FileContentService fcs)
-    {
-        if(fcs != null)
-        {
-            java.nio.file.Path fileRoot = fcs.getFileRootPath(c, FileContentService.ContentType.files);
-            if (fileRoot != null)
-            {
-                return fileRoot.resolve(TargetedMSService.RAW_FILES_DIR);
             }
         }
         return null;

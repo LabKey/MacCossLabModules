@@ -7,6 +7,8 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.api.action.SpringActionController" %>
 <%@ page import="org.labkey.panoramapublic.model.Submission" %>
+<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
+<%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%!
@@ -100,6 +102,8 @@
     var view = (JspView<PanoramaPublicController.PxValidationStatusBean>) HttpView.currentView();
     var bean = view.getModelBean();
     int experimentAnnotationsId = bean.getDataValidation().getExperimentAnnotationsId();
+    ExperimentAnnotations experimentAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
+    boolean includeSubfolders = experimentAnnotations != null && experimentAnnotations.isIncludeSubfolders();
     int jobId = bean.getDataValidation().getJobId();
     Integer journalId = bean.getJournalId();
     var submitAction = SpringActionController.getActionName(PanoramaPublicController.PublishExperimentAction.class);
@@ -624,7 +628,7 @@
         if (json["skylineDocuments"]) {
             var skylineDocsStore = Ext4.create('Ext.data.Store', {
                 storeId: 'skylineDocsStore',
-                fields: ['id', 'runId', 'name', 'container', 'valid', 'sampleFiles'],
+                fields: ['id', 'runId', 'name', 'container', 'rel_container', 'valid', 'sampleFiles'],
                 data: json,
                 proxy: {
                     type: 'memory',
@@ -635,11 +639,11 @@
                 },
                 sorters: [
                     {
-                        property: 'valid',
+                        property: 'container',
                         direction: 'ASC'
                     },
                     {
-                        property: 'container',
+                        property: 'valid',
                         direction: 'ASC'
                     },
                     {
@@ -706,7 +710,21 @@
                             }
                             return "";
                         }
-                    }],
+                    },
+                    <% if (includeSubfolders) { %>
+                    {
+                        text: 'Folder',
+                        sortable: false,
+                        hideable: false,
+                        width: 250,
+                        dataIndex: 'rel_container',
+                        renderer: function (value, metadata, record) {
+                            metadata.style = 'text-align: left';
+                            return value;
+                        }
+                    }
+                    <% } %>
+                    ],
                 plugins: [{
                     ptype: 'rowexpander',
                     rowBodyTpl: new Ext4.XTemplate(
@@ -714,7 +732,7 @@
                             '<div class="pxv-grid-expanded-row">', '{[this.renderTable(values.sampleFiles)]}', '</div>',
                             {
                                 renderTable: function(sampleFiles) {
-                                    return dataFilesTableTpl.apply({files: sampleFiles, tblCls: 'sample-files-status', title: ''});
+                                    return sampleFilesTableTpl.apply({files: sampleFiles, tblCls: 'sample-files-status'});
                                 },
                                 compiled:true
                             }
@@ -867,7 +885,7 @@
                                     return '<span class="' + cls + '">' + status + '</span>';
                                 },
                                 renderTable: function(dataFiles, tblCls, title) {
-                                    return dataFilesTableTpl.apply({files: dataFiles, tblCls: tblCls, title: title});
+                                    return libSourceFilesTableTpl.apply({files: dataFiles, tblCls: tblCls, title: title});
                                 },
                                 docLink: function (doc) {
                                     return documentLink(doc.name, doc.container, doc.runId);
@@ -883,24 +901,54 @@
         return {xtype: 'label', text: 'Missing JSON for property "spectrumLibraries"'};
     }
 
-    var dataFilesTableTpl = new Ext4.XTemplate(
-            '<tpl if="title.length &gt; 0">', '<div class="pxv-tpl-table-title">{title}</div>', '</tpl>',
+    var sampleFilesTableTpl = new Ext4.XTemplate(
             '<table class="{tblCls} pxv-tpl-table">',
+            '<thead><tr><th>Replicate</th><th>File</th><th>Status</th><th>Path</th><tr></thead>',
             '<tpl for="files">',
-            '<tr> <td>{name}</td> {[this.renderStatus(values)]} </tr>', // tdTpl.apply(['{name}']),
+            '<tr> <td>{replicate}</td> <td>{name}</td> {[this.renderStatus(values)]}  <td>{[this.renderPath(values)]}</td></tr>', // tdTpl.apply(['{name}']),
             '</tpl>',
             '</table>',
+            '<div>{container}</div>',
             {
-                renderStatus: function (values) {
-                    var cls = values.found === true ? 'pxv-valid' : 'pxv-invalid';
-                    var status = "FOUND";
-                    if (values.found === false) status = "MISSING";
-                    if (values.ambiguous === true) status = "AMBIGUOUS";
-                    return '<td><span class="' + cls + '">' + status + '</span></td>';
+                renderStatus: function (values) { return renderFileStatus(values, true) },
+                renderPath: function (values) {
+                    // return values.path;
+                    if (values.ambiguous === true && values.container) {
+                        let params = {
+                            'schemaName': 'panoramapublic',
+                            'query.queryName': 'ExperimentSampleFiles',
+                            'query.File~eq': values.name
+                        };
+                        const href = LABKEY.ActionURL.buildURL('query', 'executeQuery', values.container, params)
+                        return link("[Ambiguous Files]", href);
+                    }
+                    else return values.path;
                 },
                 compiled:true, disableFormats:true
             }
     );
+
+    var libSourceFilesTableTpl = new Ext4.XTemplate(
+            '<tpl if="title.length &gt; 0">', '<div class="pxv-tpl-table-title">{title}</div>', '</tpl>',
+            '<table class="{tblCls} pxv-tpl-table">',
+            '<thead><tr><th>File</th><th>Status</th><th>Path</th><tr></thead>',
+            '<tpl for="files">',
+            '<tr> <td>{name}</td> {[this.renderStatus(values)]}  <td>{path}</td></tr>',
+            '</tpl>',
+            '</table>',
+            {
+                renderStatus: function (values) { return renderFileStatus(values, false) },
+                compiled:true, disableFormats:true
+            }
+    );
+
+    renderFileStatus: function renderFileStatus(values, isSampleFile, container) {
+        const cls = values.found === true ? 'pxv-valid' : 'pxv-invalid';
+        let status = "FOUND";
+        if (values.found === false) status = "MISSING";
+        if (values.ambiguous === true) status = "AMBIGUOUS";
+        return '<td><span class="' + cls + '">' + status + '</span></td>';
+    }
 
     var headerRowTpl = new Ext4.XTemplate(
             '<thead> <tr> <tpl for="."> <th>{.}</th> </tpl> </tr> </thead>',

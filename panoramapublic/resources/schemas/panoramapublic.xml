@@ -489,6 +489,13 @@
                     <fkTable>SkylineDocValidation</fkTable>
                 </fk>
             </column>
+            <column columnName="SampleFileId">
+                <fk>
+                    <fkColumnName>Id</fkColumnName>
+                    <fkDbSchema>targetedms</fkDbSchema>
+                    <fkTable>SampleFile</fkTable>
+                </fk>
+            </column>
             <column columnName="Name"/>
             <column columnName="FilePathImported">
                 <description>Path of the file imported into the Skyline document</description>
