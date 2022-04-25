@@ -144,7 +144,7 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
     {
         if (isMissingInSkyZip())
         {
-            return "Library file missing from Skyline .zip";
+            return "Library file is missing from the Skyline document ZIP file";
         }
         if (isAssayLibrary())
         {

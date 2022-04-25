@@ -333,14 +333,19 @@ public class DataValidationManager
                 try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
                 {
                     Table.update(user, PanoramaPublicManager.getTableInfoModificationValidation(), modification, modification.getId());
-                    modsChangedRecalculateStatus(latestValidation, user);
+                    recalculateStatus(latestValidation, user);
                     transaction.commit();
                 }
             }
         }
     }
 
-    private static void modsChangedRecalculateStatus(DataValidation validation, User user)
+    /*
+        Call this method if the status of the modifications or spectral libraries likely changed because the user added
+        a Unimod Id to a modification, or deleted a saved Unimod Id, or deleted information for a spectral library.
+        The validation status will not be updated if the current status is PxStatus.NotValid (missing raw data files).
+    */
+    private static void recalculateStatus(DataValidation validation, User user)
     {
         PxStatus status = validation.getStatus();
         if (status != null && status.ordinal() >= PxStatus.IncompleteMetadata.ordinal())
@@ -349,13 +354,12 @@ public class DataValidationManager
             // In this case any changes to modification validation will not change the final status.
             // Update the status only if the current status is PxStatus.IncompleteMetadata or PxStatus.Complete
             SimpleFilter validationIdFilter = new SimpleFilter(FieldKey.fromParts("ValidationId"), validation.getId());
-            var specLibs = getSpectrumLibraries(validationIdFilter);
-            if (specLibs.stream().anyMatch(lib -> !lib.isValid()))
-            {
-                return; // If there are any incomplete spectral libraries then status will remain PxStatus.IncompleteMetadata
-            }
+
             var validationMods = getModifications(validationIdFilter);
-            PxStatus modsStatus = validationMods.stream().anyMatch(mod -> !mod.isValid()) ? PxStatus.IncompleteMetadata : PxStatus.Complete;
+            var specLibs = getSpectrumLibraries(validationIdFilter);
+            PxStatus modsStatus = (specLibs.stream().anyMatch(lib -> !lib.isValid())  || validationMods.stream().anyMatch(mod -> !mod.isValid()))
+                    ? PxStatus.IncompleteMetadata : PxStatus.Complete;
+
             if (!status.equals(modsStatus))
             {
                 validation.setStatus(modsStatus);

@@ -337,7 +337,7 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
 
         public String toString()
         {
-            return _key.toString() + _size == null ? ", NOT_FOUND" : ", size: " + _size;
+            return _key.toString() + (_size == null ? ", NOT_FOUND" : ", size: " + _size);
         }
     }
 

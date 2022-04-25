@@ -7,6 +7,7 @@ import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.query.FieldKey;
+import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.targetedms.IModification;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.DOM;
@@ -86,7 +87,9 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
 
                     Long modId = ctx.get(MOD_ID, Long.class);
 
-                    if (modId != null && exptId != null)
+                    if (modId != null && exptId != null &&
+                            // Show the find match link only if user has the right permissions
+                            exptAnnotations.getContainer().hasPermission(ctx.getViewContext().getUser(), UpdatePermission.class))
                     {
                         var url = getMatchToUnimodAction(ctx).addParameter("id", exptId).addParameter("modificationId", modId);
                         url.addReturnURL(ctx.getViewContext().getActionURL());

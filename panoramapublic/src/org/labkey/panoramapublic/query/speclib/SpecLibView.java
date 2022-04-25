@@ -6,9 +6,10 @@ import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.QuerySettings;
+import org.labkey.api.query.QueryUrls;
 import org.labkey.api.query.QueryView;
-import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.UpdatePermission;
+import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ViewContext;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
@@ -45,20 +46,18 @@ public class SpecLibView extends QueryView
 
     private QuerySettings createQuerySettings(ViewContext portalCtx)
     {
-        String viewName = _exptAnnotations != null &&
-                SpecLibInfoManager.getForExperiment(_exptAnnotations.getId(), portalCtx.getContainer()).size() > 0 ?
-                "SpectralLibrariesInfo" : null;
+        QuerySettings settings = getSchema().getSettings(portalCtx, NAME, QUERY_NAME, null);
 
-        QuerySettings settings = getSchema().getSettings(portalCtx, NAME, QUERY_NAME, viewName);
-
-        if(settings.getContainerFilterName() == null && _exptAnnotations != null)
+        if(_exptAnnotations != null)
         {
             settings.setContainerFilterName(_exptAnnotations.isIncludeSubfolders() ?
                     ContainerFilter.Type.CurrentAndSubfolders.name() : ContainerFilter.Type.Current.name());
+            String viewName = SpecLibInfoManager.getForExperiment(_exptAnnotations.getId(), portalCtx.getContainer()).size() > 0 ?
+                    "SpectralLibrariesInfo" : null;
+            settings.setViewName(viewName);
+            settings.setAllowChooseView(false);
         }
-        // Allow only folder admins to customize the view
-        settings.setAllowCustomizeView(portalCtx.getContainer().hasPermission(portalCtx.getUser(), AdminPermission.class));
-
+        setTitleHref(PageFlowUtil.urlProvider(QueryUrls.class).urlExecuteQuery(portalCtx.getContainer(), PanoramaPublicSchema.SCHEMA_NAME, QUERY_NAME));
         return settings;
     }
 

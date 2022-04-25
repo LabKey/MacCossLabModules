@@ -3240,7 +3240,7 @@ public class PanoramaPublicController extends SpringActionController
                 var latestValidation = DataValidationManager.getLatestValidation(_experimentAnnotations.getId(), getContainer());
                 if (latestValidation != null)
                 {
-                    HtmlView details = getValidationSummary(DataValidationManager.getStatus(latestValidation, getUser()), _experimentAnnotations, getContainer(), getUser());
+                    HtmlView details = getValidationSummary(DataValidationManager.getStatus(latestValidation, getUser()), _experimentAnnotations, true, getContainer(), getUser());
                     view.addView(details);
                 }
                 else
@@ -3269,7 +3269,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @NotNull
-    private static HtmlView getValidationSummary(Status status, ExperimentAnnotations exptAnnotations, Container container, User user)
+    private static HtmlView getValidationSummary(Status status, ExperimentAnnotations exptAnnotations, boolean displayExperimentTitle, Container container, User user)
     {
         DataValidation validation = status.getValidation();
         boolean outdated = DataValidationManager.isValidationOutdated(validation, exptAnnotations, user);
@@ -3279,6 +3279,8 @@ public class PanoramaPublicController extends SpringActionController
         ActionURL validationDetailsUrl = getPxValidationStatusUrl(exptAnnotations.getId(), validation.getId(), container);
         var color = PxStatus.Complete == validation.getStatus() ? "darkgreen" : PxStatus.IncompleteMetadata == validation.getStatus() ? "darkorange" : "firebrick";
         return new HtmlView(TABLE(cl("lk-fields-table"),
+                displayExperimentTitle ? row("Experiment: ", DIV(exptAnnotations.getTitle(), HtmlString.NBSP, new Link.LinkBuilder("View Details")
+                        .href(getViewExperimentDetailsURL(exptAnnotations.getId(), container)).build())) : HtmlString.EMPTY_STRING,
                 row("Last Validation Date: ", validation.getFormattedDate()),
                 createdByUser != null ?
                         row("Created By: ", new Link.LinkBuilder(createdByUser.getDisplayName(user))
@@ -5239,6 +5241,27 @@ public class PanoramaPublicController extends SpringActionController
                 }
             }
 
+            // If the data has been validated for a ProteomeXchange submission, show the summary of the last validation
+            var latestValidation = DataValidationManager.getLatestValidation(exptAnnotations.getId(), getContainer());
+            if (latestValidation != null && getContainer().hasPermission(getUser(), AdminPermission.class))
+            {
+                HtmlView details = getValidationSummary(DataValidationManager.getStatus(latestValidation, getUser()), exptAnnotations, false, getContainer(), getUser());
+                VBox view = new VBox(details);
+                Button viewAllButton = null;
+                if (DataValidationManager.getValidationJobCount(exptAnnotations.getId()) > 1)
+                {
+                    ActionURL url = new ActionURL(ViewPxValidationsAction.class, getContainer()).addParameter("id", exptAnnotations.getId());
+                    viewAllButton = new Button.ButtonBuilder("View All Validation Jobs").href(url).build();
+                }
+                view.addView(new HtmlView(DIV(at(style, "margin-top:15px;"),
+                        viewAllButton != null ? SPAN(at(style, "margin-right:10px;"), viewAllButton) : HtmlString.EMPTY_STRING,
+                        getStartDataValidationButton(exptAnnotations, getContainer()))));
+
+                view.setTitle("Data Validation for ProteomeXchange");
+                view.setFrame(WebPartView.FrameType.PORTAL);
+                result.addView(view);
+            }
+
             // Show a list of subfolders, if any
             List<Container> children = getAllSubfolders(exptAnnotations.getContainer());
             HtmlView subfoldersView = null;
@@ -5312,27 +5335,6 @@ public class PanoramaPublicController extends SpringActionController
                 {
                     result.addView(new ModificationsView.IsotopeModsView(getViewContext(), exptAnnotations));
                 }
-            }
-
-            // If the data has been validated for a ProteomeXchange submission, show the summary of the last validation
-            var latestValidation = DataValidationManager.getLatestValidation(exptAnnotations.getId(), getContainer());
-            if (latestValidation != null && getContainer().hasPermission(getUser(), AdminPermission.class))
-            {
-                HtmlView details = getValidationSummary(DataValidationManager.getStatus(latestValidation, getUser()), exptAnnotations, getContainer(), getUser());
-                VBox view = new VBox(details);
-                Button viewAllButton = null;
-                if (DataValidationManager.getValidationJobCount(exptAnnotations.getId()) > 1)
-                {
-                    ActionURL url = new ActionURL(ViewPxValidationsAction.class, getContainer()).addParameter("id", exptAnnotations.getId());
-                    viewAllButton = new Button.ButtonBuilder("View All Validation Jobs").href(url).build();
-                }
-                view.addView(new HtmlView(DIV(at(style, "margin-top:15px;"),
-                        viewAllButton != null ? SPAN(at(style, "margin-right:10px;"), viewAllButton) : HtmlString.EMPTY_STRING,
-                        getStartDataValidationButton(exptAnnotations, getContainer()))));
-
-                view.setTitle("Data Validation for ProteomeXchange");
-                view.setFrame(WebPartView.FrameType.PORTAL);
-                result.addView(view);
             }
 
             // If this experiment has been submitted show the submission requests
