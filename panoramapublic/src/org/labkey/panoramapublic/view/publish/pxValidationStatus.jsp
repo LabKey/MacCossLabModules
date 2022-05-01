@@ -32,15 +32,12 @@
     }
     .pxv-valid {
         color:darkgreen;
-        font-weight: bold;
     }
     .pxv-invalid {
         color: #d70101;
-        font-weight: bold;
     }
     .pxv-incomplete {
-        color:#e27c02;
-        font-weight: bold;
+        color: #ef771a;
     }
     .pxv-btn-green
     {
@@ -54,11 +51,11 @@
     .pxv-btn-orange
     {
         background-color: #fff4ea;
-        border-color: #e27c02;
+        border-color: #e54f19;
     }
     .pxv-btn-orange .x4-btn-inner-center
     {
-        color: #e27c02;
+        color: #e54f19;
     }
     .pxv-btn-red
     {
@@ -80,6 +77,7 @@
         padding: 5px;
         background-color: #FFF6D8;
         font-weight: bold;
+        font-size: 1.2em;
     }
     .pxv-bold-underline
     {
@@ -243,7 +241,7 @@
 
                         if (jobStatusLc === "error") {
                             onPageLoadMsgDiv.innerHTML = "There were errors while running the pipeline job. Please " +
-                                    '<%=link("view the pipeline job log", jobLogHref)
+                                    '<%=link("view the validation job log", jobLogHref)
                                 .clearClasses().addClass("alert-link")%>' + " for details.";
                             onPageLoadMsgDiv.classList.add('alert', 'alert-warning', 'labkey-error');
                         }
@@ -286,7 +284,7 @@
     function validationInfo(json) {
 
         function getStatusCls(statusId) {
-            return statusId === PX_COMPLETE ? 'pxv-valid' : statusId === PX_INCOMPLETE ? 'pxv-incomplete' : (statusId !== -1 ? 'pxv-invalid' : '');
+            return (statusId === PX_COMPLETE ? 'pxv-valid' : statusId === PX_INCOMPLETE ? 'pxv-incomplete' : (statusId !== -1 ? 'pxv-invalid' : '')) + ' pxv-bold';
         }
 
         function getMissingMetadataFields(missingFields) {
@@ -370,6 +368,7 @@
             const validationJson = json["validation"];
             const statusId = validationJson["statusId"];
             const outdated = json['validationOutdated'] === true;
+            const latest = json['validationLatest'] === true;
 
             var components = [{xtype: 'component', margin: '0 0 5 0', html: getStatusDetails(statusId, validationJson, outdated)}];
             if (forSubmit === true)
@@ -383,24 +382,38 @@
                         hrefTarget: '_self'
                     });
                 }
-                else {
-                    components.unshift({
-                        xtype: 'component',
-                        margin: '0 0 0 10',
-                        autoEl: {
-                            tag: 'a',
-                            cls: 'labkey-text-link',
-                            href: LABKEY.ActionURL.buildURL('panoramapublic', 'viewPxValidations', LABKEY.ActionURL.getContainer(), {id: validationJson["experimentAnnotationsId"]}),
-                            hrefTarget: '_self',
-                            html: '[View All Validation Jobs]'
-                        }
-                    });
-                    components.unshift({
-                        xtype: 'label',
-                        cls: 'pxv-outdated-validation labkey-error',
-                        text: 'This validation job is outdated.'
-                    });
+            }
+
+            let allComponents = [
+                {
+                    xtype:   'component',
+                    padding: '0, 5, 5, 5',
+                    cls:     getStatusCls(validationJson['statusId']),
+                    html:    '<span style="font-size: 1.25em;">Status: ' + htmlEncode(validationJson["status"]) + '</span>'
+                },
+                {xtype: 'component', padding: '0, 5, 5, 5', html: 'Validation date: ' + htmlEncode(validationJson["date"])},
+                {
+                    xtype:   'panel',
+                    padding: '0, 5, 10, 5',
+                    border: false,
+                    layout: {type: 'anchor', align: 'left'},
+                    items: components
+                },
+                {xtype: 'component', padding: '10, 5, 0, 5', html: experimentLink() + "&nbsp;"
+                            + link("[View validation log]", LABKEY.ActionURL.buildURL('pipeline-status', 'details', LABKEY.ActionURL.getContainer(), {rowId: <%=jobId%>}),
+                                    'labkey-text-link', true)},
+            ];
+
+            if (outdated) {
+                let text = 'These validation results are outdated.';
+                if (latest) {
+                   text += ' Please submit the data again to start a new validation job.'
                 }
+                allComponents.unshift({
+                    xtype: 'label',
+                    cls: 'pxv-outdated-validation labkey-error',
+                    text:  text
+                });
             }
 
             return {
@@ -409,25 +422,7 @@
                 bodyStyle: {border: '0px'},
                 layout: {type: 'anchor', align: 'left'},
                 style:  {margin: '10px'},
-                items:  [
-                            {
-                                xtype:   'component',
-                                padding: '0, 5, 5, 5',
-                                cls:     getStatusCls(validationJson['statusId']),
-                                html:    '<span style="font-size: 1.25em;">Status: ' + htmlEncode(validationJson["status"]) + '</span>'
-                            },
-                            {xtype: 'component', padding: '0, 5, 5, 5', html: 'Validation date: ' + htmlEncode(validationJson["date"])},
-                            {
-                                xtype:   'panel',
-                                padding: '0, 5, 10, 5',
-                                border: false,
-                                layout: {type: 'anchor', align: 'left'},
-                                items: components
-                            },
-                            {xtype: 'component', padding: '10, 5, 0, 5', html: experimentLink() + "&nbsp;"
-                                        + link("[View validation log]", LABKEY.ActionURL.buildURL('pipeline-status', 'details', LABKEY.ActionURL.getContainer(), {rowId: <%=jobId%>}),
-                                                'labkey-text-link', true)},
-                        ]
+                items: allComponents
             };
         }
         return {xtype: 'label', text: 'Missing JSON property "validation"'};
@@ -459,7 +454,7 @@
     }
 
     function missing() {
-        return '<span class="pxv-invalid">MISSING</span>';
+        return '<span class="pxv-invalid pxv-bold">MISSING</span>';
     }
 
     function assignUnimodLink(dbModId, modType, experimentAnnotationsId) {
@@ -545,13 +540,13 @@
                         dataIndex: 'unimodId',
                         flex: 2,
                         renderer: function (value, metadata, record) {
-                            if (value) return unimodLink(value, 'pxv-valid');
+                            if (value) return unimodLink(value, 'pxv-valid pxv-bold');
                             else if (record.data['unimodMatches']) {
                                 var ret = ''; var sep = '';
                                 var matches = record.data['unimodMatches'];
                                 var isotopic = record.data['modType'] === "Isotopic" ? true : false;
                                 for (var i = 0; i < matches.length; i++) {
-                                    ret += sep + unimodLink(matches[i]['unimodId'], 'pxv-valid');
+                                    ret += sep + unimodLink(matches[i]['unimodId'], 'pxv-valid pxv-bold');
                                     sep = isotopic ? '</br>' : ' + ';
                                 }
                                 return ret;
@@ -728,7 +723,7 @@
                         width: 150,
                         dataIndex: 'valid',
                         renderer: function (value, metadata) {
-                            metadata.tdCls = value ? 'pxv-valid' : 'pxv-invalid';
+                            metadata.tdCls = (value ? 'pxv-valid' : 'pxv-invalid') + ' pxv-bold';
                             return value ? "COMPLETE" : "INCOMPLETE";
                         }
                     },
@@ -770,7 +765,23 @@
                             '<div class="pxv-grid-expanded-row">', '{[this.renderTable(values.sampleFiles)]}', '</div>',
                             {
                                 renderTable: function(sampleFiles) {
-                                    return sampleFilesTableTpl.apply({files: sampleFiles, tblCls: 'sample-files-status'});
+                                    if (!sampleFiles || sampleFiles.length === 0) {
+                                        return "Skyline document does not contain any imported results"
+                                    }
+                                    var hasAmbiguous = false;
+                                    for (const file of sampleFiles) {
+                                        if (file['ambiguous'] === true) {
+                                            hasAmbiguous = true;
+                                            break;
+                                        }
+                                    }
+                                    let ambiguousFilesMsg = "";
+                                    if (hasAmbiguous) {
+                                        ambiguousFilesMsg = '<div><em>Files are marked as ambiguous because they have the same name but were imported from different paths ' +
+                                                            'into one or more Skyline documents. File names imported into Skyline documents in a folder must be unique.</em></div>'
+                                    }
+
+                                    return ambiguousFilesMsg + sampleFilesTableTpl.apply({files: sampleFiles, tblCls: 'sample-files-status'});
                                 },
                                 compiled:true
                             }
@@ -896,7 +907,7 @@
                         hideable: false,
                         width: 100,
                         renderer: function (value, metadata) {
-                            metadata.tdCls = value === true ? 'pxv-valid' : 'pxv-invalid';
+                            metadata.tdCls = (value === true ? 'pxv-valid' : 'pxv-invalid') + ' pxv-bold';
                             return value === true ? 'COMPLETE' : 'INCOMPLETE';
                         }
                     },
@@ -995,7 +1006,7 @@
     );
 
     renderFileStatus: function renderFileStatus(values, isSampleFile, container) {
-        const cls = values.found === true ? 'pxv-valid' : 'pxv-invalid';
+        const cls = (values.found === true ? 'pxv-valid' : 'pxv-invalid') + ' pxv-bold';
         let status = "FOUND";
         if (values.found === false) status = "MISSING";
         if (values.ambiguous === true) status = "AMBIGUOUS";

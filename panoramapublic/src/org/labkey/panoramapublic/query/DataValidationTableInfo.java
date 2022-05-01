@@ -3,7 +3,10 @@ package org.labkey.panoramapublic.query;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
+import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.JdbcType;
+import org.labkey.api.data.MutableColumnInfo;
+import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
@@ -18,6 +21,7 @@ import org.labkey.api.security.User;
 import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.security.permissions.Permission;
 import org.labkey.api.util.ContainerContext;
+import org.labkey.api.util.HtmlString;
 import org.labkey.api.view.ActionURL;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
@@ -47,21 +51,37 @@ public class DataValidationTableInfo extends PanoramaPublicTable
         statusCol.setURL(new DetailsURL(validationStatusUrl, params).setContainerContext(getContainerContext()));
 
         ExprColumn docCountCol = createCountsColumn(PanoramaPublicManager.getTableInfoSkylineDocValidation(),
-                PanoramaPublicSchema.TABLE_SKYLINE_DOC_VALIDATION, "DocumentCount");
+                PanoramaPublicSchema.TABLE_SKYLINE_DOC_VALIDATION, "Documents");
         addColumn(docCountCol);
         ExprColumn libCountCol = createCountsColumn(PanoramaPublicManager.getTableInfoSpecLibValidation(),
-                PanoramaPublicSchema.TABLE_SPEC_LIB_VALIDATION, "LibraryCount");
+                PanoramaPublicSchema.TABLE_SPEC_LIB_VALIDATION, "Libraries");
         addColumn(libCountCol);
         ExprColumn modCountCol = createCountsColumn(PanoramaPublicManager.getTableInfoModificationValidation(),
-                PanoramaPublicSchema.TABLE_MODIFICATION_VALIDATION, "ModificationCount");
+                PanoramaPublicSchema.TABLE_MODIFICATION_VALIDATION, "Modifications");
         addColumn(modCountCol);
+
+        MutableColumnInfo logCol = addWrapColumn("Log", getRealTable().getColumn("JobId"));
+        logCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
+        {
+            @Override
+            public @NotNull HtmlString getFormattedHtml(RenderContext ctx)
+            {
+                return renderURLorValueURL(ctx) != null ? HtmlString.of("View Log") : super.getFormattedHtml(ctx);
+            }
+
+            @Override
+            public String getLinkCls()
+            {
+                return "labkey-text-link";
+            }
+        });
 
         List<FieldKey> visibleColumns = new ArrayList<>();
         visibleColumns.add(FieldKey.fromParts("Id"));
         visibleColumns.add(FieldKey.fromParts("Created"));
         visibleColumns.add(FieldKey.fromParts("CreatedBy"));
-        visibleColumns.add(FieldKey.fromParts("JobId"));
         visibleColumns.add(FieldKey.fromParts("Status"));
+        visibleColumns.add(FieldKey.fromParts("Log"));
         visibleColumns.add(FieldKey.fromParts(docCountCol.getName()));
         visibleColumns.add(FieldKey.fromParts(libCountCol.getName()));
         visibleColumns.add(FieldKey.fromParts(modCountCol.getName()));

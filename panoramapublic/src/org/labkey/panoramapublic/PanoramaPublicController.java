@@ -3165,6 +3165,10 @@ public class PanoramaPublicController extends SpringActionController
                         {
                             json.put("validationOutdated", true);
                         }
+                        if (DataValidationManager.isLatestValidation(dataValidation, expAnnotations.getContainer()))
+                        {
+                            json.put("validationLatest", true);
+                        }
                         response.put("validationStatus", json);
                     }
                 }
@@ -3218,7 +3222,7 @@ public class PanoramaPublicController extends SpringActionController
 
             var view = new VBox();
             view.setFrame(WebPartView.FrameType.PORTAL);
-            view.setTitle("Data Validation Status");
+            view.setTitle("Data Validation Results");
 
             if (DataValidationManager.getValidationJobCount(_experimentAnnotations.getId()) == 0)
             {
@@ -3273,11 +3277,20 @@ public class PanoramaPublicController extends SpringActionController
     {
         DataValidation validation = status.getValidation();
         boolean outdated = DataValidationManager.isValidationOutdated(validation, exptAnnotations, user);
+
+        if (outdated || validation.getStatus() == null)
+        {
+            return new HtmlView(DIV(at(style, "background-color: #FFF6D8;margin:2px;font-weight:bold;"),
+                                    SPAN(cl("labkey-error"), outdated ?
+                                            "The latest validation results are outdated. Please submit the data again to start a new validation job."
+                                            : "Validation Incomplete")));
+        }
+
         var statusFile = PipelineService.get().getStatusFile(validation.getJobId());
         User createdByUser = UserManager.getUser(validation.getCreatedBy());
         String pxStatus = validation.getStatus() != null ? validation.getStatus().getLabel() : "Incomplete";
         ActionURL validationDetailsUrl = getPxValidationStatusUrl(exptAnnotations.getId(), validation.getId(), container);
-        var color = PxStatus.Complete == validation.getStatus() ? "darkgreen" : PxStatus.IncompleteMetadata == validation.getStatus() ? "darkorange" : "firebrick";
+        var color = PxStatus.Complete == validation.getStatus() ? "darkgreen" : PxStatus.IncompleteMetadata == validation.getStatus() ? "#ef771a" : "#d70101";
         return new HtmlView(TABLE(cl("lk-fields-table"),
                 displayExperimentTitle ? row("Experiment: ", DIV(exptAnnotations.getTitle(), HtmlString.NBSP, new Link.LinkBuilder("View Details")
                         .href(getViewExperimentDetailsURL(exptAnnotations.getId(), container)).build())) : HtmlString.EMPTY_STRING,
@@ -3288,13 +3301,10 @@ public class PanoramaPublicController extends SpringActionController
                                 .clearClasses().build()) :
                         row("Created By: ", "Unknown User " + validation.getCreatedBy()),
                 row("ProteomeXchange Status:", SPAN(at(style, "color:" + color), B(pxStatus), HtmlString.NBSP, new Link.LinkBuilder("[Details]").href(validationDetailsUrl).build())),
-                row("Pipeline Job Status:", statusFile != null ?
-                        new Link.LinkBuilder(statusFile.getStatus()).href(PageFlowUtil.urlProvider(PipelineStatusUrls.class)
-                                .urlDetails(container, validation.getJobId())).clearClasses().build()
-                        : SPAN("Status not found for job Id " + validation.getJobId())),
-                TR(TD(at(colspan, 2),
-                        (outdated || validation.getStatus() == null) ? DIV(at(style, "background-color: #FFF6D8;margin:2px;font-weight:bold;"),
-                                SPAN(cl("labkey-error"), outdated ? "Data validation is outdated" : "Validation Incomplete")) : HtmlString.EMPTY_STRING))
+                row("Validation Log:", statusFile != null ?
+                        new Link.LinkBuilder("View log").href(PageFlowUtil.urlProvider(PipelineStatusUrls.class)
+                                .urlDetails(container, validation.getJobId())).build()
+                        : SPAN("Log file not found for job Id " + validation.getJobId()))
         ));
     }
 
@@ -7210,7 +7220,7 @@ public class PanoramaPublicController extends SpringActionController
             IModification mod = getValidModification(form, errors);
             if (mod == null)
             {
-                return new SimpleErrorView(errors);
+                return getErrorsView(errors, _expAnnot, form);
             }
 
             UnimodModifications uMods = readUnimod(); // Read the Unimod modifications
@@ -7224,10 +7234,10 @@ public class PanoramaPublicController extends SpringActionController
             {
                 matchedMod = getModificationMatch(mod, uMods);
             }
-            catch(IllegalArgumentException e)
+            catch (IllegalArgumentException e)
             {
                 errors.reject(ERROR_MSG, "Error finding Unimod match. " + e.getMessage());
-                return new SimpleErrorView(errors);
+                return getErrorsView(errors, _expAnnot, form);
             }
 
             UnimodMatchBean bean = new UnimodMatchBean(form, mod, matchedMod);
@@ -7303,6 +7313,23 @@ public class PanoramaPublicController extends SpringActionController
         {
             root.addChild("Find Unimod Match");
         }
+    }
+
+    @NotNull
+    private static HtmlView getErrorsView(BindException errors, ExperimentAnnotations expAnnotations, ReturnUrlForm returnUrlForm)
+    {
+        String buttonText = returnUrlForm.getReturnActionURL() != null ? "Back" : "Back to Experiment Details";
+        ActionURL returnUrl = returnUrlForm.getReturnActionURL();
+        if (returnUrl == null)
+        {
+            returnUrl = getViewExperimentDetailsURL(expAnnotations.getId(), expAnnotations.getContainer());
+        }
+        HtmlView errorsView = new HtmlView(
+                DIV(
+                        ERRORS(errors),
+                        DIV(at(style, "margin-top:20px;)"), new Button.ButtonBuilder(buttonText).href(returnUrl))
+                ));
+        return errorsView;
     }
 
     @RequiresPermission(UpdatePermission.class)
@@ -7565,7 +7592,7 @@ public class PanoramaPublicController extends SpringActionController
                 initModifications(form, errors);
                 if (errors.hasErrors())
                 {
-                    return new SimpleErrorView(errors);
+                    return getErrorsView(errors, _expAnnot, form);
                 }
             }
 

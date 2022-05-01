@@ -120,8 +120,7 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         assertTextPresent("Unimod Match Options ");
         clickButton("Unimod Match");
         assertTextPresent("Cannot find a Unimod match for a structural modification that does not have modified amino acids or a modified terminus");
-        clickButton("Back");
-        goBack();
+        findButton("Back").click();
     }
 
     private void testDefineCombinationMod(String modificationName, String modFormula, Unimod unimod1, Unimod unimod2, String combinedFormula, String difference1, String difference2, boolean balanced)
