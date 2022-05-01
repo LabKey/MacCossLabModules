@@ -8,12 +8,15 @@ import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.pages.panoramapublic.DataValidationPage;
 import org.labkey.test.util.DataRegionTable;
+import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.TextSearcher;
 
 import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 7)
@@ -36,6 +39,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
     private static final String AGILENT_DATA_1_ZIP = AGILENT_DATA_1 + ".zip";
     private static final String AGILENT_DATA_2 = "File1 A1.d";
     private static final String AGILENT_DATA_2_ZIP = AGILENT_DATA_2 + ".zip";
+    private static final String SKY_FILE_8 = "Study9S_Site52_v1_with_library.sky.zip";
 
     @Override
     public String getSampleDataFolder()
@@ -67,10 +71,11 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
 
         // Upload missing raw files. The Carboxymethylcysteine modification in the document does not have a Unimod Id.
         // Status should indicate that data is valid for an "incomplete" PX submission.
-        jobCount = uploadRawFilesVerifyInCompleteStatus(jobCount);
+        jobCount = uploadRawFilesVerifyInCompleteStatus(jobCount, SKY_FILE_1);
 
-        // Save the Unimod match for Carboxymethylcysteine. Status should indicate that data is valid for a "complete" PX submission.
-        saveUnimodMatchVerifyCompleteStatus();
+        // Save the Unimod match for Carboxymethylcysteine. This will make the validation job outdated. After running a new
+        // validation job, status should indicate that data is valid for a "complete" PX submission.
+        jobCount = saveUnimodMatchVerifyCompleteStatus(jobCount);
 
         // Import another document and upload its raw files. This document has a library. Since we have not uploaded
         // any of the source files used to build the library, the status should indicate that the data can be
@@ -127,6 +132,171 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
                 List.of(AGILENT_DATA_1)); // Marked as ambiguous
     }
 
+    @Test
+    public void testValidationOutdated()
+    {
+        // Set up our source folder.
+        String projectName = getProjectName();
+        String folderName = "Folder 3";
+        String experimentTitle = "This is a test for validation results marked as outdated";
+        setupSourceFolder(projectName, folderName, SUBMITTER);
+        impersonate(SUBMITTER);
+        updateSubmitterAccountInfo("One");
+
+        // Import Skyline document
+        int jobCount = 0;
+        int validationCount = 0;
+        importData(SKY_FILE_8, ++jobCount);
+
+        // Add the "Targeted MS Experiment" webpart
+        createExperimentCompleteMetadata(experimentTitle);
+
+        // Upload raw data, submit and verify incomplete status
+        uploadRawFilesVerifyInCompleteStatus(jobCount, SKY_FILE_8);
+        validationCount++;
+
+        // Save Unimod match for Carboxymethylcysteine
+        saveUnimodMatchForCarboxymethylcysteine();
+        // Verify that the validation results are outdated after adding the Unimod match
+        verifyValidationOutdated(validationCount);
+        // Run the validation job again and verify incomplete status
+        submitValidationJob().verifyIncompleteStatus();
+        validationCount++;
+
+        // Deleted the saved Unimod match
+        deleteUnimodMatch();
+        // Verify that the validation results are outdated after deleting the Unimod match
+        verifyValidationOutdated(validationCount);
+        // Run the validation job again and verify incomplete status
+        submitValidationJob().verifyIncompleteStatus();
+        validationCount++;
+
+        // Add information for the spectral library in the document so that the library validation is considered "complete"
+        addSpecLibInfo("Source files unavailable", "Irrelevant to results", false);
+        // Verify that the validation results are outdated after adding library info
+        verifyValidationOutdated(validationCount);
+        // Run the validation job again and verify incomplete status
+        submitValidationJob().verifyIncompleteStatus();
+        validationCount++;
+
+        // Edit the spectral library information so that it would no longer be considered "complete"
+        addSpecLibInfo("Source files unavailable", "Used for choosing targets and fragments", true);
+        // Verify that the validation results are outdated after editing library info
+        verifyValidationOutdated(validationCount);
+        // Save the Unimod match
+        saveUnimodMatchForCarboxymethylcysteine();
+        // Run the validation job again and verify incomplete status
+        submitValidationJob().verifyIncompleteStatus();
+        validationCount++;
+
+        // Delete the spectral library information
+        deleteSpecLibInfo();
+        // Verify that the validation results are outdated after deleting library info
+        verifyValidationOutdated(validationCount);
+
+
+        // Add information for the spectral library in the document so that the library validation is considered "complete"
+        addSpecLibInfo("Source files unavailable", "Used only as supporting information", false);
+        // Run the validation job again and verify complete status
+        submitValidationJob().verifyCompleteStatus();
+    }
+
+    private void addSpecLibInfo(String sourceType, String dependencyType, boolean edit)
+    {
+        goToExperimentDetailsPage();
+
+        String buttonText = edit ? "Edit" : "Add";
+
+        DataRegionTable specLibsTable = new DataRegionTable("Spectral Libraries",getDriver());
+        assertEquals("Unexpected number of rows in Spectral Libraries table", 1, specLibsTable.getDataRowCount());
+        var cell = specLibsTable.findCell(0, specLibsTable.getColumnIndex("Library Info"));
+        var addInfoLink = Locator.XPathLocator.tag("a").withText(buttonText).findElementOrNull(cell);
+        assertNotNull("Expected link to " + buttonText + " spectral library info", addInfoLink);
+        addInfoLink.click();
+
+        _ext4Helper.selectComboBoxItem(Ext4Helper.Locators.formItemWithInputNamed("sourceType"), sourceType);
+        _ext4Helper.selectComboBoxItem(Ext4Helper.Locators.formItemWithInputNamed("dependencyType"), dependencyType);
+        clickAndWait(Ext4Helper.Locators.ext4Button("Save"));
+
+        specLibsTable = new DataRegionTable("Spectral Libraries",getDriver());
+        cell = specLibsTable.findCell(0, specLibsTable.getColumnIndex("Library Source"));
+        assertEquals(sourceType, cell.getText());
+        cell = specLibsTable.findCell(0, specLibsTable.getColumnIndex("Dependency Type"));
+        assertEquals(dependencyType, cell.getText());
+    }
+
+    private void deleteSpecLibInfo()
+    {
+        goToExperimentDetailsPage();
+
+        DataRegionTable specLibsTable = new DataRegionTable("Spectral Libraries",getDriver());
+        assertEquals("Unexpected number of rows in Spectral Libraries table", 1, specLibsTable.getDataRowCount());
+        var cell = specLibsTable.findCell(0, specLibsTable.getColumnIndex("Library Info"));
+        var deleteLink = Locator.XPathLocator.tag("a").withText("Delete").findElementOrNull(cell);
+        assertNotNull("Expected link to delete spectral library info", deleteLink);
+        doAndWaitForPageToLoad(() -> {
+            deleteLink.click();
+            assertAlert("Are you sure you want to delete the spectral library information?");
+        });
+
+        specLibsTable = new DataRegionTable("Spectral Libraries",getDriver());
+        cell = specLibsTable.findCell(0, specLibsTable.getColumnIndex("Library Source"));
+        assertEquals("", cell.getText().trim());
+        cell = specLibsTable.findCell(0, specLibsTable.getColumnIndex("Dependency Type"));
+        assertEquals("", cell.getText().trim());
+        cell = specLibsTable.findCell(0, specLibsTable.getColumnIndex("Library Info"));
+        assertEquals("ADD", cell.getText());
+    }
+
+    private void deleteUnimodMatch()
+    {
+        goToExperimentDetailsPage();
+
+        DataRegionTable modsTable = new DataRegionTable("Structural Modifications",getDriver());
+        assertEquals("Unexpected number of rows in Structural Modifications table", 1, modsTable.getDataRowCount());
+        var cell = modsTable.findCell(0, modsTable.getColumnIndex("UnimodMatch"));
+        var deleteMatchLink = Locator.XPathLocator.tag("a").withText("[Delete]").findElementOrNull(cell);
+        assertNotNull("Expected to see a [Delete] link for saved Unimod match", deleteMatchLink);
+        doAndWaitForPageToLoad(() -> {
+                    deleteMatchLink.click();
+                    assertAlert("Are you sure you want to delete the saved Unimod information for modification 'Carboxymethylcysteine'?");
+                });
+
+        modsTable = new DataRegionTable("Structural Modifications",getDriver());
+        cell = modsTable.findCell(0, modsTable.getColumnIndex("UnimodMatch"));
+        assertEquals("Unimod information for the modification was not deleted", "FIND MATCH", cell.getText());
+    }
+
+    private void verifyValidationOutdated(int validationCount)
+    {
+        goToExperimentDetailsPage();
+        var outdatedMsg = "The latest validation results are outdated. Please submit the data again to start a new validation job.";
+        var validationSummaryWebPart = portalHelper.getBodyWebPart("Data Validation for ProteomeXchange");
+        var panelText = validationSummaryWebPart.getComponentElement().getText();
+        assertTextPresent(new TextSearcher(panelText), outdatedMsg);
+
+        var detailsLink = Locator.XPathLocator.tag("a").withText("[Details]").findElementOrNull(validationSummaryWebPart);
+        assertNull("Unexpected link to view validation details", detailsLink);
+
+        if (validationCount > 1)
+        {
+            var allValidationJobsButton = findButton("View All Validation Jobs");
+            allValidationJobsButton.click();
+            assertTextPresent("Data Validation Results", outdatedMsg);
+
+            DataRegionTable resultsTable = new DataRegionTable("DataValidation", getDriver());
+            assertEquals("Expected " + validationCount + " rows in the validation results table", validationCount, resultsTable.getDataRowCount());
+            var statusCell = resultsTable.findCell(0, resultsTable.getColumnIndex("Status"));
+            clickAndWait(statusCell);
+            var validationPage = new DataValidationPage(this);
+            validationPage.verifyValidationOutdated();
+        }
+        else
+        {
+            assertElementNotPresent(Locator.button("View All Validation Jobs"));
+        }
+    }
+
     private int verifyInvalidStatus(int jobCount)
     {
         var validationPage = submitValidationJob();
@@ -136,7 +306,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         return jobCount;
     }
 
-    private int uploadRawFilesVerifyInCompleteStatus(int jobCount)
+    private int uploadRawFilesVerifyInCompleteStatus(int jobCount, String skylineDoc)
     {
         // Upload the missing raw files
         uploadRawFiles(WIFF_1, WIFF_SCAN_1);
@@ -145,11 +315,11 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         jobCount++;
 
         validationPage.verifyIncompleteStatus();
-        validationPage.verifySampleFileStatus(SKY_FILE_1, List.of(WIFF_1, WIFF_SCAN_1), Collections.emptyList());
+        validationPage.verifySampleFileStatus(skylineDoc, List.of(WIFF_1, WIFF_SCAN_1), Collections.emptyList());
         return jobCount;
     }
 
-    private void saveUnimodMatchVerifyCompleteStatus()
+    private int saveUnimodMatchVerifyCompleteStatus(int jobCount)
     {
         var validationPage = goToValidationDetails();
 
@@ -157,6 +327,21 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         validationPage.verifyIncompleteStatus();
         validationPage.verifyModificationStatus("Carboxymethylcysteine", false, null, null);
 
+        saveUnimodMatchForCarboxymethylcysteine();
+
+        // Validation should be outdated since we save a new Unimod match info
+        verifyValidationOutdated(2);
+
+        // Run data validation again and verify "complete" status
+        validationPage = submitValidationJob();
+        validationPage.verifyCompleteStatus();
+        validationPage.verifyModificationStatus("Carboxymethylcysteine", true, "UNIMOD:6", "Carboxymethyl");
+
+        return ++jobCount;
+    }
+
+    private void saveUnimodMatchForCarboxymethylcysteine()
+    {
         goToExperimentDetailsPage();
 
         DataRegionTable modsTable = new DataRegionTable("Structural Modifications",getDriver());
@@ -170,10 +355,9 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         assertTextPresent(new TextSearcher(unimodMatchWebPart.getComponentElement().getText()),
                 "The modification matches 1 Unimod modification", "Carboxymethyl", "UNIMOD:6");
         clickButton("Save Match");
-
-        validationPage = goToValidationDetailsFromExpDetails();
-        validationPage.verifyCompleteStatus();
-        validationPage.verifyModificationStatus("Carboxymethylcysteine", true, "UNIMOD:6", "Carboxymethyl");
+        assertTextPresent("Unimod information was saved successfully for the structural modification",
+                "View all the structural and isotope modifications in the experiment",
+                "[View Experiment Details]");
     }
 
     private DataValidationPage goToValidationDetails()
@@ -203,7 +387,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
 
         // Verify library built with MaxQuant results. Expect to see modifications.xml, evidence.xml, mqpar.xml in the Peptide ID files list
         // even though these files are not named in the .blib
-        validationPage.verifySpectralLibraryStatus("maxquant.blib", "104 KB", "Status: Missing spectrum and peptide Id files",
+        validationPage.verifySpectralLibraryStatus("maxquant.blib", "104 KB", "Missing spectrum and peptide Id files",
                 List.of(SKY_FILE_2),
                 Collections.emptyList(),
                 List.of("BBM_332_P110_C04_PRM_007.raw", "BBM_332_P110_C04_PRM_006.raw", "BBM_332_P110_C04_PRM_005.raw", "BBM_332_P110_C04_PRM_004.raw", "BBM_332_P110_C04_PRM_003.raw"),
@@ -212,7 +396,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
 
         // .blib does not have any source files in the SpectrumSourceFiles table.
         validationPage.verifySpectralLibraryStatus("Qtrap_DP-PA_cons_P0836.blib", "61 KB",
-                "Status: Missing spectrum and peptide ID file names in the .blib file. Library may have been built with an older version of Skyline",
+                "Missing spectrum and peptide ID file names in the .blib file. Library may have been built with an older version of Skyline",
                 List.of(SKY_FILE_2),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
         return jobCount;
@@ -234,7 +418,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
 
         // Verify library built with MaxQuant results. Expect to see modifications.xml, evidence.xml, mqpar.xml in the Peptide ID files list
         // even though these files are not named in the .blib
-        validationPage.verifySpectralLibraryStatus("maxquant.blib", "104 KB", "Status: Missing spectrum and peptide Id files",
+        validationPage.verifySpectralLibraryStatus("maxquant.blib", "104 KB", "Missing spectrum and peptide Id files",
                 List.of(SKY_FILE_2),
                 Collections.emptyList(),
                 List.of("BBM_332_P110_C04_PRM_007.raw", "BBM_332_P110_C04_PRM_006.raw", "BBM_332_P110_C04_PRM_005.raw", "BBM_332_P110_C04_PRM_004.raw", "BBM_332_P110_C04_PRM_003.raw"),
@@ -243,7 +427,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
 
         // .blib does not have any source files in the SpectrumSourceFiles table.
         validationPage.verifySpectralLibraryStatus("Qtrap_DP-PA_cons_P0836.blib", "61 KB",
-                "Status: Missing spectrum and peptide ID file names in the .blib file. Library may have been built with an older version of Skyline",
+                "Missing spectrum and peptide ID file names in the .blib file. Library may have been built with an older version of Skyline",
                 List.of(SKY_FILE_2),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 
@@ -254,13 +438,13 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
                 List.of(SKY_FILE_3),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
         validationPage.verifySpectralLibraryStatus("RasPhos_20170125.blib", "216 KB",
-                "Status: Missing spectrum files. Missing peptide ID file names in the .blib file. Library may have been built with an older version of Skyline",
+                "Missing spectrum files. Missing peptide ID file names in the .blib file. Library may have been built with an older version of Skyline",
                 List.of(SKY_FILE_4),
                 Collections.emptyList(), List.of("MY20170124_ARC_RasPhosHmix_500fmol_01.mzXML"), Collections.emptyList(), Collections.emptyList());
 
         // SKY_FILE_4 contains a NIST library.  We only support BiblioSpec and EncyclopeDIA libraries.  So this will be marked as "INCOMPLETE"
         validationPage.verifySpectralLibraryStatus("NIST_bsa_IT_2011-04-01.msp", "3 MB",
-                "Status: Unsupported library type: nist",
+                "Unsupported library type: nist",
                 List.of(SKY_FILE_4),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 

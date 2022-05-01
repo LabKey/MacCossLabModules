@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.labkey.api.data.Container;
+import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
 
 import java.nio.file.Path;
 import java.util.Collections;
@@ -14,6 +15,7 @@ import java.util.List;
 public class SpecLib extends SpecLibValidation<SkylineDocSpecLib>
 {
     private List<SkylineDocSpecLib> _docsWithLibrary;
+    private SpecLibInfo _specLibInfo;
 
     public SpecLib() {}
 
@@ -28,6 +30,17 @@ public class SpecLib extends SpecLibValidation<SkylineDocSpecLib>
         _docsWithLibrary = docsWithLibrary;
     }
 
+    public void setSpecLibInfo(SpecLibInfo specLibInfo)
+    {
+        _specLibInfo = specLibInfo;
+    }
+
+    @Override
+    public SpecLibInfo getSpecLibInfo()
+    {
+        return _specLibInfo;
+    }
+
     @NotNull
     public JSONObject toJSON(Container expContainer)
     {
@@ -39,6 +52,11 @@ public class SpecLib extends SpecLibValidation<SkylineDocSpecLib>
         jsonObject.put("size", getSize() != null ? FileUtils.byteCountToDisplaySize(getSize()) : "-");
         jsonObject.put("valid", isValid());
         jsonObject.put("status", getStatusString());
+        if (getSpecLibInfo() != null)
+        {
+            jsonObject.put("specLibInfo", getSpecLibInfo().getInfo());
+            jsonObject.put("specLibInfoId", getSpecLibInfo().getId());
+        }
         jsonObject.put("spectrumFiles", getSourceFilesJSON(getSpectrumFiles(), expContainer));
         jsonObject.put("idFiles", getSourceFilesJSON(getIdFiles(), expContainer));
         return jsonObject;

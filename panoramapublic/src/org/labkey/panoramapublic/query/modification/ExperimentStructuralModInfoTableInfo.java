@@ -47,7 +47,7 @@ public class ExperimentStructuralModInfoTableInfo extends PanoramaPublicTable
             @Override
             public void delete(User user, Container container, int key)
             {
-                ModificationInfoManager.deleteStructuralModInfo(key, container, user);
+                ModificationInfoManager.deleteStructuralModInfo(key, container);
             }
 
             @Override

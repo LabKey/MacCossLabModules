@@ -8,5 +8,6 @@
         <column name="SpecLibInfoId/SourceUrl" />
         <column name="SpecLibInfoId/SourceAccession" />
         <column name="SpecLibInfoId/DependencyType/Value" />
+        <column name="LibraryInfo" />
     </columns>
 </customView>

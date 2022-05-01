@@ -147,4 +147,22 @@ public class SpecLibInfo extends DbEntity
     {
         return _sourceType;
     }
+
+    public boolean isPublicLibrary()
+    {
+        return SpecLibSourceType.PUBLIC_LIBRARY == _sourceType;
+    }
+
+    public boolean isLibraryNotRelevant()
+    {
+        return SpecLibDependencyType.IRRELEVANT == _dependencyType || SpecLibDependencyType.SUPPORTING_INFO == _dependencyType;
+    }
+
+    public String getInfo()
+    {
+        return "Source: " + _sourceType.getLabel() +
+                (_sourceUrl != null ? ", URL: " + _sourceUrl : "") +
+                (_sourceAccession != null ? ", Accession: " + _sourceAccession : "") +
+                ", Dependency: " + _dependencyType.getLabel();
+    }
 }

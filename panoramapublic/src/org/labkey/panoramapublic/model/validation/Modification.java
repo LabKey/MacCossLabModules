@@ -20,7 +20,7 @@ public class Modification
     private long _dbModId;
     private Integer _unimodId;
     private String _unimodName;
-    private boolean _inferred;
+    private boolean _inferred; // True if a match was calculated during data validation.
     private ModType _modType;
     private Integer _modInfoId;
 
@@ -91,6 +91,9 @@ public class Modification
         _unimodId = unimodId;
     }
 
+    /**
+     * @return true if a Unimod Match was calculated during the data validation process
+     */
     public boolean isInferred()
     {
         return _inferred;
@@ -99,6 +102,15 @@ public class Modification
     public void setInferred(boolean inferred)
     {
         _inferred = inferred;
+    }
+
+    /**
+     * @return true if a match was calculated during the data validation process or a match existed in the mod info tables
+     * (ExperimentStructuralModInfo or ExperimentIsotopeModInfo)
+     */
+    public boolean isMatchAssigned()
+    {
+        return isInferred() || _modInfo != null;
     }
 
     public String getUnimodName()
@@ -204,7 +216,7 @@ public class Modification
         jsonObject.put("skylineModInfo", getSkylineModInfo());
         jsonObject.put("unimodId", getUnimodId());
         jsonObject.put("unimodName", getUnimodName());
-        jsonObject.put("inferred", isInferred());
+        jsonObject.put("matchAssigned", isMatchAssigned());
         jsonObject.put("valid", isValid());
         jsonObject.put("modType", getModType().name());
         jsonObject.put("dbModId", getDbModId());
@@ -222,12 +234,7 @@ public class Modification
 
     private String getSkylineModInfo()
     {
-        if (getUnimodId() != null && !isInferred())
-        {
-            return getSkylineModName();
-        }
-
-        return (isInferred() ? "**" : "") + getSkylineModName();
+        return (isMatchAssigned() ? "**" : "") + getSkylineModName();
     }
 
     private JSONArray getUnimodMatchesJSON(List<ExperimentModInfo.UnimodInfo> unimodMatches)

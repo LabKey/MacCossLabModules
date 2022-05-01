@@ -12,6 +12,7 @@ import org.labkey.api.security.User;
 import org.labkey.api.targetedms.ISpectrumLibrary;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.panoramapublic.PanoramaPublicManager;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
 import org.labkey.panoramapublic.model.speclib.SpectralLibrary;
 
@@ -36,6 +37,11 @@ public class SpecLibInfoManager
                 .append(" WHERE slib.Id = ? ").add(id)
                 .append(" AND exp.Container = ?").add(container);
          return new SqlSelector(PanoramaPublicManager.getSchema(), sql).getObject(SpecLibInfo.class);
+    }
+
+    public static SpecLibInfo getSpecLibInfo(int id)
+    {
+        return new TableSelector(PanoramaPublicManager.getTableInfoSpecLibInfo()).getObject(id, SpecLibInfo.class);
     }
 
     public static SpecLibInfo save(SpecLibInfo specLibInfo, User user)
@@ -71,5 +77,20 @@ public class SpecLibInfoManager
         var svc = TargetedMSService.get();
         specLibIds.forEach(id -> libraries.add(svc.getLibrary(id, null, user)));
         return libraries.stream().filter(Objects::nonNull).map(SpectralLibrary::new).collect(Collectors.toList());
+    }
+
+    public static void deleteSpecLibInfo(int specLibInfoId, Container container)
+    {
+        ExperimentAnnotations experimentAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(container);
+        SpecLibInfo specLibInfo = getSpecLibInfo(specLibInfoId);
+        deleteSpecLibInfo(specLibInfo, experimentAnnotations);
+    }
+
+    public static void deleteSpecLibInfo(SpecLibInfo specLibInfo, ExperimentAnnotations expAnnotations)
+    {
+        if (specLibInfo != null && expAnnotations != null && specLibInfo.getExperimentAnnotationsId() == expAnnotations.getId())
+        {
+           Table.delete(PanoramaPublicManager.getTableInfoSpecLibInfo(), specLibInfo.getId());
+        }
     }
 }

@@ -58,7 +58,7 @@ public class ExperimentIsotopeModInfoTableInfo extends PanoramaPublicTable
             @Override
             public void delete(User user, Container container, int key)
             {
-                ModificationInfoManager.deleteIsotopeModInfo(key, container, user);
+                ModificationInfoManager.deleteIsotopeModInfo(key, container);
             }
 
             @Override

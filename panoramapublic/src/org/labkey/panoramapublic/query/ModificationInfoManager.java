@@ -16,11 +16,11 @@ import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
-import org.labkey.panoramapublic.model.validation.Modification;
 import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfo;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -110,19 +110,14 @@ public class ModificationInfoManager
         return savedModInfo;
     }
 
-    public static void deleteIsotopeModInfo(int modInfoId, Container container, User user)
+    public static void deleteIsotopeModInfo(int modInfoId, Container container)
     {
         var expAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(container);
         var modInfo = getIsotopeModInfo(modInfoId);
-        deleteIsotopeModInfo(modInfo, expAnnotations, container, user);
+        deleteIsotopeModInfo(modInfo, expAnnotations);
     }
 
-    public static void deleteIsotopeModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations, Container container, User user)
-    {
-        deleteIsotopeModInfo(modInfo, expAnnotations, container, user, true);
-    }
-
-    public static void deleteIsotopeModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations, Container container, User user, boolean updateDataValidation)
+    public static void deleteIsotopeModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations)
     {
         if (modInfo != null && expAnnotations != null && modInfo.getExperimentAnnotationsId() == expAnnotations.getId())
         {
@@ -130,10 +125,6 @@ public class ModificationInfoManager
             {
                 Table.delete(PanoramaPublicManager.getTableInfoIsotopeUnimodInfo(), new SimpleFilter(FieldKey.fromParts("modInfoId"), modInfo.getId()));
                 Table.delete(PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo(), modInfo.getId());
-                if (updateDataValidation)
-                {
-                    DataValidationManager.removeModInfo(expAnnotations, container, modInfo.getModId(), Modification.ModType.Isotopic, user);
-                }
                 transaction.commit();
             }
         }
@@ -162,23 +153,18 @@ public class ModificationInfoManager
         }
     }
 
-    public static void deleteStructuralModInfo(int modInfoId, Container container, User user)
+    public static void deleteStructuralModInfo(int modInfoId, Container container)
     {
         ExperimentAnnotations experimentAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(container);
         var modInfo = getStructuralModInfo(modInfoId);
-        deleteStructuralModInfo(modInfo, experimentAnnotations, container, user);
+        deleteStructuralModInfo(modInfo, experimentAnnotations);
     }
 
-    public static void deleteStructuralModInfo(ExperimentModInfo modInfo, ExperimentAnnotations expAnnotations, Container container, User user)
+    public static void deleteStructuralModInfo(ExperimentModInfo modInfo, ExperimentAnnotations expAnnotations)
     {
         if (modInfo != null && expAnnotations != null && modInfo.getExperimentAnnotationsId() == expAnnotations.getId())
         {
-            try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
-            {
                 Table.delete(PanoramaPublicManager.getTableInfoExperimentStructuralModInfo(), modInfo.getId());
-                DataValidationManager.removeModInfo(expAnnotations, container, modInfo.getModId(), Modification.ModType.Structural, user);
-                transaction.commit();
-            }
         }
     }
 
@@ -242,7 +228,7 @@ public class ModificationInfoManager
                     .map(aa -> aa.charAt(0))
                     .collect(Collectors.toList()));
         }
-        return sites.stream().collect(Collectors.toList());
+        return new ArrayList<>(sites);
     }
 
     private static List<String> getIsotopeModificationSites(long isotopeModId, ITargetedMSRun run, User user)

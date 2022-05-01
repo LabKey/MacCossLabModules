@@ -1,6 +1,7 @@
 package org.labkey.panoramapublic.model.validation;
 
 import org.jetbrains.annotations.NotNull;
+import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
 
 import java.util.Collections;
 import java.util.List;
@@ -14,11 +15,13 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
     private String _fileName;
     private Long _size;
     private String _libType; // bibliospec, bibliospec_lite, elib, hunter, midas, nist, spectrast, chromatogram
+    private Integer _specLibInfoId;
 
     private List<SpecLibSourceFile> _spectrumFiles;
     private List<SpecLibSourceFile> _idFiles;
 
     public abstract @NotNull List<D> getDocsWithLibrary();
+    public abstract SpecLibInfo getSpecLibInfo();
 
     public int getId()
     {
@@ -80,6 +83,16 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
         _libType = libType;
     }
 
+    public Integer getSpecLibInfoId()
+    {
+        return _specLibInfoId;
+    }
+
+    public void setSpecLibInfoId(Integer specLibInfoId)
+    {
+        _specLibInfoId = specLibInfoId;
+    }
+
     public boolean isMissingInSkyZip()
     {
         return _size == null;
@@ -115,6 +128,18 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
         if (isPending())
         {
             return false;
+        }
+
+        SpecLibInfo specLibInfo = getSpecLibInfo();
+        if (specLibInfo != null && (specLibInfo.isPublicLibrary() || specLibInfo.isLibraryNotRelevant()))
+        {
+            // We do not expect users to upload raw files and search results used to build a publicly available library.
+            // We also do not need the source files if the user had told us that the library is not relevant to their
+            // results. Sometimes when an older document is used as a template, the library information used with the
+            // document is still in the Skyline XML even though the library is not used, and the library file is no longer
+            // there. We also do not need the source files if the library was used just as supporting information, and not
+            // used to pick targets in the Skyline document.
+            return true;
         }
 
         if (isMissingInSkyZip() || isAssayLibrary() || isUnsupportedLibrary() || isIncompleteBlib())

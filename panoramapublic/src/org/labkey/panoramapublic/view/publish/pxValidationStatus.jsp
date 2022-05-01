@@ -463,9 +463,7 @@
         const action = modTypeUpper === 'STRUCTURAL' ? 'structuralModToUnimodOptions' : 'matchToUnimodIsotope';
         const params = {
             'id': experimentAnnotationsId,
-            'modificationId': dbModId,
-            'returnUrl': LABKEY.ActionURL.buildURL(LABKEY.ActionURL.getController(), LABKEY.ActionURL.getAction(),
-                    LABKEY.ActionURL.getContainer(), LABKEY.ActionURL.getParameters())
+            'modificationId': dbModId
         };
 
         var href = LABKEY.ActionURL.buildURL('panoramapublic', action, LABKEY.ActionURL.getContainer(), params);
@@ -480,7 +478,7 @@
         if (json["modifications"]) {
             const modificationsStore = Ext4.create('Ext.data.Store', {
                 storeId: 'modificationsStore',
-                fields:  ['id', 'skylineModInfo', 'unimodId', 'unimodName', 'inferred', 'valid', 'modType', 'dbModId', 'documents', 'unimodMatches'],
+                fields:  ['id', 'skylineModInfo', 'unimodId', 'unimodName', 'matchAssigned', 'valid', 'modType', 'dbModId', 'documents', 'unimodMatches'],
                 data:    json,
                 proxy:   { type: 'memory', reader: { type: 'json', root: 'modifications' }},
                 sorters: [
@@ -515,7 +513,7 @@
                 });
             }
 
-            var hasInferred = modificationsStore.find('inferred', true) != -1;
+            var hasInferred = modificationsStore.find('matchAssigned', true) != -1;
 
             var grid = Ext4.create('Ext.grid.Panel', {
                 store:    modificationsStore,
@@ -638,7 +636,7 @@
             });
             if (hasInferred) {
                 var noteHtml = "Modification names starting with <strong>**</strong> in the Name column did not have a Unimod Id in the Skyline document."
-                        + " A Unimod match was was inferred based on the formula, modification site(s) and terminus in the modification definition"
+                        + " A Unimod match was was assigned based on the formula, modification site(s) and terminus in the modification definition"
                         + ", or a combination modification was defined.";
                 var note = {
                     xtype: 'component',
@@ -801,7 +799,7 @@
         if (json["spectrumLibraries"]) {
             var specLibStore = Ext4.create('Ext.data.Store', {
                 storeId: 'specLibStore',
-                fields: ['id', 'libName', 'libType', 'fileName', 'size', 'valid', 'status', 'spectrumFiles', 'idFiles', 'documents'],
+                fields: ['id', 'libName', 'libType', 'fileName', 'size', 'valid', 'status', 'specLibInfo', 'specLibInfoId', 'spectrumFiles', 'idFiles', 'documents'],
                 data: json,
                 proxy: {
                     type: 'memory',
@@ -845,7 +843,7 @@
                 columns: [
                     {
                         text: 'Name',
-                        dataIndex: 'libName', // TODO: link to a Spectral Library webpart
+                        dataIndex: 'libName',
                         flex: 3,
                         sortable: false,
                         hideable: false,
@@ -930,7 +928,7 @@
                     rowBodyTpl: new Ext4.XTemplate(
 
                             '<div class="pxv-grid-expanded-row">',
-                            '<div class="pxv-tpl-table-title" style="margin-bottom:10px">Status: {[this.renderLibraryStatus(values.status, values.valid)]}</div>',
+                            '<div style="margin-bottom:20px;">{[this.renderLibraryStatus(values)]}</div>',
                             // Spectrum files
                             '<tpl if="spectrumFiles.length &gt; 0">','{[this.renderTable(values.spectrumFiles, "lib-spectrum-files-status", "Spectrum Files")]}', '</tpl>',
                             // Peptide Id files
@@ -944,9 +942,25 @@
                             '</ul>',
                             '</div>',
                             {
-                                renderLibraryStatus: function (status, valid) {
-                                    var cls = valid === true ? 'pxv-valid' : 'pxv-invalid';
-                                    return '<span class="' + cls + '">' + status + '</span>';
+                                renderLibraryStatus: function (values) {
+                                    let specLibInfoHtml = '';
+                                    if (values.specLibInfo) {
+                                        const params = {
+                                            'schemaName': 'panoramapublic',
+                                            'queryName': 'SpectralLibraries',
+                                            'viewName': 'SpectralLibrariesInfo',
+                                            'query.SpecLibInfoId~eq': values.specLibInfoId
+                                        };
+
+                                        const href = LABKEY.ActionURL.buildURL('query', 'executeQuery', LABKEY.ActionURL.getContainer(), params);
+                                        specLibInfoHtml = '<div style="margin-bottom:5px;">'
+                                                          + '<span class="pxv-bold">Library Information: </span><span style="margin-right: 10px;">' + htmlEncode(values.specLibInfo)+ '</span>'
+                                                          + link("[View Library Info]", href, 'pxv-bold', false)
+                                                + '</div>';
+                                    }
+                                    const cls = values.valid === true ? '' : 'pxv-invalid';
+                                    const statusHtml = '<div><span class="' + cls + '">' + htmlEncode(values.status) + '</span></div>';
+                                    return specLibInfoHtml + statusHtml;
                                 },
                                 renderTable: function(dataFiles, tblCls, title) {
                                     return libSourceFilesTableTpl.apply({files: dataFiles, tblCls: tblCls, title: title});

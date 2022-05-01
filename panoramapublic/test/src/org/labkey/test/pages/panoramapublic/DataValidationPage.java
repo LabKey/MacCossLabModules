@@ -19,10 +19,13 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCache>
 {
+    private static final String OUTDATED_VALIDATION_MSG = "These validation results are outdated. Please submit the data again to start a new validation job.";
+
     public DataValidationPage(WebDriverWrapper webDriverWrapper)
     {
         super(webDriverWrapper);
@@ -70,6 +73,22 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         {
             assertTextNotPresent(new TextSearcher(summaryText), textsNotPresent.toArray(new String[]{}));
         }
+    }
+
+    public void verifyValidationOutdated()
+    {
+        scrollIntoView(elementCache().summaryPanel);
+        var submitButton = Locator.XPathLocator.tag("a").withClass("pxv-btn-submit").findElementOrNull(elementCache().summaryPanel);
+        assertNull("Unexpected submit button for an outdated validation", submitButton);
+        var summaryText = elementCache().summaryPanel.getText();
+        assertTextPresent(new TextSearcher(summaryText), OUTDATED_VALIDATION_MSG);
+    }
+
+    public void verifyValidationCurrent()
+    {
+        scrollIntoView(elementCache().summaryPanel);
+        var summaryText = elementCache().summaryPanel.getText();
+        assertTextNotPresent(new TextSearcher(summaryText), OUTDATED_VALIDATION_MSG);
     }
 
     public void verifySampleFileStatus(String skylineDocName, List<String> found, List<String> missing)

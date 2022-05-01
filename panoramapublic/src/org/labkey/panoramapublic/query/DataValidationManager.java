@@ -10,9 +10,12 @@ import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
+import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.Sort;
+import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
+import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineService;
@@ -42,7 +45,6 @@ import org.labkey.panoramapublic.proteomexchange.validator.SkylineDocValidator;
 import org.labkey.panoramapublic.proteomexchange.validator.SpecLibValidator;
 import org.labkey.panoramapublic.proteomexchange.validator.ValidatorSampleFile;
 import org.labkey.panoramapublic.proteomexchange.validator.ValidatorStatus;
-import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -52,6 +54,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.labkey.panoramapublic.model.validation.Modification.ModType.*;
 import static org.labkey.panoramapublic.model.validation.SpecLibSourceFile.LibrarySourceFileType.PEPTIDE_ID;
 import static org.labkey.panoramapublic.model.validation.SpecLibSourceFile.LibrarySourceFileType.SPECTRUM;
 
@@ -126,7 +129,98 @@ public class DataValidationManager
                 return true;
             }
         }
-        return false;
+
+        // Validation is outdated if any modifications were assigned a Unimod Id after the validation create date
+        // OR there are any modInfoIds in the ModificationValidation table that are no longer in the ExperimentStructuralModInfo
+        // or ExperimentIsotopeModInfo tables.
+        if (hasNewerModInfos(expAnnotations.getId(), validation)
+                || hasDeletedModInfos(validation.getId(), expAnnotations.getId()))
+        {
+            return true;
+        }
+
+        // Validation is outdated if any spectral library information (SpecLibInfo table) was added or edited after the
+        // the data validation job was started. It is also outdated if there are any specLibInfoIds in the SpecLibValidation
+        // table that are no longer in the SpecLibInfo table, i.e. a spectral library information row was deleted after
+        // the validation job was started.
+        return hasNewerSpecLibInfos(expAnnotations.getId(), validation)
+                || hasDeletedSpecLibInfos(validation.getId(), expAnnotations.getId());
+    }
+
+    private static boolean hasNewerModInfos(int expAnnotationsId, DataValidation validation)
+    {
+        SimpleFilter filter = new SimpleFilter().addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotationsId);
+        filter.addCondition(FieldKey.fromParts("Created"), validation.getCreated(), CompareType.GT);
+        if (new TableSelector(PanoramaPublicManager.getTableInfoExperimentStructuralModInfo(), filter, null).exists())
+        {
+            return true;
+        }
+        return hasNewerIsotopeMods(expAnnotationsId, validation);
+    }
+
+    private static boolean hasNewerIsotopeMods(int expAnnotationsId, DataValidation validation)
+    {
+        SimpleFilter modInfoFilter = new SimpleFilter().addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotationsId);
+        modInfoFilter.addCondition(FieldKey.fromParts("Created"), validation.getCreated(), CompareType.GT);
+        List<Integer> newMods = new TableSelector(PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo(), Collections.singleton("Id"), modInfoFilter, null).getArrayList(Integer.class);
+
+        if (newMods.size() > 0)
+        {
+            // Get the modInfos that were calculated during data validation, and remove them since their create date will be later than the create date on the data validation row
+            // This is only required for isotope modifications since the wild-card and hard-coded modifications in Skyline are isotope modifications.
+            SimpleFilter inferredModsFilter = new SimpleFilter().addCondition(FieldKey.fromParts("ValidationId"), validation.getId());
+            inferredModsFilter.addCondition(FieldKey.fromParts("ModType"), Isotopic.ordinal());
+            inferredModsFilter.addCondition(FieldKey.fromParts("Inferred"), true);
+            List<Integer> inferredMods = new TableSelector(PanoramaPublicManager.getTableInfoModificationValidation(), Collections.singleton("ModInfoId"), inferredModsFilter, null).getArrayList(Integer.class);
+            newMods.removeAll(inferredMods);
+        }
+        return newMods.size() > 0;
+    }
+
+    private static boolean hasDeletedModInfos(int validationId, int expAnnotationsId)
+    {
+        return new SqlSelector(PanoramaPublicManager.getSchema(),
+                getDeletedModInfoSql(validationId, expAnnotationsId, Structural, PanoramaPublicManager.getTableInfoExperimentStructuralModInfo()))
+                .exists()
+                ||
+                new SqlSelector(PanoramaPublicManager.getSchema(),
+                        getDeletedModInfoSql(validationId, expAnnotationsId, Isotopic, PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo()))
+                        .exists();
+    }
+
+    private static SQLFragment getDeletedModInfoSql(int validationId, int expAnnotationsId, Modification.ModType modType, TableInfo modInfoTableInfo)
+    {
+        return new SQLFragment("SELECT modInfoId FROM ")
+                .append(PanoramaPublicManager.getTableInfoModificationValidation(), "mv")
+                .append(" WHERE mv.validationId = ? ").add(validationId)
+                .append(" AND mv.modType = ? ").add(modType.ordinal())
+                .append(" AND mv.modInfoId IS NOT NULL ")
+                .append(" AND mv.modInfoId NOT IN ")
+                .append(" (SELECT Id FROM ")
+                .append(modInfoTableInfo, "mi")
+                .append(" WHERE mi.experimentAnnotationsId = ? ").add(expAnnotationsId)
+                .append(" ) ");
+    }
+
+    private static boolean hasNewerSpecLibInfos(int expAnnotationsId, DataValidation validation)
+    {
+        SimpleFilter filter = new SimpleFilter().addCondition(FieldKey.fromParts("experimentAnnotationsId"), expAnnotationsId);
+        filter.addCondition(FieldKey.fromParts("Modified"), validation.getCreated(), CompareType.GT);
+        return new TableSelector(PanoramaPublicManager.getTableInfoSpecLibInfo(), filter, null).exists();
+    }
+
+    private static boolean hasDeletedSpecLibInfos(int validationId, int expAnnotationsId)
+    {
+        SQLFragment sql = new SQLFragment("SELECT specLibInfoId FROM ")
+                .append(PanoramaPublicManager.getTableInfoSpecLibValidation(), "sv")
+                .append(" WHERE sv.validationId = ? ").add(validationId)
+                .append(" AND sv.specLibInfoId IS NOT NULL ")
+                .append(" AND sv.specLibInfoId NOT IN ")
+                .append(" (SELECT Id FROM ")
+                .append(PanoramaPublicManager.getTableInfoSpecLibInfo(), "li")
+                .append(" WHERE li.experimentAnnotationsId = ? ").add(expAnnotationsId)
+                .append(" )");
+        return new SqlSelector(PanoramaPublicManager.getSchema(), sql).exists();
     }
 
     public static boolean isLatestValidation(@NotNull DataValidation validation, @NotNull Container container)
@@ -233,7 +327,7 @@ public class DataValidationManager
             mod.setDocsWithModification(getSkylineDocModifications(mod));
             if (mod.getModInfoId() != null)
             {
-                var modInfo = Modification.ModType.Isotopic == mod.getModType() ? ModificationInfoManager.getIsotopeModInfo(mod.getModInfoId()) :
+                var modInfo = Isotopic == mod.getModType() ? ModificationInfoManager.getIsotopeModInfo(mod.getModInfoId()) :
                         ModificationInfoManager.getStructuralModInfo(mod.getModInfoId());
                 mod.setModInfo(modInfo);
             }
@@ -247,14 +341,6 @@ public class DataValidationManager
         return new TableSelector(PanoramaPublicManager.getTableInfoSkylineDocModification(), filter, null).getArrayList(SkylineDocModification.class);
     }
 
-    private static Modification getModification(int dataValidationId, long dbModId, Modification.ModType modType)
-    {
-        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("ValidationId"), dataValidationId);
-        filter.addCondition(FieldKey.fromParts("DbModId"), dbModId);
-        filter.addCondition(FieldKey.fromParts("modType"), modType.ordinal());
-        return new TableSelector(PanoramaPublicManager.getTableInfoModificationValidation(), filter, null).getObject(Modification.class);
-    }
-
     private static List<SpecLib> getSpectrumLibraries(SimpleFilter filter)
     {
         List<SpecLib> specLibs = new TableSelector(PanoramaPublicManager.getTableInfoSpecLibValidation(), filter, null).getArrayList(SpecLib.class);
@@ -263,6 +349,10 @@ public class DataValidationManager
             specLib.setSpectrumFiles(getSpectrumSourceFiles(specLib));
             specLib.setIdFiles(getIdSourceFiles(specLib));
             specLib.setDocsWithLibrary(getSkylineDocSpecLibs(specLib));
+            if (specLib.getSpecLibInfoId() != null)
+            {
+                specLib.setSpecLibInfo(SpecLibInfoManager.getSpecLibInfo(specLib.getSpecLibInfoId()));
+            }
         }
         return specLibs;
     }
@@ -304,68 +394,6 @@ public class DataValidationManager
     public static DataValidation updateDataValidation(DataValidation validation, User user)
     {
         return Table.update(user, PanoramaPublicManager.getTableInfoDataValidation(), validation, validation.getId());
-    }
-
-    public static void removeModInfo(@NotNull ExperimentAnnotations expAnnotations, Container container, long modId, Modification.ModType modType, User user)
-    {
-        updateModInfo(expAnnotations, container, modId, modType, null, user);
-    }
-
-    public static void addModInfo(@NotNull ExperimentAnnotations expAnnotations, Container container, @NotNull ExperimentModInfo modInfo,
-                                  Modification.ModType modType, User user)
-    {
-        updateModInfo(expAnnotations, container, modInfo.getModId(), modType, modInfo.getId(), user);
-    }
-
-    private static void updateModInfo(ExperimentAnnotations expAnnotations, Container container, long modId, Modification.ModType modType, Integer modInfoId, User user)
-    {
-        var latestValidation = DataValidationManager.getLatestValidation(expAnnotations.getId(), container);
-        if (latestValidation != null)
-        {
-            var modification = DataValidationManager.getModification(latestValidation.getId(), modId, modType);
-            if (modification != null)
-            {
-                if (modInfoId != null || modification.getModInfoId() != null)
-                {
-                    modification.setModInfoId(modInfoId);
-                    modification.setInferred(modInfoId != null);
-                }
-                try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
-                {
-                    Table.update(user, PanoramaPublicManager.getTableInfoModificationValidation(), modification, modification.getId());
-                    recalculateStatus(latestValidation, user);
-                    transaction.commit();
-                }
-            }
-        }
-    }
-
-    /*
-        Call this method if the status of the modifications or spectral libraries likely changed because the user added
-        a Unimod Id to a modification, or deleted a saved Unimod Id, or deleted information for a spectral library.
-        The validation status will not be updated if the current status is PxStatus.NotValid (missing raw data files).
-    */
-    private static void recalculateStatus(DataValidation validation, User user)
-    {
-        PxStatus status = validation.getStatus();
-        if (status != null && status.ordinal() >= PxStatus.IncompleteMetadata.ordinal())
-        {
-            // If the current status is < PxStatus.IncompleteMetadata it means that there are missing raw data files.
-            // In this case any changes to modification validation will not change the final status.
-            // Update the status only if the current status is PxStatus.IncompleteMetadata or PxStatus.Complete
-            SimpleFilter validationIdFilter = new SimpleFilter(FieldKey.fromParts("ValidationId"), validation.getId());
-
-            var validationMods = getModifications(validationIdFilter);
-            var specLibs = getSpectrumLibraries(validationIdFilter);
-            PxStatus modsStatus = (specLibs.stream().anyMatch(lib -> !lib.isValid())  || validationMods.stream().anyMatch(mod -> !mod.isValid()))
-                    ? PxStatus.IncompleteMetadata : PxStatus.Complete;
-
-            if (!status.equals(modsStatus))
-            {
-                validation.setStatus(modsStatus);
-                updateValidationStatus(validation, user);
-            }
-        }
     }
 
     public static void saveSkylineDocStatus(ValidatorStatus status, User user)

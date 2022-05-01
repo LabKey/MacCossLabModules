@@ -161,6 +161,8 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         }
         else
         {
+            assertTextPresent("Unimod information was saved successfully for the combination modification");
+            clickExperimentDetailsLink();
             modsTable = new DataRegionTable(STRUCTURAL_MOD, this);
             checkModificationRow(modsTable, modificationName, unimod1, unimod2);
         }
@@ -202,9 +204,18 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         assertTextPresentInThisOrder(new TextSearcher(unimodMatchWebPart.getComponentElement().getText()), expectedTexts.toArray(new String[0]));
 
         clickButtonByIndex("Save Match", correctMatchIndex);
+        assertTextPresent("Unimod information was saved successfully");
+        clickExperimentDetailsLink();
+
 
         modsTable = new DataRegionTable(STRUCTURAL_MOD, this);
         checkModificationRow(modsTable, modificationName, matches.get(correctMatchIndex));
+    }
+
+    private void clickExperimentDetailsLink()
+    {
+        var exptDetailsLink = Locator.XPathLocator.tag("a").withText("[View Experiment Details]").findElement(getDriver());
+        exptDetailsLink.click();
     }
 
 
@@ -253,6 +264,7 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         clickButton("Back");
 
         var validationPage = submitValidationJob();
+        validationPage.verifyValidationCurrent();
         // After running the data validation job the wildcard modifications should have a match
         validationPage.verifyWildCardModStatus("Label:13C", true, List.of(
                 new Pair(label13C3.getUnimodId(), label13C3.getName()),

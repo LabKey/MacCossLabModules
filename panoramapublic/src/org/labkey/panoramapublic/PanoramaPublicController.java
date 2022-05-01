@@ -136,7 +136,6 @@ import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.PxXml;
 import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.model.validation.DataValidation;
-import org.labkey.panoramapublic.model.validation.Modification;
 import org.labkey.panoramapublic.model.validation.PxStatus;
 import org.labkey.panoramapublic.model.validation.Status;
 import org.labkey.panoramapublic.model.speclib.SpecLibDependencyType;
@@ -6961,6 +6960,76 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
+    @RequiresPermission(UpdatePermission.class)
+    public static class DeleteSpecLibInfoAction extends PanoramaPublicExperimentAction<DeleteSpecLibInfoForm>
+    {
+        private SpecLibInfo _specLibInfo;
+
+        @Override
+        protected ModelAndView getModelAndView(DeleteSpecLibInfoForm form, boolean reshow, BindException errors)
+        {
+            if (errors.hasErrors())
+            {
+                return new SimpleErrorView(errors);
+            }
+            errors.reject(ERROR_MSG, "Action does not support GET requests");
+            return new SimpleErrorView(errors);
+        }
+
+        @Override
+        protected void validatePostCommand(DeleteSpecLibInfoForm form, Errors errors) {}
+
+        @Override
+        public boolean handlePost(DeleteSpecLibInfoForm form, BindException errors) throws Exception
+        {
+            _specLibInfo = SpecLibInfoManager.getSpecLibInfo(form.getSpecLibInfoId());
+            if (_specLibInfo == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find saved spectral library information with Id " + form.getSpecLibInfoId());
+                return false;
+            }
+            if (_specLibInfo.getExperimentAnnotationsId() != form.getId())
+            {
+                // It is enough to check that the experimentAnnotationsId in the form matches the id saved with the spec lib info.
+                // The container check on the ExperimentAnnotations has already happened in the super class - PanoramaPublicExperimentAction.validateCommand()
+                errors.reject(ERROR_MSG, String.format("Spectral library information with Id %d does not belong to experiment Id %d ",
+                        form.getSpecLibInfoId(), form.getId()));
+                return false;
+            }
+
+            SpecLibInfoManager.deleteSpecLibInfo(_specLibInfo, _expAnnot);
+
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(DeleteSpecLibInfoForm form)
+        {
+            return form.getReturnActionURL(getViewExperimentDetailsURL(form.getId(), getContainer()));
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Delete Spectral Library Information");
+        }
+    }
+
+    public static class DeleteSpecLibInfoForm extends ExperimentIdForm
+    {
+        private int _specLibInfoId;
+
+        public int getSpecLibInfoId()
+        {
+            return _specLibInfoId;
+        }
+
+        public void setSpecLibInfoId(int specLibInfoId)
+        {
+            _specLibInfoId = specLibInfoId;
+        }
+    }
+
     @RequiresPermission(ReadPermission.class)
     public static class ViewSpecLibAction extends SimpleViewAction<SpecLibForm>
     {
@@ -7202,11 +7271,13 @@ public class PanoramaPublicController extends SpringActionController
     @RequiresPermission(UpdatePermission.class)
     public abstract static class AbstractMatchToUnimodAction<T extends ExperimentModInfo> extends PanoramaPublicExperimentAction<UnimodMatchForm>
     {
+        private IModification _modification;
+
         protected abstract IModification getModification(UnimodMatchForm form, Errors errors);
         protected abstract boolean hasModInfo(UnimodMatchForm form, IModification modification, Errors errors);
         protected abstract ExperimentModificationGetter.PxModification getModificationMatch(IModification modification, UnimodModifications unimodModifications);
         protected abstract T saveModInfo(UnimodMatchForm form, UnimodModification matchedMod);
-        protected abstract void updateValidationModification(T modInfo);
+        protected abstract String getModTypeString();
 
         @Override
         public ModelAndView getModelAndView(UnimodMatchForm form, boolean reshow, BindException errors)
@@ -7217,8 +7288,8 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors);
             }
 
-            IModification mod = getValidModification(form, errors);
-            if (mod == null)
+            _modification = getValidModification(form, errors);
+            if (_modification == null)
             {
                 return getErrorsView(errors, _expAnnot, form);
             }
@@ -7232,7 +7303,7 @@ public class PanoramaPublicController extends SpringActionController
             ExperimentModificationGetter.PxModification matchedMod;
             try
             {
-                matchedMod = getModificationMatch(mod, uMods);
+                matchedMod = getModificationMatch(_modification, uMods);
             }
             catch (IllegalArgumentException e)
             {
@@ -7240,7 +7311,7 @@ public class PanoramaPublicController extends SpringActionController
                 return getErrorsView(errors, _expAnnot, form);
             }
 
-            UnimodMatchBean bean = new UnimodMatchBean(form, mod, matchedMod);
+            UnimodMatchBean bean = new UnimodMatchBean(form, _modification, matchedMod);
             JspView view = new JspView<>("/org/labkey/panoramapublic/view/unimodMatchInfo.jsp", bean, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Unimod Match");
@@ -7269,7 +7340,8 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected void validatePostCommand(UnimodMatchForm form, Errors errors)
         {
-            if (getValidModification(form, errors) == null)
+            _modification = getValidModification(form, errors);
+            if (_modification == null)
             {
                 return;
             }
@@ -7292,20 +7364,23 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, "Did not find a Unimod modification for the selected Unimod Id " + form.getUnimodId());
                 return false;
             }
+            saveModInfo(form, matchedMod);
 
-            try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
-            {
-                var modInfo = saveModInfo(form, matchedMod);
-                updateValidationModification(modInfo);
-                transaction.commit();
-            }
             return true;
         }
 
         @Override
         public URLHelper getSuccessURL(UnimodMatchForm form)
         {
-            return form.getReturnActionURL(getViewExperimentDetailsURL(form.getId(), getContainer()));
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(UnimodMatchForm form) throws Exception
+        {
+            HtmlView hView = getModInfoSavedSuccessView(_modification.getName(), getModTypeString(), _expAnnot, form.getReturnActionURL());
+            hView.setFrame(WebPartView.FrameType.PORTAL);
+            return hView;
         }
 
         @Override
@@ -7391,9 +7466,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected void updateValidationModification(ExperimentStructuralModInfo modInfo)
+        protected String getModTypeString()
         {
-            DataValidationManager.addModInfo(_expAnnot, getContainer(), modInfo, Modification.ModType.Structural, getUser());
+            return "structural";
         }
     }
 
@@ -7447,9 +7522,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected void updateValidationModification(ExperimentModInfo modInfo)
+        protected String getModTypeString()
         {
-            DataValidationManager.addModInfo(_expAnnot, getContainer(), modInfo, Modification.ModType.Isotopic, getUser());
+            return "isotope";
         }
     }
 
@@ -7695,12 +7770,7 @@ public class PanoramaPublicController extends SpringActionController
             modInfo.setUnimodId2(mod2.getId());
             modInfo.setUnimodName2(mod2.getName());
 
-            try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
-            {
-                modInfo = ModificationInfoManager.saveStructuralModInfo(modInfo, getUser());
-                DataValidationManager.addModInfo(_expAnnot, getContainer(), modInfo, Modification.ModType.Structural, getUser());
-                transaction.commit();
-            }
+            ModificationInfoManager.saveStructuralModInfo(modInfo, getUser());
 
             return true;
         }
@@ -7708,7 +7778,15 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public URLHelper getSuccessURL(CombinationModificationFrom form)
         {
-            return form.getReturnActionURL(getViewExperimentDetailsURL(form.getId(), getContainer()));
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(CombinationModificationFrom form) throws Exception
+        {
+            HtmlView hView = getModInfoSavedSuccessView(_modification.getName(), "combination", _expAnnot, form.getReturnActionURL());
+            hView.setFrame(WebPartView.FrameType.PORTAL);
+            return hView;
         }
 
         @Override
@@ -7821,6 +7899,24 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
+    @NotNull
+    private static HtmlView getModInfoSavedSuccessView(String modificationName, String modificationType, ExperimentAnnotations expAnnotations, ActionURL returnUrl)
+    {
+        ActionURL exptModsUrl = new ActionURL(ViewExperimentModifications.class, expAnnotations.getContainer()).addParameter("id", expAnnotations.getId());
+        if (returnUrl != null)
+        {
+            exptModsUrl.addReturnURL(returnUrl);
+        }
+        HtmlView hView = new HtmlView(DIV(DIV(SPAN("Unimod information was saved successfully for the " + modificationType + " modification: "),
+                SPAN(at(style, "font-weight:bold; margin-left: 5px;"), modificationName)),
+                BR(),
+                DIV("View all the structural and isotope modifications in the experiment: ",
+                        new Button.ButtonBuilder("View Experiment Modifications").href(exptModsUrl).build()),
+                DIV(new Link.LinkBuilder("[View Experiment Details]").href(getViewExperimentDetailsURL(expAnnotations.getId(), expAnnotations.getContainer())).build()
+                )));
+        return hView;
+    }
+
     private static UnimodModifications readUnimod()
     {
         return UnimodUtil.getUnimod();
@@ -7896,7 +7992,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected void deleteModInfo(ExperimentStructuralModInfo modInfo, ExperimentAnnotations expAnnotations)
         {
-            ModificationInfoManager.deleteStructuralModInfo(modInfo, expAnnotations, getContainer(), getUser());
+            ModificationInfoManager.deleteStructuralModInfo(modInfo, expAnnotations);
         }
     }
 
@@ -7912,7 +8008,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected void deleteModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations)
         {
-            ModificationInfoManager.deleteIsotopeModInfo(modInfo, expAnnotations, getContainer(), getUser());
+            ModificationInfoManager.deleteIsotopeModInfo(modInfo, expAnnotations);
         }
     }
 
@@ -7928,6 +8024,75 @@ public class PanoramaPublicController extends SpringActionController
         public void setModInfoId(int modInfoId)
         {
             _modInfoId = modInfoId;
+        }
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public class ViewExperimentModifications extends SimpleViewAction<ExperimentIdForm>
+    {
+        @Override
+        public ModelAndView getView(final ExperimentIdForm form, BindException errors)
+        {
+            ExperimentAnnotations exptAnnotations = form.lookupExperiment();
+            if (exptAnnotations == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find an experiment with Id " + form.getId());
+                return new SimpleErrorView(errors, true);
+            }
+
+            // Check container
+            ensureCorrectContainer(getContainer(), exptAnnotations.getContainer(), getViewContext());
+
+            TargetedMSService svc = TargetedMSService.get();
+            List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(exptAnnotations);
+
+            VBox result = new VBox();
+
+            result.addView(new HtmlView(DIV(at(style, "margin: 10px 0 20px 0;"),
+                    new Button.ButtonBuilder("View Experiment Details").href(getViewExperimentDetailsURL(exptAnnotations.getId(), getContainer())).build()))
+            );
+
+            if (hasStructuralMods(svc, runs))
+            {
+                result.addView(new HtmlView(H3("Structural Modifications")));
+                QueryView strModsView = new ModificationsView.StructuralModsView(getViewContext(), exptAnnotations);
+                strModsView.setFrame(WebPartView.FrameType.NONE);
+                result.addView(strModsView);
+            }
+            else
+            {
+                result.addView(new HtmlView(DIV(at(style, "margin:10px;"),EM("Skyline documents in the experiment do not have any structural modifications"))));
+            }
+
+            if (hasIsotopeMods(svc, runs))
+            {
+                result.addView(new HtmlView(H3("Isotope Modifications")));
+                QueryView isotopeModsView = new ModificationsView.IsotopeModsView(getViewContext(), exptAnnotations);
+                 isotopeModsView.setFrame(WebPartView.FrameType.NONE);
+                result.addView(isotopeModsView);
+            }
+            else
+            {
+                result.addView(new HtmlView(DIV(at(style, "margin:10px;"),EM("Skyline documents in the experiment do not have any isotope modifications"))));
+            }
+            result.setFrame(WebPartView.FrameType.PORTAL);
+            return result;
+        }
+
+        private boolean hasStructuralMods(TargetedMSService svc, List<ITargetedMSRun> runs)
+        {
+            return runs.stream().anyMatch(run -> svc.getStructuralModificationsUsedInRun(run.getId()).size() > 0);
+        }
+
+        private boolean hasIsotopeMods(TargetedMSService svc, List<ITargetedMSRun> runs)
+        {
+            return runs.stream().anyMatch(run -> svc.getIsotopeModificationsUsedInRun(run.getId()).size() > 0);
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Experiment Modifications");
         }
     }
 
@@ -8108,6 +8273,14 @@ public class PanoramaPublicController extends SpringActionController
             editUrl.addParameter("specLibInfoId", specLibInfoId);
         }
         return editUrl;
+    }
+
+    public static ActionURL getDeleteSpecLibInfoURL(int experimentAnnotationsId, int specLibInfoId, Container container)
+    {
+        ActionURL deleteUrl = new ActionURL(PanoramaPublicController.DeleteSpecLibInfoAction.class, container);
+        deleteUrl.addParameter("id", experimentAnnotationsId);
+        deleteUrl.addParameter("specLibInfoId", specLibInfoId);
+        return deleteUrl;
     }
 
     private static ActionURL getSubmitPxValidationJobUrl(ExperimentAnnotations exptAnnotations, Container container)
