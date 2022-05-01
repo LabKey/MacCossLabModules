@@ -78,25 +78,6 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
         docSampleFiles.forEach(this::addSampleFile);
     }
 
-    private static List<ValidatorSampleFile> getUniqueDocSampleFiles(List<ValidatorSampleFile> sampleFiles)
-    {
-        List<ValidatorSampleFile> docSampleFiles = new ArrayList<>();
-        Set<SampleFileKey> sampleFileKeys = new HashSet<>();
-
-        for (ValidatorSampleFile sampleFile: sampleFiles)
-        {
-            if (sampleFileKeys.contains(sampleFile.getKey()))
-            {
-                continue;
-            }
-            sampleFileKeys.add(sampleFile.getKey());
-            docSampleFiles.add(sampleFile);
-
-            addWiffScanIfWiff(docSampleFiles, sampleFile);
-        }
-        return docSampleFiles;
-    }
-
     private static void addWiffScanIfWiff(List<ValidatorSampleFile> docSampleFiles, ValidatorSampleFile sampleFile)
     {
         if (sampleFile.isSciexWiff())
@@ -107,7 +88,7 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
                 @Override
                 public String getFileName()
                 {
-                    return sampleFile.getFileName() + DOT_SCAN;
+                    return ValidatorSampleFile.addDotScanToWiffFileName(sampleFile.getFileName());
                 }
 
                 @Override
@@ -158,14 +139,6 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
             Path path = pathMap.get(sampleFile.getName());
             sampleFile.setPath(path != null ? path.toString() : DataFile.NOT_FOUND);
         }
-    }
-
-    private static Set<String> getDuplicateSkylineSampleFileNames(List<ValidatorSampleFile> sampleFiles)
-    {
-        Map<String, Integer> counts = sampleFiles.stream().collect(Collectors.toMap(ValidatorSampleFile::getName, value -> 1, Integer::sum));
-        Set<String> duplicates = new HashSet<>();
-        counts.entrySet().stream().filter(entry -> entry.getValue() > 1).forEach(entry -> duplicates.add(entry.getKey()));
-        return duplicates;
     }
 
     public abstract static class AbstractSampleFile implements ISampleFile
@@ -269,6 +242,10 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
         private void testAddDotScan(String fileName, String injection, boolean isSciex)
         {
             var file = createFile("D:\\Data\\" + fileName + injection);
+            if (isSciex)
+            {
+                fileName = fileName.endsWith("2") ? fileName.substring(0, fileName.length() - 1): fileName;
+            }
             assertEquals("D:\\Data\\" + fileName + (isSciex ? DOT_SCAN : "") + injection, addDotScanToPath(file));
         }
 
@@ -277,60 +254,86 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
         {
             Date date1 = new SimpleDateFormat("yyyy/MM/dd").parse("2021/03/28");
             Date date2 = new SimpleDateFormat("yyyy/MM/dd").parse("2021/04/18");
+
             // file1 and file1_dup are the same file. The file may have been imported into two different replicate in the document. Add it only once
             // Count 1
             var file1 = createFile("D:\\Data\\Thermo1.raw");
             var file1_dup = createFile("D:\\Data\\Thermo1.raw");
+            assertEquals("Files have same name and path. They are equal", file1.getKey(), file1_dup.getKey());
             // Sample file has the same file name but different path from file1 and file1_dup. This should get added
             // Count 2
             var file1_dup_diff_path = createFile("D:\\Data\\Subfolder\\Thermo1.raw");
+            assertNotEquals("Files have same name but different path. They are not equal", file1.getKey(), file1_dup_diff_path.getKey());
+
             // Count 3
             var file2 = createFile("D:\\Data\\Thermo2.raw", date1, "SERIAL1");
             // Sample file has the same file name and path but different date. If the name and file path are the same the files are considered equal
             var file2_dup_diff_time = createFile("D:\\Data\\Thermo2.raw", date2, "SERIAL2");
+            assertEquals("Files have same name and path. Date is ignored in this case", file2.getKey(), file2_dup_diff_time.getKey());
             // Sample file has the same file name, different path but same acquisition date. This will be considered equal
             var file2_dup_diff_path_same_date = createFile("E:\\Data\\Thermo2.raw", date1, "SERIAL1");
+            assertEquals("Files have different path but same date. They are equal", file2.getKey(), file2_dup_diff_path_same_date.getKey());
             // Sample file has the same file different path and acquisition date. This should get added
             // Count 4
             var file2_dup_diff_path_diff_date = createFile("E:\\Data\\Thermo2.raw", date2, "SERIAL2");
+            assertNotEquals("Files have different path and acquisition date. They are not equal", file2.getKey(), file2_dup_diff_path_diff_date.getKey());
+
             // wiff1 and wiff1_dup are the same file. The file may have been imported into two different replicate in the document. Add it only once
             // A wiff.scan will also be added
             // Count 6
             var wiff1 = createFile("D:\\Data\\Sciex1.wiff");
             var wiff1_dup = createFile("D:\\Data\\Sciex1.wiff");
+            assertEquals("Files have same name and path. They are equal", wiff1.getKey(), wiff1_dup.getKey());
             // Sample file has the same file name but different path from wiff1 and wiff1_dup. This should get added + a wiff.scan
             // Count 8
             var wiff1_dup_diff_path = createFile("D:\\Data\\Subfolder\\Sciex1.wiff");
+            assertNotEquals("Files have same name but different path. They are not equal", wiff1.getKey(), wiff1_dup_diff_path.getKey());
+
             // Count 10 (wiff + wiff.scan)
             var wiff2 = createFile("D:\\Data\\Sciex2.wiff");
+
             // Multi inject wiff files. Will get added only once + wiff.scan
             // Count 12
             var multiInjectWiff1_0 = createFile("D:\\Data\\Sciex_multi_1.wiff|injection01|0");
             var multiInjectWiff1_1 = createFile("D:\\Data\\Sciex_multi_1.wiff|injection02|1");
             var multiInjectWiff1_2 = createFile("D:\\Data\\Sciex_multi_1.wiff|injection03|2");
+            assertEquals("Files have same name and path. They are equal", multiInjectWiff1_0.getKey(), multiInjectWiff1_1.getKey());
+            assertEquals("Files have same name and path. They are equal", multiInjectWiff1_0.getKey(), multiInjectWiff1_2.getKey());
             // Sample file has the same file name but different path from the multi injection files above. This should get dded (+ wiff.scan)
             // Count 14
             var multiInjectWiff1_0_diff_path = createFile("D:\\Data\\Subfolder\\Sciex_multi_1.wiff|injection01|0");
+            assertNotEquals("Files have same name but different path. They are not equal", multiInjectWiff1_0.getKey(), multiInjectWiff1_0_diff_path.getKey());
+
             // file3 and file3_dup are the same file. The file may have been imported into two different replicate in the document. Add it only once
             // Count 15
             var file3 = createFile("D:\\Data\\Thermo3.raw");
             var file3_dup = createFile("D:\\Data\\Thermo3.raw");
+            assertEquals("Files have same name and path. They are equal", file3.getKey(), file3_dup.getKey());
+
+            // Count 17 (wiff2 + wiff.scan)
+            var file4 = createFile("D:\\Data\\Sciex2.wiff2");
+            // Count 19 (wiff2 + wiff.scan)
+            var file5 = createFile("D:\\Data\\Sciex3.wiff2|injection01|0");
 
             List<ValidatorSampleFile> docSampleFiles = getUniqueDocSampleFiles(List.of(file1, file1_dup, file1_dup_diff_path,
                     file2, file2_dup_diff_time, file2_dup_diff_path_same_date, file2_dup_diff_path_diff_date,
                     file3, file3_dup,
                     wiff1, wiff1_dup, wiff1_dup_diff_path,
                     wiff2,
-                    multiInjectWiff1_0, multiInjectWiff1_1, multiInjectWiff1_2, multiInjectWiff1_0_diff_path));
+                    multiInjectWiff1_0, multiInjectWiff1_1, multiInjectWiff1_2, multiInjectWiff1_0_diff_path,
+                    file4,
+                    file5));
 
             List<ValidatorSampleFile> expected = List.of(file1, file1_dup_diff_path,
                     file2, file2_dup_diff_path_diff_date,
                     file3,
                     wiff1, wiff1_dup_diff_path,
                     wiff2,
-                    multiInjectWiff1_0, multiInjectWiff1_0_diff_path);
+                    multiInjectWiff1_0, multiInjectWiff1_0_diff_path,
+                    file4,
+                    file5);
 
-            assertEquals("Unexpected sample file count", expected.size() + 5, docSampleFiles.size());
+            assertEquals("Unexpected sample file count", expected.size() + 7, docSampleFiles.size());
 
             // Non-Sciex files
             for (int i = 0; i < 5; i++)
@@ -348,19 +351,57 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
             {
                 assertEquals("Unexpected wiff file name", expected.get(j).getFileName(), docSampleFiles.get(i).getName());
                 assertEquals("Unexpected wiff file path", expected.get(j).getFilePathImported(), docSampleFiles.get(i).getFilePathImported());
-                String wiffScanName = expected.get(j).getFileName() + DOT_SCAN;
-                String wiffScanPath = addDotScanToPath(expected.get(j));
+                String wiffName = expected.get(j).getFileName();
+                if (wiffName.endsWith("wiff2"))
+                {
+                    wiffName = wiffName.substring(0, wiffName.length() - 1);
+                }
+                String wiffScanName = wiffName + DOT_SCAN;
                 assertEquals("Unexpected wiff.scan file name", wiffScanName, docSampleFiles.get(++i).getName());
-                assertEquals("Unexpected wiff.scan file path", wiffScanPath, docSampleFiles.get(i).getFilePathImported());
+
+                String wiffScanPath = expected.get(j).getFilePathImported().replace( expected.get(j).getFileName(), wiffScanName); // .wiff -> .wiff.scan
+                assertEquals("Unexpected wiff.scan imported file path", wiffScanPath, docSampleFiles.get(i).getFilePathImported());
+
+                wiffScanPath = wiffScanPath.substring(0, wiffScanPath.indexOf(wiffScanName) + wiffScanName.length()); // just the path
+                assertEquals("Unexpected wiff.scan file path", wiffScanPath, docSampleFiles.get(i).getFilePath());
                 i++; j++;
             }
 
-            Set<String> duplicateNames = SkylineDocValidator.getDuplicateSkylineSampleFileNames(docSampleFiles);
+            Set<String> duplicateNames = getDuplicateSkylineSampleFileNames(docSampleFiles);
             Set<String> expectedDuplicates = Set.of(file1.getFileName(),file2.getFileName(),
                     wiff1.getFileName(), wiff1.getFileName() + DOT_SCAN,
-                    multiInjectWiff1_0.getFileName(), multiInjectWiff1_0.getFileName() + DOT_SCAN);
+                    multiInjectWiff1_0.getFileName(), multiInjectWiff1_0.getFileName() + DOT_SCAN,
+                    ValidatorSampleFile.addDotScanToWiffFileName(file4.getFileName())); // Because we have a Sciex2.wiff and a Sciex2.wiff2 both of thich
+                                                                                        // will add a Sciex2.wiff.scan
             assertEquals(expectedDuplicates.size(), duplicateNames.size());
             assertTrue(duplicateNames.containsAll(expectedDuplicates));
+        }
+
+        private List<ValidatorSampleFile> getUniqueDocSampleFiles(List<ValidatorSampleFile> sampleFiles)
+        {
+            List<ValidatorSampleFile> docSampleFiles = new ArrayList<>();
+            Set<SampleFileKey> sampleFileKeys = new HashSet<>();
+
+            for (ValidatorSampleFile sampleFile: sampleFiles)
+            {
+                if (sampleFileKeys.contains(sampleFile.getKey()))
+                {
+                    continue;
+                }
+                sampleFileKeys.add(sampleFile.getKey());
+                docSampleFiles.add(sampleFile);
+
+                addWiffScanIfWiff(docSampleFiles, sampleFile);
+            }
+            return docSampleFiles;
+        }
+
+        private Set<String> getDuplicateSkylineSampleFileNames(List<ValidatorSampleFile> sampleFiles)
+        {
+            Map<String, Integer> counts = sampleFiles.stream().collect(Collectors.toMap(ValidatorSampleFile::getName, value -> 1, Integer::sum));
+            Set<String> duplicates = new HashSet<>();
+            counts.entrySet().stream().filter(entry -> entry.getValue() > 1).forEach(entry -> duplicates.add(entry.getKey()));
+            return duplicates;
         }
 
         private ValidatorSampleFile createFile(String path)

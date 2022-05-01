@@ -63,8 +63,7 @@ public class ValidatorSampleFile extends SkylineDocSampleFile
 
     public boolean isSciexWiffScan()
     {
-        String fileName = _sampleFile.getFileName();
-        return fileName.toLowerCase().endsWith(DOT_WIFF + DOT_SCAN) || fileName.toLowerCase().endsWith(DOT_WIFF2 + DOT_SCAN);
+        return _sampleFile.getFileName().toLowerCase().endsWith(DOT_WIFF + DOT_SCAN);
     }
 
     static String addDotScanToWiffPath(@NotNull String sampleFileName, @NotNull String filePath)
@@ -77,12 +76,25 @@ public class ValidatorSampleFile extends SkylineDocSampleFile
             {
                 // Path may be for a multi-injection wiff file.
                 // Example: D:\Data\Site52_041009_Study9S_Phase-I.wiff|Site52_STUDY9S_PHASEI_6ProtMix_QC_03|2
-                return filePath.substring(0, idx + ext.length())
+                return filePath.substring(0, idx + DOT_WIFF.length() - 1) // .wiff2 files require .wiff.scan, not .wiff2.scan
                         + DOT_SCAN
                         + filePath.substring(idx + ext.length());
             }
         }
         return filePath;
+    }
+
+    static String addDotScanToWiffFileName(@NotNull String sampleFileName)
+    {
+        if (isSciexWiff(sampleFileName))
+        {
+            if (sampleFileName.toLowerCase().endsWith(DOT_WIFF2))
+            {
+                sampleFileName = sampleFileName.substring(0, sampleFileName.length() - 1);
+            }
+            return sampleFileName + DOT_SCAN;
+        }
+        return sampleFileName;
     }
 
     // D:\Data\Site52_041009_Study9S_Phase-I.wiff|Site52_STUDY9S_PHASEI_6ProtMix_QC_03|2 -> D:\Data\Site52_041009_Study9S_Phase-I.wiff
@@ -129,7 +141,7 @@ public class ValidatorSampleFile extends SkylineDocSampleFile
             }
             if (!_importedPath.equals(that._importedPath))
             {
-                // If the path is not the same return true if the acquired time is not null and is the same for both files.
+                // If the path is not the same return true if the acquired time is not null, and is the same for both files.
                 return (_acquiredTime != null && _acquiredTime.equals(that._acquiredTime)) && (Objects.equals(_instrumentSerialNumber, that._instrumentSerialNumber));
             }
             // file name is the same and the imported file path is the same. Return true
@@ -141,7 +153,5 @@ public class ValidatorSampleFile extends SkylineDocSampleFile
         {
             return Objects.hash(_fileName);
         }
-
-        // TODO: test equals
     }
 }
