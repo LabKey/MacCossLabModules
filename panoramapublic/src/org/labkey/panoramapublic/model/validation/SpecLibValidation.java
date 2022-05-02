@@ -183,10 +183,20 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
         {
             return "VALID";
         }
-
         if (hasSpectrumFiles() && foundSpectrumFiles() && hasIdFiles() && foundIdFiles())
         {
             return "VALID";
+        }
+        if (isEncyclopeDiaLibrary())
+        {
+            if (hasSpectrumFiles() && foundSpectrumFiles())
+            {
+                return "VALID";
+            }
+            else
+            {
+                return "Missing spectrum files";
+            }
         }
         else
         {
@@ -275,7 +285,8 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
 
     private boolean isIncompleteBlib()
     {
-        return !isPrositLibrary() && !hasSpectrumFiles() || !hasIdFiles();
+        // Return true if no spectrum or peptide id file names were found in the .blib
+        return !isPrositLibrary() && (!hasSpectrumFiles() || !hasIdFiles());
     }
 
     private boolean hasSpectrumFiles()

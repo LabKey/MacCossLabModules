@@ -928,7 +928,7 @@
                     rowBodyTpl: new Ext4.XTemplate(
 
                             '<div class="pxv-grid-expanded-row">',
-                            '<div style="margin-bottom:20px;">{[this.renderLibraryStatus(values)]}</div>',
+                            '<div>{[this.renderLibraryStatus(values)]}</div>',
                             // Spectrum files
                             '<tpl if="spectrumFiles.length &gt; 0">','{[this.renderTable(values.spectrumFiles, "lib-spectrum-files-status", "Spectrum Files")]}', '</tpl>',
                             // Peptide Id files
@@ -958,9 +958,13 @@
                                                           + link("[View Library Info]", href, 'pxv-bold', false)
                                                 + '</div>';
                                     }
-                                    const cls = values.valid === true ? '' : 'pxv-invalid';
-                                    const statusHtml = '<div><span class="' + cls + '">' + htmlEncode(values.status) + '</span></div>';
-                                    return specLibInfoHtml + statusHtml;
+                                    let statusHtml = '';
+                                    if (values.valid === false) {
+                                        const cls = values.valid === true ? '' : 'pxv-invalid';
+                                        statusHtml = '<div><span class="' + cls + '">' + htmlEncode(values.status) + '</span></div>';
+                                    }
+
+                                    return (statusHtml || specLibInfoHtml) ? '<div style="margin-bottom:20px;">' + specLibInfoHtml + statusHtml + '</div>' : '';
                                 },
                                 renderTable: function(dataFiles, tblCls, title) {
                                     return libSourceFilesTableTpl.apply({files: dataFiles, tblCls: tblCls, title: title});
@@ -1021,7 +1025,8 @@
 
     renderFileStatus: function renderFileStatus(values, isSampleFile, container) {
         const cls = (values.found === true ? 'pxv-valid' : 'pxv-invalid') + ' pxv-bold';
-        let status = "FOUND";
+        let status = '';
+        if (values.found === true) status = "FOUND";
         if (values.found === false) status = "MISSING";
         if (values.ambiguous === true) status = "AMBIGUOUS";
         return '<td><span class="' + cls + '">' + htmlEncode(status) + '</span></td>';
