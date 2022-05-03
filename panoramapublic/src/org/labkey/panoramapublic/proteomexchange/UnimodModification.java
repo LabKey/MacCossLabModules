@@ -18,11 +18,13 @@ package org.labkey.panoramapublic.proteomexchange;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.labkey.api.util.DOM;
 import org.labkey.api.util.Link;
 import org.w3c.dom.NodeList;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -315,15 +317,15 @@ public class UnimodModification
         return getLink(unimodId, false);
     }
 
-    public static Link getLink(int unimodId, boolean clearClasses)
+    public static Link getLink(int unimodId, boolean clearMargin)
     {
         var link = new Link.LinkBuilder("UNIMOD:" + unimodId)
                 .href("https://www.unimod.org/modifications_view.php?editid1=" + unimodId)
                 .target("_blank")
                 .rel("noopener noreferrer");
-        if (clearClasses)
+        if (clearMargin)
         {
-            link = link.clearClasses();
+            link = link.attributes(Map.of(DOM.Attribute.style.name(), "margin-right:0px"));
         }
         return link.build();
     }

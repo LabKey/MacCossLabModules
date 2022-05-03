@@ -270,7 +270,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
     private void verifyValidationOutdated(int validationCount)
     {
         goToExperimentDetailsPage();
-        var outdatedMsg = "The latest validation results are outdated. Please submit the data again to start a new validation job.";
+        var outdatedMsg = "The latest validation results are outdated. Please click the button below to re-run validation.";
         var validationSummaryWebPart = portalHelper.getBodyWebPart("Data Validation for ProteomeXchange");
         var panelText = validationSummaryWebPart.getComponentElement().getText();
         assertTextPresent(new TextSearcher(panelText), outdatedMsg);

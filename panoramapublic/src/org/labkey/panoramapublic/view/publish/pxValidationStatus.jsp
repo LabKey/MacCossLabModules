@@ -9,6 +9,7 @@
 <%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
+<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%!
@@ -77,7 +78,7 @@
         padding: 5px;
         background-color: #FFF6D8;
         font-weight: bold;
-        font-size: 1.2em;
+        font-size: 1.1em;
     }
     .pxv-bold-underline
     {
@@ -407,8 +408,13 @@
             if (outdated) {
                 let text = 'These validation results are outdated.';
                 if (latest) {
-                   text += ' Please submit the data again to start a new validation job.'
+                   text += ' Please click the button below to re-run validation.'
                 }
+                allComponents.unshift({
+                    xtype: 'component',
+                    style: {margin: '10px 0 15px; 0'},
+                    html: '<%=button("Start Data Validation").href(PanoramaPublicController.getSubmitPxValidationJobUrl(experimentAnnotations, getContainer())).usePost().build().getHtmlString()%>'
+                });
                 allComponents.unshift({
                     xtype: 'label',
                     cls: 'pxv-outdated-validation labkey-error',
@@ -738,48 +744,51 @@
                         }
                     },
                     <% } %>
-                    {
-                        text: '',
-                        sortable: false,
-                        hideable: false,
-                        width: 200,
-                        dataIndex: 'container',
-                        renderer: function (value, metadata, record) {
-                            // var iconCls = 'fa-file fa-arrow-up labkey-fa-upload-files';
-                            // metadata.tdCls = iconCls;
-                            metadata.style = 'text-align: center';
-                            if (record.get('valid') === false) {
-                                // If container value is missing it means that the document or the containing container was deleted.
-                                return value ? link('[Upload]', LABKEY.ActionURL.buildURL('project', 'begin', value, {pageId: 'Raw Data'})) : "Deleted";
-                            }
-                            return "";
-                        }
-                    }
                     ],
                 plugins: [{
                     ptype: 'rowexpander',
                     rowBodyTpl: new Ext4.XTemplate(
                             // Sample files in the document
-                            '<div class="pxv-grid-expanded-row">', '{[this.renderTable(values.sampleFiles)]}', '</div>',
+                            '<div class="pxv-grid-expanded-row">',
+                            '{[this.ambiguousFilesMsg(values.sampleFiles)]}',
+                            '{[this.uploadButton(values)]}',
+                            '{[this.renderTable(values.sampleFiles)]}',
+                            '</div>',
                             {
                                 renderTable: function(sampleFiles) {
                                     if (!sampleFiles || sampleFiles.length === 0) {
                                         return "Skyline document does not contain any imported results"
                                     }
-                                    var hasAmbiguous = false;
-                                    for (const file of sampleFiles) {
-                                        if (file['ambiguous'] === true) {
-                                            hasAmbiguous = true;
-                                            break;
+                                    return sampleFilesTableTpl.apply({files: sampleFiles, tblCls: 'sample-files-status'});
+                                },
+                                uploadButton: function(values) {
+                                    if (values['container'] && values['valid'] === false) {
+                                        // If container value is missing it means that the document or the containing container was deleted.
+                                        return '<div style="margin: 8px;">'
+                                                + link('Upload Files', LABKEY.ActionURL.buildURL('project', 'begin', values['container'], {pageId: 'Raw Data'}), 'labkey-button')
+                                                + '</div>';
+                                    }
+                                    return "";
+                                },
+                                ambiguousFilesMsg: function(sampleFiles) {
+                                    let ambiguousFilesMsg = "";
+                                    if (sampleFiles && sampleFiles.length > 0) {
+                                        var hasAmbiguous = false;
+                                        for (const file of sampleFiles) {
+                                            if (file['ambiguous'] === true) {
+                                                hasAmbiguous = true;
+                                                break;
+                                            }
+                                        }
+                                        if (hasAmbiguous) {
+                                            ambiguousFilesMsg = '<div class="pxv-invalid"><em>Files marked as ambiguous have the same name in one or more documents in the folder but are different ' +
+                                                    'files based on the imported file path and the acquired time on the mass spectrometer. Click the View Files link in ' +
+                                                    'the table below to view sample files with the same name. ' +
+                                                    '<br>' +
+                                                    'File names imported into Skyline documents must have unique names if they are different files.' + '</em></div>';
                                         }
                                     }
-                                    let ambiguousFilesMsg = "";
-                                    if (hasAmbiguous) {
-                                        ambiguousFilesMsg = '<div><em>Files are marked as ambiguous because they have the same name but were imported from different paths ' +
-                                                            'into one or more Skyline documents. File names imported into Skyline documents in a folder must be unique.</em></div>'
-                                    }
-
-                                    return ambiguousFilesMsg + sampleFilesTableTpl.apply({files: sampleFiles, tblCls: 'sample-files-status'});
+                                    return ambiguousFilesMsg;
                                 },
                                 compiled:true
                             }
@@ -992,8 +1001,9 @@
             '</table>',
             '<div>{container}</div>',
             {
-                renderStatus: function (values) { return renderFileStatus(values, true) },
-                renderPath: function (values) {
+                renderStatus: function (values)
+                {
+                    var ambigousFilesLink;
                     if (values.ambiguous === true && values.container) {
                         let params = {
                             'schemaName': 'panoramapublic',
@@ -1001,10 +1011,11 @@
                             'query.File~eq': values.name
                         };
                         const href = LABKEY.ActionURL.buildURL('query', 'executeQuery', values.container, params)
-                        return link("[Ambiguous Files]", href);
+                        ambigousFilesLink = link(" View Files", href, 'labkey-text-link');
                     }
-                    else return htmlEncode(values.path);
+                    return renderFileStatus(values, true, ambigousFilesLink)
                 },
+                renderPath: function (values) { return htmlEncode(values.path);},
                 compiled:true, disableFormats:true
             }
     );
@@ -1023,13 +1034,13 @@
             }
     );
 
-    renderFileStatus: function renderFileStatus(values, isSampleFile, container) {
+    renderFileStatus: function renderFileStatus(values, isSampleFile, link) {
         const cls = (values.found === true ? 'pxv-valid' : 'pxv-invalid') + ' pxv-bold';
         let status = '';
         if (values.found === true) status = "FOUND";
         if (values.found === false) status = "MISSING";
         if (values.ambiguous === true) status = "AMBIGUOUS";
-        return '<td><span class="' + cls + '">' + htmlEncode(status) + '</span></td>';
+        return '<td><span class="' + cls + '">' + htmlEncode(status) + (link ? '<span style="margin-left: 5px;">' + link + '</span>' : "") + '</span></td>';
     }
 
     var headerRowTpl = new Ext4.XTemplate(

@@ -3281,8 +3281,8 @@ public class PanoramaPublicController extends SpringActionController
         {
             return new HtmlView(DIV(at(style, "background-color: #FFF6D8;margin:2px;font-weight:bold;"),
                                     SPAN(cl("labkey-error"), outdated ?
-                                            "The latest validation results are outdated. Please submit the data again to start a new validation job."
-                                            : "Validation Incomplete")));
+                                            "The latest validation results are outdated. Please click the button below to re-run validation."
+                                            : "Validation is incomplete.")));
         }
 
         var statusFile = PipelineService.get().getStatusFile(validation.getJobId());
@@ -5256,15 +5256,16 @@ public class PanoramaPublicController extends SpringActionController
             {
                 HtmlView details = getValidationSummary(DataValidationManager.getStatus(latestValidation, getUser()), exptAnnotations, false, getContainer(), getUser());
                 VBox view = new VBox(details);
-                Button viewAllButton = null;
+                Link viewAllLink = null;
                 if (DataValidationManager.getValidationJobCount(exptAnnotations.getId()) > 1)
                 {
                     ActionURL url = new ActionURL(ViewPxValidationsAction.class, getContainer()).addParameter("id", exptAnnotations.getId());
-                    viewAllButton = new Button.ButtonBuilder("View All Validation Jobs").href(url).build();
+                    viewAllLink = new Link.LinkBuilder("View All Validation Jobs").href(url).build();
                 }
                 view.addView(new HtmlView(DIV(at(style, "margin-top:15px;"),
-                        viewAllButton != null ? SPAN(at(style, "margin-right:10px;"), viewAllButton) : HtmlString.EMPTY_STRING,
-                        getStartDataValidationButton(exptAnnotations, getContainer()))));
+                        getStartDataValidationButton(exptAnnotations, getContainer()),
+                        viewAllLink != null ? DIV(viewAllLink) : HtmlString.EMPTY_STRING
+                        )));
 
                 view.setTitle("Data Validation for ProteomeXchange");
                 view.setFrame(WebPartView.FrameType.PORTAL);
@@ -8283,7 +8284,7 @@ public class PanoramaPublicController extends SpringActionController
         return deleteUrl;
     }
 
-    private static ActionURL getSubmitPxValidationJobUrl(ExperimentAnnotations exptAnnotations, Container container)
+    public static ActionURL getSubmitPxValidationJobUrl(ExperimentAnnotations exptAnnotations, Container container)
     {
         return new ActionURL(SubmitPxValidationJobAction.class, container).addParameter("id", exptAnnotations.getId());
     }

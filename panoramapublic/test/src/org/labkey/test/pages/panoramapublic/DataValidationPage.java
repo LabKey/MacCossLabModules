@@ -24,7 +24,7 @@ import static org.junit.Assert.assertTrue;
 
 public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCache>
 {
-    private static final String OUTDATED_VALIDATION_MSG = "These validation results are outdated. Please submit the data again to start a new validation job.";
+    private static final String OUTDATED_VALIDATION_MSG = "These validation results are outdated. Please click the button below to re-run validation.";
 
     public DataValidationPage(WebDriverWrapper webDriverWrapper)
     {

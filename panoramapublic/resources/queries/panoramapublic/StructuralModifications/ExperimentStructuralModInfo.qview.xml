@@ -12,7 +12,4 @@
         <column name="UnimodMatch" />
         <column name="RunIds" />
     </columns>
-    <sorts>
-        <sort column="UnimodMatch" descending="false" />
-    </sorts>
 </customView>
