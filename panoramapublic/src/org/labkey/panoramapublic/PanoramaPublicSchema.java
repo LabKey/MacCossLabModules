@@ -38,6 +38,7 @@ import org.labkey.api.query.QuerySettings;
 import org.labkey.api.query.QueryView;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
+import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.view.ViewContext;
 import org.labkey.panoramapublic.model.speclib.SpecLibDependencyType;
 import org.labkey.panoramapublic.model.speclib.SpecLibSourceType;
@@ -360,6 +361,11 @@ public class PanoramaPublicSchema extends UserSchema
                 @Override
                 protected boolean canDelete()
                 {
+                    if (TABLE_DATA_VALIDATION.equalsIgnoreCase(settings.getQueryName()) && !context.hasPermission(AdminOperationsPermission.class))
+                    {
+                        // For the DataValidation table show the delete option only if the user is a site admin
+                        return false;
+                    }
                     return true;
                 }
 

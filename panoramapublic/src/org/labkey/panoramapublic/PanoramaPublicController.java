@@ -3206,7 +3206,7 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    @RequiresPermission(ReadPermission.class)
+    @RequiresPermission(AdminOperationsPermission.class)
     public static class ViewPxValidationsAction extends SimpleViewAction<ExperimentIdForm>
     {
         ExperimentAnnotations _experimentAnnotations;
@@ -5257,7 +5257,7 @@ public class PanoramaPublicController extends SpringActionController
                 HtmlView details = getValidationSummary(DataValidationManager.getStatus(latestValidation, getUser()), exptAnnotations, false, getContainer(), getUser());
                 VBox view = new VBox(details);
                 Link viewAllLink = null;
-                if (DataValidationManager.getValidationJobCount(exptAnnotations.getId()) > 1)
+                if (getViewContext().hasPermission(AdminOperationsPermission.class) && DataValidationManager.getValidationJobCount(exptAnnotations.getId()) > 1)
                 {
                     ActionURL url = new ActionURL(ViewPxValidationsAction.class, getContainer()).addParameter("id", exptAnnotations.getId());
                     viewAllLink = new Link.LinkBuilder("View All Validation Jobs").href(url).build();
