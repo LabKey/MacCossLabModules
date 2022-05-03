@@ -8055,7 +8055,11 @@ public class PanoramaPublicController extends SpringActionController
 
             if (hasStructuralMods(svc, runs))
             {
-                result.addView(new HtmlView(H3("Structural Modifications")));
+                result.addView(new HtmlView(H3(at(style, "margin-top:10px;"),"Structural Modifications")));
+                if (ModificationInfoManager.getStructuralModInfosForExperiment(exptAnnotations.getId(), getContainer()).size() > 0)
+                {
+                    result.addView(getAssignedUnimodMatchesMessage());
+                }
                 QueryView strModsView = new ModificationsView.StructuralModsView(getViewContext(), exptAnnotations);
                 strModsView.setFrame(WebPartView.FrameType.NONE);
                 result.addView(strModsView);
@@ -8067,7 +8071,11 @@ public class PanoramaPublicController extends SpringActionController
 
             if (hasIsotopeMods(svc, runs))
             {
-                result.addView(new HtmlView(H3("Isotope Modifications")));
+                result.addView(new HtmlView(H3(at(style, "margin-top:10px;"),"Isotope Modifications")));
+                if (ModificationInfoManager.getIsotopeModInfosForExperiment(exptAnnotations.getId(), getContainer()).size() > 0)
+                {
+                    result.addView(getAssignedUnimodMatchesMessage());
+                }
                 QueryView isotopeModsView = new ModificationsView.IsotopeModsView(getViewContext(), exptAnnotations);
                  isotopeModsView.setFrame(WebPartView.FrameType.NONE);
                 result.addView(isotopeModsView);
@@ -8080,6 +8088,12 @@ public class PanoramaPublicController extends SpringActionController
             return result;
         }
 
+        private HtmlView getAssignedUnimodMatchesMessage()
+        {
+            return new HtmlView(DIV(cl("labkey-error"),
+                    EM("Unimod Ids starting with ", STRONG("**"), " in the Unimod Match column were assigned based on the formula, "
+                            + "modification site(s) and terminus in the modification definition.")));
+        }
         private boolean hasStructuralMods(TargetedMSService svc, List<ITargetedMSRun> runs)
         {
             return runs.stream().anyMatch(run -> svc.getStructuralModificationsUsedInRun(run.getId()).size() > 0);

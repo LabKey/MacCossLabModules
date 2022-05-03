@@ -213,7 +213,7 @@ public class Modification
     {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("id", getId());
-        jsonObject.put("skylineModInfo", getSkylineModInfo());
+        jsonObject.put("skylineModName", getSkylineModName());
         jsonObject.put("unimodId", getUnimodId());
         jsonObject.put("unimodName", getUnimodName());
         jsonObject.put("matchAssigned", isMatchAssigned());
@@ -230,11 +230,6 @@ public class Modification
             }
         }
         return jsonObject;
-    }
-
-    private String getSkylineModInfo()
-    {
-        return (isMatchAssigned() ? "**" : "") + getSkylineModName();
     }
 
     private JSONArray getUnimodMatchesJSON(List<ExperimentModInfo.UnimodInfo> unimodMatches)

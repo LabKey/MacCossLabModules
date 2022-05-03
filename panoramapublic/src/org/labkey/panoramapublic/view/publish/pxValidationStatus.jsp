@@ -434,7 +434,7 @@
         return {xtype: 'label', text: 'Missing JSON property "validation"'};
     }
 
-    function link(text, href, cssCls, sameTab) {
+    function link(text, href, cssCls, sameTab, style) {
         const cls = cssCls ? ' class="' + cssCls + '" ' : '';
         let target = ' target="_blank" ';
         let rel = ' rel="noopener noreferrer" ';
@@ -442,7 +442,7 @@
             target = "";
             rel = "";
         }
-        return '<a ' + cls + ' href="' + htmlEncode(href) + '" ' + target + rel + ' >' + htmlEncode(text) + '</a>';
+        return '<a ' + cls + (style ? ' style="' + style + '" ' : "") + ' href="' + htmlEncode(href) + '" ' + target + rel + ' >' + htmlEncode(text) + '</a>';
     }
 
     function documentLink(documentName, containerPath, runId) {
@@ -455,8 +455,9 @@
                 LABKEY.ActionURL.getContainer(), {id: <%=experimentAnnotationsId%>}), 'labkey-text-link', true);
     }
 
-    function unimodLink(unimodId, cls) {
-        return link("UNIMOD:" + unimodId, "https://www.unimod.org/modifications_view.php?editid1=" + unimodId, cls);
+    function unimodLink(unimodId) {
+        return link("UNIMOD:" + unimodId, "https://www.unimod.org/modifications_view.php?editid1=" + unimodId, "labkey-text-link-noarrow",
+                false, "margin-right: 0px; padding-right: 5px; color:green");
     }
 
     function missing() {
@@ -473,7 +474,7 @@
         };
 
         var href = LABKEY.ActionURL.buildURL('panoramapublic', action, LABKEY.ActionURL.getContainer(), params);
-        return '<span style="margin-left:5px;">'  + link("Find Match", href, 'labkey-text-link', true) + '</span>';
+        return '<span style="margin-left:5px;">'  + link("Find Match", href, 'labkey-text-link', false) + '</span>';
     }
 
     // -----------------------------------------------------------
@@ -484,7 +485,7 @@
         if (json["modifications"]) {
             const modificationsStore = Ext4.create('Ext.data.Store', {
                 storeId: 'modificationsStore',
-                fields:  ['id', 'skylineModInfo', 'unimodId', 'unimodName', 'matchAssigned', 'valid', 'modType', 'dbModId', 'documents', 'unimodMatches'],
+                fields:  ['id', 'skylineModName', 'unimodId', 'unimodName', 'matchAssigned', 'valid', 'modType', 'dbModId', 'documents', 'unimodMatches'],
                 data:    json,
                 proxy:   { type: 'memory', reader: { type: 'json', root: 'modifications' }},
                 sorters: [
@@ -493,19 +494,7 @@
                         direction: 'DESC' // Structural modifications first
                     },
                     {
-                        property: 'valid',
-                        direction: 'DESC'
-                    },
-                    {
-                        property: 'unimodId',
-                        direction: 'DESC'
-                    },
-                    {
-                        property: 'unimodMatches',
-                        direction: 'DESC'
-                    },
-                    {
-                        property: 'skylineModInfo',
+                        property: 'id',
                         direction: 'ASC'
                     }
                 ]
@@ -535,23 +524,23 @@
                     items: [
                     {
                         text: 'Name',
-                        dataIndex: 'skylineModInfo',
+                        dataIndex: 'skylineModName',
                         flex: 4,
                         renderer: function (v) { return htmlEncode(v); }
                     },
                     {
-                        text: 'Unimod Id',
+                        text: 'Unimod Match',
                         dataIndex: 'unimodId',
                         flex: 2,
                         renderer: function (value, metadata, record) {
-                            if (value) return unimodLink(value, 'pxv-valid pxv-bold');
+                            if (value) return unimodLink(value);
                             else if (record.data['unimodMatches']) {
                                 var ret = ''; var sep = '';
                                 var matches = record.data['unimodMatches'];
                                 var isotopic = record.data['modType'] === "Isotopic" ? true : false;
                                 for (var i = 0; i < matches.length; i++) {
-                                    ret += sep + unimodLink(matches[i]['unimodId'], 'pxv-valid pxv-bold');
-                                    sep = isotopic ? '</br>' : ' + ';
+                                    ret += sep + "**" + unimodLink(matches[i]['unimodId']);
+                                    sep = isotopic ? '</br>' : '<b> + </b>';
                                 }
                                 return ret;
                             }
@@ -610,9 +599,6 @@
                             '</div>',
                             '</div>',
                             {
-                                unimodLink: function (values) {
-                                    return unimodLink(values.unimodId);
-                                },
                                 docLink: function (doc) {
                                     return documentLink(doc.name, doc.container, doc.runId);
                                 },
@@ -641,9 +627,8 @@
                 }]
             });
             if (hasInferred) {
-                var noteHtml = "Modification names starting with <strong>**</strong> in the Name column did not have a Unimod Id in the Skyline document."
-                        + " A Unimod match was was assigned based on the formula, modification site(s) and terminus in the modification definition"
-                        + ", or a combination modification was defined.";
+                var noteHtml = "Unimod Ids starting with <strong>**</strong> in the Unimod Match column were assigned based on the formula, "
+                        + "modification site(s) and terminus in the modification definition.";
                 var note = {
                     xtype: 'component',
                     padding: 10,
@@ -677,10 +662,6 @@
                 sorters: [
                     {
                         property: 'container',
-                        direction: 'ASC'
-                    },
-                    {
-                        property: 'valid',
                         direction: 'ASC'
                     },
                     {
@@ -785,7 +766,7 @@
                                                     'files based on the imported file path and the acquired time on the mass spectrometer. Click the View Files link in ' +
                                                     'the table below to view sample files with the same name. ' +
                                                     '<br>' +
-                                                    'File names imported into Skyline documents must have unique names if they are different files.' + '</em></div>';
+                                                    'File names imported into Skyline documents being submitted must have unique names if they are different files.' + '</em></div>';
                                         }
                                     }
                                     return ambiguousFilesMsg;
