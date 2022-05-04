@@ -1,15 +1,13 @@
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.api.util.PageFlowUtil" %>
-<%@ page import="org.labkey.api.pipeline.PipelineStatusUrls" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
-<%@ page import="org.labkey.api.pipeline.PipelineJob" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.api.action.SpringActionController" %>
 <%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
-<%@ page import="org.labkey.api.portal.ProjectUrls" %>
+<%@ page import="org.labkey.panoramapublic.model.validation.Status" %>
+<%@ page import="org.labkey.panoramapublic.query.DataValidationManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%!
@@ -116,8 +114,8 @@
 <%
     var view = (JspView<PanoramaPublicController.PxValidationStatusBean>) HttpView.currentView();
     var bean = view.getModelBean();
-    int experimentAnnotationsId = bean.getDataValidation().getExperimentAnnotationsId();
-    ExperimentAnnotations experimentAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
+    ExperimentAnnotations experimentAnnotations = bean.getExpAnnotations();
+    int experimentAnnotationsId = experimentAnnotations.getId();
     boolean includeSubfolders = experimentAnnotations != null && experimentAnnotations.isIncludeSubfolders();
     int jobId = bean.getDataValidation().getJobId();
     Integer journalId = bean.getJournalId();
@@ -128,23 +126,12 @@
         submitAction = submission.hasCopy() ? SpringActionController.getActionName(PanoramaPublicController.ResubmitExperimentAction.class)
                 : SpringActionController.getActionName(PanoramaPublicController.UpdateSubmissionAction.class);
     }
-    var jobStatus = bean.getPipelineJobStatus();
-    var onPageLoadMsg = jobStatus != null ? (String.format("Data validation job is %s. This page will automatically refresh with the validation progress.",
-            jobStatus.isActive() ? (PipelineJob.TaskStatus.waiting.matches(jobStatus.getStatus()) ? "in the queue" : "running") : "complete"))
-            : "Could not find job status for job with Id " + jobId;
-    var jobLogHref = PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlDetails(getContainer(), jobId);
+    Status validationStatus = bean.getPxValidationStatus();
+    boolean isOutdated = DataValidationManager.isValidationOutdated(bean.getDataValidation(), experimentAnnotations, getUser());
+    boolean isLatest = DataValidationManager.isLatestValidation(bean.getDataValidation(), experimentAnnotations.getContainer());
 %>
 
-<div>
-    <div class="alert alert-info" id="onPageLoadMsgDiv"><%=h(onPageLoadMsg)%></div>
-    <div id="jobStatusDiv">
-    <span class="pxv-bold-underline", style="margin-right:5px;">Job Status: </span> <span id="jobStatusSpan"></span>
-    <span style="margin-left:10px;"><%=link("[View Log]", jobLogHref)%></span>
-    </div>
-</div>
-
-<div style="margin-top:10px;" id="validationProgressDiv"></div>
-<div style="margin-top:10px;" id="validationStatusWrapper"><div id="validationStatusDiv"></div></div>
+<div id="validationStatusDiv"/>
 
 <script type="text/javascript">
 
@@ -160,124 +147,24 @@
     // Combining templates: https://stackoverflow.com/questions/5006273/extjs-xtemplate
 
     var htmlEncode = Ext4.util.Format.htmlEncode;
-
-    const jobStatusSpan = document.getElementById("jobStatusSpan");
-    const validationProgressDiv = document.getElementById("validationProgressDiv");
+    const PX_COMPLETE = 3;
+    const PX_INCOMPLETE = 2;
     const validationStatusDiv = document.getElementById("validationStatusDiv");
     const parameters = LABKEY.ActionURL.getParameters();
     let forSubmit = true;
     if (LABKEY.ActionURL.getParameter("forSubmit") !== undefined) {
         forSubmit = LABKEY.ActionURL.getParameter("forSubmit") === 'true';
     }
-    let lastJobStatus = "";
-    const FIVE_SEC = 5000;
 
-    Ext4.onReady(makeRequest);
+    Ext4.onReady(function() {
 
-    function makeRequest() {
-        Ext4.Ajax.request({
-            url: LABKEY.ActionURL.buildURL('panoramapublic', 'pxValidationStatusApi.api', null, parameters),
-            method: 'GET',
-            success: LABKEY.Utils.getCallbackWrapper(displayStatus),
-            failure: function () {
-                onFailure("Request was unsuccessful. The server may be unavailable. Please try reloading the page.")
-            }
-        });
-    }
-
-    function onFailure(message)
-    {
-        setTimeout(alert(message), 500);
-    }
-
-    function displayStatus(json) {
-
-        if (json) {
-
-            if (json["error"])
-            {
-                onFailure("There was an error: " + json["error"]);
-                return;
-            }
-            const jobStatus = json["jobStatus"];
-            const validationProgress = json["validationProgress"];
-            const validationStatus = json["validationStatus"];
-            if (!(validationProgress || validationStatus))
-            {
-                onFailure("Unexpected JSON response returned by the server.");
-                return;
-            }
-
-            if (validationProgress) {
-                validationProgressDiv.innerHTML = getValidationProgressHtml(validationProgress);
-            }
-            if (validationStatus) {
-                validationProgressDiv.innerHTML = ""; // Remove the job progress text
-                displayValidationStatus(validationStatus); // Display the full status details
-            }
-
-            if (jobStatus) {
-                const jobStatusLc = jobStatus.toLowerCase();
-                if (lastJobStatus !== jobStatus) {
-                    lastJobStatus = jobStatus;
-                    if (jobStatusLc === "complete") {
-                        document.getElementById("jobStatusDiv").remove();
-                        validationProgressDiv.remove();
-                        document.getElementById("validationStatusWrapper").style.margin = "0";
-                    }
-                    else {
-                        jobStatusSpan.innerHTML = jobStatus;
-                    }
-                }
-                if (!(jobStatusLc === "complete" || jobStatusLc === "error" || jobStatusLc === "cancelled" || jobStatusLc === "cancelling")) {
-                    // If task is not yet complete then schedule another request.
-                    setTimeout(makeRequest, FIVE_SEC);
-                }
-                else {
-                    var onPageLoadMsgDiv = document.getElementById("onPageLoadMsgDiv");
-                    if (onPageLoadMsgDiv) {
-                        onPageLoadMsgDiv.innerHTML = "";
-                        onPageLoadMsgDiv.classList.remove('alert');
-                        onPageLoadMsgDiv.classList.remove('alert-info');
-
-                        if (jobStatusLc === "error") {
-                            onPageLoadMsgDiv.innerHTML = "There were errors while running the pipeline job. Please " +
-                                    '<%=link("view the validation job log", jobLogHref)
-                                .clearClasses().addClass("alert-link")%>' + " for details.";
-                            onPageLoadMsgDiv.classList.add('alert', 'alert-warning', 'labkey-error');
-                        }
-                    }
-                }
-            }
-            else {
-                jobStatusSpan.innerHTML = "UNKNOWN"; // The job may have been deleted. That is why we did not get the job status in the response.
-            }
-        }
-        else {
-            onFailure("Server did not return a valid response.");
-        }
-    }
-
-    function getValidationProgressHtml(validationProgress) {
-        var html = "";
-        if (validationProgress) {
-            for (var i = 0; i < validationProgress.length; i++) {
-                html += htmlEncode(validationProgress[i]) + "</br>";
-            }
-        }
-        return html;
-    }
-
-    function displayValidationStatus(json) {
+        const json = <%=validationStatus.toJSON()%>;
         Ext4.create('Ext.panel.Panel', {
             bodyStyle: {border: '0px', padding: '0px'},
             renderTo: 'validationStatusDiv',
             items: [validationInfo(json), skylineDocsInfo(json), modificationsInfo(json), spectralLibrariesInfo(json)]
         });
-    }
-
-    const PX_COMPLETE = 3;
-    const PX_INCOMPLETE = 2;
+    });
 
     // -----------------------------------------------------------
     // Displays the main validation summary panel
@@ -338,7 +225,7 @@
 
         function getStatusDetails(statusId, json, validationOutdated) {
             var html =  statusId === PX_COMPLETE ? getStatusValidHtml(json)
-                        : statusId === PX_INCOMPLETE ? getIncompleteDataHtml(json, validationOutdated) : getStatusInvalidHtml(json, validationOutdated);
+                    : statusId === PX_INCOMPLETE ? getIncompleteDataHtml(json, validationOutdated) : getStatusInvalidHtml(json, validationOutdated);
             return '<div>' + html + '</div>';
         }
 
@@ -358,7 +245,7 @@
             else { params["getPxid"] = true; }
 
             <% if(journalId != null) { %>
-               {params["journalId"] = <%=journalId%>;}
+            {params["journalId"] = <%=journalId%>;}
             <% }%>
 
             return LABKEY.ActionURL.buildURL('panoramapublic', <%=qh(submitAction)%>, LABKEY.ActionURL.getContainer(), params);
@@ -368,21 +255,19 @@
 
             const validationJson = json["validation"];
             const statusId = validationJson["statusId"];
-            const outdated = json['validationOutdated'] === true;
-            const latest = json['validationLatest'] === true;
+            const outdated = <%=isOutdated%>;
+            const latest = <%=isLatest%>;
 
             var components = [{xtype: 'component', margin: '0 0 5 0', html: getStatusDetails(statusId, validationJson, outdated)}];
-            if (forSubmit === true)
+            if (forSubmit === true && !outdated)
             {
-                if (!outdated) {
-                    components.push({
-                        xtype: 'button',
-                        text: getButtonText(statusId),
-                        cls: getButtonCls(statusId),
-                        href: getButtonLink(statusId, validationJson),
-                        hrefTarget: '_self'
-                    });
-                }
+                components.push({
+                    xtype: 'button',
+                    text: getButtonText(statusId),
+                    cls: getButtonCls(statusId),
+                    href: getButtonLink(statusId, validationJson),
+                    hrefTarget: '_self'
+                });
             }
 
             let allComponents = [
@@ -408,7 +293,7 @@
             if (outdated) {
                 let text = 'These validation results are outdated.';
                 if (latest) {
-                   text += ' Please click the button below to re-run validation.'
+                    text += ' Please click the button below to re-run validation.'
                 }
                 allComponents.unshift({
                     xtype: 'component',
@@ -522,62 +407,62 @@
                 title: 'Modifications',
                 columns: {
                     items: [
-                    {
-                        text: 'Name',
-                        dataIndex: 'skylineModName',
-                        flex: 4,
-                        renderer: function (v) { return htmlEncode(v); }
-                    },
-                    {
-                        text: 'Unimod Match',
-                        dataIndex: 'unimodId',
-                        flex: 2,
-                        renderer: function (value, metadata, record) {
-                            if (value) return unimodLink(value);
-                            else if (record.data['unimodMatches']) {
-                                var ret = ''; var sep = '';
-                                var matches = record.data['unimodMatches'];
-                                var isotopic = record.data['modType'] === "Isotopic" ? true : false;
-                                for (var i = 0; i < matches.length; i++) {
-                                    ret += sep + "**" + unimodLink(matches[i]['unimodId']);
-                                    sep = isotopic ? '</br>' : '<b> + </b>';
+                        {
+                            text: 'Name',
+                            dataIndex: 'skylineModName',
+                            flex: 4,
+                            renderer: function (v) { return htmlEncode(v); }
+                        },
+                        {
+                            text: 'Unimod Match',
+                            dataIndex: 'unimodId',
+                            flex: 2,
+                            renderer: function (value, metadata, record) {
+                                if (value) return unimodLink(value);
+                                else if (record.data['unimodMatches']) {
+                                    var ret = ''; var sep = '';
+                                    var matches = record.data['unimodMatches'];
+                                    var isotopic = record.data['modType'] === "Isotopic" ? true : false;
+                                    for (var i = 0; i < matches.length; i++) {
+                                        ret += sep + "**" + unimodLink(matches[i]['unimodId']);
+                                        sep = isotopic ? '</br>' : '<b> + </b>';
+                                    }
+                                    return ret;
                                 }
-                                return ret;
+                                else return missing() + assignUnimodLink(record.data['dbModId'], record.data['modType'], <%=experimentAnnotationsId%>);
                             }
-                            else return missing() + assignUnimodLink(record.data['dbModId'], record.data['modType'], <%=experimentAnnotationsId%>);
-                        }
-                    },
-                    {
-                        text: 'Unimod Name',
-                        dataIndex: 'unimodName',
-                        flex: 3,
-                        renderer: function (value, metadata, record) {
-                            if (value) return htmlEncode(value);
-                            else if (record.data['unimodMatches']) {
-                                var ret = ''; var sep = '';
-                                var matches = record.data['unimodMatches'];
-                                var isotopic = record.data['modType'] === "Isotopic" ? true : false;
-                                for (var i = 0; i < matches.length; i++) {
-                                    ret += sep + htmlEncode(matches[i]['name']);
-                                    sep = isotopic ? '</br>' : ' + ';
+                        },
+                        {
+                            text: 'Unimod Name',
+                            dataIndex: 'unimodName',
+                            flex: 3,
+                            renderer: function (value, metadata, record) {
+                                if (value) return htmlEncode(value);
+                                else if (record.data['unimodMatches']) {
+                                    var ret = ''; var sep = '';
+                                    var matches = record.data['unimodMatches'];
+                                    var isotopic = record.data['modType'] === "Isotopic" ? true : false;
+                                    for (var i = 0; i < matches.length; i++) {
+                                        ret += sep + htmlEncode(matches[i]['name']);
+                                        sep = isotopic ? '</br>' : ' + ';
+                                    }
+                                    return ret;
                                 }
-                                return ret;
+                                else return '';
                             }
-                            else return '';
-                        }
-                    },
-                    {
-                        text: 'Type',
-                        flex: 2,
-                        dataIndex: 'modType',
-                        renderer: function (v) { return htmlEncode(v); }
-                    },
-                    {
-                        text: 'Document Count',
-                        flex: 1,
-                        dataIndex: 'documents',
-                        renderer: function (v) { return v.length; }
-                    }],
+                        },
+                        {
+                            text: 'Type',
+                            flex: 2,
+                            dataIndex: 'modType',
+                            renderer: function (v) { return htmlEncode(v); }
+                        },
+                        {
+                            text: 'Document Count',
+                            flex: 1,
+                            dataIndex: 'documents',
+                            renderer: function (v) { return v.length; }
+                        }],
                     defaults: {
                         sortable: false,
                         hideable: false
@@ -725,7 +610,7 @@
                         }
                     },
                     <% } %>
-                    ],
+                ],
                 plugins: [{
                     ptype: 'rowexpander',
                     rowBodyTpl: new Ext4.XTemplate(
@@ -912,7 +797,7 @@
                             return "";
                         }
                     }
-                    ],
+                ],
                 plugins: [{
                     ptype: 'rowexpander',
                     rowBodyTpl: new Ext4.XTemplate(
@@ -944,8 +829,8 @@
 
                                         const href = LABKEY.ActionURL.buildURL('query', 'executeQuery', LABKEY.ActionURL.getContainer(), params);
                                         specLibInfoHtml = '<div style="margin-bottom:5px;">'
-                                                          + '<span class="pxv-bold">Library Information: </span><span style="margin-right: 10px;">' + htmlEncode(values.specLibInfo)+ '</span>'
-                                                          + link("[View Library Info]", href, 'pxv-bold', false)
+                                                + '<span class="pxv-bold">Library Information: </span><span style="margin-right: 10px;">' + htmlEncode(values.specLibInfo)+ '</span>'
+                                                + link("[View Library Info]", href, 'pxv-bold', false)
                                                 + '</div>';
                                     }
                                     let statusHtml = '';

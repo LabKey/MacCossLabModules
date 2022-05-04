@@ -2,7 +2,6 @@ package org.labkey.test.pages.panoramapublic;
 
 import org.labkey.api.util.Pair;
 import org.labkey.test.Locator;
-import org.labkey.test.Locators;
 import org.labkey.test.WebDriverWrapper;
 import org.labkey.test.pages.LabKeyPage;
 import org.labkey.test.util.TextSearcher;
@@ -29,9 +28,14 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
     public DataValidationPage(WebDriverWrapper webDriverWrapper)
     {
         super(webDriverWrapper);
-        waitForElement(Locators.bodyTitle().withText("Data Validation Status"));
-        assertTextNotPresent("Could not find job status for job");
-        waitForTextToDisappear("This page will automatically refresh", WAIT_FOR_PAGE);
+    }
+
+    @Override
+    protected void waitForPage()
+    {
+        waitFor(()-> elementCache().summaryPanel.isDisplayed(),
+                "The validation results page did not load in time.",
+                WAIT_FOR_PAGE);
     }
 
     public void verifyInvalidStatus()
@@ -115,7 +119,7 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         }
         for (var file: ambiguous)
         {
-            verifyFileStatus(sampleFilesTable, file, true, "AMBIGUOUS");
+            verifyFileStatus(sampleFilesTable, file, true, "AMBIGUOUS View Files");
         }
     }
 
@@ -192,9 +196,9 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         return -1;
     }
 
-    private String inferredModName(String modification)
+    private String inferredUnimod(String unimod)
     {
-        return "**" + modification;
+        return "**" + unimod;
     }
 
     public void verifyModificationStatus(String modName, boolean inferred, String unimodId, String unimodName)
@@ -204,7 +208,8 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
 
     public void verifyModificationStatus(String modName, boolean inferred, String unimodId, String unimodName, String unimodId2, String unimodName2)
     {
-        modName = inferred ? inferredModName(modName) : modName;
+        unimodId = inferred ? inferredUnimod(unimodId) : unimodId;
+        unimodId2 = unimodId2 != null ? (inferred ? inferredUnimod(unimodId2) : unimodId2) : null;
 
         int rowIdx = getRowIndexForModification(modName);
         assertNotEquals("Expected a row in the modifications validation grid for modification " + modName, -1, rowIdx);
@@ -227,8 +232,6 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
 
     public void verifyWildCardModStatus(String modName, boolean inferred, List<Pair<String, String>> unimodMatches)
     {
-        modName = inferred ? inferredModName(modName) : modName;
-
         int rowIdx = getRowIndexForModification(modName);
         assertNotEquals("Expected a row in the modifications validation grid for modification " + modName, -1, rowIdx);
 
@@ -251,7 +254,8 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
             assertEquals("Unexpected match count for Unimod Names for modification " + modName, unimodMatches.size(), unimodNames.split("\\n").length);
             for (Pair<String, String> match: unimodMatches)
             {
-                assertTrue("Expected " + match.first + " for modification " + modName, unimodIds.contains(match.first));
+                var expectedUnimodId = inferred ? inferredUnimod(match.first) : match.first;
+                assertTrue("Expected " + expectedUnimodId + " for modification " + modName, unimodIds.contains(expectedUnimodId));
                 assertTrue("Expected " + match.second + " for modification " + modName, unimodNames.contains(match.second));
             }
         }

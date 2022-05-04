@@ -330,11 +330,11 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         String expectedText;
         if (assignedMatch1 != null)
         {
-            expectedText = String.format("**%s (%s)", assignedMatch1.getUnimodId(), assignedMatch1.getName());
+            expectedText = String.format("**%s(%s)", assignedMatch1.getUnimodId(), assignedMatch1.getName());
             if (assignedMatch2 != null)
             {
                 //Example: **UNIMOD:34 (Methyl)+UNIMOD:58 (Propionyl)
-                expectedText = String.format("%s+%s (%s)", expectedText, assignedMatch2.getUnimodId(), assignedMatch2.getName());
+                expectedText = String.format("%s+%s(%s)", expectedText, assignedMatch2.getUnimodId(), assignedMatch2.getName());
             }
         }
         else
@@ -361,7 +361,7 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         {
             for (var unimod: matches)
             {
-                expectedText += String.format("**%s (%s)\n", unimod.getUnimodId(), unimod.getName()) ;
+                expectedText += String.format("**%s(%s)\n", unimod.getUnimodId(), unimod.getName()) ;
             }
         }
         else

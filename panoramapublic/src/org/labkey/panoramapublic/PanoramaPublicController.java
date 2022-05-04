@@ -3063,11 +3063,6 @@ public class PanoramaPublicController extends SpringActionController
             {
                 return new SimpleErrorView(errors);
             }
-            if (form.getValidationId() == 0)
-            {
-                errors.reject(ERROR_MSG, "A validation id was not found in the request");
-                return new SimpleErrorView(errors);
-            }
 
             var validation = DataValidationManager.getValidation(form.getValidationId(), getContainer());
             if (validation == null)
@@ -3076,36 +3071,71 @@ public class PanoramaPublicController extends SpringActionController
                         String.format("Could not find a data validation row with Id %d, in the folder '%s'.", form.getValidationId(), getContainer().getPath()));
                 return new SimpleErrorView(errors);
             }
-            PipelineStatusFile status = PipelineService.get().getStatusFile(validation.getJobId());
+
+            if (validation.getExperimentAnnotationsId() != _experimentAnnotations.getId())
+            {
+                errors.reject(ERROR_MSG, "Validation Id in the form does not belong to experiment Id " + _experimentAnnotations.getId());
+                return new SimpleErrorView(errors, false);
+            }
+
+            int jobId = validation.getJobId();
+            PipelineStatusFile pipelineJobStatus = PipelineService.get().getStatusFile(jobId);
             JournalSubmission js = SubmissionManager.getNewestJournalSubmission(_experimentAnnotations);
-            var view = new JspView<>("/org/labkey/panoramapublic/view/publish/pxValidationStatus.jsp",
-                    new PxValidationStatusBean(validation, js, status));
+            JspView view;
+            if (validation.isComplete())
+            {
+                Status validationStatus = DataValidationManager.getStatus(validation, getUser());
+
+                view = new JspView<>("/org/labkey/panoramapublic/view/publish/pxValidationStatus.jsp",
+                        new PxValidationStatusBean(_experimentAnnotations, js, pipelineJobStatus, validationStatus));
+            }
+            else
+            {
+                view = new JspView<>("/org/labkey/panoramapublic/view/publish/pxValidationRunning.jsp",
+                        new PxValidationStatusBean(_experimentAnnotations, validation, js, pipelineJobStatus));
+            }
             view.setFrame(WebPartView.FrameType.PORTAL);
-            view.setTitle("Data Validation Status");
+            view.setTitle("Data Validation Result");
             return view;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Data Validation Status");
+            root.addChild("Data Validation");
         }
     }
 
     public static class PxValidationStatusBean
     {
+        private final ExperimentAnnotations _expAnnotations;
         private final DataValidation _dataValidation;
         private final JournalSubmission _journalSubmission;
         private final PipelineStatusFile _pipelineJobStatus;
+        private Status _pxValidationStatus;
 
-        public PxValidationStatusBean(@NotNull DataValidation dataValidation, @Nullable JournalSubmission journalSubmission, @Nullable PipelineStatusFile pipelineJobStatus)
+        public PxValidationStatusBean(@NotNull ExperimentAnnotations expAnnotations, @NotNull DataValidation dataValidation,
+                                      @Nullable JournalSubmission journalSubmission, @Nullable PipelineStatusFile pipelineJobStatus)
         {
+            _expAnnotations = expAnnotations;
             _dataValidation = dataValidation;
             _journalSubmission = journalSubmission;
             _pipelineJobStatus = pipelineJobStatus;
         }
 
-        public DataValidation getDataValidation()
+        public PxValidationStatusBean(@NotNull ExperimentAnnotations expAnnotations, @Nullable JournalSubmission journalSubmission,
+                                      @Nullable PipelineStatusFile pipelineJobStatus, @NotNull Status validationStatus)
+        {
+            this(expAnnotations, validationStatus.getValidation(), journalSubmission, pipelineJobStatus);
+            _pxValidationStatus = validationStatus;
+        }
+
+        public @NotNull ExperimentAnnotations getExpAnnotations()
+        {
+            return _expAnnotations;
+        }
+
+        public @NotNull DataValidation getDataValidation()
         {
             return _dataValidation;
         }
@@ -3125,9 +3155,14 @@ public class PanoramaPublicController extends SpringActionController
             return _journalSubmission != null ? _journalSubmission.getJournalId() : null;
         }
 
-        public PipelineStatusFile getPipelineJobStatus()
+        public @Nullable PipelineStatusFile getPipelineJobStatus()
         {
             return _pipelineJobStatus;
+        }
+
+        public @Nullable Status getPxValidationStatus()
+        {
+            return _pxValidationStatus;
         }
     }
 
@@ -3157,18 +3192,7 @@ public class PanoramaPublicController extends SpringActionController
                     }
                     else
                     {
-                        JSONObject json = validationStatus.toJSON();
-                        var dataValidation = validationStatus.getValidation();
-                        var expAnnotations = ExperimentAnnotationsManager.get(dataValidation.getExperimentAnnotationsId());
-                        if (DataValidationManager.isValidationOutdated(dataValidation, expAnnotations, getUser()) && expAnnotations != null)
-                        {
-                            json.put("validationOutdated", true);
-                        }
-                        if (DataValidationManager.isLatestValidation(dataValidation, expAnnotations.getContainer()))
-                        {
-                            json.put("validationLatest", true);
-                        }
-                        response.put("validationStatus", json);
+                        response.put("validationStatus", validationStatus.getPxStatus().getLabel());
                     }
                 }
             }
@@ -8034,15 +8058,11 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getView(final ExperimentIdForm form, BindException errors)
         {
-            ExperimentAnnotations exptAnnotations = form.lookupExperiment();
+            ExperimentAnnotations exptAnnotations = getValidExperiment(form, getContainer(), getViewContext(), errors);
             if (exptAnnotations == null)
             {
-                errors.reject(ERROR_MSG, "Could not find an experiment with Id " + form.getId());
                 return new SimpleErrorView(errors, true);
             }
-
-            // Check container
-            ensureCorrectContainer(getContainer(), exptAnnotations.getContainer(), getViewContext());
 
             TargetedMSService svc = TargetedMSService.get();
             List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(exptAnnotations);

@@ -17,6 +17,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 7)
@@ -158,7 +159,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Save Unimod match for Carboxymethylcysteine
         saveUnimodMatchForCarboxymethylcysteine();
         // Verify that the validation results are outdated after adding the Unimod match
-        verifyValidationOutdated(validationCount);
+        verifyValidationOutdated();
         // Run the validation job again and verify incomplete status
         submitValidationJob().verifyIncompleteStatus();
         validationCount++;
@@ -166,7 +167,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Deleted the saved Unimod match
         deleteUnimodMatch();
         // Verify that the validation results are outdated after deleting the Unimod match
-        verifyValidationOutdated(validationCount);
+        verifyValidationOutdated();
         // Run the validation job again and verify incomplete status
         submitValidationJob().verifyIncompleteStatus();
         validationCount++;
@@ -174,7 +175,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Add information for the spectral library in the document so that the library validation is considered "complete"
         addSpecLibInfo("Source files unavailable", "Irrelevant to results", false);
         // Verify that the validation results are outdated after adding library info
-        verifyValidationOutdated(validationCount);
+        verifyValidationOutdated();
         // Run the validation job again and verify incomplete status
         submitValidationJob().verifyIncompleteStatus();
         validationCount++;
@@ -182,7 +183,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Edit the spectral library information so that it would no longer be considered "complete"
         addSpecLibInfo("Source files unavailable", "Used for choosing targets and fragments", true);
         // Verify that the validation results are outdated after editing library info
-        verifyValidationOutdated(validationCount);
+        verifyValidationOutdated();
         // Save the Unimod match
         saveUnimodMatchForCarboxymethylcysteine();
         // Run the validation job again and verify incomplete status
@@ -192,7 +193,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Delete the spectral library information
         deleteSpecLibInfo();
         // Verify that the validation results are outdated after deleting library info
-        verifyValidationOutdated(validationCount);
+        verifyValidationOutdated();
 
 
         // Add information for the spectral library in the document so that the library validation is considered "complete"
@@ -255,8 +256,8 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         DataRegionTable modsTable = new DataRegionTable("Structural Modifications",getDriver());
         assertEquals("Unexpected number of rows in Structural Modifications table", 1, modsTable.getDataRowCount());
         var cell = modsTable.findCell(0, modsTable.getColumnIndex("UnimodMatch"));
-        var deleteMatchLink = Locator.XPathLocator.tag("a").withText("[Delete]").findElementOrNull(cell);
-        assertNotNull("Expected to see a [Delete] link for saved Unimod match", deleteMatchLink);
+        var deleteMatchLink = Locator.XPathLocator.tag("a").withText("Delete Match").findElementOrNull(cell);
+        assertNotNull("Expected to see a Delete Match link for saved Unimod match", deleteMatchLink);
         doAndWaitForPageToLoad(() -> {
                     deleteMatchLink.click();
                     assertAlert("Are you sure you want to delete the saved Unimod information for modification 'Carboxymethylcysteine'?");
@@ -264,13 +265,14 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
 
         modsTable = new DataRegionTable("Structural Modifications",getDriver());
         cell = modsTable.findCell(0, modsTable.getColumnIndex("UnimodMatch"));
-        assertEquals("Unimod information for the modification was not deleted", "FIND MATCH", cell.getText());
+        assertTrue("Unimod information for the modification was not deleted", cell.getText().contains("FIND MATCH"));
     }
 
-    private void verifyValidationOutdated(int validationCount)
+    private void verifyValidationOutdated()
     {
         goToExperimentDetailsPage();
         var outdatedMsg = "The latest validation results are outdated. Please click the button below to re-run validation.";
+
         var validationSummaryWebPart = portalHelper.getBodyWebPart("Data Validation for ProteomeXchange");
         var panelText = validationSummaryWebPart.getComponentElement().getText();
         assertTextPresent(new TextSearcher(panelText), outdatedMsg);
@@ -278,23 +280,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         var detailsLink = Locator.XPathLocator.tag("a").withText("[Details]").findElementOrNull(validationSummaryWebPart);
         assertNull("Unexpected link to view validation details", detailsLink);
 
-        if (validationCount > 1)
-        {
-            var allValidationJobsButton = findButton("View All Validation Jobs");
-            allValidationJobsButton.click();
-            assertTextPresent("Data Validation Results", outdatedMsg);
-
-            DataRegionTable resultsTable = new DataRegionTable("DataValidation", getDriver());
-            assertEquals("Expected " + validationCount + " rows in the validation results table", validationCount, resultsTable.getDataRowCount());
-            var statusCell = resultsTable.findCell(0, resultsTable.getColumnIndex("Status"));
-            clickAndWait(statusCell);
-            var validationPage = new DataValidationPage(this);
-            validationPage.verifyValidationOutdated();
-        }
-        else
-        {
-            assertElementNotPresent(Locator.button("View All Validation Jobs"));
-        }
+        assertElementNotPresent(Locator.button("View All Validation Jobs")); // Non site-admin user should not see this button.
     }
 
     private int verifyInvalidStatus(int jobCount)
@@ -329,8 +315,8 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
 
         saveUnimodMatchForCarboxymethylcysteine();
 
-        // Validation should be outdated since we save a new Unimod match info
-        verifyValidationOutdated(2);
+        // Validation should be outdated since we saved a new Unimod match info
+        verifyValidationOutdated();
 
         // Run data validation again and verify "complete" status
         validationPage = submitValidationJob();
