@@ -155,6 +155,8 @@
     if (LABKEY.ActionURL.getParameter("forSubmit") !== undefined) {
         forSubmit = LABKEY.ActionURL.getParameter("forSubmit") === 'true';
     }
+    const returnUrl = LABKEY.ActionURL.buildURL(LABKEY.ActionURL.getController(), LABKEY.ActionURL.getAction(),
+            LABKEY.ActionURL.getContainer(), LABKEY.ActionURL.getParameters());
 
     Ext4.onReady(function() {
 
@@ -355,11 +357,12 @@
         const action = modTypeUpper === 'STRUCTURAL' ? 'structuralModToUnimodOptions' : 'matchToUnimodIsotope';
         const params = {
             'id': experimentAnnotationsId,
-            'modificationId': dbModId
+            'modificationId': dbModId,
+            'returnUrl': returnUrl
         };
 
         var href = LABKEY.ActionURL.buildURL('panoramapublic', action, LABKEY.ActionURL.getContainer(), params);
-        return '<span style="margin-left:5px;">'  + link("Find Match", href, 'labkey-text-link', false) + '</span>';
+        return '<span style="margin-left:5px;">'  + link("Find Match", href, 'labkey-text-link', true) + '</span>';
     }
 
     // -----------------------------------------------------------
@@ -824,13 +827,14 @@
                                             'schemaName': 'panoramapublic',
                                             'queryName': 'SpectralLibraries',
                                             'viewName': 'SpectralLibrariesInfo',
-                                            'query.SpecLibInfoId~eq': values.specLibInfoId
+                                            'query.SpecLibInfoId~eq': values.specLibInfoId,
+                                            'returnUrl': returnUrl
                                         };
 
                                         const href = LABKEY.ActionURL.buildURL('query', 'executeQuery', LABKEY.ActionURL.getContainer(), params);
                                         specLibInfoHtml = '<div style="margin-bottom:5px;">'
                                                 + '<span class="pxv-bold">Library Information: </span><span style="margin-right: 10px;">' + htmlEncode(values.specLibInfo)+ '</span>'
-                                                + link("[View Library Info]", href, 'pxv-bold', false)
+                                                + link("[View Library Info]", href, 'pxv-bold', true)
                                                 + '</div>';
                                     }
                                     let statusHtml = '';

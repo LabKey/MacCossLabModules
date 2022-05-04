@@ -22,6 +22,7 @@ import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.PipelineStatusFile;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
+import org.labkey.api.targetedms.ISpectrumLibrary;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.Pair;
@@ -29,6 +30,8 @@ import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
+import org.labkey.panoramapublic.model.speclib.SpecLibKey;
 import org.labkey.panoramapublic.model.validation.DataValidation;
 import org.labkey.panoramapublic.model.validation.Modification;
 import org.labkey.panoramapublic.model.validation.PxStatus;
@@ -45,6 +48,7 @@ import org.labkey.panoramapublic.proteomexchange.validator.SkylineDocValidator;
 import org.labkey.panoramapublic.proteomexchange.validator.SpecLibValidator;
 import org.labkey.panoramapublic.proteomexchange.validator.ValidatorSampleFile;
 import org.labkey.panoramapublic.proteomexchange.validator.ValidatorStatus;
+import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -130,21 +134,7 @@ public class DataValidationManager
             }
         }
 
-        // Validation is outdated if any modifications were assigned a Unimod Id after the validation create date
-        // OR there are any modInfoIds in the ModificationValidation table that are no longer in the ExperimentStructuralModInfo
-        // or ExperimentIsotopeModInfo tables.
-        if (hasNewerModInfos(expAnnotations.getId(), validation)
-                || hasDeletedModInfos(validation.getId(), expAnnotations.getId()))
-        {
-            return true;
-        }
-
-        // Validation is outdated if any spectral library information (SpecLibInfo table) was added or edited after the
-        // the data validation job was started. It is also outdated if there are any specLibInfoIds in the SpecLibValidation
-        // table that are no longer in the SpecLibInfo table, i.e. a spectral library information row was deleted after
-        // the validation job was started.
-        return hasNewerSpecLibInfos(expAnnotations.getId(), validation)
-                || hasDeletedSpecLibInfos(validation.getId(), expAnnotations.getId());
+        return false;
     }
 
     private static boolean hasNewerModInfos(int expAnnotationsId, DataValidation validation)
@@ -341,6 +331,14 @@ public class DataValidationManager
         return new TableSelector(PanoramaPublicManager.getTableInfoSkylineDocModification(), filter, null).getArrayList(SkylineDocModification.class);
     }
 
+    private static Modification getModification(int dataValidationId, long dbModId, Modification.ModType modType)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("ValidationId"), dataValidationId);
+        filter.addCondition(FieldKey.fromParts("DbModId"), dbModId);
+        filter.addCondition(FieldKey.fromParts("modType"), modType.ordinal());
+        return new TableSelector(PanoramaPublicManager.getTableInfoModificationValidation(), filter, null).getObject(Modification.class);
+    }
+
     private static List<SpecLib> getSpectrumLibraries(SimpleFilter filter)
     {
         List<SpecLib> specLibs = new TableSelector(PanoramaPublicManager.getTableInfoSpecLibValidation(), filter, null).getArrayList(SpecLib.class);
@@ -394,6 +392,182 @@ public class DataValidationManager
     public static DataValidation updateDataValidation(DataValidation validation, User user)
     {
         return Table.update(user, PanoramaPublicManager.getTableInfoDataValidation(), validation, validation.getId());
+    }
+
+    public static void removeModInfo(@NotNull ExperimentAnnotations expAnnotations, Container container, long modId, Modification.ModType modType, User user)
+    {
+        updateModInfo(expAnnotations, container, modId, modType, null, user);
+    }
+
+    public static void addModInfo(@NotNull ExperimentAnnotations expAnnotations, Container container, @NotNull ExperimentModInfo modInfo,
+                                  Modification.ModType modType, User user)
+    {
+        updateModInfo(expAnnotations, container, modInfo.getModId(), modType, modInfo.getId(), user);
+    }
+
+    private static void updateModInfo(ExperimentAnnotations expAnnotations, Container container, long modId, Modification.ModType modType, Integer modInfoId, User user)
+    {
+        var latestValidation = DataValidationManager.getLatestValidation(expAnnotations.getId(), container);
+        if (latestValidation != null)
+        {
+            var modification = getModification(latestValidation.getId(), modId, modType);
+            if (modification != null)
+            {
+                if (modInfoId != null || modification.getModInfoId() != null)
+                {
+                    modification.setModInfoId(modInfoId);
+                    modification.setInferred(modInfoId != null);
+                }
+                try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
+                {
+                    Table.update(user, PanoramaPublicManager.getTableInfoModificationValidation(), modification, modification.getId());
+                    recalculateStatus(latestValidation, user);
+                    transaction.commit();
+                }
+            }
+        }
+    }
+
+    /*
+        Call this method if the status of the modifications or spectral libraries likely changed because the user added
+        a Unimod Id to a modification, or deleted a saved Unimod Id, or deleted information for a spectral library.
+        The validation status will not be updated if the current status is PxStatus.NotValid (missing raw data files).
+    */
+    private static void recalculateStatus(DataValidation validation, User user)
+    {
+        PxStatus status = validation.getStatus();
+        if (status != null && status.ordinal() >= PxStatus.IncompleteMetadata.ordinal())
+        {
+            // If the current status is < PxStatus.IncompleteMetadata it means that there are missing raw data files.
+            // In this case any changes to modification validation will not change the final status.
+            // Update the status only if the current status is PxStatus.IncompleteMetadata or PxStatus.Complete
+            SimpleFilter validationIdFilter = new SimpleFilter(FieldKey.fromParts("ValidationId"), validation.getId());
+
+            var validationMods = getModifications(validationIdFilter);
+            var specLibs = getSpectrumLibraries(validationIdFilter);
+            PxStatus newStatus = (specLibs.stream().anyMatch(lib -> !lib.isValid())  || validationMods.stream().anyMatch(mod -> !mod.isValid()))
+                    ? PxStatus.IncompleteMetadata : PxStatus.Complete;
+
+            if (!status.equals(newStatus))
+            {
+                validation.setStatus(newStatus);
+                updateValidationStatus(validation, user);
+            }
+        }
+    }
+
+    public static void specLibInfoDeleted(@NotNull ExperimentAnnotations expAnnotations, @NotNull SpecLibInfo specLibInfo, User user)
+    {
+        DataValidation validation = DataValidationManager.getLatestValidation(expAnnotations.getId(), expAnnotations.getContainer());
+
+        if (validation != null)
+        {
+            // Get the libraries associated with the given SpecLibInfo
+            List<SpecLib> specLibList = getLibrariesForSpecLibInfo(specLibInfo, validation);
+
+            if (specLibList.size() > 0)
+            {
+                try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
+                {
+                    for (SpecLib specLib : specLibList)
+                    {
+                        specLib.setSpecLibInfoId(null);
+                        Table.update(user, PanoramaPublicManager.getTableInfoSpecLibValidation(), specLib, specLib.getId());
+                    }
+                    recalculateStatus(validation, user);
+                    transaction.commit();
+                }
+            }
+        }
+    }
+
+    public static void specLibInfoChanged(@NotNull ExperimentAnnotations expAnnotations, @NotNull SpecLibInfo specLibInfo, User user)
+    {
+        DataValidation validation = DataValidationManager.getLatestValidation(expAnnotations.getId(), expAnnotations.getContainer());
+
+        if (validation != null)
+        {
+            // Get the libraries associated with the given SpecLibInfo
+            if (getLibrariesForSpecLibInfo(specLibInfo, validation).size() > 0)
+            {
+                recalculateStatus(validation, user);
+            }
+        }
+    }
+
+    private static List<SpecLib> getLibrariesForSpecLibInfo(@NotNull SpecLibInfo specLibInfo, DataValidation validation)
+    {
+        List<SpecLib> specLibList = new ArrayList<>();
+
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("specLibInfoId"), specLibInfo.getId());
+        filter.addCondition(FieldKey.fromParts("validationId"), validation.getId());
+        List<SpecLib> specLibs = new TableSelector(PanoramaPublicManager.getTableInfoSpecLibValidation(), filter, null).getArrayList(SpecLib.class);
+        if (specLibs.size() > 0)
+        {
+            specLibList.addAll(specLibs);
+        }
+
+        return specLibList;
+    }
+
+    public static void specLibInfoAdded(ExperimentAnnotations expAnnotations, SpecLibInfo specLibInfo, User user)
+    {
+        DataValidation validation = DataValidationManager.getLatestValidation(expAnnotations.getId(), expAnnotations.getContainer());
+
+        if (validation != null)
+        {
+            // Get the libraries associated with the given SpecLibInfo
+            List<SpecLib> specLibList = getLibrariesMatchingSpecLibInfo(specLibInfo, validation, expAnnotations, user);
+
+            if (specLibList.size() > 0)
+            {
+                try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
+                {
+                    for (SpecLib specLib : specLibList)
+                    {
+                        specLib.setSpecLibInfoId(specLibInfo.getId());
+                        Table.update(user, PanoramaPublicManager.getTableInfoSpecLibValidation(), specLib, specLib.getId());
+                    }
+                    recalculateStatus(validation, user);
+                    transaction.commit();
+                }
+            }
+        }
+    }
+
+    private static List<SpecLib> getLibrariesMatchingSpecLibInfo(SpecLibInfo specLibInfo, DataValidation validation, ExperimentAnnotations expAnnotations, User user)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("libName"), specLibInfo.getName());
+        filter.addCondition(FieldKey.fromParts("libType"), specLibInfo.getLibraryType());
+        filter.addCondition(FieldKey.fromParts("fileName"), specLibInfo.getFileNameHint());
+        filter.addCondition(FieldKey.fromParts("validationId"), validation.getId());
+        List<SpecLib> specLibs = new TableSelector(PanoramaPublicManager.getTableInfoSpecLibValidation(), filter, null).getArrayList(SpecLib.class);
+
+        List<SpecLib> specLibsToUpdate = new ArrayList<>();
+        TargetedMSService svc = TargetedMSService.get();
+        SpecLibKey libraryKey = specLibInfo.getLibraryKey();
+        for (SpecLib specLib: specLibs)
+        {
+            // Get the list of SkylineDocSpecLib objects associated with the library. These are all the documents that have this library.
+            List<SkylineDocSpecLib> skyDocs = getSkylineDocSpecLibs(specLib);
+            for (SkylineDocSpecLib skyDoc: skyDocs)
+            {
+                // Each SkylineDocSpecLib contains the database Id of the library (ISpectrumLibrary) from the targetedms schema.
+                // Get the ISpectrumLibrary and compare its key with the key of the SpecLibInfo object.
+                // We have to do this lookup because we do not have all the columns required to get the library key in the
+                // panoramapublic.SpecLibValidation table even though the data validator uses the key to save unique libraries.
+                // The additional columns required to get a SpecLibKey are 'skylineLibraryId' and 'revision'.
+                // Consider adding these columns to the SpecLibValidation table.
+                ISpectrumLibrary iSpecLib = svc.getLibrary(skyDoc.getSpectrumLibraryId(), expAnnotations.getContainer(), user);
+                if (SpecLibKey.fromLibrary(iSpecLib).equals(libraryKey))
+                {
+                    specLibsToUpdate.add(specLib);
+                    break; // It is enough to match one ISpectrumLibrary. The libraries in the other documents will have the same key.
+                }
+            }
+        }
+
+        return specLibsToUpdate;
     }
 
     public static void saveSkylineDocStatus(ValidatorStatus status, User user)

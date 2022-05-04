@@ -8,6 +8,7 @@ import org.labkey.api.data.RenderContext;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
@@ -50,7 +51,11 @@ public class EditLibInfoDisplayColumnFactory implements DisplayColumnFactory
                         }
                         if (experimentAnnotationsId != null)
                         {
-                            ActionURL returnUrl = ctx.getViewContext().getActionURL();
+                            URLHelper returnUrl = ctx.getViewContext().getActionURL().getReturnURL();
+                            if (returnUrl == null)
+                            {
+                                returnUrl = ctx.getViewContext().getActionURL();
+                            }
                             ActionURL editUrl = PanoramaPublicController.getEditSpecLibInfoURL(experimentAnnotationsId, specLibId, specLibInfoId, ctx.getContainer());
                             editUrl.addReturnURL(returnUrl);
                             out.write(PageFlowUtil.link(specLibInfoId != null ? "Edit" : "Add").href(editUrl).toString());

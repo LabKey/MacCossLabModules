@@ -16,6 +16,7 @@ import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.validation.Modification;
 import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfo;
@@ -99,25 +100,56 @@ public class ModificationInfoManager
         return Table.insert(user, PanoramaPublicManager.getTableInfoExperimentStructuralModInfo(), modInfo);
     }
 
-    public static ExperimentIsotopeModInfo saveIsotopeModInfo (ExperimentIsotopeModInfo modInfo, User user)
+    public static ExperimentStructuralModInfo saveStructuralModInfo (ExperimentStructuralModInfo modInfo, ExperimentAnnotations expAnnotations, Container container, User user)
     {
-        var savedModInfo = Table.insert(user, PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo(), modInfo);
-        for (ExperimentModInfo.UnimodInfo unimodInfo: modInfo.getAdditionalUnimodInfos())
+        try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
         {
-            unimodInfo.setModInfoId(savedModInfo.getId());
-            Table.insert(user, PanoramaPublicManager.getTableInfoIsotopeUnimodInfo(), unimodInfo);
+            ExperimentStructuralModInfo saved = saveStructuralModInfo(modInfo, user);
+            DataValidationManager.addModInfo(expAnnotations, container, modInfo, Modification.ModType.Structural, user);
+            transaction.commit();
+            return saved;
         }
-        return savedModInfo;
     }
 
-    public static void deleteIsotopeModInfo(int modInfoId, Container container)
+    public static ExperimentIsotopeModInfo saveIsotopeModInfo (ExperimentIsotopeModInfo modInfo, User user)
+    {
+        try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
+        {
+            var savedModInfo = Table.insert(user, PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo(), modInfo);
+            for (ExperimentModInfo.UnimodInfo unimodInfo : modInfo.getAdditionalUnimodInfos())
+            {
+                unimodInfo.setModInfoId(savedModInfo.getId());
+                Table.insert(user, PanoramaPublicManager.getTableInfoIsotopeUnimodInfo(), unimodInfo);
+            }
+            transaction.commit();
+            return savedModInfo;
+        }
+    }
+
+    public static ExperimentIsotopeModInfo saveIsotopeModInfo (ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations, Container container, User user)
+    {
+        try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
+        {
+            ExperimentIsotopeModInfo saved = saveIsotopeModInfo(modInfo, user);
+            DataValidationManager.addModInfo(expAnnotations, container, modInfo, Modification.ModType.Isotopic, user);
+            transaction.commit();
+            return saved;
+        }
+    }
+
+    public static void deleteIsotopeModInfo(int modInfoId, Container container, User user)
     {
         var expAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(container);
         var modInfo = getIsotopeModInfo(modInfoId);
-        deleteIsotopeModInfo(modInfo, expAnnotations);
+        deleteIsotopeModInfo(modInfo, expAnnotations, container, user);
     }
 
-    public static void deleteIsotopeModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations)
+    public static void deleteIsotopeModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations, Container container, User user)
+    {
+        deleteIsotopeModInfo(modInfo, expAnnotations, container, user, true);
+    }
+
+    public static void deleteIsotopeModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations, Container container, User user, boolean updateDataValidation)
     {
         if (modInfo != null && expAnnotations != null && modInfo.getExperimentAnnotationsId() == expAnnotations.getId())
         {
@@ -125,6 +157,10 @@ public class ModificationInfoManager
             {
                 Table.delete(PanoramaPublicManager.getTableInfoIsotopeUnimodInfo(), new SimpleFilter(FieldKey.fromParts("modInfoId"), modInfo.getId()));
                 Table.delete(PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo(), modInfo.getId());
+                if (updateDataValidation)
+                {
+                    DataValidationManager.removeModInfo(expAnnotations, container, modInfo.getModId(), Modification.ModType.Isotopic, user);
+                }
                 transaction.commit();
             }
         }
@@ -153,19 +189,31 @@ public class ModificationInfoManager
         }
     }
 
-    public static void deleteStructuralModInfo(int modInfoId, Container container)
+    public static void deleteStructuralModInfo(int modInfoId, Container container, User user)
     {
         ExperimentAnnotations experimentAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(container);
         var modInfo = getStructuralModInfo(modInfoId);
-        deleteStructuralModInfo(modInfo, experimentAnnotations);
+        deleteStructuralModInfo(modInfo, experimentAnnotations, container, user);
     }
 
-    public static void deleteStructuralModInfo(ExperimentModInfo modInfo, ExperimentAnnotations expAnnotations)
+    public static void deleteStructuralModInfo(ExperimentModInfo modInfo, ExperimentAnnotations expAnnotations, Container container, User user)
     {
         if (modInfo != null && expAnnotations != null && modInfo.getExperimentAnnotationsId() == expAnnotations.getId())
         {
+            try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
+            {
                 Table.delete(PanoramaPublicManager.getTableInfoExperimentStructuralModInfo(), modInfo.getId());
+                DataValidationManager.removeModInfo(expAnnotations, container, modInfo.getModId(), Modification.ModType.Structural, user);
+                transaction.commit();
+            }
         }
+    }
+
+    public static void deleteStructuralModInfoForExperiment(ExperimentAnnotations expAnnotations)
+    {
+        Table.delete(PanoramaPublicManager.getTableInfoExperimentStructuralModInfo(),
+                new SimpleFilter().addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId()));
+        // No need to update the data validation status.  The experiment is being deleted, everything in the data validation tables will be deleted.
     }
 
     public static List<ExperimentStructuralModInfo> getStructuralModInfosForExperiment(int experimentAnnotationsId, Container container)

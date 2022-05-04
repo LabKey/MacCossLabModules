@@ -132,7 +132,7 @@ public class SpecLibInfoTableInfo extends PanoramaPublicTable
         @Override
         public void delete(User user, Container container, int key)
         {
-            SpecLibInfoManager.deleteSpecLibInfo(key, container);
+            SpecLibInfoManager.deleteSpecLibInfo(key, container, user);
         }
 
         @Override

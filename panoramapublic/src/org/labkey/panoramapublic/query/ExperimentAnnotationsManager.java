@@ -291,8 +291,7 @@ public class ExperimentAnnotationsManager
                 new SimpleFilter().addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId()));
 
         // Delete any rows in the panoramapublic.ExperimentStructuralModInfo and panoramapublic.ExperimentIsotopeModInfo tables
-        Table.delete(PanoramaPublicManager.getTableInfoExperimentStructuralModInfo(),
-                new SimpleFilter().addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId()));
+        ModificationInfoManager.deleteStructuralModInfoForExperiment(expAnnotations);
         ModificationInfoManager.deleteIsotopeModInfoForExperiment(expAnnotations);
 
         // Delete any data validation rows for this experiment

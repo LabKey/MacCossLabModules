@@ -136,6 +136,7 @@ import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.PxXml;
 import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.model.validation.DataValidation;
+import org.labkey.panoramapublic.model.validation.Modification;
 import org.labkey.panoramapublic.model.validation.PxStatus;
 import org.labkey.panoramapublic.model.validation.Status;
 import org.labkey.panoramapublic.model.speclib.SpecLibDependencyType;
@@ -6827,7 +6828,12 @@ public class PanoramaPublicController extends SpringActionController
             if (_specLibInfo != null)
             {
                 copyValues(_specLibInfo, form);
-                SpecLibInfoManager.update(_specLibInfo, getUser());
+                try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
+                {
+                    _specLibInfo = SpecLibInfoManager.update(_specLibInfo, getUser());
+                    DataValidationManager.specLibInfoChanged(_expAnnot, _specLibInfo, getUser());
+                    transaction.commit();
+                }
             }
             else
             {
@@ -6839,7 +6845,12 @@ public class PanoramaPublicController extends SpringActionController
                 specLibInfo.setRevision(_spectralLibrary.getRevision());
                 specLibInfo.setLibraryType(_spectralLibrary.getLibraryType());
                 copyValues(specLibInfo, form);
-                SpecLibInfoManager.save(specLibInfo, getUser());
+                try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
+                {
+                    specLibInfo = SpecLibInfoManager.save(specLibInfo, getUser());
+                    DataValidationManager.specLibInfoAdded(_expAnnot, specLibInfo, getUser());
+                    transaction.commit();
+                }
             }
 
             return true;
@@ -6858,7 +6869,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public URLHelper getSuccessURL(EditSpecLibInfoForm form)
         {
-            return getViewExperimentDetailsURL(form.getId(), getContainer());
+            return form.getReturnActionURL(getViewExperimentDetailsURL(form.getId(), getContainer()));
         }
 
         @Override
@@ -7022,7 +7033,7 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
-            SpecLibInfoManager.deleteSpecLibInfo(_specLibInfo, _expAnnot);
+            SpecLibInfoManager.deleteSpecLibInfo(_specLibInfo, _expAnnot, getUser());
 
             return true;
         }
@@ -7389,15 +7400,15 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, "Did not find a Unimod modification for the selected Unimod Id " + form.getUnimodId());
                 return false;
             }
-            saveModInfo(form, matchedMod);
 
+            saveModInfo(form, matchedMod);
             return true;
         }
 
         @Override
         public URLHelper getSuccessURL(UnimodMatchForm form)
         {
-            return null;
+            return form.getReturnActionURL();
         }
 
         @Override
@@ -7424,12 +7435,11 @@ public class PanoramaPublicController extends SpringActionController
         {
             returnUrl = getViewExperimentDetailsURL(expAnnotations.getId(), expAnnotations.getContainer());
         }
-        HtmlView errorsView = new HtmlView(
+        return new HtmlView(
                 DIV(
                         ERRORS(errors),
                         DIV(at(style, "margin-top:20px;)"), new Button.ButtonBuilder(buttonText).href(returnUrl))
                 ));
-        return errorsView;
     }
 
     @RequiresPermission(UpdatePermission.class)
@@ -7487,7 +7497,7 @@ public class PanoramaPublicController extends SpringActionController
             modInfo.setModId(form.getModificationId());
             modInfo.setUnimodId(matchedMod.getId());
             modInfo.setUnimodName(matchedMod.getName());
-            return ModificationInfoManager.saveStructuralModInfo(modInfo, getUser());
+            return ModificationInfoManager.saveStructuralModInfo(modInfo, _expAnnot, getContainer(), getUser());
         }
 
         @Override
@@ -7543,7 +7553,7 @@ public class PanoramaPublicController extends SpringActionController
             modInfo.setModId(form.getModificationId());
             modInfo.setUnimodId(matchedMod.getId());
             modInfo.setUnimodName(matchedMod.getName());
-            return ModificationInfoManager.saveIsotopeModInfo(modInfo, getUser());
+            return ModificationInfoManager.saveIsotopeModInfo(modInfo, _expAnnot, getContainer(), getUser());
         }
 
         @Override
@@ -7794,7 +7804,6 @@ public class PanoramaPublicController extends SpringActionController
             modInfo.setUnimodName(mod1.getName());
             modInfo.setUnimodId2(mod2.getId());
             modInfo.setUnimodName2(mod2.getName());
-
             ModificationInfoManager.saveStructuralModInfo(modInfo, getUser());
 
             return true;
@@ -7803,7 +7812,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public URLHelper getSuccessURL(CombinationModificationFrom form)
         {
-            return null;
+            return form.getReturnActionURL();
         }
 
         @Override
@@ -8017,7 +8026,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected void deleteModInfo(ExperimentStructuralModInfo modInfo, ExperimentAnnotations expAnnotations)
         {
-            ModificationInfoManager.deleteStructuralModInfo(modInfo, expAnnotations);
+            ModificationInfoManager.deleteStructuralModInfo(modInfo, expAnnotations, getContainer(), getUser());
         }
     }
 
@@ -8033,7 +8042,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected void deleteModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations)
         {
-            ModificationInfoManager.deleteIsotopeModInfo(modInfo, expAnnotations);
+            ModificationInfoManager.deleteIsotopeModInfo(modInfo, expAnnotations, getContainer(), getUser());
         }
     }
 

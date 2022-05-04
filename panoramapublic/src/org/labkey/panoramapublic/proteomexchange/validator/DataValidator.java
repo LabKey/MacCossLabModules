@@ -203,7 +203,9 @@ public class DataValidator
             {
                 // The list of Unimod modifications may have changed from what was saved before because the current set of runs
                 // in the experiment have different modification sites. Delete the old mod info.
-                ModificationInfoManager.deleteIsotopeModInfo(savedModInfo, expAnnotations);
+                ModificationInfoManager.deleteIsotopeModInfo(savedModInfo, expAnnotations, expAnnotations.getContainer(), user,
+                        false // Don't update the validation status since we are in the middle or running the validation job
+                );
             }
             return ModificationInfoManager.saveIsotopeModInfo(modInfo, user);
         }
