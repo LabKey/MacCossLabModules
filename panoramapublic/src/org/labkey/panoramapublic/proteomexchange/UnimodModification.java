@@ -18,13 +18,11 @@ package org.labkey.panoramapublic.proteomexchange;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.labkey.api.util.DOM;
 import org.labkey.api.util.Link;
 import org.w3c.dom.NodeList;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -325,7 +323,7 @@ public class UnimodModification
                 .rel("noopener noreferrer");
         if (clearMargin)
         {
-            link = link.attributes(Map.of(DOM.Attribute.style.name(), "margin-right:0px"));
+            link = link.style("margin-right:0px;");
         }
         return link.build();
     }

@@ -343,8 +343,9 @@
     }
 
     function unimodLink(unimodId) {
+
         return link("UNIMOD:" + unimodId, "https://www.unimod.org/modifications_view.php?editid1=" + unimodId, "labkey-text-link-noarrow",
-                false, "margin-right: 0px; padding-right: 5px; color:green");
+                false, "margin-right: 0px; padding-right: 5px; color:green; font-size:14px;");
     }
 
     function missing() {
@@ -353,8 +354,7 @@
 
     function assignUnimodLink(dbModId, modType, experimentAnnotationsId) {
         if (!modType) return;
-        const modTypeUpper = modType.toUpperCase();
-        const action = modTypeUpper === 'STRUCTURAL' ? 'structuralModToUnimodOptions' : 'matchToUnimodIsotope';
+        const action = isStructuralModType(modType) ? 'structuralModToUnimodOptions' : 'matchToUnimodIsotope';
         const params = {
             'id': experimentAnnotationsId,
             'modificationId': dbModId,
@@ -365,6 +365,29 @@
         return '<span style="margin-left:5px;">'  + link("Find Match", href, 'labkey-text-link', true) + '</span>';
     }
 
+    function deleteModInfoLink(modInfoId, skylineModName, experimentAnnotationsId, modType) {
+        if (!modType) return;
+        const action = isStructuralModType(modType) ? 'deleteStructuralModInfo' : 'deleteIsotopeModInfo';
+
+        return '<a class="labkey-text-link" style="margin-left:5px;" onClick="deleteModInfo(' + modInfoId + ',' + experimentAnnotationsId
+                + ', \'' + skylineModName + '\', \'' + action + '\');">Delete Match</a>';
+    }
+
+    function deleteModInfo(modInfoId, experimentAnnotationsId, skylineModName, action) {
+        const confirmMsg = "Are you sure you want to delete the saved Unimod information for modification " + skylineModName + "?";
+        const params = {
+            'id': experimentAnnotationsId,
+            'modInfoId': modInfoId,
+            'returnUrl': returnUrl
+        };
+        var href = LABKEY.ActionURL.buildURL('panoramapublic', action, LABKEY.ActionURL.getContainer(), params);
+        return LABKEY.Utils.confirmAndPost(confirmMsg, href);
+    }
+
+    function isStructuralModType(modType) {
+        return modType && modType.toUpperCase() === 'STRUCTURAL';
+    }
+
     // -----------------------------------------------------------
     // Displays the modifications validation grid
     // -----------------------------------------------------------
@@ -373,7 +396,7 @@
         if (json["modifications"]) {
             const modificationsStore = Ext4.create('Ext.data.Store', {
                 storeId: 'modificationsStore',
-                fields:  ['id', 'skylineModName', 'unimodId', 'unimodName', 'matchAssigned', 'valid', 'modType', 'dbModId', 'documents', 'unimodMatches'],
+                fields:  ['id', 'skylineModName', 'unimodId', 'unimodName', 'matchAssigned', 'valid', 'modType', 'dbModId', 'documents', 'unimodMatches', 'modInfoId'],
                 data:    json,
                 proxy:   { type: 'memory', reader: { type: 'json', root: 'modifications' }},
                 sorters: [
@@ -413,13 +436,13 @@
                         {
                             text: 'Name',
                             dataIndex: 'skylineModName',
-                            flex: 4,
+                            flex: 2,
                             renderer: function (v) { return htmlEncode(v); }
                         },
                         {
                             text: 'Unimod Match',
                             dataIndex: 'unimodId',
-                            flex: 2,
+                            flex: 3,
                             renderer: function (value, metadata, record) {
                                 if (value) return unimodLink(value);
                                 else if (record.data['unimodMatches']) {
@@ -429,6 +452,9 @@
                                     for (var i = 0; i < matches.length; i++) {
                                         ret += sep + "**" + unimodLink(matches[i]['unimodId']);
                                         sep = isotopic ? '</br>' : '<b> + </b>';
+                                    }
+                                    if (record.data['modInfoId']) {
+                                        ret += deleteModInfoLink(record.data['modInfoId'], record.data['skylineModName'], <%=experimentAnnotationsId%>, record.data['modType']);
                                     }
                                     return ret;
                                 }

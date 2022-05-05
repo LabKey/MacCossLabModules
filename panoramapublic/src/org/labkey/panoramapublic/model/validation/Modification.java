@@ -227,6 +227,7 @@ public class Modification
             if (unimodIdsAndNames.size() > 0)
             {
                 jsonObject.put("unimodMatches", getUnimodMatchesJSON(unimodIdsAndNames));
+                jsonObject.put("modInfoId", _modInfo.getId());
             }
         }
         return jsonObject;
