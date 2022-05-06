@@ -158,11 +158,11 @@ public class SpecLibInfo extends DbEntity
         return SpecLibDependencyType.IRRELEVANT == _dependencyType || SpecLibDependencyType.SUPPORTING_INFO == _dependencyType;
     }
 
-    public String getInfo()
+    public String getInfoString()
     {
         return "Source: " + _sourceType.getLabel() +
-                (_sourceUrl != null ? ", URL: " + _sourceUrl : "") +
-                (_sourceAccession != null ? ", Accession: " + _sourceAccession : "") +
-                ", Dependency: " + _dependencyType.getLabel();
+                (_sourceUrl != null ? "; URL: " + _sourceUrl : "") +
+                (_sourceAccession != null ? "; Accession: " + _sourceAccession : "") +
+                "; Dependency: " + _dependencyType.getLabel();
     }
 }

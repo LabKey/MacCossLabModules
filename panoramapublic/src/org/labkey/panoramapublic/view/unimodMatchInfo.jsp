@@ -27,7 +27,7 @@
     var defineCombinationModUrl = new ActionURL(PanoramaPublicController.DefineCombinationModificationAction.class, getContainer())
             .addParameter("id", form.getId())
             .addParameter("modificationId", form.getModificationId())
-            .addReturnURL(form.getReturnActionURL(PanoramaPublicController.getViewExperimentDetailsURL(form.getId(), getContainer())));
+            .addReturnURL(form.getReturnActionURL(new ActionURL(PanoramaPublicController.ViewExperimentModifications.class, getContainer()).addParameter("id", form.getId())));
 %>
 <labkey:errors/>
 

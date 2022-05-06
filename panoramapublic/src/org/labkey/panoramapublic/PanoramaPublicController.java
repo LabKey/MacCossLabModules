@@ -2486,8 +2486,18 @@ public class PanoramaPublicController extends SpringActionController
 
     private static Button.ButtonBuilder getStartDataValidationButton(ExperimentAnnotations expAnnotations, Container container)
     {
+        return getStartDataValidationButton("Start Data Validation", expAnnotations, container);
+    }
+
+    private static Button.ButtonBuilder getRerunDataValidationButton(ExperimentAnnotations expAnnotations, Container container)
+    {
+        return getStartDataValidationButton("Rerun Validation", expAnnotations, container);
+    }
+
+    private static Button.ButtonBuilder getStartDataValidationButton(String buttonText, ExperimentAnnotations expAnnotations, Container container)
+    {
         return getStartDataValidationButton(expAnnotations, container,
-                "Start Data Validation",
+                buttonText,
                 "Are you sure you want to start data validation?", true);
     }
 
@@ -3276,7 +3286,7 @@ public class PanoramaPublicController extends SpringActionController
                     view.addView(new HtmlView(DIV(cl("labkey-error"), "Could not find the latest data validation job")));
                 }
                 view.addView(new HtmlView(DIV(at(style, "margin:10px;"),
-                        getStartDataValidationButton(_experimentAnnotations, getContainer())
+                        getRerunDataValidationButton(_experimentAnnotations, getContainer())
                        )));
 
                 var qSettings = new QuerySettings(getViewContext(), "DataValidation", "DataValidation");
@@ -5288,7 +5298,7 @@ public class PanoramaPublicController extends SpringActionController
                     viewAllLink = new Link.LinkBuilder("View All Validation Jobs").href(url).build();
                 }
                 view.addView(new HtmlView(DIV(at(style, "margin-top:15px;"),
-                        getStartDataValidationButton(exptAnnotations, getContainer()),
+                        getRerunDataValidationButton(exptAnnotations, getContainer()),
                         viewAllLink != null ? DIV(viewAllLink) : HtmlString.EMPTY_STRING
                         )));
 
@@ -7649,6 +7659,11 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getView(UnimodMatchForm form, BindException errors) throws Exception
         {
+            ExperimentAnnotations expAnnotations = getValidExperiment(form, getContainer(), getViewContext(), errors);
+            if (expAnnotations == null)
+            {
+                return new SimpleErrorView(errors);
+            }
             var modification = TargetedMSService.get().getStructuralModification(form.getModificationId());
             if (modification == null)
             {
@@ -7659,12 +7674,12 @@ public class PanoramaPublicController extends SpringActionController
             var findMatchUrl = new ActionURL(MatchToUnimodStructuralAction.class, getContainer())
                     .addParameter("id", form.getId())
                     .addParameter("modificationId", form.getModificationId())
-                    .addReturnURL(form.getReturnActionURL(getViewExperimentDetailsURL(form.getId(), getContainer())));
+                    .addReturnURL(form.getReturnActionURL(getViewExperimentModificationsURL(form.getId(), getContainer())));
 
             var comboModUrl = new ActionURL(DefineCombinationModificationAction.class, getContainer())
                     .addParameter("id", form.getId())
                     .addParameter("modificationId", form.getModificationId())
-                    .addReturnURL(form.getReturnActionURL(getViewExperimentDetailsURL(form.getId(), getContainer())));
+                    .addReturnURL(form.getReturnActionURL(getViewExperimentModificationsURL(form.getId(), getContainer())));
 
             var view = new HtmlView(DIV(at(style, "margin:20px;"),
                     DIV(at(style, "margin:15px;"),
@@ -8251,6 +8266,13 @@ public class PanoramaPublicController extends SpringActionController
     public static ActionURL getViewExperimentDetailsURL(int experimentAnnotationsId, Container container)
     {
         ActionURL result = new ActionURL(PanoramaPublicController.ShowExperimentAnnotationsAction.class, container);
+        result.addParameter("id", experimentAnnotationsId);
+        return result;
+    }
+
+    public static ActionURL getViewExperimentModificationsURL(int experimentAnnotationsId, Container container)
+    {
+        ActionURL result = new ActionURL(PanoramaPublicController.ViewExperimentModifications.class, container);
         result.addParameter("id", experimentAnnotationsId);
         return result;
     }

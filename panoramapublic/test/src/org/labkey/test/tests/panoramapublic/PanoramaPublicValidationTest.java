@@ -430,7 +430,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
 
         // SKY_FILE_4 contains a NIST library.  We only support BiblioSpec and EncyclopeDIA libraries.  So this will be marked as "INCOMPLETE"
         validationPage.verifySpectralLibraryStatus("NIST_bsa_IT_2011-04-01.msp", "3 MB",
-                "Unsupported library type: nist",
+                "nist library type is not supported",
                 List.of(SKY_FILE_4),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 

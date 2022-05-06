@@ -31,7 +31,6 @@ import static org.labkey.api.util.DOM.BR;
 import static org.labkey.api.util.DOM.DIV;
 import static org.labkey.api.util.DOM.SPAN;
 import static org.labkey.api.util.DOM.at;
-import static org.labkey.api.util.DOM.cl;
 
 public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInfo> implements DisplayColumnFactory
 {
@@ -64,18 +63,19 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                     else
                     {
                         var modInfo = getModInfo(modInfoId);
-                        DIV(getAssignedUnimodDetails(modInfo)).appendTo(out);
 
                         int exptId = modInfo.getExperimentAnnotationsId();
                         var dbMod = getModification(modInfo.getModId());
                         var deleteUrl = getDeleteAction(ctx).addParameter("id", exptId).addParameter("modInfoId", modInfoId);
-                        deleteUrl.addReturnURL(ctx.getViewContext().getActionURL());
-                        DIV(at(style, "margin-top:5px;"), new Link.LinkBuilder("Delete Match")
-                                .href(deleteUrl)
-                                .usePost(String.format("Are you sure you want to delete the saved Unimod information for modification '%s'?",
-                                        dbMod != null ? dbMod.getName() : ""))
-                                .build())
-                                .appendTo(out);
+                        deleteUrl.addReturnURL(new ActionURL(PanoramaPublicController.ViewExperimentModifications.class, ctx.getContainer()).addParameter("id", exptId));
+
+                        String deleteLinkText = "Delete Match" + (modInfo.getUnimodInfos().size() > 1 ? "es" : "");
+                        DIV(getAssignedUnimodDetails(modInfo),
+                                SPAN(at(style, "margin-left:8px;"), new Link.LinkBuilder(deleteLinkText)
+                                        .href(deleteUrl)
+                                        .usePost(String.format("Are you sure you want to delete the saved Unimod information for modification '%s'?",
+                                                dbMod != null ? dbMod.getName() : ""))
+                                        .build())).appendTo(out);
                     }
                 }
                 else
@@ -91,7 +91,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                             exptAnnotations.getContainer().hasPermission(ctx.getViewContext().getUser(), UpdatePermission.class))
                     {
                         var url = getMatchToUnimodAction(ctx).addParameter("id", exptId).addParameter("modificationId", modId);
-                        url.addReturnURL(ctx.getViewContext().getActionURL());
+                        url.addReturnURL(new ActionURL(PanoramaPublicController.ViewExperimentModifications.class, ctx.getContainer()).addParameter("id", exptId));
                         var findMatchLink = new Link.LinkBuilder("Find Match").href(url);
                         DIV(SPAN(at(style, "color: #d70101; font-weight: bold; margin-right:5px;"), "MISSING"),
                                 findMatchLink).appendTo(out);

@@ -96,9 +96,9 @@
     }
     div.pxv-tpl-table-title {
         font-weight:bold;
-        text-decoration: underline;
         margin-left:8px;
         margin-bottom:2px;
+        padding-top: 8px;
     }
     table.pxv-tpl-table {
         margin:8px;
@@ -296,12 +296,16 @@
                 let text = 'These validation results are outdated.';
                 if (latest) {
                     text += ' Please click the button below to re-run validation.'
+
+                    allComponents.unshift({
+                        xtype: 'component',
+                        style: {margin: '10px 0 15px; 0'},
+                        html: '<%=button("Rerun Validation").href(PanoramaPublicController.getSubmitPxValidationJobUrl(experimentAnnotations, getContainer())).usePost().build().getHtmlString()%>'
+                    });
                 }
-                allComponents.unshift({
-                    xtype: 'component',
-                    style: {margin: '10px 0 15px; 0'},
-                    html: '<%=button("Start Data Validation").href(PanoramaPublicController.getSubmitPxValidationJobUrl(experimentAnnotations, getContainer())).usePost().build().getHtmlString()%>'
-                });
+                else {
+                    text += " Please view the latest results on the experiment details page.";
+                }
                 allComponents.unshift({
                     xtype: 'label',
                     cls: 'pxv-outdated-validation labkey-error',
@@ -365,12 +369,13 @@
         return '<span style="margin-left:5px;">'  + link("Find Match", href, 'labkey-text-link', true) + '</span>';
     }
 
-    function deleteModInfoLink(modInfoId, skylineModName, experimentAnnotationsId, modType) {
+    function deleteModInfoLink(modInfoId, skylineModName, experimentAnnotationsId, modType, matchCount) {
         if (!modType) return;
         const action = isStructuralModType(modType) ? 'deleteStructuralModInfo' : 'deleteIsotopeModInfo';
 
+        const linkText = matchCount === 1 ? "Delete Match" : "Delete Matches";
         return '<a class="labkey-text-link" style="margin-left:5px;" onClick="deleteModInfo(' + modInfoId + ',' + experimentAnnotationsId
-                + ', \'' + skylineModName + '\', \'' + action + '\');">Delete Match</a>';
+                + ', \'' + skylineModName + '\', \'' + action + '\');">' + linkText + '</a>';
     }
 
     function deleteModInfo(modInfoId, experimentAnnotationsId, skylineModName, action) {
@@ -425,7 +430,7 @@
                 store:    modificationsStore,
                 storeId: 'modificationsStore',
                 cls: 'pxv-modifications-panel',
-                padding:  '0 10 10 10',
+                padding:  '15 10 10 10',
                 disableSelection: true,
                 collapsible: true,
                 animCollapse: false,
@@ -454,7 +459,8 @@
                                         sep = isotopic ? '</br>' : '<b> + </b>';
                                     }
                                     if (record.data['modInfoId']) {
-                                        ret += deleteModInfoLink(record.data['modInfoId'], record.data['skylineModName'], <%=experimentAnnotationsId%>, record.data['modType']);
+                                        ret += deleteModInfoLink(record.data['modInfoId'], record.data['skylineModName'],
+                                                <%=experimentAnnotationsId%>, record.data['modType'], matches.length);
                                     }
                                     return ret;
                                 }
@@ -543,14 +549,16 @@
             if (hasInferred) {
                 var noteHtml = "Unimod Ids starting with <strong>**</strong> in the Unimod Match column were assigned based on the formula, "
                         + "modification site(s) and terminus in the modification definition.";
-                var note = {
+                grid.addDocked({
                     xtype: 'component',
-                    padding: 10,
-                    margin: '15 10 5 10',
-                    cls: 'labkey-error alert alert-warning',
+                    dock: 'top',
+                    padding: '8px',
+                    margin: 0,
+                    style: 'background-color:#efefef; border: 1px solid #b4b4b4;',
+                    cls: 'labkey-error',
                     html: '<em>' + noteHtml + '</em>'
-                };
-                return {xtype: 'panel', border: 0, items: [note, grid]};
+                });
+                return grid;
             }
             else { return grid; }
         }
@@ -584,6 +592,7 @@
                     }
                 ]
             });
+
 
             return Ext4.create('Ext.grid.Panel', {
                 store: skylineDocsStore,
@@ -623,7 +632,7 @@
                         dataIndex: 'valid',
                         renderer: function (value, metadata) {
                             metadata.tdCls = (value ? 'pxv-valid' : 'pxv-invalid') + ' pxv-bold';
-                            return value ? "COMPLETE" : "INCOMPLETE";
+                            return value === true ? "COMPLETE" : "INCOMPLETE";
                         }
                     },
                     <% if (includeSubfolders) { %>
@@ -703,7 +712,10 @@
         if (json["spectrumLibraries"]) {
             var specLibStore = Ext4.create('Ext.data.Store', {
                 storeId: 'specLibStore',
-                fields: ['id', 'libName', 'libType', 'fileName', 'size', 'valid', 'status', 'specLibInfo', 'specLibInfoId', 'spectrumFiles', 'idFiles', 'documents'],
+                fields: ['id', 'libName', 'libType', 'fileName', 'size',
+                    'valid', 'validWithoutSpecLibInfo','status', 'helpMessage', 'prositLibrary',
+                    'specLibInfo', 'specLibInfoId', 'iSpecLibId',
+                    'spectrumFiles', 'idFiles', 'documents'],
                 data: json,
                 proxy: {
                     type: 'memory',
@@ -714,15 +726,7 @@
                 },
                 sorters: [
                     {
-                        property: 'valid',
-                        direction: 'ASC'
-                    },
-                    {
-                        property: 'libType',
-                        direction: 'ASC'
-                    },
-                    {
-                        property: 'fileName',
+                        property: 'id',
                         direction: 'ASC'
                     }
                 ]
@@ -740,7 +744,7 @@
                 store: specLibStore,
                 storeId: 'specLibStore',
                 cls: 'pxv-speclibs-panel',
-                padding: 10,
+                padding: '15 10 10 10',
                 disableSelection: true,
                 viewConfig: {enableTextSelection: true},
                 title: 'Spectral Libraries',
@@ -812,19 +816,6 @@
                             metadata.tdCls = (value === true ? 'pxv-valid' : 'pxv-invalid') + ' pxv-bold';
                             return value === true ? 'COMPLETE' : 'INCOMPLETE';
                         }
-                    },
-                    {
-                        text: '',
-                        sortable: false,
-                        hideable: false,
-                        width: 125,
-                        renderer: function (value, metadata, record) {
-                            metadata.style = 'text-align: center';
-                            if (record.get('valid') === false) {
-                                return link('[Upload]', LABKEY.ActionURL.buildURL('project', 'begin', LABKEY.ActionURL.getContainer(), {pageId: 'Raw Data'}));
-                            }
-                            return "";
-                        }
                     }
                 ],
                 plugins: [{
@@ -833,6 +824,7 @@
 
                             '<div class="pxv-grid-expanded-row">',
                             '<div>{[this.renderLibraryStatus(values)]}</div>',
+                            '<div>{[this.uploadButton(values)]}</div>',
                             // Spectrum files
                             '<tpl if="spectrumFiles.length &gt; 0">','{[this.renderTable(values.spectrumFiles, "lib-spectrum-files-status", "Spectrum Files")]}', '</tpl>',
                             // Peptide Id files
@@ -847,35 +839,75 @@
                             '</div>',
                             {
                                 renderLibraryStatus: function (values) {
+
+                                    if (values.prositLibrary) {
+                                        return '<div><span><em>' + htmlEncode(values.status) + '</em></span></div>';
+                                    }
+
+                                    if (values.validWithoutSpecLibInfo) return '';
+
+                                    let specLibInfoLink = '';
                                     let specLibInfoHtml = '';
-                                    if (values.specLibInfo) {
+                                    if (values.specLibInfoId) {
                                         const params = {
                                             'schemaName': 'panoramapublic',
                                             'queryName': 'SpectralLibraries',
                                             'viewName': 'SpectralLibrariesInfo',
                                             'query.SpecLibInfoId~eq': values.specLibInfoId,
+                                            <% if (includeSubfolders) { %>
+                                            'query.containerFilterName' : 'CurrentAndSubfolders',
+                                            <% } %>
+                                            'returnUrl': returnUrl
+                                        };
+                                        const href = LABKEY.ActionURL.buildURL('query', 'executeQuery', LABKEY.ActionURL.getContainer(), params);
+                                        specLibInfoHtml = '<em style="margin-right:8px;">' + values.specLibInfo + '</em>';
+                                        specLibInfoLink = link("[View Library Information]", href, 'labkey-text-link', true);
+                                    }
+                                    else if (values.iSpecLibId) {
+                                        const params = {
+                                            'id': <%=experimentAnnotationsId%>,
+                                            'specLibId': values.iSpecLibId,
                                             'returnUrl': returnUrl
                                         };
 
-                                        const href = LABKEY.ActionURL.buildURL('query', 'executeQuery', LABKEY.ActionURL.getContainer(), params);
-                                        specLibInfoHtml = '<div style="margin-bottom:5px;">'
-                                                + '<span class="pxv-bold">Library Information: </span><span style="margin-right: 10px;">' + htmlEncode(values.specLibInfo)+ '</span>'
-                                                + link("[View Library Info]", href, 'pxv-bold', true)
-                                                + '</div>';
-                                    }
-                                    let statusHtml = '';
-                                    if (values.valid === false) {
-                                        const cls = values.valid === true ? '' : 'pxv-invalid';
-                                        statusHtml = '<div><span class="' + cls + '">' + htmlEncode(values.status) + '</span></div>';
+                                        const href = LABKEY.ActionURL.buildURL('panoramapublic', 'editSpecLibInfo', LABKEY.ActionURL.getContainer(), params);
+                                        specLibInfoLink = link("[Add Library Information]", href, 'labkey-text-link', true);
                                     }
 
-                                    return (statusHtml || specLibInfoHtml) ? '<div style="margin-bottom:20px;">' + specLibInfoHtml + statusHtml + '</div>' : '';
+                                    let preStatusHtml = '<span style="margin-right:5px;">Library could not be validated because:</span>';
+                                    let postStatusHtml = '';
+                                    let helpMessageHtml = '';
+                                    let statusText = values.status;
+                                    let statusCls = "pxv-invalid";
+                                    if (values.valid === false && values.helpMessage) {
+                                        helpMessageHtml = '<div class="' + statusCls + '" style="margin-top:6px;"><em>' + values.helpMessage + '</em></div>';
+                                    }
+                                    if (values.valid === true && values.validWithoutSpecLibInfo === false) {
+                                        postStatusHtml = '<span style="margin-right:5px;">Library is considered <em><b>complete</b></em> due to the library information: </span>';
+                                    }
+                                    else if (values.specLibInfo) specLibInfoHtml = "<b>Library Information: </b>" + specLibInfoHtml;
+
+                                    let html = '<div style="margin-bottom:20px;">' +
+                                               '<div>' + preStatusHtml + '<span class="' + statusCls + '"><em>' + statusText + '</em></span></div>';
+                                    const specLibInfoAll = '<div style="margin-top:6px;">' + postStatusHtml + specLibInfoHtml + specLibInfoLink + '</div>';
+                                    if (values.specLibInfo) html += specLibInfoAll + helpMessageHtml;
+                                    else html += helpMessageHtml + specLibInfoAll;
+
+                                    return html;
                                 },
                                 renderTable: function(dataFiles, tblCls, title) {
                                     return libSourceFilesTableTpl.apply({files: dataFiles, tblCls: tblCls, title: title});
                                 },
                                 docLink: function (doc) {
                                     return documentLink(doc.name, doc.container, doc.runId);
+                                },
+                                uploadButton: function(values) {
+                                    if (values['validWithoutSpecLibInfo'] === false && (values['spectrumFiles'].length > 0 || values['idFiles'].length > 0)) {
+                                        return '<div style="margin: 10px;">'
+                                                + link('Upload Files', LABKEY.ActionURL.buildURL('project', 'begin', LABKEY.ActionURL.getContainer(), {pageId: 'Raw Data'}), 'labkey-button')
+                                                + '</div>';
+                                    }
+                                    return "";
                                 },
                                 compiled:true
                             }
