@@ -2092,7 +2092,7 @@ public class PanoramaPublicController extends SpringActionController
         @NotNull
         private Button getSkipSubfoldersAndContinueButton(ActionURL skipSubfolderCheckUrl)
         {
-            return new Button.ButtonBuilder("Skip Subfolders and Continue").href(skipSubfolderCheckUrl).usePost().build();
+            return new Button.ButtonBuilder("Skip Subfolders and Continue").href(skipSubfolderCheckUrl).build();
         }
 
         private HtmlView getAccountInfoIncompleteView(BindException errors)

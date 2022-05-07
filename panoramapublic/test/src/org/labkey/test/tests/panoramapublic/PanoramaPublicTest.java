@@ -10,7 +10,6 @@ import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentInsertPage;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
-import org.labkey.test.pages.panoramapublic.DataValidationPage;
 import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
@@ -357,6 +356,12 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         assertTextPresent("Would you like to include data from the following subfolders in the experiment?");
         assertElementPresent(Locator.linkWithText(INCLUDE_SUBFOLDERS_AND_SUBMIT));
         assertElementPresent(Locator.linkWithText(EXCLUDE_SUBFOLDERS_AND_SUBMIT));
+
+        clickAndWait(Locator.linkWithText(EXCLUDE_SUBFOLDERS_AND_SUBMIT));
+        assertTextPresent("Data Validation For ProteomeXchange");
+        findButton("Back to Experiment Details").click();
+        expWebPart = new TargetedMsExperimentWebPart(this);
+        expWebPart.clickSubmit();
 
         clickAndWait(Locator.linkWithText(INCLUDE_SUBFOLDERS_AND_SUBMIT));
 
