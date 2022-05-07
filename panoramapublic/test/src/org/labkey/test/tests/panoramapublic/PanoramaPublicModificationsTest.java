@@ -161,8 +161,8 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         }
         else
         {
-            assertTextPresent("Unimod information was saved successfully for the combination modification");
-            clickExperimentDetailsLink();
+            assertTextPresent("Experiment Modifications"); // We should be on the page that lists all the modifications in the experiment
+            clickExperimentDetailsButton();
             modsTable = new DataRegionTable(STRUCTURAL_MOD, this);
             checkModificationRow(modsTable, modificationName, unimod1, unimod2);
         }
@@ -204,18 +204,17 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         assertTextPresentInThisOrder(new TextSearcher(unimodMatchWebPart.getComponentElement().getText()), expectedTexts.toArray(new String[0]));
 
         clickButtonByIndex("Save Match", correctMatchIndex);
-        assertTextPresent("Unimod information was saved successfully");
-        clickExperimentDetailsLink();
+        assertTextPresent("Experiment Modifications"); // We should be on the page that lists all the modifications in the experiment
+        clickExperimentDetailsButton();
 
 
         modsTable = new DataRegionTable(STRUCTURAL_MOD, this);
         checkModificationRow(modsTable, modificationName, matches.get(correctMatchIndex));
     }
 
-    private void clickExperimentDetailsLink()
+    private void clickExperimentDetailsButton()
     {
-        var exptDetailsLink = Locator.XPathLocator.tag("a").withText("[View Experiment Details]").findElement(getDriver());
-        exptDetailsLink.click();
+        clickButton("View Experiment Details");
     }
 
 
@@ -368,7 +367,7 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         {
             expectedText = "FIND MATCH";
         }
-        return checkModRow(modsTable, modificationName, expectedText);
+        return checkModRow(modsTable, modificationName, expectedText.trim());
     }
 
     private void clickFindMatchInRow(DataRegionTable modsTable, int rowIdx)

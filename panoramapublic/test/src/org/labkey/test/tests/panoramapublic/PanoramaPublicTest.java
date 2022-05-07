@@ -324,7 +324,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         goToDashboard();
         expWebPart.clickSubmit();
         // We should not see any missing metadata warnings anymore
-        assertTextPresent("Click the button to start a new data validation job");
+        assertTextPresent("Click the button to start data validation");
     }
 
     private String testSubmitWithMissingRawFiles(PortalHelper portal, TargetedMsExperimentWebPart expWebPart)

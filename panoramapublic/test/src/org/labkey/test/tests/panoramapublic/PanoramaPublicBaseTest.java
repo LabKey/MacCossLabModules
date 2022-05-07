@@ -167,7 +167,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         goToDashboard();
         var expWebPart = new TargetedMsExperimentWebPart(this);
         expWebPart.clickSubmit();
-        assertTextPresent("Click the button to start a new data validation job",
+        assertTextPresent("Click the button to start data validation",
                 "Validate Data for ProteomeXchange",
                 "Submit without a ProteomeXchange ID");
         clickButton("Validate Data for ProteomeXchange");

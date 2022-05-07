@@ -2466,7 +2466,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             componentList.add(DIV(at(style, "margin-bottom:10px;"), message));
         }
-        componentList.add(DIV(at(style, "margin-bottom:10px;"), "Click the button to start a new data validation job.",
+        componentList.add(DIV(at(style, "margin-bottom:10px;"), "Click the button to start data validation.",
                 SPAN(at(style, "margin-left:10px;"),
                         getStartDataValidationButton(experimentAnnotations, container, "Validate Data for ProteomeXchange", null, forSubmit).build())));
 
@@ -7424,6 +7424,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getSuccessView(UnimodMatchForm form) throws Exception
         {
+            // If there was no return URL in the form, return this view.
             HtmlView hView = getModInfoSavedSuccessView(_modification.getName(), getModTypeString(), _expAnnot, form.getReturnActionURL());
             hView.setFrame(WebPartView.FrameType.PORTAL);
             return hView;
@@ -7833,6 +7834,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getSuccessView(CombinationModificationFrom form) throws Exception
         {
+            // If there was no return URL in the form, return this view.
             HtmlView hView = getModInfoSavedSuccessView(_modification.getName(), "combination", _expAnnot, form.getReturnActionURL());
             hView.setFrame(WebPartView.FrameType.PORTAL);
             return hView;
