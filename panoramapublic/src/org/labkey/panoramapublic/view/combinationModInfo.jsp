@@ -24,7 +24,8 @@
     var modification = bean.getModification();
     var modFormula = bean.getModFormula();
     var unimodMods = bean.getUnimodModificationList();
-    var returnUrl = form.getReturnURLHelper(PanoramaPublicController.getViewExperimentDetailsURL(form.getId(), getContainer()));
+    var returnUrl = form.getReturnURLHelper();
+    var cancelUrl = form.getCancelActionURL(PanoramaPublicController.getViewExperimentModificationsURL(form.getId(), getContainer()));
 %>
 <labkey:errors/>
 
@@ -131,11 +132,20 @@
                     name: 'id', // ExperimentAnnotationsId
                     value: <%=form.getId()%>
                 },
+                <% if (returnUrl != null) { %>
                 {
                     xtype: 'hidden',
                     name: <%=q(ActionURL.Param.returnUrl.name())%>,
                     value: <%=q(returnUrl)%>
                 },
+                <% } %>
+                <% if (form.getCancelActionURL() != null) { %>
+                {
+                    xtype: 'hidden',
+                    name: <%=q(ActionURL.Param.cancelUrl.name())%>,
+                    value: <%=q(form.getCancelActionURL())%>
+                },
+                <% } %>
                 {
                     xtype: 'hidden',
                     name: 'modificationId',
@@ -200,7 +210,7 @@
                 {text: 'Cancel',
                     cls: 'labkey-button',
                     handler: function() {
-                        window.location = <%= q(returnUrl) %>;
+                        window.location = <%= q(cancelUrl) %>;
                     }
                 }]
         });

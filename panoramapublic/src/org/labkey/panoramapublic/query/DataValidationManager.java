@@ -372,7 +372,7 @@ public class DataValidationManager
         return new TableSelector(PanoramaPublicManager.getTableInfoSpecLibSourceFile(), filter, null).getArrayList(SpecLibSourceFile.class);
     }
 
-    private static List<SkylineDocSpecLib> getSkylineDocSpecLibs(SpecLib specLib)
+    public static List<SkylineDocSpecLib> getSkylineDocSpecLibs(SpecLib specLib)
     {
         SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("SpecLibValidationId"), specLib.getId());
         return new TableSelector(PanoramaPublicManager.getTableInfoSkylineDocSpecLib(), filter, null).getArrayList(SkylineDocSpecLib.class);

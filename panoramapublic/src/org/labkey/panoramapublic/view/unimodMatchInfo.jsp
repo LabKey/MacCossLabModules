@@ -5,7 +5,6 @@
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.panoramapublic.proteomexchange.UnimodModification" %>
 <%@ page import="org.labkey.panoramapublic.proteomexchange.Formula" %>
-<%@ page import="org.labkey.api.util.HtmlString" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -22,7 +21,7 @@
     var form = bean.getForm();
     var modification = bean.getModification();
     var unimodMatches = bean.getUnimodMatches();
-    var returnUrl = form.getReturnURLHelper(PanoramaPublicController.getViewExperimentDetailsURL(form.getId(), getContainer()));
+    var returnUrl = form.getReturnURLHelper();
 
     var defineCombinationModUrl = new ActionURL(PanoramaPublicController.DefineCombinationModificationAction.class, getContainer())
             .addParameter("id", form.getId())
@@ -45,7 +44,7 @@
     Define a custom <%=button("Combination Modification").href(defineCombinationModUrl)%> if this modification is a combination of two modifications.
 </div>
 <% } %>
-<div style="width:800px;margin-top:30px; margin-left:8px;"><%=button("Cancel").href(returnUrl).style("padding:4px 15px")%></div>
+<div style="width:800px;margin-top:30px; margin-left:8px;"><%=button("Cancel").href(form.getCancelActionURL(PanoramaPublicController.getViewExperimentDetailsURL(form.getId(), getContainer()))).style("padding:4px 15px")%></div>
 
 <script type="text/javascript">
 
@@ -151,11 +150,20 @@
                 name: 'id', // ExperimentAnnotationsId
                 value: <%=form.getId()%>
             },
+            <% if (returnUrl != null) { %>
             {
                 xtype: 'hidden',
                 name: <%=q(ActionURL.Param.returnUrl.name())%>,
                 value: <%=q(returnUrl)%>
             },
+            <% } %>
+            <% if (form.getCancelActionURL() != null) { %>
+            {
+                xtype: 'hidden',
+                name: <%=q(ActionURL.Param.cancelUrl.name())%>,
+                value: <%=q(form.getCancelActionURL())%>
+            },
+            <% } %>
             {
                 xtype: 'hidden',
                 name: 'modificationId',

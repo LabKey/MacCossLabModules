@@ -410,7 +410,7 @@
                         direction: 'DESC' // Structural modifications first
                     },
                     {
-                        property: 'id',
+                        property: 'dbModId',
                         direction: 'ASC'
                     }
                 ]

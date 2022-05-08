@@ -67,7 +67,6 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                         int exptId = modInfo.getExperimentAnnotationsId();
                         var dbMod = getModification(modInfo.getModId());
                         var deleteUrl = getDeleteAction(ctx).addParameter("id", exptId).addParameter("modInfoId", modInfoId);
-                        deleteUrl.addReturnURL(new ActionURL(PanoramaPublicController.ViewExperimentModifications.class, ctx.getContainer()).addParameter("id", exptId));
 
                         String deleteLinkText = "Delete Match" + (modInfo.getUnimodInfos().size() > 1 ? "es" : "");
                         DIV(getAssignedUnimodDetails(modInfo),
@@ -91,7 +90,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                             exptAnnotations.getContainer().hasPermission(ctx.getViewContext().getUser(), UpdatePermission.class))
                     {
                         var url = getMatchToUnimodAction(ctx).addParameter("id", exptId).addParameter("modificationId", modId);
-                        url.addReturnURL(new ActionURL(PanoramaPublicController.ViewExperimentModifications.class, ctx.getContainer()).addParameter("id", exptId));
+                        url.addCancelURL(ctx.getViewContext().getActionURL());
                         var findMatchLink = new Link.LinkBuilder("Find Match").href(url);
                         DIV(SPAN(at(style, "color: #d70101; font-weight: bold; margin-right:5px;"), "MISSING"),
                                 findMatchLink).appendTo(out);

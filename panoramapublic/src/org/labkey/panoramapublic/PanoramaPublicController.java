@@ -7425,7 +7425,7 @@ public class PanoramaPublicController extends SpringActionController
         public ModelAndView getSuccessView(UnimodMatchForm form) throws Exception
         {
             // If there was no return URL in the form, return this view.
-            HtmlView hView = getModInfoSavedSuccessView(_modification.getName(), getModTypeString(), _expAnnot, form.getReturnActionURL());
+            HtmlView hView = getModInfoSavedSuccessView(_modification.getName(), getModTypeString(), _expAnnot);
             hView.setFrame(WebPartView.FrameType.PORTAL);
             return hView;
         }
@@ -7674,13 +7674,27 @@ public class PanoramaPublicController extends SpringActionController
 
             var findMatchUrl = new ActionURL(MatchToUnimodStructuralAction.class, getContainer())
                     .addParameter("id", form.getId())
-                    .addParameter("modificationId", form.getModificationId())
-                    .addReturnURL(form.getReturnActionURL(getViewExperimentModificationsURL(form.getId(), getContainer())));
+                    .addParameter("modificationId", form.getModificationId());
+            if (form.getReturnActionURL() != null)
+            {
+                findMatchUrl.addReturnURL(form.getReturnActionURL());
+            }
+            if (form.getCancelActionURL() != null)
+            {
+                findMatchUrl.addCancelURL(form.getCancelActionURL());
+            }
 
             var comboModUrl = new ActionURL(DefineCombinationModificationAction.class, getContainer())
                     .addParameter("id", form.getId())
-                    .addParameter("modificationId", form.getModificationId())
-                    .addReturnURL(form.getReturnActionURL(getViewExperimentModificationsURL(form.getId(), getContainer())));
+                    .addParameter("modificationId", form.getModificationId());
+            if (form.getReturnActionURL() != null)
+            {
+                comboModUrl.addReturnURL(form.getReturnActionURL());
+            }
+            if (form.getCancelActionURL() != null)
+            {
+                comboModUrl.addCancelURL(form.getCancelActionURL());
+            }
 
             var view = new HtmlView(DIV(at(style, "margin:20px;"),
                     DIV(at(style, "margin:15px;"),
@@ -7835,7 +7849,7 @@ public class PanoramaPublicController extends SpringActionController
         public ModelAndView getSuccessView(CombinationModificationFrom form) throws Exception
         {
             // If there was no return URL in the form, return this view.
-            HtmlView hView = getModInfoSavedSuccessView(_modification.getName(), "combination", _expAnnot, form.getReturnActionURL());
+            HtmlView hView = getModInfoSavedSuccessView(_modification.getName(), "combination", _expAnnot);
             hView.setFrame(WebPartView.FrameType.PORTAL);
             return hView;
         }
@@ -7951,15 +7965,18 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @NotNull
-    private static HtmlView getModInfoSavedSuccessView(String modificationName, String modificationType, ExperimentAnnotations expAnnotations, ActionURL returnUrl)
+    private static HtmlView getModInfoSavedSuccessView(String modificationName, String modificationType, ExperimentAnnotations expAnnotations)
+    {
+        return getModInfoChangedSuccessView(modificationName, modificationType, "saved", expAnnotations);
+    }
+
+    @NotNull
+    private static HtmlView getModInfoChangedSuccessView(String modificationName, String modificationType, String action, ExperimentAnnotations expAnnotations)
     {
         ActionURL exptModsUrl = new ActionURL(ViewExperimentModifications.class, expAnnotations.getContainer()).addParameter("id", expAnnotations.getId());
-        if (returnUrl != null)
-        {
-            exptModsUrl.addReturnURL(returnUrl);
-        }
-        HtmlView hView = new HtmlView(DIV(DIV(SPAN("Unimod information was saved successfully for the " + modificationType + " modification: "),
-                SPAN(at(style, "font-weight:bold; margin-left: 5px;"), modificationName)),
+        HtmlView hView = new HtmlView(DIV(DIV(SPAN("Unimod information for " + (modificationType != null ? modificationType : "") + " modification "),
+                SPAN(at(style, "font-weight:bold;"), modificationName),
+                SPAN(" was " + action + " successfully.")),
                 BR(),
                 DIV("View all the structural and isotope modifications in the experiment: ",
                         new Button.ButtonBuilder("View Experiment Modifications").href(exptModsUrl).build()),
@@ -7980,6 +7997,7 @@ public class PanoramaPublicController extends SpringActionController
 
         protected abstract T getModInfo(int modInfoId);
         protected abstract void deleteModInfo(T modInfo, ExperimentAnnotations expAnnotations);
+        protected abstract IModification getModification();
 
         @Override
         protected ModelAndView getModelAndView(DeleteModInfoForm form, boolean reshow, BindException errors)
@@ -8021,7 +8039,17 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public URLHelper getSuccessURL(DeleteModInfoForm form)
         {
-            return form.getReturnActionURL(getViewExperimentDetailsURL(form.getId(), getContainer()));
+            return form.getReturnActionURL();
+        }
+
+        @Override
+        public ModelAndView getSuccessView(DeleteModInfoForm form) throws Exception
+        {
+            // If there was no return URL in the form, return this view.
+            IModification mod = getModification();
+            HtmlView hView = getModInfoChangedSuccessView(mod != null ? mod.getName() : "", null, "deleted", _expAnnot);
+            hView.setFrame(WebPartView.FrameType.PORTAL);
+            return hView;
         }
 
         @Override
@@ -8045,6 +8073,12 @@ public class PanoramaPublicController extends SpringActionController
         {
             ModificationInfoManager.deleteStructuralModInfo(modInfo, expAnnotations, getContainer(), getUser());
         }
+
+        @Override
+        protected IModification getModification()
+        {
+            return TargetedMSService.get().getStructuralModification(_modInfo.getModId());
+        }
     }
 
     @RequiresPermission(UpdatePermission.class)
@@ -8060,6 +8094,12 @@ public class PanoramaPublicController extends SpringActionController
         protected void deleteModInfo(ExperimentIsotopeModInfo modInfo, ExperimentAnnotations expAnnotations)
         {
             ModificationInfoManager.deleteIsotopeModInfo(modInfo, expAnnotations, getContainer(), getUser());
+        }
+
+        @Override
+        protected IModification getModification()
+        {
+            return TargetedMSService.get().getIsotopeModification(_modInfo.getModId());
         }
     }
 
