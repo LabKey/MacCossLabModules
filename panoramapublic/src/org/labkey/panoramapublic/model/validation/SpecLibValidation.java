@@ -232,7 +232,7 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
             if (missingSpectrumFilesInBlib || missingIdFilesInBlib)
             {
                 status = String.format("%sMissing %s%s%s file names in the .blib file.",
-                        status == null ? "" : status + ". ",
+                        status == null ? "" : status + " ",
                         missingSpectrumFilesInBlib ? "spectrum " : "",
                         (missingSpectrumFilesInBlib && missingIdFilesInBlib) ? "and " : "",
                         missingIdFilesInBlib ? "peptide ID" : "");

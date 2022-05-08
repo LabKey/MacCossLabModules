@@ -93,6 +93,7 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         testCustomizeGrid(ISOTOPE_MOD, true);
 
         // Match structural modification
+        goToExperimentDetailsPage();
         testSaveMatchForStructuralMod(propionylation, List.of(propionyl, new Unimod(206, "Delta:H(4)C(3)O(1)", propionyl.getFormula())),
                 0);
         testNoMatchForStructuralMod("Acetyl");
@@ -161,8 +162,8 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         }
         else
         {
-            assertTextPresent("Experiment Modifications"); // We should be on the page that lists all the modifications in the experiment
-            clickExperimentDetailsButton();
+            assertTextPresent("Unimod information for combination modification", modificationName, "was successfully saved");
+            clickExperimentDetailsLink();
             modsTable = new DataRegionTable(STRUCTURAL_MOD, this);
             checkModificationRow(modsTable, modificationName, unimod1, unimod2);
         }
@@ -204,17 +205,18 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         assertTextPresentInThisOrder(new TextSearcher(unimodMatchWebPart.getComponentElement().getText()), expectedTexts.toArray(new String[0]));
 
         clickButtonByIndex("Save Match", correctMatchIndex);
-        assertTextPresent("Experiment Modifications"); // We should be on the page that lists all the modifications in the experiment
-        clickExperimentDetailsButton();
+        assertTextPresent("Unimod information for structural modification", modificationName, "was successfully saved");
+        clickExperimentDetailsLink();
 
 
         modsTable = new DataRegionTable(STRUCTURAL_MOD, this);
         checkModificationRow(modsTable, modificationName, matches.get(correctMatchIndex));
     }
 
-    private void clickExperimentDetailsButton()
+    private void clickExperimentDetailsLink()
     {
-        clickButton("View Experiment Details");
+        var exptDetailsLink = Locator.XPathLocator.tag("a").withText("[View Experiment Details]").findElement(getDriver());
+        exptDetailsLink.click();
     }
 
 

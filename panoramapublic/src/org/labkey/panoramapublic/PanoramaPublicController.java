@@ -7440,8 +7440,8 @@ public class PanoramaPublicController extends SpringActionController
     @NotNull
     private static HtmlView getErrorsView(BindException errors, ExperimentAnnotations expAnnotations, ReturnUrlForm returnUrlForm)
     {
-        String buttonText = returnUrlForm.getReturnActionURL() != null ? "Back" : "Back to Experiment Details";
-        ActionURL returnUrl = returnUrlForm.getReturnActionURL();
+        String buttonText = returnUrlForm.getCancelActionURL() != null ? "Back" : "Back to Experiment Details";
+        ActionURL returnUrl = returnUrlForm.getCancelActionURL();
         if (returnUrl == null)
         {
             returnUrl = getViewExperimentDetailsURL(expAnnotations.getId(), expAnnotations.getContainer());
@@ -7976,7 +7976,7 @@ public class PanoramaPublicController extends SpringActionController
         ActionURL exptModsUrl = new ActionURL(ViewExperimentModifications.class, expAnnotations.getContainer()).addParameter("id", expAnnotations.getId());
         HtmlView hView = new HtmlView(DIV(DIV(SPAN("Unimod information for " + (modificationType != null ? modificationType : "") + " modification "),
                 SPAN(at(style, "font-weight:bold;"), modificationName),
-                SPAN(" was " + action + " successfully.")),
+                SPAN(" was successfully " + action + ".")),
                 BR(),
                 DIV("View all the structural and isotope modifications in the experiment: ",
                         new Button.ButtonBuilder("View Experiment Modifications").href(exptModsUrl).build()),
