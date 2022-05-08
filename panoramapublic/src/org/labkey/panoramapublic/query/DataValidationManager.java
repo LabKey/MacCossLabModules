@@ -558,8 +558,8 @@ public class DataValidationManager
                 // panoramapublic.SpecLibValidation table even though the data validator uses the key to save unique libraries.
                 // The additional columns required to get a SpecLibKey are 'skylineLibraryId' and 'revision'.
                 // Consider adding these columns to the SpecLibValidation table.
-                ISpectrumLibrary iSpecLib = svc.getLibrary(skyDoc.getSpectrumLibraryId(), expAnnotations.getContainer(), user);
-                if (SpecLibKey.fromLibrary(iSpecLib).equals(libraryKey))
+                ISpectrumLibrary iSpecLib = svc.getLibrary(skyDoc.getSpectrumLibraryId(), null, user);
+                if (iSpecLib != null && SpecLibKey.fromLibrary(iSpecLib).equals(libraryKey))
                 {
                     specLibsToUpdate.add(specLib);
                     break; // It is enough to match one ISpectrumLibrary. The libraries in the other documents will have the same key.

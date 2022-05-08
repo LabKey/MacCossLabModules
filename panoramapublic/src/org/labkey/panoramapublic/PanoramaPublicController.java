@@ -6819,7 +6819,7 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
-        private static final String PXD = "^PXD[0-9]{6}$";
+        public static final String PXD = "^PXD[0-9]{6}$";
         private static final String MASSIVE_ID = "^MSV[0-9]{9}$";
         private static final String PEPTIDEATLAS_ID = "^PASS[0-9]{5}$";
         private boolean validAccession(@NotNull String accession)

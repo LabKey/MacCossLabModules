@@ -18,6 +18,7 @@ import org.labkey.api.security.User;
 import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.security.permissions.Permission;
 import org.labkey.api.util.HtmlString;
+import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
@@ -61,6 +62,24 @@ public class SpecLibInfoTableInfo extends PanoramaPublicTable
         if (sourcePasswordCol != null)
         {
             sourcePasswordCol.setDisplayColumnFactory(new PasswordDisplayColumnFactory());
+        }
+
+        var sourceAccessionCol = getMutableColumn("SourceAccession");
+        if (sourceAccessionCol != null)
+        {
+            sourceAccessionCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
+            {
+                @Override
+                public String renderURL(RenderContext ctx)
+                {
+                    String accession =  ctx.get(colInfo.getFieldKey(), String.class);
+                    if (accession != null && accession.matches(PanoramaPublicController.EditSpecLibInfoAction.PXD))
+                    {
+                        return "http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=" + accession;
+                    }
+                    return super.renderURL(ctx);
+                }
+            });
         }
     }
 
