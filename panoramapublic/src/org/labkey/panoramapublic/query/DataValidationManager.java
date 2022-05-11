@@ -267,15 +267,43 @@ public class DataValidationManager
                 Set.of("runId"), filter, null).getArrayList(Long.class);
     }
 
+    public static @NotNull Status getIncompleteSkyDocsInContainer(@NotNull DataValidation validation, @NotNull Container container, User user)
+    {
+        Status status = populateStatus(validation, true, false, false, user);
+        List<SkylineDoc> skyDocs = status.getSkylineDocs();
+        // Return documents that are in the given container and have missing files (that are not ambiguous).
+        List<SkylineDoc> skyDocsInContainer = skyDocs.stream()
+                .filter(doc -> container.equals(doc.getRunContainer()) && !doc.isValid() && doc.hasMissingNonAmbiguousFiles()).collect(Collectors.toList());
+        status.setSkylineDocs(skyDocsInContainer);
+        return status;
+    }
+
+    public static @NotNull Status getIncompleteSpecLibs(@NotNull DataValidation validation, User user)
+    {
+        Status status = populateStatus(validation, false, false, true, user);
+        List<SpecLib> specLibs = status.getSpectralLibraries();
+        // Return libraries that have missing source files
+        List<SpecLib> incompleteSpecLibs = specLibs.stream()
+                .filter(lib -> !lib.isValid() && (lib.hasMissingSpectrumFiles() || lib.hasMissingIdFiles())).collect(Collectors.toList());
+        status.setSpecLibs(incompleteSpecLibs);
+        return status;
+    }
+
     @NotNull
     private static Status populateStatus(DataValidation validation, User user)
+    {
+        return populateStatus(validation, true, true, true, user);
+    }
+
+    @NotNull
+    private static Status populateStatus(DataValidation validation, boolean getSkyDocStatus, boolean getModificationStatus, boolean getSpecLibStatus, User user)
     {
         Status status = new Status();
         status.setValidation(validation);
         SimpleFilter validationIdFilter = new SimpleFilter(FieldKey.fromParts("ValidationId"), validation.getId());
-        status.setSkylineDocs(getSkylineDocs(validationIdFilter, user));
-        status.setModifications(getModifications(validationIdFilter));
-        status.setSpecLibs(getSpectrumLibraries(validationIdFilter));
+        if (getSkyDocStatus) status.setSkylineDocs(getSkylineDocs(validationIdFilter, user));
+        if (getModificationStatus) status.setModifications(getModifications(validationIdFilter));
+        if (getSpecLibStatus) status.setSpecLibs(getSpectrumLibraries(validationIdFilter));
         ExperimentAnnotations experimentAnnotations = ExperimentAnnotationsManager.get(validation.getExperimentAnnotationsId());
         if (experimentAnnotations != null)
         {
@@ -497,17 +525,9 @@ public class DataValidationManager
 
     private static List<SpecLib> getLibrariesForSpecLibInfo(@NotNull SpecLibInfo specLibInfo, DataValidation validation)
     {
-        List<SpecLib> specLibList = new ArrayList<>();
-
         SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("specLibInfoId"), specLibInfo.getId());
         filter.addCondition(FieldKey.fromParts("validationId"), validation.getId());
-        List<SpecLib> specLibs = new TableSelector(PanoramaPublicManager.getTableInfoSpecLibValidation(), filter, null).getArrayList(SpecLib.class);
-        if (specLibs.size() > 0)
-        {
-            specLibList.addAll(specLibs);
-        }
-
-        return specLibList;
+        return new TableSelector(PanoramaPublicManager.getTableInfoSpecLibValidation(), filter, null).getArrayList(SpecLib.class);
     }
 
     public static void specLibInfoAdded(ExperimentAnnotations expAnnotations, SpecLibInfo specLibInfo, User user)

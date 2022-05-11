@@ -63,6 +63,16 @@ public abstract class SkylineDocValidation<S extends SkylineDocSampleFile>
         return getSampleFiles().stream().allMatch(f -> !f.isPending() && f.found());
     }
 
+    /**
+     * @return true if the document has any missing sample files that are not marked as 'ambiguous'. Ambiguous sample files are those
+     * that have the same name in one or more Skyline document but are different files based on the acquired time on the MS instrument.
+     * We expect sample files to have unique names if they are different files.
+     */
+    public boolean hasMissingNonAmbiguousFiles()
+    {
+        return getSampleFiles().stream().anyMatch(f -> !(f.isPending() || f.found() || f.isAmbiguous()));
+    }
+
     public boolean isPending()
     {
         return getSampleFiles().stream().anyMatch(DataFile::isPending);

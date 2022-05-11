@@ -138,6 +138,8 @@ import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.model.validation.DataValidation;
 import org.labkey.panoramapublic.model.validation.Modification;
 import org.labkey.panoramapublic.model.validation.PxStatus;
+import org.labkey.panoramapublic.model.validation.SkylineDoc;
+import org.labkey.panoramapublic.model.validation.SkylineDocSampleFile;
 import org.labkey.panoramapublic.model.validation.Status;
 import org.labkey.panoramapublic.model.speclib.SpecLibDependencyType;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
@@ -208,6 +210,7 @@ import static org.labkey.api.targetedms.TargetedMSService.FolderType.Experiment;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.Library;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.LibraryProtein;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.Undefined;
+import static org.labkey.api.targetedms.TargetedMSService.RAW_FILES_DIR;
 import static org.labkey.api.targetedms.TargetedMSService.RAW_FILES_TAB;
 import static org.labkey.api.util.DOM.*;
 import static org.labkey.api.util.DOM.Attribute.action;
@@ -8196,6 +8199,134 @@ public class PanoramaPublicController extends SpringActionController
             root.addChild("Experiment Modifications");
         }
     }
+
+    @RequiresPermission(UpdatePermission.class)
+    public abstract static class UploadMissingFilesAction extends SimpleViewAction<ExperimentIdForm>
+    {
+        abstract @Nullable Status getValidationStatus(DataValidation validation, BindException errors);
+        abstract @NotNull String getMissingFilesMessage();
+        abstract @NotNull String getViewTitle();
+
+        @Override
+        public ModelAndView getView(ExperimentIdForm form, BindException errors) throws Exception
+        {
+            ExperimentAnnotations expAnnotations = form.lookupExperiment();
+            if (expAnnotations == null)
+            {
+                errors.reject(ERROR_MSG, "No experiment found for Id " + form.getId());
+                return new SimpleErrorView(errors);
+            }
+
+            if (!expAnnotations.getContainer().equals(getContainer()))
+            {
+                // The user may be uploading files in a sub-folder of the experiment
+                ExperimentAnnotations experimentForSubfolder = ExperimentAnnotationsManager.getExperimentIncludesContainer(getContainer());
+                if (experimentForSubfolder == null || experimentForSubfolder.getId() != expAnnotations.getId())
+                {
+                    errors.reject(ERROR_MSG, String.format("Experiment with Id %d does not include folder '%s'.", expAnnotations.getId(), getContainer().getPath()));
+                    return new SimpleErrorView(errors);
+                }
+            }
+
+            DataValidation validation = DataValidationManager.getLatestValidation(expAnnotations.getId(), expAnnotations.getContainer());
+            if (validation == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find the latest validation row for experiment Id " + expAnnotations.getId());
+                return new SimpleErrorView(errors);
+            }
+            Status validationStatus = getValidationStatus(validation, errors);
+            if (validationStatus == null)
+            {
+                return new SimpleErrorView(errors);
+            }
+
+            HtmlView htmlView = new HtmlView(DIV(at(style, "margin: 15px 0 15px 0;"),
+                    "Please upload the missing files in the files browser below. ",
+                    getMissingFilesMessage(),
+                    DIV(at(style, "margin: 0px 0 0 0;"), "Click the button to rerun validation after all the files have been uploaded."),
+                    DIV(at(style, "margin:15px;"),
+                            getRerunDataValidationButton(expAnnotations, expAnnotations.getContainer()),
+                            SPAN(at(style, "margin:10x;"), HtmlString.NBSP),
+                            new Button.ButtonBuilder("Cancel").href(form.getReturnActionURL(getViewExperimentDetailsURL(expAnnotations.getId(), expAnnotations.getContainer()))))));
+
+            VBox view = new VBox();
+            String fileRootString = FileContentService.FILES_LINK + "/" + RAW_FILES_DIR + "/";
+            FilesWebPart fwp = new FilesWebPart(getContainer(), null, fileRootString);
+            fwp.setFrame(WebPartView.FrameType.NONE);
+            fwp.setShowTitle(false);
+
+            view.addView(htmlView);
+            view.addView(fwp);
+            view.addView(new JspView<>("/org/labkey/panoramapublic/view/publish/pxMissingFiles.jsp",
+                                new PxValidationStatusBean(expAnnotations, null, null, validationStatus)));
+            view.setTitle(getViewTitle());
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            return view;
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Upload Files");
+        }
+    }
+
+    @RequiresPermission(UpdatePermission.class)
+    public static class UploadSampleFilesAction extends UploadMissingFilesAction
+    {
+        @Override
+        @Nullable Status getValidationStatus(DataValidation validation, BindException errors)
+        {
+            Status validationStatus = DataValidationManager.getIncompleteSkyDocsInContainer(validation, getContainer(), getUser());
+            if (validationStatus.getSkylineDocs().size() == 0)
+            {
+                errors.reject(ERROR_MSG, "Could not find Skyline documents in the folder with missing sample files.");
+                return null;
+            }
+            return validationStatus;
+        }
+
+        @Override
+        @NotNull String getMissingFilesMessage()
+        {
+            return "The table below the files browser lists all the Skyline documents in this folder with missing sample files.";
+        }
+
+        @Override
+        @NotNull String getViewTitle()
+        {
+            return "Upload Missing Sample Files";
+        }
+    }
+
+    @RequiresPermission(UpdatePermission.class)
+    public static class UploadSpecLibSourceFilesAction extends UploadMissingFilesAction
+    {
+        @Override
+        @Nullable Status getValidationStatus(DataValidation validation, BindException errors)
+        {
+            Status validationStatus = DataValidationManager.getIncompleteSpecLibs(validation, getUser());
+            if (validationStatus.getSpectralLibraries().size() == 0)
+            {
+                errors.reject(ERROR_MSG, "Could not find spectral libraries in the experiment with missing source files.");
+                return null;
+            }
+            return validationStatus;
+        }
+
+        @Override
+        @NotNull String getMissingFilesMessage()
+        {
+            return "The table below the files browser lists all the spectral libraries with missing source files.";
+        }
+
+        @Override
+        @NotNull String getViewTitle()
+        {
+            return "Upload Missing Spectral Library Source Files";
+        }
+    }
+
 
     // ------------------------------------------------------------------------
     // BEGIN Add the PanoramaPublic module to existing TargetedMS containers
