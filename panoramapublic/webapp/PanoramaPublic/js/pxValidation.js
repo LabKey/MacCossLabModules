@@ -210,6 +210,7 @@ Ext4.define('LABKEY.pxvalidation.SkyDocsGridPanel', {
     initPlugins: function(config) {
         return [{
             ptype: 'rowexpander',
+            expandOnDblClick: false,
             rowBodyTpl : new Ext4.XTemplate(
                     // Sample files in the document
                     '<div class="pxv-grid-expanded-row">',
@@ -326,8 +327,8 @@ Ext4.define('LABKEY.pxvalidation.SpecLibsGridPanel', {
         const store = Ext4.create('Ext.data.Store', {
             storeId: 'specLibStore',
             fields: ['id', 'libName', 'libType', 'fileName', 'size',
-                'valid', 'validWithoutSpecLibInfo', 'status', 'helpMessage', 'prositLibrary',
-                'specLibInfo', 'specLibInfoId', 'iSpecLibId',
+                'valid', 'validWithoutSpecLibInfo', 'hasMissingSourceFiles', 'status', 'helpMessage', 'prositLibrary',
+                'specLibInfo', 'specLibInfoId', 'iSpecLibId', 'libInfoHelpMessage',
                 'spectrumFiles', 'idFiles', 'documents'],
             data: json,
             proxy: {
@@ -423,6 +424,7 @@ Ext4.define('LABKEY.pxvalidation.SpecLibsGridPanel', {
     initPlugins: function(config) {
         return [{
             ptype: 'rowexpander',
+            expandOnDblClick: false,
             rowBodyTpl : new Ext4.XTemplate(
 
                     '<div class="pxv-grid-expanded-row">',
@@ -456,10 +458,10 @@ Ext4.define('LABKEY.pxvalidation.SpecLibsGridPanel', {
                             if (values['valid'] === false && values['helpMessage']) {
                                 // Show the help message (e.g. rebuild the library with latest Skyline...) only if there is no overriding
                                 // library information (e.g. "irrelevant to results") that makes the library valid.
-                                helpMessageHtml = '<div style="margin-top:6px;"><em>' + values['helpMessage'] + '</em></div>';
+                                helpMessageHtml = '<div style="margin-top:6px;"><i class="fa fa-chevron-right"></i><em>' + values['helpMessage'] + '</em></div>';
                             }
 
-                            return '<div style="margin-bottom:6px;">'
+                            return '<div style="padding:3px 0 10px;">'
                                     + '<div>'
                                     + '<span style="margin-right:5px;">Library could not be validated because:</span>'
                                     + '<span class="pxv-invalid"><em>' + values['status'] + '</em></span>'
@@ -490,8 +492,13 @@ Ext4.define('LABKEY.pxvalidation.SpecLibsGridPanel', {
                                     libInfoCls = 'pxv-valid';
                                 }
                                 else specLibInfoHtml = "<b>Library Information: </b>";
+
+                                let helpMessageHtml = '';
+                                if (values['libInfoHelpMessage']) {
+                                    helpMessageHtml = '<div style="padding:5px 0 8px 0;"><i class="fa fa-chevron-right"></i><em>' + values['libInfoHelpMessage'] + '</em></div>';
+                                }
                                 specLibInfoHtml += '<em style="margin-right:8px;"><span class="' + libInfoCls + '">' + values['specLibInfo'] + '</span></em>';
-                                return '<div style="margin:6px 0 6px 0;">' + specLibInfoHtml + specLibInfoLink + '</div>';
+                                return '<div style="padding:5px 0 10px 0;">' + specLibInfoHtml + helpMessageHtml + specLibInfoLink + '</div>';
                             }
                             else if (values['iSpecLibId']) {
                                 const params = {
@@ -511,7 +518,7 @@ Ext4.define('LABKEY.pxvalidation.SpecLibsGridPanel', {
                         },
                         uploadButton: function(values) {
                             if (config.showUploadButton && values['valid'] === false
-                                    && (values['spectrumFiles'].length > 0 || values['idFiles'].length > 0)) {
+                                    && values['hasMissingSourceFiles'] === true) {
                                 return '<div style="margin: 10px;">'
                                         + link('Upload Files', LABKEY.ActionURL.buildURL('panoramapublic', 'uploadSpecLibSourceFiles', values['container'],
                                                 {id: config.experimentAnnotationsId, returnUrl: returnUrl}), 'labkey-button', true)

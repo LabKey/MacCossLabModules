@@ -10,12 +10,9 @@ import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
-import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.Sort;
-import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
-import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineService;
@@ -58,7 +55,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.labkey.panoramapublic.model.validation.Modification.ModType.*;
+import static org.labkey.panoramapublic.model.validation.Modification.ModType.Isotopic;
 import static org.labkey.panoramapublic.model.validation.SpecLibSourceFile.LibrarySourceFileType.PEPTIDE_ID;
 import static org.labkey.panoramapublic.model.validation.SpecLibSourceFile.LibrarySourceFileType.SPECTRUM;
 
@@ -137,82 +134,6 @@ public class DataValidationManager
         return false;
     }
 
-    private static boolean hasNewerModInfos(int expAnnotationsId, DataValidation validation)
-    {
-        SimpleFilter filter = new SimpleFilter().addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotationsId);
-        filter.addCondition(FieldKey.fromParts("Created"), validation.getCreated(), CompareType.GT);
-        if (new TableSelector(PanoramaPublicManager.getTableInfoExperimentStructuralModInfo(), filter, null).exists())
-        {
-            return true;
-        }
-        return hasNewerIsotopeMods(expAnnotationsId, validation);
-    }
-
-    private static boolean hasNewerIsotopeMods(int expAnnotationsId, DataValidation validation)
-    {
-        SimpleFilter modInfoFilter = new SimpleFilter().addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotationsId);
-        modInfoFilter.addCondition(FieldKey.fromParts("Created"), validation.getCreated(), CompareType.GT);
-        List<Integer> newMods = new TableSelector(PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo(), Collections.singleton("Id"), modInfoFilter, null).getArrayList(Integer.class);
-
-        if (newMods.size() > 0)
-        {
-            // Get the modInfos that were calculated during data validation, and remove them since their create date will be later than the create date on the data validation row
-            // This is only required for isotope modifications since the wild-card and hard-coded modifications in Skyline are isotope modifications.
-            SimpleFilter inferredModsFilter = new SimpleFilter().addCondition(FieldKey.fromParts("ValidationId"), validation.getId());
-            inferredModsFilter.addCondition(FieldKey.fromParts("ModType"), Isotopic.ordinal());
-            inferredModsFilter.addCondition(FieldKey.fromParts("Inferred"), true);
-            List<Integer> inferredMods = new TableSelector(PanoramaPublicManager.getTableInfoModificationValidation(), Collections.singleton("ModInfoId"), inferredModsFilter, null).getArrayList(Integer.class);
-            newMods.removeAll(inferredMods);
-        }
-        return newMods.size() > 0;
-    }
-
-    private static boolean hasDeletedModInfos(int validationId, int expAnnotationsId)
-    {
-        return new SqlSelector(PanoramaPublicManager.getSchema(),
-                getDeletedModInfoSql(validationId, expAnnotationsId, Structural, PanoramaPublicManager.getTableInfoExperimentStructuralModInfo()))
-                .exists()
-                ||
-                new SqlSelector(PanoramaPublicManager.getSchema(),
-                        getDeletedModInfoSql(validationId, expAnnotationsId, Isotopic, PanoramaPublicManager.getTableInfoExperimentIsotopeModInfo()))
-                        .exists();
-    }
-
-    private static SQLFragment getDeletedModInfoSql(int validationId, int expAnnotationsId, Modification.ModType modType, TableInfo modInfoTableInfo)
-    {
-        return new SQLFragment("SELECT modInfoId FROM ")
-                .append(PanoramaPublicManager.getTableInfoModificationValidation(), "mv")
-                .append(" WHERE mv.validationId = ? ").add(validationId)
-                .append(" AND mv.modType = ? ").add(modType.ordinal())
-                .append(" AND mv.modInfoId IS NOT NULL ")
-                .append(" AND mv.modInfoId NOT IN ")
-                .append(" (SELECT Id FROM ")
-                .append(modInfoTableInfo, "mi")
-                .append(" WHERE mi.experimentAnnotationsId = ? ").add(expAnnotationsId)
-                .append(" ) ");
-    }
-
-    private static boolean hasNewerSpecLibInfos(int expAnnotationsId, DataValidation validation)
-    {
-        SimpleFilter filter = new SimpleFilter().addCondition(FieldKey.fromParts("experimentAnnotationsId"), expAnnotationsId);
-        filter.addCondition(FieldKey.fromParts("Modified"), validation.getCreated(), CompareType.GT);
-        return new TableSelector(PanoramaPublicManager.getTableInfoSpecLibInfo(), filter, null).exists();
-    }
-
-    private static boolean hasDeletedSpecLibInfos(int validationId, int expAnnotationsId)
-    {
-        SQLFragment sql = new SQLFragment("SELECT specLibInfoId FROM ")
-                .append(PanoramaPublicManager.getTableInfoSpecLibValidation(), "sv")
-                .append(" WHERE sv.validationId = ? ").add(validationId)
-                .append(" AND sv.specLibInfoId IS NOT NULL ")
-                .append(" AND sv.specLibInfoId NOT IN ")
-                .append(" (SELECT Id FROM ")
-                .append(PanoramaPublicManager.getTableInfoSpecLibInfo(), "li")
-                .append(" WHERE li.experimentAnnotationsId = ? ").add(expAnnotationsId)
-                .append(" )");
-        return new SqlSelector(PanoramaPublicManager.getSchema(), sql).exists();
-    }
-
     public static boolean isLatestValidation(@NotNull DataValidation validation, @NotNull Container container)
     {
         var latestValidation = DataValidationManager.getLatestValidation(validation.getExperimentAnnotationsId(), container);
@@ -230,9 +151,9 @@ public class DataValidationManager
         return PipelineService.get().getStatusFile(jobId);
     }
 
-    public static boolean isRunningStatus(PipelineStatusFile status)
+    public static boolean isRunningStatus(@Nullable PipelineStatusFile status)
     {
-        return status.isActive()
+        return status != null && status.isActive()
                 && !PipelineJob.TaskStatus.cancelling.matches(status.getStatus());
     }
 
@@ -537,7 +458,7 @@ public class DataValidationManager
         if (validation != null)
         {
             // Get the libraries associated with the given SpecLibInfo
-            List<SpecLib> specLibList = getLibrariesMatchingSpecLibInfo(specLibInfo, validation, expAnnotations, user);
+            List<SpecLib> specLibList = getLibrariesMatchingSpecLibInfo(specLibInfo, validation, user);
 
             if (specLibList.size() > 0)
             {
@@ -555,7 +476,7 @@ public class DataValidationManager
         }
     }
 
-    private static List<SpecLib> getLibrariesMatchingSpecLibInfo(SpecLibInfo specLibInfo, DataValidation validation, ExperimentAnnotations expAnnotations, User user)
+    private static List<SpecLib> getLibrariesMatchingSpecLibInfo(SpecLibInfo specLibInfo, DataValidation validation, User user)
     {
         SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("libName"), specLibInfo.getName());
         filter.addCondition(FieldKey.fromParts("libType"), specLibInfo.getLibraryType());

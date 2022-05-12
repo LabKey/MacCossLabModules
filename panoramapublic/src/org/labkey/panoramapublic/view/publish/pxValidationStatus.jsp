@@ -304,95 +304,75 @@
                 ]
             });
 
-            if (modificationsStore.getCount() === 0) {
-                return Ext4.create('Ext.Panel', {
-                    title: 'Modifications',
-                    padding: 10,
-                    items: [{xtype: 'component', html: "No modifications found", padding: 10}]
-                });
-            }
+            let columns = [];
+            let plugins = [];
 
-            var hasInferred = modificationsStore.find('matchAssigned', true) != -1;
+            if (modificationsStore.getCount() > 0) {
+                columns = [
+                    {
+                        text: 'Name',
+                        dataIndex: 'skylineModName',
+                        flex: 2,
+                        renderer: function (v) { return htmlEncode(v); }
+                    },
+                    {
+                        text: 'Unimod Match',
+                        dataIndex: 'unimodId',
+                        flex: 3,
+                        renderer: function (value, metadata, record) {
+                            if (value) return unimodLink(value);
+                            else if (record.data['unimodMatches']) {
+                                var ret = ''; var sep = '';
+                                var matches = record.data['unimodMatches'];
+                                var isotopic = record.data['modType'] === "Isotopic" ? true : false;
+                                for (var i = 0; i < matches.length; i++) {
+                                    ret += sep + "**" + unimodLink(matches[i]['unimodId']);
+                                    sep = isotopic ? '</br>' : '<b> + </b>';
+                                }
+                                if (record.data['modInfoId']) {
+                                    ret += deleteModInfoLink(record.data['modInfoId'], record.data['skylineModName'],
+                                            <%=experimentAnnotationsId%>, record.data['modType'], matches.length);
+                                }
+                                return ret;
+                            }
+                            else return missing() + assignUnimodLink(record.data['dbModId'], record.data['modType'], <%=experimentAnnotationsId%>);
+                        }
+                    },
+                    {
+                        text: 'Unimod Name',
+                        dataIndex: 'unimodName',
+                        flex: 3,
+                        renderer: function (value, metadata, record) {
+                            if (value) return htmlEncode(value);
+                            else if (record.data['unimodMatches']) {
+                                var ret = ''; var sep = '';
+                                var matches = record.data['unimodMatches'];
+                                var isotopic = record.data['modType'] === "Isotopic" ? true : false;
+                                for (var i = 0; i < matches.length; i++) {
+                                    ret += sep + htmlEncode(matches[i]['name']);
+                                    sep = isotopic ? '</br>' : ' + ';
+                                }
+                                return ret;
+                            }
+                            else return '';
+                        }
+                    },
+                    {
+                        text: 'Type',
+                        flex: 2,
+                        dataIndex: 'modType',
+                        renderer: function (v) { return htmlEncode(v); }
+                    },
+                    {
+                        text: 'Document Count',
+                        flex: 1,
+                        dataIndex: 'documents',
+                        renderer: function (v) { return v.length; }
+                    }];
 
-            var grid = Ext4.create('Ext.grid.Panel', {
-                store:    modificationsStore,
-                storeId: 'modificationsStore',
-                cls: 'pxv-modifications-panel',
-                padding:  '10',
-                disableSelection: true,
-                collapsible: true,
-                animCollapse: false,
-                viewConfig: {enableTextSelection: true},
-                title: 'Modifications',
-                columns: {
-                    items: [
-                        {
-                            text: 'Name',
-                            dataIndex: 'skylineModName',
-                            flex: 2,
-                            renderer: function (v) { return htmlEncode(v); }
-                        },
-                        {
-                            text: 'Unimod Match',
-                            dataIndex: 'unimodId',
-                            flex: 3,
-                            renderer: function (value, metadata, record) {
-                                if (value) return unimodLink(value);
-                                else if (record.data['unimodMatches']) {
-                                    var ret = ''; var sep = '';
-                                    var matches = record.data['unimodMatches'];
-                                    var isotopic = record.data['modType'] === "Isotopic" ? true : false;
-                                    for (var i = 0; i < matches.length; i++) {
-                                        ret += sep + "**" + unimodLink(matches[i]['unimodId']);
-                                        sep = isotopic ? '</br>' : '<b> + </b>';
-                                    }
-                                    if (record.data['modInfoId']) {
-                                        ret += deleteModInfoLink(record.data['modInfoId'], record.data['skylineModName'],
-                                                <%=experimentAnnotationsId%>, record.data['modType'], matches.length);
-                                    }
-                                    return ret;
-                                }
-                                else return missing() + assignUnimodLink(record.data['dbModId'], record.data['modType'], <%=experimentAnnotationsId%>);
-                            }
-                        },
-                        {
-                            text: 'Unimod Name',
-                            dataIndex: 'unimodName',
-                            flex: 3,
-                            renderer: function (value, metadata, record) {
-                                if (value) return htmlEncode(value);
-                                else if (record.data['unimodMatches']) {
-                                    var ret = ''; var sep = '';
-                                    var matches = record.data['unimodMatches'];
-                                    var isotopic = record.data['modType'] === "Isotopic" ? true : false;
-                                    for (var i = 0; i < matches.length; i++) {
-                                        ret += sep + htmlEncode(matches[i]['name']);
-                                        sep = isotopic ? '</br>' : ' + ';
-                                    }
-                                    return ret;
-                                }
-                                else return '';
-                            }
-                        },
-                        {
-                            text: 'Type',
-                            flex: 2,
-                            dataIndex: 'modType',
-                            renderer: function (v) { return htmlEncode(v); }
-                        },
-                        {
-                            text: 'Document Count',
-                            flex: 1,
-                            dataIndex: 'documents',
-                            renderer: function (v) { return v.length; }
-                        }],
-                    defaults: {
-                        sortable: false,
-                        hideable: false
-                    }
-                },
-                plugins: [{
+                plugins = [{
                     ptype: 'rowexpander',
+                    expandOnDblClick: false,
                     rowBodyTpl: new Ext4.XTemplate(
 
                             '<div class="pxv-grid-expanded-row">',
@@ -432,7 +412,23 @@
                                 compiled: true
                             }
                     )
-                }]
+                }];
+            }
+
+            var hasInferred = modificationsStore.find('matchAssigned', true) != -1;
+
+            var grid = Ext4.create('Ext.grid.Panel', {
+                store:    modificationsStore,
+                storeId: 'modificationsStore',
+                cls: 'pxv-modifications-panel',
+                padding:  '10',
+                disableSelection: true,
+                collapsible: true,
+                animCollapse: false,
+                viewConfig: {enableTextSelection: true},
+                title: 'Modifications',
+                columns: columns,
+                plugins: plugins
             });
             if (hasInferred) {
                 var noteHtml = "Unimod Ids starting with <strong>**</strong> in the Unimod Match column were assigned based on the formula, "
@@ -440,15 +436,25 @@
                 grid.addDocked({
                     xtype: 'component',
                     dock: 'top',
-                    padding: '8px',
+                    padding: '10px',
                     margin: 0,
                     style: 'background-color:#efefef; border: 1px solid #b4b4b4;',
                     cls: 'labkey-error',
                     html: '<em>' + noteHtml + '</em>'
                 });
-                return grid;
             }
-            else { return grid; }
+            if (modificationsStore.getCount() === 0) {
+                grid.addDocked({
+                    xtype: 'component',
+                    dock: 'top',
+                    padding: '10px',
+                    margin: 0,
+                    style: 'background-color:white; border: 1px solid #b4b4b4;',
+                    cls: 'labkey-error',
+                    html: '<em>No modifications found</em>'
+                });
+            }
+            return grid;
         }
         return {xtype: 'label', text: 'Missing JSON property "modifications"'};
     }

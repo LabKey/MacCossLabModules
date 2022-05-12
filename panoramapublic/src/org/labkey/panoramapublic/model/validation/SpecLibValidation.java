@@ -243,15 +243,32 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
 
     public @Nullable String getHelpString()
     {
-        if (isBibliospecLibrary() && !(hasSpectrumFiles() && hasIdFiles()))
+        if (isBibliospecLibrary() && !isMissingInSkyZip() && !(hasSpectrumFiles() && hasIdFiles()))
         {
             return "Library may have been built with an older version of Skyline. For a complete ProteomeXchange submission, " +
                     "re-build the library with the latest Skyline and update the documents that use this library.";
         }
-        else if (librarySourceExternal())
+        return null;
+    }
+
+    public @Nullable String getLibInfoHelpString()
+    {
+        if (!isUnsupportedLibrary() && librarySourceExternal())
         {
-            return "Library source files in the external repository will be verified when the data is made public and announced on ProteomeXchange. " +
-                    "If all the library source files are found in the external repository, this library will be considered complete.";
+            if ((isEncyclopeDiaLibrary() && hasSpectrumFiles()) ||
+                    (isBibliospecLibrary() && hasSpectrumFiles() && hasIdFiles()))
+            {
+                return "Library source files in the external repository will be verified when the data is made public and announced on ProteomeXchange. " +
+                        "If all the library source files are found in the external repository, this library will be considered complete.";
+            }
+            else {
+                String missing = hasSpectrumFiles() ? "" : " spectrum file names";
+                if (isBibliospecLibrary() && !hasIdFiles())
+                {
+                    missing += (missing.length() > 0 ? " and " : "") + " peptide ID file names";
+                }
+                return "Library source files in the external repository cannot be verified since the library is missing " + missing + ".";
+            }
         }
         return null;
     }

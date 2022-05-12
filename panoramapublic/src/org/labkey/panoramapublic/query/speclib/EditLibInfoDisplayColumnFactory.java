@@ -69,7 +69,7 @@ public class EditLibInfoDisplayColumnFactory implements DisplayColumnFactory
                         }
                     }
                 }
-                out.write("<em>Not Editable</em>");
+                out.write("");
             }
 
             @Override

@@ -4,9 +4,9 @@
         <column name="RunId" />
         <column name="ReplicateId" />
         <column name="File" />
-        <column name="InstrumentId" />
-        <column name="InstrumentSerialNumber" />
         <column name="AcquiredTime" />
+        <column name="InstrumentSerialNumber" />
+        <column name="InstrumentId" />
         <column name="FilePath" />
     </columns>
 </customView>

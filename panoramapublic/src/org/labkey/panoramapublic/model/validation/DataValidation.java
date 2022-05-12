@@ -3,6 +3,8 @@ package org.labkey.panoramapublic.model.validation;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 import org.labkey.panoramapublic.model.DbEntity;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.query.DataValidationManager;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
 import java.text.SimpleDateFormat;
@@ -51,6 +53,15 @@ public class DataValidation extends DbEntity
     public void setStatus(PxStatus status)
     {
         _status = status;
+    }
+
+    public PxStatus getStatusIncludingExptMetadata(ExperimentAnnotations expAnnotations)
+    {
+        if (isComplete() && DataValidationManager.getMissingExperimentMetadataFields(expAnnotations).size() > 0)
+        {
+            return PxStatus.NotValid;
+        }
+        return _status;
     }
 
     public boolean isComplete()

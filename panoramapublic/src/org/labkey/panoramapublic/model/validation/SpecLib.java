@@ -56,6 +56,7 @@ public class SpecLib extends SpecLibValidation<SkylineDocSpecLib>
         boolean isValid = isValidDueToSpecLibInfo || isValidWithoutSpecLibInfo;
         jsonObject.put("valid", isValid);
         jsonObject.put("validWithoutSpecLibInfo", isValidWithoutSpecLibInfo);
+        jsonObject.put("hasMissingSourceFiles", (!isValid() && (hasMissingSpectrumFiles() || hasMissingIdFiles())));
         jsonObject.put("status", getStatusString());
         if (getHelpString() != null)
         {
@@ -84,6 +85,11 @@ public class SpecLib extends SpecLibValidation<SkylineDocSpecLib>
                 jsonObject.put("specLibInfo", getSpecLibInfo().getInfoString());
             }
             jsonObject.put("specLibInfoId", getSpecLibInfo().getId());
+            String helpString = getLibInfoHelpString();
+            if (helpString != null)
+            {
+                jsonObject.put("libInfoHelpMessage", helpString);
+            }
         }
         if (!isPrositLibrary())
         {
