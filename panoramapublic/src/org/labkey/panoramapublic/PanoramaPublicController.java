@@ -209,6 +209,7 @@ import java.util.stream.Collectors;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.Experiment;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.Library;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.LibraryProtein;
+import static org.labkey.api.targetedms.TargetedMSService.FolderType.QC;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.Undefined;
 import static org.labkey.api.targetedms.TargetedMSService.RAW_FILES_DIR;
 import static org.labkey.api.targetedms.TargetedMSService.RAW_FILES_TAB;
@@ -5649,7 +5650,7 @@ public class PanoramaPublicController extends SpringActionController
 
     private static boolean isSupportedFolderType(TargetedMSService.FolderType folderType)
     {
-        return folderType == Experiment || isLibraryFolder(folderType);
+        return folderType == Experiment || isLibraryFolder(folderType) || folderType == QC;
     }
 
     private static boolean isLibraryFolder(TargetedMSService.FolderType folderType)

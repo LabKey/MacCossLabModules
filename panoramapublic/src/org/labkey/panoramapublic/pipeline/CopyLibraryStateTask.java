@@ -8,9 +8,6 @@ import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExperimentService;
-import org.labkey.api.module.Module;
-import org.labkey.api.module.ModuleLoader;
-import org.labkey.api.module.ModuleProperty;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
@@ -28,14 +25,13 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import java.util.Collections;
 import java.util.List;
 
+import static org.labkey.api.targetedms.TargetedMSService.FolderType.Library;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.LibraryProtein;
 
-public class UpdateFolderTypeTask extends PipelineJob.Task<UpdateFolderTypeTask.Factory>
+public class CopyLibraryStateTask extends PipelineJob.Task<CopyLibraryStateTask.Factory>
 {
-    private static final Module _targetedMSModule = ModuleLoader.getInstance().getModule(TargetedMSService.MODULE_NAME);
-    private static final ModuleProperty _folderTypeProp = _targetedMSModule.getModuleProperties().get(TargetedMSService.FOLDER_TYPE_PROP_NAME);
 
-    private UpdateFolderTypeTask(UpdateFolderTypeTask.Factory factory, PipelineJob job)
+    private CopyLibraryStateTask(CopyLibraryStateTask.Factory factory, PipelineJob job)
     {
         super(factory, job);
     }
@@ -49,7 +45,7 @@ public class UpdateFolderTypeTask extends PipelineJob.Task<UpdateFolderTypeTask.
         try
         {
             job.getLogger().info("");
-            job.getLogger().info("Updating the folder type.");
+            job.getLogger().info("Checking for library folders.");
             updateFolderType(job, support);
         }
         catch (Throwable t)
@@ -106,28 +102,19 @@ public class UpdateFolderTypeTask extends PipelineJob.Task<UpdateFolderTypeTask.
     private void doUpdate(Container c, Container sourceContainer, User user, TargetedMSService svc, Logger log) throws PipelineJobException
     {
         FolderType folderType = svc.getFolderType(sourceContainer);
-        switch (folderType)
+        if (LibraryProtein.equals(folderType) || Library.equals(folderType))
         {
-            case Experiment -> {
-                log.info(String.format("Setting the TargetedMS folder type to 'Experimental Data' for folder '%s'.", c.getPath()));
-                _folderTypeProp.saveValue(user, c, folderType.name());
-            }
-            case Library, LibraryProtein -> {
-                log.info(String.format("Updating the TargetedMS folder type to '%s' for folder '%s'.",
-                        (LibraryProtein.equals(folderType) ? "Protein Library" : "Peptide Library"),
-                        c.getPath()));
-                makePanoramaLibraryFolder(c, sourceContainer, folderType, user, svc, log);
-            }
-            default -> log.info(String.format("Source folder '%s' is of the type '%s'.  Target folder '%s' cannot be updated to match source folder.",
-                    sourceContainer.getPath(), folderType.name(), c.getPath()));
+            log.info(String.format("Copying '%s' state from source folder '%s' into target folder '%s' .",
+                    (LibraryProtein.equals(folderType) ? "Protein Library" : "Peptide Library"),
+                    sourceContainer.getPath(),
+                    c.getPath()));
+            copyLibraryState(c, sourceContainer, user, svc, log);
         }
     }
 
-    private static void makePanoramaLibraryFolder(Container container, Container sourceContainer, FolderType sourceFolderType,
-                                                  User user, TargetedMSService svc, Logger log) throws PipelineJobException
+    private static void copyLibraryState(Container container, Container sourceContainer,
+                                         User user, TargetedMSService svc, Logger log) throws PipelineJobException
     {
-        _folderTypeProp.saveValue(user, container, sourceFolderType.name());
-
         PropertyManager.PropertyMap sourcePropMap = PropertyManager.getProperties(sourceContainer, TargetedMSService.MODULE_NAME);
         String versionStr = sourcePropMap.get(TargetedMSService.PROP_CHROM_LIB_REVISION);
         if (null != versionStr)
@@ -157,17 +144,17 @@ public class UpdateFolderTypeTask extends PipelineJob.Task<UpdateFolderTypeTask.
         }
     }
 
-    public static class Factory extends AbstractTaskFactory<AbstractTaskFactorySettings, UpdateFolderTypeTask.Factory>
+    public static class Factory extends AbstractTaskFactory<AbstractTaskFactorySettings, CopyLibraryStateTask.Factory>
     {
         public Factory()
         {
-            super(UpdateFolderTypeTask.class);
+            super(CopyLibraryStateTask.class);
         }
 
         @Override
         public PipelineJob.Task createTask(PipelineJob job)
         {
-            return new UpdateFolderTypeTask(this, job);
+            return new CopyLibraryStateTask(this, job);
         }
 
         @Override

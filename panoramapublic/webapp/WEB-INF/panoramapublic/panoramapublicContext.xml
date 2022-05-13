@@ -12,7 +12,7 @@
                 <bean class="org.labkey.panoramapublic.pipeline.ExperimentImportTask$Factory">
                     <property name="location" value="webserver" />
                 </bean>
-                <bean class="org.labkey.panoramapublic.pipeline.UpdateFolderTypeTask$Factory">
+                <bean class="org.labkey.panoramapublic.pipeline.CopyLibraryStateTask$Factory">
                     <property name="location" value="webserver" />
                 </bean>
                 <bean class="org.labkey.panoramapublic.pipeline.CopyExperimentFinalTask$Factory">
@@ -36,8 +36,8 @@
                             <bean id="importTask" class="org.labkey.api.pipeline.TaskId">
                                 <constructor-arg><value type="java.lang.Class">org.labkey.panoramapublic.pipeline.ExperimentImportTask</value></constructor-arg>
                             </bean>
-                            <bean id="updateFolderTypeTask" class="org.labkey.api.pipeline.TaskId">
-                                <constructor-arg><value type="java.lang.Class">org.labkey.panoramapublic.pipeline.UpdateFolderTypeTask</value></constructor-arg>
+                            <bean id="copyLibraryStateTask" class="org.labkey.api.pipeline.TaskId">
+                                <constructor-arg><value type="java.lang.Class">org.labkey.panoramapublic.pipeline.CopyLibraryStateTask</value></constructor-arg>
                             </bean>
                             <bean id="finalTask" class="org.labkey.api.pipeline.TaskId">
                                 <constructor-arg><value type="java.lang.Class">org.labkey.panoramapublic.pipeline.CopyExperimentFinalTask</value></constructor-arg>
