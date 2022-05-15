@@ -23,6 +23,7 @@
     var bean = view.getModelBean();
     ExperimentAnnotations experimentAnnotations = bean.getExpAnnotations();
     int experimentAnnotationsId = experimentAnnotations.getId();
+    boolean includeSubfolders = experimentAnnotations.isIncludeSubfolders();
     Status validationStatus = bean.getPxValidationStatus();
     JSONObject json = validationStatus != null ? validationStatus.toJSON() : new JSONObject();
 %>
@@ -53,10 +54,11 @@
                     {
                         xtype: 'pxv-speclibs-grid',
                         experimentAnnotationsId: <%=experimentAnnotationsId%>,
+                        includeSubfolders: <%=includeSubfolders%>,
                         json: json,
                         showUploadButton: false,
                         expandNodes: true,
-                        showLibInfo: false,
+                        showLibInfo: true,
                         padding: '10 0 0 0',
             });
         }

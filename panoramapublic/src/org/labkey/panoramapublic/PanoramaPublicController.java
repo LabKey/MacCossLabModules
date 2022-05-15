@@ -1937,7 +1937,7 @@ public class PanoramaPublicController extends SpringActionController
                     }
                     if (DataValidationManager.isValidationOutdated(_dataValidation, _experimentAnnotations, getUser()))
                     {
-                        return getStartValidationView("Data validation with Id " + _dataValidation.getId() + " is outdated.");
+                        return getStartValidationView("Data validation is outdated.");
                     }
 
                     // Validation is complete and current. Show the form.
@@ -8238,7 +8238,7 @@ public class PanoramaPublicController extends SpringActionController
             Status validationStatus = getValidationStatus(validation, errors);
             if (validationStatus == null)
             {
-                return new SimpleErrorView(errors);
+                return getErrorsView(errors, expAnnotations, form);
             }
 
             HtmlView htmlView = new HtmlView(DIV(at(style, "margin: 15px 0 15px 0;"),

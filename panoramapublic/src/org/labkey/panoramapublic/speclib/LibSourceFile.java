@@ -73,7 +73,9 @@ public class LibSourceFile
 
     // For a MaxQuant search we need all of these files.  Only msms.txt is listed in the SpectrumSourceFiles table of .blib
     // https://skyline.ms/wiki/home/software/Skyline/page.view?name=building_spectral_libraries
-    public static List<String> MAX_QUANT_ID_FILES = List.of("msms.txt", "mqpar.xml", "evidence.txt", "modifications.xml");
+    // Do not include "modifications.xml" in this list for now. It is not always required. We need a way to include this information
+    // in the .blib file.
+    public static List<String> MAX_QUANT_ID_FILES = List.of("msms.txt", "mqpar.xml", "evidence.txt");
 
     public boolean isMaxQuantSearch()
     {

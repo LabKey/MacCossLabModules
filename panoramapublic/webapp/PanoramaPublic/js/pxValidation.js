@@ -435,6 +435,7 @@ Ext4.define('LABKEY.pxvalidation.SpecLibsGridPanel', {
                     // Peptide Id files
                     '<tpl if="idFiles.length &gt; 0">', '{[this.renderTable(values.idFiles, "lib-id-files-status", "Peptide Id Files")]}', '</tpl>',
                     // Skyline documents with the library
+                    '<tpl if="documents.length &gt; 0">',
                     '<div class="pxv-tpl-table-title" style="margin-bottom:5px;">Skyline documents with the library</div>',
                     '<ul>',
                     '<tpl for="documents">',
@@ -442,6 +443,7 @@ Ext4.define('LABKEY.pxvalidation.SpecLibsGridPanel', {
                     '</tpl>',
                     '</ul>',
                     '</div>',
+                    '</tpl>',
                     {
                         renderLibraryStatus: function (values) {
 

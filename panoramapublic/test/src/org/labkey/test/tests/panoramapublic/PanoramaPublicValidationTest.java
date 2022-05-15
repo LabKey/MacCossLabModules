@@ -350,14 +350,14 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         validationPage.verifySampleFileStatus(SKY_FILE_1, List.of(WIFF_1, WIFF_SCAN_1), Collections.emptyList());
         validationPage.verifySampleFileStatus(SKY_FILE_2, List.of(WIFF_2, WIFF_SCAN_2, WIFF_3, WIFF_SCAN_2), Collections.emptyList());
 
-        // Verify library built with MaxQuant results. Expect to see modifications.xml, evidence.xml, mqpar.xml in the Peptide ID files list
+        // Verify library built with MaxQuant results. Expect to see evidence.xml, mqpar.xml in the Peptide ID files list
         // even though these files are not named in the .blib
         validationPage.verifySpectralLibraryStatus("maxquant.blib", "104 KB", "Missing spectrum and peptide Id files",
                 List.of(SKY_FILE_2),
                 Collections.emptyList(),
                 List.of("BBM_332_P110_C04_PRM_007.raw", "BBM_332_P110_C04_PRM_006.raw", "BBM_332_P110_C04_PRM_005.raw", "BBM_332_P110_C04_PRM_004.raw", "BBM_332_P110_C04_PRM_003.raw"),
                 Collections.emptyList(),
-                List.of("modifications.xml", "evidence.txt", "mqpar.xml", "msms.txt"));
+                List.of("evidence.txt", "mqpar.xml", "msms.txt"));
 
         // .blib does not have any source files in the SpectrumSourceFiles table.
         validationPage.verifySpectralLibraryStatus("Qtrap_DP-PA_cons_P0836.blib", "61 KB",
@@ -381,14 +381,14 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         validationPage.verifySampleFileStatus(SKY_FILE_3, Collections.emptyList(), List.of("QQ180201_RAS_mAbmix1_Site2_plate1_A9_Blank_01_01.raw"));
         validationPage.verifySampleFileStatus(SKY_FILE_4, Collections.emptyList(), List.of("QQ180201_RAS_mAbmix1_Site2_plate1_A9_Blank_01_01.raw"));
 
-        // Verify library built with MaxQuant results. Expect to see modifications.xml, evidence.xml, mqpar.xml in the Peptide ID files list
+        // Verify library built with MaxQuant results. Expect to see evidence.xml, mqpar.xml in the Peptide ID files list
         // even though these files are not named in the .blib
         validationPage.verifySpectralLibraryStatus("maxquant.blib", "104 KB", "Missing spectrum and peptide Id files",
                 List.of(SKY_FILE_2),
                 Collections.emptyList(),
                 List.of("BBM_332_P110_C04_PRM_007.raw", "BBM_332_P110_C04_PRM_006.raw", "BBM_332_P110_C04_PRM_005.raw", "BBM_332_P110_C04_PRM_004.raw", "BBM_332_P110_C04_PRM_003.raw"),
                 Collections.emptyList(),
-                List.of("modifications.xml", "evidence.txt", "mqpar.xml", "msms.txt"));
+                List.of("evidence.txt", "mqpar.xml", "msms.txt"));
 
         // .blib does not have any source files in the SpectrumSourceFiles table.
         validationPage.verifySpectralLibraryStatus("Qtrap_DP-PA_cons_P0836.blib", "61 KB",
