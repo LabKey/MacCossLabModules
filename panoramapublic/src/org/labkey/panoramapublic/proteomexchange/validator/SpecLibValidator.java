@@ -367,7 +367,7 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             assertNotNull(libReader);
             List<LibSourceFile> libSources = getLibSources(libReader, isl, libPath, "no_name_document");
             assertNotNull(libSources);
-            assertEquals(8, libSources.size());
+            assertEquals(7, libSources.size());
 
             // Files read from the .blib's SpectrumSourceFiles table
             List<String> spectrumSources = List.of("BBM_332_P110_C04_PRM_003.raw", "BBM_332_P110_C04_PRM_004.raw",
