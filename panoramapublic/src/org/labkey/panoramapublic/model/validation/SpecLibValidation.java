@@ -243,7 +243,7 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
 
     public @Nullable String getHelpString()
     {
-        if (isBibliospecLibrary() && !isMissingInSkyZip() && !(hasSpectrumFiles() && hasIdFiles()))
+        if (isBibliospecLibrary() && !(isMissingInSkyZip() || isAssayLibrary()) && !(hasSpectrumFiles() && hasIdFiles()))
         {
             return "Library may have been built with an older version of Skyline. For a complete ProteomeXchange submission, " +
                     "re-build the library with the latest Skyline and update the documents that use this library.";
@@ -332,7 +332,7 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
         if (isBibliospecLibrary())
         {
             var spectrumFiles = getSpectrumFiles();
-            return spectrumFiles.size() > 0 && spectrumFiles.stream().anyMatch(f -> getFileName().toLowerCase().endsWith(".csv"));
+            return spectrumFiles.size() > 0 && spectrumFiles.stream().anyMatch(f -> f.getName().toLowerCase().endsWith(".csv"));
         }
         return false;
     }
