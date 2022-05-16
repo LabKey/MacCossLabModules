@@ -70,6 +70,46 @@ public class PanoramaPublicManager
         return getSchema().getTable(PanoramaPublicSchema.TABLE_PX_XML);
     }
 
+    public static TableInfo getTableInfoDataValidation()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_DATA_VALIDATION);
+    }
+
+    public static TableInfo getTableInfoSkylineDocValidation()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_SKYLINE_DOC_VALIDATION);
+    }
+
+    public static TableInfo getTableInfoSkylineDocSampleFile()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_SKYLINE_DOC_SAMPLE_FILE);
+    }
+
+    public static TableInfo getTableInfoModificationValidation()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_MODIFICATION_VALIDATION);
+    }
+
+    public static TableInfo getTableInfoSkylineDocModification()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_SKYLINE_DOC_MODIFICATION);
+    }
+
+    public static TableInfo getTableInfoSpecLibValidation()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_SPEC_LIB_VALIDATION);
+    }
+
+    public static TableInfo getTableInfoSkylineDocSpecLib()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_SKYLINE_DOC_SPEC_LIB);
+    }
+
+    public static TableInfo getTableInfoSpecLibSourceFile()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_SPEC_LIB_SOURCE_FILE);
+    }
+
     public static ITargetedMSRun getRunByLsid(String lsid, Container container)
     {
         return TargetedMSService.get().getRunByLsid(lsid, container);
@@ -78,6 +118,21 @@ public class PanoramaPublicManager
     public static TableInfo getTableInfoSpecLibInfo()
     {
         return getSchema().getTable(PanoramaPublicSchema.TABLE_SPEC_LIB_INFO);
+    }
+
+    public static TableInfo getTableInfoExperimentStructuralModInfo()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_EXPT_STRUCTURAL_MOD_INFO);
+    }
+
+    public static TableInfo getTableInfoExperimentIsotopeModInfo()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_EXPT_ISOTOPE_MOD_INFO);
+    }
+
+    public static TableInfo getTableInfoIsotopeUnimodInfo()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_ISOTOPE_UNIMOD_INFO);
     }
 
     public static ActionURL getRawDataTabUrl(Container container)

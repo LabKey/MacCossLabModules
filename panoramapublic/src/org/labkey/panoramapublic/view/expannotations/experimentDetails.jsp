@@ -33,6 +33,15 @@
 <%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
 <%@ page import="org.labkey.api.security.permissions.AdminPermission" %>
+<%@ page import="org.labkey.panoramapublic.query.DataValidationManager" %>
+<%@ page import="org.labkey.panoramapublic.model.validation.DataValidation" %>
+<%@ page import="org.labkey.panoramapublic.model.validation.PxStatus" %>
+<%@ page import="org.labkey.api.util.HtmlString" %>
+<%@ page import="static org.labkey.api.util.DOM.SPAN" %>
+<%@ page import="static org.labkey.api.util.DOM.Attribute.style" %>
+<%@ page import="org.labkey.api.util.DOM" %>
+<%@ page import="static org.labkey.api.util.DOM.Attribute.title" %>
+<%@ page import="static org.labkey.api.util.DOM.Attribute.href" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -46,6 +55,7 @@
         dependencies.add("PanoramaPublic/css/ExperimentAnnotations.css");
         dependencies.add("hopscotch/js/hopscotch.min.js");
         dependencies.add("hopscotch/css/hopscotch.min.css");
+        dependencies.add("PanoramaPublic/css/pxValidation.css");
     }
 %>
 
@@ -57,12 +67,43 @@
             PanoramaPublicController.getViewExperimentDetailsURL(annot.getId(), getContainer()));
     ActionURL deleteUrl = PanoramaPublicController.getDeleteExperimentURL(getContainer(), annot.getId(), getContainer().getStartURL(getUser()));
 
-    ActionURL publishUrl = PanoramaPublicController.getPublishExperimentURL(annot.getId(), getContainer(), true, true);
+    ActionURL publishUrl = PanoramaPublicController.getSubmitExperimentURL(annot.getId(), getContainer());
     Container experimentContainer = annot.getContainer();
-    final boolean canEdit = (!annot.isJournalCopy() || getUser().hasSiteAdminPermission()) && experimentContainer.hasPermission(getUser(), AdminPermission.class);
+    boolean isAdminUser = experimentContainer.hasPermission(getUser(), AdminPermission.class);
+    final boolean canEdit = (!annot.isJournalCopy() && isAdminUser) || getUser().hasSiteAdminPermission();
     // User needs to be the folder admin to publish an experiment.
     final boolean canPublish = annotDetails.isCanPublish();
     final boolean showingFullDetails = annotDetails.isFullDetails();
+
+    HtmlString pxStatusIndicator = null;
+    if (canEdit)
+    {
+        DataValidation validation = DataValidationManager.getLatestValidation(annot.getId(), annot.getContainer());
+        if (validation != null && validation.isComplete())
+        {
+            ActionURL viewExptDetailsUrl = PanoramaPublicController.getViewExperimentDetailsURL(annot.getId(), annot.getContainer());
+            StringBuilder status = new StringBuilder();
+            if (DataValidationManager.isValidationOutdated(validation, annot, getUser()))
+            {
+                DOM.A(DOM.at(href, viewExptDetailsUrl.toContainerRelativeURL()),
+                        DOM.SPAN(DOM.cl("labkey-error"), SPAN(DOM.at(style, "background-color: #FFF6D8;margin:2px;font-weight:bold;"), "PX validation is outdated")))
+                        .appendTo(status);
+            }
+            else
+            {
+                PxStatus pxStatus = validation.getStatusIncludingExptMetadata(annot);
+                String pxCls = "pxv-circle " +
+                        (PxStatus.Complete == pxStatus ? "pxv-circle-valid" :
+                        PxStatus.IncompleteMetadata == pxStatus ? "pxv-circle-incomplete" : "pxv-circle-invalid");
+                String pxStatusStr = PxStatus.NotValid == pxStatus ? pxStatus.getLabel() :
+                        ("ProteomeXchange status: " + pxStatus.getLabel());
+                DOM.A(DOM.at(href, viewExptDetailsUrl.toContainerRelativeURL()),
+                        DOM.SPAN(DOM.at(title, pxStatusStr), DOM.SPAN(DOM.cl(pxCls), "PX")))
+                        .appendTo(status);
+            }
+            pxStatusIndicator = HtmlString.unsafe(status.toString());
+        }
+    }
 
     ActionURL experimentDetailsUrl = urlFor(ShowExperimentAnnotationsAction.class);
     experimentDetailsUrl.addParameter("id", annot.getId());
@@ -70,7 +111,7 @@
     Journal journal = null;
     boolean journalCopyPending = false;
     ShortURLRecord accessUrlRecord = annot.getShortUrl(); // Will have a value if this is a journal copy of an experiment.
-    JournalSubmission js = me.getModelBean().getLastPublishedRecord(); // Will be non-null if this experiment is in a user (not journal) project.
+    JournalSubmission js = annotDetails.getLastPublishedRecord(); // Will be non-null if this experiment is in a user (not journal) project.
     String publishButtonText = "Submit";
     if (js != null)
     {
@@ -84,7 +125,7 @@
             if (!journalCopyPending)
             {
                 publishButtonText = "Resubmit";
-                publishUrl = PanoramaPublicController.getRePublishExperimentURL(annot.getId(), js.getJournalId(), getContainer(), submission.isKeepPrivate(), true); // Has been copied; User is re-submitting
+                publishUrl = PanoramaPublicController.getResubmitExperimentURL(annot.getId(), js.getJournalId(), getContainer(), submission.isKeepPrivate(), true); // Has been copied; User is re-submitting
             }
         }
     }
@@ -186,7 +227,9 @@
 <div id="title"><%=h(annot.getTitle())%></div>
 <div>
     <%if(canPublish && !journalCopyPending){%>
-        <a class="button-small button-small-red" style="float:left; margin:0px 5px 0px 2px;" href="<%=h(publishUrl)%>"><%=h(publishButtonText)%></a>
+        <span style="float:left; margin:0px 5px 0px 2px;">
+            <%=link(publishButtonText, publishUrl).clearClasses().addClass("button-small").addClass("button-small-red")%>
+        </span>
     <%}%>
     <% if (annotDetails.canAddPublishLink(getUser())) { %>
         <%=link(annotDetails.getPublishButtonText(), new ActionURL(PanoramaPublicController.MakePublicAction.class,getContainer())
@@ -200,6 +243,9 @@
     <%}%>
     <%if(!showingFullDetails) {%>
     <a style="margin-top:2px; margin-left:2px;" href="<%=h(experimentDetailsUrl)%>">[More Details...]</a>
+    <% if (pxStatusIndicator != null) { %>
+    <span><%=pxStatusIndicator%></span>
+    <% } %>
     <%}%>
 </div>
 

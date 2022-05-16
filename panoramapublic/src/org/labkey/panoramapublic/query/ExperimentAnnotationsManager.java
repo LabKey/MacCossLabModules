@@ -73,6 +73,13 @@ public class ExperimentAnnotationsManager
         return experimentAnnotationsId == null ? null : new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),null, null).getObject(experimentAnnotationsId, ExperimentAnnotations.class);
     }
 
+    @Nullable
+    public static ExperimentAnnotations get(int experimentAnnotationsId, Container container)
+    {
+        var expAnnotations = get(experimentAnnotationsId);
+        return expAnnotations != null && expAnnotations.getContainer().equals(container) ? expAnnotations : null;
+    }
+
     /**
      * @param experimentId FK -> exp.experiment.rowId
      * @return ExperimentAnnotations object with the given experimentId
@@ -282,6 +289,13 @@ public class ExperimentAnnotationsManager
         // Delete any rows in the panoramapublic.speclibinfo table associated with this experiment
         Table.delete(PanoramaPublicManager.getTableInfoSpecLibInfo(),
                 new SimpleFilter().addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId()));
+
+        // Delete any rows in the panoramapublic.ExperimentStructuralModInfo and panoramapublic.ExperimentIsotopeModInfo tables
+        ModificationInfoManager.deleteStructuralModInfoForExperiment(expAnnotations);
+        ModificationInfoManager.deleteIsotopeModInfoForExperiment(expAnnotations);
+
+        // Delete any data validation rows for this experiment
+        DataValidationManager.deleteValidations(expAnnotations.getId(), expAnnotations.getContainer());
 
         Table.delete(PanoramaPublicManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());
 

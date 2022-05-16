@@ -34,7 +34,6 @@ import org.labkey.panoramapublic.query.SubmissionManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,9 +47,8 @@ import static org.labkey.api.targetedms.TargetedMSService.FolderType.Experiment;
  * Date: 2/18/13
  * Time: 3:42 PM
  */
-public class ExperimentAnnotations
+public class ExperimentAnnotations extends DbEntity
 {
-    private int _id;
     private int _experimentId;
     private Container _container;
     private String _title;
@@ -62,8 +60,6 @@ public class ExperimentAnnotations
     private String _citation;
     private String _abstract;
     private String _publicationLink;
-    private Date _created;
-    private int _createdBy;
     private boolean _includeSubfolders;
     private ExpExperiment _experiment;
 
@@ -86,16 +82,6 @@ public class ExperimentAnnotations
     private static final Pattern HTML_TAG = Pattern.compile("<[^>]+>");
 
     public ExperimentAnnotations() {}
-
-    public int getId()
-    {
-        return _id;
-    }
-
-    public void setId(int id)
-    {
-        _id = id;
-    }
 
     public int getExperimentId()
     {
@@ -311,26 +297,6 @@ public class ExperimentAnnotations
         _publicationLink = publicationLink;
     }
 
-    public Date getCreated()
-    {
-        return _created;
-    }
-
-    public void setCreated(Date created)
-    {
-        _created = created;
-    }
-
-    public int getCreatedBy()
-    {
-        return _createdBy;
-    }
-
-    public void setCreatedBy(int createdBy)
-    {
-        _createdBy = createdBy;
-    }
-
     public Integer getSourceExperimentId()
     {
         return _sourceExperimentId;
@@ -528,7 +494,7 @@ public class ExperimentAnnotations
         {
             return null;
         }
-        return SubmissionManager.getDataLicenseForCopiedExperiment(_id);
+        return SubmissionManager.getDataLicenseForCopiedExperiment(getId());
     }
 
     /**
