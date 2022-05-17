@@ -1,0 +1,51 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="StructuralModifications" tableDbType="NOT_IN_DB">
+                <columns>
+                    <column columnName="ModId">
+                        <columnTitle>Modification Id</columnTitle>
+                        <fk>
+                            <fkDbSchema>targetedms</fkDbSchema>
+                            <fkTable>StructuralModification</fkTable>
+                            <fkColumnName>id</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="SkylineUnimodId">
+                        <description>Unimod Id from the Skyline document</description>
+                        <displayColumnFactory>
+                            <className>org.labkey.panoramapublic.query.modification.UnimodIdDisplayColumnFactory</className>
+                        </displayColumnFactory>
+                    </column>
+                    <column columnName="NormalizedFormula">
+                        <description>Formula from the Skyline document, normalized</description>
+                        <displayColumnFactory>
+                            <className>org.labkey.panoramapublic.query.modification.NormalizedFormulaDisplayColumnFactory</className>
+                        </displayColumnFactory>
+                    </column>
+                    <column columnName="RunIds">
+                        <columnTitle>Skyline Documents</columnTitle>
+                        <description>Skyline documents with this modification</description>
+                        <displayColumnFactory>
+                            <className>org.labkey.panoramapublic.query.modification.ModificationDocsDisplayColumnFactory$StructuralModDocsColumn</className>
+                        </displayColumnFactory>
+                    </column>
+                    <column columnName="UnimodMatch">
+                        <columnTitle>UnimodMatch</columnTitle>
+                        <textAlign>left</textAlign>
+                        <displayColumnFactory>
+                            <className>org.labkey.panoramapublic.query.modification.UnimodMatchDisplayColumnFactory$StructuralUnimodMatch</className>
+                        </displayColumnFactory>
+                    </column>
+                    <column columnName="ModInfoId">
+                        <fk>
+                            <fkDbSchema>panoramapublic</fkDbSchema>
+                            <fkTable>ExperimentStructuralModInfo</fkTable>
+                            <fkColumnName>id</fkColumnName>
+                        </fk>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

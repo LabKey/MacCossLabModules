@@ -16,33 +16,43 @@
 package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.labkey.api.util.Link;
+import org.w3c.dom.NodeList;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.labkey.panoramapublic.proteomexchange.ChemElement.HEAVY_LABELS;
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.Position;
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.Specificity;
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.TermSpecificity;
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.Terminus;
 
 public class UnimodModification
 {
     private final int _id;
     private final String _name;
-    private String _normFormula;
-    private Set<String> _strModSites;
-    private Set<String> _isotopeModSites;
-    private boolean _isNterm;
-    private boolean _isCterm;
+    private final Formula _formula;
+    private final Set<Specificity> _modSites;
+    private TermSpecificity _nTerm;
+    private TermSpecificity _cTerm;
+    private final boolean _isIsotopic;
+    private boolean _isTrueIsotopic;
+    private Formula _diffFormula;
+    private UnimodModification _parentStructuralMod;
 
-    public UnimodModification(int id, String name, String normalizedFormula)
+
+    public UnimodModification(int id, String name, Formula formula)
     {
         _id = id;
         _name = name;
-        _normFormula = normalizedFormula;
-        _strModSites = new HashSet<>();
-        _isotopeModSites = new HashSet<>();
+        _formula = formula;
+        _modSites = new HashSet<>();
+        _isIsotopic = _formula.getElementCounts().keySet().stream().anyMatch(el -> HEAVY_LABELS.containsKey(el));
     }
 
     public int getId()
@@ -55,177 +65,176 @@ public class UnimodModification
         return _name;
     }
 
+    public Formula getFormula()
+    {
+        return _formula;
+    }
+
     public String getNormalizedFormula()
     {
-        return _normFormula;
+        return _formula.getFormula();
     }
 
-    public void setNterm(boolean nterm)
+    public void setNterm(@NotNull Position position)
     {
-        _isNterm = nterm;
-    }
-
-    public void setCterm(boolean cterm)
-    {
-        _isCterm = cterm;
-    }
-
-    public void addSite(String site, String classification)
-    {
-        if(("Isotopic label").equalsIgnoreCase(classification))
+        if (_nTerm != null)
         {
-            _isotopeModSites.add(site);
+            // Some Unimod modifications have terminus specificity on both Any N-term and Protein N-term. Keep the less restrictive one.
+            position = position.ordinal() < _nTerm.getPosition().ordinal() ? position : _nTerm.getPosition();
         }
-        else
-        {
-            _strModSites.add(site);
-        }
+        _nTerm = new TermSpecificity(Terminus.N, position);
     }
 
+    public void setCterm(@NotNull Position position)
+    {
+        if (_cTerm != null)
+        {
+            // Some Unimod modifications have terminus specificity on both Any C-term and Protein C-term. Keep the less restrictive one.
+            // Example: Unimod:2, Amidation https://www.unimod.org/modifications_view.php?editid1=2
+            position = position.ordinal() < _cTerm.getPosition().ordinal() ? position : _cTerm.getPosition();
+        }
+        _cTerm = new TermSpecificity(Terminus.C, position);
+    }
+
+    public void addSite(@NotNull String site, @NotNull Position position)
+    {
+        _modSites.add(new Specificity(site, position));
+    }
+
+    /**
+     * @return true if the modification formula changes the elemental composition of the residue or terminus.
+     * This will include modifications such as
+     * Methyl:2H(3); Unimod:298; Composition: H(-1) 2H(3) C
+     * and 	Dimethyl:2H(6); Unimod:1291; Composition: H(-2) 2H(6) C(2)
+     * These are isotope labels that are also chemical modifications.
+     * This is based on the PanoramaWeb support board request: https://panoramaweb.org/home/support/announcements-thread.view?rowId=4105
+     * The user added Methyl:2H(3) and Dimethyl:2H(6) as structural modifications rather than isotopic because he needed them to be variable.
+     * Data is available on Panorama Public at: https://panoramaweb.org/PRMT6motif.url
+     */
     public boolean isStructural()
     {
-        return _strModSites.size() > 0;
+        return !isTrueIsotopic();
     }
 
+    /**
+     * @return true if the element composition contains at least one heavy element.
+     */
     public boolean isIsotopic()
     {
-        return _isotopeModSites.size() > 0;
+        return _isIsotopic;
     }
 
-    public boolean matches(String normFormula, String[] sites, boolean structural)
+    /**
+     * @return true if the formula has heavy labeled elements, and the labels do not change the elemental composition of
+     * the residue or terminus. Example: C(-6)13C(6). This is determined by {@link UnimodParser#checkTrueIsotopeMod(NodeList)}.
+     */
+    @SuppressWarnings("JavadocReference")
+    public boolean isTrueIsotopic()
     {
-        if(!_normFormula.equals(normFormula))
+        return _isTrueIsotopic;
+    }
+
+    public void setTrueIsotopic(boolean trueIsotopic)
+    {
+        _isTrueIsotopic = trueIsotopic;
+    }
+
+    // https://www.unimod.org/names.html
+    public boolean isIsotopeLabel()
+    {
+        return _name.contains(":") && !_name.startsWith("Delta:");
+    }
+
+    public @Nullable String getIsotopeLabelName()
+    {
+        return isIsotopeLabel() ? _name.substring(0, _name.indexOf(":")) : null;
+    }
+
+    /**
+     * Isotope modifications in Skyline that are the heavy version of a structural modification have a formula that is
+     * the difference between the formula of the modification and the formula of the associated unlabeled structural modification.
+     * For example: the isotope formula for Dimethyl:2H(6) is the difference between the formulas of Dimethyl:2H(6) and Dimethyl.
+     * This difference is H'6C2-H2 - H4C2 = H'6-H6
+     */
+    public @Nullable Formula getDiffIsotopicFormula()
+    {
+        return _diffFormula;
+    }
+
+    void setDiffIsotopicFormulaAndParent(@NotNull Formula diffFormula, @NotNull UnimodModification parentStructuralMod)
+    {
+        _diffFormula = diffFormula;
+        _parentStructuralMod = parentStructuralMod;
+    }
+
+    public UnimodModification getParentStructuralMod()
+    {
+        return _parentStructuralMod;
+    }
+
+    public String getParentStructuralModFormula()
+    {
+        return _parentStructuralMod != null ? _parentStructuralMod.getFormula().getFormula() : "";
+    }
+
+    /**
+     * @param normFormula normalized formula for the modification {@link Formula#normalizeFormula(String)}
+     * @param sites sites (amino acids + terminus) where this modification occurs
+     * @param terminus terminus (N-term / C-term) where this modification occurs if no sites are specified.
+     * @return true if the given normalized formula matches this Unimod modification's composition, and the given sites are in the
+     * allowed sites for this modification. If no sites are given then the given terminus must match. If both the given
+     * sites and terminus are null or empty then return false.
+     */
+    public boolean matches(String normFormula, @NotNull Set<Specificity> sites, Terminus terminus)
+    {
+        if(!formulaMatches(normFormula))
         {
             return false;
         }
-        if(!containsSites(sites, structural ? _strModSites : _isotopeModSites))
+        if (sites.size() == 0 && terminus == null)
         {
+            // Cannot find an exact match based on just the formula
             return false;
         }
-        return true;
-    }
-
-    private boolean containsSites(String[] sites, Set<String> modSites)
-    {
-        if(sites == null || sites.length == 0)
+        if (sites.size() > 0)
         {
+            for (Specificity site: sites)
+            {
+                // If this Unimod modification has a C/N-term position restriction then we need to match that, but if the Skyline definition
+                // has a terminus restriction we can ignore it.
+                // Example Skyline modification: Label:13C(6)15N(4) (C-term R) has a C-term restriction.
+                // This one should match Unimod:267, Label:13C(6)15N(4).
+                // In Unimod, however, the specificity on 'R' does not have a position restriction on the C-term.
+                // https://www.unimod.org/modifications_view.php?editid1=267
+                if (!_modSites.contains(site)  // Try match with the given site + terminus definition
+                        && !_modSites.contains(new Specificity(site.getSite(), Position.Anywhere))) // Try match with no terminus restriction
+                {
+                    return false;
+                }
+            }
             return true;
-        }
-        if(modSites.size() == 0)
-        {
-            return false;
-        }
-        return modSites.containsAll(Arrays.asList(sites));
-    }
-
-    public static String normalizeFormula(String formula)
-    {
-        if(StringUtils.isBlank(formula))
-        {
-            return formula;
-        }
-
-        // Assume formulas are of the form H'6C'8N'4 - H2C6N4.
-        // The part of the formula following ' - ' are the element masses that will be subtracted
-        // from the total mass.  Only one negative part is allowed. We will parse the positive and negative parts separately.
-        String[] parts = formula.split("-");
-        if(parts.length > 2)
-        {
-            throw new IllegalArgumentException("Formula inconsistent with required form: " + formula);
-        }
-
-        Map<String, Integer> composition = getComposition(parts[0]);
-        if(parts.length > 1)
-        {
-            Map<String, Integer> negComposition = getComposition(parts[1]);
-            for(String element: negComposition.keySet())
-            {
-                int posCount = composition.get(element) == null ? 0 : composition.get(element);
-                int totalCount = posCount - negComposition.get(element);
-                if(totalCount != 0)
-                {
-                    composition.put(element, totalCount);
-                }
-                else
-                {
-                    composition.remove(element);
-                }
-            }
-        }
-
-        List<String> sortedElements = new ArrayList<>(composition.keySet());
-        Collections.sort(sortedElements);
-        StringBuilder posForm = new StringBuilder();
-        StringBuilder negForm = new StringBuilder();
-        for(String element: sortedElements)
-        {
-            Integer count = composition.get(element);
-            if(count > 0)
-            {
-                posForm.append(element).append(composition.get(element));
-            }
-            else
-            {
-                negForm.append(element).append(-(composition.get(element)));
-            }
-        }
-        String totalFormula = posForm.toString();
-        if(negForm.length() > 0)
-        {
-            totalFormula = totalFormula + (totalFormula.length() > 0 ? " - " : "-") + negForm.toString();
-        }
-        return totalFormula;
-    }
-
-    private static Map<String, Integer> getComposition(String formula)
-    {
-        Map<String, Integer> composition = new HashMap<>();
-
-        String currElem = null;
-        Integer currCount = null;
-        char[] chars = formula.toCharArray();
-        for (char c : chars)
-        {
-            if (Character.isDigit(c))
-            {
-                currCount = ((currCount == null ? 0 : currCount) * 10 + (c - '0'));
-            }
-            else if (Character.isUpperCase(c))
-            {
-                if (currElem != null)
-                {
-                    updateElementCount(composition, currElem, currCount);
-                }
-                currElem = "" + c;
-                currCount = null;
-            }
-            else if (!Character.isWhitespace(c)) // e.g. Na, C'
-            {
-                currElem += c;
-            }
-        }
-
-        // last one
-        if(currElem != null)
-        {
-            updateElementCount(composition, currElem, currCount);
-        }
-
-        return composition;
-    }
-
-    private static void updateElementCount(Map<String, Integer> composition, String currElem, Integer currCount)
-    {
-        int oldCount = composition.get(currElem) == null ? 0 : composition.get(currElem);
-        Integer newCount = oldCount + (currCount == null ? 1 : currCount);
-        if(newCount == 0)
-        {
-            composition.remove(currElem);
         }
         else
         {
-            composition.put(currElem, newCount);
+            // If there are no amino acid sites given, match on the terminus
+            TermSpecificity termSpecificity = Terminus.N == terminus ? _nTerm : Terminus.C == terminus ? _cTerm : null;
+            return termSpecificity != null
+                    // Do not match if the position for the term specificity for this Unimod modification is Protein C-term or Protein N-term.
+                    // In Skyline we cannot define a modification on Protein C/N-term.
+                    // Some Unimod modifications have terminus specificity on both Any *-term and Protein *-term. We keep the less restrictive one.
+                    /**{@link UnimodModification#setNterm(Position)} and {@link UnimodModification#setCterm(Position)} */
+                    && termSpecificity.getPosition().isAnywhere();
         }
+    }
+
+    private boolean formulaMatches(String normFormula)
+    {
+        return _formula.getFormula().equals(normFormula) || (isIsotopic() && _diffFormula != null && _diffFormula.getFormula().equals(normFormula));
+    }
+
+    public static Formula getCombinedFormula(UnimodModification mod1, UnimodModification mod2)
+    {
+        return mod1.getFormula().addFormula(mod2.getFormula());
     }
 
     public String toString()
@@ -234,22 +243,88 @@ public class UnimodModification
         sb.append("UNIMOD:").append(getId());
         sb.append(", ").append(getName());
         sb.append(", ").append(getNormalizedFormula());
-        if(_strModSites.size() > 0)
+        if(_modSites.size() > 0)
         {
-            sb.append(", Str sites: ").append(StringUtils.join(_strModSites, ":"));
+            sb.append(", Sites: ").append(StringUtils.join(_modSites, ":"));
         }
-        if(_isotopeModSites.size() > 0)
-        {
-            sb.append(", Isotopic sites: ").append(StringUtils.join(_isotopeModSites, ":"));
-        }
-        if(_isCterm)
+        if(_cTerm != null)
         {
             sb.append(", C-term");
         }
-        if(_isNterm)
+        if(_nTerm != null)
         {
             sb.append(", N-term");
         }
+        sb.append(", Isotopic: ").append(isIsotopic());
+        sb.append(", Structural: ").append(isStructural());
+
+        if (_diffFormula != null)
+        {
+            sb.append(", Diff isotope formula: ").append(_diffFormula.getFormula())
+                    .append("; Parent mod: ").append(_parentStructuralMod != null ? _parentStructuralMod.getName() : "")
+                    .append("; Parent Unimod:").append(_parentStructuralMod != null ? _parentStructuralMod.getId() : "");
+        }
         return sb.toString();
+    }
+
+    public TermSpecificity getNterm()
+    {
+        return _nTerm;
+    }
+
+    public TermSpecificity getcTerm()
+    {
+        return _cTerm;
+    }
+
+    public String getModSitesWithPosition()
+    {
+        if(_modSites.size() > 0)
+        {
+            return StringUtils.join(_modSites.stream().map(Specificity::toString).collect(Collectors.toSet()), ":");
+        }
+        return "";
+    }
+
+    public Set<Specificity> getModSpecificities()
+    {
+        return Collections.unmodifiableSet(_modSites);
+    }
+
+    public String getTerminus()
+    {
+        String terminus = "";
+        if (_nTerm != null)
+        {
+            terminus += _nTerm.toString();
+        }
+        if (_cTerm != null)
+        {
+            terminus = terminus + (terminus.length() > 0 ? ", " : "") + _cTerm;
+        }
+        return terminus;
+    }
+
+    public Link getLink()
+    {
+       return getLink(_id);
+    }
+
+    public static Link getLink(int unimodId)
+    {
+        return getLink(unimodId, false);
+    }
+
+    public static Link getLink(int unimodId, boolean clearMargin)
+    {
+        var link = new Link.LinkBuilder("UNIMOD:" + unimodId)
+                .href("https://www.unimod.org/modifications_view.php?editid1=" + unimodId)
+                .target("_blank")
+                .rel("noopener noreferrer");
+        if (clearMargin)
+        {
+            link = link.style("margin-right:0px;");
+        }
+        return link.build();
     }
 }

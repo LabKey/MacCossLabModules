@@ -8,6 +8,7 @@ import org.labkey.api.data.RenderContext;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
@@ -50,14 +51,25 @@ public class EditLibInfoDisplayColumnFactory implements DisplayColumnFactory
                         }
                         if (experimentAnnotationsId != null)
                         {
+                            URLHelper returnUrl = ctx.getViewContext().getActionURL().getReturnURL();
+                            if (returnUrl == null)
+                            {
+                                returnUrl = ctx.getViewContext().getActionURL();
+                            }
                             ActionURL editUrl = PanoramaPublicController.getEditSpecLibInfoURL(experimentAnnotationsId, specLibId, specLibInfoId, ctx.getContainer());
-                            editUrl.addReturnURL(ctx.getViewContext().getActionURL());
+                            editUrl.addReturnURL(returnUrl);
                             out.write(PageFlowUtil.link(specLibInfoId != null ? "Edit" : "Add").href(editUrl).toString());
+                            if (specLibInfoId != null)
+                            {
+                                ActionURL deleteUrl = PanoramaPublicController.getDeleteSpecLibInfoURL(experimentAnnotationsId, specLibInfoId, ctx.getContainer());
+                                deleteUrl.addReturnURL(returnUrl);
+                                out.write(PageFlowUtil.link("Delete").href(deleteUrl).usePost("Are you sure you want to delete the spectral library information?").toString());
+                            }
                             return;
                         }
                     }
                 }
-                out.write("<em>Not Editable</em>");
+                out.write("");
             }
 
             @Override

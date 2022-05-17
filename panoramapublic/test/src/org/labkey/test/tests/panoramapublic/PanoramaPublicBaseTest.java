@@ -5,22 +5,27 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.labkey.test.Locator;
+import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
 import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.components.SubfoldersWebPart;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentInsertPage;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
+import org.labkey.test.pages.panoramapublic.DataValidationPage;
 import org.labkey.test.tests.targetedms.TargetedMSTest;
 import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.Ext4Helper;
+import org.labkey.test.util.LogMethod;
+import org.labkey.test.util.LoggedParam;
 import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PortalHelper;
 import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.TextSearcher;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.io.File;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -88,7 +93,18 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     }
 
     @NotNull
-    TargetedMsExperimentWebPart createTargetedMsExperimentWebPart(String experimentTitle)
+    TargetedMsExperimentWebPart createExperiment(String experimentTitle)
+    {
+        return createTargetedMsExperiment(experimentTitle, false);
+    }
+
+    @NotNull
+    TargetedMsExperimentWebPart createExperimentCompleteMetadata(String experimentTitle)
+    {
+        return createTargetedMsExperiment(experimentTitle, true);
+    }
+
+    private TargetedMsExperimentWebPart createTargetedMsExperiment(String experimentTitle, boolean completeMetadata)
     {
         goToDashboard();
         portalHelper.enterAdminMode();
@@ -97,7 +113,14 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         // Create a new experiment
         TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
         TargetedMsExperimentInsertPage insertPage = expWebPart.startInsert();
-        insertPage.insert(experimentTitle);
+        if (completeMetadata)
+        {
+            insertPage.insertAllRequired(experimentTitle);
+        }
+        else
+        {
+            insertPage.insert(experimentTitle);
+        }
         return expWebPart;
     }
 
@@ -133,20 +156,48 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         clickButton("Submit");
     }
 
+    void goToExperimentDetailsPage()
+    {
+        goToDashboard();
+        new TargetedMsExperimentWebPart(this).clickMoreDetails();
+    }
+
+    DataValidationPage submitValidationJob()
+    {
+        goToDashboard();
+        var expWebPart = new TargetedMsExperimentWebPart(this);
+        expWebPart.clickSubmit();
+        assertTextPresent("Click the button to start data validation",
+                "Validate Data for ProteomeXchange",
+                "Submit without a ProteomeXchange ID");
+        clickButton("Validate Data for ProteomeXchange");
+        return new DataValidationPage(this);
+    }
+
     void submitWithoutPXId()
     {
-        clickContinueWithoutPxId();
+        clickAndWait(Locator.linkContainingText("Submit without a ProteomeXchange ID"));
+        submitForm();
+    }
+
+    void submitWithoutPxIdButton()
+    {
+        clickButton("Submit without a ProteomeXchange ID");
+        submitForm();
+    }
+
+    void submitIncompletePxButton()
+    {
+        clickButton("Continue with an Incomplete PX Submission");
+        submitForm();
+    }
+
+    private void submitForm()
+    {
         _ext4Helper.selectComboBoxItem(Ext4Helper.Locators.formItemWithInputNamed("journalId"), PanoramaPublicTest.PANORAMA_PUBLIC);
         clickAndWait(Ext4Helper.Locators.ext4Button("Submit"));
         clickAndWait(Locator.lkButton("OK")); // Confirm to proceed with the submission.
         clickAndWait(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
-    }
-
-    void clickContinueWithoutPxId()
-    {
-        // Expect to be on the missing information page
-        assertTextPresent("Missing Information in Submission Request");
-        clickAndWait(Locator.linkContainingText("Continue without a ProteomeXchange ID"));
     }
 
     void copyExperimentAndVerify(String projectName, String folderName, String experimentTitle, String destinationFolder)
@@ -186,6 +237,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         Locator.tagWithClass("span", "x4-tree-node-text").withText(PANORAMA_PUBLIC).waitForElement(new WebDriverWait(getDriver(), 5)).click();
         // Enter the name of the destination folder in the Panorama Public project
         setFormElement(Locator.tagWithName("input", "destContainerName"), destinationFolder);
+        uncheck("Assign ProteomeXchange ID:");
         uncheck("Send Email to Submitter:");
         uncheck("Assign Digital Object Identifier:");
 
@@ -277,11 +329,30 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     }
 
     @Override
+    @LogMethod
+    protected void importData(@LoggedParam String file, int jobCount)
+    {
+        importData(getSampleDataFolder() + file, jobCount, false);
+    }
+
+    public String getSampleDataFolder()
+    {
+        return "";
+    }
+
+    public File getSampleDataPath(String file)
+    {
+        return TestFileUtils.getSampleData("TargetedMS/" + getSampleDataFolder() + file);
+    }
+
+    @Override
     protected void doCleanup(boolean afterTest) throws TestTimeoutException
     {
         // these tests use the UIContainerHelper for project creation, but we can use the APIContainerHelper for deletion
         APIContainerHelper apiContainerHelper = new APIContainerHelper(this);
         apiContainerHelper.deleteProject(PANORAMA_PUBLIC, afterTest);
+
+        _userHelper.deleteUsers(false,ADMIN_USER, SUBMITTER);
 
         super.doCleanup(afterTest);
     }

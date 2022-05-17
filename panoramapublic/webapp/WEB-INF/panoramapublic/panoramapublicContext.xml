@@ -12,10 +12,13 @@
                 <bean class="org.labkey.panoramapublic.pipeline.ExperimentImportTask$Factory">
                     <property name="location" value="webserver" />
                 </bean>
-                <bean class="org.labkey.panoramapublic.pipeline.UpdateFolderTypeTask$Factory">
+                <bean class="org.labkey.panoramapublic.pipeline.CopyLibraryStateTask$Factory">
                     <property name="location" value="webserver" />
                 </bean>
                 <bean class="org.labkey.panoramapublic.pipeline.CopyExperimentFinalTask$Factory">
+                    <property name="location" value="webserver" />
+                </bean>
+                <bean class="org.labkey.panoramapublic.pipeline.PxDataValidationTask$Factory">
                     <property name="location" value="webserver" />
                 </bean>
             </list>
@@ -33,11 +36,21 @@
                             <bean id="importTask" class="org.labkey.api.pipeline.TaskId">
                                 <constructor-arg><value type="java.lang.Class">org.labkey.panoramapublic.pipeline.ExperimentImportTask</value></constructor-arg>
                             </bean>
-                            <bean id="updateFolderTypeTask" class="org.labkey.api.pipeline.TaskId">
-                                <constructor-arg><value type="java.lang.Class">org.labkey.panoramapublic.pipeline.UpdateFolderTypeTask</value></constructor-arg>
+                            <bean id="copyLibraryStateTask" class="org.labkey.api.pipeline.TaskId">
+                                <constructor-arg><value type="java.lang.Class">org.labkey.panoramapublic.pipeline.CopyLibraryStateTask</value></constructor-arg>
                             </bean>
                             <bean id="finalTask" class="org.labkey.api.pipeline.TaskId">
                                 <constructor-arg><value type="java.lang.Class">org.labkey.panoramapublic.pipeline.CopyExperimentFinalTask</value></constructor-arg>
+                            </bean>
+                        </list>
+                    </property>
+                </bean>
+                <bean class="org.labkey.api.pipeline.TaskPipelineSettings">
+                    <constructor-arg type="java.lang.Class" value="org.labkey.panoramapublic.pipeline.PxDataValidationPipelineJob"/>
+                    <property name="taskProgressionSpec">
+                        <list>
+                            <bean id="validationTask" class="org.labkey.api.pipeline.TaskId">
+                                <constructor-arg><value type="java.lang.Class">org.labkey.panoramapublic.pipeline.PxDataValidationTask</value></constructor-arg>
                             </bean>
                         </list>
                     </property>

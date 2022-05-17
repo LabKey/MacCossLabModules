@@ -1,0 +1,13 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            canOverride="true">
+    <columns>
+        <column name="RunId" />
+        <column name="ReplicateId" />
+        <column name="File" />
+        <column name="AcquiredTime" />
+        <column name="InstrumentSerialNumber" />
+        <column name="InstrumentId" />
+        <column name="FilePath" />
+    </columns>
+</customView>
+

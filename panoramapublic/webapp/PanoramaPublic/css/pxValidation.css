@@ -1,0 +1,106 @@
+/* Add a CSS override for .x4-grid-row-expander. The displayed group-expand.gif gets cutoff since it is 9 x 15px
+   but the CSS width and height are set to 9 x 9px. */
+.x4-grid-row-expander {
+  height: 15px;
+}
+.pxv-bold {
+    font-weight: bold; !important
+}
+.pxv-valid {
+    color:darkgreen;
+}
+.pxv-invalid {
+    color: #d70101;
+}
+.pxv-incomplete {
+    color: #ef771a;
+}
+.pxv-btn-green
+{
+    background-color: forestgreen;
+    border-color: darkgreen;
+}
+.pxv-btn-green .x4-btn-inner-center
+{
+    color: white;
+}
+.pxv-btn-orange
+{
+    background-color: #fff4ea;
+    border-color: #e54f19;
+}
+.pxv-btn-orange .x4-btn-inner-center
+{
+    color: #e54f19;
+}
+.pxv-btn-red
+{
+    background-color: rgba(255, 243, 243, 0.5);
+    border-color: firebrick;
+}
+.pxv-btn-red .x4-btn-inner-center
+{
+    color: #d70101;
+}
+.pxv-btn-submit
+{
+    padding: 7px;
+    border-radius: 4px;
+    background-image: none;
+}
+.pxv-outdated-validation
+{
+    padding: 5px;
+    background-color: #FFF6D8;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.pxv-bold-underline
+{
+    font-weight:bold;
+    text-decoration: underline;
+}
+.pxv-margin10
+{
+    margin-top:10px;
+    margin-bottom:10px;
+}
+div.pxv-grid-expanded-row {
+    background-color:#f1f1f1;
+    padding:5px;
+    margin-top:5px;
+    font-size: 13px;
+}
+div.pxv-tpl-table-title {
+    font-weight:bold;
+    margin-left:8px;
+    margin-bottom:2px;
+    padding-top: 8px;
+}
+table.pxv-tpl-table {
+    margin:8px;
+}
+table.pxv-tpl-table td,
+table.pxv-tpl-table th
+{
+    border:1px solid slategray; padding:8px;
+}
+.pxv-circle {
+    width:150px;
+    height:150px;
+    border-radius:75px;
+    font-size:12px;
+    color:#fff;
+    text-align:center;
+    padding:3px;
+    cursor: pointer;
+}
+.pxv-circle-valid {
+    background:darkgreen;
+}
+.pxv-circle-invalid {
+    background: #d70101;
+}
+.pxv-circle-incomplete {
+    background: #ef771a;
+}

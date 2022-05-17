@@ -1,7 +1,6 @@
 package org.labkey.panoramapublic.query.speclib;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
@@ -9,34 +8,29 @@ import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
-import org.labkey.api.data.SQLFragment;
-import org.labkey.api.data.Table;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.query.LookupForeignKey;
-import org.labkey.api.query.QuerySettings;
 import org.labkey.api.query.QueryUpdateService;
-import org.labkey.api.query.QueryView;
 import org.labkey.api.query.RowIdQueryUpdateService;
-import org.labkey.api.query.UserSchema;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.security.permissions.Permission;
 import org.labkey.api.util.HtmlString;
+import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
+import org.labkey.panoramapublic.query.ContainerJoin;
 import org.labkey.panoramapublic.query.PanoramaPublicTable;
-import org.springframework.validation.Errors;
+import org.labkey.panoramapublic.query.SpecLibInfoManager;
 
 public class SpecLibInfoTableInfo extends PanoramaPublicTable
 {
-    private static final String EXP = "Exp";
-
     public SpecLibInfoTableInfo(PanoramaPublicSchema schema, ContainerFilter cf)
     {
-        super(PanoramaPublicManager.getTableInfoSpecLibInfo(), schema, cf, getJoinSql(), new SQLFragment(EXP + ".Container"));
+        super(PanoramaPublicManager.getTableInfoSpecLibInfo(), schema, cf, ContainerJoin.ExpAnnotJoin);
 
         var dependencyTypeCol = getMutableColumn("DependencyType");
         if (dependencyTypeCol != null)
@@ -69,6 +63,24 @@ public class SpecLibInfoTableInfo extends PanoramaPublicTable
         {
             sourcePasswordCol.setDisplayColumnFactory(new PasswordDisplayColumnFactory());
         }
+
+        var sourceAccessionCol = getMutableColumn("SourceAccession");
+        if (sourceAccessionCol != null)
+        {
+            sourceAccessionCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
+            {
+                @Override
+                public String renderURL(RenderContext ctx)
+                {
+                    String accession =  ctx.get(colInfo.getFieldKey(), String.class);
+                    if (accession != null && accession.matches(PanoramaPublicController.EditSpecLibInfoAction.PXD))
+                    {
+                        return "http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=" + accession;
+                    }
+                    return super.renderURL(ctx);
+                }
+            });
+        }
     }
 
     @Override
@@ -81,14 +93,6 @@ public class SpecLibInfoTableInfo extends PanoramaPublicTable
     public QueryUpdateService getUpdateService()
     {
         return new SpecLibInfoQueryUpdateService(this);
-    }
-
-    private static SQLFragment getJoinSql()
-    {
-        SQLFragment joinToExpAnnotSql = new SQLFragment(" INNER JOIN ");
-        joinToExpAnnotSql.append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), EXP);
-        joinToExpAnnotSql.append(" ON (" + EXP + ".id = experimentAnnotationsId) ");
-        return joinToExpAnnotSql;
     }
 
     public static class PasswordDisplayColumnFactory implements DisplayColumnFactory
@@ -127,9 +131,9 @@ public class SpecLibInfoTableInfo extends PanoramaPublicTable
     // Update service allows row deletion but not insert or edit
     public static class SpecLibInfoQueryUpdateService extends RowIdQueryUpdateService<SpecLibInfo>
     {
-        public SpecLibInfoQueryUpdateService(SpecLibInfoTableInfo guideSetTable)
+        public SpecLibInfoQueryUpdateService(SpecLibInfoTableInfo tableInfo)
         {
-            super(guideSetTable);
+            super(tableInfo);
         }
 
         @Override
@@ -147,7 +151,7 @@ public class SpecLibInfoTableInfo extends PanoramaPublicTable
         @Override
         public void delete(User user, Container container, int key)
         {
-            Table.delete(PanoramaPublicManager.getTableInfoSpecLibInfo(), key);
+            SpecLibInfoManager.deleteSpecLibInfo(key, container, user);
         }
 
         @Override
@@ -159,40 +163,7 @@ public class SpecLibInfoTableInfo extends PanoramaPublicTable
         @Override
         protected SpecLibInfo update(User user, Container container, SpecLibInfo bean, Integer oldKey) throws ValidationException
         {
-           throw new UnsupportedOperationException();
-        }
-    }
-
-    // View in the query schema browser. Show the delete icon in the toolbar but not the insert or update icons
-    public static class UserSchemaView extends QueryView
-    {
-        public UserSchemaView(UserSchema schema, QuerySettings settings, @Nullable Errors errors)
-        {
-            super(schema, settings, errors);
-        }
-
-        @Override
-        protected boolean canDelete()
-        {
-            return true;
-        }
-
-        @Override
-        protected boolean canInsert()
-        {
-            return false;
-        }
-
-        @Override
-        public boolean showImportDataButton()
-        {
-            return false;
-        }
-
-        @Override
-        protected boolean canUpdate()
-        {
-            return false;
+            throw new UnsupportedOperationException();
         }
     }
 }

@@ -20,7 +20,6 @@
     var bean = view.getModelBean();
     var form = bean.getForm();
     var library = bean.getLibrary();
-    boolean supportedLibrary = library.isSupported();
     var returnUrl = form.getReturnURLHelper(getContainer().getStartURL(getUser()));
 %>
 
@@ -80,7 +79,7 @@
                     editable: false,
                     value: <%=form.getSourceType() != null ? q(form.getSourceType()) : null%>,
                     store: [
-                        <% for (SpecLibSourceType sourceType: SpecLibSourceType.valuesForLibrary(library)) { %>
+                        <% for (SpecLibSourceType sourceType: SpecLibSourceType.valuesForLibrary()) { %>
                         [ <%= q(sourceType.name()) %>, <%= q(sourceType.getLabel()) %> ],
                         <% } %>
                     ],
@@ -105,7 +104,6 @@
                     itemId: 'sourceAccession',
                     fieldLabel: "Accession",
                     disabled: <%=!SpecLibSourceType.OTHER_REPOSITORY.name().equals(form.getSourceType())%>,
-                    hidden: <%=!supportedLibrary%>,
                     value: <%=q(form.getSourceAccession())%>,
                     afterLabelTextTpl: <%=q(helpPopup("Repository Accession", "Accession or identifier of the data in the repository. " +
                      "This can be a ProteomeXchange ID (e.g. PXD000001), a MassIVE identifier (e.g. MSV000000001)" +
@@ -117,7 +115,6 @@
                     itemId: 'sourceUsername',
                     fieldLabel: "User Name",
                     disabled: <%=!SpecLibSourceType.OTHER_REPOSITORY.name().equals(form.getSourceType())%>,
-                    hidden: <%=!supportedLibrary%>,
                     value: <%=q(form.getSourceUsername())%>,
                     afterLabelTextTpl: <%=q(helpPopup("Repository Username", "Username to access the data in the repository if the data is private.").inlineScript())%>
                 },
@@ -127,7 +124,6 @@
                     itemId: 'sourcePassword',
                     fieldLabel: "Password",
                     disabled: <%=!SpecLibSourceType.OTHER_REPOSITORY.name().equals(form.getSourceType())%>,
-                    hidden: <%=!supportedLibrary%>,
                     value: "", // Don't display the password; make the user enter it every time they edit
                     afterLabelTextTpl: <%=q(helpPopup("Repository Password", "Password to access the data in the repository if the data is private.").inlineScript())%>
                 },
