@@ -25,7 +25,6 @@
                         </displayColumnFactory>
                     </column>
                     <column columnName="UnimodMatch">
-                        <columnTitle>UnimodMatch</columnTitle>
                         <textAlign>left</textAlign>
                         <displayColumnFactory>
                             <className>org.labkey.panoramapublic.query.modification.UnimodMatchDisplayColumnFactory$IsotopeUnimodMatch</className>
