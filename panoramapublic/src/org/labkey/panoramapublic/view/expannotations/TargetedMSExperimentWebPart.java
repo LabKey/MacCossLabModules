@@ -16,8 +16,10 @@
 package org.labkey.panoramapublic.view.expannotations;
 
 import org.labkey.api.data.Container;
+import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.util.Link;
+import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
@@ -26,7 +28,9 @@ import org.labkey.api.view.VBox;
 import org.labkey.api.view.ViewContext;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+import org.labkey.panoramapublic.query.SubmissionManager;
 
 import static org.labkey.api.util.DOM.Attribute.style;
 import static org.labkey.api.util.DOM.DIV;
@@ -75,8 +79,19 @@ public class TargetedMSExperimentWebPart extends VBox
             {
                 NavTree navTree = new NavTree();
                 navTree.addChild("ProteomeXchange", new ActionURL(PanoramaPublicController.GetPxActionsAction.class, container).addParameter("id", expAnnotations.getId()));
+                navTree.addChild("Data Validation", new ActionURL(PanoramaPublicController.ViewPxValidationsAction.class, container).addParameter("id", expAnnotations.getId()));
                 navTree.addChild("DOI", new ActionURL(PanoramaPublicController.DoiOptionsAction.class, container).addParameter("id", expAnnotations.getId()));
                 navTree.addChild("Make Data Public", new ActionURL(PanoramaPublicController.MakePublicAction.class, container).addParameter("id", expAnnotations.getId()));
+
+                if (expAnnotations.isJournalCopy())
+                {
+                    JournalSubmission submission = SubmissionManager.getSubmissionForJournalCopy(expAnnotations);
+                    ExperimentAnnotations sourceExpt = submission != null ? ExperimentAnnotationsManager.get(submission.getExperimentAnnotationsId()) : null;
+                    if (sourceExpt != null)
+                    {
+                        navTree.addChild("Source Experiment", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(sourceExpt.getContainer()));
+                    }
+                }
                 setNavMenu(navTree);
             }
         }

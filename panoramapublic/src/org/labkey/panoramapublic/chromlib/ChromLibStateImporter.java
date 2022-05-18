@@ -79,7 +79,7 @@ public abstract class ChromLibStateImporter
             throw new IllegalStateException("Callers should start their own transaction");
         }
 
-        _log.info(String.format("Importing %s library state in container '%s' to file '%s'.", libTypeString(), _container.getPath(), libStateFile.getPath()));
+        _log.info(String.format("Importing %s library state in container '%s' from file '%s'.", libTypeString(), _container.getPath(), libStateFile.getPath()));
 
         try (TabLoader reader = new TabLoader(libStateFile, true))
         {

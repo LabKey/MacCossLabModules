@@ -203,7 +203,7 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
                                 // but NOT if the journal copy is final.
                                 if (ExperimentAnnotationsManager.canSubmitExperiment(js.getExperimentAnnotationsId(), js))
                                 {
-                                    ActionURL resubmitUrl = PanoramaPublicController.getRePublishExperimentURL(js.getExperimentAnnotationsId(), js.getJournalId(), _container, s.isKeepPrivate(),
+                                    ActionURL resubmitUrl = PanoramaPublicController.getResubmitExperimentURL(js.getExperimentAnnotationsId(), js.getJournalId(), _container, s.isKeepPrivate(),
                                             true /*check if data is valid for PXD. Always do this check on a resubmit.*/);
                                     out.write(PageFlowUtil.link("Resubmit").href(resubmitUrl).toString());
                                 }

@@ -18,32 +18,17 @@ package org.labkey.panoramapublic.model;
 
 import org.labkey.api.data.Container;
 
-import java.util.Date;
-
 /**
  * User: vsharma
  * Date: 08/07/14
  * Time: 12:50 PM
  */
-public class Journal
+public class Journal extends DbEntity
 {
-    private Integer _id;
     private String _name;
     private Integer _labkeyGroupId;
     private Container _project;
     private Container _supportContainer;
-    private Date _created;
-    private int _createdBy;
-
-    public Integer getId()
-    {
-        return _id;
-    }
-
-    public void setId(Integer id)
-    {
-        _id = id;
-    }
 
     public String getName()
     {
@@ -83,25 +68,5 @@ public class Journal
     public void setSupportContainer(Container supportContainer)
     {
         _supportContainer = supportContainer;
-    }
-
-    public Date getCreated()
-    {
-        return _created;
-    }
-
-    public void setCreated(Date created)
-    {
-        _created = created;
-    }
-
-    public int getCreatedBy()
-    {
-        return _createdBy;
-    }
-
-    public void setCreatedBy(int createdBy)
-    {
-        _createdBy = createdBy;
     }
 }

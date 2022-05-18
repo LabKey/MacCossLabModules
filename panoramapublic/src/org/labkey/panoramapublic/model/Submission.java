@@ -4,13 +4,8 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.Date;
 
-public class Submission
+public class Submission extends DbEntity
 {
-    private int _id;
-    private Date _created;
-    private int _createdBy;
-    private Date _modified;
-    private int _modifiedBy;
     private int _journalExperimentId;
     private boolean _keepPrivate;
     private boolean _pxidRequested;
@@ -21,56 +16,6 @@ public class Submission
     private DataLicense _dataLicense;
     private Integer _copiedExperimentId;
     private Date _copied;
-
-    public int getId()
-    {
-        return _id;
-    }
-
-    public void setId(int id)
-    {
-        _id = id;
-    }
-
-    public Date getCreated()
-    {
-        return _created;
-    }
-
-    public void setCreated(Date created)
-    {
-        _created = created;
-    }
-
-    public int getCreatedBy()
-    {
-        return _createdBy;
-    }
-
-    public void setCreatedBy(int createdBy)
-    {
-        _createdBy = createdBy;
-    }
-
-    public Date getModified()
-    {
-        return _modified;
-    }
-
-    public void setModified(Date modified)
-    {
-        _modified = modified;
-    }
-
-    public int getModifiedBy()
-    {
-        return _modifiedBy;
-    }
-
-    public void setModifiedBy(int modifiedBy)
-    {
-        _modifiedBy = modifiedBy;
-    }
 
     public int getJournalExperimentId()
     {

@@ -32,20 +32,31 @@ import org.labkey.api.module.Module;
 import org.labkey.api.query.DefaultSchema;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
+import org.labkey.api.query.QueryForeignKey;
 import org.labkey.api.query.QuerySchema;
 import org.labkey.api.query.QuerySettings;
 import org.labkey.api.query.QueryView;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
+import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.view.ViewContext;
 import org.labkey.panoramapublic.model.speclib.SpecLibDependencyType;
 import org.labkey.panoramapublic.model.speclib.SpecLibSourceType;
+import org.labkey.panoramapublic.model.validation.Modification.ModType;
+import org.labkey.panoramapublic.model.validation.PxStatus;
+import org.labkey.panoramapublic.model.validation.SpecLibSourceFile.LibrarySourceFileType;
+import org.labkey.panoramapublic.query.ContainerJoin;
+import org.labkey.panoramapublic.query.DataValidationTableInfo;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsTableInfo;
 import org.labkey.panoramapublic.query.JournalExperimentTableInfo;
+import org.labkey.panoramapublic.query.PanoramaPublicTable;
 import org.labkey.panoramapublic.query.SubmissionTableInfo;
+import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfoTableInfo;
+import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfoTableInfo;
 import org.labkey.panoramapublic.query.speclib.SpecLibInfoTableInfo;
 import org.springframework.validation.BindException;
 
+import java.util.ArrayList;
 import java.util.Set;
 
 public class PanoramaPublicSchema extends UserSchema
@@ -58,7 +69,21 @@ public class PanoramaPublicSchema extends UserSchema
     public static final String TABLE_SUBMISSION = "Submission";
     public static final String TABLE_EXPERIMENT_ANNOTATIONS = "ExperimentAnnotations";
     public static final String TABLE_PX_XML = "PxXml";
+    public static final String TABLE_DATA_VALIDATION = "DataValidation";
+    public static final String TABLE_SKYLINE_DOC_VALIDATION = "SkylineDocValidation";
+    public static final String TABLE_SKYLINE_DOC_SAMPLE_FILE = "SkylineDocSampleFile";
+    public static final String TABLE_MODIFICATION_VALIDATION = "ModificationValidation";
+    public static final String TABLE_SKYLINE_DOC_MODIFICATION = "SkylineDocModification";
+    public static final String TABLE_SPEC_LIB_VALIDATION = "SpecLibValidation";
+    public static final String TABLE_SKYLINE_DOC_SPEC_LIB = "SkylineDocSpecLib";
+    public static final String TABLE_SPEC_LIB_SOURCE_FILE = "SpecLibSourceFile";
+    public static final String TABLE_LIBRARY_SOURCE_FILE_TYPE = "LibrarySourceFileType";
+    public static final String TABLE_PX_STATUS = "PxStatus";
+    public static final String TABLE_MOD_TYPE = "ModType";
     public static final String TABLE_SPEC_LIB_INFO = "SpecLibInfo";
+    public static final String TABLE_EXPT_STRUCTURAL_MOD_INFO = "ExperimentStructuralModInfo";
+    public static final String TABLE_EXPT_ISOTOPE_MOD_INFO = "ExperimentIsotopeModInfo";
+    public static final String TABLE_ISOTOPE_UNIMOD_INFO = "IsotopeUnimodInfo";
 
     public static final String TABLE_LIB_DEPENDENCY_TYPE = "SpecLibDependencyType";
     public static final String TABLE_LIB_SOURCE_TYPE = "SpecLibSourceType";
@@ -154,6 +179,127 @@ public class PanoramaPublicSchema extends UserSchema
             viewColumn.setLabel("Library Source");
             return tableInfo;
         }
+
+        if (TABLE_DATA_VALIDATION.equalsIgnoreCase(name))
+        {
+            return new DataValidationTableInfo(this, cf);
+        }
+
+        if (TABLE_SKYLINE_DOC_VALIDATION.equalsIgnoreCase(name))
+        {
+            var table = new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSkylineDocValidation(), this, cf, ContainerJoin.DataValidationJoin, true);
+            var sampleFileCountsCol = DataValidationTableInfo.createCountsColumn(table,
+                    PanoramaPublicManager.getTableInfoSkylineDocSampleFile(), "SkylineDocValidationId",
+                    PanoramaPublicSchema.TABLE_SKYLINE_DOC_SAMPLE_FILE, "SampleFiles", table.getContainerContext());
+            table.addColumn(sampleFileCountsCol);
+            var displayCols = new ArrayList<>(table.getDefaultVisibleColumns());
+            displayCols.add(FieldKey.fromParts(sampleFileCountsCol.getName()));
+            table.setDefaultVisibleColumns(displayCols);
+            return table;
+        }
+
+        if (TABLE_SKYLINE_DOC_SAMPLE_FILE.equalsIgnoreCase(name))
+        {
+            return new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSkylineDocSampleFile(), this, cf, ContainerJoin.SkyDocValidationJoin, true);
+        }
+
+        if (TABLE_SPEC_LIB_VALIDATION.equalsIgnoreCase(name))
+        {
+            var table = new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSpecLibValidation(), this, cf, ContainerJoin.DataValidationJoin, true);
+            var sourceFileCountCol = DataValidationTableInfo.createCountsColumn(table,
+                    PanoramaPublicManager.getTableInfoSpecLibSourceFile(), "SpecLibValidationId",
+                    PanoramaPublicSchema.TABLE_SPEC_LIB_SOURCE_FILE, "SourceFiles", table.getContainerContext());
+            table.addColumn(sourceFileCountCol);
+            var docCountCol = DataValidationTableInfo.createCountsColumn(table,
+                    PanoramaPublicManager.getTableInfoSkylineDocSpecLib(), "SpecLibValidationId",
+                    PanoramaPublicSchema.TABLE_SKYLINE_DOC_SPEC_LIB, "DocumentCount", table.getContainerContext());
+            table.addColumn(docCountCol);
+            var displayCols = new ArrayList<>(table.getDefaultVisibleColumns());
+            displayCols.add(FieldKey.fromParts(sourceFileCountCol.getName()));
+            table.setDefaultVisibleColumns(displayCols);
+            return table;
+        }
+
+        if (TABLE_SPEC_LIB_SOURCE_FILE.equalsIgnoreCase(name))
+        {
+            var table = new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSpecLibSourceFile(), this, cf, ContainerJoin.SpecLibValidationJoin, true);
+            var sourceTypeCol = table.getMutableColumn("SourceType");
+            if (sourceTypeCol != null)
+            {
+                sourceTypeCol.setFk(QueryForeignKey.from(this, cf).to(PanoramaPublicSchema.TABLE_LIBRARY_SOURCE_FILE_TYPE, "RowId", null));
+            }
+            return table;
+        }
+
+        if (TABLE_SKYLINE_DOC_SPEC_LIB.equalsIgnoreCase(name))
+        {
+            return new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSkylineDocSpecLib(), this, cf, ContainerJoin.SpecLibValidationJoin, true);
+        }
+
+        if (TABLE_MODIFICATION_VALIDATION.equalsIgnoreCase(name))
+        {
+            var table = new PanoramaPublicTable(PanoramaPublicManager.getTableInfoModificationValidation(), this, cf, ContainerJoin.DataValidationJoin, true);
+            var modTypeCol = table.getMutableColumn("ModType");
+            if (modTypeCol != null)
+            {
+                modTypeCol.setFk(QueryForeignKey.from(this, cf).to(PanoramaPublicSchema.TABLE_MOD_TYPE, "RowId", null));
+            }
+            var docCountCol = DataValidationTableInfo.createCountsColumn(table,
+                    PanoramaPublicManager.getTableInfoSkylineDocModification(), "ModificationValidationId",
+                    PanoramaPublicSchema.TABLE_SKYLINE_DOC_MODIFICATION, "DocumentCount", table.getContainerContext());
+            table.addColumn(docCountCol);
+            var displayCols = new ArrayList<>(table.getDefaultVisibleColumns());
+            displayCols.add(FieldKey.fromParts(docCountCol.getName()));
+            table.setDefaultVisibleColumns(displayCols);
+            return table;
+        }
+        if (TABLE_SKYLINE_DOC_MODIFICATION.equalsIgnoreCase(name))
+        {
+            return new PanoramaPublicTable(PanoramaPublicManager.getTableInfoSkylineDocModification(), this, cf, ContainerJoin.ModificationJoin, true);
+        }
+
+        if (TABLE_PX_STATUS.equalsIgnoreCase(name))
+        {
+            EnumTableInfo<PxStatus> tableInfo = new EnumTableInfo<>(
+                    PxStatus.class,
+                    this,
+                    PxStatus::getLabel,
+                    true,
+                    "Status after validating a dataset for ProteomeXchange");
+
+            tableInfo.getMutableColumn("Value").setLabel("PX Status");
+            return tableInfo;
+        }
+
+        if (TABLE_LIBRARY_SOURCE_FILE_TYPE.equalsIgnoreCase(name))
+        {
+            return new EnumTableInfo<>(
+                    LibrarySourceFileType.class,
+                    this,
+                    LibrarySourceFileType::name,
+                    true,
+                    "Spectral library source file type");
+        }
+
+        if (TABLE_MOD_TYPE.equalsIgnoreCase(name))
+        {
+            return new EnumTableInfo<>(
+                    ModType.class,
+                    this,
+                    ModType::name,
+                    true,
+                    "Modification type (structural or isotopic)");
+        }
+
+        if(TABLE_EXPT_STRUCTURAL_MOD_INFO.equalsIgnoreCase(name))
+        {
+            return new ExperimentStructuralModInfoTableInfo(this, cf);
+        }
+        if(TABLE_EXPT_ISOTOPE_MOD_INFO.equalsIgnoreCase(name))
+        {
+            return new ExperimentIsotopeModInfoTableInfo(this, cf);
+        }
+
         return null;
     }
 
@@ -204,10 +350,45 @@ public class PanoramaPublicSchema extends UserSchema
     @Override
     public @NotNull QueryView createView(ViewContext context, @NotNull QuerySettings settings, @Nullable BindException errors)
     {
-        if (TABLE_SPEC_LIB_INFO.equalsIgnoreCase(settings.getQueryName()))
+        if (TABLE_SPEC_LIB_INFO.equalsIgnoreCase(settings.getQueryName())
+                || TABLE_EXPT_STRUCTURAL_MOD_INFO.equals(settings.getQueryName())
+                || TABLE_EXPT_ISOTOPE_MOD_INFO.equalsIgnoreCase(settings.getQueryName())
+                || TABLE_DATA_VALIDATION.equalsIgnoreCase(settings.getQueryName()))
         {
-            return new SpecLibInfoTableInfo.UserSchemaView(this, settings, errors);
+            // Show the delete icon in the toolbar but not the insert or update icons
+            return new QueryView(this, settings, errors)
+            {
+                @Override
+                protected boolean canDelete()
+                {
+                    if (TABLE_DATA_VALIDATION.equalsIgnoreCase(settings.getQueryName()) && !context.hasPermission(AdminOperationsPermission.class))
+                    {
+                        // For the DataValidation table show the delete option only if the user is a site admin
+                        return false;
+                    }
+                    return true;
+                }
+
+                @Override
+                protected boolean canInsert()
+                {
+                    return false;
+                }
+
+                @Override
+                public boolean showImportDataButton()
+                {
+                    return false;
+                }
+
+                @Override
+                protected boolean canUpdate()
+                {
+                    return false;
+                }
+            };
         }
+
         return super.createView(context, settings, errors);
     }
 
@@ -221,7 +402,9 @@ public class PanoramaPublicSchema extends UserSchema
         hs.add(TABLE_EXPERIMENT_ANNOTATIONS);
         hs.add(TABLE_PX_XML);
         hs.add(TABLE_SPEC_LIB_INFO);
-
+        hs.add(TABLE_DATA_VALIDATION);
+        hs.add(TABLE_EXPT_STRUCTURAL_MOD_INFO);
+        hs.add(TABLE_EXPT_ISOTOPE_MOD_INFO);
         return hs;
     }
 }

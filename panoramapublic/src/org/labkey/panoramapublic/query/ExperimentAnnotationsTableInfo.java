@@ -38,7 +38,7 @@ import org.labkey.api.query.DetailsURL;
 import org.labkey.api.query.ExprColumn;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
-import org.labkey.api.query.UserIdForeignKey;
+import org.labkey.api.query.UserIdQueryForeignKey;
 import org.labkey.api.query.UserIdRenderer;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.Group;
@@ -213,7 +213,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         // submitterCol.setUserEditable(getUserSchema().getUser().isInSiteAdminGroup() ? true : false);
 
         var instrCol = getMutableColumn("Instrument");
-        instrCol.setDisplayColumnFactory(colInfo -> new AutoCompleteColumn(colInfo, new ActionURL(PanoramaPublicController.CompleteInstrumentAction.class, getContainer()), true, "Enter Instrument"));
+        instrCol.setDisplayColumnFactory(colInfo -> new InstrumentColumn(colInfo, new ActionURL(PanoramaPublicController.CompleteInstrumentAction.class, getContainer()), true, "Enter Instrument"));
         instrCol.setDescription("One or more instruments are required for submitting data to ProteomeXchange.");
 
         var organismCol = getMutableColumn("Organism");
@@ -333,6 +333,8 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
         addColumn(getVersionCol());
         addColumn(getVersionCountCol());
+        getMutableColumn("CreatedBy").setFk(new UserIdQueryForeignKey(schema));
+        getMutableColumn("ModifiedBy").setFk(new UserIdQueryForeignKey(schema));
 
         List<FieldKey> visibleColumns = new ArrayList<>();
         visibleColumns.add(FieldKey.fromParts("Share"));
@@ -416,7 +418,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         return getContainer().hasPermission(user, perm);
     }
 
-    public static class ExperimentUserForeignKey extends UserIdForeignKey
+    public static class ExperimentUserForeignKey extends UserIdQueryForeignKey
     {
         private FieldKey _fieldKey;
 
@@ -429,7 +431,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
         public ExperimentUserForeignKey(UserSchema userSchema, FieldKey fieldKey)
         {
-            super(userSchema);
+            super(userSchema, true); // Include all users so that admins can get the email address etc. of submitters and lab heads
             _fieldKey = fieldKey;
         }
 
@@ -641,7 +643,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                 valueString = "";
             }
 
-            String renderId = "input-picker-div-" + UniqueID.getRequestScopedUID(HttpView.currentRequest());
+            String renderId = getRenderId();
             StringBuilder sb = new StringBuilder();
 
             sb.append("<script type=\"text/javascript\">");
@@ -656,6 +658,12 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             sb.append("<div style=\"font-size:11px\">").append(PageFlowUtil.filter(getHelpText(), true, false)).append("</div>");
 
             out.write(sb.toString());
+        }
+
+        @NotNull
+        String getRenderId()
+        {
+            return "input-picker-div-" + UniqueID.getRequestScopedUID(HttpView.currentRequest());
         }
 
         String getHelpText()
@@ -692,6 +700,27 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             return "Type 3 or more letters to see a drop-down list of matching options. It may take a few seconds to populate the list.\n"
                     + "The list displays up to 20 matching options. Continue typing to refine the list.\n"
                     + "Only entries selected from the list will be saved.";
+        }
+
+        @Override
+        String getRenderId()
+        {
+            return "input-picker-div-organism";
+        }
+    }
+
+    private static class InstrumentColumn extends AutoCompleteColumn
+    {
+
+        public InstrumentColumn(ColumnInfo col, ActionURL autocompletionUrl, boolean prefetch, String placeHolderText)
+        {
+            super(col, autocompletionUrl, prefetch, placeHolderText);
+        }
+
+        @Override
+        String getRenderId()
+        {
+            return "input-picker-div-instrument";
         }
     }
 }

@@ -18,36 +18,19 @@ package org.labkey.panoramapublic.model;
 
 import org.labkey.api.view.ShortURLRecord;
 
-import java.util.Date;
-
 /**
  * User: vsharma
  * Date: 08/07/14
  * Time: 12:50 PM
  */
-public class JournalExperiment
+public class JournalExperiment extends DbEntity
 {
-    private int _id;
     private int _journalId;
     private int _experimentAnnotationsId;
     private ShortURLRecord _shortAccessUrl;
     private ShortURLRecord _shortCopyUrl;
-    private Date _created;
-    private int _createdBy;
-    private Date _modified;
-    private int _modifiedBy;
     private Integer _announcementId;
     private Integer _reviewer;
-
-    public int getId()
-    {
-        return _id;
-    }
-
-    public void setId(int id)
-    {
-        _id = id;
-    }
 
     public int getJournalId()
     {
@@ -87,46 +70,6 @@ public class JournalExperiment
     public void setShortCopyUrl(ShortURLRecord shortCopyUrl)
     {
         _shortCopyUrl = shortCopyUrl;
-    }
-
-    public Date getCreated()
-    {
-        return _created;
-    }
-
-    public void setCreated(Date created)
-    {
-        _created = created;
-    }
-
-    public int getCreatedBy()
-    {
-        return _createdBy;
-    }
-
-    public void setCreatedBy(int createdBy)
-    {
-        _createdBy = createdBy;
-    }
-
-    public Date getModified()
-    {
-        return _modified;
-    }
-
-    public void setModified(Date modified)
-    {
-        _modified = modified;
-    }
-
-    public int getModifiedBy()
-    {
-        return _modifiedBy;
-    }
-
-    public void setModifiedBy(int modifiedBy)
-    {
-        _modifiedBy = modifiedBy;
     }
 
     public Integer getAnnouncementId()

@@ -1,0 +1,1 @@
+SELECT * FROM targetedms.SampleFile sf INNER JOIN targetedms.Replicate rep ON sf.ReplicateId = rep.Id

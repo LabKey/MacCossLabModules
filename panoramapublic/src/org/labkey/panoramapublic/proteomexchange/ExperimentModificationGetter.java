@@ -16,11 +16,9 @@
 package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.junit.Test;
-import org.labkey.api.data.Container;
 import org.labkey.api.targetedms.IModification;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
@@ -31,16 +29,22 @@ import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.labkey.panoramapublic.proteomexchange.UnimodParser.Terminus;
 
 public class ExperimentModificationGetter
 {
-    private static final Logger LOG = LogManager.getLogger(ExperimentModificationGetter.class);
-
+    /**
+     * @return a list of modifications for the runs in the given experiment.
+     */
     public static List<PxModification> getModifications(ExperimentAnnotations expAnnot)
     {
         List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(expAnnot);
@@ -48,7 +52,7 @@ public class ExperimentModificationGetter
         Map<Long, PxModification> strModMap = new HashMap<>();
         Map<Long, PxModification> isoModMap = new HashMap<>();
 
-        UnimodModifications uMods = getUnimodMods(); // Read the UNIMOD modifications
+        UnimodModifications uMods = UnimodUtil.getUnimod(); // Read the UNIMOD modifications
 
         for(ITargetedMSRun run: runs)
         {
@@ -58,10 +62,10 @@ public class ExperimentModificationGetter
                 PxModification pxMod = strModMap.get(mod.getId());
                 if(pxMod == null)
                 {
-                    pxMod = getStructuralUnimodMod(mod, uMods);
+                    pxMod = getStructuralPxMod(mod, uMods);
                     strModMap.put(mod.getId(), pxMod);
                 }
-                pxMod.addSkylineDoc(run.getFileName());
+                pxMod.addSkylineDoc(run);
             }
 
             List<? extends IModification.IIsotopeModification> iMods = TargetedMSService.get().getIsotopeModificationsUsedInRun(run.getId());
@@ -70,21 +74,22 @@ public class ExperimentModificationGetter
                 PxModification pxMod = isoModMap.get(mod.getId());
                 if(pxMod == null)
                 {
-                    pxMod = getIsotopicUnimodMod(mod, uMods, expAnnot.getContainer());
+                    pxMod = getIsotopicPxMod(mod, uMods);
                     isoModMap.put(mod.getId(), pxMod);
                 }
-                pxMod.addSkylineDoc(run.getFileName());
+                pxMod.addSkylineDoc(run);
             }
         }
+
         List<PxModification> allMods = new ArrayList<>();
         allMods.addAll(strModMap.values());
         allMods.addAll(isoModMap.values());
         return allMods;
     }
 
-    private static String[] modSites(IModification mod)
+    private static @NotNull String[] modSites(IModification mod)
     {
-        if(mod.getAminoAcid() == null)
+        if(StringUtils.isBlank(mod.getAminoAcid()))
         {
             return new String[0];
         }
@@ -92,135 +97,161 @@ public class ExperimentModificationGetter
         return mod.getAminoAcid().replaceAll("\\s", "").split(",");
     }
 
-    public static PxModification getStructuralUnimodMod(IModification mod, UnimodModifications uMods)
+    private static PxModification getStructuralPxMod(IModification mod, UnimodModifications uMods)
     {
         UnimodModification uMod = null;
         if(mod.getUnimodId() != null)
         {
             uMod = uMods.getById(mod.getUnimodId());
         }
-        else
-        {
-            String normFormula = UnimodModification.normalizeFormula(mod.getFormula());
-            if(normFormula != null)
-            {
-                String[] sites = modSites(mod);
-                // Find a match based on formula and modification sites (aa or term)
-                uMod = uMods.getMatch(normFormula, sites, true);
-            }
-        }
-
-        return uMod == null ? new PxModification(null, mod.getName(), mod.getName()) : new PxModification(uMod.getId(), uMod.getName(), mod.getName());
+        return uMod != null ? new PxStructuralMod(mod.getName(), mod.getId(), uMod, false) : new PxStructuralMod(mod.getName(), mod.getId());
     }
 
-    private static PxModification getIsotopicUnimodMod(IModification.IIsotopeModification mod, UnimodModifications uMods, Container container)
+    /**
+     * Finds a Unimod match for the given structural modification.
+     * @throws  IllegalArgumentException if the modification formula could not be parsed.
+     */
+    public static @NotNull PxModification getStructuralUnimodMod(IModification mod, UnimodModifications uMods) throws IllegalArgumentException
+    {
+        PxModification pxMod = new PxStructuralMod(mod.getName(), mod.getId());
+        Formula normFormula = Formula.parse(mod.getFormula());
+        addMatches(mod, uMods, pxMod, normFormula.getFormula(), true);
+        return pxMod;
+    }
+
+    private static void addMatches(IModification mod, UnimodModifications uMods, PxModification pxMod, String normFormula, boolean structural)
+    {
+        String[] sites = modSites(mod);
+        Terminus term = "C".equalsIgnoreCase(mod.getTerminus()) ? Terminus.C : "N".equalsIgnoreCase(mod.getTerminus()) ? Terminus.N : null;
+        // Find possible matches based on formula and modification sites (aa or term)
+        List<UnimodModification> uModList = uMods.getMatches(normFormula, sites, term, structural);
+        if ((sites.length > 0 || term != null) && uModList.size() == 1)
+        {
+            // If there was only one match for the modification formula and modification sites / terminus then assume
+            // that this is the right match.
+            pxMod.setUnimodMatch(uModList.get(0), true);
+        }
+        else
+        {
+            uModList.forEach(pxMod::addPossibleUnimod);
+        }
+    }
+
+    private static PxModification getIsotopicPxMod(IModification.IIsotopeModification mod, UnimodModifications uMods)
     {
         UnimodModification uMod = null;
         if(mod.getUnimodId() != null)
         {
             uMod = uMods.getById(mod.getUnimodId());
         }
-        else
-        {
-            String formula = mod.getFormula();
-            if(StringUtils.isBlank(formula))
-            {
-                try
-                {
-                    formula = buildIsotopeModFormula(mod, uMods);
-                }
-                catch (PxException e)
-                {
-                    LOG.error("Error building formula for isotopic mod (" + mod.getName() + ") in container " + container, e);
-                }
-            }
-            String normFormula = UnimodModification.normalizeFormula(formula);
-            if(normFormula != null)
-            {
-                String[] sites = modSites(mod);
-                // Find a match based on formula and modification sites (aa or term)
-                uMod = uMods.getMatch(normFormula, sites, false);
-            }
-        }
-
-        return uMod == null ? new PxModification(null, mod.getName(), mod.getName()) : new PxModification(uMod.getId(), uMod.getName(), mod.getName());
+        return uMod != null ? new PxIsotopicMod(mod.getName(), mod.getId(), uMod, false) : new PxIsotopicMod(mod.getName(), mod.getId());
     }
 
-    private static String buildIsotopeModFormula(IModification.IIsotopeModification mod, UnimodModifications uMods) throws PxException
+    /**
+     * Finds a Unimod match for the given isotope modification. For doing a Unimod lookup, if the modification does not have a formula
+     * then the formula is built using the amino acid sites and labeled atoms in the modification definition.
+     * @throws IllegalArgumentException if the isotopic formula for the modification could not be built, or if the modification
+     * already has a formula and the formula could not be parsed.
+     */
+    public static @NotNull PxModification getIsotopicUnimodMod(IModification.IIsotopeModification mod, UnimodModifications uMods) throws IllegalArgumentException
+    {
+        String normFormula;
+        if(StringUtils.isBlank(mod.getFormula()))
+        {
+            normFormula = buildIsotopeModFormula(mod).getFormula();
+        }
+        else
+        {
+            normFormula = Formula.parse(mod.getFormula()).getFormula();
+        }
+        PxIsotopicMod pxMod = new PxIsotopicMod(mod.getName(), mod.getId());
+        if (normFormula != null)
+        {
+            addMatches(mod, uMods, pxMod, normFormula, false);
+        }
+        return pxMod;
+    }
+
+    /**
+     * Builds the formula for an isotope modification based on the amino acid sites and the labeled atoms in the given
+     * modification definition.
+     * @throws IllegalArgumentException if the modification definition does not include any amino acid sites, or if it
+     * includes multiple amino acid sites, and the number of labeled atoms in the amino acids are not the same.
+     */
+    private static Formula buildIsotopeModFormula(IModification.IIsotopeModification mod)
     {
         String aminoAcids = mod.getAminoAcid();
-        if(StringUtils.isBlank(aminoAcids))
+        if (StringUtils.isBlank(aminoAcids))
         {
-            return null;
+            throw new IllegalArgumentException("Cannot build formula for an isotope modification (" + mod.getName() + ") without any modified amino acids.");
         }
 
-        // On PanoramaWeb we do not have any isotopic modifications with multiple amino amods as targets.  But Skyline allows it
+        // On PanoramaWeb we do not have any isotopic modifications with multiple amino acids as targets.  But Skyline allows it
         String[] sites = modSites(mod);
-        String formula = null;
-        for(String site: sites)
+        Formula formula = null;
+        for (String site : sites)
         {
-            String f = uMods.buildIsotopicModFormula(site.charAt(0),
+            Formula f = UnimodUtil.buildIsotopicModFormula(site.charAt(0),
                     Boolean.TRUE.equals(mod.getLabel2H()),
                     Boolean.TRUE.equals(mod.getLabel13C()),
                     Boolean.TRUE.equals(mod.getLabel15N()),
                     Boolean.TRUE.equals(mod.getLabel18O()));
-            if(formula == null)
+            if (formula == null)
             {
                 formula = f;
             }
-            else if(!formula.equals(f))
+            else if (!formula.getFormula().equals(f.getFormula()))
             {
-                throw new PxException("Multiple amino acids found for isotopic modification (" + mod.getName() +"). Formulae do not match.");
+                // This will happen if the modification definition includes multiple amino acids, and the number of labeled atoms
+                // in the amino acids are not the same. Skyline allows creating a modification on two amino acids that do not have
+                // the same number of labeled atoms. But we would have to split it into separate modifications to support the use case.
+                // For now, we only support this scenario for the built-in wildcard modifications in Skyline that implicitly apply to
+                // all amino acids.
+                throw new IllegalArgumentException("Cannot calculate formula for isotope modification '" + mod.getName() + "'. " +
+                        "The modification is defined on multiple amino acids, but the number of labeled atoms in the amino acids are not the same. " +
+                        "To calculate the formula for an isotope modification all amino acids in the modification definition must have the same number of labeled atoms.");
             }
         }
         return formula;
     }
 
-    public static UnimodModifications getUnimodMods()
+    public static abstract class PxModification
     {
-        try
-        {
-            return (new UnimodParser().parse());
-        }
-        catch (Exception e)
-        {
-            LOG.error("There was an error reading UNIMOD modifications.", e);
-            return new UnimodModifications();
-        }
-    }
-
-    public static class PxModification
-    {
-        private final String _name;
         private final String _skylineName;
-        private final Integer _unimodId;
-        private Set<String> _skylineDocs;
+        private final Set<Long> _runIds;
+        private final long _dbModId; // database id from the IsotopeModification table if _isotopicMod is true, StructuralModification otherwise
+        private final boolean _isotopicMod;
+        private UnimodModification _match;
+        private boolean _matchInferred;
+        private final List<UnimodModification> _unimodModifications; // List of possible Unimod modifications
 
-        public PxModification(Integer id, String name, String skylineName)
+        PxModification(String skylineName, boolean isIsotopic, long dbModId)
         {
-            _name = name;
-            _unimodId = id;
             _skylineName = skylineName;
 
-            _skylineDocs = new HashSet<>();
+            _runIds = new HashSet<>();
+            _isotopicMod = isIsotopic;
+            _dbModId = dbModId;
+
+            _unimodModifications = new ArrayList<>();
         }
 
-        public void addSkylineDoc(String skyDocName)
+        public void addSkylineDoc(ITargetedMSRun run)
         {
-            if(skyDocName != null)
+            if(run != null)
             {
-                _skylineDocs.add(skyDocName);
+                _runIds.add(run.getId());
             }
         }
 
-        public Set<String> getSkylineDocs()
+        public Set<Long> getRunIds()
         {
-            return _skylineDocs;
+            return _runIds;
         }
 
         public String getName()
         {
-            return _name;
+            return _match != null ? _match.getName() : null;
         }
 
         public String getSkylineName()
@@ -228,130 +259,119 @@ public class ExperimentModificationGetter
             return _skylineName;
         }
 
+        public long getDbModId()
+        {
+            return _dbModId;
+        }
+
         public String getUnimodId()
         {
-            return _unimodId == null ? null : "UNIMOD:" + String.valueOf(_unimodId);
+            return _match == null ? null : "UNIMOD:" + _match.getId();
+        }
+
+        public Integer getUnimodIdInt()
+        {
+            return _match == null ? null : _match.getId();
         }
 
         public boolean hasUnimodId()
         {
-            return _unimodId != null;
+            return _match != null;
+        }
+
+        public UnimodModification getUnimodMatch()
+        {
+            return _match;
+        }
+
+        public boolean isIsotopicMod()
+        {
+            return _isotopicMod;
+        }
+
+        public void setUnimodMatch(UnimodModification uMod, boolean inferred)
+        {
+            _match = uMod;
+            _matchInferred = inferred;
+        }
+
+        public boolean isMatchInferred()
+        {
+            return _matchInferred;
+        }
+
+        public void addPossibleUnimod(UnimodModification uMod)
+        {
+            _unimodModifications.add(uMod);
+        }
+
+        public boolean hasPossibleUnimods()
+        {
+            return _unimodModifications.size() > 0;
+        }
+
+        public @NotNull List<UnimodModification> getPossibleUnimodMatches()
+        {
+            return Collections.unmodifiableList(_unimodModifications);
+        }
+    }
+
+    public static class PxStructuralMod extends PxModification
+    {
+        public PxStructuralMod(String skylineName, long dbModId)
+        {
+            super(skylineName, false, dbModId);
+        }
+
+        public PxStructuralMod(String skylineName, long dbModId, UnimodModification uMod, boolean inferred)
+        {
+            super(skylineName, false, dbModId);
+            if (uMod != null) setUnimodMatch(uMod, inferred);
+        }
+    }
+
+    public static class PxIsotopicMod extends PxModification
+    {
+        public PxIsotopicMod(String skylineName, long dbModId)
+        {
+            super(skylineName, true, dbModId);
+        }
+
+        public PxIsotopicMod(String skylineName, long dbModId, UnimodModification uMod, boolean inferred)
+        {
+            super(skylineName, true, dbModId);
+            if (uMod != null) setUnimodMatch(uMod, inferred);
         }
     }
 
     public static class TestCase extends Assert
     {
+        private static final boolean debug = false;
+
+        @Test
+        public void testBuildIsotopeModFormula()
+        {
+            var invalidMod = createisotopicMod("heavyK_R", null,
+                    "K,R",  // K and R have different number of Carbon and Nitrogen atoms so the calculated isotope formula
+                                 // for the two elements will be different.  This should throw an exception.
+                    null, false, LABEL13C, LABEL15N, false);
+            try
+            {
+                buildIsotopeModFormula(invalidMod);
+                fail("Expected error building formula for isotope modification with amino acids that have different number of labeled atoms in their chemical composition");
+            }
+            catch (IllegalArgumentException e)
+            {
+                assertEquals("Cannot calculate formula for isotope modification 'heavyK_R'. " +
+                                "The modification is defined on multiple amino acids, but the number of labeled atoms in the amino acids are not the same. " +
+                                "To calculate the formula for an isotope modification all amino acids in the modification definition must have the same number of labeled atoms.",
+                        e.getMessage());
+            }
+        }
+
         @Test
         public void testStructuralMods() throws IOException
         {
-            // Modifications in Panorama Public that do not have a UNIMOD ID.
-            List<Modification> mods = new ArrayList<>();
-            mods.add(createMod("unsaturated tryptophandione (W)", "OO-HHHH", "W", null));
-            mods.add(createMod("oxidation (H)", "O", "H", null));
-            mods.add(createMod("acetylation", "C2H2O1", "K", null));
-            mods.add(createMod("Dimethylation (KRN)", "H4C2", "K, R, N", null));
-            mods.add(createMod("GlcNAc-Fuc", null, "N", null));
-            mods.add(createMod("Propionamide(C)", "H5C3NO", "C", null));
-            mods.add(createMod("Lipoyl NEM (K)", "H14C8OS2 H7C6NO2 H7C6NO2", "K", null));
-            mods.add(createMod("Acetyl-T (N-term)", "C2H2O", "T", "N"));
-            mods.add(createMod("Met Ox", "O", "M", null));
-            mods.add(createMod("Oxidation (T)", "O", "T", null));
-            mods.add(createMod("Carbamidomethyl Cysteine", "C2H3ON", "C", null));
-            mods.add(createMod("ICAT-C (C)", "C10H17N3O3", "C", null));
-            mods.add(createMod("ring open1 (H)", "O-C2NH", "H", null));
-            mods.add(createMod("Chlorination (Y)", "Cl -H", "Y", null));
-            mods.add(createMod("Oxidation (M)", "O", "M", null));
-            mods.add(createMod("Dihydroxyformylkynurenine (W)", "OOOO", "W", null));
-            mods.add(createMod("Asp decarboxylation (D)", "-COHH", "D", null));
-            mods.add(createMod("Tryptoline (W)", "C", "W", null));
-            mods.add(createMod("try->monooxidation (W)", "O", "W", null));
-            mods.add(createMod("Lys carbonyl", "O-HH", "K", null));
-            mods.add(createMod("Acetyl (K)", "C2 H3 O -H", "K", null));
-            mods.add(createMod("Methyl-ester (E)", "CH2", "E", null));
-            mods.add(createMod("Gln Oxidation (Q)", "O", "Q", null));
-            mods.add(createMod("Pyro Glu", "-OH2", "Q", null));
-            mods.add(createMod("Try->glycine hydroperoxide (W)", "OO-C9H7N", "W", null));
-            mods.add(createMod("carbonyl (R)", "O-HH", "R", null));
-            mods.add(createMod("pyro-glu", null, "Q", "N"));
-            mods.add(createMod("mTRAQ +0 (N-term)", "H12C7N2O", null, "N"));
-            mods.add(createMod("Acetyl-V (N-term)", "C2H2O", "V", "N"));
-            mods.add(createMod("Ser oxidation", "O", "S", null));
-            mods.add(createMod("Nacetyl_phospho(T)", "C2H3O4P", "T", "N"));
-            mods.add(createMod("carbonyl (A)", "O-HH", "A", null));
-            mods.add(createMod("NitroY", "NO2 -H", "Y", null));
-            mods.add(createMod("Leu/Ile oxidation", "O", "L, I", null));
-            mods.add(createMod("hydroxy tryptophandione (W)", "OOO-HHHH", "W", null));
-            mods.add(createMod("Methyl-ester (D)", "CH2", "D", null));
-            mods.add(createMod("Methionine_sulfoxide", "O", "M", null));
-            mods.add(createMod("ring open 3 (H)", "OO-NHC", "H", null));
-            mods.add(createMod("NitroY", "N O2 -H", "Y", null));
-            mods.add(createMod("N-Acetyl-Phospho-T", "C2H3O4P", "T", "N"));
-            mods.add(createMod("Acetyl-A (N-term)", "C2H2O", "A", "N"));
-            mods.add(createMod("GlcNAc", null, "N", null));
-            mods.add(createMod("Phospho(S)", "HO3P", "S", null));
-            mods.add(createMod("Glycation(V)", "C6H12O6-H2O", "V", null));
-            mods.add(createMod("Phosho (Y)", "HPO3", "Y", null));
-            mods.add(createMod("Met Sulfoxide", "O", "M", null));
-            mods.add(createMod("Acetyl-M (N-term)", "C2H2O", "M", "N"));
-            mods.add(createMod("Dimethylation (N-term)", "H4C2", null, "N"));
-            mods.add(createMod("Methyl (TSCKRH)", "H4C2", "T, S, C, K, R, H", null));
-            mods.add(createMod("dopa-derived quinone (Y+O-2H)", "O-HH", "Y", null));
-            mods.add(createMod("HexNAc(1)dHex(1) (N)", "H23C14NO9", "N", null));
-            mods.add(createMod("trioxidation (MHWFY)", "OOO", "M, H, W, F, Y", null));
-            mods.add(createMod("C-term deamidation", "HN-O", null, "C"));
-            mods.add(createMod("His-Thiolatp", "PO2", "S", null));
-            mods.add(createMod("Pyroglutamic acid (Q)", null, "Q", "N"));
-            mods.add(createMod("Phospho (S,T)", "HPO3", "S, T", null));
-            mods.add(createMod("Ubiquitin", null, "K", null));
-            mods.add(createMod("deamidate (N)", "O-NH", "N", null));
-            mods.add(createMod("H->hydroxy-dioxidation", "H2O2", "H", null));
-            mods.add(createMod("Glu oxidation (E)", "O", "E", null));
-            mods.add(createMod("dioxidation (MHWFY)", "OO", "M, H, W, F, Y", null));
-            mods.add(createMod("Gln Carbonyl (Q)", "O-HH", "Q", null));
-            mods.add(createMod("ring open 4 (H)", "OO-NNCHH", "H", null));
-            mods.add(createMod("MetOxid_NtermAcetyl", "C2H2O2", "M", "N"));
-            mods.add(createMod("OOO-HH (C)", "OOO-HH", "C", null));
-            mods.add(createMod("ring open 2(H)", "OO-C2NNHH", "H", null));
-            mods.add(createMod("Acetyl-S (N-term)", "C2H2O", "S", "N"));
-            mods.add(createMod("Kinome-ATP-K", "C10H16N2O2", "K", null));
-            mods.add(createMod("Phospho", "HO3P", "T", null));
-            mods.add(createMod("carbonyl (L/I)", "O-HH", "L, I", null));
-            mods.add(createMod("Met ox", "O", "M", null));
-            mods.add(createMod("V oxidation", "O", "V", null));
-            mods.add(createMod("mTRAQ +0 (K)", "H12C7N2O", "K", null));
-            mods.add(createMod("Glu decarboxylation (E)", "-COHH", "E", null));
-            mods.add(createMod("Glu carbonyl (E)", "O-HH", "E", null));
-            mods.add(createMod("N-term Met loss+ acetylation (S)", "-H6C3NS", "S", "N"));
-            mods.add(createMod("Carboxymethylcysteine", "CH2COO", "C", null));
-            mods.add(createMod("mono-oxidation", "O", "M, W, H, C, F, Y", null));
-
-            // These modifications do not match with a modification in unimod.xml
-            Set<String> unknown = new HashSet();
-            unknown.add("GlcNAc-Fuc");
-            unknown.add("Lipoyl NEM (K)");
-            unknown.add("ICAT-C (C)");
-            unknown.add("Lys carbonyl");
-            unknown.add("Try->glycine hydroperoxide (W)");
-            unknown.add("pyro-glu");
-            unknown.add("Acetyl-V (N-term)");
-            unknown.add("Nacetyl_phospho(T)");
-            unknown.add("N-Acetyl-Phospho-T");
-            unknown.add("Acetyl-A (N-term)");
-            unknown.add("GlcNAc");
-            unknown.add("Glycation(V)");
-            unknown.add("Acetyl-M (N-term)");
-            unknown.add("Methyl (TSCKRH)");
-            unknown.add("dopa-derived quinone (Y+O-2H)");
-            unknown.add("trioxidation (MHWFY)");
-            unknown.add("His-Thiolatp");
-            unknown.add("Pyroglutamic acid (Q)");
-            unknown.add("Ubiquitin");
-            unknown.add("H->hydroxy-dioxidation");
-            unknown.add("dioxidation (MHWFY)");
-            unknown.add("MetOxid_NtermAcetyl");
-            unknown.add("OOO-HH (C)");
-            unknown.add("N-term Met loss+ acetylation (S)");
-
             File unimodXml = getUnimodFile();
             UnimodModifications uMods = null;
             try
@@ -363,86 +383,392 @@ public class ExperimentModificationGetter
                 fail("Failed to parse UNIMOD modifications. " + e.getMessage());
             }
 
-            assertTrue(uMods != null);
+            assertNotNull(uMods);
 
-            int notFound = 0;
-            int total = 0;
+            List<Modification> mods = new ArrayList<>();
+            Map<String, List<UnimodModification>> unimodMatches = new HashMap<>();
+            int idx = 0;
+
+            // Some modifications in PanoramaWeb that do not have a UNIMOD ID.
+            // Oxidations
+            var oxidation = uMods.getById(35);
+            mods.add(createMod("oxidation (H)", "O", "H", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(oxidation));
+            mods.add(createMod("Oxidation (T)", "O", "T", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(oxidation));
+            mods.add(createMod("try->monooxidation (W)", "O", "W", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(oxidation));
+            mods.add(createMod("Gln Oxidation (Q)", "O", "Q", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(oxidation));
+            mods.add(createMod("Ser oxidation", "O", "S", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(oxidation));
+            mods.add(createMod("Leu/Ile oxidation", "O", "L, I", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(oxidation));
+            mods.add(createMod("Methionine_sulfoxide", "O", "M", null));
+            // Comment in Unimod for 'M' specificity: "methionine sulfoxide"
+            unimodMatches.put(mods.get(idx++).getName(), List.of(oxidation));
+            mods.add(createMod("Glu oxidation (E)", "O", "E", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(oxidation));
+            mods.add(createMod("V oxidation", "O", "V", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(oxidation));
+            mods.add(createMod("mono-oxidation", "O", "M, W, H, C, F, Y", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(oxidation));
+
+            // Acetylation
+            var acetylation = uMods.getById(1);
+            mods.add(createMod("acetylation", "C2H2O1", "K", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(acetylation));
+            mods.add(createMod("Acetyl-T (N-term)", "C2H2O", "T", "N"));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(acetylation));
+            mods.add(createMod("Acetyl (K)", "C2 H3 O -H", "K", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(acetylation));
+            mods.add(createMod("Acetyl (N-term)", "C2H2O", null, "N"));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(acetylation));
+            mods.add(createMod("Acetyl-M (N-term)", "C2H2O", "M", "N"));
+            // Formula matches UNIMOD:1, Acetyl and UNIMOD:1197, "Ser->Glu" but neither has 'M' as a site specificity option
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createMod("Acetyl-A (N-term)", "C2H2O", "A", "N"));
+            // Formula matches UNIMOD:1, Acetyl and UNIMOD:1197, "Ser->Glu" but neither has 'A' as a site specificity option
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createMod("Acetyl-S (N-term)", "C2H2O", "S", "N"));
+            // Formula matches UNIMOD:1, Acetyl and UNIMOD:1197, "Ser->Glu" both have 'S' as a site specificity option
+            unimodMatches.put(mods.get(idx++).getName(), List.of(
+                    acetylation,
+                    uMods.getById(1197) /* Ser->Glu */));
+
+
+            // Decarboxylation
+            // 4 Unimod matches based on formula (https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%28-2%29+C%28-1%29+O%28-1%29&SearchOption=Equals&SearchField=)
+            // Only one had 'D' and 'E' as site specificity options
+            var decarboxylation = uMods.getById(1915);
+            mods.add(createMod("Asp decarboxylation (D)", "-COHH", "D", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(decarboxylation));
+            mods.add(createMod("Glu decarboxylation (E)", "-COHH", "E", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(decarboxylation));
+
+
+            // Carbonyl
+            // Not in UniModData.cs
+            // 4 matchs based on formula: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%28-2%29+O&SearchOption=Equals&SearchField=
+            // Only one has 'R', 'A', 'Q', 'L', 'E' as site specificity options
+            var carbonyl = uMods.getById(1918);
+            mods.add(createMod("carbonyl (R)", "O-HH", "R", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(carbonyl));
+            mods.add(createMod("carbonyl (A)", "O-HH", "A", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(carbonyl));
+            mods.add(createMod("Gln Carbonyl (Q)", "O-HH", "Q", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(carbonyl));
+            mods.add(createMod("carbonyl (L/I)", "O-HH", "L, I", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(carbonyl));
+            mods.add(createMod("Glu carbonyl (E)", "O-HH", "E", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(carbonyl));
+
+            // Nitro
+            // Only one match for H(-1) N O(2)
+            var nitro = uMods.getById(354);
+            mods.add(createMod("NitroY", "NO2 -H", "Y", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(nitro));
+            mods.add(createMod("NitroY", "N O2 -H", "Y", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(nitro));
+
+            // Phospho
+            var phospho = uMods.getById(21);
+            mods.add(createMod("Phospho(S)", "HO3P", "S", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(phospho));
+            mods.add(createMod("Phosho (Y)", "HPO3", "Y", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(phospho));
+            mods.add(createMod("Phospho (S,T)", "HPO3", "S, T", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(phospho));
+            mods.add(createMod("Phospho", "HO3P", "T", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(phospho));
+
+            // Chlorination
+            // UnimodData.cs has the formula for UnimodId 936 as just 'Cl':  AAs = "Y", LabelAtoms = LabelAtoms.None, Formula = "Cl", ID = 936,
+            // But the Unimod composition for this modification is H(-1) Cl https://www.unimod.org/modifications_view.php?editid1=936
+            mods.add(createMod("Chlorination (Y)", "Cl -H", "Y", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(936) /* "Chlorination" */));
+
+            // Unimod description: Tryptophan oxidation to dihydroxy-N-formaylkynurenine
+            // Not in UniModData.cs
+            mods.add(createMod("Dihydroxyformylkynurenine (W)", "OOOO", "W", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(1925) /* "Delta:O(4)" */));
+
+            // Unimod description: Tryptophan oxidation to beta-unsaturated-2,4-bis-tryptophandione
+            // Not in UniModData.cs
+            mods.add(createMod("unsaturated tryptophandione (W)", "OO-HHHH", "W", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(1923) /* "Delta:H(-4)O(2)" */));
+
+            // Formula matches 5 Unimod mods: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%284%29+C%282%29&SearchOption=Equals&SearchField=composition
+            // Only Unimod:36 has K, R and N as site specificity options
+            mods.add(createMod("Dimethylation (KRN)", "H4C2", "K, R, N", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(36) /* "Dimethyl" */));
+
+            // Formula matches 6 Unimod modifications: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%282%29+C&SearchOption=Equals&SearchField=composition
+            // Only Unimod:34, Methyl has 'E' as a site specificity option
+            mods.add(createMod("Methyl-ester (E)", "CH2", "E", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(34) /* "Methyl" */));
+
+            // Only one match. Description in Unimod: Tryptophan oxidation to hydroxy-bis-tryptophandione
+            mods.add(createMod("hydroxy tryptophandione (W)", "OOO-HHHH", "W", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(1924) /* Delta:H(-4)O(3) */));
+
+            // Formula matches 2 Unimod modifications https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%285%29+C%283%29+N+O&SearchOption=Equals&SearchField=composition
+            // Unimod:24, Propionamide has 'C' as site specificity option
+            mods.add(createMod("Propionamide(C)", "H5C3NO", "C", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(24) /* Propionamide */));
+
+            mods.add(createMod("ICAT-C (C)", "C10H17N3O3", "C", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(105) /* ICAT-C */));
+
+            // Formula matches 3: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%282%29+C%282%29+O%282%29&SearchOption=Equals&SearchField=composition
+            // Only Unimod:6, Carboxymethyl has 'C' as the site specificity option
+            mods.add(createMod("Carboxymethylcysteine", "CH2COO", "C", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(6) /* Carboxymethyl */));
+
+            // Formula matches 4: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%283%29+C%282%29+N+O&SearchOption=Equals&SearchField=composition
+            // Only Unimod:4, Carbamidomethyl has 'C' as the site specificity option
+            mods.add(createMod("Carbamidomethyl Cysteine", "C2H3ON", "C", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(4) /* Carbamidomethyl */));
+
+            // Composition in Unimod is "dHex HexNAc", not H(23) C(14) N O(9)
+            mods.add(createMod("HexNAc(1)dHex(1) (N)", "H23C14NO9", "N", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(142) /* HexNAc(1)dHex(1) */));
+
+            // Formula matches two mods: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%2812%29+C%287%29+N%282%29+O&SearchOption=Equals&SearchField=composition
+            // Only Unimod:888, mTRAQ has a specificity on N-term (Any N-term)
+            // Unimod:1027,Xlink:DMP[140] has a specificity on N-term (Protein N-term) so that will not match
+            mods.add(createMod("mTRAQ +0 (N-term)", "H12C7N2O", null, "N"));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(888) /* mTRAQ */));
+
+            mods.add(createMod("Kinome-ATP-K", "C10H16N2O2", "K", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(1031) /* Biotin:Thermo-88310 */));
+
+
+            // ---------------------------------------------------------------------------
+            // ------- Review these again? -----------------------------------------------
+            // User entered an incorrect name? Tryptoline and Thiazolidine are not the same according to Wikipedia.
+            // Unimod:1009 exists in UniModData.cs only as Thiazolidine (N-term C). In Unimod however, there is no
+            // position restriction on 'C', and there are other specificities
+            mods.add(createMod("Tryptoline (W)", "C", "W", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(1009) /* Thiazolidine */));
+
+            // Matches 3 Unimod modifications: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H+N+O%28-1%29&SearchOption=Equals&SearchField=composition
+            // Unimod:2, Amidation is the only one with C-term specificity, both on "Any C-Term" and "Protein C-term".  This should match.
+            // Why is it named "C-term deamidation"? Deamidation has a different formula: H(-1) N(-1) O
+            mods.add(createMod("C-term deamidation", "HN-O", null, "C"));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(2) /* Amidated */));
+
+            // More modifications to look at.
+            // Not in UniModData.cs
+            mods.add(createMod("ring open1 (H)", "O-C2NH", "H", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(348) /* His->Asn */));
+            mods.add(createMod("ring open 2(H)", "OO-C2NNHH", "H", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(349) /* His->Asp */));
+            mods.add(createMod("ring open 4 (H)", "OO-NNCHH", "H", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(1916) /* Aspartylurea */));
+            mods.add(createMod("ring open 3 (H)", "OO-NHC", "H", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(1917) /* Formylasparagine */));
+            // ---------------------------------------------------------------------------
+
+
+
+            // Modifications with no matches
+            // ---------------------------------------------------------------------------------------------------------
+            mods.add(createMod("GlcNAc-Fuc", null, "N", null)); // No formula. We need a formula to find a match
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createMod("pyro-glu", null, "Q", "N")); // No formula. We need a formula to find a match
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createMod("GlcNAc", null, "N", null)); // No formula. We need a formula to find a match
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createMod("Pyroglutamic acid (Q)", null, "Q", "N")); // No formula. We need a formula to find a match
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createMod("Ubiquitin", null, "K", null)); // No formula. We need a formula to find a match
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+
+            // Could be this https://www.unimod.org/modifications_view.php?editid1=676 but formula is different.
+            // Unimod:676 - Trp->Gly substitution, H(-7) C(-9) N(-1), on W.
+            // UniModData.cs does not have mod 676
+            mods.add(createMod("Try->glycine hydroperoxide (W)", "OO-C9H7N", "W", null));
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+
+
+            // Formula matches composition of Hex, Unimod:42.  But that does not have 'V' as a site specificity
+            mods.add(createMod("Glycation(V)", "C6H12O6-H2O", "V", null));
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+
+            // Formula matches Unimod:345, Trioxidation. But that only has C, W, Y, F as the site specificity options
+            mods.add(createMod("trioxidation (MHWFY)", "OOO", "M, H, W, F, Y", null));
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+
+            // Formula matches Unimod mods: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%28-2%29+O%28-1%29&SearchOption=Equals&SearchField=composition
+            // Only Unimod:23, Dehydration has 'Q' as a site specificity option, but it specifies the position as 'Protein C-term'.
+            // Terminus is missing in the modification definition below
+            mods.add(createMod("Pyro Glu", "-OH2", "Q", null));
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+
+            // No carbonyl on Lysine
+            mods.add(createMod("Lys carbonyl", "O-HH", "K", null));
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+
+            // Formula matches Unimod:425, Dioxidation. But 'H' is not one of the site specificities
+            mods.add(createMod("dioxidation (MHWFY)", "OO", "M, H, W, F, Y", null));
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+
+
+
+            // Modifications with multiple potential Unimod matches based on formula, modification site and terminus
+            // ---------------------------------------------------------------------------------------------------------
+            // Both Unimod:888, mTRAQ and Unimod:1027,Xlink:DMP[140] have a 'K' as a site specificity option
+            mods.add(createMod("mTRAQ +0 (K)", "H12C7N2O", "K", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(
+                    uMods.getById(888) /* mTRAQ */,
+                    uMods.getById(1027) /* DMP[140] */));
+
+            // Formula has 5 matches: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%282%29+C&SearchOption=Equals&SearchField=composition
+            // Both Unimod:34, Methyl and Unimod:558, Asp->Glu have 'D' as a site specificity option
+            mods.add(createMod("Methyl-ester (D)", "CH2", "D", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(
+                    uMods.getById(34) /* Methyl */,
+                    uMods.getById(558) /* Asp->Glu */));
+
+            // Formula has 3 matches: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%28-1%29+N%28-1%29+O&SearchOption=Equals&SearchField=composition
+            // Both Unimod:7, Deamidated and Unimod:621, Asn->Asp have 'N' as a site specificity option
+            mods.add(createMod("deamidate (N)", "O-NH", "N", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(
+                    uMods.getById(7) /* Deamidated */,
+                    uMods.getById(621) /* Asn->Asp */));
+
+            // Formula has 5 matches: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%284%29+C%282%29&SearchOption=Equals&SearchField=composition
+            // 3 of them have a specificity on N-term (Any N-term)
+            mods.add(createMod("Dimethylation (N-term)", "H4C2", null, "N"));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(
+                    uMods.getById(36) /* Dimethyl */,
+                    uMods.getById(255) /* Delta:H(4)C(2) */,
+                    uMods.getById(280) /* Ethyl */));
+
+            // Formula has 2 matches: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%284%29+C%283%29+O&SearchOption=Equals&SearchField=composition
+            // Both have 'K' as a site specificity option
+            mods.add(createMod("Propionylation", "C3H4O1", "K", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(
+                    uMods.getById(58) /* Propionyl */,
+                    uMods.getById(206) /* Delta:H(4)C(3)O(1) */));
+            mods.add(createMod("PropionylNT", "C3H4O1", "", "N"));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(
+                    uMods.getById(58) /* Propionyl */));
+
+
+
+            // Combination modifications
+            // ---------------------------------------------------------------------------------------------------------
+            // Skyline does not allow multiple modifications on a residue. So users create custom "combination" modifications.
+            // Some of them actually match a Unimod modification. We need to provide an interface for users to give us
+            // information for combination modifications.
+
+            // This is a combo modification but gets a single match: UNIMOD:209, Delta:H(8)C(6)O(2)
+            mods.add(createMod("DoublePropionyl(NTK)", "C6H8O2", "K", "N"));
+            // !!! WRONG MATCH
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(209) /* Delta:H(8)C(6)O(2) */));
+
+            // Propionylation (H4C3O) + Trimethylation (H6C3)
+            mods.add(createMod("PropionylNY_LysMe3", "C6H10O", "K", "N"));
+            // !!! WRONG MATCH
+            unimodMatches.put(mods.get(idx++).getName(), List.of(uMods.getById(1873) /* MesitylOxide */));
+            // Propionylation (H4C3O) + Acetylation (H2C2O)
+            mods.add(createMod("PropionylNT_LysAc1", "C5H6O2", "K", "N"));
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+            // Propionylation (H4C3O) + ?? (H6C4O)
+            mods.add(createMod("PropionylNT_LysMe1", "C7O2H10", "K", "N"));
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+            // Propionylation (H4C3O) + Dimethylation (H4C2)
+            mods.add(createMod("PropionylNT_LysMe2", "C5H8O", "K", null));
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+
+            // Methylation + Propionylation
+            // Formula has two matches: https://www.unimod.org/modifications_list.php?a=search&value=1&SearchFor=H%286%29+C%284%29+O&SearchOption=Equals&SearchField=composition
+            // Both have have'K' as a site specificity option
+            mods.add(createMod("MethylPropionyl", "C4H6O", "K", null));
+            unimodMatches.put(mods.get(idx++).getName(), List.of(
+                    uMods.getById(253) /* Crotonaldehyde  */,
+                    uMods.getById(1289) /* Butyryl  */));
+
+            // Looks like a combination of Acetly (Unimod:1, H(2) C(2) O) and Phopho (Unimod:21, H O(3) P)
+            mods.add(createMod("N-Acetyl-Phospho-T", "C2H3O4P", "T", "N"));
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+
+            // Combination of Oxidation and Acetyl
+            mods.add(createMod("MetOxid_NtermAcetyl", "C2H2O2", "M", "N"));
+            unimodMatches.put(mods.get(idx++).getName(), Collections.emptyList());
+
             for(Modification mod: mods)
             {
                 PxModification pxMod = getStructuralUnimodMod(mod, uMods);
-//                if(!pxMod.hasUnimodId())
-//                {
-//                    String term = mod.getTerminus() == null ? "" : (mod.getTerminus().equals("N") ? "N-term" : "C-term");
-//                    System.out.println(pxMod.getUnimodId() + ", " + pxMod.getName() + "(" + pxMod.getSkylineName() + ")"
-//                            + ", " + UnimodModification.normalizeFormula(mod.getFormula()) + ", " + mod.getAminoAcid() + ", TERM: " + term);
-//                }
 
-                if(!unknown.contains(pxMod.getName()))
+                printStructuralMod(mod, pxMod);
+
+                List<UnimodModification> matches = unimodMatches.get(pxMod.getSkylineName());
+                if (matches.size() == 0)
                 {
-                    assertTrue(pxMod.hasUnimodId());
+                    assertFalse("Unexpected Unimod match for modification " + pxMod.getSkylineName(), pxMod.hasUnimodId());
+                    assertEquals("Unexpected possible mods for modification " + pxMod.getSkylineName(), 0, pxMod.getPossibleUnimodMatches().size());
                 }
+                else if (matches.size() == 1)
+                {
+                    assertTrue("Expected a Unimod Id for modification " + pxMod.getSkylineName(), pxMod.hasUnimodId());
+                    assertEquals("Unexpected Unimod match Id for modification " + pxMod.getSkylineName(), matches.get(0).getId(), pxMod.getUnimodIdInt().intValue());
+                    assertEquals("Unexpected Unimod match name for modification " + pxMod.getSkylineName(), matches.get(0).getName(), pxMod.getName());
+                    assertFalse("modification " + pxMod.getSkylineName() + " has a Unimod Id."
+                            + " Unexpected " + pxMod.getPossibleUnimodMatches().size() + " possible matches", pxMod.hasPossibleUnimods());
+                }
+                else
+                {
+                    List<UnimodModification> possibleMods = pxMod.getPossibleUnimodMatches();
+                    assertFalse("Unexpected Unimod Id for modification " + pxMod.getSkylineName(), pxMod.hasUnimodId());
+                    assertEquals("Expected " + matches.size() + " possible matches for modification " + pxMod.getSkylineName(), matches.size(), possibleMods.size());
+                    assertEquals(matches.stream().map(m -> m.getId()).collect(Collectors.toSet()), possibleMods.stream().map(m -> m.getId()).collect(Collectors.toSet()));
+                }
+            }
+        }
 
-                notFound = notFound + (pxMod.hasUnimodId() ? 0 : 1);
-                total++;
+        private void printStructuralMod(Modification mod, PxModification pxMod)
+        {
+            if (!debug)
+            {
+                return;
             }
 
-//            System.out.println("TOTAL " + total + ", NOT FOUND: " + notFound);
+            if (pxMod.hasUnimodId())
+            {
+                String term = mod.getTerminus() == null ? "" : (mod.getTerminus().equals("N") ? "N-term" : "C-term");
+                String modInfo = pxMod.getSkylineName() + ", " + Formula.normalizeFormula(mod.getFormula()) + ", " + mod.getAminoAcid() + ", TERM: " + term;
+                System.out.print("Skyline: " + modInfo);
+                System.out.println(" --- " + pxMod.getUnimodId() + ", " + pxMod.getName());
+            }
+            if (pxMod.hasPossibleUnimods())
+            {
+                String term = mod.getTerminus() == null ? "" : (mod.getTerminus().equals("N") ? "N-term" : "C-term");
+                String modInfo = pxMod.getSkylineName() + ", " + Formula.normalizeFormula(mod.getFormula()) + ", " + mod.getAminoAcid() + ", TERM: " + term;
+                System.out.println("Skyline: " + modInfo);
+                for (UnimodModification umod: pxMod.getPossibleUnimodMatches())
+                {
+                    System.out.println(" --- List.of(new UnimodModification(" + umod.getId() + ", \"" + umod.getName() + "\", null))");
+                }
+            }
         }
 
         private File getUnimodFile() throws IOException
         {
-            File root = JunitUtil.getSampleData(null, "../server");
+            File root = JunitUtil.getSampleData(null, "../../../server");
             if(root == null)
             {
                 root = new File(System.getProperty("user.dir"));
             }
             // /modules/MacCossLabModules/PanoramaPublic/resources/unimod_NO_NAMESPACE.xml
-            return new File(root, "resources/unimod_NO_NAMESPACE.xml");
+            return new File(root, "/modules/MacCossLabModules/PanoramaPublic/resources/unimod_NO_NAMESPACE.xml");
         }
 
         @Test
         public void testIsotopicMods() throws IOException
         {
-            // Modifications in Panorama Public that do not have a UNIMOD ID.
-            List<IsotopeModification> mods = new ArrayList<>();
-            mods.add(createisotopicMod("all N15",null,null,null,false,false,true,false));
-            mods.add(createisotopicMod("13C V",null,"V",null,false,true,false,false));
-            mods.add(createisotopicMod("Label:13C(6)15N(2) (K)",null,"K",null,false,true,true,false));
-            mods.add(createisotopicMod("heavy K",null,"K","C",false,true,true,false));
-            mods.add(createisotopicMod("K-8",null,"K",null,false,true,true,false));
-            mods.add(createisotopicMod("HeavyK",null,"K","C",false,true,true,false));
-            mods.add(createisotopicMod("Label:13C15N",null,null,null,false,true,true,false));
-            mods.add(createisotopicMod("Label:13C(6)15N(4) (C-term R)",null,"R","C",false,true,true,false));
-            mods.add(createisotopicMod("Label:13C(6)15N(2) (C-term K)",null,"K",null,false,true,true,false));
-            mods.add(createisotopicMod("mTRAQ +8 (N-term)","C'6N'2 - C6N2",null,"N",false,false,false,false));
-            mods.add(createisotopicMod("HeavyR",null,"R","C",false,true,true,false));
-            mods.add(createisotopicMod("R-6",null,"R",null,false,true,false,false));
-            mods.add(createisotopicMod("Leu6C13N15","C'6N' -C6N","L",null,false,false,false,false));
-            mods.add(createisotopicMod("R-10",null,"R",null,false,true,true,false));
-            mods.add(createisotopicMod("Label:13C(6)15N(4) (C-term R)",null,"R",null,false,true,true,false));
-            mods.add(createisotopicMod("15N",null,null,null,false,false,true,false));
-            mods.add(createisotopicMod("all 15N",null,null,null,false,false,true,false));
-            mods.add(createisotopicMod("13C R",null,"R","C",false,true,false,false));
-            mods.add(createisotopicMod("R 13C 15N",null,"R","C",false,true,true,false));
-            mods.add(createisotopicMod("K-6",null,"K",null,false,true,false,false));
-            mods.add(createisotopicMod("Label:15N",null,null,null,false,false,true,false));
-            mods.add(createisotopicMod("mTRAQ +8 (K)","C'6N'2 - C6N2","K",null,false,false,false,false));
-            mods.add(createisotopicMod("Label:13C15N",null,"V",null,false,true,true,false));
-            mods.add(createisotopicMod("Label:13C",null,null,null,false,true,false,false));
-            mods.add(createisotopicMod("heavyK","C6H8H'4ON2 - C6H12ON2","K",null,false,false,false,false));
-            mods.add(createisotopicMod("R(+10)",null,"R",null,false,true,true,false));
-            mods.add(createisotopicMod("R10",null,"R","C",false,true,true,false));
-            mods.add(createisotopicMod("heavy R",null,"R","C",false,true,true,false));
-            mods.add(createisotopicMod("N15",null,null,null,false,false,true,false));
-            mods.add(createisotopicMod("Label:13C(6) (C-term K)",null,"K","C",false,true,false,false));
-            mods.add(createisotopicMod("L-6",null,"L",null,false,true,false,false));
-            mods.add(createisotopicMod("Label:13C(4)15N(2) (C-term E)",null,"E","C",false,true,true,false));
-            mods.add(createisotopicMod("Label:13C(6)15N(2) (C-term K)",null,"K","C",false,true,true,false));
-            mods.add(createisotopicMod("mTRAQ +4 (N-term)","C'3N'1 - C3N1",null,"N",false,false,false,false));
-            mods.add(createisotopicMod("K(+08)",null,"K",null,false,true,true,false));
-            mods.add(createisotopicMod("Label:13C(6) (C-term R)",null,"R","C",false,true,false,false));
-            mods.add(createisotopicMod("mTRAQ +4 (K)","C'3N'1 - C3N1","K",null,false,false,false,false));
-
             File unimodXml = getUnimodFile();
             UnimodModifications uMods = null;
             try
@@ -454,47 +780,189 @@ public class ExperimentModificationGetter
                 fail("Failed to parse UNIMOD modifications. " + e.getMessage());
             }
 
-            assertTrue(uMods != null);
+            assertNotNull(uMods);
 
-            // These modifications do not match with a modification in unimod.xml
-            Set<String> unknown = new HashSet<>();
-            unknown.add("all N15");
-            unknown.add("13C V");
-            unknown.add("Label:13C15N");
-            unknown.add("15N");
-            unknown.add("all 15N");
-            unknown.add("Label:15N");
-            unknown.add("Label:13C");
-            unknown.add("N15");
-            unknown.add("mTRAQ +4 (K)");
+            List<IsotopeModification> mods = new ArrayList<>();
+            Map<String, List<UnimodModification>> matches = new HashMap<>();
+            int idx = 0;
 
-            int notFound = 0;
-            int total = 0;
-            for(IsotopeModification mod: mods)
+            // Some modifications on PanoramaWeb that do not have a UNIMOD ID.
+
+            var label13C6 = uMods.getById(188); // Label:13C(6)
+            mods.add(createisotopicMod("R-6",null,"R",null,false, LABEL13C,false,false));
+            matches.put(mods.get(idx++).getName(), List.of(label13C6));
+            mods.add(createisotopicMod("Label:13C(6) (C-term R)",null,"R","C",false, LABEL13C,false,false));
+            matches.put(mods.get(idx++).getName(), List.of(label13C6));
+            mods.add(createisotopicMod("K-6",null,"K",null,false, LABEL13C,false,false));
+            matches.put(mods.get(idx++).getName(), List.of(
+                    label13C6, // This is the real match. Others below will match because the isotope formula diff (C'6 - C6) matches
+                    uMods.getById(364), /* ICPL:13C(6) */
+                    uMods.getById(464), /* SPITC:13C(6) */
+                    uMods.getById(1398) /* Iodoacetanilide:13C(6) */));
+            mods.add(createisotopicMod("Label:13C(6) (C-term K)",null,"K","C",false, LABEL13C,false,false));
+            matches.put(mods.get(idx++).getName(), List.of(
+                    label13C6, // This is the real match. Others below will match because the isotope formula diff (C'6 - C6) matches
+                    uMods.getById(364), /* ICPL:13C(6) */
+                    uMods.getById(464), /* SPITC:13C(6) */
+                    uMods.getById(1398) /* Iodoacetanilide:13C(6) */));
+            mods.add(createisotopicMod("L-6",null,"L",null,false, LABEL13C,false,false));
+            matches.put(mods.get(idx++).getName(), List.of(label13C6));
+
+            // Other user given names for this modification in Skyline: heavy K, K-8, K(+08)
+            var label13C615N2 = uMods.getById(259);
+            mods.add(createisotopicMod("Label:13C(6)15N(2) (K)",null,"K",null,false, LABEL13C, LABEL15N,false));
+            matches.put(mods.get(idx++).getName(), List.of(
+                    label13C615N2, // This is the real match. Others below will match because the isotope formula diff (C'6N'2 - C6N2) matches
+                    uMods.getById(1302) /* mTRAQ:13C(6)15N(2) */));
+            mods.add(createisotopicMod("Label:13C(6)15N(2) (C-term K)",null,"K","C",false, LABEL13C, LABEL15N,false));
+            matches.put(mods.get(idx++).getName(), List.of(
+                    label13C615N2, // This is the real match. Others below will match because the isotope formula diff (C'6N'2 - C6N2) matches
+                    uMods.getById(1302) /* mTRAQ:13C(6)15N(2) */));
+
+            // Other user given names for this modification in Skyline: HeavyR, heavy R, R10, R-10, R(+10), R 13C 15N,
+            var label13C615N4 = uMods.getById(267);
+            mods.add(createisotopicMod("Label:13C(6)15N(4) (C-term R)",null,"R","C",false, LABEL13C, LABEL15N,false));
+            matches.put(mods.get(idx++).getName(), List.of(label13C615N4));
+            mods.add(createisotopicMod("Label:13C(6)15N(4) (C-term R)",null,"R",null,false, LABEL13C, LABEL15N,false));
+            matches.put(mods.get(idx++).getName(), List.of(label13C615N4));
+
+
+            var label13C515N1 = uMods.getById(268);
+            // Modification name is incorrect! It should be Label:13C(5)15N(1) (C-term E) Formula for Glutamic Acid (E) is C5H9NO4
+            mods.add(createisotopicMod("Label:13C(4)15N(2) (C-term E)",null,"E","C",false, LABEL13C, LABEL15N,false));
+            matches.put(mods.get(idx++).getName(), List.of(label13C515N1));
+
+
+            // The formula could have been simplified to "H'4 - H4".  This is probably a heavy version of a unlabeled structural modification.
+            // Assuming that the user entered "- C6H12ON2" as the formula of the unlabeled mod, Unimod:1301, Lys matches.  But there is no
+            // labeled form for Lys:2H(4) in Unimod.
+            mods.add(createisotopicMod("heavyK","C6H8H'4ON2 - C6H12ON2","K",null,false,false,false,false));
+            matches.put(mods.get(idx++).getName(), List.of(
+                    uMods.getById(481), /* Label:2H(4) */
+                    uMods.getById(65), /* Succinyl:2H(4) */
+                    uMods.getById(95), /* IMID:2H(4) */
+                    uMods.getById(199), /* Dimethyl:2H(4) */
+                    uMods.getById(687) /* ICPL:2H(4) */));
+
+            mods.add(createisotopicMod("Leu6C13N15","C'6N' -C6N","L",null,false,false,false,false));
+            matches.put(mods.get(idx++).getName(), List.of(uMods.getById(695) /* Label:13C(6)15N(1) */));
+
+
+            // These are wildcard modifications. No formula or labeled amino acids are given so we cannot get a specific match
+            // Label:15N, for example corresponds to the following Unimod modifications:
+            // http://www.unimod.org/modifications_view.php?editid1=994 15N(1)
+            // http://www.unimod.org/modifications_view.php?editid1=995 15N(2)
+            // http://www.unimod.org/modifications_view.php?editid1=996 15N(3)
+            // http://www.unimod.org/modifications_view.php?editid1=897 SILAC 15N(4)
+            mods.add(createisotopicMod("Label:15N",null,null,null,false,false,true,false));
+            matches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createisotopicMod("Label:13C",null,null,null,false,true,false,false));
+            matches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createisotopicMod("Label:13C15N",null,null,null,false,true,true,false));
+            matches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createisotopicMod("all N15",null,null,null,false,false,true,false));
+            matches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createisotopicMod("13C V",null,"V",null,false,true,false,false));
+            matches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createisotopicMod("15N",null,null,null,false,false,true,false));
+            matches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createisotopicMod("all 15N",null,null,null,false,false,true,false));
+            matches.put(mods.get(idx++).getName(), Collections.emptyList());
+            mods.add(createisotopicMod("N15",null,null,null,false,false,true,false));
+            matches.put(mods.get(idx++).getName(), Collections.emptyList());
+
+
+            // User defined mTRAQ heavy labels.
+            // Skyline's formula in UniModData.cs for the heavy label does not match the composition in Unimod.
+            // For example: mTRAQ:13C(6)15N(2) (K) has formula "C'6N'2 - C6N2" in Skyline.
+            // The corresponding Unimod entry, Unimod:1302 mTRAQ heavy has composition H(12) C 13C(6) 15N(2) O
+            // The difference is because Skyline's formula for the heavy label is the difference of mTRAQ(heavy) - mTRAQ(light).
+            // The light version, on 'K', in Skyline is mTRAQ (K), with formula C7H12N2O. This is the same as Unimod:888, mTRAQ light (H(12) C(7) N(2) O).
+            // Unimod mTRAQ heavy (H(12) C 13C(6) 15N(2) O) minus Unimod mTRAQ light (H(12) C(7) N(2) O) equals C(-6) 13C(6) N(-2) 15N(2).
+            // C(-6) 13C(6) N(-2) 15N(2) is also the formula for Unimod:259, Label:13C(6)15N(2), and applies on 'K'.
+            // We will find two matches for this modification. The correct one is from matching to the isotope formula diff.
+            mods.add(createisotopicMod("mTRAQ +8 (K)","C'6N'2 - C6N2","K",null,false, LABEL13C, LABEL15N,false));
+            matches.put(mods.get(idx++).getName(), List.of(
+                    uMods.getById(1302), /* mTRAQ:13C(6)15N(2) */
+                    uMods.getById(259) /* Label:13C(6)15N(2) */));
+            // Unimod:259, Label:13C(6)15N(2) does not have a N-term specificity so it will not match the modification below. Only one match will be found
+            // based on the isotope formula diff.
+            mods.add(createisotopicMod("mTRAQ +8 (N-term)","C'6N'2 - C6N2",null,"N",false,false,false,false));
+            matches.put(mods.get(idx++).getName(), List.of(uMods.getById(1302) /* mTRAQ:13C(6)15N(2) */));
+            mods.add(createisotopicMod("mTRAQ +4 (N-term)","C'3N'1 - C3N1",null,"N",false,false,false,false));
+            matches.put(mods.get(idx++).getName(), List.of(uMods.getById(889) /* mTRAQ:13C(3)15N(1) */));
+            mods.add(createisotopicMod("mTRAQ +4 (K)","C'3N'1 - C3N1","K",null,false,false,false,false));
+            matches.put(mods.get(idx++).getName(), List.of(uMods.getById(889) /* mTRAQ:13C(3)15N(1) */));
+
+            for(int i = 0; i < mods.size(); i++)
             {
-                PxModification pxMod = getIsotopicUnimodMod(mod, uMods, null);
-//                if(!pxMod.hasUnimodId())
-//                {
-//                    String term = mod.getTerminus() == null ? "" : (mod.getTerminus().equals("N") ? "N-term" : "C-term");
-//                    String labels = mod.getLabel2H() ? "2H" : "-";
-//                    labels = labels + (mod.getLabel13C() ? "13C" : "-");
-//                    labels = labels + (mod.getLabel15N() ? "15N" : "-");
-//                    labels = labels + (mod.getLabel18O() ? "18N" : "-");
-//
-//                    System.out.println(pxMod.getUnimodId() + ", " + pxMod.getSkylineName() + "(" + pxMod.getName() + ")"
-//                            + ", " + UnimodModification.normalizeFormula(mod.getFormula()) + ", " + mod.getAminoAcid() + ", TERM: " + term
-//                            +", " + labels);
-//                }
-                if(!unknown.contains(pxMod.getName()))
+                IsotopeModification mod = mods.get(i);
+
+                if (mod.getFormula() == null && mod.getAminoAcid() == null)
                 {
-                    assertTrue(pxMod.hasUnimodId());
+                    try
+                    {
+                        getIsotopicUnimodMod(mod, uMods);
+                        fail("Expected errors since the isotope modification " + mod.getName() + " does not have any amino acids in the modification definition");
+                    }
+                    catch (IllegalArgumentException e)
+                    {
+                        assertEquals("Cannot build formula for an isotope modification (" + mod.getName() + ") without any modified amino acids.", e.getMessage());
+                    }
+                    continue;
                 }
+                PxModification pxMod = getIsotopicUnimodMod(mod, uMods);
 
-                notFound = notFound + (pxMod.hasUnimodId() ? 0 : 1);
-                total++;
+                printIsotopicMod(mod, pxMod);
+
+                List<UnimodModification> expectedMatches = matches.get(pxMod.getSkylineName());
+
+                if (expectedMatches.size() == 0)
+                {
+                    assertFalse("Unexpected Unimod match for isotopic modification " + pxMod.getSkylineName(), pxMod.hasUnimodId());
+                    assertTrue("Unexpected possible mods for isotopic modification " + pxMod.getSkylineName(), pxMod.getPossibleUnimodMatches().size() == 0);
+                }
+                else if (expectedMatches.size() == 1)
+                {
+                    assertTrue("Expected a Unimod Id for isotopic modification " + pxMod.getSkylineName(), pxMod.hasUnimodId());
+                    assertEquals("Unexpected Unimod match Id for isotopic modification " + pxMod.getSkylineName(), expectedMatches.get(0).getId(), pxMod.getUnimodIdInt().intValue());
+                    assertEquals("Unexpected Unimod match name for isotopic modification " + pxMod.getSkylineName(), expectedMatches.get(0).getName(), pxMod.getName());
+                    assertFalse("Isotopic modification " + pxMod.getSkylineName() + " has a Unimod Id."
+                            + " Unexpected " + pxMod.getPossibleUnimodMatches().size() + " possible matches", pxMod.hasPossibleUnimods());
+                }
+                else if (expectedMatches.size() > 1)
+                {
+                    List<UnimodModification> possibleMods = pxMod.getPossibleUnimodMatches();
+                    assertFalse("Unexpected Unimod Id for isotopic modification " + pxMod.getSkylineName(), pxMod.hasUnimodId());
+                    assertEquals("Expected " + expectedMatches.size() + " possible matches for isotopic modification " + pxMod.getSkylineName(), expectedMatches.size(), possibleMods.size());
+                    assertEquals(expectedMatches.stream().map(m -> m.getId()).collect(Collectors.toSet()), possibleMods.stream().map(m -> m.getId()).collect(Collectors.toSet()));
+                }
             }
+        }
 
-//            System.out.println("TOTAL " + total + ", NOT FOUND: " + notFound);
+        private void printIsotopicMod(IsotopeModification mod, PxModification pxMod)
+        {
+            if (!debug)
+            {
+                return;
+            }
+            if (pxMod.hasUnimodId())
+            {
+                String term = mod.getTerminus() == null ? "" : (mod.getTerminus().equals("N") ? "N-term" : "C-term");
+                String modInfo = pxMod.getSkylineName() + ", " + Formula.normalizeFormula(mod.getFormula()) + ", " + mod.getAminoAcid() + ", TERM: " + term;
+                System.out.print("Skyline: " + modInfo);
+                System.out.println(" --- " + pxMod.getUnimodId() + ", " + pxMod.getName());
+            }
+            if (pxMod.hasPossibleUnimods())
+            {
+                String term = mod.getTerminus() == null ? "" : (mod.getTerminus().equals("N") ? "N-term" : "C-term");
+                String modInfo = pxMod.getSkylineName() + ", " + Formula.normalizeFormula(mod.getFormula()) + ", " + mod.getAminoAcid() + ", TERM: " + term;
+                System.out.println("Skyline: " + modInfo);
+                for (UnimodModification umod: pxMod.getPossibleUnimodMatches())
+                {
+                    System.out.println(" --- List.of(new UnimodModification(" + umod.getId() + ", \"" + umod.getName() + "\", null))");
+                }
+            }
         }
 
         private Modification createMod(String name, String formula, String sites, String terminus)
@@ -507,7 +975,11 @@ public class ExperimentModificationGetter
             return mod;
         }
 
-        private IsotopeModification createisotopicMod(String name, String formula, String sites, String terminus,
+        private static final boolean LABEL2H = true;
+        private static final boolean LABEL13C = true;
+        private static final boolean LABEL15N = true;
+        private static final boolean LABEL18O = true;
+        private static IsotopeModification createisotopicMod(String name, String formula, String sites, String terminus,
                                                                       boolean label2h, boolean label13c, boolean label15n, boolean label18o)
         {
             IsotopeModification mod = new IsotopeModification();
@@ -621,6 +1093,21 @@ public class ExperimentModificationGetter
         {
             _unimodId = unimodId;
         }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Modification that = (Modification) o;
+            return getId() == that.getId() && getName().equals(that.getName()) && Objects.equals(getAminoAcid(), that.getAminoAcid()) && Objects.equals(getTerminus(), that.getTerminus()) && Objects.equals(getFormula(), that.getFormula()) && Objects.equals(getMassDiffMono(), that.getMassDiffMono()) && Objects.equals(getMassDiffAvg(), that.getMassDiffAvg()) && Objects.equals(getUnimodId(), that.getUnimodId());
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(getId(), getName(), getAminoAcid(), getTerminus(), getFormula(), getMassDiffMono(), getMassDiffAvg(), getUnimodId());
+        }
     }
 
     static class IsotopeModification extends Modification implements IModification.IIsotopeModification
@@ -672,6 +1159,56 @@ public class ExperimentModificationGetter
         public void setLabel2H(Boolean label2H)
         {
             _label2H = label2H;
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            if (!super.equals(o)) return false;
+            IsotopeModification that = (IsotopeModification) o;
+            return Objects.equals(getLabel13C(), that.getLabel13C())
+                    && Objects.equals(getLabel15N(), that.getLabel15N())
+                    && Objects.equals(getLabel18O(), that.getLabel18O())
+                    && Objects.equals(getLabel2H(), that.getLabel2H());
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(super.hashCode(), getLabel13C(), getLabel15N(), getLabel18O(), getLabel2H());
+        }
+
+        private static final boolean LABEL2H = true;
+        private static final boolean LABEL13C = true;
+        private static final boolean LABEL15N = true;
+        private static final boolean LABEL18O = true;
+
+        public static IsotopeModification create(String name, String formula, String sites, String terminus,
+                                                 boolean label2h, boolean label13c, boolean label15n, boolean label18o)
+        {
+            IsotopeModification mod = new IsotopeModification();
+            mod.setFormula(formula);
+            mod.setTerminus(terminus);
+            mod.setAminoAcid(sites);
+            mod.setName(name);
+            mod.setLabel2H(label2h);
+            mod.setLabel13C(label13c);
+            mod.setLabel15N(label15n);
+            mod.setLabel18O(label18o);
+            return mod;
+        }
+
+        public static IsotopeModification create(IModification.IIsotopeModification iMod)
+        {
+            return iMod != null ?
+                    create(iMod.getName(), iMod.getFormula(), iMod.getAminoAcid(), iMod.getTerminus(),
+                    iMod.getLabel2H() != null ? iMod.getLabel2H().booleanValue() : false,
+                    iMod.getLabel13C() != null ? iMod.getLabel13C().booleanValue() : false,
+                    iMod.getLabel15N() != null ? iMod.getLabel15N().booleanValue() : false,
+                    iMod.getLabel18O() != null ? iMod.getLabel18O().booleanValue() : false)
+                    : null;
         }
     }
 }

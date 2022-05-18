@@ -75,8 +75,11 @@ import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
+import org.labkey.panoramapublic.query.ModificationInfoManager;
 import org.labkey.panoramapublic.query.SpecLibInfoManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
+import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfo;
+import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfo;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -183,6 +186,9 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // Copy any Spectral library information provided by the user in the source container
             copySpecLibInfos(sourceExperiment, targetExperiment, user);
 
+            // Copy any modifications related information provided by the user in the source container
+            copyModificationInfos(sourceExperiment, targetExperiment, user);
+
             // Assign a reviewer account if one was requested
             Pair<User, String> reviewer = assignReviewer(js, targetExperiment, previousCopy, jobSupport, currentSubmission.isKeepPrivate(), user, log);
 
@@ -210,6 +216,25 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             info.setId(0);
             info.setExperimentAnnotationsId(targetExperiment.getId());
             SpecLibInfoManager.save(info, user);
+        }
+    }
+
+    private void copyModificationInfos(ExperimentAnnotations sourceExperiment, ExperimentAnnotations targetExperiment, User user)
+    {
+        List<ExperimentStructuralModInfo> strModInfos = ModificationInfoManager.getStructuralModInfosForExperiment(sourceExperiment.getId(), sourceExperiment.getContainer());
+        for (ExperimentStructuralModInfo info: strModInfos)
+        {
+            info.setId(0);
+            info.setExperimentAnnotationsId(targetExperiment.getId());
+            ModificationInfoManager.saveStructuralModInfo(info, user);
+        }
+
+        List<ExperimentIsotopeModInfo> isotopeModInfos = ModificationInfoManager.getIsotopeModInfosForExperiment(sourceExperiment.getId(), sourceExperiment.getContainer());
+        for (ExperimentIsotopeModInfo info: isotopeModInfos)
+        {
+            info.setId(0);
+            info.setExperimentAnnotationsId(targetExperiment.getId());
+            ModificationInfoManager.saveIsotopeModInfo(info, user);
         }
     }
 

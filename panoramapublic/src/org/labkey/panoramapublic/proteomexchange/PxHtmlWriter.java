@@ -17,15 +17,19 @@ package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 import org.labkey.api.security.User;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Submission;
+import org.labkey.panoramapublic.model.validation.Modification;
+import org.labkey.panoramapublic.model.validation.PxStatus;
+import org.labkey.panoramapublic.model.validation.Status;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +38,7 @@ public class PxHtmlWriter extends PxWriter
 {
     private final StringBuilder _output;
 
-    private static final Logger LOG = LogManager.getLogger(PxHtmlWriter.class);
+    private static final Logger LOG = LogHelper.getLogger(PxHtmlWriter.class, "ProteomeXchange XML summary writer");
 
     public PxHtmlWriter(StringBuilder out)
     {
@@ -79,43 +83,42 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writeDatasetSummary(ExperimentAnnotations expAnnotations, Submission submission)
+    void writeDatasetSummary(ExperimentAnnotations expAnnotations, Submission submission, Status validationStatus)
     {
         tr("Description", expAnnotations.getAbstract());
         tr("Review Level", (expAnnotations.isPeerReviewed()) ? "Peer Reviewed" : "Not Peer Reviewed");
-
-        SubmissionDataStatus status = SubmissionDataValidator.validateExperiment(expAnnotations);
 
         final String complete = "Supported dataset by repository";
         final String incomplete = "supported by repository but incomplete data and/or metadata";
         final String repoSupport = "Repository Support";
         final String override = " (override) ";
-        if(status.isComplete())
+        PxStatus pxStatus = validationStatus.getValidation().getStatus();
+        if(pxStatus == PxStatus.Complete)
         {
             tr(repoSupport, complete);
         }
         else
         {
             HtmlList list = new HtmlList();
-            if(status.hasInvalidModifications())
+            if(!validationStatus.allModificationsValid())
             {
                list.addItem("Modifications without UNIMOD Ids", "Yes", true);
             }
-            if(status.hasMissingLibrarySourceFiles())
+            if(!validationStatus.specLibsComplete())
             {
                 list.addItem("Missing spectrum library source files", "Yes", true);
             }
-            if (status.hasMissingRawFiles())
+            if (!validationStatus.foundAllSampleFiles())
             {
                 list.addItem("Missing raw files", "Yes", true);
             }
-            if(status.hasMissingMetadata())
+            if(validationStatus.hasMissingMetadata())
             {
                 list.addItem("Missing metadata", "Yes", true);
             }
             list.end();
             String submissionTypeTxt;
-            if (status.isIncomplete())
+            if (pxStatus == PxStatus.IncompleteMetadata)
             {
                 submissionTypeTxt = submission.isIncompletePxSubmission() ? incomplete
                         // Data validator tell us that his is an incomplete submission but there was an admin override
@@ -136,7 +139,8 @@ public class PxHtmlWriter extends PxWriter
             }
             else
             {
-                submissionTypeTxt = "PX ID was neither requested nor assigned.  Cannot be announced on ProteomeXchange";
+                submissionTypeTxt = String.format("PX ID was %s assigned.  Data cannot be announced on ProteomeXchange",
+                        submission.isPxidRequested() ? "not" : "neither requested nor");
             }
             trNoFilter(repoSupport,  submissionTypeTxt + list.getHtml(), true);
         }
@@ -235,19 +239,18 @@ public class PxHtmlWriter extends PxWriter
     }
 
     @Override
-    void writeModificationList(ExperimentAnnotations experimentAnnotations)
+    void writeModificationList(Status validationStatus)
     {
-        List<ExperimentModificationGetter.PxModification> mods = ExperimentModificationGetter.getModifications(experimentAnnotations);
+        List<Modification> mods = new ArrayList(validationStatus.getModifications());
+        mods.sort(Comparator.comparing(Modification::getModType)
+                .thenComparing(Modification::isValid)
+                .thenComparing(Modification::getSkylineModName));
         HtmlList modList = new HtmlList();
-        for(ExperimentModificationGetter.PxModification mod: mods)
+        for(Modification mod: mods)
         {
-            String name = mod.getName();
-            String value = mod.hasUnimodId() ? mod.getUnimodId() : NO_UNIMOD_ID;
-            if(!mod.getName().equals(mod.getSkylineName()))
-            {
-               name += " (" + mod.getSkylineName() + ")";
-            }
-            modList.addItem(name, value, !mod.hasUnimodId());
+            String name = mod.getSkylineModName();
+            String value = mod.getUnimodStr();
+            modList.addItem(name, value, !mod.isValid());
         }
         modList.end();
         trNoFilter("Modifications", modList.getHtml());
@@ -395,7 +398,7 @@ public class PxHtmlWriter extends PxWriter
 
     private static final class HtmlList
     {
-        private StringBuilder _list;
+        private final StringBuilder _list;
 
         public HtmlList()
         {

@@ -70,7 +70,7 @@
     ActionURL pxActionsUrl = urlFor(GetPxActionsAction.class);
     pxActionsUrl.addParameter("id", expAnnot.getId());
 
-    ActionURL pxValidationUrl = getPrePublishExperimentCheckURL(expAnnot.getId(), expAnnot.getContainer(), true);
+    ActionURL pxValidationUrl = getDataValidationCheckUrl(expAnnot.getId(), expAnnot.getContainer(), true);
     pxValidationUrl.addParameter(ActionURL.Param.returnUrl, js.getShortCopyUrl().getFullURL());
 %>
 
