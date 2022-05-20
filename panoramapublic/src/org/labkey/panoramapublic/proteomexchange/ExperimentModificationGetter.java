@@ -22,11 +22,9 @@ import org.junit.Test;
 import org.labkey.api.targetedms.IModification;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
-import org.labkey.api.util.JunitUtil;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -372,11 +370,10 @@ public class ExperimentModificationGetter
         @Test
         public void testStructuralMods() throws IOException
         {
-            File unimodXml = getUnimodFile();
             UnimodModifications uMods = null;
             try
             {
-                uMods = new UnimodParser().parse(unimodXml);
+                uMods = new UnimodParser().parse();
             }
             catch (Exception e)
             {
@@ -755,25 +752,13 @@ public class ExperimentModificationGetter
             }
         }
 
-        private File getUnimodFile() throws IOException
-        {
-            File root = JunitUtil.getSampleData(null, "../../../server");
-            if(root == null)
-            {
-                root = new File(System.getProperty("user.dir"));
-            }
-            // /modules/MacCossLabModules/PanoramaPublic/resources/unimod_NO_NAMESPACE.xml
-            return new File(root, "/modules/MacCossLabModules/PanoramaPublic/resources/unimod_NO_NAMESPACE.xml");
-        }
-
         @Test
         public void testIsotopicMods() throws IOException
         {
-            File unimodXml = getUnimodFile();
             UnimodModifications uMods = null;
             try
             {
-                uMods = new UnimodParser().parse(unimodXml);
+                uMods = new UnimodParser().parse();
             }
             catch (Exception e)
             {

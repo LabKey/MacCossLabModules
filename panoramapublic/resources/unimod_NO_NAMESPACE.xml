@@ -2,9 +2,7 @@
 <!--Copyright (C) 2002-2006 Unimod; this information may be copied, distributed and/or-->
 <!--modified under certain conditions, but it comes WITHOUT ANY WARRANTY; see the-->
 <!--accompanying Design Science License for more details-->
-<unimod xmlns:umod="http://www.unimod.org/xmlns/schema/unimod_2"
-             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-             xsi:schemaLocation="http://www.unimod.org/xmlns/schema/unimod_2 http://www.unimod.org/xmlns/schema/unimod_2/unimod_2.xsd"
+<unimod xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
              majorVersion="2"
              minorVersion="0">
    <elements>
