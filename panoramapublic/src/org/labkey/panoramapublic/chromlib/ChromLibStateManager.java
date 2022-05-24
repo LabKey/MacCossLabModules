@@ -21,8 +21,9 @@ import org.labkey.api.util.FileUtil;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -118,7 +119,7 @@ public class ChromLibStateManager
     static List<LibPeptideGroup> getPeptideGroups(ITargetedMSRun run, TargetedMSService svc)
     {
         return new TableSelector(svc.getTableInfoPeptideGroup(),
-                Set.of("id", "runId", "label", "sequenceId", "representativedatastate"),
+                new LinkedHashSet<>(Arrays.asList("id", "runId", "label", "sequenceId", "representativedatastate")),
                 new SimpleFilter(FieldKey.fromParts("runId"), run.getId()), null)
                 .getArrayList(LibPeptideGroup.class);
     }

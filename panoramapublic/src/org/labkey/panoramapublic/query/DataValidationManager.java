@@ -185,7 +185,7 @@ public class DataValidationManager
     {
         SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("validationId"), validationId);
         return new TableSelector(PanoramaPublicManager.getTableInfoSkylineDocValidation(),
-                Set.of("runId"), filter, null).getArrayList(Long.class);
+                Collections.singleton("runId"), filter, null).getArrayList(Long.class);
     }
 
     public static @NotNull Status getIncompleteSkyDocsInContainer(@NotNull DataValidation validation, @NotNull Container container, User user)
@@ -614,7 +614,7 @@ public class DataValidationManager
     {
         var filter = new SimpleFilter(FieldKey.fromParts("validationId"), validationId);
         var skyDocValidationIds = new TableSelector(PanoramaPublicManager.getTableInfoSkylineDocValidation(),
-                Set.of("Id"), filter, null).getArrayList(Integer.class);
+                Collections.singleton("Id"), filter, null).getArrayList(Integer.class);
 
         var skyDocValidationIdsFilter = new SimpleFilter().addInClause(FieldKey.fromParts("SkylineDocValidationId"), skyDocValidationIds);
         Table.delete(PanoramaPublicManager.getTableInfoSkylineDocSampleFile(), skyDocValidationIdsFilter);
@@ -625,7 +625,7 @@ public class DataValidationManager
     {
         var filter = new SimpleFilter(FieldKey.fromParts("validationId"), validationId);
         var modValidationIds = new TableSelector(PanoramaPublicManager.getTableInfoModificationValidation(),
-                Set.of("Id"), filter, null).getArrayList(Integer.class);
+                Collections.singleton("Id"), filter, null).getArrayList(Integer.class);
 
         var modValidationIdsFilter = new SimpleFilter().addInClause(FieldKey.fromParts("ModificationValidationId"), modValidationIds);
         Table.delete(PanoramaPublicManager.getTableInfoSkylineDocModification(), modValidationIdsFilter);
@@ -636,7 +636,7 @@ public class DataValidationManager
     {
         var filter = new SimpleFilter(FieldKey.fromParts("validationId"), validationId);
         var specLibIds = new TableSelector(PanoramaPublicManager.getTableInfoSpecLibValidation(),
-                Set.of("Id"), filter, null).getArrayList(Integer.class);
+                Collections.singleton("Id"), filter, null).getArrayList(Integer.class);
 
         var specLibIdFilter = new SimpleFilter().addInClause(FieldKey.fromParts("SpecLibValidationId"), specLibIds);
         Table.delete(PanoramaPublicManager.getTableInfoSpecLibSourceFile(), specLibIdFilter);
