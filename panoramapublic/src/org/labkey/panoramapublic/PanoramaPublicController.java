@@ -7838,7 +7838,7 @@ public class PanoramaPublicController extends SpringActionController
             modInfo.setUnimodName(mod1.getName());
             modInfo.setUnimodId2(mod2.getId());
             modInfo.setUnimodName2(mod2.getName());
-            ModificationInfoManager.saveStructuralModInfo(modInfo, getUser());
+            ModificationInfoManager.saveStructuralModInfo(modInfo, _expAnnot, getContainer(), getUser());
 
             return true;
         }

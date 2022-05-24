@@ -56,7 +56,7 @@ public class UnimodParser
         return parse(unimodXml);
     }
 
-    public UnimodModifications parse(File unimodXml) throws PxException
+    private UnimodModifications parse(File unimodXml) throws PxException
     {
         if(!unimodXml.exists())
         {
