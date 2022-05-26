@@ -536,11 +536,10 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void validateCommand(JournalForm form, Errors errors)
         {
-            return;
         }
 
         @Override
-        public URLHelper getSuccessURL(JournalForm form)
+        public @NotNull URLHelper getSuccessURL(JournalForm form)
         {
             return new ActionURL(JournalGroupsAdminViewAction.class, getContainer());
         }
@@ -4766,6 +4765,7 @@ public class PanoramaPublicController extends SpringActionController
         protected abstract DOM.Renderable getSuccessMessage();
         protected abstract boolean doPost(DoiForm form, BindException errors) throws DataCiteException;
 
+        @Override
         public ModelAndView getFailView(DoiForm form, BindException errors)
         {
             if(_exception != null)
@@ -5820,7 +5820,7 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public URLHelper getSuccessURL(SelectedIdsForm deleteExperimentAnnotationForm)
+        public @NotNull URLHelper getSuccessURL(SelectedIdsForm deleteExperimentAnnotationForm)
         {
             return getContainer().getStartURL(getUser());
         }
@@ -5927,7 +5927,7 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public URLHelper getSuccessURL(DeleteExperimentAnnotationsForm deleteExperimentAnnotationForm)
+        public @NotNull URLHelper getSuccessURL(DeleteExperimentAnnotationsForm deleteExperimentAnnotationForm)
         {
             return getContainer().getStartURL(getUser());
         }
