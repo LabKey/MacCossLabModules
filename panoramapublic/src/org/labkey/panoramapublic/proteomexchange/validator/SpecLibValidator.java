@@ -188,15 +188,19 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
     {
         if (sources != null)
         {
-            sources.sort(Comparator.comparing(LibSourceFile::getSpectrumSourceFile)
-                    .thenComparing(LibSourceFile::getIdFile));
+            sources.sort(specLibSourceComparator());
         }
         if (docLibSources != null)
         {
-            docLibSources.sort(Comparator.comparing(LibSourceFile::getSpectrumSourceFile)
-                    .thenComparing(LibSourceFile::getIdFile));
+            docLibSources.sort(specLibSourceComparator());
         }
         return Objects.equals(sources, docLibSources);
+    }
+
+    private static Comparator<LibSourceFile> specLibSourceComparator()
+    {
+        return Comparator.comparing(LibSourceFile::getSpectrumSourceFile, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(LibSourceFile::getIdFile, Comparator.nullsLast(Comparator.naturalOrder()));
     }
 
     private void validateLibrarySources(List<LibSourceFile> sources, FileContentService fcs, ExperimentAnnotations expAnnotations)
@@ -418,6 +422,28 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             assertFalse(areSameSources(source1, source2));
             source1.clear();
             source1.addAll(List.of(f1, f2, f3, f6_same_as_f4));
+            assertTrue(areSameSources(source1, source2));
+
+            // Test null values for spectrumSourceFile, e.g. when we add a LibSourcefile for MaxQuant files. Here the idFile variable
+            // is set to mqpar.xml or evidence.txt.  The spectrumSourceVariable remains null.
+            LibSourceFile f7_spec_src_null = new LibSourceFile(null, "evidence.txt", null);
+            LibSourceFile f8_spec_src_null = new LibSourceFile(null, "msms.txt", null);
+            source1.clear();
+            source2.clear();
+            source1.addAll(List.of(f7_spec_src_null, f8_spec_src_null));
+            source2.addAll(List.of(f7_spec_src_null, f8_spec_src_null));
+            assertTrue(areSameSources(source1, source2));
+
+            assertTrue(areSameSources(null, null));
+            assertFalse(areSameSources(source1, null));
+            assertFalse(areSameSources(null, source2));
+
+            LibSourceFile f9 = new LibSourceFile("file1", null, null);
+            LibSourceFile f10 = new LibSourceFile("file1", null, null);
+            source1.clear();
+            source2.clear();
+            source1.addAll(List.of(f9, f10));
+            source2.addAll(List.of(f9, f10));
             assertTrue(areSameSources(source1, source2));
         }
 
