@@ -2,7 +2,6 @@ package org.labkey.panoramapublic.pipeline;
 
 import org.apache.logging.log4j.Logger;
 import org.labkey.api.pipeline.PipelineJob;
-import org.labkey.panoramapublic.model.validation.SkylineDocValidation;
 import org.labkey.panoramapublic.model.validation.Modification;
 import org.labkey.panoramapublic.model.validation.SkylineDocModification;
 import org.labkey.panoramapublic.proteomexchange.validator.SkylineDocValidator;
@@ -41,7 +40,7 @@ public class ValidatorListener implements DataValidatorListener
     }
 
     @Override
-    public void sampleFilesValidated(SkylineDocValidator document, ValidatorStatus status)
+    public void sampleFilesValidated(SkylineDocValidator document)
     {
         _log.info("Sample file validation for Skyline document: " + document.getName());
         if (document.foundAllSampleFiles())
@@ -105,32 +104,39 @@ public class ValidatorListener implements DataValidatorListener
     }
 
     @Override
-    public void spectralLibrariesValidated(ValidatorStatus status)
+    public void validatingSpectralLibrary(SpecLibValidator specLib)
     {
-        _log.info("Spectral library validation:");
-        if (status.getSpectralLibraries().size() == 0)
+        String msg = "Validating spectral library: " + specLib.getFileName();
+        _job.setStatus(msg);
+        _log.info(msg);
+    }
+
+    @Override
+    public void spectralLibraryValidated(SpecLibValidator specLib)
+    {
+        _log.info(specLib.toString());
+        if (specLib.hasMissingSpectrumFiles() || specLib.hasMissingIdFiles())
         {
-            _log.info("No spectral libraries were found in the submitted Skyline documents.");
-        }
-        else
-        {
-            for (SpecLibValidator specLib : status.getSpectralLibraries())
+            _log.info("  MISSING FILES:");
+            for (String name : specLib.getMissingSpectrumFileNames())
             {
-                _log.info(specLib.toString());
-                if (specLib.hasMissingSpectrumFiles() || specLib.hasMissingIdFiles())
-                {
-                    _log.info("  MISSING FILES:");
-                    for (String name : specLib.getMissingSpectrumFileNames())
-                    {
-                        _log.info("    Spectrum File: " + name);
-                    }
-                    for (String name : specLib.getMissingIdFileNames())
-                    {
-                        _log.info("    Peptide Id File: " + name);
-                    }
-                }
+                _log.info("    Spectrum File: " + name);
+            }
+            for (String name : specLib.getMissingIdFileNames())
+            {
+                _log.info("    Peptide Id File: " + name);
             }
         }
+    }
+
+    @Override
+    public void spectralLibrariesValidated(ValidatorStatus status)
+    {
+        if (status.getSpectralLibraries().size() == 0)
+        {
+            _log.info("Skyline documents in the experiment do not contain any spectral libraries.");
+        }
+        _log.info("Spectral library validation complete.");
     }
 
     @Override

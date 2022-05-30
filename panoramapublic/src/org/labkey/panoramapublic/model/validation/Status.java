@@ -189,12 +189,11 @@ public class Status extends GenericValidationStatus <SkylineDoc, SpecLib>
             boolean invalidModsFound = getModifications().stream().anyMatch(mod -> !mod.isValid());
             json.put("Modifications validation complete." + (invalidModsFound ? " Found invalid modifications." : ""));
         }
-        int specLibCount = getSpectralLibraries().size();
         validatedCount = getSpectralLibraries().stream().filter(lib -> !lib.isPending()).count();
         if (validatedCount > 0)
         {
             boolean missingFilesFound = getSpectralLibraries().stream().anyMatch(lib -> !lib.isPending() && !lib.isValid());
-            json.put("Validating spectral libraries: " + validatedCount + "/" + specLibCount + " completed."
+            json.put("Validating spectral libraries: " + validatedCount + " completed."
                     + (missingFilesFound ? " Found invalid libraries." : ""));
         }
         return json;

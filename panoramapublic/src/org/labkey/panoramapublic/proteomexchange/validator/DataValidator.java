@@ -77,10 +77,12 @@ public class DataValidator
     private void validateLibraries(ValidatorStatus status, User user)
     {
         _listener.validatingSpectralLibraries();
-        // sleep();
+
         FileContentService fcs = FileContentService.get();
         for (SpecLibValidator specLib: status.getSpectralLibraries())
         {
+            _listener.validatingSpectralLibrary(specLib);
+
             try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
             {
                 specLib.setValidationId(status.getValidation().getId());
@@ -99,6 +101,8 @@ public class DataValidator
 
                 transaction.commit();
             }
+
+            _listener.spectralLibraryValidated(specLib);
         }
 
         _listener.spectralLibrariesValidated(status);
@@ -261,7 +265,7 @@ public class DataValidator
                 Set<SampleFileKey> sampleFileKeys = sampleFileNameAndKeys.computeIfAbsent(sampleFile.getFileName(), k -> new HashSet<>());
                 sampleFileKeys.add(sampleFile.getKey());
             }
-            _listener.sampleFilesValidated(skyDoc, status);
+            _listener.sampleFilesValidated(skyDoc);
         }
 
         // Sample files that have the same name but were imported from different paths or have different acquired time
