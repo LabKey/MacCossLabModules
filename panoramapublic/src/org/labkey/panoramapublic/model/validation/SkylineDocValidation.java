@@ -10,6 +10,7 @@ public abstract class SkylineDocValidation<S extends SkylineDocSampleFile>
     private int _validationId;
     private long _runId; // Refers to targetedms.runs.id
     private String _name; // Name of the .sky.zip file
+    private String _userGivenName;
 
     public abstract @NotNull List<S> getSampleFiles();
 
@@ -51,6 +52,16 @@ public abstract class SkylineDocValidation<S extends SkylineDocSampleFile>
     public void setName(String name)
     {
         _name = name;
+    }
+
+    public String getUserGivenName()
+    {
+        return _userGivenName;
+    }
+
+    public void setUserGivenName(String userGivenName)
+    {
+        _userGivenName = userGivenName;
     }
 
     public boolean isValid()

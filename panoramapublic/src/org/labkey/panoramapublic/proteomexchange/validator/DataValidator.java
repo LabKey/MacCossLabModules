@@ -240,20 +240,21 @@ public class DataValidator
         Map<Container, List<SkylineDocValidator>> containerDocs = docs.stream().collect(Collectors.groupingBy(SkylineDocValidator::getRunContainer));
         for (Container container: containerDocs.keySet())
         {
-            validateContainerSampleFiles(containerDocs.get(container), status, svc);
+            validateContainerSampleFiles(containerDocs.get(container), svc, user);
         }
 
-        for (SkylineDocValidator skyDoc: docs)
+
+        try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
         {
-            try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
+            for (SkylineDocValidator skyDoc: docs)
             {
                 DataValidationManager.updateSampleFileStatus(skyDoc, user);
-                transaction.commit();
             }
+            transaction.commit();
         }
     }
 
-    private void validateContainerSampleFiles(List<SkylineDocValidator> skylineDocs, ValidatorStatus status, TargetedMSService svc)
+    private void validateContainerSampleFiles(List<SkylineDocValidator> skylineDocs, TargetedMSService svc, User user)
     {
         Map<String, Set<SampleFileKey>> sampleFileNameAndKeys = new HashMap<>();
         for (SkylineDocValidator skyDoc: skylineDocs)
@@ -264,6 +265,13 @@ public class DataValidator
             {
                 Set<SampleFileKey> sampleFileKeys = sampleFileNameAndKeys.computeIfAbsent(sampleFile.getFileName(), k -> new HashSet<>());
                 sampleFileKeys.add(sampleFile.getKey());
+            }
+            try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
+            {
+                // Save the status here so that we can show progress to the user. If the files get marked as ambiguous, the status will be updated
+                // at the end of sample file validation
+                DataValidationManager.updateSampleFileStatus(skyDoc, user);
+                transaction.commit();
             }
             _listener.sampleFilesValidated(skyDoc);
         }
@@ -311,6 +319,7 @@ public class DataValidator
         {
             SkylineDocValidator skyDoc = new SkylineDocValidator(run);
             skyDoc.setName(run.getFileName());
+            skyDoc.setUserGivenName(run.getDescription());
             skyDoc.setRunId(run.getId());
             status.addSkylineDoc(skyDoc);
 
