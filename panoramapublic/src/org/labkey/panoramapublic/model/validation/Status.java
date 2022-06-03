@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.labkey.api.data.Container;
+import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
@@ -148,7 +149,7 @@ public class Status extends GenericValidationStatus <SkylineDoc, SpecLib>
         {
             docMod.put("container", doc.getRunContainer().getPath());
         }
-        docMod.put("name", doc.getName());
+        docMod.put("name", doc.getNameAndUserGivenName());
         return docMod;
     }
 
@@ -181,7 +182,7 @@ public class Status extends GenericValidationStatus <SkylineDoc, SpecLib>
         if (validatedCount > 0)
         {
             boolean missingFilesFound = getSkylineDocs().stream().anyMatch(doc -> !doc.isPending() && !doc.isValid());
-            json.put("Validating sample files for Skyline documents: " + validatedCount + "/" + documentCount + " completed."
+            json.put("Sample file validation completed for " + validatedCount + " / " + StringUtilsLabKey.pluralize(documentCount, "document") + "."
             + (missingFilesFound ? " Found missing sample files." : ""));
         }
         if (getModifications().size() > 0)
@@ -189,12 +190,11 @@ public class Status extends GenericValidationStatus <SkylineDoc, SpecLib>
             boolean invalidModsFound = getModifications().stream().anyMatch(mod -> !mod.isValid());
             json.put("Modifications validation complete." + (invalidModsFound ? " Found invalid modifications." : ""));
         }
-        int specLibCount = getSpectralLibraries().size();
         validatedCount = getSpectralLibraries().stream().filter(lib -> !lib.isPending()).count();
         if (validatedCount > 0)
         {
             boolean missingFilesFound = getSpectralLibraries().stream().anyMatch(lib -> !lib.isPending() && !lib.isValid());
-            json.put("Validating spectral libraries: " + validatedCount + "/" + specLibCount + " completed."
+            json.put("Spectral library validation completed for " + StringUtilsLabKey.pluralize(validatedCount, "library", "libraries") + "."
                     + (missingFilesFound ? " Found invalid libraries." : ""));
         }
         return json;

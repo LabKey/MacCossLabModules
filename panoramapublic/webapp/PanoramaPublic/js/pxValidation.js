@@ -253,8 +253,8 @@ Ext4.define('LABKEY.pxvalidation.SkyDocsGridPanel', {
                                     ambiguousFilesMsg = '<div class="pxv-invalid"><em>Files marked as ambiguous have the same name in one or more documents in the folder but are different ' +
                                             'files based their acquired time on the mass spectrometer. ' +
                                             'Click the View Files link in the table below to view sample files with the same name. ' +
-                                            '<br>' +
-                                            'File names imported into Skyline documents being submitted must have unique names if they are different files.' + '</em></div>';
+                                            '<div style="margin-top:8px;">' +
+                                            'File names imported into Skyline documents being submitted must have unique names if they are different files.' + '</div></em></div>';
                                 }
                             }
                             return ambiguousFilesMsg;
@@ -437,11 +437,11 @@ Ext4.define('LABKEY.pxvalidation.SpecLibsGridPanel', {
                     // Skyline documents with the library
                     '<tpl if="documents.length &gt; 0">',
                     '<div class="pxv-tpl-table-title" style="margin-bottom:5px;">Skyline documents with the library</div>',
-                    '<ul>',
+                    '<table class="pxv-tpl-table">',
                     '<tpl for="documents">',
-                    '<li>{[this.docLink(values)]}</li>',
+                    '<tr> <td>{[this.docLink(values)]}</td> </tr>',
                     '</tpl>',
-                    '</ul>',
+                    '</table>',
                     '</div>',
                     '</tpl>',
                     {

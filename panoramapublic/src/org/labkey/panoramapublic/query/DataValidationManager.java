@@ -248,6 +248,7 @@ public class DataValidationManager
             if (run != null)
             {
                 doc.setRunContainer(run.getContainer());
+                doc.setUserGivenName(run.getDescription());
             }
         }
         return docs;
@@ -255,7 +256,9 @@ public class DataValidationManager
 
     private static List<SkylineDocSampleFile> getSkylineDocSampleFiles(SimpleFilter filter)
     {
-        return new TableSelector(PanoramaPublicManager.getTableInfoSkylineDocSampleFile(), filter, null).getArrayList(SkylineDocSampleFile.class);
+        Sort sort = new Sort(FieldKey.fromParts("SampleFileId")); // Get the validated sample files sorted by the sampleFileId
+        sort.appendSortColumn(FieldKey.fromParts("Id"), Sort.SortDirection.ASC, false); // Sort by id next. .wiff and .wiff.scan will have the same sampleFileId
+        return new TableSelector(PanoramaPublicManager.getTableInfoSkylineDocSampleFile(), filter, sort).getArrayList(SkylineDocSampleFile.class);
     }
 
     private static List<Modification> getModifications(SimpleFilter filter)
