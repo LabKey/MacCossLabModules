@@ -1953,14 +1953,19 @@ public class PanoramaPublicController extends SpringActionController
 
         protected void checkForValidation(ExperimentAnnotations experimentAnnotations, PublishExperimentForm form)
         {
+            DataValidation validation;
             if (form.getValidationId() != null)
             {
-                var validation = DataValidationManager.getValidation(form.getValidationId(), getContainer());
-                if (validation != null && DataValidationManager.isPipelineJobRunning(validation))
-                {
-                    throw new RedirectException(getPxValidationStatusUrl(_experimentAnnotations.getId(),
-                            validation.getId(), _experimentAnnotations.getContainer()));
-                }
+                validation = DataValidationManager.getValidation(form.getValidationId(), getContainer());
+            }
+            else
+            {
+                validation = DataValidationManager.getLatestValidation(experimentAnnotations.getId(), experimentAnnotations.getContainer());
+            }
+            if (validation != null && DataValidationManager.isPipelineJobRunning(validation))
+            {
+                throw new RedirectException(getPxValidationStatusUrl(_experimentAnnotations.getId(),
+                        validation.getId(), _experimentAnnotations.getContainer()));
             }
         }
 
@@ -3313,21 +3318,10 @@ public class PanoramaPublicController extends SpringActionController
     private static HtmlView getValidationSummary(Status status, ExperimentAnnotations exptAnnotations, boolean displayExperimentTitle, Container container, User user)
     {
         DataValidation validation = status.getValidation();
-        boolean outdated = DataValidationManager.isValidationOutdated(validation, exptAnnotations, user);
-
-        if (outdated || validation.getStatus() == null)
-        {
-            return new HtmlView(DIV(at(style, "background-color: #FFF6D8;margin:2px;font-weight:bold;"),
-                                    SPAN(cl("labkey-error"), outdated ?
-                                            "The latest validation results are outdated. Please click the button below to re-run validation."
-                                            : "Validation is incomplete.")));
-        }
 
         var statusFile = PipelineService.get().getStatusFile(validation.getJobId());
         User createdByUser = UserManager.getUser(validation.getCreatedBy());
-        String pxStatus = validation.getStatus() != null ? validation.getStatus().getLabel() : "Incomplete";
         ActionURL validationDetailsUrl = getPxValidationStatusUrl(exptAnnotations.getId(), validation.getId(), container);
-        var color = PxStatus.Complete == validation.getStatus() ? "darkgreen" : PxStatus.IncompleteMetadata == validation.getStatus() ? "#ef771a" : "#d70101";
         return new HtmlView(TABLE(cl("lk-fields-table"),
                 displayExperimentTitle ? row("Experiment: ", DIV(exptAnnotations.getTitle(), HtmlString.NBSP, new Link.LinkBuilder("View Details")
                         .href(getViewExperimentDetailsURL(exptAnnotations.getId(), container)).build())) : HtmlString.EMPTY_STRING,
@@ -3337,12 +3331,48 @@ public class PanoramaPublicController extends SpringActionController
                                 .href(PageFlowUtil.urlProvider(UserUrls.class).getUserDetailsURL(container, user.getUserId(), null))
                                 .clearClasses().build()) :
                         row("Created By: ", "Unknown User " + validation.getCreatedBy()),
-                row("ProteomeXchange Status:", SPAN(at(style, "color:" + color), B(pxStatus), HtmlString.NBSP, new Link.LinkBuilder("[Details]").href(validationDetailsUrl).build())),
+                row("ProteomeXchange Status:", SPAN(getValidationStatusForSummary(validation, statusFile, exptAnnotations, user),
+                        HtmlString.NBSP, new Link.LinkBuilder("[Details]").href(validationDetailsUrl).build())),
                 row("Validation Log:", statusFile != null ?
                         new Link.LinkBuilder("View log").href(PageFlowUtil.urlProvider(PipelineStatusUrls.class)
                                 .urlDetails(container, validation.getJobId())).build()
                         : SPAN("Log file not found for job Id " + validation.getJobId()))
         ));
+    }
+
+    @NotNull
+    private static DOM.Renderable getValidationStatusForSummary(DataValidation validation, PipelineStatusFile pipelineStatus, ExperimentAnnotations exptAnnotations, User user)
+    {
+        if (validation.isComplete())
+        {
+            if(DataValidationManager.isValidationOutdated(validation, exptAnnotations, user))
+            {
+                return warningStatus("The latest validation results are outdated. Please click the button below to re-run validation.");
+            }
+            else
+            {
+                var color = PxStatus.Complete == validation.getStatus() ? "darkgreen" : PxStatus.IncompleteMetadata == validation.getStatus() ? "#ef771a" : "#d70101";
+                return SPAN(at(style, "color:" + color), B(validation.getStatus().getLabel()));
+            }
+        }
+        else if (pipelineStatus != null)
+        {
+            if (DataValidationManager.isRunningStatus(pipelineStatus))
+            {
+                return SPAN(cl("alert-info").at(style, "padding:8px;font-weight:bold;"), "VALIDATION IS RUNNING");
+            }
+            else if (PipelineJob.TaskStatus.error.matches(pipelineStatus.getStatus()))
+            {
+                return warningStatus("VALIDATION ERROR");
+            }
+        }
+        return warningStatus("VALIDATION IS INCOMPLETE");
+    }
+
+    @NotNull
+    private static DOM.Renderable warningStatus(String statusString)
+    {
+        return SPAN(cl("alert-warning labkey-error").at(style, "padding:8px;font-weight:bold;"), statusString);
     }
 
     @NotNull

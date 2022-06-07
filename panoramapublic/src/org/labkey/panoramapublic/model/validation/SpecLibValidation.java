@@ -340,7 +340,7 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
     private boolean isIncompleteBlib()
     {
         // Return true if no spectrum or peptide id file names were found in the .blib
-        return !isPrositLibrary() && (!hasSpectrumFiles() || !hasIdFiles());
+        return isBibliospecLibrary() && !isPrositLibrary() && (!hasSpectrumFiles() || !hasIdFiles());
     }
 
     private boolean hasSpectrumFiles()
