@@ -29,6 +29,7 @@ import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
 import org.labkey.api.pipeline.RecordedActionSet;
 import org.labkey.api.security.User;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
@@ -96,7 +97,8 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
                 FolderArchiveDataTypes.CONTAINER_SPECIFIC_MODULE_PROPERTIES, // "Container specific module properties",
                 FolderArchiveDataTypes.EXPERIMENTS_AND_RUNS, // "Experiments and runs"
                 FolderArchiveDataTypes.LISTS, // "Lists"
-                FolderArchiveDataTypes.FILES  // "Files"
+                FolderArchiveDataTypes.FILES,  // "Files"
+                TargetedMSService.QC_FOLDER_DATA_TYPE
                 };
 
 
