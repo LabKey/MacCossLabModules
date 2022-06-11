@@ -990,6 +990,7 @@ public class ExperimentModificationGetter
         private Double _massDiffMono;
         private Double _massDiffAvg;
         private Integer _unimodId;
+        private boolean _crosslinker;
 
         @Override
         public long getId()
@@ -1080,18 +1081,29 @@ public class ExperimentModificationGetter
         }
 
         @Override
+        public boolean isCrosslinker()
+        {
+            return _crosslinker;
+        }
+
+        public void setCrosslinker(boolean crosslinker)
+        {
+            _crosslinker = crosslinker;
+        }
+
+        @Override
         public boolean equals(Object o)
         {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             Modification that = (Modification) o;
-            return getId() == that.getId() && getName().equals(that.getName()) && Objects.equals(getAminoAcid(), that.getAminoAcid()) && Objects.equals(getTerminus(), that.getTerminus()) && Objects.equals(getFormula(), that.getFormula()) && Objects.equals(getMassDiffMono(), that.getMassDiffMono()) && Objects.equals(getMassDiffAvg(), that.getMassDiffAvg()) && Objects.equals(getUnimodId(), that.getUnimodId());
+            return getId() == that.getId() && getName().equals(that.getName()) && Objects.equals(getAminoAcid(), that.getAminoAcid()) && Objects.equals(getTerminus(), that.getTerminus()) && Objects.equals(getFormula(), that.getFormula()) && Objects.equals(getMassDiffMono(), that.getMassDiffMono()) && Objects.equals(getMassDiffAvg(), that.getMassDiffAvg()) && Objects.equals(getUnimodId(), that.getUnimodId()) && this._crosslinker == that._crosslinker;
         }
 
         @Override
         public int hashCode()
         {
-            return Objects.hash(getId(), getName(), getAminoAcid(), getTerminus(), getFormula(), getMassDiffMono(), getMassDiffAvg(), getUnimodId());
+            return Objects.hash(getId(), getName(), getAminoAcid(), getTerminus(), getFormula(), getMassDiffMono(), getMassDiffAvg(), getUnimodId(), isCrosslinker());
         }
     }
 
