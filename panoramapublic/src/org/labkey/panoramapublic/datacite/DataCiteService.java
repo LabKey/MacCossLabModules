@@ -16,9 +16,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Class for creating, deleting or publishing Digital Object Identifiers (DOIs) with the DataCite API.
@@ -52,12 +50,12 @@ public class DataCiteService
      * @param test if true, the DataCite test API is used for creating the DOI
      */
     @NotNull
-    public static Doi create(boolean test) throws DataCiteException
+    public static Doi create(boolean test, ExperimentAnnotations expAnnot) throws DataCiteException
     {
         // curl -X POST -H "Content-Type: application/vnd.api+json" --user YOUR_REPOSITORY_ID:YOUR_PASSWORD -d @my_draft_doi.json https://api.test.datacite.org/dois
         DataCiteConfig config = getDataCiteConfig(test);
         METHOD method = METHOD.POST;
-        DataCiteResponse response = doRequest(config, getCreateDoiJson(config), method);
+        DataCiteResponse response = doRequest(config, DoiMetadata.from(expAnnot, config.getPrefix()).getJson(), method);
         if(response.success(method))
         {
             Doi doi = response.getDoi();
@@ -175,22 +173,6 @@ public class DataCiteService
                 conn.disconnect();
             }
         }
-    }
-
-    private static JSONObject getCreateDoiJson(DataCiteConfig config)
-    {
-        /* Example:
-         {
-           "data": {
-           "type": "dois",
-           "attributes": {
-              "prefix": "10.70027"
-             }
-           }
-         }
-         */
-        return new JSONObject().put("data", Objects.requireNonNull(new JSONObject().put("type", "dois"))
-                                                            .put("attributes", new JSONObject(Collections.singletonMap("prefix", config.getPrefix()))));
     }
 
     /**

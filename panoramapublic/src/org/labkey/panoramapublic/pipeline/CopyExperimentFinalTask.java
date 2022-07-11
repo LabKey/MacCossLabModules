@@ -563,7 +563,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
     private void assignDoi(ExperimentAnnotations targetExpt, boolean useTestDb) throws DataCiteException
     {
-        Doi doi = DataCiteService.create(useTestDb);
+        Doi doi = DataCiteService.create(useTestDb, targetExpt);
         targetExpt.setDoi(doi.getDoi());
     }
 

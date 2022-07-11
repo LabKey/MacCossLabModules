@@ -912,7 +912,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void validateCommand(DataCiteCredentialsForm form, Errors errors)
         {
-            String user = form.getUser();
+            String user = form.getProdUser();
             String password = form.getPassword();
             String doiPrefix = form.getDoiPrefix();
 
@@ -950,7 +950,7 @@ public class PanoramaPublicController extends SpringActionController
         public boolean handlePost(DataCiteCredentialsForm form, BindException errors)
         {
             PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, true);
-            map.put(DataCiteService.USER, form.getUser());
+            map.put(DataCiteService.USER, form.getProdUser());
             map.put(DataCiteService.PASSWORD, form.getPassword());
             map.put(DataCiteService.PREFIX, form.getDoiPrefix());
             map.put(DataCiteService.TEST_USER, form.getTestUser());
@@ -986,7 +986,7 @@ public class PanoramaPublicController extends SpringActionController
                 {
                     // Force the user to re-enter the passwords; do not set them in the form
 
-                    form.setUser(map.get(DataCiteService.USER));
+                    form.setProdUser(map.get(DataCiteService.USER));
                     form.setDoiPrefix(map.get(DataCiteService.PREFIX));
 
                     form.setTestUser(map.get(DataCiteService.TEST_USER));
@@ -1008,7 +1008,7 @@ public class PanoramaPublicController extends SpringActionController
 
     public static class DataCiteCredentialsForm
     {
-        private String _user;
+        private String _prodUser;
         private String _password;
         private String _doiPrefix;
         private String _testUser;
@@ -1035,14 +1035,14 @@ public class PanoramaPublicController extends SpringActionController
             _testPassword = testPassword;
         }
 
-        public String getUser()
+        public String getProdUser()
         {
-            return _user;
+            return _prodUser;
         }
 
-        public void setUser(String user)
+        public void setProdUser(String prodUser)
         {
-            _user = user;
+            _prodUser = prodUser;
         }
 
         public String getPassword()
@@ -4849,7 +4849,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean doPost(DoiForm form, BindException errors) throws DataCiteException
         {
-            _doi = DataCiteService.create(form.isTestMode());
+            _doi = DataCiteService.create(form.isTestMode(), _expAnnot);
             _expAnnot.setDoi(_doi.getDoi());
             ExperimentAnnotationsManager.updateDoi(_expAnnot);
             return true;
