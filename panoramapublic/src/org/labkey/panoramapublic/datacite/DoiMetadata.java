@@ -2,6 +2,7 @@ package org.labkey.panoramapublic.datacite;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.labkey.api.security.User;
@@ -26,10 +27,16 @@ public class DoiMetadata
     private String _abstract;
     private int _year;
     private String _doi;
+    private String _prefix;
 
     private DoiMetadata() {}
 
     public static DoiMetadata from(ExperimentAnnotations expAnnot) throws DataCiteException
+    {
+        return from(expAnnot, null);
+    }
+
+    public static DoiMetadata from(ExperimentAnnotations expAnnot, @Nullable String prefix) throws DataCiteException
     {
         DoiMetadata metadata = new DoiMetadata();
         metadata._url = expAnnot.getShortUrl().renderShortURL();
@@ -48,7 +55,11 @@ public class DoiMetadata
         metadata._abstract = expAnnot.getAbstract();
         metadata._year = DateUtil.now().get(Calendar.YEAR);
         metadata._doi = expAnnot.getDoi();
-
+        metadata._prefix = prefix;
+        if (metadata._doi == null && StringUtils.isBlank(metadata._prefix))
+        {
+            throw new DataCiteException("Given experiment does not have a DOI. A DOI prefix is required to generate a new DOI for the experiment.");
+        }
         return metadata;
     }
 
@@ -93,7 +104,10 @@ public class DoiMetadata
             }
          */
         JSONObject data = new JSONObject();
-        data.put("id", _doi);
+        if (_doi != null)
+        {
+            data.put("id", _doi);
+        }
         data.put("type", "dois");
         data.put("attributes", getAttributes());
 
@@ -103,24 +117,39 @@ public class DoiMetadata
     private JSONObject getAttributes()
     {
         JSONObject attribs = new JSONObject();
-        attribs.put("event", "publish");
-        attribs.put("doi", _doi);
+        if (_doi != null)
+        {
+            // A DOI is already assigned to the experiment.  We are generating JSON for making the DOI 'findable' (public).
+            attribs.put("event", "publish");
+            attribs.put("doi", _doi);
+            attribs.put("publicationYear", _year);
+        }
+        else if (_prefix != null)
+        {
+            // The experiment does not have a DOI. We are generating JSON to create a new 'draft' (private) DOI.
+            attribs.put("prefix", _prefix);
+        }
+
+        // Always include these fields for 'draft' as well as 'findable' DOIs.
         attribs.put("publisher", "Panorama Public");
-        attribs.put("publicationYear", _year);
         attribs.put("url", _url);
         attribs.put("types", new JSONObject().put("resourceTypeGeneral", "Dataset"));
-        JSONArray creators = new JSONArray();
-        creators.put(new JSONObject().put("name", _submitter).put("nameType", "Personal"));
-        if(_labHead != null)
-        {
-            creators.put(new JSONObject().put("name", _labHead).put("nameType", "Personal"));
-        }
-        attribs.put("creators", creators);
-        attribs.put("titles", new JSONArray().put(new JSONObject().put("title", _title)));
 
-        JSONArray descriptions = new JSONArray();
-        descriptions.put(new JSONObject().put("description", _abstract).put("descriptionType", "Abstract"));
-        attribs.put("descriptions", descriptions);
+        if (_doi != null)
+        {
+            JSONArray creators = new JSONArray();
+            creators.put(new JSONObject().put("name", _submitter).put("nameType", "Personal"));
+            if(_labHead != null)
+            {
+                creators.put(new JSONObject().put("name", _labHead).put("nameType", "Personal"));
+            }
+            attribs.put("creators", creators);
+            attribs.put("titles", new JSONArray().put(new JSONObject().put("title", _title)));
+
+            JSONArray descriptions = new JSONArray();
+            descriptions.put(new JSONObject().put("description", _abstract).put("descriptionType", "Abstract"));
+            attribs.put("descriptions", descriptions);
+        }
 
         return attribs;
     }
