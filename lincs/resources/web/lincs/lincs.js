@@ -12,7 +12,7 @@ function externalHeatmapViewerLink(container, fileName, elementId, assayType)
 
     var morpheusUrl = getMorpheusUrl(fileUrl, assayType);
 
-    var analyticsEvt = " onclick=\"_gaq.push(['_trackEvent', 'Lincs', 'Morpheus', '" + fileName + "']);\" ";
+    var analyticsEvt = " onclick=\"try {_gaq.push(['_trackEvent', 'Lincs', 'Morpheus', '" + fileName + "']);} catch (err) {} try {gtag.event('Lincs', {eventAction: 'Morpheus', fileName: '" + fileName + "'});} catch (err) {}\" ";
 
     Ext4.Ajax.request({
         url: fileUrl,
