@@ -278,9 +278,14 @@ public class LincsDataTable extends FilteredTable
                 // Tell the browser to wait 400ms before going to the download.  This is to ensure
                 // that the GA tracking request goes through. Some browsers will interrupt the tracking
                 // request if the download opens on the same page.
-                String timeout = addWaitTime ? "setTimeout(function(){location.href=that.href;},400);return false;" : "";
-                String script = "if(_gaq) {that=this; _gaq.push(['_trackEvent', 'Lincs', '" + eventAction + "', '" + fileName + "']); " + timeout + "}";
-                return script;
+                String timeout = addWaitTime ? "that=this; setTimeout(function(){location.href=that.href;},400);return false;" : "";
+
+                // Universal Analytics - remove after conversion to GA4 is complete
+                String onClickScript = "try {_gaq.push(['_trackEvent', 'Lincs', " + PageFlowUtil.qh(eventAction) + ", " + PageFlowUtil.qh(fileName) + "]); } catch (err) {}";
+                // GA4 variant
+                onClickScript += "try {gtag('event', 'Lincs', {eventAction: " + PageFlowUtil.qh(eventAction) + ", fileName: " + PageFlowUtil.qh(fileName) + "}); } catch(err) {}";
+                onClickScript += timeout;
+                return onClickScript;
             }
             return null;
         }

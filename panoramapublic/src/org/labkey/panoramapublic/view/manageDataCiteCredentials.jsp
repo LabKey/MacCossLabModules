@@ -15,7 +15,7 @@
     <table>
         <tr>
             <td  class='labkey-form-label'>User:</td>
-            <td><input size="50" type="text" name="user" value="<%=h(form.getUser())%>"></td>
+            <td><input size="50" type="text" name="prodUser" value="<%=h(form.getProdUser())%>"></td>
         </tr>
         <tr>
             <td  class='labkey-form-label'>Password:</td>
