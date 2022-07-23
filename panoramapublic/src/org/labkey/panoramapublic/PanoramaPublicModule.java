@@ -247,6 +247,18 @@ public class PanoramaPublicModule extends SpringModule
             }
         };
 
+        BaseWebPartFactory panoramaWebSearch = new BaseWebPartFactory("Panorama Public Search")
+        {
+            @Override
+            public WebPartView<?> getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
+            {
+                JspView<?> view = new JspView<>("/org/labkey/panoramapublic/view/search/panoramaWebSearch.jsp");
+                view.setTitle("Panorama Public Search");
+                return view;
+            }
+
+        };
+
         List<WebPartFactory> webpartFactoryList = new ArrayList<>();
         webpartFactoryList.add(experimentAnnotationsListFactory);
         webpartFactoryList.add(containerExperimentFactory);
@@ -256,6 +268,7 @@ public class PanoramaPublicModule extends SpringModule
         webpartFactoryList.add(spectralLibrariesFactory);
         webpartFactoryList.add(structuralModsFactory);
         webpartFactoryList.add(isotopeModsFactory);
+        webpartFactoryList.add(panoramaWebSearch);
         return webpartFactoryList;
     }
 
