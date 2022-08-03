@@ -118,6 +118,7 @@
                             <th>Average Memory</th>
                             <th>Failures</th>
                             <th>Leaks</th>
+                            <th>Git Hash</th>
                             <th></th>
                         </tr>
                         </thead>
@@ -218,6 +219,9 @@
                                 <% if (leakStatus > 0) { %><img src='<%=h(contextPath)%>/TestResults/img/leak.png'><% } %>
                             </td>
                             <td>
+                                <%=h(run.getGitHash())%>
+                            </td>
+                            <td>
                                 <a style="cursor: pointer;" runid="<%=run.getId()%>" train="<%=h(run.isTrainRun() ? "false" : "true")%>" class="traindata"><%=h(run.isTrainRun() ? "Untrain" : "Train")%></a>
                             </td>
                         </tr>
@@ -227,9 +231,7 @@
                         <tr>
                             <td style="background: <%=h(BackgroundColor.error)%>;"><%=h(user.getUsername())%></td>
                             <td style="background: <%=h(BackgroundColor.error)%>;">MISSING RUN</td>
-                            <% for (int i = 0; i < 6; i++) { %>
-                            <td style="background: <%=h(BackgroundColor.error)%>;"></td>
-                            <% } %>
+                            <td style="background: <%=h(BackgroundColor.error)%>;" colspan="7"></td>
                         </tr>
                         <% } %>
                         </tbody>
@@ -574,7 +576,8 @@ $(function() {
             4: { sorter: "digit" },
             5: { sorter: "digit" },
             6: { sorter: "digit" },
-            7: { sorter: false }
+            7: { sorter: "text" },
+            8: { sorter: false }
         },
         cssAsc: "headerSortUp",
         cssDesc: "headerSortDown"
