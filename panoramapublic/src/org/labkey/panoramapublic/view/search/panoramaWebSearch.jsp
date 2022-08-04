@@ -55,67 +55,54 @@
                         ]
                     },
                     {
-                    // protein search webpart
-                    xtype: 'panel',
-                    title: 'Protein Search',
-                    cls: 'non-ext-search-tab-panel',
-                    items : [{
-                        xtype: 'component',
-                        border : false,
-                        listeners : {
-                            scope: this,
-                            afterrender : function(cmp) {
-                                var wp = new LABKEY.WebPart({
-                                    partName: "Panorama Public Protein Search",
-                                    frame: 'none',
-                                    renderTo: cmp.getId(),
-                                    success: function() { cmp.up('panel').doLayout(); }
-                                });
-                                wp.render();
+                        // protein search webpart
+                        xtype: 'panel',
+                        itemId: 'proteinSearchPanel',
+                        title: 'Protein Search',
+                        cls: 'non-ext-search-tab-panel',
+                        layout: {type: 'hbox', align: 'left'},
+                        items : [
+                            {
+                                xtype: 'textfield',
+                                fieldLabel: 'Protein Name',
+                                itemId: 'proteinName',
+                                labelCls: 'labkey-form-label',
+                                labelWidth: 125
+                            },
+                            {
+                                xtype: 'checkbox',
+                                fieldLabel: 'Exact Matches Only',
+                                itemId: 'exactProteinMatches',
+                                labelCls: 'labkey-form-label',
+                                input: true,
+                                labelWidth: 125
                             }
-                        }
-                    }]
-                },{
-                    // peptide search webpart
-                    title: 'Peptide Search',
-                    cls: 'non-ext-search-tab-panel',
-                    items : [{
-                        xtype: 'component',
-                        border : false,
-                        listeners : {
-                            scope: this,
-                            afterrender : function(cmp) {
-                                var wp = new LABKEY.WebPart({
-                                    partName: 'Panorama Public Peptide Search',
-                                    frame: 'none',
-                                    renderTo: cmp.getId(),
-                                    partConfig: {subfolders: true},
-                                    success: function() { cmp.up('panel').doLayout(); }
-                                });
-                                wp.render();
+                        ]
+                    },
+                    {
+                        // peptide search webpart
+                        xtype: 'panel',
+                        itemId: 'peptideSearchPanel',
+                        title: 'Peptide Search',
+                        cls: 'non-ext-search-tab-panel',
+                        layout: {type: 'hbox', align: 'left'},
+                        items : [
+                            {
+                                xtype: 'textfield',
+                                fieldLabel: 'Peptide Sequence',
+                                itemId: 'peptideSequence',
+                                labelCls: 'labkey-form-label',
+                                labelWidth: 125
+                            },
+                            {
+                                xtype: 'checkbox',
+                                fieldLabel: 'Exact Matches Only',
+                                itemId: 'exactPeptideMatches',
+                                labelCls: 'labkey-form-label',
+                                input: true,
+                                labelWidth: 125
                             }
-                        }
-                    }]
-                },{
-                    // modification search webpart from the targetedms module
-                    title: 'Modification Search',
-                    items : [{
-                        xtype: 'component',
-                        border : false,
-                        listeners : {
-                            scope: this,
-                            afterrender : function(cmp) {
-                                var wp = new LABKEY.WebPart({
-                                    partName: 'Targeted MS Modification Search',
-                                    frame: 'none',
-                                    renderTo: cmp.getId(),
-                                    partConfig: {hideIncludeSubfolder: true, includeSubfolders: true},
-                                    success: function() { cmp.up('panel').doLayout(); }
-                                });
-                                wp.render();
-                            }
-                        }
-                    }]
+                        ]
                 }],
                 dockedItems: [{
                     xtype: 'toolbar',
