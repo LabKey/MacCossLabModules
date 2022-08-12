@@ -116,6 +116,7 @@
                     var wp = new LABKEY.QueryWebPart({
                         renderTo: 'experiment_list_wp',
                         schemaName: 'panoramapublic',
+                        viewName: 'search',
                         queryName: 'ExperimentAnnotations',
                         filters: expAnnotationFilters,
                         success: function() {
