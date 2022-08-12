@@ -12,41 +12,80 @@
     LABKEY.requiresExt4Sandbox(function() {
         Ext4.onReady(function() {
 
+            const expSearchPanelItemId = 'expSearchPanel';
             const authorsItemId = 'Authors';
             const titleItemId = 'Title';
             const organismItemId = 'Organism';
             const instrumentItemId = 'Instrument';
 
+            const proteinSearchPanelItemId = 'proteinSearchPanel';
+            const proteinNameItemId = 'proteinName';
+            const exactProteinMatchesItemId = 'exactProteinMatches';
+
+            const peptideSearchPanelItemId = 'peptideSearchPanel';
+            const peptideSequenceItemId = 'peptideSequence';
+            const exactPeptideMatchesItemId = 'exactPeptideMatches';
+
             let handleRendering = function (btn, clicked) {
                 let panel = btn.up('panel');
-                let expSearchPanel = panel.down('#expSearchPanel');
-                let author = expSearchPanel.down('#' + authorsItemId);
-                let title = expSearchPanel.down('#' + titleItemId);
-                let organism = expSearchPanel.down('#' + organismItemId);
-                let instrument = expSearchPanel.down('#' + instrumentItemId);
+                const activeTab = panel.activeTab.getItemId();
+
+                let expSearchPanel = panel.down('#' + expSearchPanelItemId);
+                let proteinSearchPanel = panel.down('#' + proteinSearchPanelItemId);
+                let peptideSearchPanel = panel.down('#' + peptideSearchPanelItemId);
+
                 let expAnnotationFilters = [];
 
                 // render experiment list webpart
                 // add filters in qwp and in the url for back button
                 if (clicked) {
                     if (!window.location.href.includes('#')) {
-                        updateUrlFilters(panel.activeTab.getItemId());
+                        updateUrlFilters(activeTab);
                     }
-                    if (author && author.getValue()) {
-                        expAnnotationFilters.push(LABKEY.Filter.create(authorsItemId, author.getValue(), LABKEY.Filter.Types.CONTAINS));
-                        updateUrlFilters(null, authorsItemId, author.getValue());
+                    if (activeTab === expSearchPanelItemId) {
+                        let author = expSearchPanel.down('#' + authorsItemId);
+                        let title = expSearchPanel.down('#' + titleItemId);
+                        let organism = expSearchPanel.down('#' + organismItemId);
+                        let instrument = expSearchPanel.down('#' + instrumentItemId);
+
+                        if (author && author.getValue()) {
+                            expAnnotationFilters.push(LABKEY.Filter.create(authorsItemId, author.getValue(), LABKEY.Filter.Types.CONTAINS));
+                            updateUrlFilters(null, authorsItemId, author.getValue());
+                        }
+                        if (title && title.getValue()) {
+                            expAnnotationFilters.push(LABKEY.Filter.create(titleItemId, title.getValue(), LABKEY.Filter.Types.CONTAINS));
+                            updateUrlFilters(null, titleItemId, title.getValue());
+                        }
+                        if (organism && organism.getValue()) {
+                            expAnnotationFilters.push(LABKEY.Filter.create(organismItemId, organism.getValue(), LABKEY.Filter.Types.CONTAINS));
+                            updateUrlFilters(null, organismItemId, organism.getValue());
+                        }
+                        if (instrument && instrument.getValue()) {
+                            expAnnotationFilters.push(LABKEY.Filter.create(instrumentItemId, instrument.getValue(), LABKEY.Filter.Types.CONTAINS));
+                            updateUrlFilters(null, instrumentItemId, instrument.getValue());
+                        }
                     }
-                    if (title && title.getValue()) {
-                        expAnnotationFilters.push(LABKEY.Filter.create(titleItemId, title.getValue(), LABKEY.Filter.Types.CONTAINS));
-                        updateUrlFilters(null, titleItemId, title.getValue());
+                    else if (activeTab === proteinSearchPanelItemId) {
+                        let protein = proteinSearchPanel.down('#' + proteinNameItemId);
+                        let exactMatch = proteinSearchPanel.down('#' + exactProteinMatchesItemId);
+
+                        if (protein && protein.getValue()) {
+                            updateUrlFilters(null, proteinNameItemId, protein.getValue());
+                        }
+                        if (exactMatch && exactMatch.getValue()) {
+                            updateUrlFilters(null, exactProteinMatchesItemId, exactMatch.getValue());
+                        }
                     }
-                    if (organism && organism.getValue()) {
-                        expAnnotationFilters.push(LABKEY.Filter.create(organismItemId, organism.getValue(), LABKEY.Filter.Types.CONTAINS));
-                        updateUrlFilters(null, organismItemId, organism.getValue());
-                    }
-                    if (instrument && instrument.getValue()) {
-                        expAnnotationFilters.push(LABKEY.Filter.create(instrumentItemId, instrument.getValue(), LABKEY.Filter.Types.CONTAINS));
-                        updateUrlFilters(null, instrumentItemId, instrument.getValue());
+                    else if (activeTab === peptideSequenceItemId) {
+                        let peptide = peptideSearchPanel.down('#' + peptideSequenceItemId);
+                        let exactMatch = peptideSearchPanel.down('#' + exactProteinMatchesItemId);
+
+                        if (peptide && peptide.getValue()) {
+                            updateUrlFilters(null, peptideSequenceItemId, peptide.getValue());
+                        }
+                        if (exactMatch && exactMatch.getValue()) {
+                            updateUrlFilters(null, exactPeptideMatchesItemId, exactMatch.getValue());
+                        }
                     }
                 }
                 // getFiltersFromUrl and add to the filters
@@ -175,7 +214,7 @@
                         items: [
                             {
                                 xtype: 'panel',
-                                itemId: 'expSearchPanel',
+                                itemId: expSearchPanelItemId,
                                 title: 'Experiment Search',
                                 cls: 'non-ext-search-tab-panel',
                                 layout: {type: 'hbox', align: 'left'},
@@ -199,7 +238,7 @@
                                         labelWidth: 75,
                                         listeners: {
                                             render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(authorsItemId, comp);
+                                                checkAndFillValuesFromUrl(titleItemId, comp);
                                             }
                                         }
                                     },
@@ -211,7 +250,7 @@
                                         labelWidth: 75,
                                         listeners: {
                                             render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(authorsItemId, comp);
+                                                checkAndFillValuesFromUrl(organismItemId, comp);
                                             }
                                         }
                                     },
@@ -223,7 +262,7 @@
                                         labelWidth: 75,
                                         listeners: {
                                             render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(authorsItemId, comp);
+                                                checkAndFillValuesFromUrl(instrumentItemId, comp);
                                             }
                                         }
                                     }
@@ -232,7 +271,7 @@
                             {
                                 // protein search webpart
                                 xtype: 'panel',
-                                itemId: 'proteinSearchPanel',
+                                itemId: proteinSearchPanelItemId,
                                 title: 'Protein Search',
                                 cls: 'non-ext-search-tab-panel',
                                 layout: {type: 'hbox', align: 'left'},
@@ -240,24 +279,34 @@
                                     {
                                         xtype: 'textfield',
                                         fieldLabel: 'Protein Name',
-                                        itemId: 'proteinName',
+                                        itemId: proteinNameItemId,
                                         labelCls: 'labkey-form-label',
-                                        labelWidth: 125
+                                        labelWidth: 125,
+                                        listeners: {
+                                            render: function (comp, eOpts) {
+                                                checkAndFillValuesFromUrl(proteinNameItemId, comp);
+                                            }
+                                        }
                                     },
                                     {
                                         xtype: 'checkbox',
                                         fieldLabel: 'Exact Matches Only',
-                                        itemId: 'exactProteinMatches',
+                                        itemId: exactProteinMatchesItemId,
                                         labelCls: 'labkey-form-label',
                                         input: true,
-                                        labelWidth: 125
+                                        labelWidth: 125,
+                                        listeners: {
+                                            render: function (comp, eOpts) {
+                                                checkAndFillValuesFromUrl(exactProteinMatchesItemId, comp);
+                                            }
+                                        }
                                     }
                                 ]
                             },
                             {
                                 // peptide search webpart
                                 xtype: 'panel',
-                                itemId: 'peptideSearchPanel',
+                                itemId: peptideSearchPanelItemId,
                                 title: 'Peptide Search',
                                 cls: 'non-ext-search-tab-panel',
                                 layout: {type: 'hbox', align: 'left'},
@@ -265,17 +314,27 @@
                                     {
                                         xtype: 'textfield',
                                         fieldLabel: 'Peptide Sequence',
-                                        itemId: 'peptideSequence',
+                                        itemId: peptideSequenceItemId,
                                         labelCls: 'labkey-form-label',
-                                        labelWidth: 125
+                                        labelWidth: 125,
+                                        listeners: {
+                                            render: function (comp, eOpts) {
+                                                checkAndFillValuesFromUrl(peptideSequenceItemId, comp);
+                                            }
+                                        }
                                     },
                                     {
                                         xtype: 'checkbox',
                                         fieldLabel: 'Exact Matches Only',
-                                        itemId: 'exactPeptideMatches',
+                                        itemId: exactPeptideMatchesItemId,
                                         labelCls: 'labkey-form-label',
                                         input: true,
-                                        labelWidth: 125
+                                        labelWidth: 125,
+                                        listeners: {
+                                            render: function (comp, eOpts) {
+                                                checkAndFillValuesFromUrl(exactPeptideMatchesItemId, comp);
+                                            }
+                                        }
                                     }
                                 ]
                             }],
@@ -301,7 +360,7 @@
                         listeners: {
                             tabchange: function (tabPanel, newCard, oldCard, eOpts ) {
                                 updateUrlFilters(tabPanel.activeTab.itemId);
-                                if (tabPanel.activeTab.itemId === 'expSearchPanel') {
+                                if (tabPanel.activeTab.itemId === expSearchPanelItemId) {
                                     let author = tabPanel.down('#' + authorsItemId);
                                     let title = tabPanel.down('#' + titleItemId);
                                     let organism = tabPanel.down('#' + organismItemId);
@@ -318,6 +377,28 @@
                                     }
                                     if (instrument && instrument.getValue()) {
                                         updateUrlFilters(null, instrumentItemId, instrument.getValue());
+                                    }
+                                }
+                                else if (tabPanel.activeTab.itemId === proteinSearchPanelItemId) {
+                                    let protein = tabPanel.down('#' + proteinNameItemId);
+                                    let exactMatch = tabPanel.down('#' + exactProteinMatchesItemId);
+
+                                    if (protein && protein.getValue()) {
+                                        updateUrlFilters(null, proteinNameItemId, protein.getValue());
+                                    }
+                                    if (exactMatch && exactMatch.getValue()) {
+                                        updateUrlFilters(null, exactProteinMatchesItemId, exactMatch.getValue());
+                                    }
+                                }
+                                else if (tabPanel.activeTab.itemId === peptideSearchPanelItemId) {
+                                    let peptide = tabPanel.down('#' + peptideSequenceItemId);
+                                    let exactMatch = tabPanel.down('#' + exactProteinMatchesItemId);
+
+                                    if (peptide && peptide.getValue()) {
+                                        updateUrlFilters(null, peptideSequenceItemId, peptide.getValue());
+                                    }
+                                    if (exactMatch && exactMatch.getValue()) {
+                                        updateUrlFilters(null, exactPeptideMatchesItemId, exactMatch.getValue());
                                     }
                                 }
                             },
