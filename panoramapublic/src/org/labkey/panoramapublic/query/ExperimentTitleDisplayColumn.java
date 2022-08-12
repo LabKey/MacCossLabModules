@@ -50,7 +50,7 @@ public class ExperimentTitleDisplayColumn
         return new SearchResultsCustomizer("Experiment", colSql(sql), JdbcType.INTEGER);
     }
 
-    public static TableCustomizer getPeptideSearchTableCustomizer()
+    public static TableCustomizer getPeptideGroupJoinTableCustomizer()
     {
         SQLFragment sql = new SQLFragment();
         sql.append(" INNER JOIN ");
@@ -59,12 +59,6 @@ public class ExperimentTitleDisplayColumn
         sql.append("pg.runId = runs.id");
         sql.append(" WHERE pg.Id = ").append(ExprColumn.STR_TABLE_ALIAS).append(".peptideGroupId");
 
-        return new SearchResultsCustomizer("Experiment", colSql(sql), JdbcType.INTEGER);
-    }
-
-    public static TableCustomizer getProteinSearchTableCustomizer()
-    {
-        SQLFragment sql = new SQLFragment(" WHERE runs.Id = ").append(ExprColumn.STR_TABLE_ALIAS).append(".runId");
         return new SearchResultsCustomizer("Experiment", colSql(sql), JdbcType.INTEGER);
     }
 
@@ -135,14 +129,14 @@ public class ExperimentTitleDisplayColumn
         public void customize(TableInfo tableInfo)
         {
             Container container = tableInfo.getUserSchema().getContainer();
-            if(!(container.isProject() && JournalManager.isJournalProject(container)))
-            {
-                return;
-            }
+//            if(!(container.isProject() && JournalManager.isJournalProject(container)))
+//            {
+//                return;
+//            }
             ExprColumn col = createColumn(tableInfo, container);
             if(tableInfo instanceof FilteredTable)
             {
-                ((FilteredTable)tableInfo).addColumn(col);
+                ((FilteredTable<?>)tableInfo).addColumn(col);
                 List<FieldKey> displayCols = new ArrayList<>(tableInfo.getDefaultVisibleColumns());
                 displayCols.add(0, getFieldKey());
                 tableInfo.setDefaultVisibleColumns(displayCols);

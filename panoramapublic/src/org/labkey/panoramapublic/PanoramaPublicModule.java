@@ -126,8 +126,8 @@ public class PanoramaPublicModule extends SpringModule
         tmsService.registerTargetedMSFolderTypeListener(listener);
 
         TargetedMSService.get().addModificationSearchResultCustomizer(ExperimentTitleDisplayColumn.getModSearchTableCustomizer());
-        TargetedMSService.get().addPeptideSearchResultCustomizers(ExperimentTitleDisplayColumn.getPeptideSearchTableCustomizer());
-        TargetedMSService.get().addProteinSearchResultCustomizer(ExperimentTitleDisplayColumn.getProteinSearchTableCustomizer());
+        TargetedMSService.get().addPeptideSearchResultCustomizers(ExperimentTitleDisplayColumn.getPeptideGroupJoinTableCustomizer());
+        TargetedMSService.get().addProteinSearchResultCustomizer(ExperimentTitleDisplayColumn.getPeptideGroupJoinTableCustomizer());
     }
 
     @NotNull
