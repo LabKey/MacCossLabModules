@@ -35,6 +35,8 @@
                 let peptideSearchPanel = panel.down('#' + peptideSearchPanelItemId);
 
                 let expAnnotationFilters = [];
+                let proteinParameters = {};
+                let peptideFilters = [];
 
                 // render experiment list webpart
                 // add filters in qwp and in the url for back button
@@ -70,6 +72,7 @@
                         let exactMatch = proteinSearchPanel.down('#' + exactProteinMatchesItemId);
 
                         if (protein && protein.getValue()) {
+                            proteinParameters['proteinLabel'] = protein.getValue();
                             updateUrlFilters(null, proteinNameItemId, protein.getValue());
                         }
                         if (exactMatch && exactMatch.getValue()) {
@@ -106,25 +109,42 @@
                 }
 
                 // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
-                if (clicked || expAnnotationFilters.length > 0) {
+                if (clicked || expAnnotationFilters.length > 0 || proteinParameters['proteinLabel']) {
                     Ext4.create('Ext.panel.Panel', {
                         border: false,
                         renderTo: 'search-indicator',
                     });
                     Ext4.get('search-indicator').mask('Search is running, results pending...');
 
-                    var wp = new LABKEY.QueryWebPart({
-                        renderTo: 'experiment_list_wp',
-                        title: 'TargetedMS Experiment List',
-                        schemaName: 'panoramapublic',
-                        viewName: 'search',
-                        queryName: 'ExperimentAnnotations',
-                        filters: expAnnotationFilters,
-                        success: function() {
-                            Ext4.get('search-indicator').unmask();
-                        }
-                    });
-                    wp.render();
+                    if (expAnnotationFilters.length > 0) {
+                        let wp = new LABKEY.QueryWebPart({
+                            renderTo: 'experiment_list_wp',
+                            title: 'TargetedMS Experiment List',
+                            schemaName: 'panoramapublic',
+                            viewName: 'search',
+                            queryName: 'ExperimentAnnotations',
+                            containerFilter: LABKEY.Query.containerFilter.allFolders,
+                            filters: expAnnotationFilters,
+                            success: function () {
+                                Ext4.get('search-indicator').unmask();
+                            }
+                        });
+                        wp.render();
+                    }
+                    else if (proteinParameters['proteinLabel']) {
+                        let wp = new LABKEY.QueryWebPart({
+                            renderTo: 'experiment_list_wp',
+                            title: 'The searched protein appeared in the following experiments',
+                            schemaName: 'panoramapublic',
+                            queryName: 'proteinSearch',
+                            containerFilter: LABKEY.Query.containerFilter.allFolders,
+                            parameters: proteinParameters,
+                            success: function () {
+                                Ext4.get('search-indicator').unmask();
+                            }
+                        });
+                        wp.render();
+                    }
                 }
             };
 
