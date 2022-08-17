@@ -87,6 +87,7 @@ import org.labkey.api.security.AdminConsoleAction;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.PrincipalType;
+import org.labkey.api.security.RequiresAnyOf;
 import org.labkey.api.security.RequiresLogin;
 import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.RequiresSiteAdmin;
@@ -136,10 +137,7 @@ import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.PxXml;
 import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.model.validation.DataValidation;
-import org.labkey.panoramapublic.model.validation.Modification;
 import org.labkey.panoramapublic.model.validation.PxStatus;
-import org.labkey.panoramapublic.model.validation.SkylineDoc;
-import org.labkey.panoramapublic.model.validation.SkylineDocSampleFile;
 import org.labkey.panoramapublic.model.validation.Status;
 import org.labkey.panoramapublic.model.speclib.SpecLibDependencyType;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
@@ -175,6 +173,7 @@ import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfo;
 import org.labkey.panoramapublic.query.modification.ModificationsView;
 import org.labkey.panoramapublic.query.speclib.SpecLibView;
+import org.labkey.panoramapublic.security.PanoramaPublicSubmitterPermission;
 import org.labkey.panoramapublic.speclib.LibSourceFile;
 import org.labkey.panoramapublic.speclib.SpecLibReader;
 import org.labkey.panoramapublic.speclib.SpecLibReaderException;
@@ -3328,7 +3327,7 @@ public class PanoramaPublicController extends SpringActionController
                 row("Last Validation Date: ", validation.getFormattedDate()),
                 createdByUser != null ?
                         row("Created By: ", new Link.LinkBuilder(createdByUser.getDisplayName(user))
-                                .href(PageFlowUtil.urlProvider(UserUrls.class).getUserDetailsURL(container, user.getUserId(), null))
+                                .href(PageFlowUtil.urlProvider(UserUrls.class).getUserDetailsURL(container, createdByUser.getUserId(), null))
                                 .clearClasses().build()) :
                         row("Created By: ", "Unknown User " + validation.getCreatedBy()),
                 row("ProteomeXchange Status:", SPAN(getValidationStatusForSummary(validation, statusFile, exptAnnotations, user),
@@ -5454,7 +5453,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class ExperimentAnnotationsDetails
     {
         private final ExperimentAnnotations _experimentAnnotations;
-        private JournalSubmission _lastPublishedRecord;
+        private JournalSubmission _lastSubmittedRecord;
         private final boolean _fullDetails;
         private boolean _canPublish;
         private String _version;
@@ -5471,17 +5470,28 @@ public class PanoramaPublicController extends SpringActionController
             TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(c);
             if(isSupportedFolderType(folderType))
             {
-                _lastPublishedRecord = SubmissionManager.getNewestJournalSubmission(_experimentAnnotations);
-
-                // Should see the "Submit" or "Resubmit" button only if
-                // 1. User is an admin in the folder
-                // 2. AND this is a NOT journal copy (i.e. a folder in the Panorama Public project)
-                // 3. AND if this experiment has been copied to Panorama Public, the copy is not final (paper published and data public).
-                _canPublish = c.hasPermission(user, AdminPermission.class) && (ExperimentAnnotationsManager.canSubmitExperiment(_experimentAnnotations, _lastPublishedRecord));
-                if (_lastPublishedRecord != null)
+                if (!_experimentAnnotations.isJournalCopy())
                 {
-                    Submission lastCopiedSubmission = _lastPublishedRecord.getLatestCopiedSubmission();
-                    _journalCopy = lastCopiedSubmission != null ? ExperimentAnnotationsManager.get(lastCopiedSubmission.getCopiedExperimentId()) : null;
+                    _lastSubmittedRecord = SubmissionManager.getNewestJournalSubmission(_experimentAnnotations);
+
+                    // Should see the "Submit" or "Resubmit" button only if
+                    // 1. User is an admin in the folder
+                    // 2. AND this is a NOT journal copy (i.e. a folder in the Panorama Public project)
+                    // 3. AND if this experiment has been copied to Panorama Public, the copy is not final (paper published and data public).
+                    _canPublish = c.hasPermission(user, AdminPermission.class) && (ExperimentAnnotationsManager.canSubmitExperiment(_experimentAnnotations, _lastSubmittedRecord));
+                    if (_lastSubmittedRecord != null)
+                    {
+                        Submission lastCopiedSubmission = _lastSubmittedRecord.getLatestCopiedSubmission();
+                        _journalCopy = lastCopiedSubmission != null ? ExperimentAnnotationsManager.get(lastCopiedSubmission.getCopiedExperimentId()) : null;
+                    }
+                }
+                else
+                {
+                    // This is a journal copy, then lookup the source experiment to get the last submitted record.
+                    ExperimentAnnotations sourceExpt = ExperimentAnnotationsManager.get(_experimentAnnotations.getSourceExperimentId());
+                    _lastSubmittedRecord = sourceExpt != null ? SubmissionManager.getNewestJournalSubmission(sourceExpt) : null;
+
+                    _journalCopy = _experimentAnnotations;
                 }
             }
 
@@ -5524,9 +5534,9 @@ public class PanoramaPublicController extends SpringActionController
             return _canPublish;
         }
 
-        public JournalSubmission getLastPublishedRecord()
+        public JournalSubmission getLastSubmittedRecord()
         {
-            return _lastPublishedRecord;
+            return _lastSubmittedRecord;
         }
 
         public boolean hasVersion()
@@ -5556,10 +5566,16 @@ public class PanoramaPublicController extends SpringActionController
 
         public boolean canAddPublishLink(User user)
         {
-           return _experimentAnnotations.getContainer().hasPermission(user, AdminPermission.class)
-                && _lastPublishedRecord != null && !_lastPublishedRecord.hasPendingSubmission() // There is no pending submission request
-                && _journalCopy != null // There exists a copy of the data on Panorama Public
-                && !(_journalCopy.isPublic() && _journalCopy.hasCompletePublicationInfo());  // The copy is not already public with a PubMed Id
+            return _experimentAnnotations.getContainer().hasOneOf(user, AdminPermission.class, PanoramaPublicSubmitterPermission.class)
+                    && _lastSubmittedRecord != null && !_lastSubmittedRecord.hasPendingSubmission() // There is no pending submission request
+                    && (!hasVersion() || isCurrentVersion()) // If this is a Panorama Public copy, and there are multiple versions, then this is the current version
+                    && _journalCopy != null // There exists a copy of the data on Panorama Public
+                    && !(_journalCopy.isPublic() && _journalCopy.hasCompletePublicationInfo());  // The copy is not already public with a PubMed Id
+        }
+
+        private boolean hasPendingSubmission()
+        {
+            return _lastSubmittedRecord != null && _lastSubmittedRecord.hasPendingSubmission();
         }
 
         public String getPublishButtonText()
@@ -5586,9 +5602,9 @@ public class PanoramaPublicController extends SpringActionController
                     var js  = SubmissionManager.getSubmissionForJournalCopy(_experimentAnnotations);
                     labHeadName = js != null ? js.getLabHeadNameForCopy(_experimentAnnotations.getId()) : null;
                 }
-                else if (_lastPublishedRecord != null)
+                else if (_lastSubmittedRecord != null)
                 {
-                    labHeadName = _lastPublishedRecord.getLabHeadName();
+                    labHeadName = _lastSubmittedRecord.getLabHeadName();
                 }
             }
             return labHeadName;
@@ -5623,7 +5639,6 @@ public class PanoramaPublicController extends SpringActionController
             result.addView(publishedVersionsView != null ? publishedVersionsView:
                     new HtmlView(DIV("Did not find any published versions related to the experiment " + exptAnnotations.getId())));
             result.addView(new HtmlView(PageFlowUtil.generateBackButton()));
-            result.setFrame(WebPartView.FrameType.PORTAL);
             return result;
         }
 
@@ -6178,9 +6193,11 @@ public class PanoramaPublicController extends SpringActionController
      *   without any publication information.
      *   If a PubMed ID is provided, the citation in NLM format is determined using NCBI's Literature Citation Exporter.
      * - The DOI associated with the data is made "findable".
-     * This action can be invoked by a folder administrator in the submitted folder in a user project.
+     * This action can be invoked by a folder administrator in the submitted folder in a user project. It can also be
+     * invoked in the Panorama Public copy of the folder by users that have been assigned the PanoramaPublicSubmitterRole
+     * in the copied folder (i.e. the users selected as the submitter and lab head).
      */
-    @RequiresPermission(AdminPermission.class)
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
     public static class MakePublicAction extends FormViewAction<PublicationDetailsForm>
     {
         private ExperimentAnnotations _expAnnot;

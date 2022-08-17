@@ -111,9 +111,9 @@
     Journal journal = null;
     boolean journalCopyPending = false;
     ShortURLRecord accessUrlRecord = annot.getShortUrl(); // Will have a value if this is a journal copy of an experiment.
-    JournalSubmission js = annotDetails.getLastPublishedRecord(); // Will be non-null if this experiment is in a user (not journal) project.
+    JournalSubmission js = annotDetails.getLastSubmittedRecord();
     String publishButtonText = "Submit";
-    if (js != null)
+    if (js != null && !annot.isJournalCopy())
     {
         journal = JournalManager.getJournal(js.getJournalId());
         Submission submission = js.getLatestSubmission();
