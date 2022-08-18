@@ -1,0 +1,6 @@
+<view xmlns="http://labkey.org/data/xml/view" title="The searched protein appeared in the following experiments">
+
+    <dependencies>
+        <dependency path="Ext4ClientApi"/>
+    </dependencies>
+</view>

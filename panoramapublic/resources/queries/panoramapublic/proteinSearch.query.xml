@@ -3,7 +3,12 @@
         <tables xmlns="http://labkey.org/data/xml">
             <table tableName="ProteinSearch" tableDbType="TABLE">
                 <columns>
-
+                    <column columnName="Matches">
+                        <columnTitle># of Matches</columnTitle>
+                        <displayColumnFactory>
+                            <className>org.labkey.panoramapublic.query.ProteinMatchesDisplayColumnFactory</className>
+                        </displayColumnFactory>
+                    </column>
                 </columns>
             </table>
         </tables>

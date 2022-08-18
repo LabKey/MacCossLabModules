@@ -1,0 +1,29 @@
+<div id="search-indicator"></div>
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
+
+    Ext4.onReady(function(){
+        Ext4.create('Ext.panel.Panel', {
+            border: false,
+            renderTo: 'search-indicator',
+        });
+        Ext4.get('search-indicator').mask('Search is running, results pending...');
+
+        var webpart = <%=webpartContext%>;
+
+        let wp = new LABKEY.QueryWebPart({
+            renderTo: webpart.wrapperDivId,
+            frame: 'none',
+            title: 'The searched protein appeared in the following experiments',
+            schemaName: 'panoramapublic',
+            queryName: 'proteinSearchResults',
+            containerFilter: LABKEY.Query.containerFilter.allFolders,
+            //grab param from the url
+            parameters: {proteinId : 25},
+            success: function () {
+                Ext4.get('search-indicator').unmask();
+            }
+        });
+        wp.render();
+    });
+
+</script>
