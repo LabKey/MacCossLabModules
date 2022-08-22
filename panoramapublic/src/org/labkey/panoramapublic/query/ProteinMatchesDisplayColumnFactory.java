@@ -5,6 +5,10 @@ import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
+import org.labkey.api.query.FieldKey;
+import org.labkey.api.util.Link;
+import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.view.ActionURL;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -19,10 +23,12 @@ public class ProteinMatchesDisplayColumnFactory implements DisplayColumnFactory
             @Override
             public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
             {
-                // create a view button
-                // link column's text and button to panoramapublic-proteinSearchResults.view?
-                // pass parameters -
-                out.write("implement");
+                ActionURL searchUrl = new ActionURL("panoramapublic", "proteinSearchResults", ctx.getContainer());
+                Integer matches = ctx.get(FieldKey.fromParts("Matches"), Integer.class);
+                String proteinLabel = ctx.get(FieldKey.fromParts(""), String.class);
+                searchUrl.addParameter("proteinLabel", proteinLabel);
+                out.write(new Link.LinkBuilder(String.valueOf(matches)).href(searchUrl).toString());
+                out.write(PageFlowUtil.button("View").href(searchUrl).toString());
             }
         };
     }

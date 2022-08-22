@@ -1,7 +1,7 @@
 PARAMETERS
 (
-    proteinId BIGINT
+    proteinLabel VARCHAR
 )
 SELECT p.Label, p.Description, p.Accession, p.PreferredName, p.Gene
 FROM targetedms.Protein p
-WHERE p.Id = proteinId
+WHERE p.Label = proteinLabel
