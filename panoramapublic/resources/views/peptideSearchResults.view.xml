@@ -1,0 +1,6 @@
+<view xmlns="http://labkey.org/data/xml/view" title="The searched peptide appeared in the following Skyline files">
+
+    <dependencies>
+        <dependency path="Ext4ClientApi"/>
+    </dependencies>
+</view>

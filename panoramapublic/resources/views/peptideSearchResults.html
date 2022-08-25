@@ -11,17 +11,17 @@
         let webpart = <%=webpartContext%>;
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
-        const label = urlParams.get('proteinLabel');
+        const peptideSequence = urlParams.get('peptideSequence');
         const container = urlParams.get('container');
 
         let wp = new LABKEY.QueryWebPart({
             renderTo: webpart.wrapperDivId,
             frame: 'none',
-            title: 'Protein ' + label + ' appeared in the following Skyline files',
+            title: 'Peptide ' + peptideSequence + ' appeared in the following Skyline files',
             schemaName: 'panoramapublic',
-            queryName: 'proteinSearchResults',
+            queryName: 'peptideSearchResults',
             containerFilter: LABKEY.Query.containerFilter.allFolders,
-            parameters: {proteinLabel : label, container: container},
+            parameters: {peptideSequence : peptideSequence, container: container},
             success: function () {
                 if (Ext4.get('search-indicator')) {
                     Ext4.get('search-indicator').unmask();

@@ -36,7 +36,7 @@
 
                 let expAnnotationFilters = [];
                 let proteinParameters = {};
-                let peptideFilters = [];
+                let peptideParameters = {};
 
                 // render experiment list webpart
                 // add filters in qwp and in the url for back button
@@ -76,17 +76,20 @@
                             updateUrlFilters(null, proteinNameItemId, protein.getValue());
                         }
                         if (exactMatch && exactMatch.getValue()) {
+                            proteinParameters['exactMatch'] = exactMatch.getValue();
                             updateUrlFilters(null, exactProteinMatchesItemId, exactMatch.getValue());
                         }
                     }
-                    else if (activeTab === peptideSequenceItemId) {
+                    else if (activeTab === peptideSearchPanelItemId) {
                         let peptide = peptideSearchPanel.down('#' + peptideSequenceItemId);
-                        let exactMatch = peptideSearchPanel.down('#' + exactProteinMatchesItemId);
+                        let exactMatch = peptideSearchPanel.down('#' + exactPeptideMatchesItemId);
 
                         if (peptide && peptide.getValue()) {
+                            peptideParameters[peptideSequenceItemId] = peptide.getValue();
                             updateUrlFilters(null, peptideSequenceItemId, peptide.getValue());
                         }
                         if (exactMatch && exactMatch.getValue()) {
+                            peptideParameters['exactMatch'] = exactMatch.getValue();
                             updateUrlFilters(null, exactPeptideMatchesItemId, exactMatch.getValue());
                         }
                     }
@@ -106,10 +109,25 @@
                     if (context[instrumentItemId]) {
                         expAnnotationFilters.push(LABKEY.Filter.create(instrumentItemId, context[instrumentItemId], LABKEY.Filter.Types.CONTAINS));
                     }
+                    if (context[proteinNameItemId]) {
+                        proteinParameters['proteinLabel'] =  context[proteinNameItemId];
+                    }
+                    if (context[exactProteinMatchesItemId]) {
+                        proteinParameters['exactMatch'] =  context[exactProteinMatchesItemId];
+                    }
+                    if (context[peptideSequenceItemId]) {
+                        peptideParameters[peptideSequenceItemId] =  context[peptideSequenceItemId];
+                    }
+                    if (context[exactPeptideMatchesItemId]) {
+                        peptideParameters['exactMatch'] =  context[exactPeptideMatchesItemId];
+                    }
                 }
 
                 // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
-                if (clicked || expAnnotationFilters.length > 0 || proteinParameters['proteinLabel']) {
+                if (clicked || expAnnotationFilters.length > 0 ||
+                        proteinParameters['proteinLabel'] ||
+                        peptideParameters[peptideSequenceItemId]
+                ) {
                     Ext4.create('Ext.panel.Panel', {
                         border: false,
                         renderTo: 'search-indicator',
@@ -139,6 +157,20 @@
                             queryName: 'proteinSearch',
                             containerFilter: LABKEY.Query.containerFilter.allFolders,
                             parameters: proteinParameters,
+                            success: function () {
+                                Ext4.get('search-indicator').unmask();
+                            }
+                        });
+                        wp.render();
+                    }
+                    else if (peptideParameters[peptideSequenceItemId]) {
+                        let wp = new LABKEY.QueryWebPart({
+                            renderTo: 'experiment_list_wp',
+                            title: 'The searched peptide appeared in the following experiments',
+                            schemaName: 'panoramapublic',
+                            queryName: 'peptideSearch',
+                            containerFilter: LABKEY.Query.containerFilter.allFolders,
+                            parameters: peptideParameters,
                             success: function () {
                                 Ext4.get('search-indicator').unmask();
                             }
@@ -176,6 +208,18 @@
                                 break;
                             case instrumentItemId:
                                 context[instrumentItemId] = t[1];
+                                break;
+                            case proteinNameItemId:
+                                context[proteinNameItemId] = t[1];
+                                break;
+                            case exactProteinMatchesItemId:
+                                context[exactProteinMatchesItemId] = t[1];
+                                break;
+                            case peptideSequenceItemId:
+                                context[peptideSequenceItemId] = t[1];
+                                break;
+                            case exactPeptideMatchesItemId:
+                                context[exactPeptideMatchesItemId] = t[1];
                                 break;
                             default:
                                 context[t[0]] = t[1];

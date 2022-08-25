@@ -4,7 +4,7 @@ PARAMETERS
     exactMatch BIT default false
 )
 
-SELECT ex.created, count(p.label) as matches, ex.title, ex.organism, ex.citation, ex.pxid
+SELECT ex.created, count(p.label) as matches, ex.title, ex.organism, ex.citation, ex.pxid, proteinLabel AS proteinLabel, ex.container @hidden
 from experimentannotations ex
 inner join exp.Runs rn on ex.experimentid.lsid = rn.rungroups.lsid
 inner join targetedms.runs trn on trn.ExperimentRunLSID = rn.lsid
@@ -26,4 +26,4 @@ OR (
     )
     )
     )
-group by ex.created, ex.title, ex.organism, ex.citation, ex.pxid
+group by ex.created, ex.title, ex.organism, ex.citation, ex.pxid, ex.container

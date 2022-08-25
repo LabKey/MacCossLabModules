@@ -13,7 +13,7 @@ import org.labkey.api.view.ActionURL;
 import java.io.IOException;
 import java.io.Writer;
 
-public class ProteinMatchesDisplayColumnFactory implements DisplayColumnFactory
+public class PeptideMatchesDisplayColumnFactory implements DisplayColumnFactory
 {
     @Override
     public DisplayColumn createRenderer(ColumnInfo colInfo)
@@ -23,11 +23,11 @@ public class ProteinMatchesDisplayColumnFactory implements DisplayColumnFactory
             @Override
             public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
             {
-                ActionURL searchUrl = new ActionURL("panoramapublic", "proteinSearchResults", ctx.getContainer());
+                ActionURL searchUrl = new ActionURL("panoramapublic", "peptideSearchResults", ctx.getContainer());
                 Integer matches = ctx.get(FieldKey.fromParts("Matches"), Integer.class);
-                String proteinLabel = ctx.get(FieldKey.fromParts("proteinLabel"), String.class);
+                String proteinLabel = ctx.get(FieldKey.fromParts("peptideSequence"), String.class);
                 String container = ctx.get(FieldKey.fromParts("container"), String.class);
-                searchUrl.addParameter("proteinLabel", proteinLabel);
+                searchUrl.addParameter("peptideSequence", proteinLabel);
                 searchUrl.addParameter("container", container);
 
                 out.write(new Link.LinkBuilder(String.valueOf(matches)).href(searchUrl).toString());
