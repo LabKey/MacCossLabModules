@@ -1,8 +1,7 @@
 PARAMETERS
 (
     proteinLabel VARCHAR,
-    exactMatch BIT default false,
-    container VARCHAR
+    exactMatch BIT default false
 )
 -- SELECT Label, Description, Accession, PreferredName, Gene, Container
 SELECT trn.FileName, ex.Instrument,  p.Label, p.Description, p.Accession, p.PreferredName, p.Gene, ex.Container @hidden
@@ -27,7 +26,6 @@ WHERE (
                 )
             )
     )
-AND ex.container = container
 
 -- FROM proteinResults
 -- where Container = container

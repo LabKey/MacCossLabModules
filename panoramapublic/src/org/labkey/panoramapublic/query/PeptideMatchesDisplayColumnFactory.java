@@ -1,6 +1,8 @@
 package org.labkey.panoramapublic.query;
 
 import org.labkey.api.data.ColumnInfo;
+import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
@@ -23,12 +25,12 @@ public class PeptideMatchesDisplayColumnFactory implements DisplayColumnFactory
             @Override
             public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
             {
-                ActionURL searchUrl = new ActionURL("panoramapublic", "peptideSearchResults", ctx.getContainer());
-                Integer matches = ctx.get(FieldKey.fromParts("Matches"), Integer.class);
                 String proteinLabel = ctx.get(FieldKey.fromParts("peptideSequence"), String.class);
                 String container = ctx.get(FieldKey.fromParts("container"), String.class);
+                Container c = ContainerManager.getForId(container);
+                ActionURL searchUrl = new ActionURL("panoramapublic", "peptideSearchResults", c);
+                Integer matches = ctx.get(FieldKey.fromParts("Matches"), Integer.class);
                 searchUrl.addParameter("peptideSequence", proteinLabel);
-                searchUrl.addParameter("container", container);
 
                 out.write(new Link.LinkBuilder(String.valueOf(matches)).href(searchUrl).toString());
                 out.write(PageFlowUtil.button("View").href(searchUrl).toString());

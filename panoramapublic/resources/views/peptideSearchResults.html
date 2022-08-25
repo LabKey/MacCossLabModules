@@ -12,16 +12,15 @@
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
         const peptideSequence = urlParams.get('peptideSequence');
-        const container = urlParams.get('container');
 
         let wp = new LABKEY.QueryWebPart({
             renderTo: webpart.wrapperDivId,
-            frame: 'none',
-            title: 'Peptide ' + peptideSequence + ' appeared in the following Skyline files',
+            frame: 'portal',
+            title: 'Search criteria : ' + peptideSequence ,
             schemaName: 'panoramapublic',
             queryName: 'peptideSearchResults',
-            containerFilter: LABKEY.Query.containerFilter.allFolders,
-            parameters: {peptideSequence : peptideSequence, container: container},
+            showFilterDescription: false,
+            parameters: {peptideSequence : peptideSequence},
             success: function () {
                 if (Ext4.get('search-indicator')) {
                     Ext4.get('search-indicator').unmask();

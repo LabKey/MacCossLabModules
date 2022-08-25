@@ -12,16 +12,15 @@
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
         const label = urlParams.get('proteinLabel');
-        const container = urlParams.get('container');
 
         let wp = new LABKEY.QueryWebPart({
             renderTo: webpart.wrapperDivId,
-            frame: 'none',
-            title: 'Protein ' + label + ' appeared in the following Skyline files',
+            frame: 'portal',
+            title: 'Search criteria : ' + label,
             schemaName: 'panoramapublic',
             queryName: 'proteinSearchResults',
-            containerFilter: LABKEY.Query.containerFilter.allFolders,
-            parameters: {proteinLabel : label, container: container},
+            showFilterDescription: false,
+            parameters: {proteinLabel : label},
             success: function () {
                 if (Ext4.get('search-indicator')) {
                     Ext4.get('search-indicator').unmask();

@@ -1,8 +1,7 @@
 PARAMETERS
 (
     peptideSequence VARCHAR,
-    exactMatch BIT default false,
-    container VARCHAR
+    exactMatch BIT default false
 )
 
 SELECT trn.FileName, ex.Instrument, p.ModifiedPeptideDisplayColumn, p.CalcNeutralMass, p.PeptideGroupId.Label, ex.Container @hidden
@@ -28,4 +27,3 @@ WHERE (
                 )
             )
     )
-  AND ex.container = container

@@ -141,7 +141,8 @@
                             schemaName: 'panoramapublic',
                             viewName: 'search',
                             queryName: 'ExperimentAnnotations',
-                            containerFilter: LABKEY.Query.containerFilter.allFolders,
+                            showFilterDescription: false,
+                            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                             filters: expAnnotationFilters,
                             success: function () {
                                 Ext4.get('search-indicator').unmask();
@@ -155,7 +156,8 @@
                             title: 'The searched protein appeared in the following experiments',
                             schemaName: 'panoramapublic',
                             queryName: 'proteinSearch',
-                            containerFilter: LABKEY.Query.containerFilter.allFolders,
+                            showFilterDescription: false,
+                            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                             parameters: proteinParameters,
                             success: function () {
                                 Ext4.get('search-indicator').unmask();
@@ -169,7 +171,8 @@
                             title: 'The searched peptide appeared in the following experiments',
                             schemaName: 'panoramapublic',
                             queryName: 'peptideSearch',
-                            containerFilter: LABKEY.Query.containerFilter.allFolders,
+                            showFilterDescription: false,
+                            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                             parameters: peptideParameters,
                             success: function () {
                                 Ext4.get('search-indicator').unmask();
