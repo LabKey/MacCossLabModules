@@ -3,8 +3,20 @@ PARAMETERS
     proteinLabel VARCHAR,
     exactMatch BIT default false
 )
--- SELECT Label, Description, Accession, PreferredName, Gene, Container
-SELECT trn.FileName, ex.Instrument,  p.Label, p.Description, p.Accession, p.PreferredName, p.Gene, ex.Container @hidden
+
+SELECT trn.FileName,
+       ex.Instrument,
+       p.Label,
+       p.Description,
+       p.Accession,
+       p.PreferredName,
+       p.Gene,
+       ex.created,
+       ex.title,
+       ex.organism,
+       ex.citation,
+       ex.pxid,
+       ex.Container @hidden
 from experimentannotations ex
  inner join exp.Runs rn on ex.experimentid.lsid = rn.rungroups.lsid
  inner join targetedms.runs trn on trn.ExperimentRunLSID = rn.lsid
@@ -26,6 +38,3 @@ WHERE (
                 )
             )
     )
-
--- FROM proteinResults
--- where Container = container
