@@ -17,9 +17,10 @@
             const titleItemId = 'Title';
             const organismItemId = 'Organism';
             const instrumentItemId = 'Instrument';
+            const exactMatch = 'exactMatch';
 
             const proteinSearchPanelItemId = 'proteinSearchPanel';
-            const proteinNameItemId = 'proteinName';
+            const proteinNameItemId = 'proteinLabel';
             const exactProteinMatchesItemId = 'exactProteinMatches';
 
             const peptideSearchPanelItemId = 'peptideSearchPanel';
@@ -69,28 +70,28 @@
                     }
                     else if (activeTab === proteinSearchPanelItemId) {
                         let protein = proteinSearchPanel.down('#' + proteinNameItemId);
-                        let exactMatch = proteinSearchPanel.down('#' + exactProteinMatchesItemId);
+                        let exactProteinMatch = proteinSearchPanel.down('#' + exactProteinMatchesItemId);
 
                         if (protein && protein.getValue()) {
-                            proteinParameters['proteinLabel'] = protein.getValue();
+                            proteinParameters[proteinNameItemId] = protein.getValue();
                             updateUrlFilters(null, proteinNameItemId, protein.getValue());
                         }
-                        if (exactMatch && exactMatch.getValue()) {
-                            proteinParameters['exactMatch'] = exactMatch.getValue();
-                            updateUrlFilters(null, exactProteinMatchesItemId, exactMatch.getValue());
+                        if (exactProteinMatch && exactProteinMatch.getValue()) {
+                            proteinParameters[exactMatch] = exactProteinMatch.getValue();
+                            updateUrlFilters(null, exactProteinMatchesItemId, exactProteinMatch.getValue());
                         }
                     }
                     else if (activeTab === peptideSearchPanelItemId) {
                         let peptide = peptideSearchPanel.down('#' + peptideSequenceItemId);
-                        let exactMatch = peptideSearchPanel.down('#' + exactPeptideMatchesItemId);
+                        let exactPeptideMatch = peptideSearchPanel.down('#' + exactPeptideMatchesItemId);
 
                         if (peptide && peptide.getValue()) {
                             peptideParameters[peptideSequenceItemId] = peptide.getValue();
                             updateUrlFilters(null, peptideSequenceItemId, peptide.getValue());
                         }
-                        if (exactMatch && exactMatch.getValue()) {
-                            peptideParameters['exactMatch'] = exactMatch.getValue();
-                            updateUrlFilters(null, exactPeptideMatchesItemId, exactMatch.getValue());
+                        if (exactPeptideMatch && exactPeptideMatch.getValue()) {
+                            peptideParameters[exactMatch] = exactPeptideMatch.getValue();
+                            updateUrlFilters(null, exactPeptideMatchesItemId, exactPeptideMatch.getValue());
                         }
                     }
                 }
@@ -110,22 +111,22 @@
                         expAnnotationFilters.push(LABKEY.Filter.create(instrumentItemId, context[instrumentItemId], LABKEY.Filter.Types.CONTAINS));
                     }
                     if (context[proteinNameItemId]) {
-                        proteinParameters['proteinLabel'] =  context[proteinNameItemId];
+                        proteinParameters[proteinNameItemId] =  context[proteinNameItemId];
                     }
                     if (context[exactProteinMatchesItemId]) {
-                        proteinParameters['exactMatch'] =  context[exactProteinMatchesItemId];
+                        proteinParameters[exactMatch] =  context[exactProteinMatchesItemId];
                     }
                     if (context[peptideSequenceItemId]) {
                         peptideParameters[peptideSequenceItemId] =  context[peptideSequenceItemId];
                     }
                     if (context[exactPeptideMatchesItemId]) {
-                        peptideParameters['exactMatch'] =  context[exactPeptideMatchesItemId];
+                        peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
                     }
                 }
 
                 // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
                 if (clicked || expAnnotationFilters.length > 0 ||
-                        proteinParameters['proteinLabel'] ||
+                        proteinParameters[proteinNameItemId] ||
                         peptideParameters[peptideSequenceItemId]
                 ) {
                     Ext4.create('Ext.panel.Panel', {
@@ -150,7 +151,7 @@
                         });
                         wp.render();
                     }
-                    else if (proteinParameters['proteinLabel']) {
+                    else if (proteinParameters[proteinNameItemId]) {
                         let wp = new LABKEY.QueryWebPart({
                             renderTo: 'experiment_list_wp',
                             title: 'The searched protein appeared in the following experiments',
