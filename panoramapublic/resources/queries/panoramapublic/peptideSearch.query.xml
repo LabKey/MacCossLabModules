@@ -1,0 +1,16 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="PeptideSearch" tableDbType="TABLE">
+                <columns>
+                    <column columnName="Matches">
+                        <columnTitle># of Matches</columnTitle>
+                        <displayColumnFactory>
+                            <className>org.labkey.panoramapublic.query.PeptideMatchesDisplayColumnFactory</className>
+                        </displayColumnFactory>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>
