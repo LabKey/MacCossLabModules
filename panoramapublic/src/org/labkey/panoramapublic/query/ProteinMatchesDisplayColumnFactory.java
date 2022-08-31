@@ -27,10 +27,12 @@ public class ProteinMatchesDisplayColumnFactory implements DisplayColumnFactory
             {
                 Integer matches = ctx.get(FieldKey.fromParts("Matches"), Integer.class);
                 String proteinLabel = ctx.get(FieldKey.fromParts("proteinLabel"), String.class);
+                String exactMatch = ctx.get(FieldKey.fromParts("exactMatch"), String.class);
                 String container = ctx.get(FieldKey.fromParts("container"), String.class);
                 Container c = ContainerManager.getForId(container);
                 ActionURL searchUrl = new ActionURL("panoramapublic", "proteinSearchResults", c);
                 searchUrl.addParameter("proteinLabel", proteinLabel);
+                searchUrl.addParameter("exactMatch", exactMatch);
 
                 out.write(new Link.LinkBuilder(String.valueOf(matches)).href(searchUrl).toString());
                 out.write(PageFlowUtil.button("View").href(searchUrl).toString());

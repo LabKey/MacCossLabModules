@@ -12,15 +12,16 @@
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
         const label = urlParams.get('proteinLabel');
+        const exactMatch = urlParams.get('exactMatch');
 
         let wp = new LABKEY.QueryWebPart({
             renderTo: webpart.wrapperDivId,
             frame: 'portal',
-            title: 'Search criteria : ' + label,
+            title: 'Search criteria : ' + label + ' & exact match: ' + exactMatch,
             schemaName: 'panoramapublic',
             queryName: 'proteinSearchResults',
             showFilterDescription: false,
-            parameters: {proteinLabel : label},
+            parameters: {proteinLabel : label, exactMatch: exactMatch},
             success: function () {
                 if (Ext4.get('search-indicator')) {
                     Ext4.get('search-indicator').unmask();

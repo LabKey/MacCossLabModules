@@ -26,11 +26,13 @@ public class PeptideMatchesDisplayColumnFactory implements DisplayColumnFactory
             public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
             {
                 String proteinLabel = ctx.get(FieldKey.fromParts("peptideSequence"), String.class);
+                String exactMatch = ctx.get(FieldKey.fromParts("exactMatch"), String.class);
                 String container = ctx.get(FieldKey.fromParts("container"), String.class);
                 Container c = ContainerManager.getForId(container);
                 ActionURL searchUrl = new ActionURL("panoramapublic", "peptideSearchResults", c);
                 Integer matches = ctx.get(FieldKey.fromParts("Matches"), Integer.class);
                 searchUrl.addParameter("peptideSequence", proteinLabel);
+                searchUrl.addParameter("exactMatch", exactMatch);
 
                 out.write(new Link.LinkBuilder(String.valueOf(matches)).href(searchUrl).toString());
                 out.write(PageFlowUtil.button("View").href(searchUrl).toString());

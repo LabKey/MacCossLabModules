@@ -11,6 +11,7 @@ SELECT created,
        citation,
        pxid,
        proteinLabel AS proteinLabel,
+       exactMatch,
        container @hidden
 from proteinSearchResults
 group by created, title, organism, citation, pxid, container
