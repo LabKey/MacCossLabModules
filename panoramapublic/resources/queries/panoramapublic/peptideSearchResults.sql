@@ -15,7 +15,6 @@ SELECT trn.FileName,
        ex.organism,
        ex.citation,
        ex.pxid,
-       peptideSequence AS peptideSequence,
        ex.Container @hidden
 from experimentannotations ex
          inner join exp.Runs rn on ex.experimentid.lsid = rn.rungroups.lsid
