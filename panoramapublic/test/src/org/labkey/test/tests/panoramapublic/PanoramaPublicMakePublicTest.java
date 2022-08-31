@@ -1,5 +1,6 @@
 package org.labkey.test.tests.panoramapublic;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
@@ -7,9 +8,11 @@ import org.labkey.test.Locator;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
+import org.labkey.test.pages.admin.PermissionsPage;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.PermissionsHelper;
+import org.openqa.selenium.NoSuchElementException;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -49,6 +52,8 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         // Copy the experiment to the Panorama Public project
         makeCopy(projectName, folderName, experimentTitle, targetFolder, false, false);
 
+        verifyPanoramaPublicSubmitterRole(projectName, folderName, PANORAMA_PUBLIC, targetFolder);
+
         // Verify that the submitter can make the data public
         verifyMakePublic(PANORAMA_PUBLIC, targetFolder, SUBMITTER, true);
         // Verify that a folder admin in the source folder, who is not the submitter or lab head will not see the
@@ -80,6 +85,31 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         goToDashboard();
         expWebPart = new TargetedMsExperimentWebPart(this);
         assertFalse("Data has been made public, and a publication link has been added. Resubmit button should not be displayed.", expWebPart.hasResubmitLink());
+    }
+
+    private void verifyPanoramaPublicSubmitterRole(String userProject, String userFolder, String panoramaPublicProject, String panoramaPublicFolder)
+    {
+        if (isImpersonating())
+        {
+            stopImpersonating(true);
+        }
+        String role = "Panorama Public Submitter";
+        goToProjectFolder(panoramaPublicProject, panoramaPublicFolder);
+        PermissionsPage permsPage = navBar().goToPermissionsPage();
+        assertTrue("Expected submitter " + SUBMITTER + " to be assigned the " + role + " role in the copied folder.", permsPage.isUserInRole(SUBMITTER, role));
+
+        goToProjectFolder(userProject, userFolder);
+        permsPage = navBar().goToPermissionsPage();
+        try
+        {
+            permsPage.isUserInRole(SUBMITTER, role);
+            Assert.fail(role + " role should not be visible in a user project.");
+        }
+        catch (NoSuchElementException e)
+        {
+            // Exception thrown should be about not finding the "Panorama Public Submitter" role on the permissions page.
+            assertTrue(e.getMessage().contains(role));
+        }
     }
 
     private void resubmitWithoutPxd()

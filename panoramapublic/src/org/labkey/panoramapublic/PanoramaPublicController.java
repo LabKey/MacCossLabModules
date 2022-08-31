@@ -5487,10 +5487,7 @@ public class PanoramaPublicController extends SpringActionController
                 }
                 else
                 {
-                    // This is a journal copy, then lookup the source experiment to get the last submitted record.
-                    ExperimentAnnotations sourceExpt = ExperimentAnnotationsManager.get(_experimentAnnotations.getSourceExperimentId());
-                    _lastSubmittedRecord = sourceExpt != null ? SubmissionManager.getNewestJournalSubmission(sourceExpt) : null;
-
+                    _lastSubmittedRecord = SubmissionManager.getSubmissionForJournalCopy(_experimentAnnotations);
                     _journalCopy = _experimentAnnotations;
                 }
             }
@@ -5571,11 +5568,6 @@ public class PanoramaPublicController extends SpringActionController
                     && (!hasVersion() || isCurrentVersion()) // If this is a Panorama Public copy, and there are multiple versions, then this is the current version
                     && _journalCopy != null // There exists a copy of the data on Panorama Public
                     && !(_journalCopy.isPublic() && _journalCopy.hasCompletePublicationInfo());  // The copy is not already public with a PubMed Id
-        }
-
-        private boolean hasPendingSubmission()
-        {
-            return _lastSubmittedRecord != null && _lastSubmittedRecord.hasPendingSubmission();
         }
 
         public String getPublishButtonText()
