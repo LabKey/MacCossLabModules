@@ -22,7 +22,7 @@ public class PanoramaPublicSubmitterRole extends AbstractRole
     @Override
     public boolean isApplicable(SecurityPolicy policy, SecurableResource resource)
     {
-        if (super.isApplicable(policy, resource))
+        if (super.isApplicable(policy, resource)) // Superclass verifies that the resource is a Container.
         {
             // Show the role on the permissions page of subfolders of the Panorama Public project that have an experiment.
             Container project = ((Container)resource).getProject();
