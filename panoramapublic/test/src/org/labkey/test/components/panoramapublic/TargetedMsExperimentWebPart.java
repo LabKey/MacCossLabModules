@@ -7,6 +7,7 @@ import org.labkey.test.util.DataRegionTable;
 import org.openqa.selenium.WebElement;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class TargetedMsExperimentWebPart extends BodyWebPart <TargetedMsExperimentWebPart.ElementCache>
 {
@@ -45,16 +46,17 @@ public class TargetedMsExperimentWebPart extends BodyWebPart <TargetedMsExperime
 
     public void clickResubmit()
     {
-        WebElement resubmitLink = elementCache().resubmitLink; // Locator.linkContainingText("Resubmit");
-        assertNotNull("Expected to see a \"Resubmit\" button", resubmitLink);
-        getWrapper().clickAndWait(resubmitLink);
+        clickLink(elementCache().resubmitLink, "Expected to see a \"Resubmit\" button");
+    }
+
+    public boolean hasResubmitLink()
+    {
+        return elementCache().resubmitLink.isDisplayed();
     }
 
     public void clickMoreDetails()
     {
-        WebElement link = elementCache().moreDetailsLink;
-        assertNotNull("Expected to find a 'More Details' link", link);
-        getWrapper().clickAndWait(link);
+        clickLink(elementCache().moreDetailsLink, "Expected to find a 'More Details' link");
     }
 
     public String getAccessLink()
@@ -70,6 +72,27 @@ public class TargetedMsExperimentWebPart extends BodyWebPart <TargetedMsExperime
         return element != null ? element.getText() : null;
     }
 
+    public boolean hasMakePublicButton()
+    {
+        return elementCache().makePublicButton.isDisplayed();
+    }
+
+    public void clickMakePublic()
+    {
+        clickLink(elementCache().makePublicButton, "Expected to see a \"Make Public\" button");
+    }
+
+    public void clickAddPublication()
+    {
+        clickLink(elementCache().addPublicationButton, "Expected to see a \"Add Publication\" button");
+    }
+
+    private void clickLink(WebElement link, String message)
+    {
+        assertTrue(message , link.isDisplayed());
+        getWrapper().clickAndWait(link);
+    }
+
     @Override
     protected TargetedMsExperimentWebPart.ElementCache newElementCache()
     {
@@ -82,5 +105,7 @@ public class TargetedMsExperimentWebPart extends BodyWebPart <TargetedMsExperime
         private final WebElement moreDetailsLink = Locator.linkContainingText("More Details").findWhenNeeded(this);
         private final WebElement accessUrlTag = Locator.tagWithAttribute("span", "id", "accessUrl").childTag("a").findWhenNeeded(this);
         private final WebElement dataVersionTag = Locator.tagWithAttribute("span", "id", "publishedDataVersion").descendant("span").findOptionalElement(this).orElse(null);
+        private final WebElement makePublicButton = Locator.linkContainingText("Make Public").findWhenNeeded(this);
+        private final WebElement addPublicationButton = Locator.linkContainingText("Add Publication").findWhenNeeded(this);
     }
 }
