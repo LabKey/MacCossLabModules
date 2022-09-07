@@ -1,0 +1,11 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
+    <columns>
+        <column name="Created" />
+        <column name="Share" />
+        <column name="Title" />
+        <column name="Organism" />
+        <column name="Instrument" />
+        <column name="Citation" />
+        <column name="pxid" />
+    </columns>
+</customView>
