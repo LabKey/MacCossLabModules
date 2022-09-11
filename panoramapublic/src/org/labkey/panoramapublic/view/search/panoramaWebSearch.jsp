@@ -360,6 +360,10 @@
                                         listeners: {
                                             render: function (comp, eOpts) {
                                                 checkAndFillValuesFromUrl(proteinNameItemId, comp);
+                                                new Ext4.ToolTip({
+                                                    target : comp.getEl(),
+                                                    html: 'Required to search for proteins. You may use the name as specified by the FASTA file, or an annotation, such as a gene name, that has been loaded from an annotations file. You may comma separate multiple names.'
+                                                });
                                             }
                                         }
                                     },
@@ -374,6 +378,10 @@
                                         listeners: {
                                             render: function (comp, eOpts) {
                                                 checkAndFillValuesFromUrl(exactProteinMatchesItemId, comp);
+                                                new Ext4.ToolTip({
+                                                    target : comp.getEl(),
+                                                    html: 'If checked, the search will only find proteins with an exact name match. If not checked, proteins that contain the name entered will also match, but the search may be significantly slower.'
+                                                });
                                             }
                                         }
                                     }
@@ -398,6 +406,10 @@
                                         listeners: {
                                             render: function (comp, eOpts) {
                                                 checkAndFillValuesFromUrl(peptideSequenceItemId, comp);
+                                                new Ext4.ToolTip({
+                                                    target : comp.getEl(),
+                                                    html: 'Enter the peptide sequence to find, or multiple sequences separated by commas. Use * to match any sequence of characters.'
+                                                });
                                             }
                                         }
                                     },
@@ -412,6 +424,10 @@
                                         listeners: {
                                             render: function (comp, eOpts) {
                                                 checkAndFillValuesFromUrl(exactPeptideMatchesItemId, comp);
+                                                new Ext4.ToolTip({
+                                                    target : comp.getEl(),
+                                                    html: 'If checked, the search will match the peptides exactly; if unchecked, it will match any peptide that contain the specified sequence and ignore modifications.'
+                                                });
                                             }
                                         }
                                     }
