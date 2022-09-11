@@ -21,4 +21,4 @@ from experimentannotations ex
          inner join targetedms.runs trn on trn.ExperimentRunLSID = rn.lsid
          inner join targetedms.peptidegroup pg on trn.id = pg.runid
          inner join targetedms.peptide p on p.peptidegroupid = pg.id
-WHERE (LOWER (p.Sequence) LIKE LOWER(peptideSequence || (CASE WHEN exactMatch = true THEN '' ELSE '%' END) ))
+WHERE (LOWER (p.Sequence) LIKE LOWER((CASE WHEN exactMatch = true THEN '' ELSE '%' END) || peptideSequence || (CASE WHEN exactMatch = true THEN '' ELSE '%' END) ))
