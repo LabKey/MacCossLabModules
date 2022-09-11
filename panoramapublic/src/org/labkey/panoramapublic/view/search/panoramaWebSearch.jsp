@@ -42,9 +42,7 @@
                 // render experiment list webpart
                 // add filters in qwp and in the url for back button
                 if (clicked) {
-                    if (!window.location.href.includes('#')) {
-                        updateUrlFilters(activeTab);
-                    }
+                    updateUrlFilters(activeTab);
                     if (activeTab === expSearchPanelItemId) {
                         let author = expSearchPanel.down('#' + authorsItemId);
                         let title = expSearchPanel.down('#' + titleItemId);
@@ -284,6 +282,7 @@
                         items: [
                             {
                                 xtype: 'panel',
+                                name: expSearchPanelItemId,
                                 itemId: expSearchPanelItemId,
                                 title: 'Experiment Search',
                                 cls: 'non-ext-search-tab-panel',
@@ -291,6 +290,7 @@
                                 items:[{
                                     xtype: 'textfield',
                                     fieldLabel: 'Author',
+                                    name: authorsItemId,
                                     itemId: authorsItemId,
                                     labelCls: 'labkey-form-label',
                                     labelWidth: 75,
@@ -302,6 +302,7 @@
                                 },
                                     {
                                         xtype: 'textfield',
+                                        name: titleItemId,
                                         fieldLabel: titleItemId,
                                         itemId: titleItemId,
                                         labelCls: 'labkey-form-label',
@@ -314,6 +315,7 @@
                                     },
                                     {
                                         xtype: 'textfield',
+                                        name: organismItemId,
                                         fieldLabel: organismItemId,
                                         itemId: organismItemId,
                                         labelCls: 'labkey-form-label',
@@ -326,6 +328,7 @@
                                     },
                                     {
                                         xtype: 'textfield',
+                                        name: instrumentItemId,
                                         fieldLabel: instrumentItemId,
                                         itemId: instrumentItemId,
                                         labelCls: 'labkey-form-label',
@@ -341,6 +344,7 @@
                             {
                                 // protein search webpart
                                 xtype: 'panel',
+                                name: proteinSearchPanelItemId,
                                 itemId: proteinSearchPanelItemId,
                                 title: 'Protein Search',
                                 cls: 'non-ext-search-tab-panel',
@@ -349,6 +353,7 @@
                                     {
                                         xtype: 'textfield',
                                         fieldLabel: 'Protein Name',
+                                        name: proteinNameItemId,
                                         itemId: proteinNameItemId,
                                         labelCls: 'labkey-form-label',
                                         labelWidth: 125,
@@ -361,6 +366,7 @@
                                     {
                                         xtype: 'checkbox',
                                         fieldLabel: 'Exact Matches Only',
+                                        name: exactProteinMatchesItemId,
                                         itemId: exactProteinMatchesItemId,
                                         labelCls: 'labkey-form-label',
                                         input: true,
@@ -376,6 +382,7 @@
                             {
                                 // peptide search webpart
                                 xtype: 'panel',
+                                name: peptideSearchPanelItemId,
                                 itemId: peptideSearchPanelItemId,
                                 title: 'Peptide Search',
                                 cls: 'non-ext-search-tab-panel',
@@ -383,6 +390,7 @@
                                 items : [
                                     {
                                         xtype: 'textfield',
+                                        name: 'Peptide Sequence',
                                         fieldLabel: 'Peptide Sequence',
                                         itemId: peptideSequenceItemId,
                                         labelCls: 'labkey-form-label',
@@ -396,6 +404,7 @@
                                     {
                                         xtype: 'checkbox',
                                         fieldLabel: 'Exact Matches Only',
+                                        name: exactPeptideMatchesItemId,
                                         itemId: exactPeptideMatchesItemId,
                                         labelCls: 'labkey-form-label',
                                         input: true,
