@@ -292,20 +292,24 @@
                                     fieldLabel: 'Author',
                                     name: authorsItemId,
                                     itemId: authorsItemId,
-                                    labelCls: 'labkey-form-label',
+                                    labelAlign: 'top',
                                     labelWidth: 75,
                                     listeners: {
                                         render: function (comp, eOpts) {
                                             checkAndFillValuesFromUrl(authorsItemId, comp);
                                         }
                                     }
-                                },
+                                    },
+                                    {
+                                        xtype: 'tbspacer',
+                                        width:10
+                                    },
                                     {
                                         xtype: 'textfield',
                                         name: titleItemId,
                                         fieldLabel: titleItemId,
                                         itemId: titleItemId,
-                                        labelCls: 'labkey-form-label',
+                                        labelAlign: 'top',
                                         labelWidth: 75,
                                         listeners: {
                                             render: function (comp, eOpts) {
@@ -314,12 +318,17 @@
                                         }
                                     },
                                     {
+                                        xtype: 'tbspacer',
+                                        width:10
+                                    },
+                                    {
                                         xtype: 'textfield',
                                         name: organismItemId,
                                         fieldLabel: organismItemId,
                                         itemId: organismItemId,
-                                        labelCls: 'labkey-form-label',
+                                        labelAlign: 'top',
                                         labelWidth: 75,
+                                        cls: 'padding: 0 0 15px 0',
                                         listeners: {
                                             render: function (comp, eOpts) {
                                                 checkAndFillValuesFromUrl(organismItemId, comp);
@@ -327,11 +336,15 @@
                                         }
                                     },
                                     {
+                                        xtype: 'tbspacer',
+                                        width:10
+                                    },
+                                    {
                                         xtype: 'textfield',
                                         name: instrumentItemId,
                                         fieldLabel: instrumentItemId,
                                         itemId: instrumentItemId,
-                                        labelCls: 'labkey-form-label',
+                                        labelAlign: 'top',
                                         labelWidth: 75,
                                         listeners: {
                                             render: function (comp, eOpts) {
@@ -355,7 +368,7 @@
                                         fieldLabel: 'Protein Name',
                                         name: proteinNameItemId,
                                         itemId: proteinNameItemId,
-                                        labelCls: 'labkey-form-label',
+                                        labelAlign: 'top',
                                         labelWidth: 125,
                                         listeners: {
                                             render: function (comp, eOpts) {
@@ -368,13 +381,16 @@
                                         }
                                     },
                                     {
+                                        xtype: 'tbspacer',
+                                        width:10
+                                    },
+                                    {
                                         xtype: 'checkbox',
                                         fieldLabel: 'Exact Matches Only',
                                         name: exactProteinMatchesItemId,
                                         itemId: exactProteinMatchesItemId,
-                                        labelCls: 'labkey-form-label',
                                         input: true,
-                                        labelWidth: 125,
+                                        labelWidth: 130,
                                         listeners: {
                                             render: function (comp, eOpts) {
                                                 checkAndFillValuesFromUrl(exactProteinMatchesItemId, comp);
@@ -401,7 +417,7 @@
                                         name: 'Peptide Sequence',
                                         fieldLabel: 'Peptide Sequence',
                                         itemId: peptideSequenceItemId,
-                                        labelCls: 'labkey-form-label',
+                                        labelAlign: 'top',
                                         labelWidth: 125,
                                         listeners: {
                                             render: function (comp, eOpts) {
@@ -414,13 +430,16 @@
                                         }
                                     },
                                     {
+                                        xtype: 'tbspacer',
+                                        width:10
+                                    },
+                                    {
                                         xtype: 'checkbox',
                                         fieldLabel: 'Exact Matches Only',
                                         name: exactPeptideMatchesItemId,
                                         itemId: exactPeptideMatchesItemId,
-                                        labelCls: 'labkey-form-label',
                                         input: true,
-                                        labelWidth: 125,
+                                        labelWidth: 130,
                                         listeners: {
                                             render: function (comp, eOpts) {
                                                 checkAndFillValuesFromUrl(exactPeptideMatchesItemId, comp);
