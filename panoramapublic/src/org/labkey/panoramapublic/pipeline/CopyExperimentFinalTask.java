@@ -80,6 +80,7 @@ import org.labkey.panoramapublic.query.SpecLibInfoManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
 import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfo;
+import org.labkey.panoramapublic.security.PanoramaPublicSubmitterRole;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -269,7 +270,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             Container oldContainer = previousCopy.getContainer();
             try
             {
-                ContainerManager.delete(oldContainer, user);
+                ContainerManager.deleteAll(oldContainer, user); // Delete folder and any subfolders
             }
             catch(Exception e)
             {
@@ -477,13 +478,21 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         // Give read permissions to the authors (all users that are folder admins)
         log.info("Adding read permissions to all users that are folder admins in the source folder.");
-        List<User> authors = getUsersWithRole(sourceExperiment.getContainer(), RoleManager.getRole(FolderAdminRole.class));
+        List<User> sourceFolderAdmins = getUsersWithRole(sourceExperiment.getContainer(), RoleManager.getRole(FolderAdminRole.class));
 
         Container target = targetExperiment.getContainer();
         MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
-        for (User author: authors)
+        User submitter = targetExperiment.getSubmitterUser();
+        User labHead = targetExperiment.getLabHeadUser();
+        for (User folderAdmin: sourceFolderAdmins)
         {
-            newPolicy.addRoleAssignment(author, ReaderRole.class);
+            newPolicy.addRoleAssignment(folderAdmin, ReaderRole.class);
+
+            if (folderAdmin.equals(submitter) || folderAdmin.equals(labHead))
+            {
+                // Assign the PanoramaPublicSubmitterRole so that the submitter or lab head is able to make the copied folder public, and add publication information.
+                newPolicy.addRoleAssignment(folderAdmin, PanoramaPublicSubmitterRole.class, false);
+            }
         }
 
         if (previousCopy != null)

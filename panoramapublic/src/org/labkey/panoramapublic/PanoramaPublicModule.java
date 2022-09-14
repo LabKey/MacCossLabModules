@@ -55,6 +55,8 @@ import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.modification.ModificationsView;
 import org.labkey.panoramapublic.query.speclib.SpecLibView;
 import org.labkey.panoramapublic.security.CopyTargetedMSExperimentRole;
+import org.labkey.panoramapublic.security.PanoramaPublicSubmitterPermission;
+import org.labkey.panoramapublic.security.PanoramaPublicSubmitterRole;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentsWebPart;
 
@@ -104,8 +106,10 @@ public class PanoramaPublicModule extends SpringModule
         service.registerPipelineProvider(new CopyExperimentPipelineProvider(this));
         service.registerPipelineProvider(new PxValidationPipelineProvider(this));
 
-        // Register the CopyExperimentRole
+        // Register Panorama Public specific roles and permissions
         RoleManager.registerRole(new CopyTargetedMSExperimentRole());
+        RoleManager.registerRole(new PanoramaPublicSubmitterRole());
+        RoleManager.registerPermission(new PanoramaPublicSubmitterPermission());
 
         // Add a link in the admin console to manage journals.
         ActionURL url = new ActionURL(PanoramaPublicController.JournalGroupsAdminViewAction.class, ContainerManager.getRoot());
