@@ -15,14 +15,16 @@
  */
 package org.labkey.panoramapublic.proteomexchange;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.entity.mime.content.FileBody;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.util.EntityUtils;
+
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.entity.mime.FileBody;
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -137,27 +139,30 @@ public class ProteomeXchangeService
         return getMultipartEntityBuilder(null, testDatabase, method, user, pass);
     }
 
-    private static String postRequest(MultipartEntityBuilder builder) throws IOException, ProteomeXchangeServiceException
+    private static String postRequest(MultipartEntityBuilder builder) throws IOException, ProteomeXchangeServiceException, ParseException
     {
         String responseMessage;
         HttpPost post = new HttpPost("http://proteomecentral.proteomexchange.org/cgi/Dataset");
         post.setEntity(builder.build());
 
         // execute the POST request
-        HttpClient client = HttpClientBuilder.create().build();
-        HttpResponse response = client.execute(post);
-
-        // retrieve and inspect the response
-        HttpEntity entity = response.getEntity();
-        responseMessage = EntityUtils.toString(entity);
-
-        // check the response status code
-        int statusCode = response.getStatusLine().getStatusCode();
-        if (statusCode != 200)
+        try (CloseableHttpClient client = HttpClientBuilder.create().build())
         {
-            throw new ProteomeXchangeServiceException("Error " + statusCode + " from ProteomeXchange server: " + responseMessage);
+            try (CloseableHttpResponse response = client.execute(post))
+            {
+                // retrieve and inspect the response
+                HttpEntity entity = response.getEntity();
+                responseMessage = EntityUtils.toString(entity);
+
+                // check the response status code
+                int statusCode = response.getCode();
+                if (statusCode != 200)
+                {
+                    throw new ProteomeXchangeServiceException("Error " + statusCode + " from ProteomeXchange server: " + responseMessage);
+                }
+                return responseMessage;
+            }
         }
-        return responseMessage;
     }
 
     public static boolean responseHasErrors(String response)
