@@ -4,6 +4,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
+import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
@@ -19,6 +20,9 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
 
     private static final String SUBFOLDER_1 = "First Subfolder";
     private static final String SUBFOLDER_2 = "Second Subfolder";
+
+    private static final String AUTHOR_FIRST_NAME = "Jane";
+    private static final String AUTHOR_LAST_NAME = "Doe";
 
     ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
 
@@ -50,8 +54,22 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         _userHelper.createUser(SUBMITTER);
         permissionsHelper.addMemberToRole(SUBMITTER, "Folder Administrator", PermissionsHelper.MemberType.user, getProjectName() + "/" + SUBFOLDER_2);
         impersonate(SUBMITTER);
+        updateSubmitterAccountInfo(AUTHOR_FIRST_NAME, AUTHOR_LAST_NAME, SUBFOLDER_2);
         createExperimentCompleteMetadata("Submitter Experiment");
         stopImpersonating();
+    }
+
+    /*
+        First Name and last name for the user needs to be set for Author to get populated.
+     */
+    private void updateSubmitterAccountInfo(String firstName, String lastName, String subfolder)
+    {
+        goToMyAccount();
+        clickButton("Edit");
+        setFormElement(Locator.name("quf_FirstName"), firstName);
+        setFormElement(Locator.name("quf_LastName"), lastName);
+        clickButton("Submit");
+        navigateToFolder(getProjectName(), subfolder);
     }
 
     @Test
