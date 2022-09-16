@@ -1,21 +1,21 @@
 package org.labkey.lincs.cromwell;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpStatus;
-import org.apache.http.StatusLine;
-import org.apache.http.client.ResponseHandler;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.HttpMultipartMode;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.entity.mime.content.StringBody;
-import org.apache.http.impl.client.BasicResponseHandler;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequest;
+import org.apache.hc.client5.http.entity.mime.HttpMultipartMode;
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
+import org.apache.hc.client5.http.entity.mime.StringBody;
+import org.apache.hc.client5.http.impl.classic.BasicHttpClientResponseHandler;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpException;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
@@ -35,7 +35,7 @@ public class CromwellUtil
             HttpPost post = new HttpPost(uri);
 
             MultipartEntityBuilder builder = MultipartEntityBuilder.create();
-            builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
+            builder.setMode(HttpMultipartMode.LEGACY);
             builder.addPart("workflowSource", new StringBody(wdl, ContentType.DEFAULT_BINARY));
             builder.addPart("workflowInputs", new StringBody(inputsJson, ContentType.APPLICATION_JSON));
             // disable call caching for this workflow
@@ -46,7 +46,7 @@ public class CromwellUtil
 
             return executeRequest(log, client, post, "Submitting job");
         }
-        catch (IOException e)
+        catch (IOException | HttpException e)
         {
             log.error("Could not submit job. Error was:" + e.getMessage(), e);
             return null;
@@ -60,7 +60,7 @@ public class CromwellUtil
             HttpGet get = new HttpGet(jobStatusUri);
             return executeRequest(log, client, get, "Checking job status");
         }
-        catch (IOException e)
+        catch (IOException | HttpException e)
         {
             throw new CromwellException("Error checking status of job.", e);
         }
@@ -76,23 +76,21 @@ public class CromwellUtil
             {
                 log.info("Sent request to abort job. Returned status: " + status.getJobStatus());
             }
-
         }
-        catch (IOException e)
+        catch (IOException | HttpException e)
         {
             throw new CromwellException("Error aborting job. Error message: " + e.getMessage(), e);
         }
     }
 
     @Nullable
-    private static CromwellUtil.CromwellJobStatus executeRequest(Logger log, CloseableHttpClient client, HttpUriRequest request, String requestDesc) throws IOException
+    private static CromwellUtil.CromwellJobStatus executeRequest(Logger log, CloseableHttpClient client, HttpUriRequest request, String requestDesc) throws IOException, HttpException
     {
         try (CloseableHttpResponse response = client.execute(request))
         {
-            ResponseHandler<String> handler = new BasicResponseHandler();
-            StatusLine status = response.getStatusLine();
+            HttpClientResponseHandler<String> handler = new BasicHttpClientResponseHandler();
 
-            if (status.getStatusCode() == HttpStatus.SC_OK || status.getStatusCode() == HttpStatus.SC_CREATED)
+            if (response.getCode() == HttpStatus.SC_OK || response.getCode() == HttpStatus.SC_CREATED)
             {
                 String resp = handler.handleResponse(response);
                 JSONObject json = new JSONObject(resp);
@@ -101,7 +99,7 @@ public class CromwellUtil
             }
             else
             {
-                log.error(requestDesc + " failed. Response code was " + status.getStatusCode() + " " +  status.getReasonPhrase());
+                log.error(requestDesc + " failed. Response code was " + response.getCode() + " " +  response.getReasonPhrase());
                 EntityUtils.consume(response.getEntity());
                 return null;
             }

@@ -1,7 +1,7 @@
 package org.labkey.lincs.cromwell;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.client.utils.URIBuilder;
+import org.apache.hc.core5.net.URIBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
@@ -16,7 +16,7 @@ public class CromwellConfig
     public static final String PROP_CROMWELL_SERVER_URL = "cromwell_server_url";
     public static final String PROP_CROMWELL_SERVER_PORT = "cromwell_server_port";
 
-    private static String CROMWELL_API_PATH = "/api/workflows/v1";
+    private static final String CROMWELL_API_PATH = "/api/workflows/v1";
 
     private final String _cromwellServerUrl;
     private final Integer _cromwellServerPort;

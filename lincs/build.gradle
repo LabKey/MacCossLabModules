@@ -1,5 +1,4 @@
-import org.labkey.gradle.util.BuildUtils;
-import org.labkey.gradle.util.ExternalDependency;
+import org.labkey.gradle.util.BuildUtils
 
 plugins {
     id 'org.labkey.build.module'
@@ -12,18 +11,6 @@ dependencies {
                 exclude group: "org.json", module:"json"
             }
 
-    BuildUtils.addExternalDependency(
-            project,
-            new ExternalDependency(
-                    "org.apache.httpcomponents:httpmime:${httpmimeVersion}",
-                    "Apache HTTP Mime",
-                    "Apache",
-                    "http://hc.apache.org/httpcomponents-client-ga",
-                    ExternalDependency.APACHE_2_LICENSE_NAME,
-                    ExternalDependency.APACHE_2_LICENSE_URL,
-                    "HTTP client for requests of remote servers"
-            )
-    )
     BuildUtils.addLabKeyDependency(project: project, config: "implementation", depProjectPath: ":server:modules:targetedms", depProjectConfig: "apiJarFile")
     BuildUtils.addLabKeyDependency(project: project, config: "modules", depProjectPath: ":server:modules:targetedms", depProjectConfig: 'published', depExtension: 'module')
 }
