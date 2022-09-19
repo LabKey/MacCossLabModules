@@ -375,7 +375,7 @@
                                                 checkAndFillValuesFromUrl(proteinNameItemId, comp);
                                                 new Ext4.ToolTip({
                                                     target : comp.getEl(),
-                                                    html: 'Required to search for proteins. You may use the name as specified by the FASTA file, or an annotation, such as a gene name, that has been loaded from an annotations file. You may comma separate multiple names.'
+                                                    html: 'Required to search for proteins. You may use the name as specified by the FASTA file, or an annotation, such as a gene name, that has been loaded from an annotations file.'
                                                 });
                                             }
                                         }
@@ -424,7 +424,7 @@
                                                 checkAndFillValuesFromUrl(peptideSequenceItemId, comp);
                                                 new Ext4.ToolTip({
                                                     target : comp.getEl(),
-                                                    html: 'Enter the peptide sequence to find, or multiple sequences separated by commas. Use * to match any sequence of characters.'
+                                                    html: 'Enter the peptide sequence to find.'
                                                 });
                                             }
                                         }
@@ -445,7 +445,7 @@
                                                 checkAndFillValuesFromUrl(exactPeptideMatchesItemId, comp);
                                                 new Ext4.ToolTip({
                                                     target : comp.getEl(),
-                                                    html: 'If checked, the search will match the peptides exactly; if unchecked, it will match any peptide that contain the specified sequence and ignore modifications.'
+                                                    html: 'If checked, the search will match the peptides exactly; if unchecked, it will match any peptide that contain the specified sequence.'
                                                 });
                                             }
                                         }
