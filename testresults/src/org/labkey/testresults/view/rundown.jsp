@@ -1,4 +1,4 @@
-<%@ page import="org.json.JSONObject" %>
+<%@ page import="org.json.old.JSONObject" %>
 <%@ page import="org.labkey.api.data.statistics.MathStat" %>
 <%@ page import="org.labkey.api.data.statistics.StatsService" %>
 <%@ page import="org.labkey.api.view.HttpView" %>

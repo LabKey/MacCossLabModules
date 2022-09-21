@@ -1,11 +1,9 @@
 package org.labkey.panoramapublic.model.validation;
 
 import org.jetbrains.annotations.NotNull;
-import org.json.JSONObject;
+import org.json.old.JSONObject;
 import org.labkey.api.data.Container;
 import org.labkey.api.targetedms.TargetedMSService;
-
-import java.nio.file.Path;
 
 // For table panoramapublic.skylinedocsamplefile
 public class SkylineDocSampleFile extends DataFile

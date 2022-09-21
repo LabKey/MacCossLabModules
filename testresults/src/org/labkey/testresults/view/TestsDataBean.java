@@ -15,13 +15,10 @@
  */
 package org.labkey.testresults.view;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+import org.json.old.JSONArray;
+import org.json.old.JSONObject;
 import org.labkey.api.data.SQLFragment;
-import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.SqlSelector;
-import org.labkey.api.data.TableSelector;
-import org.labkey.api.query.FieldKey;
 import org.labkey.testresults.TestResultsSchema;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestLeakDetail;

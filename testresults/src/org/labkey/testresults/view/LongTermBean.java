@@ -1,7 +1,7 @@
 package org.labkey.testresults.view;
 
 
-import org.json.JSONObject;
+import org.json.old.JSONObject;
 import org.labkey.testresults.model.User;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestFailDetail;
