@@ -1,7 +1,7 @@
 package org.labkey.testresults.view;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.json.JSONObject;
+import org.json.old.JSONObject;
 import org.labkey.api.data.statistics.MathStat;
 import org.labkey.api.data.statistics.StatsService;
 import org.labkey.api.services.ServiceRegistry;
