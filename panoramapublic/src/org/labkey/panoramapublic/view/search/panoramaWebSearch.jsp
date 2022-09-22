@@ -365,7 +365,7 @@
                                 items : [
                                     {
                                         xtype: 'textfield',
-                                        fieldLabel: 'Protein Name',
+                                        fieldLabel: 'Protein',
                                         name: proteinNameItemId,
                                         itemId: proteinNameItemId,
                                         labelAlign: 'top',
@@ -375,6 +375,7 @@
                                                 checkAndFillValuesFromUrl(proteinNameItemId, comp);
                                                 new Ext4.ToolTip({
                                                     target : comp.getEl(),
+                                                    width: 500,
                                                     html: 'Required to search for proteins. You may use the name as specified by the FASTA file, or an annotation, such as a gene name, that has been loaded from an annotations file.'
                                                 });
                                             }
@@ -382,25 +383,41 @@
                                     },
                                     {
                                         xtype: 'tbspacer',
-                                        width:10
+                                        width: 20
                                     },
                                     {
-                                        xtype: 'checkbox',
-                                        fieldLabel: 'Exact Matches Only',
-                                        name: exactProteinMatchesItemId,
-                                        itemId: exactProteinMatchesItemId,
-                                        input: true,
-                                        labelWidth: 130,
-                                        listeners: {
-                                            render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(exactProteinMatchesItemId, comp);
-                                                new Ext4.ToolTip({
-                                                    target : comp.getEl(),
-                                                    html: 'If checked, the search will only find proteins with an exact name match. If not checked, proteins that contain the name entered will also match, but the search may be significantly slower.'
-                                                });
-                                            }
-                                        }
-                                    }
+                                        xtype: 'panel',
+                                        layout: {type: 'vbox', align: 'left'},
+                                        border: false,
+                                        items: [
+                                            {
+                                                xtype: 'tbspacer',
+                                                height: 20
+                                            },
+                                            {
+                                                xtype: 'checkbox',
+                                                fieldLabel: 'Exact Matches Only',
+                                                name: exactProteinMatchesItemId,
+                                                itemId: exactProteinMatchesItemId,
+                                                input: true,
+                                                // labelAlign: 'right',
+                                                boxLabelAlign: 'after',
+                                                labelWidth: 130,
+                                                listeners: {
+                                                    render: function (comp, eOpts) {
+                                                        checkAndFillValuesFromUrl(exactProteinMatchesItemId, comp);
+                                                        new Ext4.ToolTip({
+                                                            target : comp.getEl(),
+                                                            width: 500,
+                                                            html: 'If checked, the search will only find proteins with an exact name match. If not checked, proteins that contain the name entered will also match, but the search may be significantly slower.'
+                                                        });
+                                                    }
+                                                }
+                                            }]
+
+                                    },
+
+
                                 ]
                             },
                             {
@@ -424,6 +441,7 @@
                                                 checkAndFillValuesFromUrl(peptideSequenceItemId, comp);
                                                 new Ext4.ToolTip({
                                                     target : comp.getEl(),
+                                                    width: 250,
                                                     html: 'Enter the peptide sequence to find.'
                                                 });
                                             }
@@ -431,24 +449,36 @@
                                     },
                                     {
                                         xtype: 'tbspacer',
-                                        width:10
+                                        width: 20
                                     },
                                     {
-                                        xtype: 'checkbox',
-                                        fieldLabel: 'Exact Matches Only',
-                                        name: exactPeptideMatchesItemId,
-                                        itemId: exactPeptideMatchesItemId,
-                                        input: true,
-                                        labelWidth: 130,
-                                        listeners: {
-                                            render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(exactPeptideMatchesItemId, comp);
-                                                new Ext4.ToolTip({
-                                                    target : comp.getEl(),
-                                                    html: 'If checked, the search will match the peptides exactly; if unchecked, it will match any peptide that contain the specified sequence.'
-                                                });
+                                        xtype: 'panel',
+                                        layout: {type: 'vbox', align: 'left'},
+                                        border: false,
+                                        items: [
+                                            {
+                                                xtype: 'tbspacer',
+                                                height: 20
+                                            },
+                                            {
+                                                xtype: 'checkbox',
+                                                fieldLabel: 'Exact Matches Only',
+                                                name: exactPeptideMatchesItemId,
+                                                itemId: exactPeptideMatchesItemId,
+                                                input: true,
+                                                labelWidth: 130,
+                                                listeners: {
+                                                    render: function (comp, eOpts) {
+                                                        checkAndFillValuesFromUrl(exactPeptideMatchesItemId, comp);
+                                                        new Ext4.ToolTip({
+                                                            target : comp.getEl(),
+                                                            width: 500,
+                                                            html: 'If checked, the search will match the peptides exactly; if unchecked, it will match any peptide that contain the specified sequence.'
+                                                        });
+                                                    }
+                                                }
                                             }
-                                        }
+                                        ]
                                     }
                                 ]
                             }],

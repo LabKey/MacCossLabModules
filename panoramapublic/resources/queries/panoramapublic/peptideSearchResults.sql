@@ -15,7 +15,8 @@ SELECT trn.FileName,
        ex.organism,
        ex.citation,
        ex.pxid,
-       ex.Container @hidden
+       ex.Container @hidden,
+       p.PeptideGroupId @hidden -- required for ModifiedSequenceDisplayColumn$PeptideDisplayColumnFactory to display peptide icon
 from experimentannotations ex
          inner join exp.Runs rn on ex.experimentid.lsid = rn.rungroups.lsid
          inner join targetedms.runs trn on trn.ExperimentRunLSID = rn.lsid
