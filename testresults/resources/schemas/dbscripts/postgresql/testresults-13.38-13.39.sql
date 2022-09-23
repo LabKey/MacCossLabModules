@@ -1,0 +1,2 @@
+ALTER TABLE testresults.user DROP COLUMN IF EXISTS active;
+ALTER TABLE testresults.userdata ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT FALSE;
