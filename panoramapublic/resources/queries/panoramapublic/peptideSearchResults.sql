@@ -8,6 +8,7 @@ SELECT trn.FileName,
        ex.Instrument,
        p.ModifiedPeptideDisplayColumn,
        p.CalcNeutralMass,
+       p.Id, -- Need this ID to successfully render the formatted peptide in ModifiedPeptideHtmlMarker
        p.PeptideGroupId.Label,
        ex.created,
        p.Sequence,
