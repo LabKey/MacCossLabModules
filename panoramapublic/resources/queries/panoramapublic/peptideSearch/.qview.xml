@@ -1,0 +1,11 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            canOverride="true">
+    <columns>
+        <column name="created" />
+        <column name="matches" />
+        <column name="title" />
+        <column name="organism" />
+        <column name="citation" />
+        <column name="pxid" />
+    </columns>
+</customView>

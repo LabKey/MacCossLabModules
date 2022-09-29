@@ -42,9 +42,7 @@
                 // render experiment list webpart
                 // add filters in qwp and in the url for back button
                 if (clicked) {
-                    if (!window.location.href.includes('#')) {
-                        updateUrlFilters(activeTab);
-                    }
+                    updateUrlFilters(activeTab);
                     if (activeTab === expSearchPanelItemId) {
                         let author = expSearchPanel.down('#' + authorsItemId);
                         let title = expSearchPanel.down('#' + titleItemId);
@@ -284,6 +282,7 @@
                         items: [
                             {
                                 xtype: 'panel',
+                                name: expSearchPanelItemId,
                                 itemId: expSearchPanelItemId,
                                 title: 'Experiment Search',
                                 cls: 'non-ext-search-tab-panel',
@@ -291,20 +290,26 @@
                                 items:[{
                                     xtype: 'textfield',
                                     fieldLabel: 'Author',
+                                    name: authorsItemId,
                                     itemId: authorsItemId,
-                                    labelCls: 'labkey-form-label',
+                                    labelAlign: 'top',
                                     labelWidth: 75,
                                     listeners: {
                                         render: function (comp, eOpts) {
                                             checkAndFillValuesFromUrl(authorsItemId, comp);
                                         }
                                     }
-                                },
+                                    },
+                                    {
+                                        xtype: 'tbspacer',
+                                        width:10
+                                    },
                                     {
                                         xtype: 'textfield',
+                                        name: titleItemId,
                                         fieldLabel: titleItemId,
                                         itemId: titleItemId,
-                                        labelCls: 'labkey-form-label',
+                                        labelAlign: 'top',
                                         labelWidth: 75,
                                         listeners: {
                                             render: function (comp, eOpts) {
@@ -313,11 +318,17 @@
                                         }
                                     },
                                     {
+                                        xtype: 'tbspacer',
+                                        width:10
+                                    },
+                                    {
                                         xtype: 'textfield',
+                                        name: organismItemId,
                                         fieldLabel: organismItemId,
                                         itemId: organismItemId,
-                                        labelCls: 'labkey-form-label',
+                                        labelAlign: 'top',
                                         labelWidth: 75,
+                                        cls: 'padding: 0 0 15px 0',
                                         listeners: {
                                             render: function (comp, eOpts) {
                                                 checkAndFillValuesFromUrl(organismItemId, comp);
@@ -325,10 +336,15 @@
                                         }
                                     },
                                     {
+                                        xtype: 'tbspacer',
+                                        width:10
+                                    },
+                                    {
                                         xtype: 'textfield',
+                                        name: instrumentItemId,
                                         fieldLabel: instrumentItemId,
                                         itemId: instrumentItemId,
-                                        labelCls: 'labkey-form-label',
+                                        labelAlign: 'top',
                                         labelWidth: 75,
                                         listeners: {
                                             render: function (comp, eOpts) {
@@ -341,6 +357,7 @@
                             {
                                 // protein search webpart
                                 xtype: 'panel',
+                                name: proteinSearchPanelItemId,
                                 itemId: proteinSearchPanelItemId,
                                 title: 'Protein Search',
                                 cls: 'non-ext-search-tab-panel',
@@ -348,34 +365,65 @@
                                 items : [
                                     {
                                         xtype: 'textfield',
-                                        fieldLabel: 'Protein Name',
+                                        fieldLabel: 'Protein',
+                                        name: proteinNameItemId,
                                         itemId: proteinNameItemId,
-                                        labelCls: 'labkey-form-label',
+                                        labelAlign: 'top',
                                         labelWidth: 125,
                                         listeners: {
                                             render: function (comp, eOpts) {
                                                 checkAndFillValuesFromUrl(proteinNameItemId, comp);
+                                                new Ext4.ToolTip({
+                                                    target : comp.getEl(),
+                                                    width: 500,
+                                                    html: 'Required to search for proteins. You may use the name as specified by the FASTA file, or an annotation, such as a gene name, that has been loaded from an annotations file.'
+                                                });
                                             }
                                         }
                                     },
                                     {
-                                        xtype: 'checkbox',
-                                        fieldLabel: 'Exact Matches Only',
-                                        itemId: exactProteinMatchesItemId,
-                                        labelCls: 'labkey-form-label',
-                                        input: true,
-                                        labelWidth: 125,
-                                        listeners: {
-                                            render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(exactProteinMatchesItemId, comp);
-                                            }
-                                        }
-                                    }
+                                        xtype: 'tbspacer',
+                                        width: 20
+                                    },
+                                    {
+                                        xtype: 'panel',
+                                        layout: {type: 'vbox', align: 'left'},
+                                        border: false,
+                                        items: [
+                                            {
+                                                xtype: 'tbspacer',
+                                                height: 20
+                                            },
+                                            {
+                                                xtype: 'checkbox',
+                                                fieldLabel: 'Exact Matches Only',
+                                                name: exactProteinMatchesItemId,
+                                                itemId: exactProteinMatchesItemId,
+                                                input: true,
+                                                // labelAlign: 'right',
+                                                boxLabelAlign: 'after',
+                                                labelWidth: 130,
+                                                listeners: {
+                                                    render: function (comp, eOpts) {
+                                                        checkAndFillValuesFromUrl(exactProteinMatchesItemId, comp);
+                                                        new Ext4.ToolTip({
+                                                            target : comp.getEl(),
+                                                            width: 500,
+                                                            html: 'If checked, the search will only find proteins with an exact name match. If not checked, proteins that contain the name entered will also match, but the search may be significantly slower.'
+                                                        });
+                                                    }
+                                                }
+                                            }]
+
+                                    },
+
+
                                 ]
                             },
                             {
                                 // peptide search webpart
                                 xtype: 'panel',
+                                name: peptideSearchPanelItemId,
                                 itemId: peptideSearchPanelItemId,
                                 title: 'Peptide Search',
                                 cls: 'non-ext-search-tab-panel',
@@ -383,28 +431,54 @@
                                 items : [
                                     {
                                         xtype: 'textfield',
+                                        name: 'Peptide Sequence',
                                         fieldLabel: 'Peptide Sequence',
                                         itemId: peptideSequenceItemId,
-                                        labelCls: 'labkey-form-label',
+                                        labelAlign: 'top',
                                         labelWidth: 125,
                                         listeners: {
                                             render: function (comp, eOpts) {
                                                 checkAndFillValuesFromUrl(peptideSequenceItemId, comp);
+                                                new Ext4.ToolTip({
+                                                    target : comp.getEl(),
+                                                    width: 250,
+                                                    html: 'Enter the peptide sequence to find.'
+                                                });
                                             }
                                         }
                                     },
                                     {
-                                        xtype: 'checkbox',
-                                        fieldLabel: 'Exact Matches Only',
-                                        itemId: exactPeptideMatchesItemId,
-                                        labelCls: 'labkey-form-label',
-                                        input: true,
-                                        labelWidth: 125,
-                                        listeners: {
-                                            render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(exactPeptideMatchesItemId, comp);
+                                        xtype: 'tbspacer',
+                                        width: 20
+                                    },
+                                    {
+                                        xtype: 'panel',
+                                        layout: {type: 'vbox', align: 'left'},
+                                        border: false,
+                                        items: [
+                                            {
+                                                xtype: 'tbspacer',
+                                                height: 20
+                                            },
+                                            {
+                                                xtype: 'checkbox',
+                                                fieldLabel: 'Exact Matches Only',
+                                                name: exactPeptideMatchesItemId,
+                                                itemId: exactPeptideMatchesItemId,
+                                                input: true,
+                                                labelWidth: 130,
+                                                listeners: {
+                                                    render: function (comp, eOpts) {
+                                                        checkAndFillValuesFromUrl(exactPeptideMatchesItemId, comp);
+                                                        new Ext4.ToolTip({
+                                                            target : comp.getEl(),
+                                                            width: 500,
+                                                            html: 'If checked, the search will match the peptides exactly; if unchecked, it will match any peptide that contain the specified sequence.'
+                                                        });
+                                                    }
+                                                }
                                             }
-                                        }
+                                        ]
                                     }
                                 ]
                             }],
