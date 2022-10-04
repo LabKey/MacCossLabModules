@@ -34,14 +34,14 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
         return this;
     }
 
-    public String getAuthors()
+    public String getAuthor()
     {
-        return elementCache().authors.get();
+        return elementCache().author.get();
     }
 
-    public PanoramaPublicSearchWebPart setAuthors(String value)
+    public PanoramaPublicSearchWebPart setAuthor(String value)
     {
-        elementCache().authors.set(value);
+        elementCache().author.set(value);
         return this;
     }
 
@@ -103,8 +103,7 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
 
     public PanoramaPublicSearchWebPart gotoExperimentSearch()
     {
-        getWrapper().click(Locator.tagWithText("span", "Experiment Search"));
-        getWrapper().waitForElementToBeVisible(Locator.name("Authors"));
+        elementCache().experimentSearchTab.click();
         return this;
     }
 
@@ -123,18 +122,14 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
     public DataRegionTable search()
     {
         elementCache().search.click();
-        return new DataRegionTable.DataRegionFinder(getWrapper().getDriver()).find(this);
-    }
-
-    public DataRegionTable refreshedTable()
-    {
-        return new DataRegionTable.DataRegionFinder(getWrapper().getDriver()).find(this);
+        return new DataRegionTable.DataRegionFinder(getWrapper().getDriver()).waitFor(this);
     }
 
     protected class ElementCache extends BodyWebPart.ElementCache
     {
         //Experiment search
-        final Input authors = Input.Input(Locator.input("Authors"), getDriver()).findWhenNeeded(this);
+        final WebElement experimentSearchTab = Locator.tagWithText("span", "Experiment Search").findWhenNeeded(this);
+        final Input author = Input.Input(Locator.input("Authors"), getDriver()).findWhenNeeded(this);
         final Input title = Input.Input(Locator.input("Title"), getDriver()).findWhenNeeded(this);
         final Input organism = Input.Input(Locator.input("Organism"), getDriver()).findWhenNeeded(this);
         final Input instrument = Input.Input(Locator.input("Instrument"), getDriver()).findWhenNeeded(this);
