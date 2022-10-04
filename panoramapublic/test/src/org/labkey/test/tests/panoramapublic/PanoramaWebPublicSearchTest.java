@@ -93,7 +93,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
 
         panoramaPublicSearch.setAuthors("").setOrganism("Homo").search();
         checker().verifyEquals("Incorrect search result for Organism", 2, table.getDataRowCount());
-        checker().verifyEquals("Incorrect tittle filtered", Arrays.asList(" Test experiment for search improvements", "Submitter Experiment"), table.getColumnDataAsText("Title"));
+        checker().verifyEquals("Incorrect tittle filtered", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"), table.getColumnDataAsText("Title"));
     }
 
     @Test
