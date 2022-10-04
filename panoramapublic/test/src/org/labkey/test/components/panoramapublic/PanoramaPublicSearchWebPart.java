@@ -7,6 +7,9 @@ import org.labkey.test.components.html.Input;
 import org.labkey.test.util.DataRegionTable;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+
+import java.util.Optional;
 
 public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearchWebPart.ElementCache>
 {
@@ -121,8 +124,14 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
 
     public DataRegionTable search()
     {
+        Optional<DataRegionTable> oldResults = new DataRegionTable.DataRegionFinder(getDriver()).findOptional(this);
         elementCache().search.click();
-        return new DataRegionTable.DataRegionFinder(getWrapper().getDriver()).waitFor(this);
+        if (oldResults.isPresent())
+        {
+            getWrapper().shortWait().until(ExpectedConditions
+                    .stalenessOf(oldResults.get().getComponentElement()));
+        }
+        return new DataRegionTable.DataRegionFinder(getDriver()).waitFor(this);
     }
 
     protected class ElementCache extends BodyWebPart.ElementCache
