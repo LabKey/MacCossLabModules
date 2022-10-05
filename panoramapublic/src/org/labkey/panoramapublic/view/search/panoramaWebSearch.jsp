@@ -1,3 +1,4 @@
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
@@ -5,6 +6,17 @@
 <br/>
 <div id="search-indicator"></div>
 <div id="experiment_list_wp"></div>
+<div id="instrument_render_id"></div>
+<div id="organism_render_id"></div>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("/PanoramaPublic/css/bootstrap-tagsinput.css");
+        dependencies.add("/PanoramaPublic/css/typeahead-examples.css");
+    }
+%>
 
 <script type="text/javascript">
 
@@ -318,6 +330,7 @@
                                         itemId: organismItemId,
                                         labelCls: 'labkey-form-label',
                                         labelWidth: 75,
+                                        renderTo: 'organism_render_id',
                                         listeners: {
                                             render: function (comp, eOpts) {
                                                 checkAndFillValuesFromUrl(organismItemId, comp);
@@ -329,10 +342,24 @@
                                         fieldLabel: instrumentItemId,
                                         itemId: instrumentItemId,
                                         labelCls: 'labkey-form-label',
+                                        // id: 'instrument_render_id',
+                                        class: 'tags',
                                         labelWidth: 75,
+                                        name: instrumentItemId,
                                         listeners: {
                                             render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(instrumentItemId, comp);
+                                                LABKEY.requiresScript([
+                                                    "internal/jQuery",
+                                                    "/PanoramaPublic/js/ExpAnnotAutoComplete.js",
+                                                    "/PanoramaPublic/js/bootstrap-tagsinput.min.js",
+                                                    "/PanoramaPublic/js/typeahead.bundle.min.js",
+                                                    ], function() {
+                                                        Ext4.onReady(function(){
+                                                            var url = LABKEY.ActionURL.buildURL('PanoramaPublic', 'completeInstrument.api');
+                                                            initAutoComplete(url, instrumentItemId, true);
+                                                            checkAndFillValuesFromUrl(instrumentItemId, comp);
+                                                        });
+                                                    });
                                             }
                                         }
                                     }
