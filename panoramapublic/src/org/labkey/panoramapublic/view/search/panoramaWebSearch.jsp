@@ -399,6 +399,7 @@
                                                 fieldLabel: 'Exact Matches Only',
                                                 name: exactProteinMatchesItemId,
                                                 itemId: exactProteinMatchesItemId,
+                                                id: exactProteinMatchesItemId,
                                                 input: true,
                                                 // labelAlign: 'right',
                                                 boxLabelAlign: 'after',
@@ -465,6 +466,7 @@
                                                 fieldLabel: 'Exact Matches Only',
                                                 name: exactPeptideMatchesItemId,
                                                 itemId: exactPeptideMatchesItemId,
+                                                id: exactPeptideMatchesItemId,
                                                 input: true,
                                                 labelWidth: 130,
                                                 listeners: {
