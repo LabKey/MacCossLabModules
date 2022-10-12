@@ -1305,6 +1305,8 @@ public class TestResultsController extends SpringActionController
                         // This is a hack to not subtract days in the case when the last test start time is after
                         // the post time. Occasionally this happens for some reason.
                         // Allow a short tolerance of 5 minutes for this case.
+                        // In the future, a better solution might be to include date information for tests in the posted
+                        // results so that we don't have to guess what the date was.
                         if (lastTestStartTimestamp > postTimeTimestamp + (5 * ONE_MINUTE_IN_MILLIS))
                         {
                             // If the start time of the last test is after the post time, it means the last test
