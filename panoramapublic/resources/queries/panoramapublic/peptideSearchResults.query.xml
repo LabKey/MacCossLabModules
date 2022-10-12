@@ -1,0 +1,20 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="PeptideSearchResults" tableDbType="NOT_IN_DB">
+                <columns>
+                    <column columnName="ModifiedPeptideDisplayColumn">
+                        <displayColumnFactory>
+                            <className>org.labkey.targetedms.query.ModifiedSequenceDisplayColumn$PeptideDisplayColumnFactory</className>
+                            <properties>
+                                <property name="showNextAndPrevious">false</property>
+                                <property name="useParens">false</property>
+                            </properties>
+                        </displayColumnFactory>
+                        <columnTitle>Peptide</columnTitle>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>
