@@ -12,6 +12,6 @@ SELECT created,
        pxid,
        peptideSequence AS peptideSequence,
        exactMatch,
-       container @hidden
+       container
 from peptideSearchResults
 group by created, title, organism, citation, pxid, container
