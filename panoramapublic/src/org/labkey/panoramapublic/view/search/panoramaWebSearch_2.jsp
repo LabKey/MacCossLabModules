@@ -36,34 +36,17 @@
 </head>
 
 <style>
-    /*body {font-family: Arial;}*/
 
     * {
-        /*margin:  0;*/
         padding: 0;
         outline: 0 none;
         box-sizing: border-box;
     }
 
-    /**:before, *:after {*/
-    /*    clear: both;*/
-    /*    content: "";*/
-    /*    display: block;*/
-    /*    box-sizing: border-box;*/
-    /*}*/
-
     .active-tabs {
-        /*width: 800px;*/
-        /*padding: 10px;*/
         position: relative;
         margin: 10px auto;
     }
-
-    /*.active-tabs input {*/
-    /*    opacity: 0;*/
-    /*    display: none;*/
-    /*    visibility: hidden;*/
-    /*}*/
 
     .btn {
         background: lightgray;
@@ -74,9 +57,7 @@
         font-family: "Arial";
         font-size: 12px;
         height: 30px;
-        /*line-height: 35px;*/
         margin-right: 1px;
-        /*margin-bottom: 10px;*/
         text-align: center;
         width: 150px;
         opacity: 0.8;
@@ -107,9 +88,6 @@
     .tab-1 ,
     .tab-2 ,
     .tab-3 {
-        /*height: 150px;*/
-        /*width: 100%;*/
-        /*box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 0.3);*/
         position: absolute;
         top: 0;
         left: 0;
@@ -118,34 +96,6 @@
         transition: all 0.4s;
         border: 1px solid lightgray;
     }
-
-    /*.tab-1 ,*/
-    /*.tab-2 ,*/
-    /*.tab-3 input {*/
-    /*    opacity: unset;*/
-    /*    display: unset;*/
-    /*    visibility: unset;*/
-    /*}*/
-
-    /*.tab-2 {*/
-    /*    height: 300px;*/
-    /*}*/
-
-    /*.tab-1 p ,*/
-    /*.tab-2 p ,*/
-    /*.tab-3 p {*/
-    /*    color: black;*/
-    /*    font-family: "Arial";*/
-    /*    !*font-size: 50px;*!*/
-    /*    line-height: 200px;*/
-    /*    !*text-align: center;*!*/
-    /*}*/
-
-    /*.tab-2 p ,*/
-    /*.tab-4 p ,*/
-    /*.tab-6 p {*/
-    /*    line-height: 300px;*/
-    /*}*/
 
     .btn-1:checked ~ .tabs-container .tab-1 ,
     .btn-2:checked ~ .tabs-container .tab-2 ,
@@ -175,33 +125,38 @@
             <table class="lk-fields-table">
                 <tr style="height: 10px"></tr>
                 <tr>
-                    <td style="width: 10px"></td>
-
-                    <td class="labkey-form-label">Author:</td>
+                    <td style="width: 5px"></td>
+                    <td>Author:</td>
+                    <td style="width: 5px"></td>
+                    <td>Title:</td>
+                    <td style="width: 5px"></td>
+                    <td>Instrument:</td>
+                    <td style="width: 5px"></td>
+                    <td>Organism:</td>
+                </tr>
+                <tr>
+                    <td style="width: 5px"></td>
                     <td nowrap><input class="bootstrap-tagsinput" size="20" type="text" id="Authors" name="Authors" value=""/></td>
 
-                    <td style="width: 10px"></td>
-
-                    <td class="labkey-form-label">Title:</td>
+                    <td style="width: 5px"></td>
                     <td><input class="bootstrap-tagsinput" size="20" type="text" id="Title" name="Title" value=""/></td>
 
-                    <td style="width: 10px"></td>
-
-                    <td class="labkey-form-label">Instrument:</td>
+                    <td style="width: 5px"></td>
                     <td nowrap>
                         <div id="input-picker-div-instrument" class="scrollable-dropdown-menu">
                             <input class="tags" size="20" type="text" id="Instrument" name="Instrument" placeholder="Enter Instrument" value=""/>
                         </div>
                     </td>
 
-                    <td style="width: 10px"></td>
-
-                    <td class="labkey-form-label">Organism:</td>
+                    <td style="width: 5px"></td>
                     <td nowrap>
                         <div id="input-picker-div-organism" class="scrollable-dropdown-menu">
                             <input class="tags" size="20" type="text" id="Organism" name="Organism" placeholder="Enter Organism" value=""/>
                         </div>
                     </td>
+                </tr>
+                <tr>
+
                 </tr>
                 <tr style="height: 10px"></tr>
             </table>
@@ -210,15 +165,17 @@
             <table class="lk-fields-table">
                 <tr style="height: 10px"></tr>
                 <tr>
-                    <td style="width: 10px"></td>
-
-                    <td class="labkey-form-label">Protein:</td>
+                    <td style="width: 5px"></td>
+                    <td>Protein:</td>
+                </tr>
+                <tr>
+                    <td style="width: 5px"></td>
                     <td nowrap><input class="bootstrap-tagsinput" size="20" type="text" id="proteinLabel" name="proteinLabel" value="" /></td>
 
                     <td style="width: 10px"></td>
 
-                    <td class="labkey-form-label">Exact Matches Only:</td>
-                    <td><labkey:checkbox id="exactProteinMatches" name="exactProteinMatches" value=""/></td>
+                    <td>Exact Matches Only:</td>
+                    <td style="padding-top: 0.75%; padding-left: 5px"><labkey:checkbox id="exactProteinMatches" name="exactProteinMatches" value=""/></td>
 
                 </tr>
                 <tr style="height: 10px"></tr>
@@ -228,15 +185,17 @@
             <table class="lk-fields-table">
                 <tr style="height: 10px"></tr>
                 <tr>
-                    <td style="width: 10px"></td>
-
-                    <td class="labkey-form-label">Peptide Sequence:</td>
+                    <td style="width: 5px"></td>
+                    <td>Peptide Sequence:</td>
+                </tr>
+                <tr>
+                    <td style="width: 5px"></td>
                     <td nowrap><input class="bootstrap-tagsinput" size="20" type="text" id="peptideSequence" name="peptideSequence" value=""/></td>
 
                     <td style="width: 10px"></td>
 
-                    <td class="labkey-form-label">Exact Matches Only:</td>
-                    <td><labkey:checkbox id="exactPeptideMatches" name="exactPeptideMatches" value=""/></td>
+                    <td>Exact Matches Only:</td>
+                    <td style="padding-top: 0.75%; padding-left: 5px"><labkey:checkbox id="exactPeptideMatches" name="exactPeptideMatches" value=""/></td>
 
                 </tr>
                 <tr style="height: 10px"></tr>
@@ -244,7 +203,10 @@
         </div>
     </div>
     <div>
-        <button class="labkey-button" onclick=handleRendering()>Search</button>
+        <button id="search-button-id" type="submit" class="labkey-button" onclick=handleRendering()>Search</button>
+    </div>
+    <div id="search-indicator" style="visibility: hidden">
+        <p><i class="fa fa-spinner fa-pulse"></i>Search is running, results pending...</p>
     </div>
 
 </div>
@@ -265,6 +227,8 @@
     const peptideSequenceItemId = 'peptideSequence';
     const exactPeptideMatchesItemId = 'exactPeptideMatches';
 
+    let buttonClicked = false;
+
     $ (function() {
         let instrUrl = LABKEY.ActionURL.buildURL('PanoramaPublic', 'completeInstrument.api');
         initAutoComplete(instrUrl, "input-picker-div-instrument", true);
@@ -273,17 +237,12 @@
         initAutoComplete(organismUrl, "input-picker-div-organism", false);
     });
 
-    // $ (function() {
-    //     // let instrUrl = LABKEY.ActionURL.buildURL('PanoramaPublic', 'completeInstrument.api');
-    //     // initAutoComplete(instrUrl, "input-picker-div-instrument", true);
-    //
-    //     let organismUrl = LABKEY.ActionURL.buildURL('PanoramaPublic', 'completeOrganism.api');
-    //     initAutoComplete(organismUrl, "input-picker-div-organism", true);
-    // });
+    document.getElementById('search-button-id').addEventListener("click", function() {
+        buttonClicked = true;
+    });
 
-    let handleRendering = function (btn, clicked) {
+    let handleRendering = function () {
 
-        // var activeTab = $('input:checked').attr('id');
         let activeTab = undefined;
         if (document.getElementById(expSearchPanelItemId).checked)
             activeTab = expSearchPanelItemId;
@@ -294,21 +253,16 @@
 
         console.log("activeTab = ", activeTab);
 
-
-        // let expSearchPanel = panel.down('#' + expSearchPanelItemId);
-        // let proteinSearchPanel = panel.down('#' + proteinSearchPanelItemId);
-        // let peptideSearchPanel = panel.down('#' + peptideSearchPanelItemId);
-
         let expAnnotationFilters = [];
         let proteinParameters = {};
         let peptideParameters = {};
 
         // render experiment list webpart
         // add filters in qwp and in the url for back button
-        // if (clicked) {
-        //     if (!window.location.href.includes('#')) {
-        //         updateUrlFilters(activeTab);
-        //     }
+        if (buttonClicked) {
+            if (!window.location.href.includes('#')) {
+                updateUrlFilters(activeTab);
+            }
             if (activeTab === expSearchPanelItemId) {
                 let author = document.getElementById(authorsItemId).value;
                 let title = document.getElementById(titleItemId).value;
@@ -342,7 +296,6 @@
                     proteinParameters[proteinNameItemId] = protein;
                     updateUrlFilters(null, proteinNameItemId, protein);
                 }
-                //TODO: question - this should be only applied if the protein is entered to search, correct?
                 if (exactProteinMatch) {
                     proteinParameters[exactMatch] = exactProteinMatch;
                     updateUrlFilters(null, exactProteinMatchesItemId, exactProteinMatch);
@@ -356,7 +309,6 @@
                     peptideParameters[peptideSequenceItemId] = peptide;
                     updateUrlFilters(null, peptideSequenceItemId, peptide);
                 }
-                //TODO: question - this should be only applied if the peptide is entered to search, correct?
                 if (exactPeptideMatch) {
                     peptideParameters[exactMatch] = exactPeptideMatch;
                     updateUrlFilters(null, exactPeptideMatchesItemId, exactPeptideMatch);
@@ -364,7 +316,7 @@
 
                 console.log(peptide + ", " + exactPeptideMatch);
             }
-        // }
+        }
         // getFiltersFromUrl and add to the filters
         else {
             let context = getFiltersFromUrl();
@@ -395,15 +347,12 @@
         }
 
         // // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
-        if (clicked || expAnnotationFilters.length > 0 ||
+        if (buttonClicked || expAnnotationFilters.length > 0 ||
                 proteinParameters[proteinNameItemId] ||
                 peptideParameters[peptideSequenceItemId]
         ) {
-            // Ext4.create('Ext.panel.Panel', {
-            //     border: false,
-            //     renderTo: 'search-indicator',
-            // });
-            // Ext4.get('search-indicator').mask('Search is running, results pending...');
+
+            document.getElementById("search-indicator").style.visibility = "visible";
 
             if (expAnnotationFilters.length > 0) {
                 let wp = new LABKEY.QueryWebPart({
@@ -416,7 +365,7 @@
                     containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                     filters: expAnnotationFilters,
                     success: function () {
-                        Ext4.get('search-indicator').unmask();
+                        document.getElementById("search-indicator").style.visibility = "hidden";
                     }
                 });
                 wp.render();
@@ -431,7 +380,7 @@
                     containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                     parameters: proteinParameters,
                     success: function () {
-                        Ext4.get('search-indicator').unmask();
+                        document.getElementById("search-indicator").style.visibility = "hidden";
                     }
                 });
                 wp.render();
@@ -446,7 +395,7 @@
                     containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                     parameters: peptideParameters,
                     success: function () {
-                        Ext4.get('search-indicator').unmask();
+                        document.getElementById("search-indicator").style.visibility = "hidden";
                     }
                 });
                 wp.render();
@@ -543,9 +492,9 @@
 </script>
 </body>
 
-<div id="search-indicator"></div>
 <div id="experiment_list_wp"></div>
 <div id="instrument_render_id"></div>
 <div id="organism_render_id"></div>
+
 </html>
 
