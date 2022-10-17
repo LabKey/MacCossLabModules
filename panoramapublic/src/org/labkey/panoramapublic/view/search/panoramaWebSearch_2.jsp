@@ -132,9 +132,9 @@
                     <td style="width: 5px"></td>
                     <td>Title:</td>
                     <td style="width: 5px"></td>
-                    <td>Instrument:</td>
-                    <td style="width: 5px"></td>
                     <td>Organism:</td>
+                    <td style="width: 5px"></td>
+                    <td>Instrument:</td>
                 </tr>
                 <tr>
                     <td style="width: 5px"></td>
@@ -145,15 +145,15 @@
 
                     <td style="width: 5px"></td>
                     <td nowrap>
-                        <div id="input-picker-div-instrument" class="scrollable-dropdown-menu">
-                            <input class="tags" size="20" type="text" id="Instrument" name="Instrument" placeholder="Enter Instrument" value=""/>
+                        <div id="input-picker-div-organism" class="scrollable-dropdown-menu">
+                            <input class="tags" size="20" type="text" id="Organism" name="Organism" placeholder="Enter Organism" value=""/>
                         </div>
                     </td>
 
                     <td style="width: 5px"></td>
                     <td nowrap>
-                        <div id="input-picker-div-organism" class="scrollable-dropdown-menu">
-                            <input class="tags" size="20" type="text" id="Organism" name="Organism" placeholder="Enter Organism" value=""/>
+                        <div id="input-picker-div-instrument" class="scrollable-dropdown-menu">
+                            <input class="tags" size="20" type="text" id="Instrument" name="Instrument" placeholder="Enter Instrument" value=""/>
                         </div>
                     </td>
                 </tr>
@@ -208,7 +208,7 @@
         <button id="search-button-id" type="submit" class="labkey-button" onclick=handleRendering(true)>Search</button>
     </div>
     <div id="search-indicator" style="visibility: hidden">
-        <p><i class="fa fa-spinner fa-pulse"></i>Search is running, results pending...</p>
+        <p><i class="fa fa-spinner fa-pulse"></i> Search is running, results pending...</p>
     </div>
 
 </div>
@@ -232,6 +232,10 @@
     let activeTab = undefined;
 
     $(document).ready(function() {
+        let context = getFiltersFromUrl();
+        console.log("active tab = ", context.searchTab);
+        activeTab = context.searchTab ? context.searchTab : expSearchPanelItemId;
+        document.getElementById(activeTab).checked= true;
         handleRendering(false);
     });
 
@@ -244,14 +248,17 @@
 
         document.getElementById(expSearchPanelItemId).addEventListener("click", function() {
             activeTab = expSearchPanelItemId;
+            updateUrlFilters(activeTab);
         });
 
         document.getElementById(proteinSearchPanelItemId).addEventListener("click", function() {
             activeTab = proteinSearchPanelItemId;
+            updateUrlFilters(activeTab);
         });
 
         document.getElementById(peptideSearchPanelItemId).addEventListener("click", function() {
             activeTab = peptideSearchPanelItemId;
+            updateUrlFilters(activeTab);
         });
     });
 
@@ -266,9 +273,9 @@
         // render experiment list webpart
         // add filters in qwp and in the url for back button
         if (onClick) {
-            if (!window.location.href.includes('#')) {
-                updateUrlFilters(activeTab);
-            }
+
+            updateUrlFilters(activeTab);
+
             if (activeTab === expSearchPanelItemId) {
                 let author = document.getElementById(authorsItemId).value;
                 let title = document.getElementById(titleItemId).value;
@@ -327,27 +334,35 @@
             let context = getFiltersFromUrl();
             if (context[authorsItemId]) {
                 expAnnotationFilters.push(LABKEY.Filter.create(authorsItemId, context[authorsItemId], LABKEY.Filter.Types.CONTAINS));
+                document.getElementById(authorsItemId).value = context[authorsItemId];
             }
             if (context[titleItemId]) {
                 expAnnotationFilters.push(LABKEY.Filter.create(titleItemId, context[titleItemId], LABKEY.Filter.Types.CONTAINS));
+                document.getElementById(titleItemId).value = context[titleItemId];
             }
             if (context[organismItemId]) {
                 expAnnotationFilters.push(LABKEY.Filter.create(organismItemId, context[organismItemId], LABKEY.Filter.Types.CONTAINS));
+                document.getElementById(organismItemId).value = context[organismItemId];
             }
             if (context[instrumentItemId]) {
                 expAnnotationFilters.push(LABKEY.Filter.create(instrumentItemId, context[instrumentItemId], LABKEY.Filter.Types.CONTAINS));
+                document.getElementById(instrumentItemId).value = context[instrumentItemId];
             }
             if (context[proteinNameItemId]) {
                 proteinParameters[proteinNameItemId] =  context[proteinNameItemId];
+                document.getElementById(proteinNameItemId).value = context[proteinNameItemId];
             }
             if (context[exactProteinMatchesItemId]) {
                 proteinParameters[exactMatch] =  context[exactProteinMatchesItemId];
+                document.getElementById(exactProteinMatchesItemId).value = context[exactProteinMatchesItemId];
             }
             if (context[peptideSequenceItemId]) {
                 peptideParameters[peptideSequenceItemId] =  context[peptideSequenceItemId];
+                document.getElementById(peptideSequenceItemId).value = context[peptideSequenceItemId];
             }
             if (context[exactPeptideMatchesItemId]) {
                 peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
+                document.getElementById(exactPeptideMatchesItemId).value = context[exactPeptideMatchesItemId];
             }
         }
 
