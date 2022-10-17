@@ -55,8 +55,9 @@
         display: block;
         float: left;
         font-family: "Roboto",Arial,Helvetica,sans-serif;
+        font-weight: normal;
         font-size: 13px;
-        height: 30px;
+        height: 25px;
         margin-right: 1px;
         text-align: center;
         width: 150px;
@@ -119,7 +120,7 @@
     <input style="visibility: hidden" type="radio" name="active_tabs" id="proteinSearchPanel" class="search-panel-btn-2">
     <label for="proteinSearchPanel" class="search-panel-btn" >Protein Search</label>
 
-    <input style="visibility: hidden" type="radio" name="active_tabs" id="peptideSearchPanel" class="bsearch-panel-btn-3">
+    <input style="visibility: hidden" type="radio" name="active_tabs" id="peptideSearchPanel" class="search-panel-btn-3">
     <label for="peptideSearchPanel" class="search-panel-btn" >Peptide Search</label>
 
     <div class="tabs-container">
