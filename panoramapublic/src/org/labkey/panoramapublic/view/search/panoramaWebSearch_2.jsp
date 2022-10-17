@@ -169,7 +169,8 @@
                 <tr style="height: 10px"></tr>
                 <tr>
                     <td style="width: 5px"></td>
-                    <td>Protein:</td>
+                    <td>Protein:<%=helpPopup("Protein", "Required to search for proteins. You may use the name as specified by the FASTA file, or an annotation, such as a gene name, that has been loaded from an annotations file.")%></td>
+
                 </tr>
                 <tr>
                     <td style="width: 5px"></td>
@@ -177,7 +178,7 @@
 
                     <td style="width: 10px"></td>
 
-                    <td>Exact Matches Only:</td>
+                    <td>Exact Matches Only:<%=helpPopup("Exact Matches Only", "If checked, the search will only find proteins with an exact name match. If not checked, proteins that contain the name entered will also match, but the search may be significantly slower.")%></td>
                     <td style="padding-top: 0.75%; padding-left: 5px"><labkey:checkbox id="exactProteinMatches" name="exactProteinMatches" value=""/></td>
 
                 </tr>
@@ -189,7 +190,7 @@
                 <tr style="height: 10px"></tr>
                 <tr>
                     <td style="width: 5px"></td>
-                    <td>Peptide Sequence:</td>
+                    <td>Peptide Sequence:<%=helpPopup("Peptide Sequence", "Enter the peptide sequence to find.")%></td>
                 </tr>
                 <tr>
                     <td style="width: 5px"></td>
@@ -197,7 +198,7 @@
 
                     <td style="width: 10px"></td>
 
-                    <td>Exact Matches Only:</td>
+                    <td>Exact Matches Only:<%=helpPopup("Exact Matches Only", "If checked, the search will match the peptides exactly; if unchecked, it will match any peptide that contain the specified sequence.")%></td>
                     <td style="padding-top: 0.75%; padding-left: 5px"><labkey:checkbox id="exactPeptideMatches" name="exactPeptideMatches" value=""/></td>
 
                 </tr>
