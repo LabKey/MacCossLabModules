@@ -54,14 +54,16 @@
         cursor: pointer;
         display: block;
         float: left;
-        font-family: "Arial";
-        font-size: 12px;
+        font-family: "Roboto",Arial,Helvetica,sans-serif;
+        font-size: 13px;
         height: 30px;
         margin-right: 1px;
         text-align: center;
         width: 150px;
         opacity: 0.8;
         transition: all 0.4s;
+        border-top-right-radius: 8px;
+        border-top-left-radius: 8px;
     }
 
     .btn:hover {
@@ -70,7 +72,7 @@
     }
 
     .active-tabs input:checked + label {
-        background: #f7f7f7;
+        background: whitesmoke;
         opacity: 1;
         transform: translateY(-5px);
         box-shadow: 1px 0 0 0 rgba(0,0,0,0.3);
@@ -203,7 +205,7 @@
         </div>
     </div>
     <div>
-        <button id="search-button-id" type="submit" class="labkey-button" onclick=handleRendering()>Search</button>
+        <button id="search-button-id" type="submit" class="labkey-button" onclick=handleRendering(true)>Search</button>
     </div>
     <div id="search-indicator" style="visibility: hidden">
         <p><i class="fa fa-spinner fa-pulse"></i>Search is running, results pending...</p>
@@ -227,7 +229,11 @@
     const peptideSequenceItemId = 'peptideSequence';
     const exactPeptideMatchesItemId = 'exactPeptideMatches';
 
-    let buttonClicked = false;
+    let activeTab = undefined;
+
+    $(document).ready(function() {
+        handleRendering(false);
+    });
 
     $ (function() {
         let instrUrl = LABKEY.ActionURL.buildURL('PanoramaPublic', 'completeInstrument.api');
@@ -235,21 +241,21 @@
 
         let organismUrl = LABKEY.ActionURL.buildURL('PanoramaPublic', 'completeOrganism.api');
         initAutoComplete(organismUrl, "input-picker-div-organism", false);
-    });
 
-    document.getElementById('search-button-id').addEventListener("click", function() {
-        buttonClicked = true;
-    });
-
-    let handleRendering = function () {
-
-        let activeTab = undefined;
-        if (document.getElementById(expSearchPanelItemId).checked)
+        document.getElementById(expSearchPanelItemId).addEventListener("click", function() {
             activeTab = expSearchPanelItemId;
-        else if (document.getElementById(proteinSearchPanelItemId).checked)
+        });
+
+        document.getElementById(proteinSearchPanelItemId).addEventListener("click", function() {
             activeTab = proteinSearchPanelItemId;
-        else if (document.getElementById(peptideSearchPanelItemId).checked)
+        });
+
+        document.getElementById(peptideSearchPanelItemId).addEventListener("click", function() {
             activeTab = peptideSearchPanelItemId;
+        });
+    });
+
+    let handleRendering = function (onClick) {
 
         console.log("activeTab = ", activeTab);
 
@@ -259,7 +265,7 @@
 
         // render experiment list webpart
         // add filters in qwp and in the url for back button
-        if (buttonClicked) {
+        if (onClick) {
             if (!window.location.href.includes('#')) {
                 updateUrlFilters(activeTab);
             }
@@ -313,7 +319,6 @@
                     peptideParameters[exactMatch] = exactPeptideMatch;
                     updateUrlFilters(null, exactPeptideMatchesItemId, exactPeptideMatch);
                 }
-
                 console.log(peptide + ", " + exactPeptideMatch);
             }
         }
@@ -346,8 +351,8 @@
             }
         }
 
-        // // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
-        if (buttonClicked || expAnnotationFilters.length > 0 ||
+        // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
+        if (onClick || expAnnotationFilters.length > 0 ||
                 proteinParameters[proteinNameItemId] ||
                 peptideParameters[peptideSequenceItemId]
         ) {
