@@ -48,7 +48,7 @@
         margin: 10px auto;
     }
 
-    .btn {
+    .search-panel-btn {
         background: lightgray;
         color: black;
         cursor: pointer;
@@ -66,7 +66,7 @@
         border-top-left-radius: 8px;
     }
 
-    .btn:hover {
+    .search-panel-btn:hover {
         transform: translateY(-5px);
         opacity: 1;
     }
@@ -99,9 +99,9 @@
         border: 1px solid lightgray;
     }
 
-    .btn-1:checked ~ .tabs-container .tab-1 ,
-    .btn-2:checked ~ .tabs-container .tab-2 ,
-    .btn-3:checked ~ .tabs-container .tab-3 {
+    .search-panel-btn-1:checked ~ .tabs-container .tab-1 ,
+    .search-panel-btn-2:checked ~ .tabs-container .tab-2 ,
+    .search-panel-btn-3:checked ~ .tabs-container .tab-3 {
         position: relative;
         visibility: visible;
         top: 0;
@@ -113,14 +113,14 @@
 <body>
 
 <div class="active-tabs">
-    <input style="visibility: hidden" type="radio" name="active_tabs" id="expSearchPanel" class="btn-1" checked >
-    <label for="expSearchPanel" class="btn" >Experiment Search</label>
+    <input style="visibility: hidden" type="radio" name="active_tabs" id="expSearchPanel" class="search-panel-btn-1" checked >
+    <label for="expSearchPanel" class="search-panel-btn" >Experiment Search</label>
 
-    <input style="visibility: hidden" type="radio" name="active_tabs" id="proteinSearchPanel" class="btn-2">
-    <label for="proteinSearchPanel" class="btn" >Protein Search</label>
+    <input style="visibility: hidden" type="radio" name="active_tabs" id="proteinSearchPanel" class="search-panel-btn-2">
+    <label for="proteinSearchPanel" class="search-panel-btn" >Protein Search</label>
 
-    <input style="visibility: hidden" type="radio" name="active_tabs" id="peptideSearchPanel" class="btn-3">
-    <label for="peptideSearchPanel" class="btn" >Peptide Search</label>
+    <input style="visibility: hidden" type="radio" name="active_tabs" id="peptideSearchPanel" class="bsearch-panel-btn-3">
+    <label for="peptideSearchPanel" class="search-panel-btn" >Peptide Search</label>
 
     <div class="tabs-container">
         <div class="tab-1">
