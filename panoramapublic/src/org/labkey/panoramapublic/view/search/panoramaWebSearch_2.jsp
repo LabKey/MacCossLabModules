@@ -113,6 +113,7 @@
 <html>
 <body>
 
+<form>
 <div class="active-tabs">
     <input style="visibility: hidden" type="radio" name="active_tabs" id="expSearchPanel" class="search-panel-btn-1" checked >
     <label for="expSearchPanel" class="search-panel-btn" >Experiment Search</label>
@@ -170,7 +171,6 @@
                 <tr>
                     <td style="width: 5px"></td>
                     <td>Protein:<%=helpPopup("Protein", "Required to search for proteins. You may use the name as specified by the FASTA file, or an annotation, such as a gene name, that has been loaded from an annotations file.")%></td>
-
                 </tr>
                 <tr>
                     <td style="width: 5px"></td>
@@ -214,6 +214,7 @@
     </div>
 
 </div>
+</form>
 
 <script>
     const expSearchPanelItemId = 'expSearchPanel';
