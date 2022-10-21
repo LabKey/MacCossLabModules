@@ -62,7 +62,7 @@
         text-align: center;
         width: 150px;
         opacity: 0.8;
-        transition: all 0.4s;
+        transition: all 0.2s;
         border-top-right-radius: 8px;
         border-top-left-radius: 8px;
     }
@@ -98,6 +98,7 @@
         visibility: hidden;
         transition: all 0.4s;
         border: 1px solid lightgray;
+        border-right: hidden;
     }
 
     .search-panel-btn-1:checked ~ .tabs-container .tab-1 ,
@@ -209,7 +210,7 @@
     <div>
         <button id="search-button-id" type="submit" class="labkey-button" onclick=handleRendering(true)>Search</button>
     </div>
-    <div id="search-indicator" style="visibility: hidden">
+    <div id="search-indicator" style="visibility: hidden;padding-left: 50%">
         <p><i class="fa fa-spinner fa-pulse"></i> Search is running, results pending...</p>
     </div>
 
