@@ -8,16 +8,28 @@ plugins {
 dependencies {
     implementation "com.sun.mail:jakarta.mail:${javaMailVersion}"
     BuildUtils.addExternalDependency(
-            project,
-            new ExternalDependency(
-                    "org.xerial:sqlite-jdbc:3.7.2",
-                    "SQLite JDBC Driver",
-                    "bitbucket.org",
-                    "https://bitbucket.org/xerial/sqlite-jdbc/wiki/Home",
-                    ExternalDependency.APACHE_2_LICENSE_NAME,
-                    ExternalDependency.APACHE_2_LICENSE_URL,
-                    "SQLite JDBC Driver"
-            )
+        project,
+        new ExternalDependency(
+            "org.xerial:sqlite-jdbc:3.7.2",
+            "SQLite JDBC Driver",
+            "bitbucket.org",
+            "https://bitbucket.org/xerial/sqlite-jdbc/wiki/Home",
+            ExternalDependency.APACHE_2_LICENSE_NAME,
+            ExternalDependency.APACHE_2_LICENSE_URL,
+            "SQLite JDBC Driver"
+        )
+    )
+    BuildUtils.addExternalDependency(
+        project,
+        new ExternalDependency(
+            "com.googlecode.json-simple:json-simple:1.1.1",
+            "json-simple",
+            "json-simple",
+            "http://code.google.com/p/json-simple/",
+            ExternalDependency.APACHE_2_LICENSE_NAME,
+            ExternalDependency.APACHE_2_LICENSE_URL,
+            "Simple JSON library (deprecated)"
+        )
     )
     BuildUtils.addLabKeyDependency(project: project, config: "implementation", depProjectPath:  BuildUtils.getCommonAssayModuleProjectPath(project.gradle, "ms2"), depProjectConfig: "apiJarFile")
     BuildUtils.addLabKeyDependency(project: project, config: "jspImplementation", depProjectPath: BuildUtils.getCommonAssayModuleProjectPath(project.gradle, "ms2"), depProjectConfig: "apiJarFile")

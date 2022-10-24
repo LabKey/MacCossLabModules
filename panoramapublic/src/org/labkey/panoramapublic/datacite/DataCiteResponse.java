@@ -36,14 +36,13 @@ class DataCiteResponse
 
     public boolean success(DataCiteService.METHOD method)
     {
-        switch (method)
+        return switch (method)
         {
-            case GET: case PUT: return _responseCode == 200;
-            case POST: return _responseCode == 201;
-            case DELETE: return _responseCode == 204;
-            default:
-                throw new IllegalStateException("Unexpected method: " + method);
-        }
+            case GET, PUT -> _responseCode == 200;
+            case POST -> _responseCode == 201;
+            case DELETE -> _responseCode == 204;
+            default -> throw new IllegalStateException("Unexpected method: " + method);
+        };
     }
 
     public Doi getDoi() throws DataCiteException
