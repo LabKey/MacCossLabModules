@@ -1,10 +1,7 @@
 package org.labkey.panoramapublic.datacite;
 
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
-
-import java.io.IOException;
-import java.io.StringReader;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 class DataCiteResponse
 {
@@ -50,14 +47,13 @@ class DataCiteResponse
         return _responseBody == null ? null : Doi.fromJson(getJsonObject(_responseBody));
     }
 
-    private org.json.simple.JSONObject getJsonObject(String response) throws DataCiteException
+    private JSONObject getJsonObject(String response) throws DataCiteException
     {
-        JSONParser parser = new JSONParser();
         try
         {
-            return (org.json.simple.JSONObject) parser.parse(new StringReader(response));
+            return new JSONObject(response);
         }
-        catch (IOException | ParseException e)
+        catch (JSONException e)
         {
             throw new DataCiteException("Error parsing JSON from response: " + response);
         }

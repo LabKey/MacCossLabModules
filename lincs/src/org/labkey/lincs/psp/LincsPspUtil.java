@@ -3,10 +3,9 @@ package org.labkey.lincs.psp;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
-import org.json.old.JSONObject;
-import org.json.simple.JSONArray;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.files.FileContentService;
@@ -23,7 +22,6 @@ import org.labkey.lincs.LincsModule;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -111,10 +109,10 @@ public class LincsPspUtil
             {
                 response = IOUtils.toString(in, StandardCharsets.UTF_8);
                 log.info("Response from server: " + response);
-    }
+            }
 
             // String response = "{\"name\":\"LINCS_P100_DIA_Plate52y_annotated_minimized_2017-08-23_11-20-58\",\"assay\":\"P100\",\"status\":\"Waiting_To_Download\",\"id\":\"5c324f97b306063b135bf99c\",\"created\":\"2019-01-06T18:57:27.484Z\",\"last_modified\":\"2019-01-06T18:57:27.484Z\",\"level 2\":{\"panorama\":{\"method\":\"GET\",\"url\":\"https://panoramaweb-dr.gs.washington.edu/lincs/LINCS-DCIC/PSP/P100/runGCTReportApi.view?runId=32394&remote=true&reportName=GCT%20File%20P100\"}},\"level 3\":{\"panorama\":{\"method\":\"PUT\",\"url\":\"https://panoramaweb-dr.gs.washington.edu/_webdav/LINCS-DCIC/PSP/P100/%40files/GCT/LINCS_P100_DIA_Plate52y_annotated_minimized_2017-08-23_11-20-58_LVL3.gct\"}},\"level 4\":{\"panorama\":{\"method\":\"PUT\",\"url\":\"https://panoramaweb-dr.gs.washington.edu/_webdav/LINCS-DCIC/PSP/P100/%40files/GCT/LINCS_P100_DIA_Plate52y_annotated_minimized_2017-08-23_11-20-58_LVL4.gct\"}},\"config\":{\"panorama\":{\"method\":\"PUT\",\"url\":\"https://panoramaweb-dr.gs.washington.edu/_webdav/LINCS-DCIC/PSP/P100/%40files/GCT/LINCS_P100_DIA_Plate52y_annotated_minimized_2017-08-23_11-20-58.cfg\"}}}";
-            org.json.simple.JSONObject jsonResponse = getJsonObject(response);
+            JSONObject jsonResponse = getJsonObject(response);
             parseResponseJson(jsonResponse, pspJob);
         }
         finally
@@ -229,7 +227,7 @@ public class LincsPspUtil
             {
                 response = IOUtils.toString(in, StandardCharsets.UTF_8);
             }
-            if(responseCode != 200)
+            if (responseCode != 200)
             {
                 log.error("Server returned response code " + responseCode);
                 log.info("Response from server: " + response);
@@ -251,7 +249,7 @@ public class LincsPspUtil
         }
         finally
         {
-            if(conn != null)
+            if (conn != null)
             {
                 conn.disconnect();
             }
@@ -261,7 +259,7 @@ public class LincsPspUtil
 
     public static void updateJobStatus(PspEndpoint endPoint, LincsPspJob pspJob, User user) throws IOException, LincsPspException
     {
-        org.json.simple.JSONObject json = getJobStatus(endPoint, pspJob);
+        JSONObject json = getJobStatus(endPoint, pspJob);
         parseResponseJson(json, pspJob);
         LincsManager.get().updateLincsPspJob(pspJob, user);
     }
@@ -301,19 +299,19 @@ public class LincsPspUtil
        }
     }
     */
-    private static void parseResponseJson(org.json.simple.JSONObject json, LincsPspJob pspJob) throws LincsPspException
+    private static void parseResponseJson(JSONObject json, LincsPspJob pspJob) throws LincsPspException
     {
-        if(!json.isEmpty())
+        if (!json.isEmpty())
         {
-            String id = (String)json.get("id");
-            if(id == null)
+            String id = json.optString("id", null);
+            if (id == null)
             {
-                throw new LincsPspException("Invalid JSON. No 'id' key found.", json.toJSONString());
+                throw new LincsPspException("Invalid JSON. No 'id' key found.", json.toString());
             }
-            String status = (String)json.get("status");
-            if(status == null)
+            String status = json.optString("status", null);
+            if (status == null)
             {
-                throw new LincsPspException("Invalid JSON. No 'status' key found.", json.toJSONString());
+                throw new LincsPspException("Invalid JSON. No 'status' key found.", json.toString());
             }
             pspJob.setPspJobId(id);
             pspJob.setStatus(status);
@@ -324,63 +322,50 @@ public class LincsPspUtil
         }
     }
 
-    private static org.json.simple.JSONObject getJsonObject(String response) throws LincsPspException
+    private static JSONObject getJsonObject(String response) throws LincsPspException
     {
-        Object json = getJson(response);
-
-        if(!(json instanceof org.json.simple.JSONObject))
+        try
+        {
+            return new JSONObject(response);
+        }
+        catch (JSONException e)
         {
             throw new LincsPspException("Parsed JSON is not an instance of JSONObject.", response);
         }
-        return (org.json.simple.JSONObject) json;
     }
 
-    private static org.json.simple.JSONArray getJsonArray(String response) throws LincsPspException
+    private static JSONArray getJsonArray(String response) throws LincsPspException
     {
-        Object json = getJson(response);
-
-        if(!(json instanceof org.json.simple.JSONArray))
+        try
+        {
+            return new JSONArray(response);
+        }
+        catch (JSONException e)
         {
             throw new LincsPspException("Parsed JSON is not an instance of JSONArray.", response);
         }
-        return (org.json.simple.JSONArray) json;
     }
 
-    private static Object getJson(String response) throws LincsPspException
-    {
-        Object json;
-        try
-        {
-            JSONParser parser = new JSONParser();
-            json = parser.parse(new StringReader(response));
-        }
-        catch (IOException | ParseException e)
-        {
-            throw new LincsPspException("Error parsing JSON", response, e);
-        }
-        return json;
-    }
-
-    private static void getLevelStatus(LincsPspJob pspJob, org.json.simple.JSONObject json, LincsModule.LincsLevel level) throws LincsPspException
+    private static void getLevelStatus(LincsPspJob pspJob, JSONObject json, LincsModule.LincsLevel level) throws LincsPspException
     {
         int i = level == LincsModule.LincsLevel.Two ? 2 : (level == LincsModule.LincsLevel.Three ? 3 : (level == LincsModule.LincsLevel.Four ? 4 : 0));
         String levelKey = "level " + i;
-        org.json.simple.JSONObject l2Status = (org.json.simple.JSONObject) json.get(levelKey);
-        if(l2Status == null)
+        JSONObject l2Status = json.optJSONObject(levelKey);
+        if (l2Status == null)
         {
-            throw new LincsPspException("Invalid JSON. " + levelKey + " not found", json.toJSONString());
+            throw new LincsPspException("Invalid JSON. " + levelKey + " not found", json.toString());
         }
         else
         {
-            org.json.simple.JSONObject s3 = (org.json.simple.JSONObject) l2Status.get("s3");
-            if(s3 == null)
+            JSONObject s3 = l2Status.optJSONObject("s3");
+            if (s3 == null)
             {
                 // Processing has not started for this level.
                 return;
             }
             else
             {
-                String message = (String) s3.get("message");
+                String message = s3.optString("message", null);
                 message = StringUtils.isBlank(message) ? null : levelKey + ": " + message;
                 pspJob.updateLevelStatus(level, message);
             }
@@ -389,12 +374,11 @@ public class LincsPspUtil
 
     public static String getJobStatusString(PspEndpoint server, LincsPspJob pspJob) throws IOException, LincsPspException
     {
-        org.json.simple.JSONObject obj = getJobStatus(server, pspJob);
-        JSONObject jsonObj = new JSONObject(obj.toString());
-        return jsonObj.toString(2);
+        JSONObject obj = getJobStatus(server, pspJob);
+        return obj.toString(2);
     }
 
-    private static org.json.simple.JSONObject getJobStatus(PspEndpoint server, LincsPspJob pspJob) throws IOException, LincsPspException
+    private static JSONObject getJobStatus(PspEndpoint server, LincsPspJob pspJob) throws IOException, LincsPspException
     {
         // Make a GET request
         URL url = new URL(server.getUrl() + "/" + pspJob.getPspJobId());
@@ -413,7 +397,7 @@ public class LincsPspUtil
             {
                 response = IOUtils.toString(in, StandardCharsets.UTF_8);
             }
-            if(responseCode != 200)
+            if (responseCode != 200)
             {
                 throw new LincsPspException("Server returned " + responseCode + " response code. Response was: " + response);
             }
@@ -421,7 +405,7 @@ public class LincsPspUtil
         }
         finally
         {
-            if(conn != null)
+            if (conn != null)
             {
                 conn.disconnect();
             }
