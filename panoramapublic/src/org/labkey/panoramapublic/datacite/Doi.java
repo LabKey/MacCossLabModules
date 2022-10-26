@@ -2,6 +2,7 @@ package org.labkey.panoramapublic.datacite;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.json.JSONObject;
 
 public class Doi
 {
@@ -30,16 +31,16 @@ public class Doi
     }
 
     @Nullable
-    static Doi fromJson(@NotNull org.json.simple.JSONObject json)
+    static Doi fromJson(@NotNull JSONObject json)
     {
-        if(json.containsKey("data"))
+        if (json.has("data"))
         {
-            org.json.simple.JSONObject data = (org.json.simple.JSONObject) json.get("data");
-            org.json.simple.JSONObject attribs = (org.json.simple.JSONObject) data.get("attributes");
-            if(attribs != null)
+            JSONObject data = json.getJSONObject("data");
+            JSONObject attribs = data.getJSONObject("attributes");
+            if (attribs != null)
             {
-                String doi = (String) attribs.get("doi");
-                String state = (String) attribs.get("state");
+                String doi = attribs.getString("doi");
+                String state = attribs.getString("state");
                 return new Doi(doi, state);
             }
         }
