@@ -18,9 +18,8 @@ package org.labkey.panoramapublic.proteomexchange;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
-import org.json.old.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
 import org.labkey.api.util.logging.LogHelper;
@@ -39,7 +38,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -61,14 +59,14 @@ public class NcbiUtils
 
     private static final Logger LOG = LogHelper.getLogger(NcbiUtils.class, "Messages about using the NCBI utilities");
 
-    public static List<JSONObject> getCompletions(String token) throws PxException
+    public static List<org.json.old.JSONObject> getCompletions(String token) throws PxException
     {
-        List<JSONObject> completions = new ArrayList<>();
+        List<org.json.old.JSONObject> completions = new ArrayList<>();
 
         HttpURLConnection conn = null;
         try
         {
-            if(!StringUtils.isBlank(token))
+            if (!StringUtils.isBlank(token))
             {
                 // https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&BLAST_PROGRAMS=megaBlast&PAGE_TYPE=BlastSearch&SHOW_DEFAULTS=on&LINK_LOC=blasthome
                 // https://stackoverflow.com/questions/24768956/retrieve-the-autocomplete-list-from-another-site-ncbi
@@ -240,21 +238,17 @@ public class NcbiUtils
     {
         try
         {
-            JSONParser parser = new JSONParser();
-            var jsonObject = parser.parse(new StringReader(response));
-            if (jsonObject instanceof org.json.simple.JSONObject)
-            {
-                /* We are interested in the NLM style citation.
-                nlm: {
-                    orig: "ENCODE Project Consortium. An integrated encyclopedia of DNA elements in the human genome. Nature. 2012 Sep 6;489(7414):57-74. doi: 10.1038/nature11247. PMID: 22955616; PMCID: PMC3439153.",
-                    format: "ENCODE Project Consortium. An integrated encyclopedia of DNA elements in the human genome. Nature. 2012 Sep 6;489(7414):57-74. doi: 10.1038/nature11247. PMID: 22955616; PMCID: PMC3439153."
-                }
-                */
-                var nlmInfo = ((org.json.simple.JSONObject)jsonObject).get("nlm");
-                return nlmInfo instanceof org.json.simple.JSONObject ? (String)((org.json.simple.JSONObject)nlmInfo).get("orig") : null;
+            var jsonObject = new JSONObject(response);
+            /* We are interested in the NLM style citation.
+            nlm: {
+                orig: "ENCODE Project Consortium. An integrated encyclopedia of DNA elements in the human genome. Nature. 2012 Sep 6;489(7414):57-74. doi: 10.1038/nature11247. PMID: 22955616; PMCID: PMC3439153.",
+                format: "ENCODE Project Consortium. An integrated encyclopedia of DNA elements in the human genome. Nature. 2012 Sep 6;489(7414):57-74. doi: 10.1038/nature11247. PMID: 22955616; PMCID: PMC3439153."
             }
+            */
+            var nlmInfo = jsonObject.optJSONObject("nlm");
+            return null != nlmInfo ? nlmInfo.getString("orig") : null;
         }
-        catch (IOException | ParseException e)
+        catch (JSONException e)
         {
             LOG.error("Error parsing response from NCBI Literature Citation Exporter for pubmedID " + pubmedId, e);
         }

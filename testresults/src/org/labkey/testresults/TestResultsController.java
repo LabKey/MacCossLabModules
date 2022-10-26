@@ -1288,20 +1288,43 @@ public class TestResultsController extends SpringActionController
                         int endl2 = log.indexOf('\n', endl + 1);
                         String line = (endl2 < 0 ? log.substring(endl + 1) : log.substring(endl + 1, endl2)).trim();
                         Matcher matcher = TEST_LINE_PATTERN.matcher(line);
-                        if (matcher.find())
+                        if (!matcher.find())
                         {
-                            Date lastTestStart = new Date(postTime.getTime());
-                            lastTestStart.setHours(Integer.parseInt(matcher.group(1)));
-                            lastTestStart.setMinutes(Integer.parseInt(matcher.group(2)));
-                            long lastTestStartTimestamp = lastTestStart.getTime();
-                            long postTimeTimestamp = postTime.getTime();
-                            while (lastTestStartTimestamp > postTimeTimestamp)
-                                lastTestStartTimestamp -= 24*60*60*1000;
-                            if (postTimeTimestamp - lastTestStartTimestamp > RunDetail.HANG_MILLISECONDS)
-                                testHang = new TestHangDetail(-1, Integer.parseInt(matcher.group(3)),
-                                    new Date(lastTestStartTimestamp), matcher.group(4), matcher.group(5));
-                            break;
+                            continue;
                         }
+
+                        // Determine the start date/time of the last test.
+                        // Since we only have HH:MM, initialize the date to be the same as the post date.
+                        Date lastTestStart = new Date(postTime.getTime());
+                        lastTestStart.setHours(Integer.parseInt(matcher.group(1)));
+                        lastTestStart.setMinutes(Integer.parseInt(matcher.group(2)));
+
+                        long lastTestStartTimestamp = lastTestStart.getTime();
+                        long postTimeTimestamp = postTime.getTime();
+
+                        // This is a hack to not subtract days in the case when the last test start time is after
+                        // the post time. Occasionally this happens for some reason.
+                        // Allow a short tolerance of 5 minutes for this case.
+                        // In the future, a better solution might be to include date information for tests in the posted
+                        // results so that we don't have to guess what the date was.
+                        if (lastTestStartTimestamp > postTimeTimestamp + (5 * ONE_MINUTE_IN_MILLIS))
+                        {
+                            // If the start time of the last test is after the post time, it means the last test
+                            // start date is not actually the same as the post date (e.g. it started before midnight
+                            // and the results were posted after midnight). So subtract days until it is before
+                            // the post time.
+                            while (lastTestStartTimestamp > postTimeTimestamp)
+                            {
+                                lastTestStartTimestamp -= 24 * 60 * 60 * 1000;
+                            }
+                        }
+
+                        if (postTimeTimestamp - lastTestStartTimestamp > RunDetail.HANG_MILLISECONDS)
+                        {
+                            testHang = new TestHangDetail(-1, Integer.parseInt(matcher.group(3)),
+                                    new Date(lastTestStartTimestamp), matcher.group(4), matcher.group(5));
+                        }
+                        break;
                     }
                 }
                 // Get leaks, failures, and passes
