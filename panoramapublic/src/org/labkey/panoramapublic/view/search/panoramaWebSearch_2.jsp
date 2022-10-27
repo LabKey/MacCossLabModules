@@ -266,7 +266,7 @@
         });
     });
 
-    let handleRendering = function (onClick) {
+    let handleRendering = function (onTabClick) {
 
         console.log("activeTab = ", activeTab);
 
@@ -276,9 +276,11 @@
 
         // render experiment list webpart
         // add filters in qwp and in the url for back button
-        if (onClick) {
+        if (onTabClick) {
 
-            updateUrlFilters(activeTab);
+            if (!window.location.href.includes('#')) {
+                updateUrlFilters(activeTab);
+            }
 
             if (activeTab === expSearchPanelItemId) {
                 let author = document.getElementById(authorsItemId).value;
@@ -371,7 +373,7 @@
         }
 
         // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
-        if (onClick || expAnnotationFilters.length > 0 ||
+        if (onTabClick || expAnnotationFilters.length > 0 ||
                 proteinParameters[proteinNameItemId] ||
                 peptideParameters[peptideSequenceItemId]
         ) {
@@ -479,33 +481,24 @@
     function updateUrlFilters (tabId, settingName, elementId) {
         if (tabId) {
             this.activeTab = tabId;
-            if (window.location.href.includes('#searchTab')) {
-                clearHistory();
-            }
             addSelectedTabToUrl(tabId);
         }
         if (settingName) {
             if (window.location.href.includes(settingName)) {
-                clearHistory();
                 addSelectedTabToUrl(this.activeTab);
             }
             if (window.location.href.includes('#')) {
-                window.location.href = window.location.href + '&' + settingName + ':' + elementId;
+                location.replace(window.location.href + '&' + settingName + ':' + elementId);
             }
             else {
-                window.location.href = window.location.href + '#' + settingName + ':' + elementId;
+                location.replace(window.location.href + '#' + settingName + ':' + elementId);
             }
         }
     }
 
-    function clearHistory () {
-        history.pushState("", document.title, window.location.pathname
-                + window.location.search);
-    }
-
     function addSelectedTabToUrl (tabId) {
-        window.location.href = window.location.href + '#searchTab:' + tabId;
-    }
+        location.replace(window.location.href + '#searchTab:' + tabId);
+    };
 
     function checkAndFillValuesFromUrl (itemId, comp) {
         let context = getFiltersFromUrl();
