@@ -359,7 +359,9 @@ $(document).ready(function() {
         }
 
         if (this.value === "failures") {
-            $("#show-stack-traces").trigger("change");
+            $("#show-stack-traces").prop("disabled", false).trigger("change");
+        } else {
+            $("#show-stack-traces").prop("disabled", true);
         }
 
         $("#failurestatstable").trigger("update");
