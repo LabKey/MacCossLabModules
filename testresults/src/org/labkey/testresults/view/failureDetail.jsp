@@ -11,6 +11,12 @@
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.TreeMap" %>
+<%@ page import="org.labkey.testresults.model.TestLeakDetail" %>
+<%@ page import="org.json.JSONArray" %>
+<%@ page import="org.labkey.testresults.model.RunProblems" %>
+<%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
+<%@ page import="org.labkey.testresults.model.TestHandleLeakDetail" %>
+<%@ page import="java.util.stream.Collectors" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     /*
@@ -21,11 +27,10 @@
     TestsDataBean data = (TestsDataBean)me.getModelBean();
     final String contextPath = AppProps.getInstance().getContextPath();
     String failedTest = getViewContext().getRequest().getParameter("failedTest");
+
     Container c = getContainer();
     RunDetail[] runs = data.getStatRuns();
-    if (runs.length > 1) {
-        Arrays.sort(runs, (o1, o2) -> o2.getRevision() - o1.getRevision());
-    }
+    RunProblems problems = new RunProblems(runs);
     Map<String, List<TestFailDetail>> languageFailures = new TreeMap<>();
     languageFailures.put(failedTest, Arrays.asList(data.getFailures()));
     Map<String, Map<String, Double>> languageBreakdown = data.getLanguageBreakdown(languageFailures);
@@ -33,6 +38,138 @@
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy HH:mm");
     DateFormat dfEnd = new SimpleDateFormat("MM/dd/yyyy");
     DateFormat jsDf = new SimpleDateFormat("yyyy-MM-dd");
+
+    // Generate JSON data.
+    JSONObject problemData = new JSONObject();
+
+    // get some graph data
+    Map<String, JSONObject> dates = new TreeMap<>(); // maps dates to count of failures per run
+    Calendar cal = Calendar.getInstance();
+    cal.setTime(data.getStartDate());
+    cal.add(Calendar.DATE, 1); // posted next day
+    int cutoffMinute = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE);
+
+    JSONObject graphData = new JSONObject();
+    String endDateString = jsDf.format(data.getEndDate());
+    for (; ; cal.add(Calendar.DATE, 1)) {
+        String dateString = jsDf.format(cal.getTime());
+        dates.put(dateString, null);
+        if (dateString.equals(endDateString))
+            break;
+    }
+    graphData.put("dates", dates.keySet());
+
+    // Generate runData JSON array.
+    int numFailures = 0;
+    int numLeaks = 0;
+    int numHangs = 0;
+    JSONArray runData = new JSONArray();
+    for (RunDetail run : runs)
+    {
+        JSONObject runObj = new JSONObject();
+        runObj.put("id", run.getId());
+        runObj.put("user", run.getUserName());
+        runObj.put("href", urlFor(TestResultsController.ShowRunAction.class).addParameter("runId", run.getId()));
+        runObj.put("time", df.format(run.getPostTime()));
+        runObj.put("duration", run.getDuration());
+        runObj.put("os", run.getOs());
+        runObj.put("revision", run.getRevisionFull());
+
+        JSONArray failData = new JSONArray();
+        for (TestFailDetail failure : problems.getFailures(run, failedTest))
+        {
+            numFailures++;
+            JSONObject failObj = new JSONObject();
+            failObj.put("pass", failure.getPass());
+            failObj.put("language", failure.getLanguage());
+            failObj.put("trace", failure.getStacktrace());
+            failData.put(failObj);
+        }
+        runObj.put("failures", failData);
+
+        JSONArray leakData = new JSONArray();
+        for (TestLeakDetail leak : problems.getLeaks(run, failedTest))
+        {
+            numLeaks++;
+            JSONObject leakObj = new JSONObject();
+            if (leak instanceof TestHandleLeakDetail)
+            {
+                leakObj.put("handles", ((TestHandleLeakDetail)leak).getHandles());
+                leakData.put(leakObj);
+            }
+            else if (leak instanceof TestMemoryLeakDetail)
+            {
+                leakObj.put("bytes", ((TestMemoryLeakDetail)leak).getBytes());
+                leakData.put(leakObj);
+            }
+        }
+        runObj.put("leaks", leakData);
+
+        boolean hang = problems.hasHang(run, failedTest);
+        if (hang)
+        {
+            numHangs++;
+        }
+        runObj.put("hang", hang);
+
+        runData.put(runObj);
+
+        // Update graph data.
+        cal.setTime(run.getPostTime());
+        if (cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE) >= cutoffMinute) {
+            cal.add(Calendar.DATE, 1);
+        }
+
+        String dateKey = jsDf.format(cal.getTime());
+        JSONObject dateObj = dates.get(dateKey);
+        if (dateObj == null)
+        {
+            dateObj = new JSONObject();
+            dates.put(dateKey, dateObj);
+        }
+
+        int thisFailures = problems.getFailures(run, failedTest).length;
+        if (thisFailures > 0)
+        {
+            dateObj.put("failures", (dateObj.containsKey("failures") ? dateObj.getInt("failures") : 0) + thisFailures);
+        }
+
+        int thisLeaks = problems.getLeaks(run, failedTest).length;
+        if (thisLeaks > 0)
+        {
+            dateObj.put("leaks", (dateObj.containsKey("leaks") ? dateObj.getInt("leaks") : 0) + thisLeaks);
+        }
+
+        if (hang)
+        {
+            dateObj.put("hangs", (dateObj.containsKey("hangs") ? dateObj.getInt("hangs") : 0) + 1);
+        }
+    }
+
+    problemData.put("runData", runData);
+
+    JSONObject dateData = new JSONObject();
+    // Filter dates without problems.
+    dates = dates.entrySet().stream().filter(e -> e.getValue() != null)
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    dateData.putAll(dates);
+    graphData.put("dateData", dateData);
+
+    problemData.put("graphData", graphData);
+
+    // Determine initial problem type.
+    String problemType = getViewContext().getRequest().getParameter("problemType");
+    if (problemType == null || (!problemType.equals("failures") && !problemType.equals("leaks") && !problemType.equals("hangs")))
+    {
+        if (numFailures > 0)
+            problemType = "failures";
+        else if (numLeaks > 0)
+            problemType = "leaks";
+        else if (numHangs > 0)
+            problemType = "hangs";
+        else
+            problemType = "failures";
+    }
 %>
 
 <%@include file="menu.jsp" %>
@@ -45,6 +182,12 @@
 <script src="<%=h(contextPath)%>/TestResults/js/c3.min.js"></script>
 <script src="//code.jquery.com/jquery-1.10.2.js"></script>
 <script src="<%=h(contextPath)%>/TestResults/js/jquery.tablesorter.js"></script>
+<style>
+    input:disabled+label { color: #aaa; }
+    #failurestatstable td:not(:last-child) { width: 1px; white-space: nowrap; }
+    #failurestatstable td:last-child { width: auto; }
+    #failurestatstable ul { list-style-type: none; margin: 0; padding: 0; }
+</style>
 <br />
 <%
     String value = (request.getParameter("viewType"));
@@ -67,187 +210,183 @@
     <input type="hidden" name="end" value="<%=h(dfEnd.format(data.getEndDate()))%>" />
 </form>
 <!-- main content of page -->
-<% if (data.getStatRuns().length > 0) { %>
-<div style="float: left;">
-    <h2><%=h(failedTest)%></h2>
-    <h4>Viewing data for: <%=h(df.format(data.getStartDate()))%> - <%=h(df.format(data.getEndDate()))%></h4>
-    <h4>Total failures: <%=runs.length%></h4>
-</div>
-<br />
-<!-- Bar & Pie chart containers -->
 <div style="display: flex; flex-direction: row;">
-    <div id="failGraph" style="width:1600px; height:400px;"></div>
-    <div id="piechart" style="width:250px; height:250px;"></div>
+    <div>
+        <h2><%=h(failedTest)%></h2>
+        <h4>Viewing data for: <%=h(df.format(data.getStartDate()))%> - <%=h(df.format(data.getEndDate()))%></h4>
+        <div id="problem-type-selection">
+            <input type="radio" id="problem-type-failure" name="problem_type" value="failures" <%=disabled(numFailures == 0)%>>
+            <label for="problem-type-failure">Failures<% if (numFailures > 0) { %> (<%=numFailures%>)<% } %></label>
+            <br>
+            <input type="radio" id="problem-type-leak" name="problem_type" value="leaks" <%=disabled(numLeaks == 0)%>>
+            <label for="problem-type-leak">Leaks<% if (numLeaks > 0) { %> (<%=numLeaks%>)<% } %></label>
+            <br>
+            <input type="radio" id="problem-type-hang" name="problem_type" value="hangs" <%=disabled(numHangs == 0)%>>
+            <label for="problem-type-hang">Hangs<% if (numHangs > 0) { %> (<%=numHangs%>)<% } %></label>
+        </div>
+    </div>
+    <div id="piechart" style="width: 200px; height: 200px;"></div>
+    <div style="flex-grow: 1;"></div>
 </div>
 
-<table class="tablesorter-default tablesorter" id="failurestatstable" style="float:left; width: 100%;">
+<div id="failGraph" style="width: 100%; height: 320px;"></div>
+
+<div>
+    <input type="checkbox" id="show-stack-traces" <%=checked(numFailures <= 10)%>>
+    <label for="show-stack-traces">Show stack traces</label>
+</div>
+
+<table class="tablesorter-default tablesorter" id="failurestatstable" style="width: 100%;">
     <thead>
     <tr>
-        <th class="header headerSortDown">User</th>
-        <th class="header">Post Time</th>
-        <th class="header">Duration</th>
-        <th class="header">OS</th>
-        <th class="header">Rev</th>
-        <th class="header">Total Run Failures</th>
-        <th class="header">Hangs</th>
-        <th>StackTrace</th>
+        <th>User</th>
+        <th>Post Time</th>
+        <th>Duration</th>
+        <th>OS</th>
+        <th>Rev</th>
+        <th id="col-problem"></th>
     </tr>
     </thead>
     <tbody>
-        <%
-            Map<String, Integer> dates = new TreeMap<>(); // maps dates to count of failures per run
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(data.getStartDate());
-            cal.add(Calendar.DATE, 1); // posted next day
-
-            // get some graph data
-            String graphXMin = jsDf.format(cal.getTime());
-            String graphXMax = jsDf.format(data.getEndDate());
-
-            int cutoffMinute = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE);
-            String endDateString = jsDf.format(data.getEndDate());
-            for (String dateString = jsDf.format(cal.getTime()); ; dateString = jsDf.format(cal.getTime())) {
-                dates.put(dateString, 0);
-                if (dateString.equals(endDateString))
-                    break;
-                cal.add(Calendar.DATE, 1);
-            }
-            for (RunDetail run : runs) { %>
-        <tr>
-            <td>
-                <a href="<%=h(urlFor(TestResultsController.ShowRunAction.class).addParameter("runId", run.getId()))%>">
-                    <%=h(run.getUserName())%>
-                </a>
-            </td>
-            <td><%=h(df.format(run.getPostTime()))%></td>
-            <td><%=run.getDuration()%></td>
-            <td><%=h(run.getOs())%></td>
-            <td><%=h(run.getRevisionFull())%></td>
-            <td><%=run.getFailedtests()%></td>
-            <td><%=h(run.getHang() != null ? run.getHang().getTestName() : "-")%></td>
-            <td>
-                <% for (TestFailDetail fail: run.getFailures()) {
-                        if (fail.getTestName().equals(failedTest)) {
-                            cal.setTime(run.getPostTime());
-                            if (cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE) >= cutoffMinute) {
-                                cal.add(Calendar.DATE, 1);
-                            }
-                            String dateString = jsDf.format(cal.getTime());
-                            dates.put(dateString, dates.get(dateString) + 1); %>
-                <pre style="text-align: left; padding:10px;"
-                     class="pass-<%=fail.getPass()%>">Pass: <%=fail.getPass()%> Language: <%=h(fail.getLanguage())%> --- <%=h(fail.getStacktrace())%>
-                            </pre>
-                        <% }
-                    } %>
-            </td>
-        </tr>
-        <% } %>
-   </tbody>
+    </tbody>
 </table>
 
-
-<!-- Pie Chart -->
 <script type="text/javascript">
-    var piechart = c3.generate({
+$(document).ready(function() {
+    const problemData = <%=problemData.getJavaScriptFragment(0)%>;
+
+    // Generate date chart.
+    let dateChart = c3.generate({
+        bindto: '#failGraph',
+        data: {
+            x: 'x',
+            columns: [],
+            type: 'bar'
+        },
+        size: { width: 1500 },
+        bar: { width: { ratio: 0.3 } },
+        subchart: { show: false, size: { height: 20 } },
+        axis: {
+            x: {
+                min: problemData.graphData.dates[0],
+                max: problemData.graphData.dates[problemData.graphData.dates.length - 1],
+                type: 'timeseries',
+                localtime: false,
+                tick: { fit: true, format: '%m/%d' }
+            },
+            // y: { tick: { values: %=graphYTicks.getJavaScriptFragment(0)% } }
+        }
+    });
+
+    // Generate pie chart.
+    c3.generate({
         bindto: '#piechart',
         data: {
             columns: [
                 <%
                     Map<String, Double> lang =languageBreakdown.get(failedTest);
                     for (String l: lang.keySet()) {
-                        Double percent = lang.get(l) * 100;
+                        double percent = lang.get(l) * 100;
                 %>
-                ['<%=h(l)%>', <%=percent.intValue()%>],
+                ['<%=h(l)%>', <%=(int)percent%>],
                 <% } %>  ],
             type: 'pie'
         },
         color: { pattern: ['#FFB82E', '#A078A0', '#20B2AA', '#F08080', '#FF8B2E'] },
         pie: { label: { format: function (value, ratio, id) { return ""; } } }
     });
-</script>
-<!-- Failure/Day bar chart -->
-<%
-    // populate json with failure count for each date
-    JSONObject failureTrends = new JSONObject();
-    int graphYMax = 1;
-    for (String key : dates.keySet()) {
-        int failCountValue = dates.get(key);
-        if (failCountValue > graphYMax) {
-            graphYMax = failCountValue;
+
+    const stackTraceToggle = function() {
+        if ($(this).is(":checked")) {
+            $(".stack-trace").show();
+        } else {
+            $(".stack-trace").hide();
         }
-        failureTrends.append("avgFailures", failCountValue);
-        failureTrends.append("dates", key);
-    }
-    StringBuilder graphYTicks = new StringBuilder();
-    graphYTicks.append('[');
-    for (int i = 0; i <= graphYMax; i++) {
-        if (i > 0)
-            graphYTicks.append(", ");
-        graphYTicks.append(i);
-    }
-    graphYTicks.append(']');
+    };
+    $("#show-stack-traces").change(stackTraceToggle).trigger("change");
 
-    if (failureTrends.size() > 0) { %>
-    <script type="text/javascript">
-        var failureJSON = jQuery.parseJSON( <%= q(failureTrends.toString()) %> );
-        var dates = failureJSON.dates;
-        if (dates.length >= 1)
-            dates.unshift('x');
-        var avgFailures = failureJSON.avgFailures;
-        avgFailures.unshift("<%=h(failedTest)%> failures");
+    const changeProblemType = function() {
+        let filterFunc = null;
+        let headerName = null;
+        let displayFunc = null;
+        let jsonKey = null;
+        switch (this.value) {
+            case "failures":
+                filterFunc = run => run.failures.length > 0;
+                headerName = "Failures";
+                displayFunc = run => {
+                    return "<ul>" + run.failures.map(f => "<li>" +
+                            "Pass " + f.pass.toString() + " (" + f.language + ") ---" +
+                            '<pre class="stack-trace">' + f.trace + "</pre>"+
+                            "</li>").join() + "</ul>";
+                };
+                jsonKey = "failures";
+                break;
+            case "leaks":
+                filterFunc = run => run.leaks.length > 0;
+                headerName = "Leaks";
+                displayFunc = run => {
+                    return "<ul>" + run.leaks.map(l => "<li>" +
+                            (l.handles ? l.handles.toString() + " handles" : l.bytes.toString() + " bytes") +
+                            "</li>").join() + "</ul>";
+                };
+                jsonKey = "leaks";
+                break;
+            case "hangs":
+                filterFunc = run => run.hang;
+                headerName = "Hang";
+                displayFunc = run => run.hang ? "&check;" : "-";
+                jsonKey = "hangs";
+                break;
+            default:
+                return;
+        }
 
-        c3.generate({
-            bindto: '#failGraph',
-            data: {
-                x: 'x',
-                columns: [dates, avgFailures],
-                type: 'bar',
-                onclick: function(d, i) {
-                    console.log("onclick", d.x, i);
-                }
-            },
-            size: { width: 1500 },
-            bar: { width: { ratio: 0.3 } },
-            subchart: { show: false, size: { height: 20 } },
-            axis: {
-                x: {
-                    min: '<%=h(graphXMin)%>',
-                    max: '<%=h(graphXMax)%>',
-                    type: 'timeseries',
-                    localtime: false,
-                    tick: { fit: true, format: '%m/%d' }
-                },
-                y: { tick: { values: <%=h(graphYTicks)%> } }
-            }
+        document.getElementById("col-problem").innerText = headerName;
+        let tbody = document.querySelector("#failurestatstable tbody");
+        while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+        for (let run of problemData.runData.filter(filterFunc)) {
+            let row = tbody.insertRow();
+            let link = document.createElement("a");
+            link.href = run.href;
+            link.innerText = run.user;
+            row.insertCell().appendChild(link);
+            row.insertCell().innerText = run.time;
+            row.insertCell().innerText = run.duration;
+            row.insertCell().innerText = run.os;
+            row.insertCell().innerText = run.revision;
+            row.insertCell().innerHTML = displayFunc(run);
+        }
+
+        if (this.value === "failures") {
+            $("#show-stack-traces").trigger("change");
+        }
+
+        $("#failurestatstable").trigger("update");
+
+        // Load graph data.
+        let problemGraphData = problemData.graphData.dates.map(d => {
+                let dateDataObj = problemData.graphData.dateData[d];
+                return (dateDataObj && dateDataObj[jsonKey]) ? dateDataObj[jsonKey] : 0;
+            });
+        dateChart.load({
+            columns: [['x', ...problemData.graphData.dates], [<%=q(failedTest)%> + headerName, ...problemGraphData]],
+            unload: true
         });
-    </script>
-<%}%>
-<%}%>
+    };
+    $("#problem-type-selection input").change(changeProblemType);
+    $("#problem-type-selection input[value=" + <%=q(problemType)%> + "]").prop("checked", true).trigger("change");
 
-<script type="text/javascript">
-/* Initialize sortable table */
-$(document).ready(function() {
+    // Initialize sortable table.
     $("#failurestatstable").tablesorter({
         widthFixed : true,
         resizable: true,
         widgets: ['zebra'],
-        headers : {
-            0: { sorter: "text" },
-            1: { sorter: "shortDate", dateFormat: "dd/mm/yyyy hh:mm"},
-            2: { sorter: "digit" },
-            3: { sorter: "text" },
-            4: { sorter: "digit" },
-            5: { sorter: "digit" },
-            6: { sorter: "text" },
-            7: { sorter: false }
-        },
+        headers : { "#col-problem": { sorter: false } },
         cssAsc: "headerSortUp",
         cssDesc: "headerSortDown",
         ignoreCase: true,
-        sortList: [
-            [1, 1]
-//                        [2, 0]
-        ],
+        sortList: [[1, 1]], // initial sort by post time descending
         sortAppend: {
             0: [[ 1, 'a' ]] // secondary sort by date ascending
         },

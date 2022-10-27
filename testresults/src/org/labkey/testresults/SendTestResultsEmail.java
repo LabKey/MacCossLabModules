@@ -4,8 +4,6 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
-import org.labkey.api.data.SQLFragment;
-import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.notification.EmailMessage;
 import org.labkey.api.notification.EmailService;
@@ -16,7 +14,6 @@ import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.MimeMap;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
-import org.labkey.api.util.Path;
 import org.labkey.api.view.ActionURL;
 import org.labkey.testresults.model.BackgroundColor;
 import org.labkey.testresults.model.RunDetail;
@@ -272,10 +269,10 @@ public class SendTestResultsEmail implements org.quartz.Job
                     for (RunDetail run : problemRuns)
                     {
                         message.append("\n<td style='width: 60px; overflow: hidden; padding: 3px; border: 1px solid #ccc;'>");
-                        if (problems.isFail(run, test))
+                        if (problems.hasFailure(run, test))
                             message.append("\n<span style='font-weight: 600; color: red;'>X</span>");
-                        boolean leakMem = problems.isMemoryLeak(run, test);
-                        boolean leakHandle = problems.isHandleLeak(run, test);
+                        boolean leakMem = problems.hasMemoryLeak(run, test);
+                        boolean leakHandle = problems.hasHandleLeak(run, test);
                         String leakType = "";
                         if (leakMem && leakHandle)
                             leakType = "Memory and handle leak";
@@ -285,7 +282,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                             leakType = "Handle leak";
                         if (!leakType.isEmpty())
                             message.append("\n<span style='font-weight: 600; color: orange;' title='" + leakType + "'>X</span>");
-                        if (problems.isHang(run, test))
+                        if (problems.hasHang(run, test))
                             message.append("\n<span style='font-weight: 600; color: navy;'>X</span>");
                         message.append("\n</td>");
                     }

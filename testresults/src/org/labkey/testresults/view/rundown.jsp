@@ -17,7 +17,6 @@
 <%@ page import="java.util.List" %>
 <%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
 <%@ page import="java.util.Map" %>
-<%@ page import="java.util.Arrays" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     /*
@@ -53,7 +52,6 @@
     Map<String, Map<String, Double>> languageBreakdown = data.getLanguageBreakdown(topFailures); // test name mapped to language and percents
 
     RunProblems problems = new RunProblems(dayRuns);
-    String[] problemTests = problems.getTestNames();
     RunDetail[] problemRuns = problems.getRuns();
 
     JSONObject memoryChartData = data.getTodaysCompactMemoryJson(selectedDate);
@@ -255,21 +253,17 @@
                         </tr>
                         </thead>
                         <tbody style="max-height: 300px; overflow: scroll; display: block;">
-                        <% for (String test : problemTests) { %>
+                        <% for (String test : problems.getTestNames()) { %>
                         <tr>
                             <td style="width: 200px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; padding: 0;">
-                                <% if (Arrays.stream(problemRuns).anyMatch(run -> problems.isFail(run, test))) { %>
                                 <%=link(test).href(new ActionURL(TestResultsController.ShowFailures.class, c).addParameter("end", df.format(selectedDate)).addParameter("failedTest", test)).target("_blank").clearClasses()%>
-                                <% } else { %>
-                                <%=h(test)%>
-                                <% } %>
                             </td>
                             <% for (RunDetail run : problemRuns) { %>
                             <td class="highlightrun highlighttd-<%=run.getId()%>" style="width: 60px; overflow: hidden; padding: 0;">
-                                <% if (problems.isFail(run, test)) { %><img src="<%=h(contextPath)%>/TestResults/img/fail.png"><% } %>
+                                <% if (problems.hasFailure(run, test)) { %><img src="<%=h(contextPath)%>/TestResults/img/fail.png"><% } %>
                                 <%
-                                    boolean leakMem = problems.isMemoryLeak(run, test);
-                                    boolean leakHandle = problems.isHandleLeak(run, test);
+                                    boolean leakMem = problems.hasMemoryLeak(run, test);
+                                    boolean leakHandle = problems.hasHandleLeak(run, test);
                                     String leakCssClass = "";
                                     if (leakMem && leakHandle) leakCssClass = "matrix-leak-both";
                                     else if (leakMem) leakCssClass = "matrix-leak-mem";
@@ -278,7 +272,7 @@
                                 %>
                                 <img src="<%=h(contextPath)%>/TestResults/img/leak.png" class="<%=h(leakCssClass)%>">
                                 <% } %>
-                                <% if (problems.isHang(run, test)) { %><img src="<%=h(contextPath)%>/TestResults/img/hangicon.png"><% } %>
+                                <% if (problems.hasHang(run, test)) { %><img src="<%=h(contextPath)%>/TestResults/img/hangicon.png"><% } %>
                             </td>
                             <% } %>
                         </tr>
@@ -384,7 +378,16 @@
                 </tr>
                 <% for (String key: topLeaks.keySet()) { %>
                 <tr>
-                    <td><%=h(key)%></td>
+                    <td>
+                        <%=
+                            link(key).href(new ActionURL(TestResultsController.ShowFailures.class, c)
+                                    .addParameter("viewType", viewType)
+                                    .addParameter("end", df.format(selectedDate))
+                                    .addParameter("failedTest", key)
+                                    .addParameter("problemType", "leaks")
+                                ).target("_blank").clearClasses()
+                        %>
+                    </td>
                     <td><%=topLeaks.get(key).size()%></td>
                     <% double[] leakbytes = new double[topLeaks.get(key).size()];
                         for (int i = 0; i < topLeaks.get(key).size(); i++) {

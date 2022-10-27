@@ -624,42 +624,39 @@ public class TestResultsController extends SpringActionController
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
         {
-            ViewContext vc = getViewContext();
-            String end = vc.getRequest().getParameter("end");
-            String failedTest = vc.getRequest().getParameter("failedTest");
-            String viewType = vc.getRequest().getParameter("viewType");
+            HttpServletRequest req = getViewContext().getRequest();
+            String end = req.getParameter("end");
+            String failedTest = req.getParameter("failedTest");
+            String problemType = req.getParameter("problemType");
+            String viewType = getViewType(req.getParameter("viewType"), ViewType.DAY);
 
-            Date endDate = end != null && !end.equals("") ? MDYFormat.parse(end) : new Date();
-            endDate = setToEightAM(endDate);
-            viewType = getViewType(viewType, ViewType.DAY);
+            Date endDate = setToEightAM(!StringUtils.isEmpty(end) ? MDYFormat.parse(end) : new Date());
             Date startDate = getStartDate(viewType, ViewType.DAY, endDate); // defaults to day
+
             RunDetail[] runs = getRunsSinceDate(startDate, endDate, getContainer(), null, false, false);
             populateFailures(runs);
-            TestsDataBean b = new TestsDataBean(runs, new User[0]);
-            b.setViewType(viewType);
-            b.setStartDate(startDate);
-            b.setEndDate(endDate);
-            if (failedTest == null || failedTest.equals(""))
-                return new JspView("/org/labkey/testresults/view/multiFailureDetail.jsp", b);
+            populateHangs(runs);
+            populateLeaks(runs);
 
-            List<RunDetail> failureRuns = new ArrayList<>();
-            for (RunDetail run: runs) {
-                List<TestFailDetail> f = new ArrayList<>();
-                for (TestFailDetail fail: run.getFailures()) {
-                    if (fail.getTestName().equals(failedTest)) {
-                        f.add(fail);
-                    }
-                }
-                if (f.size() > 0) {
-                    run.setFailures(f.toArray(new TestFailDetail[0]));
-                    failureRuns.add(run);
-                }
-            }
-            TestsDataBean bean =  new TestsDataBean(failureRuns.toArray(new RunDetail[0]), new User[0]);
+            TestsDataBean bean = new TestsDataBean(null, new User[0]);
             bean.setViewType(viewType);
             bean.setStartDate(startDate);
             bean.setEndDate(endDate);
-            return new JspView("/org/labkey/testresults/view/failureDetail.jsp", bean);
+
+            if (!StringUtils.isEmpty(failedTest))
+            {
+                // Filter runs to be only the ones containing a failure, hang, or leak for the specified test.
+                bean.setRuns(Arrays.stream(runs).filter(run ->
+                        (run.getFailures() != null && Arrays.stream(run.getFailures()).anyMatch(failure -> failure.getTestName().equals(failedTest))) ||
+                        (run.getHang() != null && run.getHang().getTestName().equals(failedTest)) ||
+                        (run.getLeaks() != null && Arrays.stream(run.getLeaks()).anyMatch(leak -> leak.getTestName().equals(failedTest)))
+                ).toArray(RunDetail[]::new));
+
+                return new JspView("/org/labkey/testresults/view/failureDetail.jsp", bean);
+            }
+
+            bean.setRuns(runs);
+            return new JspView("/org/labkey/testresults/view/multiFailureDetail.jsp", bean);
         }
 
         @Override
