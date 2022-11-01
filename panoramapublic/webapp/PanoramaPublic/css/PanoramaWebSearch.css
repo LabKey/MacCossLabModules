@@ -9,6 +9,10 @@
     margin: 10px auto;
 }
 
+input::placeholder {
+    color: transparent;
+}
+
 .search-panel-btn {
     background: lightgray;
     color: black;

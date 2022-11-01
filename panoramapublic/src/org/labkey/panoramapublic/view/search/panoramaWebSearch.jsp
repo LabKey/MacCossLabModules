@@ -1,567 +1,451 @@
+<%
+    /*
+     * Copyright (c) 2022 LabKey Corporation
+     *
+     * Licensed under the Apache License, Version 2.0 (the "License");
+     * you may not use this file except in compliance with the License.
+     * You may obtain a copy of the License at
+     *
+     *     http://www.apache.org/licenses/LICENSE-2.0
+     *
+     * Unless required by applicable law or agreed to in writing, software
+     * distributed under the License is distributed on an "AS IS" BASIS,
+     * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     * See the License for the specific language governing permissions and
+     * limitations under the License.
+     */
+%>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 
-<div id="panorama_public_search"></div>
-<br/>
-<div id="search-indicator"></div>
-<div id="experiment_list_wp"></div>
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("PanoramaPublic/js/ExpAnnotAutoComplete.js");
+        dependencies.add("PanoramaPublic/js/bootstrap-tagsinput.min.js");
+        dependencies.add("PanoramaPublic/js/typeahead.bundle.min.js");
+        dependencies.add("/PanoramaPublic/css/bootstrap-tagsinput.css");
+        dependencies.add("/PanoramaPublic/css/typeahead-examples.css");
+        dependencies.add("/PanoramaPublic/css/PanoramaWebSearch.css");
+    }
+%>
 
-<script type="text/javascript">
+<div class="active-tabs">
+    <input style="visibility: hidden" type="radio" name="active_tabs" id="expSearchPanel" class="search-panel-btn-1" checked >
+    <label for="expSearchPanel" class="search-panel-btn" >Experiment Search</label>
 
-    // Require that ExtJS 4 be loaded
-    LABKEY.requiresExt4Sandbox(function() {
-        Ext4.onReady(function() {
+    <input style="visibility: hidden" type="radio" name="active_tabs" id="proteinSearchPanel" class="search-panel-btn-2">
+    <label for="proteinSearchPanel" class="search-panel-btn" >Protein Search</label>
 
-            const expSearchPanelItemId = 'expSearchPanel';
-            const authorsItemId = 'Authors';
-            const titleItemId = 'Title';
-            const organismItemId = 'Organism';
-            const instrumentItemId = 'Instrument';
-            const exactMatch = 'exactMatch';
+    <input style="visibility: hidden" type="radio" name="active_tabs" id="peptideSearchPanel" class="search-panel-btn-3">
+    <label for="peptideSearchPanel" class="search-panel-btn" >Peptide Search</label>
 
-            const proteinSearchPanelItemId = 'proteinSearchPanel';
-            const proteinNameItemId = 'proteinLabel';
-            const exactProteinMatchesItemId = 'exactProteinMatches';
+    <div class="tabs-container">
+        <div class="tab-1">
+            <table class="lk-fields-table">
+                <tr style="height: 10px"></tr>
+                <tr>
+                    <td style="width: 5px"></td>
+                    <td>Author:</td>
+                    <td style="width: 5px"></td>
+                    <td>Title:</td>
+                    <td style="width: 5px"></td>
+                    <td>Organism:</td>
+                    <td style="width: 5px"></td>
+                    <td>Instrument:</td>
+                </tr>
+                <tr>
+                    <td style="width: 5px"></td>
+                    <td nowrap><input class="bootstrap-tagsinput" size="20" type="text" id="Authors" name="Authors" value=""/></td>
 
-            const peptideSearchPanelItemId = 'peptideSearchPanel';
-            const peptideSequenceItemId = 'peptideSequence';
-            const exactPeptideMatchesItemId = 'exactPeptideMatches';
+                    <td style="width: 5px"></td>
+                    <td><input class="bootstrap-tagsinput" size="20" type="text" id="Title" name="Title" value=""/></td>
 
-            let handleRendering = function (btn, clicked) {
-                let panel = btn.up('panel');
-                const activeTab = panel.activeTab.getItemId();
+                    <td style="width: 5px"></td>
+                    <td nowrap>
+                        <div id="input-picker-div-organism" class="scrollable-dropdown-menu">
+                            <input class="tags" size="20" type="text" id="Organism" name="Organism" placeholder="Enter Organism" value=""/>
+                        </div>
+                    </td>
 
-                let expSearchPanel = panel.down('#' + expSearchPanelItemId);
-                let proteinSearchPanel = panel.down('#' + proteinSearchPanelItemId);
-                let peptideSearchPanel = panel.down('#' + peptideSearchPanelItemId);
+                    <td style="width: 5px"></td>
+                    <td nowrap>
+                        <div id="input-picker-div-instrument" class="scrollable-dropdown-menu">
 
-                let expAnnotationFilters = [];
-                let proteinParameters = {};
-                let peptideParameters = {};
+                            <%-- Placeholder text is needed here otherwise the input size becomes variable once a value is selected from auto-complete dropdown;
+                            however, hiding the placeholder text by setting 'input::placeholder' styling to be transparent in PanoramaWebSearch.css.
+                            Also, placeholder text is 20 characters long (with added spaces) to keep it consistent with other inputs above.
+                            --%>
+                            <input class="tags" type="text" id="Instrument" name="Instrument" placeholder="  Enter Instrument  " value=""/>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
 
-                // render experiment list webpart
-                // add filters in qwp and in the url for back button
-                if (clicked) {
-                    updateUrlFilters(activeTab);
-                    if (activeTab === expSearchPanelItemId) {
-                        let author = expSearchPanel.down('#' + authorsItemId);
-                        let title = expSearchPanel.down('#' + titleItemId);
-                        let organism = expSearchPanel.down('#' + organismItemId);
-                        let instrument = expSearchPanel.down('#' + instrumentItemId);
+                </tr>
+                <tr style="height: 10px"></tr>
+            </table>
+        </div>
+        <div class="tab-2">
+            <table class="lk-fields-table">
+                <tr style="height: 10px"></tr>
+                <tr>
+                    <td style="width: 5px"></td>
+                    <td>Protein:<%=helpPopup("Protein", "Required to search for proteins. You may use the name as specified by the FASTA file, or an annotation, such as a gene name, that has been loaded from an annotations file.")%></td>
+                </tr>
+                <tr>
+                    <td style="width: 5px"></td>
+                    <td nowrap><input class="bootstrap-tagsinput" size="20" type="text" id="proteinLabel" name="proteinLabel" value="" /></td>
 
-                        if (author && author.getValue()) {
-                            expAnnotationFilters.push(LABKEY.Filter.create(authorsItemId, author.getValue(), LABKEY.Filter.Types.CONTAINS));
-                            updateUrlFilters(null, authorsItemId, author.getValue());
-                        }
-                        if (title && title.getValue()) {
-                            expAnnotationFilters.push(LABKEY.Filter.create(titleItemId, title.getValue(), LABKEY.Filter.Types.CONTAINS));
-                            updateUrlFilters(null, titleItemId, title.getValue());
-                        }
-                        if (organism && organism.getValue()) {
-                            expAnnotationFilters.push(LABKEY.Filter.create(organismItemId, organism.getValue(), LABKEY.Filter.Types.CONTAINS));
-                            updateUrlFilters(null, organismItemId, organism.getValue());
-                        }
-                        if (instrument && instrument.getValue()) {
-                            expAnnotationFilters.push(LABKEY.Filter.create(instrumentItemId, instrument.getValue(), LABKEY.Filter.Types.CONTAINS));
-                            updateUrlFilters(null, instrumentItemId, instrument.getValue());
-                        }
-                    }
-                    else if (activeTab === proteinSearchPanelItemId) {
-                        let protein = proteinSearchPanel.down('#' + proteinNameItemId);
-                        let exactProteinMatch = proteinSearchPanel.down('#' + exactProteinMatchesItemId);
+                    <td style="width: 10px"></td>
 
-                        if (protein && protein.getValue()) {
-                            proteinParameters[proteinNameItemId] = protein.getValue();
-                            updateUrlFilters(null, proteinNameItemId, protein.getValue());
-                        }
-                        if (exactProteinMatch && exactProteinMatch.getValue()) {
-                            proteinParameters[exactMatch] = exactProteinMatch.getValue();
-                            updateUrlFilters(null, exactProteinMatchesItemId, exactProteinMatch.getValue());
-                        }
-                    }
-                    else if (activeTab === peptideSearchPanelItemId) {
-                        let peptide = peptideSearchPanel.down('#' + peptideSequenceItemId);
-                        let exactPeptideMatch = peptideSearchPanel.down('#' + exactPeptideMatchesItemId);
+                    <td>Exact Matches Only:<%=helpPopup("Exact Matches Only", "If checked, the search will only find proteins with an exact name match. If not checked, proteins that contain the name entered will also match, but the search may be significantly slower.")%></td>
+                    <td style="padding-top: 0.75%; padding-left: 5px"><labkey:checkbox id="exactProteinMatches" name="exactProteinMatches" value=""/></td>
 
-                        if (peptide && peptide.getValue()) {
-                            peptideParameters[peptideSequenceItemId] = peptide.getValue();
-                            updateUrlFilters(null, peptideSequenceItemId, peptide.getValue());
-                        }
-                        if (exactPeptideMatch && exactPeptideMatch.getValue()) {
-                            peptideParameters[exactMatch] = exactPeptideMatch.getValue();
-                            updateUrlFilters(null, exactPeptideMatchesItemId, exactPeptideMatch.getValue());
-                        }
-                    }
-                }
-                // getFiltersFromUrl and add to the filters
-                else {
-                    let context = getFiltersFromUrl();
-                    if (context[authorsItemId]) {
-                        expAnnotationFilters.push(LABKEY.Filter.create(authorsItemId, context[authorsItemId], LABKEY.Filter.Types.CONTAINS));
-                    }
-                    if (context[titleItemId]) {
-                        expAnnotationFilters.push(LABKEY.Filter.create(titleItemId, context[titleItemId], LABKEY.Filter.Types.CONTAINS));
-                    }
-                    if (context[organismItemId]) {
-                        expAnnotationFilters.push(LABKEY.Filter.create(organismItemId, context[organismItemId], LABKEY.Filter.Types.CONTAINS));
-                    }
-                    if (context[instrumentItemId]) {
-                        expAnnotationFilters.push(LABKEY.Filter.create(instrumentItemId, context[instrumentItemId], LABKEY.Filter.Types.CONTAINS));
-                    }
-                    if (context[proteinNameItemId]) {
-                        proteinParameters[proteinNameItemId] =  context[proteinNameItemId];
-                    }
-                    if (context[exactProteinMatchesItemId]) {
-                        proteinParameters[exactMatch] =  context[exactProteinMatchesItemId];
-                    }
-                    if (context[peptideSequenceItemId]) {
-                        peptideParameters[peptideSequenceItemId] =  context[peptideSequenceItemId];
-                    }
-                    if (context[exactPeptideMatchesItemId]) {
-                        peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
-                    }
-                }
+                </tr>
+                <tr style="height: 10px"></tr>
+            </table>
+        </div>
+        <div class="tab-3">
+            <table class="lk-fields-table">
+                <tr style="height: 10px"></tr>
+                <tr>
+                    <td style="width: 5px"></td>
+                    <td>Peptide Sequence:<%=helpPopup("Peptide Sequence", "Enter the peptide sequence to find.")%></td>
+                </tr>
+                <tr>
+                    <td style="width: 5px"></td>
+                    <td nowrap><input class="bootstrap-tagsinput" size="20" type="text" id="peptideSequence" name="peptideSequence" value=""/></td>
 
-                // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
-                if (clicked || expAnnotationFilters.length > 0 ||
-                        proteinParameters[proteinNameItemId] ||
-                        peptideParameters[peptideSequenceItemId]
-                ) {
-                    Ext4.create('Ext.panel.Panel', {
-                        border: false,
-                        renderTo: 'search-indicator',
-                    });
-                    Ext4.get('search-indicator').mask('Search is running, results pending...');
+                    <td style="width: 10px"></td>
 
-                    if (expAnnotationFilters.length > 0) {
-                        let wp = new LABKEY.QueryWebPart({
-                            renderTo: 'experiment_list_wp',
-                            title: 'TargetedMS Experiment List',
-                            schemaName: 'panoramapublic',
-                            viewName: 'search',
-                            queryName: 'ExperimentAnnotations',
-                            showFilterDescription: false,
-                            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
-                            filters: expAnnotationFilters,
-                            success: function () {
-                                Ext4.get('search-indicator').unmask();
-                            }
-                        });
-                        wp.render();
-                    }
-                    else if (proteinParameters[proteinNameItemId]) {
-                        let wp = new LABKEY.QueryWebPart({
-                            renderTo: 'experiment_list_wp',
-                            title: 'The searched protein appeared in the following experiments',
-                            schemaName: 'panoramapublic',
-                            queryName: 'proteinSearch',
-                            showFilterDescription: false,
-                            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
-                            parameters: proteinParameters,
-                            success: function () {
-                                Ext4.get('search-indicator').unmask();
-                            }
-                        });
-                        wp.render();
-                    }
-                    else if (peptideParameters[peptideSequenceItemId]) {
-                        let wp = new LABKEY.QueryWebPart({
-                            renderTo: 'experiment_list_wp',
-                            title: 'The searched peptide appeared in the following experiments',
-                            schemaName: 'panoramapublic',
-                            queryName: 'peptideSearch',
-                            showFilterDescription: false,
-                            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
-                            parameters: peptideParameters,
-                            success: function () {
-                                Ext4.get('search-indicator').unmask();
-                            }
-                        });
-                        wp.render();
-                    }
-                }
-            };
+                    <td>Exact Matches Only:<%=helpPopup("Exact Matches Only", "If checked, the search will match the peptides exactly; if unchecked, it will match any peptide that contain the specified sequence.")%></td>
+                    <td style="padding-top: 0.75%; padding-left: 5px"><labkey:checkbox id="exactPeptideMatches" name="exactPeptideMatches" value=""/></td>
 
-            let getFiltersFromUrl = function () {
-                let context = {};
+                </tr>
+                <tr style="height: 10px"></tr>
+            </table>
+        </div>
+    </div>
+    <div>
+        <button id="search-button-id" class="labkey-button" onclick=handleRendering(true)>Search</button>
+    </div>
+    <div id="search-indicator" style="visibility: hidden;padding-left: 50%">
+        <p><i class="fa fa-spinner fa-pulse"></i> Search is running, results pending...</p>
+    </div>
 
-                if (document.location.hash) {
-                    var token = document.location.hash.split('#');
-                    token = token[1].split('&');
+</div>
 
-                    for (let i = 0; i < token.length; i++) {
-                        var t = token[i].split(':');
-                        t[0] = decodeURIComponent(t[0]);
-                        if (t.length > 1) {
-                            t[1] = decodeURIComponent(t[1]);
-                        }
-                        switch (t[0]) {
-                            case 'searchTab':
-                                context.searchTab = t[1];
-                                break;
-                            case authorsItemId:
-                                context[authorsItemId] = t[1];
-                                break;
-                            case titleItemId:
-                                context[titleItemId] = t[1];
-                                break;
-                            case organismItemId:
-                                context[organismItemId] = t[1];
-                                break;
-                            case instrumentItemId:
-                                context[instrumentItemId] = t[1];
-                                break;
-                            case proteinNameItemId:
-                                context[proteinNameItemId] = t[1];
-                                break;
-                            case exactProteinMatchesItemId:
-                                context[exactProteinMatchesItemId] = t[1];
-                                break;
-                            case peptideSequenceItemId:
-                                context[peptideSequenceItemId] = t[1];
-                                break;
-                            case exactPeptideMatchesItemId:
-                                context[exactPeptideMatchesItemId] = t[1];
-                                break;
-                            default:
-                                context[t[0]] = t[1];
-                        }
-                    }
-                }
-                return context;
-            };
+<script>
+    const expSearchPanelItemId = 'expSearchPanel';
+    const authorsItemId = 'Authors';
+    const titleItemId = 'Title';
+    const organismItemId = 'Organism';
+    const instrumentItemId = 'Instrument';
+    const exactMatch = 'exactMatch';
 
-            let updateUrlFilters = function (tabId, settingName, elementId) {
-                if (tabId) {
-                    this.activeTab = tabId;
-                    if (window.location.href.includes('#searchTab')) {
-                        clearHistory();
-                    }
-                    addSelectedTabToUrl(tabId);
-                }
-                if (settingName) {
-                    if (window.location.href.includes(settingName)) {
-                        clearHistory();
-                        addSelectedTabToUrl(this.activeTab);
-                    }
-                    if (window.location.href.includes('#')) {
-                        window.location.href = window.location.href + '&' + settingName + ':' + elementId;
-                    }
-                    else {
-                        window.location.href = window.location.href + '#' + settingName + ':' + elementId;
-                    }
-                }
-            };
+    const proteinSearchPanelItemId = 'proteinSearchPanel';
+    const proteinNameItemId = 'proteinLabel';
+    const exactProteinMatchesItemId = 'exactProteinMatches';
 
-            let clearHistory = function () {
-                history.pushState("", document.title, window.location.pathname
-                        + window.location.search);
-            };
+    const peptideSearchPanelItemId = 'peptideSearchPanel';
+    const peptideSequenceItemId = 'peptideSequence';
+    const exactPeptideMatchesItemId = 'exactPeptideMatches';
 
-            let addSelectedTabToUrl = function (tabId) {
-                window.location.href = window.location.href + '#searchTab:' + tabId;
-            };
+    let activeTab = undefined;
 
-            let checkAndFillValuesFromUrl = function(itemId, comp) {
-                let context = getFiltersFromUrl();
-                if (context[itemId]) {
-                    comp.setValue(context[itemId]);
-                }
-            };
+    $(document).ready(function() {
+        let context = getFiltersFromUrl();
+        activeTab = context.searchTab ? context.searchTab : expSearchPanelItemId;
+        document.getElementById(activeTab).checked= true;
+        handleRendering(false);
+    });
 
-            Ext4.define('PanoramaPublic.panel.SearchPanel', {
-                extend: 'Ext.tab.Panel',
-                alias: 'widget-panoramaSearchPanel',
-                activeTab: 0,
+    $ (function() {
+        let instrUrl = LABKEY.ActionURL.buildURL('PanoramaPublic', 'completeInstrument.api');
+        initAutoComplete(instrUrl, "input-picker-div-instrument", true);
 
-                initComponent: function () {
-                    Ext4.apply(this, {
-                        defaults: { bodyPadding: 10, border: false },
-                        activeTab: this.activeTab,
-                        layout: 'fit',
-                        items: [
-                            {
-                                xtype: 'panel',
-                                name: expSearchPanelItemId,
-                                itemId: expSearchPanelItemId,
-                                title: 'Experiment Search',
-                                cls: 'non-ext-search-tab-panel',
-                                layout: {type: 'hbox', align: 'left'},
-                                items:[{
-                                    xtype: 'textfield',
-                                    fieldLabel: 'Author',
-                                    name: authorsItemId,
-                                    itemId: authorsItemId,
-                                    labelAlign: 'top',
-                                    labelWidth: 75,
-                                    listeners: {
-                                        render: function (comp, eOpts) {
-                                            checkAndFillValuesFromUrl(authorsItemId, comp);
-                                        }
-                                    }
-                                    },
-                                    {
-                                        xtype: 'tbspacer',
-                                        width:10
-                                    },
-                                    {
-                                        xtype: 'textfield',
-                                        name: titleItemId,
-                                        fieldLabel: titleItemId,
-                                        itemId: titleItemId,
-                                        labelAlign: 'top',
-                                        labelWidth: 75,
-                                        listeners: {
-                                            render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(titleItemId, comp);
-                                            }
-                                        }
-                                    },
-                                    {
-                                        xtype: 'tbspacer',
-                                        width:10
-                                    },
-                                    {
-                                        xtype: 'textfield',
-                                        name: organismItemId,
-                                        fieldLabel: organismItemId,
-                                        itemId: organismItemId,
-                                        labelAlign: 'top',
-                                        labelWidth: 75,
-                                        cls: 'padding: 0 0 15px 0',
-                                        listeners: {
-                                            render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(organismItemId, comp);
-                                            }
-                                        }
-                                    },
-                                    {
-                                        xtype: 'tbspacer',
-                                        width:10
-                                    },
-                                    {
-                                        xtype: 'textfield',
-                                        name: instrumentItemId,
-                                        fieldLabel: instrumentItemId,
-                                        itemId: instrumentItemId,
-                                        labelAlign: 'top',
-                                        labelWidth: 75,
-                                        listeners: {
-                                            render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(instrumentItemId, comp);
-                                            }
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                // protein search webpart
-                                xtype: 'panel',
-                                name: proteinSearchPanelItemId,
-                                itemId: proteinSearchPanelItemId,
-                                title: 'Protein Search',
-                                cls: 'non-ext-search-tab-panel',
-                                layout: {type: 'hbox', align: 'left'},
-                                items : [
-                                    {
-                                        xtype: 'textfield',
-                                        fieldLabel: 'Protein',
-                                        name: proteinNameItemId,
-                                        itemId: proteinNameItemId,
-                                        labelAlign: 'top',
-                                        labelWidth: 125,
-                                        listeners: {
-                                            render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(proteinNameItemId, comp);
-                                                new Ext4.ToolTip({
-                                                    target : comp.getEl(),
-                                                    width: 500,
-                                                    html: 'Required to search for proteins. You may use the name as specified by the FASTA file, or an annotation, such as a gene name, that has been loaded from an annotations file.'
-                                                });
-                                            }
-                                        }
-                                    },
-                                    {
-                                        xtype: 'tbspacer',
-                                        width: 20
-                                    },
-                                    {
-                                        xtype: 'panel',
-                                        layout: {type: 'vbox', align: 'left'},
-                                        border: false,
-                                        items: [
-                                            {
-                                                xtype: 'tbspacer',
-                                                height: 20
-                                            },
-                                            {
-                                                xtype: 'checkbox',
-                                                fieldLabel: 'Exact Matches Only',
-                                                name: exactProteinMatchesItemId,
-                                                itemId: exactProteinMatchesItemId,
-                                                id: exactProteinMatchesItemId,
-                                                input: true,
-                                                // labelAlign: 'right',
-                                                boxLabelAlign: 'after',
-                                                labelWidth: 130,
-                                                listeners: {
-                                                    render: function (comp, eOpts) {
-                                                        checkAndFillValuesFromUrl(exactProteinMatchesItemId, comp);
-                                                        new Ext4.ToolTip({
-                                                            target : comp.getEl(),
-                                                            width: 500,
-                                                            html: 'If checked, the search will only find proteins with an exact name match. If not checked, proteins that contain the name entered will also match, but the search may be significantly slower.'
-                                                        });
-                                                    }
-                                                }
-                                            }]
+        let organismUrl = LABKEY.ActionURL.buildURL('PanoramaPublic', 'completeOrganism.api');
+        initAutoComplete(organismUrl, "input-picker-div-organism", false);
 
-                                    },
+        document.getElementById(expSearchPanelItemId).addEventListener("click", function() {
+            activeTab = expSearchPanelItemId;
+            updateUrlFilters(activeTab);
+        });
 
+        document.getElementById(proteinSearchPanelItemId).addEventListener("click", function() {
+            activeTab = proteinSearchPanelItemId;
+            updateUrlFilters(activeTab);
+        });
 
-                                ]
-                            },
-                            {
-                                // peptide search webpart
-                                xtype: 'panel',
-                                name: peptideSearchPanelItemId,
-                                itemId: peptideSearchPanelItemId,
-                                title: 'Peptide Search',
-                                cls: 'non-ext-search-tab-panel',
-                                layout: {type: 'hbox', align: 'left'},
-                                items : [
-                                    {
-                                        xtype: 'textfield',
-                                        name: 'Peptide Sequence',
-                                        fieldLabel: 'Peptide Sequence',
-                                        itemId: peptideSequenceItemId,
-                                        labelAlign: 'top',
-                                        labelWidth: 125,
-                                        listeners: {
-                                            render: function (comp, eOpts) {
-                                                checkAndFillValuesFromUrl(peptideSequenceItemId, comp);
-                                                new Ext4.ToolTip({
-                                                    target : comp.getEl(),
-                                                    width: 250,
-                                                    html: 'Enter the peptide sequence to find.'
-                                                });
-                                            }
-                                        }
-                                    },
-                                    {
-                                        xtype: 'tbspacer',
-                                        width: 20
-                                    },
-                                    {
-                                        xtype: 'panel',
-                                        layout: {type: 'vbox', align: 'left'},
-                                        border: false,
-                                        items: [
-                                            {
-                                                xtype: 'tbspacer',
-                                                height: 20
-                                            },
-                                            {
-                                                xtype: 'checkbox',
-                                                fieldLabel: 'Exact Matches Only',
-                                                name: exactPeptideMatchesItemId,
-                                                itemId: exactPeptideMatchesItemId,
-                                                id: exactPeptideMatchesItemId,
-                                                input: true,
-                                                labelWidth: 130,
-                                                listeners: {
-                                                    render: function (comp, eOpts) {
-                                                        checkAndFillValuesFromUrl(exactPeptideMatchesItemId, comp);
-                                                        new Ext4.ToolTip({
-                                                            target : comp.getEl(),
-                                                            width: 500,
-                                                            html: 'If checked, the search will match the peptides exactly; if unchecked, it will match any peptide that contain the specified sequence.'
-                                                        });
-                                                    }
-                                                }
-                                            }
-                                        ]
-                                    }
-                                ]
-                            }],
-                        dockedItems: [{
-                            xtype: 'toolbar',
-                            dock: 'bottom',
-                            ui: 'footer',
-                            items: [{
-                                text: 'Search',
-                                formBind: true,
-                                handler: function (btn) {
-                                    handleRendering(btn, true);
-                                },
-                                listeners: {
-                                    render: function(comp, eOpts) {
-                                        handleRendering(comp, false);
-                                    }
-                                },
-
-                            }]
-                        }],
-                        scope: this,
-                        listeners: {
-                            tabchange: function (tabPanel, newCard, oldCard, eOpts ) {
-                                updateUrlFilters(tabPanel.activeTab.itemId);
-                                if (tabPanel.activeTab.itemId === expSearchPanelItemId) {
-                                    let author = tabPanel.down('#' + authorsItemId);
-                                    let title = tabPanel.down('#' + titleItemId);
-                                    let organism = tabPanel.down('#' + organismItemId);
-                                    let instrument = tabPanel.down('#' + instrumentItemId);
-
-                                    if (author && author.getValue()) {
-                                        updateUrlFilters(null, authorsItemId, author.getValue());
-                                    }
-                                    if (title && title.getValue()) {
-                                        updateUrlFilters(null, titleItemId, title.getValue());
-                                    }
-                                    if (organism && organism.getValue()) {
-                                        updateUrlFilters(null, organismItemId, organism.getValue());
-                                    }
-                                    if (instrument && instrument.getValue()) {
-                                        updateUrlFilters(null, instrumentItemId, instrument.getValue());
-                                    }
-                                }
-                                else if (tabPanel.activeTab.itemId === proteinSearchPanelItemId) {
-                                    let protein = tabPanel.down('#' + proteinNameItemId);
-                                    let exactMatch = tabPanel.down('#' + exactProteinMatchesItemId);
-
-                                    if (protein && protein.getValue()) {
-                                        updateUrlFilters(null, proteinNameItemId, protein.getValue());
-                                    }
-                                    if (exactMatch && exactMatch.getValue()) {
-                                        updateUrlFilters(null, exactProteinMatchesItemId, exactMatch.getValue());
-                                    }
-                                }
-                                else if (tabPanel.activeTab.itemId === peptideSearchPanelItemId) {
-                                    let peptide = tabPanel.down('#' + peptideSequenceItemId);
-                                    let exactMatch = tabPanel.down('#' + exactProteinMatchesItemId);
-
-                                    if (peptide && peptide.getValue()) {
-                                        updateUrlFilters(null, peptideSequenceItemId, peptide.getValue());
-                                    }
-                                    if (exactMatch && exactMatch.getValue()) {
-                                        updateUrlFilters(null, exactPeptideMatchesItemId, exactMatch.getValue());
-                                    }
-                                }
-                            },
-                            render: function(comp, eOpts) {
-                                let context = getFiltersFromUrl();
-                                this.setActiveTab(context.searchTab);
-                            }
-                        }
-                    });
-                    this.callParent(arguments);
-                },
-
-            });
-
-            Ext4.create('PanoramaPublic.panel.SearchPanel', {
-                renderTo: 'panorama_public_search',
-            })
+        document.getElementById(peptideSearchPanelItemId).addEventListener("click", function() {
+            activeTab = peptideSearchPanelItemId;
+            updateUrlFilters(activeTab);
         });
     });
+
+    let clearInputFromExperimentTab = function () {
+        document.getElementById(authorsItemId).value = "";
+        document.getElementById(titleItemId).value = "";
+        document.getElementById(organismItemId).value = "";
+        document.getElementById(instrumentItemId).value = "";
+    };
+
+    let clearInputFromProteinTab = function () {
+        document.getElementById(proteinNameItemId).value = "";
+        document.getElementById(exactProteinMatchesItemId).checked = false;
+    };
+
+    let clearInputFromPeptideTab = function () {
+        document.getElementById(peptideSequenceItemId).value = ""
+        document.getElementById(exactPeptideMatchesItemId).checked = false;
+    };
+
+    let handleRendering = function (onTabClick) {
+
+        let expAnnotationFilters = [];
+        let proteinParameters = {};
+        let peptideParameters = {};
+
+        // render experiment list webpart
+        // add filters in qwp and in the url for back button
+        if (onTabClick) {
+
+            if (!window.location.href.includes('#')) {
+                updateUrlFilters(activeTab);
+            }
+
+            if (activeTab === expSearchPanelItemId) {
+
+                clearInputFromProteinTab();
+                clearInputFromPeptideTab();
+
+                let author = document.getElementById(authorsItemId).value;
+                let title = document.getElementById(titleItemId).value;
+                let organism = document.getElementById(organismItemId).value;
+                let instrument = document.getElementById(instrumentItemId).value;
+
+                if (author) {
+                    expAnnotationFilters.push(LABKEY.Filter.create(authorsItemId, author, LABKEY.Filter.Types.CONTAINS));
+                    updateUrlFilters(null, authorsItemId, author);
+                }
+                if (title) {
+                    expAnnotationFilters.push(LABKEY.Filter.create(titleItemId, title, LABKEY.Filter.Types.CONTAINS));
+                    updateUrlFilters(null, titleItemId, title);
+                }
+                if (organism) {
+                    expAnnotationFilters.push(LABKEY.Filter.create(organismItemId, organism, LABKEY.Filter.Types.CONTAINS));
+                    updateUrlFilters(null, organismItemId, organism);
+                }
+                if (instrument) {
+                    expAnnotationFilters.push(LABKEY.Filter.create(instrumentItemId, instrument, LABKEY.Filter.Types.CONTAINS));
+                    updateUrlFilters(null, instrumentItemId, instrument);
+                }
+            }
+            else if (activeTab === proteinSearchPanelItemId) {
+
+                clearInputFromExperimentTab();
+                clearInputFromPeptideTab();
+
+                let protein = document.getElementById(proteinNameItemId).value;
+                let exactProteinMatch = document.getElementById(exactProteinMatchesItemId).checked;
+
+                if (protein) {
+                    proteinParameters[proteinNameItemId] = protein;
+                    updateUrlFilters(null, proteinNameItemId, protein);
+                }
+                if (exactProteinMatch) {
+                    proteinParameters[exactMatch] = exactProteinMatch;
+                    updateUrlFilters(null, exactProteinMatchesItemId, exactProteinMatch);
+                }
+            }
+            else if (activeTab === peptideSearchPanelItemId) {
+
+                clearInputFromExperimentTab();
+                clearInputFromProteinTab();
+
+                let peptide = document.getElementById(peptideSequenceItemId).value;
+                let exactPeptideMatch = document.getElementById(exactPeptideMatchesItemId).checked;
+
+                if (peptide) {
+                    peptideParameters[peptideSequenceItemId] = peptide;
+                    updateUrlFilters(null, peptideSequenceItemId, peptide);
+                }
+                if (exactPeptideMatch) {
+                    peptideParameters[exactMatch] = exactPeptideMatch;
+                    updateUrlFilters(null, exactPeptideMatchesItemId, exactPeptideMatch);
+                }
+            }
+        }
+        // getFiltersFromUrl and add to the filters
+        else {
+            let context = getFiltersFromUrl();
+            if (context[authorsItemId]) {
+                expAnnotationFilters.push(LABKEY.Filter.create(authorsItemId, context[authorsItemId], LABKEY.Filter.Types.CONTAINS));
+                document.getElementById(authorsItemId).value = context[authorsItemId];
+            }
+            if (context[titleItemId]) {
+                expAnnotationFilters.push(LABKEY.Filter.create(titleItemId, context[titleItemId], LABKEY.Filter.Types.CONTAINS));
+                document.getElementById(titleItemId).value = context[titleItemId];
+            }
+            if (context[organismItemId]) {
+                expAnnotationFilters.push(LABKEY.Filter.create(organismItemId, context[organismItemId], LABKEY.Filter.Types.CONTAINS));
+                document.getElementById(organismItemId).value = context[organismItemId];
+            }
+            if (context[instrumentItemId]) {
+                expAnnotationFilters.push(LABKEY.Filter.create(instrumentItemId, context[instrumentItemId], LABKEY.Filter.Types.CONTAINS));
+                document.getElementById(instrumentItemId).value = context[instrumentItemId];
+            }
+            if (context[proteinNameItemId]) {
+                proteinParameters[proteinNameItemId] =  context[proteinNameItemId];
+                document.getElementById(proteinNameItemId).value = context[proteinNameItemId];
+            }
+            if (context[exactProteinMatchesItemId]) {
+                proteinParameters[exactMatch] =  context[exactProteinMatchesItemId];
+                document.getElementById(exactProteinMatchesItemId).value = context[exactProteinMatchesItemId];
+            }
+            if (context[peptideSequenceItemId]) {
+                peptideParameters[peptideSequenceItemId] =  context[peptideSequenceItemId];
+                document.getElementById(peptideSequenceItemId).value = context[peptideSequenceItemId];
+            }
+            if (context[exactPeptideMatchesItemId]) {
+                peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
+                document.getElementById(exactPeptideMatchesItemId).value = context[exactPeptideMatchesItemId];
+            }
+        }
+
+        // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
+        if (onTabClick || expAnnotationFilters.length > 0 ||
+                proteinParameters[proteinNameItemId] ||
+                peptideParameters[peptideSequenceItemId]
+        ) {
+
+            document.getElementById("search-indicator").style.visibility = "visible";
+
+            if (expAnnotationFilters.length > 0) {
+                let wp = new LABKEY.QueryWebPart({
+                    renderTo: 'experiment_list_wp',
+                    title: 'TargetedMS Experiment List',
+                    schemaName: 'panoramapublic',
+                    queryName: 'ExperimentAnnotations',
+                    showFilterDescription: false,
+                    containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
+                    filters: expAnnotationFilters,
+                    success: function () {
+                        document.getElementById("search-indicator").style.visibility = "hidden";
+                    }
+                });
+                wp.render();
+            }
+            else if (proteinParameters[proteinNameItemId]) {
+                let wp = new LABKEY.QueryWebPart({
+                    renderTo: 'experiment_list_wp',
+                    title: 'The searched protein appeared in the following experiments',
+                    schemaName: 'panoramapublic',
+                    queryName: 'proteinSearch',
+                    showFilterDescription: false,
+                    containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
+                    parameters: proteinParameters,
+                    success: function () {
+                        document.getElementById("search-indicator").style.visibility = "hidden";
+                    }
+                });
+                wp.render();
+            }
+            else if (peptideParameters[peptideSequenceItemId]) {
+                let wp = new LABKEY.QueryWebPart({
+                    renderTo: 'experiment_list_wp',
+                    title: 'The searched peptide appeared in the following experiments',
+                    schemaName: 'panoramapublic',
+                    queryName: 'peptideSearch',
+                    showFilterDescription: false,
+                    containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
+                    parameters: peptideParameters,
+                    success: function () {
+                        document.getElementById("search-indicator").style.visibility = "hidden";
+                    }
+                });
+                wp.render();
+            }
+        }
+    };
+
+    function getFiltersFromUrl () {
+        let context = {};
+
+        if (document.location.hash) {
+            var token = document.location.hash.split('#');
+            token = token[1].split('&');
+
+            for (let i = 0; i < token.length; i++) {
+                var t = token[i].split(':');
+                t[0] = decodeURIComponent(t[0]);
+                if (t.length > 1) {
+                    t[1] = decodeURIComponent(t[1]);
+                }
+                switch (t[0]) {
+                    case 'searchTab':
+                        context.searchTab = t[1];
+                        break;
+                    case authorsItemId:
+                        context[authorsItemId] = t[1];
+                        break;
+                    case titleItemId:
+                        context[titleItemId] = t[1];
+                        break;
+                    case organismItemId:
+                        context[organismItemId] = t[1];
+                        break;
+                    case instrumentItemId:
+                        context[instrumentItemId] = t[1];
+                        break;
+                    case proteinNameItemId:
+                        context[proteinNameItemId] = t[1];
+                        break;
+                    case exactProteinMatchesItemId:
+                        context[exactProteinMatchesItemId] = t[1];
+                        break;
+                    case peptideSequenceItemId:
+                        context[peptideSequenceItemId] = t[1];
+                        break;
+                    case exactPeptideMatchesItemId:
+                        context[exactPeptideMatchesItemId] = t[1];
+                        break;
+                    default:
+                        context[t[0]] = t[1];
+                }
+            }
+        }
+        return context;
+    }
+
+    function updateUrlFilters (tabId, settingName, elementId) {
+        if (tabId) {
+            this.activeTab = tabId;
+            addSelectedTabToUrl(tabId);
+        }
+        if (settingName) {
+            if (window.location.href.includes(settingName)) {
+                addSelectedTabToUrl(this.activeTab);
+            }
+            if (window.location.href.includes('#')) {
+                location.replace(window.location.href + '&' + settingName + ':' + elementId);
+            }
+            else {
+                location.replace(window.location.href + '#' + settingName + ':' + elementId);
+            }
+        }
+    }
+
+    function addSelectedTabToUrl (tabId) {
+        location.replace(window.location.pathname + '#searchTab:' + tabId);
+    }
+
 </script>
+
+<div id="experiment_list_wp"></div>
+<div id="instrument_render_id"></div>
+<div id="organism_render_id"></div>
