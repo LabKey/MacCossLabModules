@@ -336,7 +336,7 @@
                     filters: expAnnotationFilters,
                     showRecordSelectors: false,
                     showDeleteButton: false,
-                    showExportButtons: false,
+                    showExportButtons: false,//this needs to be set to false otherwise setting selectRecordSelector to false still shows the checkbox column
                     showDetailsColumn: false,
                     success: function () {
                         document.getElementById("search-indicator").style.visibility = "hidden";
