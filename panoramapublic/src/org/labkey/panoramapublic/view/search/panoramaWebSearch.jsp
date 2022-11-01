@@ -334,6 +334,10 @@
                     showFilterDescription: false,
                     containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                     filters: expAnnotationFilters,
+                    showRecordSelectors: false,
+                    showDeleteButton: false,
+                    showExportButtons: false,
+                    showDetailsColumn: false,
                     success: function () {
                         document.getElementById("search-indicator").style.visibility = "hidden";
                     }
