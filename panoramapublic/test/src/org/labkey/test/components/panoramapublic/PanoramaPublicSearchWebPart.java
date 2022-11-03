@@ -58,16 +58,13 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
         return this;
     }
 
-    private void selectInput(Locator.XPathLocator inputsDiv, String text)
+    private void selectInput(WebElement el, String text)
     {
-        getWrapper().click(inputsDiv);
-        if (text != null)
-        {
-            inputsDiv.findElement(getDriver()).sendKeys(text);
-        }
-        inputsDiv.findElement(this).sendKeys(Keys.TAB);
-        inputsDiv.findElement(this).sendKeys(Keys.DOWN);
-        inputsDiv.findElement(this).sendKeys(Keys.ENTER);
+        el.click();
+        el.sendKeys(text);
+        el.sendKeys(Keys.TAB);
+        el.sendKeys(Keys.DOWN);
+        el.sendKeys(Keys.ENTER);
     }
 
     public String getProtein()
@@ -134,21 +131,23 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
         final WebElement experimentSearchTab = Locator.tagWithText("label", "Experiment Search").findWhenNeeded(this);
         final Input author = Input.Input(Locator.input("Authors"), getDriver()).findWhenNeeded(this);
         final Input title = Input.Input(Locator.input("Title"), getDriver()).findWhenNeeded(this);
+        final private WebElement organism = Locator.id("input-picker-div-organism")
+                .descendant(Locator.tagWithClass("span", "twitter-typeahead"))
+                .child(Locator.tagWithClass("input", "tt-input")).findWhenNeeded(this);
+        final private WebElement instrument = Locator.id("input-picker-div-instrument")
+                .descendant(Locator.tagWithClass("span", "twitter-typeahead"))
+                .child(Locator.tagWithClass("input", "tt-input")).findWhenNeeded(this);
+
         //Protein search
         final WebElement proteinTab = Locator.tagWithText("label", "Protein Search").findWhenNeeded(this);
         final Input protein = Input.Input(Locator.input("proteinLabel"), getDriver()).findWhenNeeded(this);
         final Checkbox proteinExactMatch = new Checkbox(Locator.inputById("exactProteinMatches").findWhenNeeded(this));
+
         //Peptide search
         final WebElement peptideTab = Locator.tagWithText("label", "Peptide Search").findWhenNeeded(this);
         final Input peptide = Input.Input(Locator.input("peptideSequence"), getDriver()).findWhenNeeded(this);
         final Checkbox peptideExactMatch = new Checkbox(Locator.inputById("exactPeptideMatches").findWhenNeeded(this));
-        final WebElement search = Locator.button("Search").findWhenNeeded(this);
 
-        public Locator.XPathLocator organism = Locator.id("input-picker-div-organism")
-                .descendant(Locator.tagWithClass("span", "twitter-typeahead"))
-                .child(Locator.tagWithClass("input", "tt-input"));
-        public Locator.XPathLocator instrument = Locator.id("input-picker-div-instrument")
-                .descendant(Locator.tagWithClass("span", "twitter-typeahead"))
-                .child(Locator.tagWithClass("input", "tt-input"));
+        final WebElement search = Locator.button("Search").findWhenNeeded(this);
     }
 }
