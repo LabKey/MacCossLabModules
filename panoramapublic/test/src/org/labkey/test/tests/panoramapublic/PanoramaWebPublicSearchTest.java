@@ -83,19 +83,28 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
     {
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        DataRegionTable table = panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME).search();
+        DataRegionTable table = panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME)
+                .search();
         CustomizeView customizeView = table.openCustomizeGrid();
         customizeView.addColumn("Authors");
         customizeView.applyCustomView(0);
         checker().verifyEquals("Incorrect search result for author", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect result", AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + ",", table.getDataAsText(0, "Authors"));
 
-        table = panoramaPublicSearch.setAuthor("").setOrganism("Homo").setInstrument("Thermo").search();
+        table = panoramaPublicSearch
+                .setOrganism("Arab")
+                .setAuthor("")
+                .setInstrument("Thermo")
+                .search();
         checker().verifyEquals("Incorrect search results", 2, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
 
-        table = panoramaPublicSearch.setOrganism("").setInstrument("").setTitle("Experiment").setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME).search();
+        table = panoramaPublicSearch.setOrganism("")
+                .setInstrument("")
+                .setTitle("Experiment")
+                .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
+                .search();
         checker().verifyEquals("Incorrect search results", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
