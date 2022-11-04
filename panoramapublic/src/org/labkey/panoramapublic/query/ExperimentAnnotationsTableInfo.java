@@ -225,7 +225,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         runCountSQL.append(" WHERE r.ExperimentId = ");
         runCountSQL.append(ExprColumn.STR_TABLE_ALIAS);
         runCountSQL.append(".ExperimentId)");
-        ExprColumn runCountColumn = new ExprColumn(this, "Runs", runCountSQL, JdbcType.INTEGER);
+        ExprColumn runCountColumn = new ExprColumn(this, "Skyline Docs", runCountSQL, JdbcType.INTEGER);
         addColumn(runCountColumn);
 
         var isPublicCol = wrapColumn("Public", getRealTable().getColumn("Id"));
@@ -342,7 +342,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         visibleColumns.add(FieldKey.fromParts("Organism"));
         visibleColumns.add(FieldKey.fromParts("Instrument"));
         visibleColumns.add(FieldKey.fromParts("SpikeIn"));
-        visibleColumns.add(FieldKey.fromParts("Runs"));
+        visibleColumns.add(FieldKey.fromParts("Skyline Docs"));
         visibleColumns.add(FieldKey.fromParts("Keywords"));
         visibleColumns.add(FieldKey.fromParts("Citation"));
         visibleColumns.add(FieldKey.fromParts("pxid"));
