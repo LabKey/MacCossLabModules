@@ -371,13 +371,6 @@ public class RunDetail implements Comparable<RunDetail>
         }*/
     }
 
-    public boolean hasHang() {
-        if (passes != null && passes.length > 0 && getPostTime() != null && passes[passes.length-1].getTimestamp() != null) {
-            return getPostTime().getTime() - passes[passes.length-1].getTimestamp().getTime() > HANG_MILLISECONDS;
-        }
-        return false;
-    }
-
     @Override
     public int compareTo(RunDetail other) {
         if (this.posttime != null && other.posttime != null)

@@ -1,109 +1,159 @@
 package org.labkey.testresults.model;
 
+import org.springframework.util.StringUtils;
+
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.stream.Stream;
 
 public class RunProblems
 {
-    private Map<Integer, RunDetail> runs; // run id -> run
-    private ArrayList<ArrayList<ArrayList<Object>>> issues; // test -> run -> objects
-    private Map<String, Integer> testIndices; // test name -> issues index
-    private Map<Integer, Integer> runIndices; // run id -> issues index
+    private final Map<Integer, RunDetailProblems> allProblems;
 
     public RunProblems(RunDetail[] runs)
     {
-        this.runs = new TreeMap<>();
-        this.issues = new ArrayList<>();
-        this.testIndices = new TreeMap<>();
-        this.runIndices = new TreeMap<>();
+        allProblems = new TreeMap<>();
 
         for (RunDetail run : runs)
         {
-            if (run == null || run.isFlagged())
-                continue;
-            this.runs.put(run.getId(), run);
-            for (TestLeakDetail leak : run.getLeaks())
-                add(run, leak.getTestName(), leak);
-            for (TestFailDetail fail : run.getFailures())
-                add(run, fail.getTestName(), fail);
-            if (run.getHang() != null)
-                add(run, run.getHang().getTestName(), run.getHang());
+            RunDetailProblems problems = new RunDetailProblems(run);
+            if (problems.any())
+            {
+                allProblems.put(run.getId(), problems);
+            }
         }
-        this.runs.entrySet().removeIf(entry -> !runIndices.containsKey(entry.getKey()));
     }
 
-    public boolean any() { return !runs.isEmpty(); }
+    public boolean any() { return !allProblems.isEmpty(); }
 
     public String[] getTestNames()
     {
-        return testIndices.keySet().toArray(new String[0]);
+        Set<String> names = new TreeSet<>();
+        for (RunDetailProblems problems : allProblems.values())
+        {
+            names.addAll(Arrays.asList(problems.getTestNames()));
+        }
+        return names.toArray(String[]::new);
     }
 
     public RunDetail[] getRuns()
     {
-        return runs.values().toArray(new RunDetail[0]);
+        return allProblems.values().stream().map(problems -> problems.run).toArray(RunDetail[]::new);
     }
 
-    public boolean isFail(RunDetail run, String testName)
+    public boolean hasFailure(RunDetail run, String testName)
     {
-        return objExists(run, testName, TestFailDetail.class);
+        return hasProblem(run, testName, TestFailDetail.class);
     }
 
-    public boolean isLeak(RunDetail run, String testName)
+    public boolean hasLeak(RunDetail run, String testName)
     {
-         return isMemoryLeak(run, testName) || isHandleLeak(run, testName);
+        return hasMemoryLeak(run, testName) || hasHandleLeak(run, testName);
     }
 
-    public boolean isMemoryLeak(RunDetail run, String testName)
+    public boolean hasMemoryLeak(RunDetail run, String testName)
     {
-        return objExists(run, testName, TestMemoryLeakDetail.class);
+        return hasProblem(run, testName, TestMemoryLeakDetail.class);
     }
 
-    public boolean isHandleLeak(RunDetail run, String testName)
+    public boolean hasHandleLeak(RunDetail run, String testName)
     {
-        return objExists(run, testName, TestHandleLeakDetail.class);
+        return hasProblem(run, testName, TestHandleLeakDetail.class);
     }
 
-    public boolean isHang(RunDetail run, String testName)
+    public boolean hasHang(RunDetail run, String testName)
     {
-        return objExists(run, testName, TestHangDetail.class);
+        return hasProblem(run, testName, TestHangDetail.class);
     }
 
-    private boolean objExists(RunDetail run, String testName, Class<?> objType)
+    private boolean hasProblem(RunDetail run, String testName, Class<?> objType)
     {
-        if (!runIndices.containsKey(run.getId()) || !testIndices.containsKey(testName))
-            return false;
-        int runIndex = runIndices.get(run.getId());
-        ArrayList<ArrayList<Object>> runList = issues.get(testIndices.get(testName));
-        if (runIndex >= runList.size())
-            return false;
-        for (Object obj : runList.get(runIndex))
+        return getProblems(run, testName, objType).anyMatch(o -> true);
+    }
+
+    public TestFailDetail[] getFailures(RunDetail run, String testName)
+    {
+        return getProblems(run, testName, TestFailDetail.class).toArray(TestFailDetail[]::new);
+    }
+
+    public TestLeakDetail[] getLeaks(RunDetail run, String testName)
+    {
+        return getProblems(run, testName, TestLeakDetail.class).toArray(TestLeakDetail[]::new);
+    }
+
+    public TestHangDetail[] getHangs(RunDetail run, String testName)
+    {
+        return getProblems(run, testName, TestHangDetail.class).toArray(TestHangDetail[]::new);
+    }
+
+    private <T> Stream<T> getProblems(RunDetail run, String testName, Class<T> objType)
+    {
+        RunDetailProblems problems = run != null ? allProblems.get(run.getId()) : null;
+        return problems != null ? problems.getProblems(testName, objType) : Stream.empty();
+    }
+
+    private static class RunDetailProblems
+    {
+        private final RunDetail run;
+        private final Map<String, ArrayList<Object>> problems; // test name -> problems
+
+        public RunDetailProblems(RunDetail run)
         {
-            if (obj.getClass() == objType)
-                return true;
-        }
-        return false;
-    }
+            this.run = run;
+            this.problems = new HashMap<>();
+            if (run == null || run.isFlagged())
+            {
+                return;
+            }
 
-    private void add(RunDetail run, String testName, Object o)
-    {
-        if (!testIndices.containsKey(testName))
-        {
-            testIndices.put(testName, testIndices.size());
-            issues.add(new ArrayList<>());
+            for (TestFailDetail fail : run.getFailures())
+            {
+                problems.computeIfAbsent(fail.getTestName(), s -> new ArrayList<>()).add(fail);
+            }
+
+            for (TestLeakDetail leak : run.getLeaks())
+            {
+                problems.computeIfAbsent(leak.getTestName(), s -> new ArrayList<>()).add(leak);
+            }
+
+            TestHangDetail hang = run.getHang();
+            if (hang != null)
+            {
+                problems.computeIfAbsent(hang.getTestName(), s -> new ArrayList<>()).add(hang);
+            }
         }
-        if (!runIndices.containsKey(run.getId()))
+
+        public boolean any()
         {
-            runIndices.put(run.getId(), runIndices.size());
+            return !problems.isEmpty();
         }
-        int testIndex = testIndices.get(testName);
-        int runIndex = runIndices.get(run.getId());
-        ArrayList<ArrayList<Object>> testIssues = issues.get(testIndex);
-        while (runIndex >= testIssues.size())
+
+        public String[] getTestNames()
         {
-            testIssues.add(new ArrayList<>());
+            return problems.keySet().toArray(String[]::new);
         }
-        testIssues.get(runIndex).add(o);
+
+        public <T> Stream<T> getProblems(String testName, Class<T> objType)
+        {
+            Stream<Object> stream = Stream.empty();
+            if (StringUtils.isEmpty(testName))
+            {
+                for (ArrayList<Object> list : problems.values())
+                {
+                    stream = Stream.concat(stream, list.stream());
+                }
+            }
+            else
+            {
+                stream = problems.getOrDefault(testName, new ArrayList<>()).stream();
+            }
+
+            return stream.filter(objType::isInstance).map(objType::cast);
+        }
     }
 }
