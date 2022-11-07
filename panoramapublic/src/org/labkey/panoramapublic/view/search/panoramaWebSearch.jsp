@@ -214,9 +214,7 @@
         // add filters in qwp and in the url for back button
         if (onTabClick) {
 
-            if (!window.location.href.includes('#')) {
-                updateUrlFilters(activeTab);
-            }
+            updateUrlFilters(activeTab);
 
             if (activeTab === expSearchPanelItemId) {
 
