@@ -52,7 +52,7 @@ import org.labkey.api.pipeline.PipelineValidationException;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.reports.Report;
-import org.labkey.api.reports.report.RReport;
+import org.labkey.api.reports.report.r.RReport;
 import org.labkey.api.reports.report.view.ReportUtil;
 import org.labkey.api.security.ActionNames;
 import org.labkey.api.security.RequiresPermission;
