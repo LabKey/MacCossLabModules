@@ -55,7 +55,6 @@ public class TestsDataBean
 
     public TestsDataBean(RunDetail[] runs, User[] users) {
         setRuns(runs);
-        statRuns = setStatRuns();
         setUsers(users);
     }
 
@@ -119,27 +118,43 @@ public class TestsDataBean
         return statRuns;
     }
 
-    public Map<String, Map<String, Double>> getLanguageBreakdown(Map<String, List<TestFailDetail>> topFailures){
-                Map<String, Map<String, Double>> m = new TreeMap<>();
-        for (String f: topFailures.keySet()) {
-            double total = 0.0;
-            if (!m.containsKey(f))
-                m.put(f, new TreeMap<>());
-            List<TestFailDetail> l = topFailures.get(f);
-            for (TestFailDetail detail: l) {
-                if (detail != null) {
-                    if (!m.get(f).containsKey(detail.getLanguage()))
-                        m.get(f).put(detail.getLanguage(), 0.0);
-                    m.get(f).put(detail.getLanguage(), m.get(f).get(detail.getLanguage()) + 1);
-                    total += 1;
+    public Map<String, Map<String, Double>> getLanguageBreakdown(Map<String, List<TestFailDetail>> topFailures)
+    {
+        // Test name -> Language -> Percentage
+        Map<String, Map<String, Double>> result = new TreeMap<>();
+        Map<String, Double> allTestsBreakdown = new TreeMap<>();
+
+        for (Map.Entry<String, List<TestFailDetail>> failure : topFailures.entrySet())
+        {
+            String testName = failure.getKey();
+            Map<String, Double> testBreakdown = result.computeIfAbsent(testName, k -> new TreeMap<>());
+
+            for (TestFailDetail detail : failure.getValue())
+            {
+                if (detail == null)
+                {
+                    continue;
                 }
-            }
-            for (String language: m.get(f).keySet()) {
-                m.get(f).put(language, m.get(f).get(language) / total);
+
+                String language = detail.getLanguage();
+                allTestsBreakdown.put(language, allTestsBreakdown.getOrDefault(language, 0d) + 1);
+                testBreakdown.put(language, testBreakdown.getOrDefault(language, 0d) + 1);
             }
         }
 
-        return m;
+        if (!allTestsBreakdown.isEmpty())
+        {
+            result.put("", allTestsBreakdown);
+        }
+
+        // Convert counts to percentages.
+        for (Map<String, Double> testBreakdown : result.values())
+        {
+            final Double testTotal = testBreakdown.values().stream().mapToDouble(d -> d).sum();
+            testBreakdown.replaceAll((lang, count) -> count / testTotal);
+        }
+
+        return result;
     }
 
     public double round(double value, int places) {
