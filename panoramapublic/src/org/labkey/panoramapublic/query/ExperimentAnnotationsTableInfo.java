@@ -225,7 +225,8 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         runCountSQL.append(" WHERE r.ExperimentId = ");
         runCountSQL.append(ExprColumn.STR_TABLE_ALIAS);
         runCountSQL.append(".ExperimentId)");
-        ExprColumn runCountColumn = new ExprColumn(this, "Skyline Docs", runCountSQL, JdbcType.INTEGER);
+        ExprColumn runCountColumn = new ExprColumn(this, "Runs", runCountSQL, JdbcType.INTEGER);
+        runCountColumn.setLabel("Skyline Docs");
         addColumn(runCountColumn);
 
         var isPublicCol = wrapColumn("Public", getRealTable().getColumn("Id"));

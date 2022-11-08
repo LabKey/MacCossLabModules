@@ -449,5 +449,3 @@
 </script>
 
 <div id="experiment_list_wp"></div>
-<div id="instrument_render_id"></div>
-<div id="organism_render_id"></div>
