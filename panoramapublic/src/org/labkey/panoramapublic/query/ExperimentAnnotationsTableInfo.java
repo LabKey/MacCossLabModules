@@ -343,7 +343,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         visibleColumns.add(FieldKey.fromParts("Organism"));
         visibleColumns.add(FieldKey.fromParts("Instrument"));
         visibleColumns.add(FieldKey.fromParts("SpikeIn"));
-        visibleColumns.add(FieldKey.fromParts("Skyline Docs"));
+        visibleColumns.add(FieldKey.fromParts("Runs"));
         visibleColumns.add(FieldKey.fromParts("Keywords"));
         visibleColumns.add(FieldKey.fromParts("Citation"));
         visibleColumns.add(FieldKey.fromParts("pxid"));
