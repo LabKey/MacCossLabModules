@@ -1,8 +1,13 @@
-<%@ page import="org.json.old.JSONObject" %>
+<%@ page import="org.json.JSONArray" %>
+<%@ page import="org.json.JSONObject" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
+<%@ page import="org.labkey.testresults.model.RunProblems" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
+<%@ page import="org.labkey.testresults.model.TestHandleLeakDetail" %>
+<%@ page import="org.labkey.testresults.model.TestLeakDetail" %>
+<%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
 <%@ page import="org.labkey.testresults.view.TestsDataBean" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
@@ -11,11 +16,6 @@
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.TreeMap" %>
-<%@ page import="org.labkey.testresults.model.TestLeakDetail" %>
-<%@ page import="org.json.JSONArray" %>
-<%@ page import="org.labkey.testresults.model.RunProblems" %>
-<%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
-<%@ page import="org.labkey.testresults.model.TestHandleLeakDetail" %>
 <%@ page import="java.util.stream.Collectors" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
@@ -131,18 +131,18 @@
         int thisFailures = problems.getFailures(run, failedTest).length;
         if (thisFailures > 0)
         {
-            dateObj.put("failures", (dateObj.containsKey("failures") ? dateObj.getInt("failures") : 0) + thisFailures);
+            dateObj.put("failures", (dateObj.has("failures") ? dateObj.getInt("failures") : 0) + thisFailures);
         }
 
         int thisLeaks = problems.getLeaks(run, failedTest).length;
         if (thisLeaks > 0)
         {
-            dateObj.put("leaks", (dateObj.containsKey("leaks") ? dateObj.getInt("leaks") : 0) + thisLeaks);
+            dateObj.put("leaks", (dateObj.has("leaks") ? dateObj.getInt("leaks") : 0) + thisLeaks);
         }
 
         if (hang)
         {
-            dateObj.put("hangs", (dateObj.containsKey("hangs") ? dateObj.getInt("hangs") : 0) + 1);
+            dateObj.put("hangs", (dateObj.has("hangs") ? dateObj.getInt("hangs") : 0) + 1);
         }
     }
 
@@ -152,7 +152,7 @@
     // Filter dates without problems.
     dates = dates.entrySet().stream().filter(e -> e.getValue() != null)
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    dateData.putAll(dates);
+    dates.forEach(dateData::put);
     graphData.put("dateData", dateData);
 
     problemData.put("graphData", graphData);
@@ -253,7 +253,7 @@
 
 <script type="text/javascript">
 $(document).ready(function() {
-    const problemData = <%=problemData.getJavaScriptFragment(0)%>;
+    const problemData = <%=json(problemData, 0)%>;
 
     // Generate date chart.
     let dateChart = c3.generate({
