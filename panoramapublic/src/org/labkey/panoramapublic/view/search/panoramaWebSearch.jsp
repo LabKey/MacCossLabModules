@@ -67,7 +67,7 @@
                     <td style="width: 5px"></td>
                     <td nowrap>
                         <div id="input-picker-div-organism" class="scrollable-dropdown-menu">
-                            <input class="tags" size="20" type="text" id="Organism" name="Organism" placeholder="Enter Organism" value=""/>
+                            <input class="tags organism" size="20" type="text" id="Organism" name="Organism" placeholder="Enter Organism" value=""/>
                         </div>
                     </td>
 
@@ -79,7 +79,7 @@
                             however, hiding the placeholder text by setting 'input::placeholder' styling to be transparent in PanoramaWebSearch.css.
                             Also, placeholder text is 20 characters long (with added spaces) to keep it consistent with other inputs above.
                             --%>
-                            <input class="tags" type="text" id="Instrument" name="Instrument" placeholder="  Enter Instrument  " value=""/>
+                            <input class="tags instrument" type="text" id="Instrument" name="Instrument" placeholder="  Enter Instrument  " value=""/>
                         </div>
                     </td>
                 </tr>
@@ -190,8 +190,9 @@
     let clearInputFromExperimentTab = function () {
         document.getElementById(authorsItemId).value = "";
         document.getElementById(titleItemId).value = "";
-        document.getElementById(organismItemId).value = "";
-        document.getElementById(instrumentItemId).value = "";
+
+        $('.organism').tagsinput('removeAll');
+        $('.instrument').tagsinput('removeAll');
     };
 
     let clearInputFromProteinTab = function () {
