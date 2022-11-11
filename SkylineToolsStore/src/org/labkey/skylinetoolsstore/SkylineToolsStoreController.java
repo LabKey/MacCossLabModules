@@ -19,8 +19,7 @@ package org.labkey.skylinetoolsstore;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.json.old.JSONArray;
-import org.json.old.JSONObject;
+import org.json.JSONObject;
 import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.NavTrailAction;
 import org.labkey.api.action.PermissionCheckable;
@@ -28,6 +27,7 @@ import org.labkey.api.action.ReturnUrlForm;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.collections.LabKeyCollectors;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.NormalContainerType;
@@ -58,6 +58,7 @@ import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.JavaScriptFragment;
 import org.labkey.api.util.NetworkDrive;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
@@ -331,9 +332,11 @@ public class SkylineToolsStoreController extends SpringActionController
 
     public static SafeToRender getUsersForAutocomplete()
     {
-        return UserManager.getActiveUsers().stream()
+        org.json.JSONArray jsonArray = UserManager.getActiveUsers().stream()
             .map(User::getEmail)
-            .collect(JSONArray.collector());
+            .collect(LabKeyCollectors.toJSONArray());
+
+        return JavaScriptFragment.unsafe(jsonArray.toString());
     }
 
     protected static Pair<ArrayList<User>, ArrayList<String>> parseToolOwnerString(String toolOwners) throws ValidEmail.InvalidEmailException
@@ -1530,7 +1533,7 @@ public class SkylineToolsStoreController extends SpringActionController
                 jsonObject.put("Organization", tool.getOrganization());
                 jsonObject.put("Provider", tool.getProvider());
                 jsonObject.put("Version", tool.getVersion());
-                sb.append(jsonObject.toString());
+                sb.append(jsonObject);
                 if (i < tools.length - 1)
                     sb.append(',');
             }
