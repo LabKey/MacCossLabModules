@@ -47,6 +47,8 @@ var localOrgStore = [
     {value:'Synechocystis (taxid:1142)', name:'Synechocystis (taxid:1142)'}
 ];
 
+localOrgStore = localOrgStore.sort((val1, val2) => (val1.name > val2.name) ? 1 : ((val2.name > val1.name) ? -1 : 0));
+
 function createStore(url, prefetch)
 {
     var completionStore;

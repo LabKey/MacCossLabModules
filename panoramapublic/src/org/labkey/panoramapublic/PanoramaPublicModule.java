@@ -260,7 +260,6 @@ public class PanoramaPublicModule extends SpringModule
                 view.setTitle("Panorama Public Search");
                 return view;
             }
-
         };
 
         List<WebPartFactory> webpartFactoryList = new ArrayList<>();
