@@ -38,7 +38,7 @@
                     <fkTable>Users</fkTable>
                 </fk>
             </column>
-            <column columnName="FileName"/>
+            <column columnName="File"/>
             <column columnName="Token"/>
             <column columnName="Label"/>
         </columns>
