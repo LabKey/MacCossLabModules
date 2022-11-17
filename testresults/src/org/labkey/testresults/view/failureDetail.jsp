@@ -202,7 +202,6 @@
                     <option id="wk" value="wk"<%=selected(value.equals("wk"))%>>Week</option>
                     <option id="mo" value="mo"<%=selected(value.equals("mo"))%>>Month</option>
                     <option id="yr" value="yr"<%=selected(value.equals("yr"))%>>Year</option>
-                    <option id="at" value="at"<%=selected(value.equals("at"))%>>The Beginning of Time</option>
                 </select>
     <select name="failedTest" style="display:none;">
         <option id="<%=h(failedTest)%>" value="<%=h(failedTest)%>"></option>
@@ -372,7 +371,10 @@ $(document).ready(function() {
                 return (dateDataObj && dateDataObj[jsonKey]) ? dateDataObj[jsonKey] : 0;
             });
         dateChart.load({
-            columns: [['x', ...problemData.graphData.dates], [<%=q(failedTest)%> + headerName, ...problemGraphData]],
+            columns: [
+                ['x', ...problemData.graphData.dates],
+                [<%=q(failedTest)%> + " " + headerName, ...problemGraphData]
+            ],
             unload: true
         });
     };

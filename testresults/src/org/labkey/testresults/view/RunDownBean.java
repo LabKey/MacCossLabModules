@@ -8,6 +8,8 @@ import org.labkey.api.services.ServiceRegistry;
 import org.labkey.testresults.TestResultsController;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestFailDetail;
+import org.labkey.testresults.model.TestHandleLeakDetail;
+import org.labkey.testresults.model.TestLeakDetail;
 import org.labkey.testresults.model.TestMemoryLeakDetail;
 import org.labkey.testresults.model.User;
 
@@ -35,81 +37,72 @@ public class RunDownBean extends TestsDataBean
         super(runs, users, viewType, startDate, endDate);
     }
 
-    public Map<User, List<RunDetail>> getUserToRunsMap(Date selectedDate) {
-        // treemap sorted by usernames
-        Map<User, List<RunDetail>> map = new TreeMap<>(new Comparator<User>() {
-            @Override
-            public int compare(User u1, User u2) {
-                return u1.getUsername().compareTo(u2.getUsername());
-            }
-        });
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(selectedDate);
-        TestResultsController.setToEightAM(cal);
-        selectedDate = cal.getTime();
-        cal.add(Calendar.DATE, -1);
-        Date dateBefore1Day = cal.getTime();
-
-        for (RunDetail run: getRuns()) {  // Currently uses getPostTime() (time of post) for same day instead of getTimestamp() which is the actual timestamp run started
-            long runTime = run.getPostTime().getTime();
-            if (dateBefore1Day.getTime() < runTime && runTime < selectedDate.getTime())
+    public double getLeakMemoryAverage(List<TestLeakDetail> leaks)
+    {
+        int numMem = 0;
+        int totalMem = 0;
+        for (TestLeakDetail leak : leaks)
+        {
+            if (leak instanceof TestMemoryLeakDetail)
             {
-                User u = getUserById(run.getUserid());
-                map.computeIfAbsent(u, k -> new ArrayList<>());
-                map.get(u).add(run);
+                numMem++;
+                totalMem += ((TestMemoryLeakDetail) leak).getBytes();
             }
         }
-        return map;
+        return (double)totalMem / numMem;
+    }
+
+    public double getLeakHandleAverage(List<TestLeakDetail> leaks)
+    {
+        int numHandle = 0;
+        double totalHandle = 0;
+        for (TestLeakDetail leak : leaks)
+        {
+            if (leak instanceof TestHandleLeakDetail)
+            {
+                numHandle++;
+                totalHandle += ((TestHandleLeakDetail) leak).getHandles();
+            }
+        }
+        return totalHandle / numHandle;
     }
 
     /* returns a map of (n)top leaks and their corresponding TestMemoryLeakDetail objects
     *sorts by most frequent leak then avg leak size if frequencies are the same
     * if 0 is passed in will return ALL leaks
     */
-    public Map<String, List<TestMemoryLeakDetail>> getTopLeaks(int n, boolean isStatRun) {
+    public Map<String, List<TestLeakDetail>> getTopLeaks(int n, boolean isStatRun) {
         TestsDataBean runs = !isStatRun
             ? new TestsDataBean(getRuns(), new User[0])
             : new TestsDataBean(getStatRuns(), new User[0]);
-        Map<String, List<TestMemoryLeakDetail>> m = new HashMap<>();
-        TestMemoryLeakDetail[] leaks = runs.getMemoryLeaks();
-        for (TestMemoryLeakDetail leak: leaks) {
-            List<TestMemoryLeakDetail> list = m.get(leak.getTestName());
-            if (list == null) {
-                list = new ArrayList<>();
-                m.put(leak.getTestName(), list);
-            }
+        Map<String, List<TestLeakDetail>> m = new HashMap<>();
+        for (TestLeakDetail leak: runs.getLeaks()) {
+            List<TestLeakDetail> list = m.computeIfAbsent(leak.getTestName(), k -> new ArrayList<>());
             list.add(leak);
         }
 
-        Map.Entry<String, List<TestMemoryLeakDetail>>[] entries = m.entrySet().toArray(new Map.Entry[0]);
-        Arrays.sort(entries, new Comparator<Map.Entry<String, List<TestMemoryLeakDetail>>>()
-        {
-            @Override
-            public int compare(Map.Entry<String, List<TestMemoryLeakDetail>> o1, Map.Entry<String, List<TestMemoryLeakDetail>> o2)
+        Map.Entry<String, List<TestLeakDetail>>[] entries = m.entrySet().toArray(new Map.Entry[0]);
+        Arrays.sort(entries, (o1, o2) -> {
+            List<TestLeakDetail> l1 = o1.getValue();
+            List<TestLeakDetail> l2 = o2.getValue();
+            if (l1.size() != l2.size())
             {
-                if (o2.getValue().size() - o1.getValue().size() == 0)
-                {
-                    double[] leak1bytes = new double[o1.getValue().size()];
-                    double[] leak2bytes = new double[o2.getValue().size()];
-                    for (int i = 0; i < o1.getValue().size(); i++)
-                    {
-                        leak1bytes[i] = o1.getValue().get(i).getBytes();
-                    }
-                    for (int i = 0; i < o2.getValue().size(); i++)
-                    {
-                        leak2bytes[i] = o2.getValue().get(i).getBytes();
-                    }
-                    StatsService service = ServiceRegistry.get().getService(StatsService.class);
-                    MathStat l1 = service.getStats(leak1bytes);
-                    MathStat l2 = service.getStats(leak2bytes);
-                    return (int) (l1.getMean() - l2.getMean());
-                }
-
-                return o2.getValue().size() - o1.getValue().size();
+                return l2.size() - l1.size();
             }
+
+            double mem1 = getLeakMemoryAverage(l1);
+            double mem2 = getLeakHandleAverage(l2);
+            if (mem1 != mem2)
+            {
+                return (int)(mem2 - mem1);
+            }
+
+            double handle1 = getLeakHandleAverage(l1);
+            double handle2 = getLeakHandleAverage(l2);
+            return (int)(handle2 - handle1);
         });
-        Map<String, List<TestMemoryLeakDetail>> newMap = new LinkedHashMap<>();
-        if(n == 0)
+        Map<String, List<TestLeakDetail>> newMap = new LinkedHashMap<>();
+        if (n == 0)
             n = entries.length;
         for (int i = 0; i < n && i < entries.length; i++) {
             newMap.put(entries[i].getKey(), entries[i].getValue());
@@ -158,15 +151,10 @@ public class RunDownBean extends TestsDataBean
             list.add(fail);
         }
         Map.Entry<String, List<TestFailDetail>>[] entries = m.entrySet().toArray(new Map.Entry[0]);
-        Arrays.sort(entries, new Comparator<Map.Entry<String, List<TestFailDetail>>>()
-        {
-            @Override
-            public int compare(Map.Entry<String, List<TestFailDetail>> o1, Map.Entry<String, List<TestFailDetail>> o2)
-            {
-                if (o2.getValue().size() == o1.getValue().size())
-                    return o1.getKey().compareTo(o2.getKey());
-                return o2.getValue().size() - o1.getValue().size();
-            }
+        Arrays.sort(entries, (o1, o2) -> {
+            if (o2.getValue().size() == o1.getValue().size())
+                return o1.getKey().compareTo(o2.getKey());
+            return o2.getValue().size() - o1.getValue().size();
         });
         if (n == 0)
             n = entries.length;
@@ -257,18 +245,22 @@ public class RunDownBean extends TestsDataBean
     }
 
     public RunDetail[] getRunsByDate(Date day) {
-        List<RunDetail> runByDay = new ArrayList<>();
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(day);
-        TestResultsController.setToEightAM(cal);
-        day = cal.getTime();
-        cal.add(Calendar.DATE, -1);
-        Date dateBefore1Day = cal.getTime();
-        for (RunDetail runDetail : getStatRuns()) {
-            if (runDetail.getPostTime().getTime() < day.getTime() && runDetail.getPostTime().getTime() > dateBefore1Day.getTime())
-                runByDay.add(runDetail);
+        Date matchDate = getGroupDate(day);
+        RunDetail[] runsByDay = Arrays.stream(getStatRuns())
+                .filter(run -> getGroupDate(run.getPostTime()).equals(matchDate))
+                .toArray(RunDetail[]::new);
+        Arrays.sort(runsByDay);
+        return runsByDay;
+    }
+
+    public Map<User, List<RunDetail>> groupRunsByUser(RunDetail[] runs) {
+        Map<User, List<RunDetail>> map = new TreeMap<>(Comparator.comparing(User::getUsername));
+        for (RunDetail run : runs)
+        {
+            User u = getUserById(run.getUserid());
+            map.computeIfAbsent(u, k -> new ArrayList<>());
+            map.get(u).add(run);
         }
-        runByDay.sort(null);
-        return runByDay.toArray(new RunDetail[0]);
+        return map;
     }
 }
