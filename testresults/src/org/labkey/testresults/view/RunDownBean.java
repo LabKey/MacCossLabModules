@@ -49,7 +49,7 @@ public class RunDownBean extends TestsDataBean
                 totalMem += ((TestMemoryLeakDetail) leak).getBytes();
             }
         }
-        return (double)totalMem / numMem;
+        return numMem != 0 ? (double)totalMem / numMem : 0;
     }
 
     public double getLeakHandleAverage(List<TestLeakDetail> leaks)
@@ -64,7 +64,7 @@ public class RunDownBean extends TestsDataBean
                 totalHandle += ((TestHandleLeakDetail) leak).getHandles();
             }
         }
-        return totalHandle / numHandle;
+        return numHandle != 0 ? totalHandle / numHandle : 0;
     }
 
     /* returns a map of (n)top leaks and their corresponding TestMemoryLeakDetail objects
