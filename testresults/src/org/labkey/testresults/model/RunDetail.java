@@ -92,11 +92,6 @@ public class RunDetail implements Comparable<RunDetail>
         this.log = log;
         this.medianmem = medianmem;
     }
-    public RunDetail(int userid, String username, int duration, Date posttime, Date timestamp, String os, int revision, String gitHash, Container container, boolean flagged,
-                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem, int medianmem) {
-        this(userid, duration, posttime, timestamp, os, revision, gitHash, container, flagged, xml, pointsummary, passedtests, failedtests, leakedtests, averagemem, new byte[0], medianmem);
-        this.username = username;
-    }
 
     public Container getContainer()
     {
