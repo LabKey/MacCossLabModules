@@ -141,6 +141,20 @@ function createInputElement(renderId, store, showDefaults, freeInput)
     el.on('itemAdded', function() {
         clearInputText(el);
     });
+
+    if (freeInput === true)
+    {
+        const input = el.tagsinput('input');
+        if (input)
+        {
+            // Trigger the 'Enter' keypress event so that the input is tag-ified. This should only be done
+            // if we are accepting free input.
+            // https://stackoverflow.com/questions/49429848/bootstrap-taginput-is-not-making-its-text-as-tag-after-focus-out-of-taginput-fie
+            input.on('blur', function(){
+                $(this).trigger(jQuery.Event('keypress', {which: 13}));
+            });
+        }
+    }
 }
 
 function clearInputText(tagsInputEl)
