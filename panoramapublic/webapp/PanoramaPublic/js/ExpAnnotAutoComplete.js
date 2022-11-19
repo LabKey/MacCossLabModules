@@ -9,13 +9,14 @@
 // typeahead (https://github.com/twitter/typeahead.js, http://twitter.github.io/typeahead.js/examples/)
 +function($){
 
-initAutoComplete = function (url, renderId, prefetch)
+initAutoComplete = function (url, renderId, prefetch, allowFreeInput)
 {
     var completionStore = createStore(url, prefetch);
-    createInputElement(renderId, completionStore, !prefetch);
+    createInputElement(renderId, completionStore, !prefetch, allowFreeInput === true);
 }
 
-// Species with 20 or more datasets in Pride (8/8/18). Show these by default.
+// Species with 20 or more datasets in Pride (8/8/18). Show these by default. They are roughly in order of dataset
+// counts (e.g. most datasets for Homo sapiens) so we want to display them in this order.
 var localOrgStore = [
     {value:'Homo sapiens (taxid:9606)', name:'Human, Homo sapiens (taxid:9606)'},
     {value:'Mus musculus (taxid:10090)', name:'Mouse, Mus musculus (taxid:10090)'},
@@ -46,8 +47,6 @@ var localOrgStore = [
     {value:'Neisseria gonorrhoeae (taxid:485)', name:'Neisseria gonorrhoeae (taxid:485)'},
     {value:'Synechocystis (taxid:1142)', name:'Synechocystis (taxid:1142)'}
 ];
-
-localOrgStore = localOrgStore.sort((val1, val2) => (val1.name > val2.name) ? 1 : ((val2.name > val1.name) ? -1 : 0));
 
 function createStore(url, prefetch)
 {
@@ -104,9 +103,10 @@ var getDefaults = function (store) {
     }
 }
 
-function createInputElement(renderId, store, showDefaults)
+function createInputElement(renderId, store, showDefaults, freeInput)
 {
-    $("#" + renderId + " .tags").tagsinput(
+    const el = $("#" + renderId + " .tags");
+    el.tagsinput(
             {
                 typeaheadjs: [
                     {
@@ -122,16 +122,40 @@ function createInputElement(renderId, store, showDefaults)
                         source: showDefaults === true ? getDefaults(store) : store
                     }
                     ],
-                freeInput: false,
-                confirmKeys: [13]
+                freeInput: freeInput,
+                confirmKeys: [13],
+                onTagExists: function(item, $tag) {
+                    $tag.hide().fadeIn();
+                    clearInputText(el);
+                }
     });
 
     // https://stackoverflow.com/questions/37973713/bootstrap-tagsinput-form-submited-on-press-enter-key
-    $("#" + renderId + " input").on('keypress', function(e){
-        if (e.keyCode == 13){
+    el.on('keypress', function(e){
+        if (e.keyCode === 13){
             // e.keyCode = 188;
             e.preventDefault();
-        };
+        }
     });
+
+    el.on('itemAdded', function() {
+        clearInputText(el);
+    });
+}
+
+function clearInputText(tagsInputEl)
+{
+    const input = tagsInputEl.tagsinput('input');
+    if (input && input.typeahead)
+    {
+        // If we accept free input (not one of the values from the drop-down options backed by the store) then the
+        // input does not get cleared automatically after then enter key is pressed. After the cursor is moved away
+        // from the input field you can still see the entered text next to the new tag.
+        // This may be a bug in bootstrap-tagsinput.  I see similar behavior in their "Typeahead" example
+        // on this page: https://bootstrap-tagsinput.github.io/bootstrap-tagsinput/examples/.
+        // If you enter the same tag twice, and click outside the input box, the entered text is still visible in the input field next to the tag.
+        // Clear it here after the item has been added.
+        input.typeahead('val', '');
+    }
 }
 }(jQuery);

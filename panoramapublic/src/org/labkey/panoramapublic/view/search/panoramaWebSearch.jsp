@@ -166,10 +166,10 @@
 
     $ (function() {
         let instrUrl = LABKEY.ActionURL.buildURL('PanoramaPublic', 'completeInstrument.api');
-        initAutoComplete(instrUrl, "input-picker-div-instrument", true);
+        initAutoComplete(instrUrl, "input-picker-div-instrument", true, true /* allow free input */);
 
         let organismUrl = LABKEY.ActionURL.buildURL('PanoramaPublic', 'completeOrganism.api');
-        initAutoComplete(organismUrl, "input-picker-div-organism", false);
+        initAutoComplete(organismUrl, "input-picker-div-organism", false, true /* allow free input */);
 
         document.getElementById(expSearchPanelItemId).addEventListener("click", function() {
             activeTab = expSearchPanelItemId;
