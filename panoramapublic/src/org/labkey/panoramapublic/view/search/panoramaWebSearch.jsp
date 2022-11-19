@@ -205,6 +205,23 @@
         document.getElementById(exactPeptideMatchesItemId).checked = false;
     };
 
+    let createFilter = function(itemId, filterText) {
+        let arr = filterText.split(',');
+        let filterArr = [];
+        for (let i = 0; i < arr.length; i++)
+        {
+            filterArr.push(arr[i].trim());
+        }
+        if (filterArr.length > 1)
+        {
+            return LABKEY.Filter.create(itemId, filterArr.join(';'), LABKEY.Filter.Types.CONTAINS_ONE_OF);
+        }
+        else
+        {
+            return LABKEY.Filter.create(itemId, filterText, LABKEY.Filter.Types.CONTAINS);
+        }
+    };
+
     let handleRendering = function (onTabClick) {
 
         let expAnnotationFilters = [];
@@ -228,19 +245,19 @@
                 let instrument = document.getElementById(instrumentItemId).value;
 
                 if (author) {
-                    expAnnotationFilters.push(LABKEY.Filter.create(authorsItemId, author, LABKEY.Filter.Types.CONTAINS));
+                    expAnnotationFilters.push(createFilter(authorsItemId, author));
                     updateUrlFilters(null, authorsItemId, author);
                 }
                 if (title) {
-                    expAnnotationFilters.push(LABKEY.Filter.create(titleItemId, title, LABKEY.Filter.Types.CONTAINS));
+                    expAnnotationFilters.push(createFilter(titleItemId, title));
                     updateUrlFilters(null, titleItemId, title);
                 }
                 if (organism) {
-                    expAnnotationFilters.push(LABKEY.Filter.create(organismItemId, organism, LABKEY.Filter.Types.CONTAINS));
+                    expAnnotationFilters.push(createFilter(organismItemId, organism));
                     updateUrlFilters(null, organismItemId, organism);
                 }
                 if (instrument) {
-                    expAnnotationFilters.push(LABKEY.Filter.create(instrumentItemId, instrument, LABKEY.Filter.Types.CONTAINS));
+                    expAnnotationFilters.push(createFilter(instrumentItemId, instrument));
                     updateUrlFilters(null, instrumentItemId, instrument);
                 }
             }
@@ -283,19 +300,19 @@
         else {
             let context = getFiltersFromUrl();
             if (context[authorsItemId]) {
-                expAnnotationFilters.push(LABKEY.Filter.create(authorsItemId, context[authorsItemId], LABKEY.Filter.Types.CONTAINS));
+                expAnnotationFilters.push(createFilter(authorsItemId, context[authorsItemId]));
                 document.getElementById(authorsItemId).value = context[authorsItemId];
             }
             if (context[titleItemId]) {
-                expAnnotationFilters.push(LABKEY.Filter.create(titleItemId, context[titleItemId], LABKEY.Filter.Types.CONTAINS));
+                expAnnotationFilters.push(createFilter(titleItemId, context[titleItemId]));
                 document.getElementById(titleItemId).value = context[titleItemId];
             }
             if (context[organismItemId]) {
-                expAnnotationFilters.push(LABKEY.Filter.create(organismItemId, context[organismItemId], LABKEY.Filter.Types.CONTAINS));
+                expAnnotationFilters.push(createFilter(organismItemId, context[organismItemId]));
                 document.getElementById(organismItemId).value = context[organismItemId];
             }
             if (context[instrumentItemId]) {
-                expAnnotationFilters.push(LABKEY.Filter.create(instrumentItemId, context[instrumentItemId], LABKEY.Filter.Types.CONTAINS));
+                expAnnotationFilters.push(createFilter(instrumentItemId, context[instrumentItemId]));
                 document.getElementById(instrumentItemId).value = context[instrumentItemId];
             }
             if (context[proteinNameItemId]) {
