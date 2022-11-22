@@ -74,7 +74,7 @@ public class LincsModule extends SpringModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 19.10;
+        return 22.001;
     }
 
     @Override
