@@ -212,8 +212,7 @@ public class TestResultsController extends SpringActionController
             viewType.equals(ViewType.DAY) ||
             viewType.equals(ViewType.WEEK) ||
             viewType.equals(ViewType.MONTH) ||
-            viewType.equals(ViewType.YEAR) ||
-            viewType.equals(ViewType.ALLTIME))
+            viewType.equals(ViewType.YEAR))
             ? viewType
             : defaultViewType;
     }
@@ -627,7 +626,6 @@ public class TestResultsController extends SpringActionController
             HttpServletRequest req = getViewContext().getRequest();
             String end = req.getParameter("end");
             String failedTest = req.getParameter("failedTest");
-            String problemType = req.getParameter("problemType");
             String viewType = getViewType(req.getParameter("viewType"), ViewType.DAY);
 
             Date endDate = setToEightAM(!StringUtils.isEmpty(end) ? MDYFormat.parse(end) : new Date());

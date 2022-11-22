@@ -2,7 +2,6 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.testresults.TestResultsController.ShowRunAction" %>
-<%@ page import="org.labkey.testresults.TestResultsSchema" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.User" %>
 <%@ page import="org.labkey.testresults.view.TestsDataBean" %>
@@ -48,7 +47,7 @@
         dataInclude = "date";
 
     JSONObject trendsJson = null;
-    if (data != null && data.getRuns().length > 0) {
+    if (data.getRuns().length > 0) {
         trendsJson = data.getTrends();
     }
     Container c = getViewContext().getContainer();
@@ -208,7 +207,7 @@
     function paramRedirect(startDate, endDate) {
         if (!startDate) {
             var dateRange = $('#jrange input').val();
-            var dates = dateRange.split(" - ");
+            var dates = dateRange.split("-").map(s => s.trim()).filter(s => s != "");
             switch (dates.length) {
                 case 1:
                     startDate = endDate = dates[0];
