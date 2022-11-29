@@ -8,7 +8,6 @@
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.RunProblems" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
-<%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
 <%@ page import="org.labkey.testresults.model.User" %>
 <%@ page import="org.labkey.testresults.view.RunDownBean" %>
 <%@ page import="java.text.DateFormat" %>
@@ -17,6 +16,8 @@
 <%@ page import="java.util.List" %>
 <%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="java.util.Arrays" %>
+<%@ page import="org.labkey.testresults.model.TestLeakDetail" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     /*
@@ -41,13 +42,13 @@
     Date yesterday = new Date(selectedDate.getTime() - (1000 * 60 * 60 * 24));
     Date tomorrow = new Date(selectedDate.getTime() + (1000 * 60 * 60 * 24));
 
-    Map<User, List<RunDetail>> statRunUserMap = data.getUserToRunsMap(selectedDate);
     RunDetail[] dayRuns = data.getRunsByDate(selectedDate);
+    Arrays.sort(dayRuns);
+    Map<User, List<RunDetail>> statRunUserMap = data.groupRunsByUser(dayRuns);
     User[] missingUsers = data.getMissingUsers(dayRuns);
     // Calculates Mean, Min, Max table
     Map<String, List<TestFailDetail>> topFailures = data.getTopFailures(10, true); // top 10 failures
-    Map<String, List<TestMemoryLeakDetail>> topLeaks = data.getTopLeaks(10, true); // top 10 leaks
-    StatsService service = StatsService.get();
+    Map<String, List<TestLeakDetail>> topLeaks = data.getTopLeaks(10, true); // top 10 leaks
 
     Map<String, Map<String, Double>> languageBreakdown = data.getLanguageBreakdown(topFailures); // test name mapped to language and percents
 
@@ -376,26 +377,34 @@
                     <td><h4>Occurrences</h4></td>
                     <td><h4>Mean Leak</h4></td>
                 </tr>
-                <% for (String key: topLeaks.keySet()) { %>
+                <% for (Map.Entry<String, List<TestLeakDetail>> entry: topLeaks.entrySet()) { %>
                 <tr>
                     <td>
                         <%=
-                            link(key).href(new ActionURL(TestResultsController.ShowFailures.class, c)
+                            link(entry.getKey()).href(new ActionURL(TestResultsController.ShowFailures.class, c)
                                     .addParameter("viewType", viewType)
                                     .addParameter("end", df.format(selectedDate))
-                                    .addParameter("failedTest", key)
+                                    .addParameter("failedTest", entry.getKey())
                                     .addParameter("problemType", "leaks")
                                 ).target("_blank").clearClasses()
                         %>
                     </td>
-                    <td><%=topLeaks.get(key).size()%></td>
-                    <% double[] leakbytes = new double[topLeaks.get(key).size()];
-                        for (int i = 0; i < topLeaks.get(key).size(); i++) {
-                            leakbytes[i] = topLeaks.get(key).get(i).getBytes();
-                        }
-                        MathStat l1 = service.getStats(leakbytes);%>
+                    <td><%=entry.getValue().size()%></td>
                     <td>
-                        <%=h((int) (l1.getMean()/1000)+"kb")%> <!--converts bytes to kb-->
+                        <ul style="list-style-type: none; margin: 0; padding: 0;">
+                        <%
+                            double leakMem = data.getLeakMemoryAverage(entry.getValue());
+                            if (leakMem > 0) {
+                        %>
+                            <%=h(Math.round(leakMem/1000))%> kb
+                        <%
+                            }
+                            double leakHandle = data.getLeakHandleAverage(entry.getValue());
+                            if (leakHandle > 0) {
+                        %>
+                            <%=h(Math.round(leakHandle))%> handles
+                        <% } %>
+                        </ul>
                     </td>
                 </tr>
                 <%}%>
@@ -407,16 +416,12 @@
 <% if (memoryChartData != null) { %>
     <script>
         var pointRatio = 30;
-        var jsonObject = jQuery.parseJSON( <%=q(memoryChartData.toString())%>);
-        var sortedRunDetails = {};
-        for (var key in jsonObject["runs"]) {
-            sortedRunDetails[key] = jsonObject["runs"][key];
-        }
+        var jsonObject = <%=memoryChartData.getJavaScriptFragment(0)%>;
         // start c3 chart generation
         var memoryUsageChart = c3.generate({
             bindto: '#memoryGraph',
             size: { height:350, width: 1024 },
-            data: { json: sortedRunDetails },
+            data: { json: jsonObject.runs },
             point: { show: false },
             axis : {
                 x: { tick: { format: function (x) { return x*pointRatio; } } },
@@ -560,7 +565,7 @@ $(function() {
 <% if (trendsJson != null) { %>
     <script src="<%=h(contextPath)%>/TestResults/js/generateTrendCharts.js"></script>
     <script type="text/javascript">
-        var trendsJson = jQuery.parseJSON( <%= q(trendsJson.toString()) %> );
+        var trendsJson = <%=trendsJson.getJavaScriptFragment(0)%>;
         generateTrendCharts(trendsJson);
     </script>
 <% } %>

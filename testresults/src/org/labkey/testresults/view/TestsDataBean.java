@@ -19,6 +19,7 @@ import org.json.old.JSONArray;
 import org.json.old.JSONObject;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SqlSelector;
+import org.labkey.testresults.TestResultsController;
 import org.labkey.testresults.TestResultsSchema;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestLeakDetail;
@@ -209,9 +210,10 @@ public class TestsDataBean
             // round all memory data
             TestPassDetail[] passes = run.getPasses();
             if (passes != null && passes.length > 0 && passes[0] != null) {
-                for (int i = 0; i < passes.length; i++) {
-                    passes[i].setManagedMemory(round(passes[i].getManagedMemory(), 2));
-                    passes[i].setTotalMemory(round(passes[i].getTotalMemory(), 2));
+                for (TestPassDetail pass : passes)
+                {
+                    pass.setManagedMemory(round(pass.getManagedMemory(), 2));
+                    pass.setTotalMemory(round(pass.getTotalMemory(), 2));
                 }
                 run.setPasses(passes);
             }
@@ -244,6 +246,20 @@ public class TestsDataBean
         return runs.get(runId);
     }
 
+    public static Date getGroupDate(Date date)
+    {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        TestResultsController.setToEightAM(cal);
+
+        if (cal.getTime().before(date))
+        {
+            cal.add(Calendar.DATE, 1);
+        }
+
+        return cal.getTime();
+    }
+
     /*
     * returns trends of avg over time where the total time is the range of RunDetails we have in this object
     * if there are no runs returns NULL
@@ -251,19 +267,11 @@ public class TestsDataBean
     public JSONObject getTrends() {
         if (runs.isEmpty())
             return null;
+
         Map<Date, List<RunDetail>> dates = new TreeMap<>();
-        Calendar cal = Calendar.getInstance();
         for (RunDetail run: getStatRuns()) {
-            cal.setTime(run.getPostTime());
-            cal.set(Calendar.HOUR_OF_DAY, 0);
-            cal.set(Calendar.MINUTE, 0);
-            cal.set(Calendar.SECOND, 0);
-            cal.set(Calendar.MILLISECOND, 0);
-            Date strippedDay = cal.getTime();
-            List<RunDetail> list = dates.get(strippedDay);
-            if (list == null) {
-                dates.put(strippedDay, list = new ArrayList<>());
-            }
+            Date date = getGroupDate(run.getPostTime());
+            List<RunDetail> list = dates.computeIfAbsent(date, k -> new ArrayList<>());
             list.add(run);
         }
 

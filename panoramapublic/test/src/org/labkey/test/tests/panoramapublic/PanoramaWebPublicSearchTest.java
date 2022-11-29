@@ -92,7 +92,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         checker().verifyEquals("Incorrect result", AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + ",", table.getDataAsText(0, "Authors"));
 
         table = panoramaPublicSearch
-                .setOrganism("Arab")
+                .setOrganism("Homo")
                 .setAuthor("")
                 .setInstrument("Thermo")
                 .search();

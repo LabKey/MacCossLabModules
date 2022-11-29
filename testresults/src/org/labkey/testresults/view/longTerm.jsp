@@ -38,7 +38,6 @@
                     <option id="<%=h(ViewType.WEEK)%>" value="<%=h(ViewType.WEEK)%>">Week</option>
                     <option id="<%=h(ViewType.MONTH)%>" value="<%=h(ViewType.MONTH)%>">Month</option>
                     <option id="<%=h(ViewType.YEAR)%>" value="<%=h(ViewType.YEAR)%>">Year</option>
-                    <option id="<%=h(ViewType.ALLTIME)%>" value="<%=h(ViewType.ALLTIME)%>">The Beginning of Time</option>
                 </select>
 </form>
 
