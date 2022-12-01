@@ -228,7 +228,10 @@
                         <tr>
                             <td style="background: <%=h(BackgroundColor.error)%>;"><%=h(user.getUsername())%></td>
                             <td style="background: <%=h(BackgroundColor.error)%>;">MISSING RUN</td>
-                            <td style="background: <%=h(BackgroundColor.error)%>;" colspan="7"></td>
+                            <td style="background: <%=h(BackgroundColor.error)%>;" colspan="6"></td>
+                            <td style="background: <%=h(BackgroundColor.error)%>;">
+                                <a style="cursor: pointer;" data-user="<%=user.getId()%>" data-active="true" class="activate-toggle">Deactivate user</a>
+                            </td>
                         </tr>
                         <% } %>
                         </tbody>
@@ -510,6 +513,8 @@
 
 <script>
 $(function() {
+    const csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
+
     /* Initialize datepicker */
     $("#datepicker").datepicker({
         onSelect: function(date) {
@@ -532,7 +537,6 @@ $(function() {
         var runId = self.getAttribute('runid');
         var train = self.getAttribute('train');
         var isTrain = curText == 'Train';
-        var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
         $(this).text(isTrain ? 'Training...' : 'Untraining...');
         let url = <%=jsURL(new ActionURL(TestResultsController.TrainRunAction.class, c))%>;
         url.searchParams.set('runId', runId);
@@ -545,7 +549,36 @@ $(function() {
             }
             alert("Failure removing run. Contact Yuval");
         }, "json");
-    })
+    });
+
+    // Click event for activate/deactivate machines
+    $(".activate-toggle").click(function() {
+        const activateText = "Activate user";
+        const deactivateText = "Deactivate user";
+
+        let self = this;
+        if (self.innerText !== activateText && self.innerText !== deactivateText)
+            return;
+
+        self.innerText = "working...";
+        let url = <%=jsURL(new ActionURL(TestResultsController.SetUserActive.class, c))%>;
+        url.searchParams.set("userId", self.getAttribute("data-user"));
+        url.searchParams.set("active", self.getAttribute("data-active") === "true" ? "false" : "true");
+        $.post(url.toString(), csrf_header, function(data) {
+            if (data.Message.toLowerCase() !== "success") {
+                alert("A problem occurred: " + data.Message);
+                return;
+            }
+
+            if (self.getAttribute("data-active") === "true") {
+                self.innerText = activateText;
+                self.setAttribute("data-active", "false");
+            } else {
+                self.innerText = deactivateText;
+                self.setAttribute("data-active", "true");
+            }
+        }, "json")
+    });
 
     // tooltips for leaks in matrix
     $(".matrix-leak-both").each(function() { $(this).attr("title", "Memory and handle leak"); });

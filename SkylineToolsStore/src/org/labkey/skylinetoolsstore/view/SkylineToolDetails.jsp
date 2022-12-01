@@ -21,6 +21,7 @@
 <%@ page import="java.util.Iterator" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="java.util.Arrays" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     JspView<?> me = (JspView<?>) HttpView.currentView();
@@ -45,9 +46,7 @@
     final boolean multipleVersions = allVersions.length > 1;
     final boolean isLatestVersion = SkylineToolsStoreManager.get().getToolLatestByIdentifier(tool.getIdentifier()).getVersion().equals(tool.getVersion());
     final boolean leftReview = RatingManager.get().userLeftRating(tool.getIdentifier(), getUser());
-    int numDownloads = 0;
-    for (SkylineTool iVersion : allVersions)
-        numDownloads += iVersion.getDownloads();
+    final int numDownloads = Arrays.stream(allVersions).mapToInt(SkylineTool::getDownloads).sum();
 
     ActionURL toolDetailsUrl = SkylineToolStoreUrls.getToolDetailsUrl(tool);
     ActionURL toolDetailsLatestUrl = SkylineToolStoreUrls.getToolDetailsLatestUrl(tool);
@@ -106,7 +105,7 @@ a { text-decoration: none; }
 #editToolDlg input[type=text],#editToolDlg textarea {width: 80%; min-width: 400px;}
 #editToolDlg textarea {height: 80%; min-height: 200px;}
 #toolDescription {text-align: justify;}
-#downloadArea {margin: auto; text-align: center;}
+#downloadArea {margin: 15px auto 0 auto; text-align: center;}
 #trashcan {
     position: fixed;
     left: 0;
@@ -136,7 +135,6 @@ a { text-decoration: none; }
     height: 15px;
     float: left;
     overflow: hidden !important;
-    border-spacing: 0;
     margin: -1px 0 0 30px !important;
     border-spacing: 0 !important;
 }
@@ -174,11 +172,11 @@ a { text-decoration: none; }
     border: 1px solid #000;
     max-width:150px;
 }
-a.banner-button {
-    display: block;
-    float:left;
-    margin: 15px 0 0 0;
-    padding: 5px 15px 0 15px;
+.banner-button {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    padding: 15px;
     height: 25px;
     color: #fff;
     border-radius: 5px;
@@ -199,11 +197,11 @@ a.banner-button {
     background: linear-gradient(to bottom,  #73a0e2 0%,#215da0 100%); /* W3C */
     filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#73a0e2', endColorstr='#215da0',GradientType=0 ); /* IE6-8 */
 }
-a.banner-button-small{
-    display: block;
-    float:left;
-    margin: 15px 0 0 0;
-    padding: 2px 13px 0 9px;
+.banner-button-small {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    padding: 10px 12px;
     height: 15px;
     color: #fff;
     border-radius: 5px;
@@ -236,8 +234,7 @@ a.banner-button-small{
     border: 0 !important;
     width: 100px;
     height: 20px;
-    background-color: #8e8d8d;
-    background: url('<%= h(imgDir) %>star_empty20x20.png') repeat-x;
+    background: #8e8d8d url('<%= h(imgDir) %>star_empty20x20.png') repeat-x;
     z-index: 0;
     overflow: hidden;
     cursor:pointer;
@@ -253,7 +250,7 @@ a.banner-button-small{
 {
     width:400px;
     float:left;
-    border:0px !important;
+    border:0 !important;
 }
 #ratingform
 {
@@ -272,7 +269,7 @@ a.banner-button-small{
 {
     font-weight: bold;
     font-size:14px;
-    margin: -23px 10px 10px 0px;
+    margin: -23px 10px 10px 0;
     position: relative;
     background-color: #e9e9e9;
     color: #000;
@@ -282,8 +279,8 @@ a.banner-button-small{
 }
 #ratingform h3
 {
-    padding: 0px 0px 8px;
-    margin: 0px;
+    padding: 0 0 8px;
+    margin: 0;
 }
 #separatorborder
 {
@@ -291,7 +288,6 @@ a.banner-button-small{
     width:100%;
     padding-top:20px;
     margin-bottom:10px;
-
 }
 .ui-slider-handle {display: none;}
 .versionheader {margin:0; padding:0;}
@@ -410,8 +406,7 @@ a.banner-button-small{
 <% } %>
         </div>
 
-        <a class="banner-button-small" style="float:left; margin-top:2px; margin-left:2px;" href="/labkey/project/home/software/Skyline/tools/Support/<%=h(tool.getName())%>/begin.view?" target="_blank">Support Board</a>
-
+        <button class="banner-button-small" href="/labkey/project/home/software/Skyline/tools/Support/<%=h(tool.getName())%>/begin.view?" target="_blank">Support Board</button>
     </div>
 <% if (toolEditor) { %>
     <div class="menuMouseArea sprocket">
@@ -436,18 +431,11 @@ a.banner-button-small{
         <a onclick="editTool($(this))"><img src="<%= h(imgDir) %>pencil.png" alt="Pencil" title="Edit" /></a>
 <% } %>
     </p>
-    <table id="downloadArea">
-        <tr>
-            <td>
-                <a class="banner-button" onclick="downloadTool(<%= h(tool.getRowId()) %>);">Download <%=h(tool.getName())%> </a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <strong>Downloaded: <span id="downloadcounter"><%= numDownloads %></span></strong>
-            </td>
-        </tr>
-    </table>
+    <div id="downloadArea">
+        <button class="banner-button" onclick="downloadTool(<%= h(tool.getRowId()) %>);">Download <%=h(tool.getName())%></button>
+        <br>
+        <strong>Downloaded: <span id="downloadcounter"><%= numDownloads %></span></strong>
+    </div>
 </div>
 
 <% if (suppIter.hasNext()) { %>
@@ -516,7 +504,6 @@ a.banner-button-small{
 
 <form action="<%=h(urlFor(SkylineToolsStoreController.SubmitRatingAction.class))%>" method="post" id="ratingform">
     <legend>Leave a Review</legend>
-    <%--<center><h3>Leave a Review</h3></center>--%>
     <input type="text" name="title" class="ratinginput">
     <input type="text" id="reviewValue" name="value" style="display:none;" value="5">
     <br><br>
