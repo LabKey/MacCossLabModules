@@ -59,10 +59,10 @@
                 </tr>
                 <tr>
                     <td style="width: 5px"></td>
-                    <td nowrap><input class="bootstrap-tagsinput" size="20" type="text" id="Authors" name="Authors" value=""/></td>
+                    <td nowrap><input class="tags bootstrap-tagsinput" size="20" type="text" id="Authors" name="Authors" value=""/></td>
 
                     <td style="width: 5px"></td>
-                    <td><input class="bootstrap-tagsinput" size="20" type="text" id="Title" name="Title" value=""/></td>
+                    <td><input class="tags bootstrap-tagsinput" size="20" type="text" id="Title" name="Title" value=""/></td>
 
                     <td style="width: 5px"></td>
                     <td nowrap>
@@ -81,6 +81,10 @@
                             --%>
                             <input class="tags instrument" type="text" id="Instrument" name="Instrument" placeholder="  Enter Instrument  " value=""/>
                         </div>
+                    </td>
+                    <td style="width: 5px"></td>
+                    <td>
+                        <button id="clear-all-button-id-experiment" class="clear-all-button" onclick=clearInputFields("experiment")>Clear All</button>
                     </td>
                 </tr>
                 <tr>
@@ -105,6 +109,10 @@
                     <td>Exact Matches Only:<%=helpPopup("Exact Matches Only", "If checked, the search will only find proteins with an exact name match. If not checked, proteins that contain the name entered will also match, but the search may be significantly slower.")%></td>
                     <td style="padding-top: 0.75%; padding-left: 5px"><labkey:checkbox id="exactProteinMatches" name="exactProteinMatches" value=""/></td>
 
+                    <td style="width: 5px"></td>
+                    <td>
+                        <button id="clear-all-button-id-protein" class="clear-all-button" onclick=clearInputFields("protein")>Clear All</button>
+                    </td>
                 </tr>
                 <tr style="height: 10px"></tr>
             </table>
@@ -125,6 +133,10 @@
                     <td>Exact Matches Only:<%=helpPopup("Exact Matches Only", "If checked, the search will match the peptides exactly; if unchecked, it will match any peptide that contain the specified sequence.")%></td>
                     <td style="padding-top: 0.75%; padding-left: 5px"><labkey:checkbox id="exactPeptideMatches" name="exactPeptideMatches" value=""/></td>
 
+                    <td style="width: 5px"></td>
+                    <td>
+                        <button id="clear-all-button-id-peptide" class="clear-all-button" onclick=clearInputFields("peptide")>Clear All</button>
+                    </td>
                 </tr>
                 <tr style="height: 10px"></tr>
             </table>
@@ -136,6 +148,7 @@
     <div id="search-indicator" style="visibility: hidden;padding-left: 50%">
         <p><i class="fa fa-spinner fa-pulse"></i> Search is running, results pending...</p>
     </div>
+    <div id="search-criteria-id"/>
 
 </div>
 
@@ -222,11 +235,28 @@
         }
     };
 
+    let clearInputFields = function(searchTabName) {
+        switch (searchTabName) {
+            case "experiment":
+                clearInputFromExperimentTab();
+                break;
+            case "peptide":
+                clearInputFromPeptideTab();
+                break;
+            case "protein":
+                clearInputFromProteinTab();
+                break;
+            default:
+                break;
+        }
+    };
+
     let handleRendering = function (onTabClick) {
 
         let expAnnotationFilters = [];
         let proteinParameters = {};
         let peptideParameters = {};
+        let searchCriteriaString = "";
 
         // render experiment list webpart
         // add filters in qwp and in the url for back button
@@ -243,21 +273,26 @@
                 let title = document.getElementById(titleItemId).value;
                 let organism = document.getElementById(organismItemId).value;
                 let instrument = document.getElementById(instrumentItemId).value;
+                searchCriteriaString = "Experiment Search criteria:";
 
                 if (author) {
                     expAnnotationFilters.push(createFilter(authorsItemId, author));
+                    searchCriteriaString += " Author: " + author + ";";
                     updateUrlFilters(null, authorsItemId, author);
                 }
                 if (title) {
                     expAnnotationFilters.push(createFilter(titleItemId, title));
+                    searchCriteriaString += " Title: " + title + ";";
                     updateUrlFilters(null, titleItemId, title);
                 }
                 if (organism) {
                     expAnnotationFilters.push(createFilter(organismItemId, organism));
+                    searchCriteriaString += " Organism: " + organism + ";";
                     updateUrlFilters(null, organismItemId, organism);
                 }
                 if (instrument) {
                     expAnnotationFilters.push(createFilter(instrumentItemId, instrument));
+                    searchCriteriaString += " Instrument: " + instrument + ";"
                     updateUrlFilters(null, instrumentItemId, instrument);
                 }
             }
@@ -266,16 +301,20 @@
                 clearInputFromExperimentTab();
                 clearInputFromPeptideTab();
 
+                searchCriteriaString = "Protein Search criteria:";
+
                 let protein = document.getElementById(proteinNameItemId).value;
                 let exactProteinMatch = document.getElementById(exactProteinMatchesItemId).checked;
 
                 if (protein) {
                     proteinParameters[proteinNameItemId] = protein;
                     updateUrlFilters(null, proteinNameItemId, protein);
+                    searchCriteriaString += " Protein: " + protein + ";";
                 }
                 if (exactProteinMatch) {
                     proteinParameters[exactMatch] = exactProteinMatch;
                     updateUrlFilters(null, exactProteinMatchesItemId, exactProteinMatch);
+                    searchCriteriaString += " Exact Matches Only: " + proteinParameters[exactMatch] + ";";
                 }
             }
             else if (activeTab === peptideSearchPanelItemId) {
@@ -283,61 +322,82 @@
                 clearInputFromExperimentTab();
                 clearInputFromProteinTab();
 
+                searchCriteriaString = "Peptide Search criteria:";
+
                 let peptide = document.getElementById(peptideSequenceItemId).value;
                 let exactPeptideMatch = document.getElementById(exactPeptideMatchesItemId).checked;
 
                 if (peptide) {
                     peptideParameters[peptideSequenceItemId] = peptide;
                     updateUrlFilters(null, peptideSequenceItemId, peptide);
+                    searchCriteriaString += " Peptide: " + peptide + ";";
                 }
                 if (exactPeptideMatch) {
                     peptideParameters[exactMatch] = exactPeptideMatch;
                     updateUrlFilters(null, exactPeptideMatchesItemId, exactPeptideMatch);
+                    searchCriteriaString += " Exact Matches Only: " + peptideParameters[exactMatch] + ";";
                 }
             }
         }
         // getFiltersFromUrl and add to the filters
         else {
             let context = getFiltersFromUrl();
+            if (activeTab === expSearchPanelItemId) {
+                searchCriteriaString = "Experiment Search criteria:";
+            }
+            else if (activeTab === proteinSearchPanelItemId) {
+                searchCriteriaString = "Protein Search criteria:"
+            }
+            else if (activeTab === peptideSearchPanelItemId) {
+                searchCriteriaString = "Peptide Search criteria:"
+            }
+
             if (context[authorsItemId]) {
                 expAnnotationFilters.push(createFilter(authorsItemId, context[authorsItemId]));
                 document.getElementById(authorsItemId).value = context[authorsItemId];
+                searchCriteriaString += " Author: " + context[authorsItemId] + ";";
             }
             if (context[titleItemId]) {
                 expAnnotationFilters.push(createFilter(titleItemId, context[titleItemId]));
                 document.getElementById(titleItemId).value = context[titleItemId];
+                searchCriteriaString += " Title: " + context[titleItemId] + ";";
             }
             if (context[organismItemId]) {
                 expAnnotationFilters.push(createFilter(organismItemId, context[organismItemId]));
                 document.getElementById(organismItemId).value = context[organismItemId];
+                searchCriteriaString += " Organism: " + context[organismItemId] + ";";
             }
             if (context[instrumentItemId]) {
                 expAnnotationFilters.push(createFilter(instrumentItemId, context[instrumentItemId]));
                 document.getElementById(instrumentItemId).value = context[instrumentItemId];
+                searchCriteriaString += " Instrument: " + context[instrumentItemId] + ";";
             }
             if (context[proteinNameItemId]) {
                 proteinParameters[proteinNameItemId] =  context[proteinNameItemId];
                 document.getElementById(proteinNameItemId).value = context[proteinNameItemId];
+                searchCriteriaString += " Protein: " + context[proteinNameItemId] + ";";
             }
             if (context[exactProteinMatchesItemId]) {
                 proteinParameters[exactMatch] =  context[exactProteinMatchesItemId];
-                document.getElementById(exactProteinMatchesItemId).value = context[exactProteinMatchesItemId];
+                context[exactProteinMatchesItemId] === "true" ? (document.getElementById(exactProteinMatchesItemId).checked = true) : (document.getElementById(exactProteinMatchesItemId).checked = false);
+                searchCriteriaString += " Exact Matches Only: " + proteinParameters[exactMatch] + ";";
             }
             if (context[peptideSequenceItemId]) {
                 peptideParameters[peptideSequenceItemId] =  context[peptideSequenceItemId];
                 document.getElementById(peptideSequenceItemId).value = context[peptideSequenceItemId];
+                searchCriteriaString += " Peptide: " + context[peptideSequenceItemId] + ";";
             }
             if (context[exactPeptideMatchesItemId]) {
                 peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
-                document.getElementById(exactPeptideMatchesItemId).value = context[exactPeptideMatchesItemId];
+                context[exactPeptideMatchesItemId] === "true" ? (document.getElementById(exactPeptideMatchesItemId).checked = true): (document.getElementById(exactPeptideMatchesItemId).checked = false);
+                searchCriteriaString += " Exact Matches Only: " + context[exactPeptideMatchesItemId] + ";";
             }
         }
 
         // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
         if (onTabClick || expAnnotationFilters.length > 0 ||
                 proteinParameters[proteinNameItemId] ||
-                peptideParameters[peptideSequenceItemId]
-        ) {
+                peptideParameters[peptideSequenceItemId]) {
 
             document.getElementById("search-indicator").style.visibility = "visible";
 
@@ -350,12 +410,16 @@
                     showFilterDescription: false,
                     containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                     filters: expAnnotationFilters,
+                    frame: 'none',
                     showRecordSelectors: false,
                     showDeleteButton: false,
                     showExportButtons: false,//this needs to be set to false otherwise setting selectRecordSelector to false still shows the checkbox column
                     showDetailsColumn: false,
+
                     success: function () {
                         document.getElementById("search-indicator").style.visibility = "hidden";
+                        $('#search-criteria-id').empty();
+                        $('#search-criteria-id').append("<p>" + searchCriteriaString + "</p>");
                     }
                 });
                 wp.render();
@@ -371,6 +435,8 @@
                     parameters: proteinParameters,
                     success: function () {
                         document.getElementById("search-indicator").style.visibility = "hidden";
+                        $('#search-criteria-id').empty();
+                        $('#search-criteria-id').append("<p>" + searchCriteriaString + "</p>");
                     }
                 });
                 wp.render();
@@ -386,9 +452,14 @@
                     parameters: peptideParameters,
                     success: function () {
                         document.getElementById("search-indicator").style.visibility = "hidden";
+                        $('#search-criteria-id').empty();
+                        $('#search-criteria-id').append("<p>" + searchCriteriaString + "</p>");
                     }
                 });
                 wp.render();
+            }
+            else {
+                document.getElementById("search-indicator").style.visibility = "hidden";
             }
         }
     };

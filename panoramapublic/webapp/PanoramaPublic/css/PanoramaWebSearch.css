@@ -75,3 +75,15 @@ input::placeholder {
     left: 0;
     opacity: 1;
 }
+
+.clear-all-button {
+    background: none!important;
+    border: none;
+    padding: 0!important;
+    /*optional*/
+    font-family: "Roboto",Arial,Helvetica,sans-serif;
+    /*input has OS specific font-family*/
+    color: #3495d2;
+    text-decoration: underline;
+    cursor: pointer;
+}
