@@ -68,9 +68,9 @@
     ActionURL deleteUrl = PanoramaPublicController.getDeleteExperimentURL(getContainer(), annot.getId(), getContainer().getStartURL(getUser()));
 
     ActionURL publishUrl = PanoramaPublicController.getSubmitExperimentURL(annot.getId(), getContainer());
-    Container experimentContainer = annot.getContainer();
-    boolean isAdminUser = experimentContainer.hasPermission(getUser(), AdminPermission.class);
-    final boolean canEdit = (!annot.isJournalCopy() && isAdminUser) || getUser().hasSiteAdminPermission();
+    // If the user is a folder admin they should be able to edit the experiment metadata. Data submitters are never admins
+    // in the Panorama Public copy, so the ability to edit will be limited to site admins and the Panorama Public project admin.
+    final boolean canEdit = getContainer().hasPermission(getUser(), AdminPermission.class);
     // User needs to be the folder admin to publish an experiment.
     final boolean canPublish = annotDetails.isCanPublish();
     final boolean showingFullDetails = annotDetails.isFullDetails();
