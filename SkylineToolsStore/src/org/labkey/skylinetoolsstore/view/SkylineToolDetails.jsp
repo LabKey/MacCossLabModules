@@ -22,6 +22,7 @@
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.Arrays" %>
+<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     JspView<?> me = (JspView<?>) HttpView.currentView();
@@ -406,7 +407,7 @@ a { text-decoration: none; }
 <% } %>
         </div>
 
-        <button class="banner-button-small" href="/labkey/project/home/software/Skyline/tools/Support/<%=h(tool.getName())%>/begin.view?" target="_blank">Support Board</button>
+        <button class="banner-button-small" onclick="window.open('<%=h(urlProvider(ProjectUrls.class).getBeginURL(getContainer().getChild("Support").getChild(tool.getName())))%>', '_blank')">Support Board</button>
     </div>
 <% if (toolEditor) { %>
     <div class="menuMouseArea sprocket">

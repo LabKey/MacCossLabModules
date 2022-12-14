@@ -247,8 +247,8 @@
 %>
 
 <table id="<%= h(tableId) %>" class="tablewrap"
-       data-toolId="<%= h(tool.getRowId()) %>" data-toolName="<%= h(tool.getName()) %>" data-toolVersion="<%= h(tool.getVersion()) %>" data-toolLsid="<%= h(tool.getIdentifier()) %>"
-       data-toolDownloads="<%= h(numDownloads) %>">
+       data-toolId="<%= tool.getRowId() %>" data-toolName="<%= h(tool.getName()) %>" data-toolVersion="<%= h(tool.getVersion()) %>" data-toolLsid="<%= h(tool.getIdentifier()) %>"
+       data-toolDownloads="<%= numDownloads %>">
     <tr>
         <td class="leftfill"></td>
         <td class="contentleft">
