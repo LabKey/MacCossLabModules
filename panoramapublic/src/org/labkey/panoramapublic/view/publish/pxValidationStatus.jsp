@@ -203,12 +203,13 @@
             if (outdated) {
                 let text = 'These validation results are outdated.';
                 if (latest) {
-                    text += ' Please click the button below to re-run validation.'
-
                     allComponents.unshift({
-                        xtype: 'component',
-                        style: {margin: '10px 0 15px; 0'},
-                        html: '<%=button("Rerun Validation").href(PanoramaPublicController.getSubmitPxValidationJobUrl(experimentAnnotations, getContainer())).usePost().build().getHtmlString()%>'
+                        xtype: 'button',
+                        text: 'Rerun Validation',
+                        style: {'margin': '10px'},
+                        handler: function() {
+                            LABKEY.Utils.postToAction(LABKEY.ActionURL.buildURL('panoramapublic', 'submitPxValidationJob', LABKEY.ActionURL.getContainer(), {'id': <%=experimentAnnotationsId%>}));
+                        }
                     });
                 }
                 else {
