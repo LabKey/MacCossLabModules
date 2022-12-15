@@ -420,6 +420,26 @@
                         document.getElementById("search-indicator").style.visibility = "hidden";
                         $('#search-criteria-id').empty();
                         $('#search-criteria-id').append("<p>" + searchCriteriaString + "</p>");
+
+                        // remove 'Targeted MS Experiment List' webpart if it is present on the page
+                        LABKEY.Portal.getWebParts({
+                            containerPath: this.containerPath,
+                            pageId: 'DefaultDashboard',
+                            success: function (wp) {
+                                let expWebpart = wp.body.filter(webpart => webpart.name === "Targeted MS Experiment List");
+                                if (expWebpart.length === 1) {
+                                    LABKEY.Portal.removeWebPart({
+                                        updateDOM: true,
+                                        webPartId: expWebpart[0].webPartId
+                                    });
+
+                                    // setTimout() is necessary since LABKEY.QueryWebPart.success() gets called twice -
+                                    // once by LABKEY.DataRegion.create, and another by via LABKEY.DataRegion.refresh;
+                                    // hence, we are in this method twice - and trying to remove webparts twice
+                                    // due to calls being async occasionally results in an error (something like "unable to delete webpart") since its already deleted.
+                                    setTimeout(() => {}, 2000);}
+                            }
+                        });
                     }
                 });
                 wp.render();
