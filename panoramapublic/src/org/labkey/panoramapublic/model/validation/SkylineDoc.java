@@ -53,7 +53,7 @@ public class SkylineDoc extends SkylineDocValidation<SkylineDocSampleFile>
             jsonObject.put("container", getRunContainer().getPath());
             if (experimentContainer != null)
             {
-                String relPath = "/" + experimentContainer.getParsedPath().relativize(getRunContainer().getParsedPath()).getName();
+                String relPath = "/" + experimentContainer.getParsedPath().relativize(getRunContainer().getParsedPath()).toString();
                 jsonObject.put("rel_container", relPath);
             }
         }
