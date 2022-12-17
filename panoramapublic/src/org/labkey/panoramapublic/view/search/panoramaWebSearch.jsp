@@ -200,6 +200,24 @@
         });
     });
 
+    $('.tab-1').keypress((e) => {
+        if(e.which === 13) {
+            handleRendering(true);
+        }
+    });
+
+    $('.tab-2').keypress((e) => {
+        if(e.which === 13) {
+            handleRendering(true);
+        }
+    });
+
+    $('.tab-3').keypress((e) => {
+        if(e.which === 13) {
+            handleRendering(true);
+        }
+    });
+
     let clearInputFromExperimentTab = function () {
         document.getElementById(authorsItemId).value = "";
         document.getElementById(titleItemId).value = "";
