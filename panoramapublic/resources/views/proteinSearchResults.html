@@ -22,6 +22,7 @@
             queryName: 'proteinSearchResults',
             showFilterDescription: false,
             parameters: {proteinLabel : label, exactMatch: exactMatch},
+            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
             success: function () {
                 if (Ext4.get('search-indicator')) {
                     Ext4.get('search-indicator').unmask();
