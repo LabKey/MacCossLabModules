@@ -200,6 +200,7 @@
         });
     });
 
+    //submit form via Enter key
     $('.tab-1').keypress((e) => {
         if (e.which === 13) {
             handleRendering(true);
@@ -291,7 +292,7 @@
                 let title = document.getElementById(titleItemId).value;
                 let organism = document.getElementById(organismItemId).value;
                 let instrument = document.getElementById(instrumentItemId).value;
-                searchCriteriaString = "Experiment Search criteria:";
+                searchCriteriaString = "";
 
                 if (author) {
                     expAnnotationFilters.push(createFilter(authorsItemId, author));
@@ -319,7 +320,7 @@
                 clearInputFromExperimentTab();
                 clearInputFromPeptideTab();
 
-                searchCriteriaString = "Protein Search criteria:";
+                searchCriteriaString = "";
 
                 let protein = document.getElementById(proteinNameItemId).value;
                 let exactProteinMatch = document.getElementById(exactProteinMatchesItemId).checked;
@@ -340,7 +341,7 @@
                 clearInputFromExperimentTab();
                 clearInputFromProteinTab();
 
-                searchCriteriaString = "Peptide Search criteria:";
+                searchCriteriaString = "";
 
                 let peptide = document.getElementById(peptideSequenceItemId).value;
                 let exactPeptideMatch = document.getElementById(exactPeptideMatchesItemId).checked;
@@ -360,15 +361,7 @@
         // getFiltersFromUrl and add to the filters
         else {
             let context = getFiltersFromUrl();
-            if (activeTab === expSearchPanelItemId) {
-                searchCriteriaString = "Experiment Search criteria:";
-            }
-            else if (activeTab === proteinSearchPanelItemId) {
-                searchCriteriaString = "Protein Search criteria:"
-            }
-            else if (activeTab === peptideSearchPanelItemId) {
-                searchCriteriaString = "Peptide Search criteria:"
-            }
+            searchCriteriaString = "";
 
             if (context[authorsItemId]) {
                 expAnnotationFilters.push(createFilter(authorsItemId, context[authorsItemId]));
@@ -437,7 +430,8 @@
                     success: function () {
                         document.getElementById("search-indicator").style.visibility = "hidden";
                         $('#search-criteria-id').empty();
-                        $('#search-criteria-id').append("<p>" + searchCriteriaString + "</p>");
+                        $('#search-criteria-id').append("<b>Experiment Search criteria: </b>");
+                        $('#search-criteria-id').append(searchCriteriaString);
 
                         // remove 'Targeted MS Experiment List' webpart if it is present on the page
                         LABKEY.Portal.getWebParts({
@@ -471,10 +465,13 @@
                     showFilterDescription: false,
                     containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                     parameters: proteinParameters,
+                    frame: 'none',
                     success: function () {
                         document.getElementById("search-indicator").style.visibility = "hidden";
                         $('#search-criteria-id').empty();
-                        $('#search-criteria-id').append("<p>" + searchCriteriaString + "</p>");
+                        $('#search-criteria-id').append("<b>Protein Search criteria: </b>");
+                        $('#search-criteria-id').append(searchCriteriaString);
+                        $('#search-criteria-id').append("<p></p><p><b>" + this.title + ":</b></p>");
                     }
                 });
                 wp.render();
@@ -488,10 +485,13 @@
                     showFilterDescription: false,
                     containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                     parameters: peptideParameters,
+                    frame: 'none',
                     success: function () {
                         document.getElementById("search-indicator").style.visibility = "hidden";
                         $('#search-criteria-id').empty();
-                        $('#search-criteria-id').append("<p>" + searchCriteriaString + "</p>");
+                        $('#search-criteria-id').append("<b>Peptide Search criteria: </b>");
+                        $('#search-criteria-id').append(searchCriteriaString);
+                        $('#search-criteria-id').append("<p></p><p><b>" + this.title + ":</p>");
                     }
                 });
                 wp.render();
@@ -506,11 +506,11 @@
         let context = {};
 
         if (document.location.hash) {
-            var token = document.location.hash.split('#');
+            let token = document.location.hash.split('#');
             token = token[1].split('&');
 
             for (let i = 0; i < token.length; i++) {
-                var t = token[i].split(':');
+                let t = token[i].split(':');
                 t[0] = decodeURIComponent(t[0]);
                 if (t.length > 1) {
                     t[1] = decodeURIComponent(t[1]);
@@ -526,7 +526,7 @@
                         context[titleItemId] = t[1];
                         break;
                     case organismItemId:
-                        context[organismItemId] = t[1];
+                        context[organismItemId] = decodeURIComponent(token[i].slice(token[i].indexOf(':') + 1)); //handle Organism, ex. Organism:Mus musculus(taxid:10090),Homo sapiens (taxid:9606)
                         break;
                     case instrumentItemId:
                         context[instrumentItemId] = t[1];
