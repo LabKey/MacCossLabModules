@@ -23,7 +23,7 @@ import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.json.old.JSONObject;
+import org.json.JSONObject;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.ConfirmAction;
@@ -3849,7 +3849,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class CompleteInstrumentAction extends ReadOnlyApiAction<CompletionFieldForm>
     {
         @Override
-        public ApiResponse execute(CompletionFieldForm completionForm, BindException errors) throws Exception
+        public ApiResponse execute(CompletionFieldForm completionForm, BindException errors)
         {
             ApiSimpleResponse response = new ApiSimpleResponse();
             List<JSONObject> completions = new ArrayList<>();
@@ -3879,7 +3879,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class CompleteOrganismAction extends ReadOnlyApiAction<CompletionFieldForm>
     {
         @Override
-        public ApiResponse execute(CompletionFieldForm completionForm, BindException errors) throws Exception
+        public ApiResponse execute(CompletionFieldForm completionForm, BindException errors)
         {
             ApiSimpleResponse response = new ApiSimpleResponse();
             List<JSONObject> completions = new ArrayList<>();
