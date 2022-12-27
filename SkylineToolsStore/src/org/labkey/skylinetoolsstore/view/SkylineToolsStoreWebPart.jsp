@@ -18,6 +18,7 @@
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="org.labkey.api.util.SafeToRender" %>
+<%@ page import="java.util.Arrays" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     JspView<?> me = (JspView<?>)HttpView.currentView();
@@ -150,13 +151,11 @@
 
 </style>
 
-<%
-    if (admin) {
-%>
-<button type="button" onclick="$('#uploadPopOwners').show(); $('#updatetarget').val(''); $('#uploadPop').dialog('open')" class="styled-button">Add New Tool</button>
-<%
-    }
-%>
+<% if (admin) { %>
+<div style="float: left;">
+    <button type="button" onclick="$('#uploadPopOwners').show(); $('#updatetarget').val(''); $('#uploadPop').dialog('open')" class="styled-button">Add New Tool</button>
+</div>
+<% } %>
 <!--Submit Rating Form-->
 <div id="reviewPop" title="Leave a review" style="display:none;">
     <form action="<%=h(urlFor(SkylineToolsStoreController.SubmitRatingAction.class))%>" method="post">
@@ -213,6 +212,18 @@
 <div id="delToolAllDlg" title="Delete" style="display:none;"></div>
 <!-- Delete Tool Latest Version Dialog -->
 <div id="delToolLatestDlg" title="Delete latest version" style="display:none;"></div>
+
+<div style="float: right;">
+    <label for="sort-selector">Sort by:</label>
+    <select id="sort-selector">
+        <option value="name-asc">Name &uarr;</option>
+        <option value="name-desc">Name &darr;</option>
+        <option value="downloads-asc">Downloads &uarr;</option>
+        <option value="downloads-desc">Downloads &darr;</option>
+    </select>
+</div>
+
+<div id="all-tools" style="clear: both; padding-top: 2px;">
 <%
     HashMap<Integer, String> toolOwners = new HashMap<>();
     for (SkylineTool tool : tools)
@@ -227,12 +238,17 @@
         final String curToolOwners = StringUtils.join(SkylineToolsStoreController.getToolOwners(tool), ", ");
         toolOwners.put(tool.getRowId(), curToolOwners);
         final boolean toolEditor = admin || tool.lookupContainer().hasPermission(getUser(), UpdatePermission.class);
-        final boolean multipleVersions = SkylineToolsStoreManager.get().getToolsByIdentifier(tool.getIdentifier()).length > 1;
+        final SkylineTool[] allVersions = SkylineToolsStoreManager.get().getToolsByIdentifier(tool.getIdentifier());
+        final boolean multipleVersions = allVersions.length > 1;
+        final int numDownloads = Arrays.stream(allVersions).mapToInt(SkylineTool::getDownloads).sum();
         final Rating[] ratings = RatingManager.get().getRatingsByToolAllVersions(tool.getIdentifier());
         final Rating[] ratingsCurVer = RatingManager.get().getRatingsByToolId(tool.getRowId());
         final boolean leftReview = RatingManager.get().userLeftRating(tool.getIdentifier(), getUser());
 %>
-<table id="<%= h(tableId) %>" class="tablewrap" data-toolId="<%= h(tool.getRowId()) %>" data-toolName="<%= h(tool.getName()) %>"  data-toolVersion="<%= h(tool.getVersion()) %>" data-toolLsid="<%= h(tool.getIdentifier()) %>">
+
+<table id="<%= h(tableId) %>" class="tablewrap"
+       data-toolId="<%= tool.getRowId() %>" data-toolName="<%= h(tool.getName()) %>" data-toolVersion="<%= h(tool.getVersion()) %>" data-toolLsid="<%= h(tool.getIdentifier()) %>"
+       data-toolDownloads="<%= numDownloads %>">
     <tr>
         <td class="leftfill"></td>
         <td class="contentleft">
@@ -257,7 +273,7 @@
                     </ul>
                 </div>
 <% } %>
-                <p class="toolSubtitle">Version <%= h(tool.getVersion()) %></p>
+                <p class="toolSubtitle">Version: <%= h(tool.getVersion()) %> | Downloads: <%= h(numDownloads) %></p>
 <% if (tool.getOrganization() != null) { %>
                 <p class="toolSubtitle"><%= h(tool.getOrganization()) %></p>
 <% } %>
@@ -360,6 +376,7 @@
     </tr>
 </table>
 <% } %>
+</div>
 
 <link rel="stylesheet" type="text/css" href="<%= h(cssDir) %>jquery-ui.css">
 <script type="text/javascript" src="<%= h(jsDir) %>functions.js"></script>
@@ -575,6 +592,34 @@
             setButtonsEnabled(true);
         }
     });
+
+    const sortTools = function(attr, desc) {
+        let all = Array.from(document.querySelectorAll("#all-tools table"));
+        all.sort((a, b) => {
+            let aAttr = a.getAttribute(attr).toLowerCase();
+            let bAttr = b.getAttribute(attr).toLowerCase();
+            if (/^\d+$/.test(aAttr) && /^\d+$/.test(bAttr)) {
+                aAttr = parseInt(aAttr);
+                bAttr = parseInt(bAttr);
+            }
+            let result = 0;
+            if (aAttr !== bAttr) {
+                result = aAttr < bAttr ? -1 : 1;
+            }
+            return desc ? -result : result;
+        });
+        all.forEach(el => document.querySelector("#all-tools").appendChild(el));
+    };
+    const sortSelector = document.getElementById("sort-selector");
+    sortSelector.onchange = function() {
+        switch (this.value) {
+            case "name-asc": sortTools("data-toolName", false); break;
+            case "name-desc": sortTools("data-toolName", true); break;
+            case "downloads-asc": sortTools("data-toolDownloads", false); break;
+            case "downloads-desc": sortTools("data-toolDownloads", true); break;
+        }
+    };
+    $(sortSelector).val("name-asc").change();
 
     initJqueryUiImages("<%= h(imgDir + "jquery-ui") %>");
     window.onload = ratinghover;

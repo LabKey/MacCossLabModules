@@ -60,12 +60,7 @@
         sortedRuns.add(r);
         if (r.isTrainRun())
         {
-            cal.setTime(r.getPostTime());
-            cal.set(Calendar.HOUR_OF_DAY, 0);
-            cal.set(Calendar.MINUTE, 0);
-            cal.set(Calendar.SECOND, 0);
-            cal.set(Calendar.MILLISECOND, 0);
-            trainRuns.add(cal.getTime().getTime());
+            trainRuns.add(TestsDataBean.getGroupDate(r.getPostTime()).getTime());
         }
     }
 %>
