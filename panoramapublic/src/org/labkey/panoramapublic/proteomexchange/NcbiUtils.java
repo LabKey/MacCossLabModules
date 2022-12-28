@@ -59,9 +59,9 @@ public class NcbiUtils
 
     private static final Logger LOG = LogHelper.getLogger(NcbiUtils.class, "Messages about using the NCBI utilities");
 
-    public static List<org.json.old.JSONObject> getCompletions(String token) throws PxException
+    public static List<JSONObject> getCompletions(String token) throws PxException
     {
-        List<org.json.old.JSONObject> completions = new ArrayList<>();
+        List<JSONObject> completions = new ArrayList<>();
 
         HttpURLConnection conn = null;
         try
