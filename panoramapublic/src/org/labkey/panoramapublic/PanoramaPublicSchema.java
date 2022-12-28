@@ -45,6 +45,7 @@ import org.labkey.panoramapublic.model.speclib.SpecLibSourceType;
 import org.labkey.panoramapublic.model.validation.Modification.ModType;
 import org.labkey.panoramapublic.model.validation.PxStatus;
 import org.labkey.panoramapublic.model.validation.SpecLibSourceFile.LibrarySourceFileType;
+import org.labkey.panoramapublic.query.CatalogEntryTableInfo;
 import org.labkey.panoramapublic.query.ContainerJoin;
 import org.labkey.panoramapublic.query.DataValidationTableInfo;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsTableInfo;
@@ -87,6 +88,8 @@ public class PanoramaPublicSchema extends UserSchema
 
     public static final String TABLE_LIB_DEPENDENCY_TYPE = "SpecLibDependencyType";
     public static final String TABLE_LIB_SOURCE_TYPE = "SpecLibSourceType";
+
+    public static final String TABLE_CATALOG_ENTRY = "CatalogEntry";
 
     public PanoramaPublicSchema(User user, Container container)
     {
@@ -300,6 +303,11 @@ public class PanoramaPublicSchema extends UserSchema
             return new ExperimentIsotopeModInfoTableInfo(this, cf);
         }
 
+        if (TABLE_CATALOG_ENTRY.equalsIgnoreCase(name))
+        {
+            return new CatalogEntryTableInfo(this, cf);
+        }
+
         return null;
     }
 
@@ -405,6 +413,7 @@ public class PanoramaPublicSchema extends UserSchema
         hs.add(TABLE_DATA_VALIDATION);
         hs.add(TABLE_EXPT_STRUCTURAL_MOD_INFO);
         hs.add(TABLE_EXPT_ISOTOPE_MOD_INFO);
+        hs.add(TABLE_CATALOG_ENTRY);
         return hs;
     }
 }

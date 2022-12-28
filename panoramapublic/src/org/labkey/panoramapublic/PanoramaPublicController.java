@@ -15,12 +15,14 @@
  */
 package org.labkey.panoramapublic;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.logging.log4j.Logger;
+import org.apache.xerces.impl.dv.util.Base64;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.old.JSONObject;
@@ -36,6 +38,12 @@ import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleStreamAction;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.attachments.Attachment;
+import org.labkey.api.attachments.AttachmentFile;
+import org.labkey.api.attachments.AttachmentForm;
+import org.labkey.api.attachments.AttachmentParent;
+import org.labkey.api.attachments.BaseDownloadAction;
+import org.labkey.api.attachments.ByteArrayAttachmentFile;
 import org.labkey.api.audit.AuditLogService;
 import org.labkey.api.audit.provider.GroupAuditProvider;
 import org.labkey.api.data.ActionButton;
@@ -106,13 +114,13 @@ import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.security.roles.ReaderRole;
+import org.labkey.api.settings.AppProps;
 import org.labkey.api.targetedms.IModification;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.targetedms.TargetedMSUrls;
 import org.labkey.api.util.Button;
 import org.labkey.api.util.DOM;
-import org.labkey.api.util.DOM.LK;
 import org.labkey.api.util.ExceptionUtil;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
@@ -124,11 +132,14 @@ import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.*;
 import org.labkey.api.view.template.ClientDependency;
+import org.labkey.panoramapublic.catalog.CatalogEntrySettings;
+import org.labkey.panoramapublic.catalog.CatalogImageAttachmentParent;
 import org.labkey.panoramapublic.chromlib.ChromLibStateManager;
 import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.datacite.Doi;
 import org.labkey.panoramapublic.datacite.DoiMetadata;
+import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
@@ -160,6 +171,7 @@ import org.labkey.panoramapublic.proteomexchange.PxXmlWriter;
 import org.labkey.panoramapublic.proteomexchange.UnimodModification;
 import org.labkey.panoramapublic.proteomexchange.UnimodModifications;
 import org.labkey.panoramapublic.proteomexchange.UnimodUtil;
+import org.labkey.panoramapublic.query.CatalogEntryManager;
 import org.labkey.panoramapublic.query.DataValidationManager;
 import org.labkey.panoramapublic.query.DataValidationManager.MissingMetadata;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
@@ -181,6 +193,7 @@ import org.labkey.panoramapublic.view.PanoramaPublicRunListView;
 import org.labkey.panoramapublic.view.expannotations.ExperimentAnnotationsFormDataRegion;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentsWebPart;
+import org.labkey.panoramapublic.view.publish.CatalogEntryWebPart;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
 import org.springframework.validation.ObjectError;
@@ -215,6 +228,7 @@ import static org.labkey.api.targetedms.TargetedMSService.RAW_FILES_TAB;
 import static org.labkey.api.util.DOM.*;
 import static org.labkey.api.util.DOM.Attribute.action;
 import static org.labkey.api.util.DOM.Attribute.border;
+import static org.labkey.api.util.DOM.Attribute.checked;
 import static org.labkey.api.util.DOM.Attribute.colspan;
 import static org.labkey.api.util.DOM.Attribute.href;
 import static org.labkey.api.util.DOM.Attribute.method;
@@ -282,6 +296,7 @@ public class PanoramaPublicController extends SpringActionController
             view.addView(qView);
             view.addView(getPXCredentialsLink());
             view.addView(getDataCiteCredentialsLink());
+            view.addView(getPanoramaPublicCatalogSettingsLink());
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Journal groups");
             return view;
@@ -299,6 +314,13 @@ public class PanoramaPublicController extends SpringActionController
             ActionURL url = new ActionURL(ManageDataCiteCredentials.class, getContainer());
             return new HtmlView(DIV(at(style, "margin-top:20px;"),
                     new Link.LinkBuilder("Set DataCite Credentials").href(url).build()));
+        }
+
+        private ModelAndView getPanoramaPublicCatalogSettingsLink()
+        {
+            ActionURL url = new ActionURL(ManageCatalogEntrySettings.class, getContainer());
+            return new HtmlView(DIV(at(style, "margin-top:20px;"),
+                    new Link.LinkBuilder("Panorama Public Catalog Settings").href(url).build()));
         }
 
         @Override
@@ -1171,6 +1193,201 @@ public class PanoramaPublicController extends SpringActionController
         public void setPassword(String password)
         {
             _password = password;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class ManageCatalogEntrySettings extends FormViewAction<ManageCatalogEntryForm>
+    {
+        @Override
+        public ModelAndView getView(ManageCatalogEntryForm form, boolean reshow, BindException errors)
+        {
+            if(!reshow)
+            {
+                CatalogEntrySettings settings = CatalogEntryManager.getCatalogEntrySettings();
+                form.setEnabled(settings.isEnabled());
+                if (settings.isEnabled())
+                {
+                    form.setMaxFileSize(settings.getMaxFileSize());
+                    form.setImgWidth(settings.getImgWidth());
+                    form.setImgHeight(settings.getImgHeight());
+                    form.setMaxTextChars(settings.getMaxTextChars());
+                    form.setMaxEntries(settings.getMaxDisplayEntries());
+                }
+            }
+            HtmlView view = new HtmlView(
+                DIV(
+                    ERRORS(errors),
+                    "Settings for Panorama Public slideshow catalog entries", BR(),
+                    FORM(at(method, "POST", action, new ActionURL(ManageCatalogEntrySettings.class, getContainer())),
+                        TABLE(TBODY(
+                            TR(
+                                    TD(cl("labkey-form-label"), "Enable Catalog Entries: "),
+                                    TD(INPUT(at(type, "checkbox", name, "enabled", checked, form.getEnabled())))
+                            ),
+                            TR(
+                                    TD(cl("labkey-form-label"), "Maximum File Size (bytes): "),
+                                    TD(INPUT(at(type, "Text", name, "maxFileSize", value, form.getMaxFileSize())))
+                            ),
+                            TR(
+                                    TD(cl("labkey-form-label"), "Preferred image width (pixels): "),
+                                    TD(INPUT(at(type, "Text", name, "imgWidth", value, form.getImgWidth())))
+                            ),
+                            TR(
+                                    TD(cl("labkey-form-label"), "Preferred image height (pixels): "),
+                                    TD(INPUT(at(type, "Text", name, "imgHeight", value, form.getImgHeight())))
+                            ),
+                            TR(
+                                    TD(cl("labkey-form-label"), "Character limit for description: "),
+                                    TD(INPUT(at(type, "Text", name, "maxTextChars", value, form.getMaxTextChars())))
+                            ),
+                            TR(
+                                    TD(cl("labkey-form-label"), "Maximum entries in slideshow: "),
+                                    TD(INPUT(at(type, "Text", name, "maxEntries", value, form.getMaxEntries())))
+                            )
+                        )),
+                            new Button.ButtonBuilder("Save").submit(true).build(),
+                            new Button.ButtonBuilder("Cancel").submit(false).href(new ActionURL(JournalGroupsAdminViewAction.class, getContainer())).build()
+                    )
+                )
+            );
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            view.setTitle("Catalog Entry Settings");
+            return view;
+        }
+
+        @Override
+        public void validateCommand(ManageCatalogEntryForm form, Errors errors)
+        {
+        }
+
+        @Override
+        public boolean handlePost(ManageCatalogEntryForm form, BindException errors)
+        {
+            if (form.getEnabled())
+            {
+                if (form.getMaxFileSize() == null)
+                {
+                    errors.reject(ERROR_MSG, "Please enter a value for maximum file size");
+                }
+                if (form.getImgWidth() == null)
+                {
+                    errors.reject(ERROR_MSG, "Please enter a value for preferred image width");
+                }
+                if (form.getImgHeight() == null)
+                {
+                    errors.reject(ERROR_MSG, "Please enter a value for preferred image height");
+                }
+                if (form.getMaxTextChars() == null)
+                {
+                    errors.reject(ERROR_MSG, "Please enter character limit for description");
+                }
+                if (form.getMaxEntries() == null)
+                {
+                    errors.reject(ERROR_MSG, "Please enter a value for the maximum catalog entries to be displayed");
+                }
+            }
+            if (errors.hasErrors())
+            {
+                return false;
+            }
+
+            CatalogEntryManager.saveCatalogEntrySettings(form.getEnabled(), form.getMaxFileSize(), form.getImgWidth(),
+                    form.getImgHeight(), form.getMaxTextChars(), form.getMaxEntries());
+
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(ManageCatalogEntryForm form)
+        {
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(ManageCatalogEntryForm form)
+        {
+            ActionURL adminUrl = new ActionURL(JournalGroupsAdminViewAction.class, getContainer());
+            return new HtmlView(
+                    DIV("Panorama Public catalog entry settings were saved.",
+                            BR(),
+                            new Link.LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Panorama Public Catalog Settings");
+        }
+    }
+
+    public static class ManageCatalogEntryForm
+    {
+        private boolean _enabled;
+        private Long _maxFileSize;
+        private Integer _imgWidth;
+        private Integer _imgHeight;
+        private Integer _maxTextChars;
+        private Integer _maxEntries;
+
+        public boolean getEnabled()
+        {
+            return _enabled;
+        }
+
+        public void setEnabled(boolean enable)
+        {
+            _enabled = enable;
+        }
+
+        public Long getMaxFileSize()
+        {
+            return _maxFileSize;
+        }
+
+        public void setMaxFileSize(Long maxFileSize)
+        {
+            _maxFileSize = maxFileSize;
+        }
+
+        public Integer getImgWidth()
+        {
+            return _imgWidth;
+        }
+
+        public void setImgWidth(Integer imgWidth)
+        {
+            _imgWidth = imgWidth;
+        }
+
+        public Integer getImgHeight()
+        {
+            return _imgHeight;
+        }
+
+        public void setImgHeight(Integer imgHeight)
+        {
+            _imgHeight = imgHeight;
+        }
+
+        public Integer getMaxTextChars()
+        {
+            return _maxTextChars;
+        }
+
+        public void setMaxTextChars(Integer maxTextChars)
+        {
+            _maxTextChars = maxTextChars;
+        }
+
+        public Integer getMaxEntries()
+        {
+            return _maxEntries;
+        }
+
+        public void setMaxEntries(Integer maxEntries)
+        {
+            _maxEntries = maxEntries;
         }
     }
 
@@ -5440,6 +5657,12 @@ public class PanoramaPublicController extends SpringActionController
 
                 result.addView(vBox);
             }
+
+            // Display details of the Panorama Public slideshow catalog entry for this experiment, if one exists
+            if (CatalogEntryWebPart.canBeDisplayed(exptAnnotations, getUser()))
+            {
+                result.addView(new CatalogEntryWebPart(exptAnnotations, getUser()));
+            }
             return result;
         }
 
@@ -6510,9 +6733,25 @@ public class PanoramaPublicController extends SpringActionController
                                             String.format("Accession %s will be %s on ProteomeXchange by a %s administrator.",
                                                     _copiedExperiment.getPxid(), _madePublic ? "made public" : "updated", _journal.getName()))
                                     : "",
-                            DIV(at(style, "margin-top:10px;"), backToFolderBtn)
+                            canAddCatalogEntry(_copiedExperiment)
+                                    ? DIV(at(style, "margin-top:10px;"), "You can add an image and a brief description of " +
+                                    "your data that will be displayed in a slideshow on the PanoramaWeb homepage. Click the button to " +
+                                    "add an entry in the Panorama Public slideshow catalog. ", getAddCatalogEntryButton(_copiedExperiment))
+                                    : "",
+                            DIV(at(style, "margin-top:20px;"), backToFolderBtn)
                     )
             );
+        }
+
+        private boolean canAddCatalogEntry(ExperimentAnnotations expAnnot)
+        {
+            return CatalogEntryManager.getCatalogEntrySettings().isEnabled() && CatalogEntryManager.getEntryForExperiment(expAnnot) == null;
+        }
+
+        private Button getAddCatalogEntryButton(ExperimentAnnotations expAnnot)
+        {
+            return new Button.ButtonBuilder("Add Catalog Entry")
+                    .href(getAddCatalogEntryUrl(expAnnot)).style("margin-left: 10px").build();
         }
 
         @Override
@@ -8367,6 +8606,561 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
+    public static abstract class AbstractCatalogEntryAction extends FormViewAction<CatalogEntryForm>
+    {
+        private ExperimentAnnotations _expAnnot;
+
+        abstract CatalogEntryBean getViewBean(CatalogEntryForm form, ExperimentAnnotations expAnnotations, boolean reshow, BindException errors);
+        abstract String getFormTitle();
+        abstract CatalogEntry getCatalogEntry(ExperimentAnnotations expAnnotations, String description, @Nullable String imageFileName, Errors errors);
+        abstract AttachmentFile getValidatedImageFile(CatalogEntryForm form, CatalogEntrySettings settings, Errors errors);
+        abstract void saveEntry(CatalogEntry entry, AttachmentFile imageFile, ExperimentAnnotations expAnnotations) throws IOException;
+
+        @Override
+        public ModelAndView getView(CatalogEntryForm form, boolean reshow, BindException errors)
+        {
+            ExperimentAnnotations expAnnot = getValidExperiment(form, getContainer(), getViewContext(), errors); // container check
+            if (expAnnot == null)
+            {
+                return new SimpleErrorView(errors);
+            }
+
+            CatalogEntryBean bean = getViewBean(form, expAnnot, reshow, errors);
+            if (!reshow && errors.hasErrors())
+            {
+                return new SimpleErrorView(errors);
+            }
+
+            JspView<CatalogEntryBean> view = new JspView<>("/org/labkey/panoramapublic/view/publish/catalogEntryForm.jsp", bean, errors);
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            view.setTitle(getFormTitle());
+            return view;
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Panorama Public Catalog Entry");
+        }
+
+        @Override
+        public void validateCommand(CatalogEntryForm form, Errors errors)
+        {
+        }
+
+        @Override
+        public boolean handlePost(CatalogEntryForm form, BindException errors)
+        {
+            _expAnnot = getValidExperiment(form, getContainer(), getViewContext(), errors); // container check
+            if(_expAnnot == null)
+            {
+                return false;
+            }
+
+            CatalogEntrySettings settings = CatalogEntryManager.getCatalogEntrySettings();
+            if(StringUtils.isBlank(form.getDatasetDescription()))
+            {
+                errors.reject(ERROR_MSG, "Please enter a short description");
+            }
+            else
+            {
+                if (form.getDatasetDescription().length() > settings.getMaxTextChars())
+                {
+                    errors.reject(ERROR_MSG, "Description must be " + settings.getMaxTextChars() + " characters or less");
+                }
+            }
+
+            AttachmentFile imageFile = getValidatedImageFile(form, settings, errors);
+            CatalogEntry entry = getCatalogEntry(_expAnnot, form.getDatasetDescription(),
+                    imageFile != null ? form.getImageFileName() : null, errors);
+
+            if (errors.hasErrors())
+            {
+                return false;
+            }
+
+            try
+            {
+                saveEntry(entry, imageFile, _expAnnot);
+            }
+            catch (IOException e)
+            {
+                errors.reject(ERROR_MSG,"Unable to save image file. Error was: " + e.getMessage());
+                return false;
+            }
+            return true;
+        }
+
+        @Nullable AttachmentFile getValidatedImageFile(CatalogEntryForm form, CatalogEntrySettings settings, boolean required, Errors errors)
+        {
+            boolean imageUploaded = !StringUtils.isBlank(form.getImageFile());
+            if (required && !imageUploaded)
+            {
+                errors.reject(ERROR_MSG, "Please upload an image file");
+                return null;
+            }
+            if (!imageUploaded)
+            {
+                return null;
+            }
+            String imageString = form.getImageFile();
+
+            // HTMLCanvasElement.toDataURL("image/png") returns a data URL containing a base64 encoded representation of
+            // the image in image/png format. The data URL is prefixed with data:image/png;base64,
+            // HTMLCanvasElement.toDataURL(): https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL
+            // Data URLs: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URLs
+            String prefix = "data:image/png;base64,";
+
+            if (!imageString.startsWith(prefix))
+            {
+                errors.reject(ERROR_MSG, "Attached file does not appear to be an image");
+                return null;
+            }
+
+            imageString = imageString.substring(prefix.length());
+            byte[] decodedBytes = Base64.decode(imageString);
+
+            long maxSize = Math.min(settings.getMaxFileSize(), AppProps.getInstance().getMaxBLOBSize());
+            if (decodedBytes.length > maxSize)
+            {
+
+                errors.reject(ERROR_MSG, "File size cannot be more than " + FileUtils.byteCountToDisplaySize(maxSize));
+                return null;
+            }
+
+            return new ByteArrayAttachmentFile(form.getImageFileName(), decodedBytes, "image/png");
+        }
+
+        @Override
+        public URLHelper getSuccessURL(CatalogEntryForm form)
+        {
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(CatalogEntryForm form)
+        {
+            Button backBtn;
+            if (form.getReturnActionURL() != null)
+            {
+                backBtn = new Button.ButtonBuilder("Back").href(form.getReturnActionURL()).build();
+            }
+            else
+            {
+                backBtn = new Button.ButtonBuilder("Back to folder")
+                                .href(PageFlowUtil.urlProvider(ProjectUrls.class)
+                                .getBeginURL(_expAnnot.getContainer())).build();
+            }
+            return new HtmlView(
+                    DIV("Thank you for submitting your entry for the Panorama Public catalog. " +
+                                    "Your entry will be reviewed by an administrator and included in the slideshow " +
+                                    "on " + AppProps.getInstance().getBaseServerUrl(),
+                            DIV(at(style, "margin-top:10px"), backBtn)));
+        }
+    }
+
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
+    public static class AddCatalogEntryAction extends AbstractCatalogEntryAction
+    {
+        @Override
+        CatalogEntryBean getViewBean(CatalogEntryForm form, ExperimentAnnotations expAnnotations, boolean reshow, BindException errors)
+        {
+            return new CatalogEntryBean(form, expAnnotations, null);
+        }
+
+        @Override
+        public String getFormTitle()
+        {
+            return "Add Catalog Entry";
+        }
+
+        @Override
+        AttachmentFile getValidatedImageFile(CatalogEntryForm form, CatalogEntrySettings settings, Errors errors)
+        {
+            return getValidatedImageFile(form, settings,
+                    true, // We are adding a new entry. An image file is required.
+                    errors);
+        }
+
+        @Override
+        CatalogEntry getCatalogEntry(ExperimentAnnotations expAnnotations, String description, String imageFileName, Errors errors)
+        {
+            if (CatalogEntryManager.getEntryForExperiment(expAnnotations) != null)
+            {
+                errors.reject(ERROR_MSG, "A catalog entry already exists for the Panorama Public URL: "
+                        + expAnnotations.getShortUrl().renderShortURL());
+                return null;
+            }
+            CatalogEntry entry = new CatalogEntry();
+            entry.setDescription(description);
+            entry.setImageFileName(imageFileName);
+            entry.setShortUrl(expAnnotations.getShortUrl());
+            return entry;
+        }
+
+        @Override
+        void saveEntry(CatalogEntry entry, AttachmentFile imageFile, ExperimentAnnotations expAnnotations) throws IOException
+        {
+            CatalogEntryManager.saveEntry(entry, imageFile, expAnnotations, getUser());
+        }
+    }
+
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
+    public static class EditCatalogEntryAction extends AbstractCatalogEntryAction
+    {
+        @Override
+        CatalogEntryBean getViewBean(CatalogEntryForm form, ExperimentAnnotations expAnnotations, boolean reshow, BindException errors)
+        {
+            CatalogEntry entry = getCatalogEntry(expAnnotations, errors);
+            if (entry != null && !reshow)
+            {
+                form.setDatasetDescription(entry.getDescription());
+                form.setImageFileName(entry.getImageFileName());
+            }
+            return new CatalogEntryBean(form, expAnnotations, entry);
+        }
+
+        @Nullable
+        private CatalogEntry getCatalogEntry(ExperimentAnnotations expAnnotations, Errors errors)
+        {
+            CatalogEntry entry = CatalogEntryManager.getEntryForExperiment(expAnnotations);
+            if (entry == null)
+            {
+                errors.reject(ERROR_MSG,"Could not find an existing catalog entry for Panorama Public URL: "
+                        + expAnnotations.getShortUrl().renderShortURL());
+            }
+            return entry;
+        }
+
+        @Override
+        public String getFormTitle()
+        {
+            return "Edit Catalog Entry";
+        }
+
+        @Override
+        AttachmentFile getValidatedImageFile(CatalogEntryForm form, CatalogEntrySettings settings, Errors errors)
+        {
+            return getValidatedImageFile(form, settings,
+                    false, // We are editing an existing entry. The user is not required to upload a new image file.
+                    errors);
+        }
+
+        @Override
+        CatalogEntry getCatalogEntry(ExperimentAnnotations expAnnotations, String description, String imageFileName, Errors errors)
+        {
+            CatalogEntry entry = getCatalogEntry(expAnnotations, errors);
+            if (entry != null)
+            {
+                entry.setApproved(null);
+                entry.setDescription(description);
+                if (imageFileName != null)
+                {
+                    entry.setImageFileName(imageFileName);
+                }
+            }
+            return entry;
+        }
+
+        @Override
+        void saveEntry(CatalogEntry entry, AttachmentFile imageFile, ExperimentAnnotations expAnnotations) throws IOException
+        {
+            CatalogEntryManager.updateEntry(entry, expAnnotations, imageFile, getUser());
+        }
+    }
+
+    public static class CatalogEntryBean
+    {
+        private final CatalogEntryForm _form;
+        private final Attachment _imageAttachment;
+        private final ExperimentAnnotations _experimentAnnotations;
+
+        public CatalogEntryBean(CatalogEntryForm form, ExperimentAnnotations experimentAnnotations, CatalogEntry catalogEntry)
+        {
+            _form = form;
+            _experimentAnnotations = experimentAnnotations;
+            _imageAttachment = catalogEntry != null ? catalogEntry.getAttachment() : null;
+        }
+
+        public CatalogEntryForm getForm()
+        {
+            return _form;
+        }
+
+        public String getImageFileName()
+        {
+            return _imageAttachment != null ? _imageAttachment.getName() : null;
+        }
+
+        public ActionURL getImageUrl()
+        {
+            if (_imageAttachment != null)
+            {
+                return getCatalogImageDownloadUrl(_experimentAnnotations, _imageAttachment.getName());
+            }
+            return null;
+        }
+    }
+
+    public static class CatalogEntryForm extends ExperimentIdForm
+    {
+        private String _datasetDescription;
+        private String _imageFile;
+        private String _imageFileName;
+
+        public String getDatasetDescription()
+        {
+            return _datasetDescription;
+        }
+
+        public void setDatasetDescription(String datasetDescription)
+        {
+            _datasetDescription = datasetDescription;
+        }
+
+        public String getImageFile()
+        {
+            return _imageFile;
+        }
+
+        public void setImageFile(String imageFile)
+        {
+            _imageFile = imageFile;
+        }
+
+        public String getImageFileName()
+        {
+            return _imageFileName;
+        }
+
+        public void setImageFileName(String imageFileName)
+        {
+            _imageFileName = imageFileName;
+        }
+    }
+
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
+    public static class ViewCatalogEntryAction extends SimpleViewAction<IdForm>
+    {
+        @Override
+        public ModelAndView getView(IdForm form, BindException errors)
+        {
+            CatalogEntry entry = CatalogEntryManager.get(form.getId());
+            if (entry == null)
+            {
+                errors.reject(ERROR_MSG,"Could not find a catalog entry for Id: " + form.getId());
+                return new SimpleErrorView(errors);
+            }
+
+            ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.getExperimentForShortUrl(entry.getShortUrl());
+            if (expAnnotations == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find an experiment for catalog entry Id " + form.getId()
+                        + " and URL " + entry.getShortUrl().renderShortURL());
+                return new SimpleErrorView(errors);
+            }
+
+            ensureCorrectContainer(getContainer(), expAnnotations.getContainer(), getViewContext()); // container check
+
+            return new CatalogEntryWebPart(expAnnotations, getUser());
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Panorama Public Catalog Entry");
+        }
+    }
+
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
+    public static class DeleteCatalogEntryAction extends FormHandlerAction<ExperimentIdForm>
+    {
+        @Override
+        public void validateCommand(ExperimentIdForm form, Errors errors)
+        {
+        }
+
+        @Override
+        public boolean handlePost(ExperimentIdForm form, BindException errors)
+        {
+            ExperimentAnnotations expAnnot = getValidExperiment(form, getContainer(), getViewContext(), errors); // container check
+            if(expAnnot == null)
+            {
+                return false;
+            }
+            CatalogEntry entry = CatalogEntryManager.getEntryForExperiment(expAnnot);
+            if (entry == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find a catalog entry for experiment Id " + form.getId());
+                return false;
+            }
+            CatalogEntryManager.deleteEntryForExperiment(entry, expAnnot, getUser());
+            return true;
+        }
+
+        @Override
+        public ActionURL getSuccessURL(ExperimentIdForm form)
+        {
+            return form.getReturnActionURL(getViewExperimentDetailsURL(form.getId(), getContainer()));
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class ChangeCatalogEntryStateAction extends FormHandlerAction<ChangeCatalogEntryStateForm>
+    {
+        @Override
+        public void validateCommand(ChangeCatalogEntryStateForm form, Errors errors)
+        {
+        }
+
+        @Override
+        public boolean handlePost(ChangeCatalogEntryStateForm form, BindException errors)
+        {
+            ExperimentAnnotations expAnnot = getValidExperiment(form, getContainer(), getViewContext(), errors); // container check
+            if(expAnnot == null)
+            {
+                return false;
+            }
+            CatalogEntry entry = CatalogEntryManager.getEntryForExperiment(expAnnot);
+            if (entry == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find a catalog entry for experiment Id " + form.getId());
+                return false;
+            }
+            if (entry.getId() != form.getCatalogEntryId())
+            {
+                errors.reject(ERROR_MSG, "Catalog entry Id for experiment Id " + form.getId()
+                        + " does not match the catalog entry Id in the form (" + form.getCatalogEntryId() + ")");
+                return false;
+            }
+            entry.setApproved(form.getApprove());
+            CatalogEntryManager.update(entry, getUser());
+            return true;
+        }
+
+        @Override
+        public ActionURL getSuccessURL(ChangeCatalogEntryStateForm form)
+        {
+            return form.getReturnActionURL(getViewExperimentDetailsURL(form.getId(), getContainer()));
+        }
+    }
+
+    public static class ChangeCatalogEntryStateForm extends ExperimentIdForm
+    {
+        private Integer _catalogEntryId;
+        private Boolean approve;
+
+        public Integer getCatalogEntryId()
+        {
+            return _catalogEntryId;
+        }
+
+        public void setCatalogEntryId(Integer catalogEntryId)
+        {
+            _catalogEntryId = catalogEntryId;
+        }
+
+        public Boolean getApprove()
+        {
+            return approve;
+        }
+
+        public void setApprove(Boolean approved)
+        {
+            this.approve = approved;
+        }
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public class CatalogImageDownloadAction extends BaseDownloadAction<AttachmentForm>
+    {
+        @Nullable
+        @Override
+        public Pair<AttachmentParent, String> getAttachment(AttachmentForm form)
+        {
+            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.getExperimentInContainer(getContainer());
+            if (expAnnot == null)
+            {
+                throw new NotFoundException("Could not find an experiment in the folder");
+            }
+
+            if (!expAnnot.getContainer().hasPermission(getUser(), ReadPermission.class))
+            {
+                throw new UnauthorizedException();
+            }
+
+            ShortURLRecord shortUrl = expAnnot.getShortUrl();
+            if (shortUrl != null && Objects.equals(form.getEntityId(), shortUrl.getEntityId().toString()))
+            {
+                return new Pair<>(new CatalogImageAttachmentParent(shortUrl, expAnnot.getContainer()), form.getName());
+            }
+            return null;
+        }
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public static class GetCatalogApiAction extends ReadOnlyApiAction<CatalogForm>
+    {
+        @Override
+        public Object execute(CatalogForm form, BindException errors) throws Exception
+        {
+            ApiSimpleResponse response = new ApiSimpleResponse();
+            List<JSONObject> jsonEntryList = new ArrayList<>();
+
+            int maxEntries = form.getMaxEntries() != null ? form.getMaxEntries()
+                    : CatalogEntryManager.getCatalogEntrySettings().getMaxDisplayEntries();
+
+            List<CatalogEntry> entryList = CatalogEntryManager.getApprovedEntries(maxEntries);
+            for (CatalogEntry entry : entryList)
+            {
+                ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.getExperimentForShortUrl(entry.getShortUrl());
+                if (expAnnotations != null)
+                {
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("title", expAnnotations.getTitle());
+                    jsonObject.put("description", entry.getDescription());
+                    jsonObject.put("imageUrl", PanoramaPublicController.getCatalogImageDownloadUrl(expAnnotations, entry.getImageFileName()).getLocalURIString());
+                    jsonObject.put("accessUrl", entry.getShortUrl().renderShortURL());
+                    jsonEntryList.add(jsonObject);
+                }
+            }
+            response.put("catalog", jsonEntryList);
+            return response;
+        }
+    }
+
+    public static class CatalogForm
+    {
+        private Integer _maxEntries;
+
+        public Integer getMaxEntries()
+        {
+            return _maxEntries;
+        }
+
+        public void setMaxEntries(Integer maxEntries)
+        {
+            _maxEntries = maxEntries;
+        }
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public static class ViewSlideshowAction extends SimpleViewAction
+    {
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Panorama Public Slideshow");
+        }
+
+        @Override
+        public ModelAndView getView(Object o, BindException errors)
+        {
+            JspView<Object> view = new JspView<>("/org/labkey/panoramapublic/view/viewSlideshow.jsp", null, errors);
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            return view;
+        }
+    }
 
     // ------------------------------------------------------------------------
     // BEGIN Add the PanoramaPublic module to existing TargetedMS containers
@@ -8587,6 +9381,19 @@ public class PanoramaPublicController extends SpringActionController
             url.addParameter("forSubmit", false);
         }
         return url;
+    }
+
+    public static ActionURL getAddCatalogEntryUrl(ExperimentAnnotations expAnnotations)
+    {
+        return new ActionURL(PanoramaPublicController.AddCatalogEntryAction.class, expAnnotations.getContainer())
+                .addParameter("id", expAnnotations.getId());
+    }
+
+    public static ActionURL getCatalogImageDownloadUrl(ExperimentAnnotations expAnnotations, String filename)
+    {
+        return new ActionURL(CatalogImageDownloadAction.class, expAnnotations.getContainer())
+                .addParameter("entityId", expAnnotations.getShortUrl().getEntityId().toString())
+                .addParameter("name", filename);
     }
 
     public static class TestCase extends AbstractActionPermissionTest

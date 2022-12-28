@@ -18,6 +18,7 @@ package org.labkey.panoramapublic;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.labkey.api.attachments.AttachmentService;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.SimpleFilter;
@@ -39,6 +40,7 @@ import org.labkey.api.view.ShortURLService;
 import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartFactory;
 import org.labkey.api.view.WebPartView;
+import org.labkey.panoramapublic.catalog.CatalogImageAttachmentType;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
@@ -83,7 +85,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 22.005;
+        return 22.006;
     }
 
     @Override
@@ -97,6 +99,7 @@ public class PanoramaPublicModule extends SpringModule
     {
         addController(PanoramaPublicController.NAME, PanoramaPublicController.class);
         PanoramaPublicSchema.register(this);
+        AttachmentService.get().registerAttachmentType(CatalogImageAttachmentType.get());
     }
 
     @Override
