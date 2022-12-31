@@ -145,9 +145,6 @@
     <div>
         <button id="search-button-id" class="labkey-button" onclick=handleRendering(true)>Search</button>
     </div>
-    <div id="search-indicator" style="visibility: hidden;padding-left: 50%">
-        <p><i class="fa fa-spinner fa-pulse"></i> Search is running, results pending...</p>
-    </div>
     <div id="search-criteria-id"/>
 
 </div>
@@ -292,27 +289,26 @@
                 let title = document.getElementById(titleItemId).value;
                 let organism = document.getElementById(organismItemId).value;
                 let instrument = document.getElementById(instrumentItemId).value;
-                searchCriteriaString = "";
 
+                let expSearchParams = "";
                 if (author) {
                     expAnnotationFilters.push(createFilter(authorsItemId, author));
-                    searchCriteriaString += " Author: " + author + ";";
-                    updateUrlFilters(null, authorsItemId, author);
+                    expSearchParams += "Targeted MS Experiment List." + "author~containsoneof" + "=" + author + "&";
                 }
                 if (title) {
                     expAnnotationFilters.push(createFilter(titleItemId, title));
-                    searchCriteriaString += " Title: " + title + ";";
-                    updateUrlFilters(null, titleItemId, title);
+                    expSearchParams += "Targeted MS Experiment List." + "title~containsoneof" + "=" + title + "&";
                 }
                 if (organism) {
                     expAnnotationFilters.push(createFilter(organismItemId, organism));
-                    searchCriteriaString += " Organism: " + organism + ";";
-                    updateUrlFilters(null, organismItemId, organism);
+                    expSearchParams += "Targeted MS Experiment List." + "organism~containsoneof" + "=" + organism + "&";
                 }
                 if (instrument) {
                     expAnnotationFilters.push(createFilter(instrumentItemId, instrument));
-                    searchCriteriaString += " Instrument: " + instrument + ";"
-                    updateUrlFilters(null, instrumentItemId, instrument);
+                    expSearchParams += "Targeted MS Experiment List." + "instrument~containsoneof" + "=" + instrument;
+                }
+                if (expSearchParams !== "") {
+                    location.replace(window.location.href + "?" + expSearchParams);
                 }
             }
             else if (activeTab === proteinSearchPanelItemId) {
@@ -363,25 +359,8 @@
             let context = getFiltersFromUrl();
             searchCriteriaString = "";
 
-            if (context[authorsItemId]) {
-                expAnnotationFilters.push(createFilter(authorsItemId, context[authorsItemId]));
-                document.getElementById(authorsItemId).value = context[authorsItemId];
-                searchCriteriaString += " Author: " + context[authorsItemId] + ";";
-            }
-            if (context[titleItemId]) {
-                expAnnotationFilters.push(createFilter(titleItemId, context[titleItemId]));
-                document.getElementById(titleItemId).value = context[titleItemId];
-                searchCriteriaString += " Title: " + context[titleItemId] + ";";
-            }
-            if (context[organismItemId]) {
-                expAnnotationFilters.push(createFilter(organismItemId, context[organismItemId]));
-                document.getElementById(organismItemId).value = context[organismItemId];
-                searchCriteriaString += " Organism: " + context[organismItemId] + ";";
-            }
-            if (context[instrumentItemId]) {
-                expAnnotationFilters.push(createFilter(instrumentItemId, context[instrumentItemId]));
-                document.getElementById(instrumentItemId).value = context[instrumentItemId];
-                searchCriteriaString += " Instrument: " + context[instrumentItemId] + ";";
+            if (activeTab === expSearchPanelItemId) {
+                parseUrlQueryParams()
             }
             if (context[proteinNameItemId]) {
                 proteinParameters[proteinNameItemId] =  context[proteinNameItemId];
@@ -410,51 +389,34 @@
                 proteinParameters[proteinNameItemId] ||
                 peptideParameters[peptideSequenceItemId]) {
 
-            document.getElementById("search-indicator").style.visibility = "visible";
-
             if (expAnnotationFilters.length > 0) {
-                let wp = new LABKEY.QueryWebPart({
-                    renderTo: 'experiment_list_wp',
-                    title: 'TargetedMS Experiment List',
-                    schemaName: 'panoramapublic',
-                    queryName: 'ExperimentAnnotations',
-                    showFilterDescription: false,
-                    containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
-                    filters: expAnnotationFilters,
-                    frame: 'none',
-                    showRecordSelectors: false,
-                    showDeleteButton: false,
-                    showExportButtons: false,//this needs to be set to false otherwise setting selectRecordSelector to false still shows the checkbox column
-                    showDetailsColumn: false,
 
-                    success: function () {
-                        document.getElementById("search-indicator").style.visibility = "hidden";
-                        $('#search-criteria-id').empty();
-                        $('#search-criteria-id').append("<b>Experiment Search criteria: </b>");
-                        $('#search-criteria-id').append(searchCriteriaString);
-
-                        // remove 'Targeted MS Experiment List' webpart if it is present on the page
-                        LABKEY.Portal.getWebParts({
-                            containerPath: this.containerPath,
-                            pageId: 'DefaultDashboard',
-                            success: function (wp) {
-                                let expWebpart = wp.body.filter(webpart => webpart.name === "Targeted MS Experiment List");
-                                if (expWebpart.length === 1) {
-                                    LABKEY.Portal.removeWebPart({
-                                        updateDOM: true,
-                                        webPartId: expWebpart[0].webPartId
-                                    });
-
-                                    // setTimout() is necessary since LABKEY.QueryWebPart.success() gets called twice -
-                                    // once by LABKEY.DataRegion.create, and another by via LABKEY.DataRegion.refresh;
-                                    // hence, we are in this method twice - and trying to remove webparts twice
-                                    // due to calls being async occasionally results in an error (something like "unable to delete webpart") since its already deleted.
-                                    setTimeout(() => {}, 2000);}
-                            }
-                        });
+                LABKEY.Portal.getWebParts({
+                    containerPath: this.containerPath,
+                    pageId: 'DefaultDashboard',
+                    success: function (wp) {
+                        let expWebpart = wp.body.filter(webpart => webpart.name === "Targeted MS Experiment List");
+                        if (expWebpart.length === 1) {
+                            let wp = new LABKEY.QueryWebPart({
+                                renderTo: 'webpart_'+ expWebpart[0].webPartId,
+                                title: 'Targeted MS Experiment List',
+                                schemaName: 'panoramapublic',
+                                queryName: 'ExperimentAnnotations',
+                                showFilterDescription: false,
+                                containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
+                                filters: expAnnotationFilters,
+                                removeableFilters: expAnnotationFilters,
+                                showRecordSelectors: false,
+                                showDeleteButton: false,
+                                showExportButtons: false,//this needs to be set to false otherwise setting selectRecordSelector to false still shows the checkbox column
+                                showDetailsColumn: false,
+                                dataRegionName: "Targeted MS Experiment List",
+                                success: function () {
+                                }
+                            });
+                        }
                     }
                 });
-                wp.render();
             }
             else if (proteinParameters[proteinNameItemId]) {
                 let wp = new LABKEY.QueryWebPart({
@@ -467,14 +429,12 @@
                     parameters: proteinParameters,
                     frame: 'none',
                     success: function () {
-                        document.getElementById("search-indicator").style.visibility = "hidden";
                         $('#search-criteria-id').empty();
                         $('#search-criteria-id').append("<b>Protein Search criteria: </b>");
                         $('#search-criteria-id').append(searchCriteriaString);
                         $('#search-criteria-id').append("<p></p><p><b>" + this.title + ":</b></p>");
                     }
                 });
-                wp.render();
             }
             else if (peptideParameters[peptideSequenceItemId]) {
                 let wp = new LABKEY.QueryWebPart({
@@ -487,20 +447,29 @@
                     parameters: peptideParameters,
                     frame: 'none',
                     success: function () {
-                        document.getElementById("search-indicator").style.visibility = "hidden";
                         $('#search-criteria-id').empty();
                         $('#search-criteria-id').append("<b>Peptide Search criteria: </b>");
                         $('#search-criteria-id').append(searchCriteriaString);
                         $('#search-criteria-id').append("<p></p><p><b>" + this.title + ":</p>");
                     }
                 });
-                wp.render();
-            }
-            else {
-                document.getElementById("search-indicator").style.visibility = "hidden";
             }
         }
     };
+
+    function parseUrlQueryParams()
+    {
+        var query= location.search.substr(1);
+        query.split("&").forEach(function (part) {
+            var item = part.split("=");
+            var name = decodeURIComponent(item[0]);
+            var value = decodeURIComponent(item[1]);
+            if(name.endsWith("List.author~containsoneof")) {document.getElementById(authorsItemId).value = value;}
+            if(name.endsWith("List.title~containsoneof")) {document.getElementById(titleItemId).value = value;}
+            if(name.endsWith("List.organism~containsoneof")) {document.getElementById(organismItemId).value = value;}
+            if(name.endsWith("List.instrument~containsoneof")) {document.getElementById(instrumentItemId).value = value;}
+        });
+    }
 
     function getFiltersFromUrl () {
         let context = {};
@@ -518,18 +487,6 @@
                 switch (t[0]) {
                     case 'searchTab':
                         context.searchTab = t[1];
-                        break;
-                    case authorsItemId:
-                        context[authorsItemId] = t[1];
-                        break;
-                    case titleItemId:
-                        context[titleItemId] = t[1];
-                        break;
-                    case organismItemId:
-                        context[organismItemId] = decodeURIComponent(token[i].slice(token[i].indexOf(':') + 1)); //handle Organism, ex. Organism:Mus musculus(taxid:10090),Homo sapiens (taxid:9606)
-                        break;
-                    case instrumentItemId:
-                        context[instrumentItemId] = t[1];
                         break;
                     case proteinNameItemId:
                         context[proteinNameItemId] = t[1];
@@ -552,11 +509,11 @@
     }
 
     function updateUrlFilters (tabId, settingName, elementId) {
-        if (tabId) {
+        if (tabId && tabId !== expSearchPanelItemId) {
             this.activeTab = tabId;
             addSelectedTabToUrl(tabId);
         }
-        if (settingName) {
+        if (settingName && activeTab !== expSearchPanelItemId) {
             if (window.location.href.includes(settingName)) {
                 addSelectedTabToUrl(this.activeTab);
             }
