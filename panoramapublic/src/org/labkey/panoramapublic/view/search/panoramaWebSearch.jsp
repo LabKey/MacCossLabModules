@@ -324,12 +324,12 @@
                 if (protein) {
                     proteinParameters[proteinNameItemId] = protein;
                     updateUrlFilters(null, proteinNameItemId, protein);
-                    searchCriteriaString += " Protein: " + protein + ";";
+                    searchCriteriaString += "'" + protein + "'";
                 }
                 if (exactProteinMatch) {
                     proteinParameters[exactMatch] = exactProteinMatch;
                     updateUrlFilters(null, exactProteinMatchesItemId, exactProteinMatch);
-                    searchCriteriaString += " Exact Matches Only: " + proteinParameters[exactMatch] + ";";
+                    searchCriteriaString += " with Exact Match ";
                 }
             }
             else if (activeTab === peptideSearchPanelItemId) {
@@ -345,12 +345,12 @@
                 if (peptide) {
                     peptideParameters[peptideSequenceItemId] = peptide;
                     updateUrlFilters(null, peptideSequenceItemId, peptide);
-                    searchCriteriaString += " Peptide: " + peptide + ";";
+                    searchCriteriaString += "'" + peptide + "'";
                 }
                 if (exactPeptideMatch) {
                     peptideParameters[exactMatch] = exactPeptideMatch;
                     updateUrlFilters(null, exactPeptideMatchesItemId, exactPeptideMatch);
-                    searchCriteriaString += " Exact Matches Only: " + peptideParameters[exactMatch] + ";";
+                    searchCriteriaString += " with Exact Match ";
                 }
             }
         }
@@ -365,22 +365,22 @@
             if (context[proteinNameItemId]) {
                 proteinParameters[proteinNameItemId] =  context[proteinNameItemId];
                 document.getElementById(proteinNameItemId).value = context[proteinNameItemId];
-                searchCriteriaString += " Protein: " + context[proteinNameItemId] + ";";
+                searchCriteriaString += "'" + context[proteinNameItemId] + "'";
             }
             if (context[exactProteinMatchesItemId]) {
                 proteinParameters[exactMatch] =  context[exactProteinMatchesItemId];
                 context[exactProteinMatchesItemId] === "true" ? (document.getElementById(exactProteinMatchesItemId).checked = true) : (document.getElementById(exactProteinMatchesItemId).checked = false);
-                searchCriteriaString += " Exact Matches Only: " + proteinParameters[exactMatch] + ";";
+                searchCriteriaString += " with Exact Match ";
             }
             if (context[peptideSequenceItemId]) {
                 peptideParameters[peptideSequenceItemId] =  context[peptideSequenceItemId];
                 document.getElementById(peptideSequenceItemId).value = context[peptideSequenceItemId];
-                searchCriteriaString += " Peptide: " + context[peptideSequenceItemId] + ";";
+                searchCriteriaString += "'" + context[peptideSequenceItemId] + "'";
             }
             if (context[exactPeptideMatchesItemId]) {
                 peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
                 context[exactPeptideMatchesItemId] === "true" ? (document.getElementById(exactPeptideMatchesItemId).checked = true): (document.getElementById(exactPeptideMatchesItemId).checked = false);
-                searchCriteriaString += " Exact Matches Only: " + context[exactPeptideMatchesItemId] + ";";
+                searchCriteriaString += " with Exact Match ";
             }
         }
 
@@ -419,38 +419,47 @@
                 });
             }
             else if (proteinParameters[proteinNameItemId]) {
-                let wp = new LABKEY.QueryWebPart({
-                    renderTo: 'experiment_list_wp',
-                    title: 'The searched protein appeared in the following experiments',
-                    schemaName: 'panoramapublic',
-                    queryName: 'proteinSearch',
-                    showFilterDescription: false,
-                    containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
-                    parameters: proteinParameters,
-                    frame: 'none',
-                    success: function () {
-                        $('#search-criteria-id').empty();
-                        $('#search-criteria-id').append("<b>Protein Search criteria: </b>");
-                        $('#search-criteria-id').append(searchCriteriaString);
-                        $('#search-criteria-id').append("<p></p><p><b>" + this.title + ":</b></p>");
+
+                LABKEY.Portal.getWebParts({
+                    containerPath: this.containerPath,
+                    pageId: 'DefaultDashboard',
+                    success: function (wp) {
+                        let expWebpart = wp.body.filter(webpart => webpart.name === "Targeted MS Experiment List");
+                        if (expWebpart.length === 1) {
+                            let wp = new LABKEY.QueryWebPart({
+                                renderTo: 'webpart_'+ expWebpart[0].webPartId,
+                                title: "The searched protein " + searchCriteriaString + " appeared in the following experiments",
+                                schemaName: 'panoramapublic',
+                                queryName: 'proteinSearch',
+                                showFilterDescription: false,
+                                containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
+                                parameters: proteinParameters,
+                                success: function () {
+                                }
+                            });
+                        }
                     }
                 });
             }
             else if (peptideParameters[peptideSequenceItemId]) {
-                let wp = new LABKEY.QueryWebPart({
-                    renderTo: 'experiment_list_wp',
-                    title: 'The searched peptide appeared in the following experiments',
-                    schemaName: 'panoramapublic',
-                    queryName: 'peptideSearch',
-                    showFilterDescription: false,
-                    containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
-                    parameters: peptideParameters,
-                    frame: 'none',
-                    success: function () {
-                        $('#search-criteria-id').empty();
-                        $('#search-criteria-id').append("<b>Peptide Search criteria: </b>");
-                        $('#search-criteria-id').append(searchCriteriaString);
-                        $('#search-criteria-id').append("<p></p><p><b>" + this.title + ":</p>");
+                LABKEY.Portal.getWebParts({
+                    containerPath: this.containerPath,
+                    pageId: 'DefaultDashboard',
+                    success: function (wp) {
+                        let expWebpart = wp.body.filter(webpart => webpart.name === "Targeted MS Experiment List");
+                        if (expWebpart.length === 1) {
+                            let wp = new LABKEY.QueryWebPart({
+                                renderTo: 'webpart_'+ expWebpart[0].webPartId,
+                                title: "The searched peptide " + searchCriteriaString + " appeared in the following experiments",
+                                schemaName: 'panoramapublic',
+                                queryName: 'peptideSearch',
+                                showFilterDescription: false,
+                                containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
+                                parameters: peptideParameters,
+                                success: function () {
+                                }
+                            });
+                        }
                     }
                 });
             }
@@ -531,5 +540,3 @@
     }
 
 </script>
-
-<div id="experiment_list_wp"></div>
