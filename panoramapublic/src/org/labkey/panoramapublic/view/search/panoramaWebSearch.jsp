@@ -84,7 +84,7 @@
                     </td>
                     <td style="width: 5px"></td>
                     <td>
-                        <button id="clear-all-button-id-experiment" class="clear-all-button" onclick=clearInputFields("experiment")>Clear All</button>
+                        <button id="clear-all-button-id-experiment" class="clear-all-button" onclick=clearInputFieldsAndResetURL("experiment")>Clear All</button>
                     </td>
                 </tr>
                 <tr>
@@ -111,7 +111,7 @@
 
                     <td style="width: 5px"></td>
                     <td>
-                        <button id="clear-all-button-id-protein" class="clear-all-button" onclick=clearInputFields("protein")>Clear All</button>
+                        <button id="clear-all-button-id-protein" class="clear-all-button" onclick=clearInputFieldsAndResetURL("protein")>Clear All</button>
                     </td>
                 </tr>
                 <tr style="height: 10px"></tr>
@@ -135,7 +135,7 @@
 
                     <td style="width: 5px"></td>
                     <td>
-                        <button id="clear-all-button-id-peptide" class="clear-all-button" onclick=clearInputFields("peptide")>Clear All</button>
+                        <button id="clear-all-button-id-peptide" class="clear-all-button" onclick=clearInputFieldsAndResetURL("peptide")>Clear All</button>
                     </td>
                 </tr>
                 <tr style="height: 10px"></tr>
@@ -224,6 +224,12 @@
         $('.instrument').tagsinput('removeAll');
     };
 
+    let resetUrl = function () {
+        let currentURL = window.location.href;
+        let newURL = currentURL.substring(0, currentURL.indexOf("?"));
+        location.replace(newURL);
+    };
+
     let clearInputFromProteinTab = function () {
         document.getElementById(proteinNameItemId).value = "";
         document.getElementById(exactProteinMatchesItemId).checked = false;
@@ -251,16 +257,19 @@
         }
     };
 
-    let clearInputFields = function(searchTabName) {
+    let clearInputFieldsAndResetURL = function(searchTabName) {
         switch (searchTabName) {
             case "experiment":
                 clearInputFromExperimentTab();
+                resetUrl();
                 break;
             case "peptide":
                 clearInputFromPeptideTab();
+                resetUrl();
                 break;
             case "protein":
                 clearInputFromProteinTab();
+                resetUrl();
                 break;
             default:
                 break;
