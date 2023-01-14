@@ -214,7 +214,7 @@
 
     let resetUrl = function () {
         let currentURL = window.location.href;
-        let newURL = currentURL.substring(0, currentURL.indexOf("?"));
+        let newURL = currentURL.substring(0, currentURL.indexOf("#"));
         location.replace(newURL);
     };
 
