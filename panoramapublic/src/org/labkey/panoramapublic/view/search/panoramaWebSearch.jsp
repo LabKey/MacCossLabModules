@@ -44,7 +44,7 @@
     <label for="peptideSearchPanel" class="search-panel-btn" >Peptide Search</label>
 
     <div class="tabs-container">
-        <div class="tab-1">
+        <div class="tab-1 search-tab">
             <table class="lk-fields-table">
                 <tr style="height: 10px"></tr>
                 <tr>
@@ -84,7 +84,7 @@
                     </td>
                     <td style="width: 5px"></td>
                     <td>
-                        <button id="clear-all-button-id-experiment" class="clear-all-button" onclick=clearInputFieldsAndResetURL("experiment")>Clear All</button>
+                        <button id="clear-all-button-id-experiment" class="clear-all-button" onclick="clearInputFieldsAndResetURL('experiment');">Clear All</button>
                     </td>
                 </tr>
                 <tr>
@@ -93,7 +93,7 @@
                 <tr style="height: 10px"></tr>
             </table>
         </div>
-        <div class="tab-2">
+        <div class="tab-2 search-tab">
             <table class="lk-fields-table">
                 <tr style="height: 10px"></tr>
                 <tr>
@@ -111,13 +111,13 @@
 
                     <td style="width: 5px"></td>
                     <td>
-                        <button id="clear-all-button-id-protein" class="clear-all-button" onclick=clearInputFieldsAndResetURL("protein")>Clear All</button>
+                        <button id="clear-all-button-id-protein" class="clear-all-button" onclick="clearInputFieldsAndResetURL('protein');">Clear All</button>
                     </td>
                 </tr>
                 <tr style="height: 10px"></tr>
             </table>
         </div>
-        <div class="tab-3">
+        <div class="tab-3 search-tab">
             <table class="lk-fields-table">
                 <tr style="height: 10px"></tr>
                 <tr>
@@ -135,7 +135,7 @@
 
                     <td style="width: 5px"></td>
                     <td>
-                        <button id="clear-all-button-id-peptide" class="clear-all-button" onclick=clearInputFieldsAndResetURL("peptide")>Clear All</button>
+                        <button id="clear-all-button-id-peptide" class="clear-all-button" onclick="clearInputFieldsAndResetURL('peptide');">Clear All</button>
                     </td>
                 </tr>
                 <tr style="height: 10px"></tr>
@@ -143,7 +143,7 @@
         </div>
     </div>
     <div>
-        <button id="search-button-id" class="labkey-button" onclick=handleRendering(true)>Search</button>
+        <button id="search-button-id" class="labkey-button" onclick="handleRendering('true');">Search</button>
     </div>
     <div id="search-criteria-id"/>
 
@@ -183,7 +183,7 @@
 
         document.getElementById(expSearchPanelItemId).addEventListener("click", function() {
             activeTab = expSearchPanelItemId;
-            updateUrlFilters(activeTab);
+            addSelectedTabToUrl(activeTab)
         });
 
         document.getElementById(proteinSearchPanelItemId).addEventListener("click", function() {
@@ -198,19 +198,7 @@
     });
 
     //submit form via Enter key
-    $('.tab-1').keypress((e) => {
-        if (e.which === 13) {
-            handleRendering(true);
-        }
-    });
-
-    $('.tab-2').keypress((e) => {
-        if (e.which === 13) {
-            handleRendering(true);
-        }
-    });
-
-    $('.tab-3').keypress((e) => {
+    $('.search-tab').keypress((e) => {
         if (e.which === 13) {
             handleRendering(true);
         }
@@ -261,19 +249,17 @@
         switch (searchTabName) {
             case "experiment":
                 clearInputFromExperimentTab();
-                resetUrl();
                 break;
             case "peptide":
                 clearInputFromPeptideTab();
-                resetUrl();
                 break;
             case "protein":
                 clearInputFromProteinTab();
-                resetUrl();
                 break;
             default:
                 break;
         }
+        resetUrl();
     };
 
     let handleRendering = function (onTabClick) {
@@ -291,6 +277,7 @@
 
             if (activeTab === expSearchPanelItemId) {
 
+                addSelectedTabToUrl(activeTab);
                 clearInputFromProteinTab();
                 clearInputFromPeptideTab();
 
@@ -319,6 +306,9 @@
                 if (expSearchParams !== "") {
                     location.replace(window.location.href + "?" + expSearchParams);
                 }
+                else {
+                    resetUrl();
+                }
             }
             else if (activeTab === proteinSearchPanelItemId) {
 
@@ -330,11 +320,10 @@
                 let protein = document.getElementById(proteinNameItemId).value;
                 let exactProteinMatch = document.getElementById(exactProteinMatchesItemId).checked;
 
-                if (protein) {
-                    proteinParameters[proteinNameItemId] = protein;
-                    updateUrlFilters(null, proteinNameItemId, protein);
-                    searchCriteriaString += "'" + protein + "'";
-                }
+                proteinParameters[proteinNameItemId] = protein;
+                updateUrlFilters(null, proteinNameItemId, protein);
+                searchCriteriaString += "'" + protein + "'";
+
                 if (exactProteinMatch) {
                     proteinParameters[exactMatch] = exactProteinMatch;
                     updateUrlFilters(null, exactProteinMatchesItemId, exactProteinMatch);
@@ -351,11 +340,10 @@
                 let peptide = document.getElementById(peptideSequenceItemId).value;
                 let exactPeptideMatch = document.getElementById(exactPeptideMatchesItemId).checked;
 
-                if (peptide) {
-                    peptideParameters[peptideSequenceItemId] = peptide;
-                    updateUrlFilters(null, peptideSequenceItemId, peptide);
-                    searchCriteriaString += "'" + peptide + "'";
-                }
+                peptideParameters[peptideSequenceItemId] = peptide;
+                updateUrlFilters(null, peptideSequenceItemId, peptide);
+                searchCriteriaString += "'" + peptide + "'";
+
                 if (exactPeptideMatch) {
                     peptideParameters[exactMatch] = exactPeptideMatch;
                     updateUrlFilters(null, exactPeptideMatchesItemId, exactPeptideMatch);
@@ -388,17 +376,15 @@
             }
             if (context[exactPeptideMatchesItemId]) {
                 peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
-                context[exactPeptideMatchesItemId] === "true" ? (document.getElementById(exactPeptideMatchesItemId).checked = true): (document.getElementById(exactPeptideMatchesItemId).checked = false);
+                document.getElementById(exactPeptideMatchesItemId).checked = context[exactPeptideMatchesItemId] === "true";
                 searchCriteriaString += " with Exact Match ";
             }
         }
 
         // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
-        if (onTabClick || expAnnotationFilters.length > 0 ||
-                proteinParameters[proteinNameItemId] ||
-                peptideParameters[peptideSequenceItemId]) {
+        if (onTabClick) {
 
-            if (expAnnotationFilters.length > 0) {
+            if ((expAnnotationFilters.length > 0 || this.activeTab === expSearchPanelItemId)) {
 
                 LABKEY.Portal.getWebParts({
                     containerPath: this.containerPath,
@@ -408,10 +394,9 @@
                         if (expWebpart.length === 1) {
                             let wp = new LABKEY.QueryWebPart({
                                 renderTo: 'webpart_'+ expWebpart[0].webPartId,
-                                title: 'Targeted MS Experiment List',
+                                title: 'Panorama Public Experiments',
                                 schemaName: 'panoramapublic',
                                 queryName: 'ExperimentAnnotations',
-                                showFilterDescription: false,
                                 containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                                 filters: expAnnotationFilters,
                                 removeableFilters: expAnnotationFilters,
@@ -427,7 +412,7 @@
                     }
                 });
             }
-            else if (proteinParameters[proteinNameItemId]) {
+            else if (proteinParameters[proteinNameItemId] || this.activeTab === proteinSearchPanelItemId) {
 
                 LABKEY.Portal.getWebParts({
                     containerPath: this.containerPath,
@@ -450,7 +435,7 @@
                     }
                 });
             }
-            else if (peptideParameters[peptideSequenceItemId]) {
+            else if (peptideParameters[peptideSequenceItemId] || this.activeTab === peptideSearchPanelItemId) {
                 LABKEY.Portal.getWebParts({
                     containerPath: this.containerPath,
                     pageId: 'DefaultDashboard',
@@ -482,7 +467,7 @@
             var item = part.split("=");
             var name = decodeURIComponent(item[0]);
             var value = decodeURIComponent(item[1]);
-            if(name.endsWith("List.author~containsoneof")) {document.getElementById(authorsItemId).value = value;}
+            if(name.endsWith("List.authors~containsoneof")) {document.getElementById(authorsItemId).value = value;}
             if(name.endsWith("List.title~containsoneof")) {document.getElementById(titleItemId).value = value;}
             if(name.endsWith("List.organism~containsoneof")) {document.getElementById(organismItemId).value = value;}
             if(name.endsWith("List.instrument~containsoneof")) {document.getElementById(instrumentItemId).value = value;}

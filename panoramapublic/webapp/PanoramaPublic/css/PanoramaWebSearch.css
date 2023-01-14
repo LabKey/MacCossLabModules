@@ -19,7 +19,7 @@ input::placeholder {
     cursor: pointer;
     display: block;
     float: left;
-    font-family: "Roboto",Arial,Helvetica,sans-serif;
+    font-family: Roboto,Arial,Helvetica,sans-serif;
     font-weight: normal;
     font-size: 13px;
     height: 25px;
