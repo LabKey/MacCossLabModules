@@ -289,7 +289,7 @@
                 let expSearchParams = "";
                 if (author) {
                     expAnnotationFilters.push(createFilter(authorsItemId, author));
-                    expSearchParams += "Targeted MS Experiment List." + "author~containsoneof" + "=" + author + "&";
+                    expSearchParams += "Targeted MS Experiment List." + "authors~containsoneof" + "=" + author + "&";
                 }
                 if (title) {
                     expAnnotationFilters.push(createFilter(titleItemId, title));
