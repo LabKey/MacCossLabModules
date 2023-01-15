@@ -82,7 +82,7 @@
                             <input class="tags instrument" type="text" id="Instrument" name="Instrument" placeholder="  Enter Instrument  " value=""/>
                         </div>
                     </td>
-                    <td style="width: 5px"></td>
+                    <td style="width: 25px"></td>
                     <td>
                         <button id="clear-all-button-id-experiment" class="clear-all-button" onclick="clearInputFieldsAndResetURL('experiment');">Clear All</button>
                     </td>
@@ -109,7 +109,7 @@
                     <td>Exact Matches Only:<%=helpPopup("Exact Matches Only", "If checked, the search will only find proteins with an exact name match. If not checked, proteins that contain the name entered will also match, but the search may be significantly slower.")%></td>
                     <td style="padding-top: 0.75%; padding-left: 5px"><labkey:checkbox id="exactProteinMatches" name="exactProteinMatches" value=""/></td>
 
-                    <td style="width: 5px"></td>
+                    <td style="width: 25px"></td>
                     <td>
                         <button id="clear-all-button-id-protein" class="clear-all-button" onclick="clearInputFieldsAndResetURL('protein');">Clear All</button>
                     </td>
@@ -133,7 +133,7 @@
                     <td>Exact Matches Only:<%=helpPopup("Exact Matches Only", "If checked, the search will match the peptides exactly; if unchecked, it will match any peptide that contain the specified sequence.")%></td>
                     <td style="padding-top: 0.75%; padding-left: 5px"><labkey:checkbox id="exactPeptideMatches" name="exactPeptideMatches" value=""/></td>
 
-                    <td style="width: 5px"></td>
+                    <td style="width: 25px"></td>
                     <td>
                         <button id="clear-all-button-id-peptide" class="clear-all-button" onclick="clearInputFieldsAndResetURL('peptide');">Clear All</button>
                     </td>

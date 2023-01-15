@@ -85,7 +85,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
     {
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME).search();
+        panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME).clickSearch();
 
         DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "Panorama Public Experiments");
         CustomizeView customizeView = table.openCustomizeGrid();
@@ -98,7 +98,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
                 .setOrganism("Homo")
                 .setAuthor("")
                 .setInstrument("Thermo")
-                .search();
+                .clickSearch();
         checker().verifyEquals("Incorrect search results", 2, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
@@ -107,7 +107,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
                 .setInstrument("")
                 .setTitle("Experiment")
                 .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
-                .search();
+                .clickSearch();
         checker().verifyEquals("Incorrect search results", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
@@ -119,7 +119,9 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         log("Protein : Partial match and results across folder");
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        DataRegionTable table = panoramaPublicSearch.gotoProteinSearch().setProtein("R").search();
+        panoramaPublicSearch.gotoProteinSearch().setProtein("R").clickSearch();
+
+        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched protein 'R' appeared in the following experiments");
         checker().verifyEquals("Incorrect protein searched with partial match", 2, table.getDataRowCount());
 
         clickAndWait(Locator.linkWithText("3"));
@@ -138,7 +140,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         log("Protein : Exact match and result should be one row");
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        table = panoramaPublicSearch.gotoProteinSearch().setProtein("00706094|Alpha").setProteinExactMatch(true).search();
+        panoramaPublicSearch.gotoProteinSearch().setProtein("00706094|Alpha").setProteinExactMatch(true).clickSearch();
+        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched protein '00706094|Alpha' with Exact Match appeared in the following experiments");
         checker().verifyEquals("Incorrect protein searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactProteinMatch");
 
@@ -149,7 +152,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         log("Protein : Exact match and no result");
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        table = panoramaPublicSearch.gotoProteinSearch().setProtein("00706094Alpha").setProteinExactMatch(true).search();
+        panoramaPublicSearch.gotoProteinSearch().setProtein("00706094Alpha").setProteinExactMatch(true).clickSearch();
+        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched protein '00706094Alpha' with Exact Match appeared in the following experiments");
         checker().verifyEquals("Incorrect protein searched with exact match", 0, table.getDataRowCount());
     }
 
