@@ -382,9 +382,12 @@
         }
 
         // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
-        if (onTabClick) {
+        // also, handle empty inputs
+        if (onTabClick || (expAnnotationFilters.length > 0 || this.activeTab === expSearchPanelItemId) ||
+                (proteinParameters[proteinNameItemId] || this.activeTab === proteinSearchPanelItemId) ||
+                (peptideParameters[peptideSequenceItemId] || this.activeTab === peptideSearchPanelItemId)) {
 
-            if ((expAnnotationFilters.length > 0 || this.activeTab === expSearchPanelItemId)) {
+            if (expAnnotationFilters.length > 0 || this.activeTab === expSearchPanelItemId) {
 
                 LABKEY.Portal.getWebParts({
                     containerPath: this.containerPath,

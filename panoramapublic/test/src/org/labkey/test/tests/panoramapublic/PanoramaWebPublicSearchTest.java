@@ -6,6 +6,7 @@ import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
+import org.labkey.test.categories.Data;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.BodyWebPart;
@@ -163,7 +164,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         log("Peptide : Partial match and results across folder");
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        DataRegionTable table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("VL").search();
+        panoramaPublicSearch.gotoPeptideSearch().setPeptide("VL").clickSearch();
+        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide 'VL' appeared in the following experiments");
         checker().verifyEquals("Incorrect peptide searched with partial match", 2, table.getDataRowCount());
 
         clickAndWait(Locator.linkWithText("3"));
@@ -181,7 +183,9 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         log("Peptide : Exact match and result should be one row");
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("GFCGLSQPK").setPeptideExactMatch(true).search();
+        panoramaPublicSearch.gotoPeptideSearch().setPeptide("GFCGLSQPK").setPeptideExactMatch(true).clickSearch();
+        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide 'GFCGLSQPK' with Exact Match appeared in the following experiments");
+
         checker().verifyEquals("Incorrect peptide searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactPeptideMatch");
 
@@ -192,7 +196,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         log("Peptide : Exact match and no result");
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("XYZ").setPeptideExactMatch(true).search();
+        panoramaPublicSearch.gotoPeptideSearch().setPeptide("XYZ").setPeptideExactMatch(true).clickSearch();
+        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide 'XYZ' with Exact Match appeared in the following experiments");
         checker().verifyEquals("Incorrect peptide searched with exact match", 0, table.getDataRowCount());
     }
 
