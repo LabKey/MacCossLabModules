@@ -399,7 +399,6 @@
                                 queryName: 'ExperimentAnnotations',
                                 containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                                 filters: expAnnotationFilters,
-                                removeableFilters: expAnnotationFilters,
                                 showRecordSelectors: false,
                                 showDeleteButton: false,
                                 showExportButtons: false,//this needs to be set to false otherwise setting selectRecordSelector to false still shows the checkbox column

@@ -8,6 +8,7 @@ import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
+import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.components.CustomizeView;
 import org.labkey.test.components.panoramapublic.PanoramaPublicSearchWebPart;
 import org.labkey.test.util.ApiPermissionsHelper;
@@ -48,6 +49,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
     {
         goToProjectHome();
         portalHelper.addBodyWebPart("Panorama Public Search");
+        portalHelper.addBodyWebPart("Targeted MS Experiment List");
 
         setupSubfolder(getProjectName(), SUBFOLDER_1, FolderType.Experiment);
         importData(SKY_FILE_1, 1);
@@ -79,19 +81,20 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
     }
 
     @Test
-    public void testExperimentalSearch()
+    public void testExperimentSearch()
     {
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        DataRegionTable table = panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME)
-                .search();
+        panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME).search();
+
+        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "Panorama Public Experiments");
         CustomizeView customizeView = table.openCustomizeGrid();
         customizeView.addColumn("Authors");
         customizeView.applyCustomView(0);
         checker().verifyEquals("Incorrect search result for author", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect result", AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + ",", table.getDataAsText(0, "Authors"));
 
-        table = panoramaPublicSearch
+        panoramaPublicSearch
                 .setOrganism("Homo")
                 .setAuthor("")
                 .setInstrument("Thermo")
@@ -100,7 +103,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
 
-        table = panoramaPublicSearch.setOrganism("")
+        panoramaPublicSearch.setOrganism("")
                 .setInstrument("")
                 .setTitle("Experiment")
                 .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
