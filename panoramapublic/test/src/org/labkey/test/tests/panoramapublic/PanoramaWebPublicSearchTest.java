@@ -6,15 +6,18 @@ import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
+import org.labkey.test.WebDriverWrapper;
 import org.labkey.test.categories.Data;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.components.CustomizeView;
 import org.labkey.test.components.panoramapublic.PanoramaPublicSearchWebPart;
+import org.labkey.test.selenium.RefindingWebElement;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.PermissionsHelper;
+import org.labkey.test.util.PortalHelper;
 
 import java.util.Arrays;
 
@@ -142,7 +145,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoProteinSearch().setProtein("00706094|Alpha").setProteinExactMatch(true).clickSearch();
-        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched protein '00706094|Alpha' with Exact Match appeared in the following experiments");
+        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("The searched protein"), getDriver()));
         checker().verifyEquals("Incorrect protein searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactProteinMatch");
 
@@ -154,7 +157,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoProteinSearch().setProtein("00706094Alpha").setProteinExactMatch(true).clickSearch();
-        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched protein '00706094Alpha' with Exact Match appeared in the following experiments");
+        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("The searched protein"), getDriver()));
         checker().verifyEquals("Incorrect protein searched with exact match", 0, table.getDataRowCount());
     }
 
@@ -184,7 +187,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoPeptideSearch().setPeptide("GFCGLSQPK").setPeptideExactMatch(true).clickSearch();
-        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide 'GFCGLSQPK' with Exact Match appeared in the following experiments");
+        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("The searched peptide"), getDriver()));
 
         checker().verifyEquals("Incorrect peptide searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactPeptideMatch");
@@ -197,7 +200,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoPeptideSearch().setPeptide("XYZ").setPeptideExactMatch(true).clickSearch();
-        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide 'XYZ' with Exact Match appeared in the following experiments");
+        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("The searched peptide"), getDriver()));
         checker().verifyEquals("Incorrect peptide searched with exact match", 0, table.getDataRowCount());
     }
 
