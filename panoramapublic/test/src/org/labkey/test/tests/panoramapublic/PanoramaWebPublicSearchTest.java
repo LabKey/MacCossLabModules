@@ -100,6 +100,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
                 .setAuthor("")
                 .setInstrument("Thermo")
                 .clickSearch();
+        scrollIntoView(Locator.linkContainingText("Submitter Experiment"));
         checker().verifyEquals("Incorrect search results", 2, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
