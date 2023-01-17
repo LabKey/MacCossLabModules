@@ -289,19 +289,19 @@
                 let expSearchParams = "";
                 if (author) {
                     expAnnotationFilters.push(createFilter(authorsItemId, author));
-                    expSearchParams += "Targeted MS Experiment List." + "authors~containsoneof" + "=" + author + "&";
+                    expSearchParams += "Targeted MS Experiment List." + "authors~containsoneof" + "=" + encodeURIComponent(author) + "&";
                 }
                 if (title) {
                     expAnnotationFilters.push(createFilter(titleItemId, title));
-                    expSearchParams += "Targeted MS Experiment List." + "title~containsoneof" + "=" + title + "&";
+                    expSearchParams += "Targeted MS Experiment List." + "title~containsoneof" + "=" + encodeURIComponent(title) + "&";
                 }
                 if (organism) {
                     expAnnotationFilters.push(createFilter(organismItemId, organism));
-                    expSearchParams += "Targeted MS Experiment List." + "organism~containsoneof" + "=" + organism + "&";
+                    expSearchParams += "Targeted MS Experiment List." + "organism~containsoneof" + "=" + encodeURIComponent(organism) + "&";
                 }
                 if (instrument) {
                     expAnnotationFilters.push(createFilter(instrumentItemId, instrument));
-                    expSearchParams += "Targeted MS Experiment List." + "instrument~containsoneof" + "=" + instrument;
+                    expSearchParams += "Targeted MS Experiment List." + "instrument~containsoneof" + "=" + encodeURIComponent(instrument);
                 }
                 if (expSearchParams !== "") {
                     location.replace(window.location.href + "?" + expSearchParams);
