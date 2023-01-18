@@ -122,7 +122,7 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
     public DataRegionTable search()
     {
         elementCache().search.click();
-        return new DataRegionTable.DataRegionFinder(getDriver()).waitFor(this);
+        return new DataRegionTable.DataRegionFinder(getDriver()).refindWhenNeeded(this);
     }
 
     public void clickSearch()

@@ -95,22 +95,22 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         checker().verifyEquals("Incorrect search result for author", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect result", AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + ",", table.getDataAsText(0, "Authors"));
 
-        panoramaPublicSearch
+        table = panoramaPublicSearch
                 .setOrganism("Homo")
                 .setAuthor("")
                 .setInstrument("Thermo")
-                .clickSearch();
-        scrollIntoView(Locator.linkContainingText("Submitter Experiment"));
+                .search();
+//        table = new DataRegionTable.DataRegionFinder(getDriver()).withName("Targeted MS Experiment List").refindWhenNeeded(getDriver());
         checker().verifyEquals("Incorrect search results", 2, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
 
-        panoramaPublicSearch.setOrganism("")
+        table = panoramaPublicSearch.setOrganism("")
                 .setInstrument("")
                 .setTitle("Experiment")
                 .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
-                .clickSearch();
-        scrollIntoView(Locator.linkContainingText("Submitter Experiment"));
+                .search();
+//        table = new DataRegionTable.DataRegionFinder(getDriver()).withName("Targeted MS Experiment List").refindWhenNeeded(getDriver());
         checker().verifyEquals("Incorrect search results", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
