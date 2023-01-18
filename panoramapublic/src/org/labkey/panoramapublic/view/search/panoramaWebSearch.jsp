@@ -297,11 +297,11 @@
                 }
                 if (organism) {
                     expAnnotationFilters.push(createFilter(organismItemId, organism));
-                    expSearchParams += "Targeted MS Experiment List." + "organism~containsoneof" + "=" + encodeURIComponent(organism) + "&";
+                    expSearchParams += "Targeted MS Experiment List." + "organism~containsoneof" + "=" + encodeURIComponent(organism.replaceAll(",", ";")) + "&";
                 }
                 if (instrument) {
                     expAnnotationFilters.push(createFilter(instrumentItemId, instrument));
-                    expSearchParams += "Targeted MS Experiment List." + "instrument~containsoneof" + "=" + encodeURIComponent(instrument);
+                    expSearchParams += "Targeted MS Experiment List." + "instrument~containsoneof" + "=" + encodeURIComponent(instrument.replaceAll(",", ";"));
                 }
                 if (expSearchParams !== "") {
                     location.replace(window.location.href + "?" + expSearchParams);
