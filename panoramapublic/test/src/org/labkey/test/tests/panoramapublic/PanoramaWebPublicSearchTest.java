@@ -173,7 +173,6 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         checker().verifyEquals("Incorrect peptide searched with partial match", 0, table.getDataRowCount());
 
         log("Peptide : Partial match and results across folder");
-        goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoPeptideSearch().setPeptide("VL").clickSearch();
         table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide 'VL' appeared in the following experiments");
