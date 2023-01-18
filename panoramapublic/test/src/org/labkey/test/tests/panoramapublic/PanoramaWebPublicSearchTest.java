@@ -115,12 +115,18 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
     @Test
     public void testProteinSearch()
     {
-        log("Protein : Partial match and results across folder");
+        log("Empty protein search");
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
+        panoramaPublicSearch.gotoProteinSearch().setProtein("").clickSearch();
+        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched protein '' appeared in the following experiments");
+        checker().verifyEquals("Incorrect protein searched with partial match", 0, table.getDataRowCount());
+
+        log("Protein : Partial match and results across folder");
+        panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoProteinSearch().setProtein("R").clickSearch();
 
-        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched protein 'R' appeared in the following experiments");
+        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched protein 'R' appeared in the following experiments");
         checker().verifyEquals("Incorrect protein searched with partial match", 2, table.getDataRowCount());
 
         clickAndWait(Locator.linkWithText("3"));
@@ -159,11 +165,18 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
     @Test
     public void testPeptideSearch()
     {
-        log("Peptide : Partial match and results across folder");
+        log("Empty peptide Search");
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
+        panoramaPublicSearch.gotoPeptideSearch().setPeptide("").clickSearch();
+        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide '' appeared in the following experiments");
+        checker().verifyEquals("Incorrect peptide searched with partial match", 0, table.getDataRowCount());
+
+        log("Peptide : Partial match and results across folder");
+        goToProjectHome();
+        panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoPeptideSearch().setPeptide("VL").clickSearch();
-        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide 'VL' appeared in the following experiments");
+        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide 'VL' appeared in the following experiments");
         checker().verifyEquals("Incorrect peptide searched with partial match", 2, table.getDataRowCount());
 
         clickAndWait(Locator.linkWithText("3"));
