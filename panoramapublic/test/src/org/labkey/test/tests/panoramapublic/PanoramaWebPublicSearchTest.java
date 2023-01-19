@@ -92,6 +92,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME).clickSearch();
+        waitForElement(Locator.linkContainingText("Submitter Experiment"));
 
         DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, searchResultsDataRegionName);
         CustomizeView customizeView = table.openCustomizeGrid();
