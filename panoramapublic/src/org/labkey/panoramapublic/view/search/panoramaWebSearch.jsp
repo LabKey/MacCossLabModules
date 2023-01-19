@@ -383,11 +383,11 @@
 
         // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
         // also, handle empty inputs
-        if (onTabClick || (expAnnotationFilters.length > 0 || this.activeTab === expSearchPanelItemId) ||
-                (proteinParameters[proteinNameItemId] || this.activeTab === proteinSearchPanelItemId) ||
-                (peptideParameters[peptideSequenceItemId] || this.activeTab === peptideSearchPanelItemId)) {
+        if (onTabClick || (expAnnotationFilters.length > 0 || activeTab === expSearchPanelItemId) ||
+                (proteinParameters[proteinNameItemId] || activeTab === proteinSearchPanelItemId) ||
+                (peptideParameters[peptideSequenceItemId] || activeTab === peptideSearchPanelItemId)) {
 
-            if (expAnnotationFilters.length > 0 || this.activeTab === expSearchPanelItemId) {
+            if (expAnnotationFilters.length > 0 || activeTab === expSearchPanelItemId) {
 
                 LABKEY.Portal.getWebParts({
                     containerPath: this.containerPath,
@@ -414,7 +414,7 @@
                     }
                 });
             }
-            else if (proteinParameters[proteinNameItemId] || this.activeTab === proteinSearchPanelItemId) {
+            else if (proteinParameters[proteinNameItemId] || activeTab === proteinSearchPanelItemId) {
 
                 LABKEY.Portal.getWebParts({
                     containerPath: this.containerPath,
@@ -437,7 +437,7 @@
                     }
                 });
             }
-            else if (peptideParameters[peptideSequenceItemId] || this.activeTab === peptideSearchPanelItemId) {
+            else if (peptideParameters[peptideSequenceItemId] || activeTab === peptideSearchPanelItemId) {
                 LABKEY.Portal.getWebParts({
                     containerPath: this.containerPath,
                     pageId: 'DefaultDashboard',
@@ -462,18 +462,27 @@
         }
     };
 
-    function parseUrlQueryParams()
-    {
-        var query= location.search.substr(1);
-        query.split("&").forEach(function (part) {
-            var item = part.split("=");
-            var name = decodeURIComponent(item[0]);
-            var value = decodeURIComponent(item[1]);
-            if(name.endsWith("List.authors~containsoneof")) {document.getElementById(authorsItemId).value = value;}
-            if(name.endsWith("List.title~containsoneof")) {document.getElementById(titleItemId).value = value;}
-            if(name.endsWith("List.organism~containsoneof")) {document.getElementById(organismItemId).value = value;}
-            if(name.endsWith("List.instrument~containsoneof")) {document.getElementById(instrumentItemId).value = value;}
-        });
+    function parseUrlQueryParams() {
+        if (document.location.hash.includes('?')) {
+            var query = document.location.hash.split('?')[1];
+            query.split("&").forEach(function (part) {
+                var item = part.split("=");
+                var name = decodeURIComponent(item[0]);
+                var value = decodeURIComponent(item[1]);
+                if (name.endsWith("List.authors~containsoneof")) {
+                    document.getElementById(authorsItemId).value = value;
+                }
+                if (name.endsWith("List.title~containsoneof")) {
+                    document.getElementById(titleItemId).value = value;
+                }
+                if (name.endsWith("List.organism~containsoneof")) {
+                    document.getElementById(organismItemId).value = value;
+                }
+                if (name.endsWith("List.instrument~containsoneof")) {
+                    document.getElementById(instrumentItemId).value = value;
+                }
+            });
+        }
     }
 
     function getFiltersFromUrl () {
@@ -481,7 +490,12 @@
 
         if (document.location.hash) {
             let token = document.location.hash.split('#');
-            token = token[1].split('&');
+            if (token[1].includes(expSearchPanelItemId)) {
+                token = token[1].split('?');
+            }
+            else {
+                token = token[1].split('&');
+            }
 
             for (let i = 0; i < token.length; i++) {
                 let t = token[i].split(':');
