@@ -87,27 +87,30 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME).clickSearch();
-        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "Targeted MS Experiment List ");
+
+        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "Panorama Public Experiments");
         CustomizeView customizeView = table.openCustomizeGrid();
         customizeView.addColumn("Authors");
         customizeView.applyCustomView(0);
         checker().verifyEquals("Incorrect search result for author", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect result", AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + ",", table.getDataAsText(0, "Authors"));
 
-        table = panoramaPublicSearch
+        panoramaPublicSearch
                 .setOrganism("Homo")
                 .setAuthor("")
                 .setInstrument("Thermo")
-                .search();
+                .clickSearch();
+        scrollIntoView(Locator.linkContainingText("Submitter Experiment"));
         checker().verifyEquals("Incorrect search results", 2, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
 
-        table = panoramaPublicSearch.setOrganism("")
+        panoramaPublicSearch.setOrganism("")
                 .setInstrument("")
                 .setTitle("Experiment")
                 .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
-                .search();
+                .clickSearch();
+        scrollIntoView(Locator.linkContainingText("Submitter Experiment"));
         checker().verifyEquals("Incorrect search results", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
