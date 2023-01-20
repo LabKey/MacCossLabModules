@@ -92,9 +92,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME).clickSearch();
-        waitForElement(Locator.linkContainingText("Submitter Experiment"));
 
-        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, searchResultsDataRegionName);
+        DataRegionTable table = new DataRegionTable("Targeted MS Experiment List", this);
         CustomizeView customizeView = table.openCustomizeGrid();
         customizeView.addColumn("Authors");
         customizeView.applyCustomView(0);
@@ -106,7 +105,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
                 .setAuthor("")
                 .setInstrument("Thermo")
                 .clickSearch();
-        waitForElement(Locator.linkContainingText("Submitter Experiment"));
+        table = new DataRegionTable("Targeted MS Experiment List", this);
 
         checker().verifyEquals("Incorrect search results", 2, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"),
@@ -117,7 +116,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
                 .setTitle("Experiment")
                 .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
                 .clickSearch();
-        waitForElement(Locator.linkContainingText("Submitter Experiment"));
+        table = new DataRegionTable("Targeted MS Experiment List", this);
         checker().verifyEquals("Incorrect search results", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
