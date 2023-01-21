@@ -22,6 +22,7 @@
             queryName: 'peptideSearchResults',
             showFilterDescription: false,
             parameters: {peptideSequence : peptideSequence, exactMatch: exactMatch},
+            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
             success: function () {
                 if (Ext4.get('search-indicator')) {
                     Ext4.get('search-indicator').unmask();
