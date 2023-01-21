@@ -8,6 +8,7 @@ import org.labkey.api.view.WebPartFactory;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
+import org.labkey.test.WebDriverWrapper;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.CustomizeView;
@@ -88,32 +89,41 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
     @Test
     public void testExperimentSearch()
     {
+        log("Experiment Search with Author");
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        DataRegionTable table = panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME).searchExperiments();
+        panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME).clickSearch();
+        WebDriverWrapper.waitFor(() -> Locator.tagWithClassContaining("tr", "-row").findElements(getDriver()).size() == 1, 3000);
 
+        DataRegionTable table = new DataRegionTable("Targeted MS Experiment List", getDriver());
         CustomizeView customizeView = table.openCustomizeGrid();
         customizeView.addColumn("Authors");
         customizeView.applyCustomView(0);
         checker().verifyEquals("Incorrect search result for author", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect result", AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + ",", table.getDataAsText(0, "Authors"));
 
-        table = panoramaPublicSearch
+        log("Experiment Search with Organism and Instrument");
+        panoramaPublicSearch
                 .setOrganism("Homo")
                 .setAuthor("")
                 .setInstrument("Thermo")
-                .searchExperiments();
+                .clickSearch();
+        WebDriverWrapper.waitFor(() -> Locator.tagWithClassContaining("tr", "-row").findElements(getDriver()).size() == 2, 3000);
 
+        table = new DataRegionTable("Targeted MS Experiment List", getDriver());
         checker().verifyEquals("Incorrect search results", 2, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
 
-        table = panoramaPublicSearch.setOrganism("")
+        log("Experiment Search with Author full name, Title, and Organism");
+        panoramaPublicSearch.setOrganism("")
                 .setInstrument("")
                 .setTitle("Experiment")
                 .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
-                .searchExperiments();
+                .clickSearch();
+        WebDriverWrapper.waitFor(() -> Locator.tagWithClassContaining("tr", "-row").findElements(getDriver()).size() == 1, 3000);
 
+        table = new DataRegionTable("Targeted MS Experiment List", getDriver());
         checker().verifyEquals("Incorrect search results", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Submitter Experiment"),
                 table.getColumnDataAsText("Title"));

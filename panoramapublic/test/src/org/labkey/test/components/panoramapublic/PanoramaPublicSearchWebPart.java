@@ -130,12 +130,6 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
         elementCache().search.click();
     }
 
-    public DataRegionTable searchExperiments()
-    {
-        elementCache().search.click();
-        return new DataRegionTable("Targeted MS Experiment List", getDriver()); //"Targeted MS Experiment List" is the actual webpart name, "Panorama Public Experiments" is the title of this webpart
-    }
-
     protected class ElementCache extends BodyWebPart.ElementCache
     {
         //Experiment search
