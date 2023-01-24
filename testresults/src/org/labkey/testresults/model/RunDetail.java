@@ -61,14 +61,13 @@ public class RunDetail implements Comparable<RunDetail>
     private int failedtests;
     private int leakedtests;
     private int averagemem;
-    private Integer medianmem;
 
     public RunDetail()
     {
     }
 
     public RunDetail(int userid, int duration, Date posttime, Date timestamp, String os, int revision, String gitHash, Container container, boolean flagged,
-                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem, byte[] log, int medianmem) {
+                     byte[] xml, byte[] pointsummary, int passedtests, int failedtests, int leakedtests, int averagemem, byte[] log) {
         this.userid = userid;
         this.username = null;
         this.duration = duration;
@@ -90,7 +89,6 @@ public class RunDetail implements Comparable<RunDetail>
         this.leakedtests = leakedtests;
         this.averagemem = averagemem;
         this.log = log;
-        this.medianmem = medianmem;
     }
 
     public Container getContainer()
@@ -330,10 +328,6 @@ public class RunDetail implements Comparable<RunDetail>
 
     public int getAveragemem() { return averagemem; }
 
-    public void setMedianmem(Integer mem) { medianmem = mem;}
-
-//    public int getMedianmem() { return medianmem != null ? medianmem : 0; }
-
     public double getAverageMemory() {
         if (averagemem != 0) {
             return averagemem;
@@ -344,26 +338,6 @@ public class RunDetail implements Comparable<RunDetail>
             total += pass.getTotalMemory();
         }
         return total/passes.length;
-    }
-
-    public double getMedian1000Memory() {
-        return 0;
-        /*if (medianmem == null) {
-            return 0d;
-        }
-        else if(medianmem != 0) {
-            return medianmem;
-        } else if(passes == null || (passes.length > 0 && passes[0] == null))
-            return 0d;
-        if (passes.length > 1000) {
-            return passes[passes.length-500].getTotalMemory();
-        }
-        else if (passes.length < 1000 && passes.length>100){
-            return passes[passes.length-50].getTotalMemory();
-        }
-        else {
-            return passes[passes.length-1].getTotalMemory();
-        }*/
     }
 
     @Override
