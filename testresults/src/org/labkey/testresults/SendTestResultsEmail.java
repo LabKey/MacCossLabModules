@@ -108,11 +108,11 @@ public class SendTestResultsEmail implements org.quartz.Job
                 continue;
 
             // build message as an HTML email message
-            ActionURL containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container);
+            ActionURL containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container).addParameter("end", mdyFormatter.format(end));
             String testResultsUrl = AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + containerUrl.getEncodedLocalURIString();
             message.append("<div style='margin:auto; text-align:center;'>")
                 .append("<h1>").append(PageFlowUtil.filter(container.getName())).append("<br><span style='font-size:11px;'>starting: ").append(start.toString()).append("</span></h1>")
-                .append("<h5 style='margin:0; padding:0;'><a href=\"" + testResultsUrl + "end=" + mdyFormatter.format(end) + "\">View Full TestResults</a></h5>")
+                .append("<h5 style='margin:0; padding:0;'><a href=\"" + testResultsUrl + "\">View Full TestResults</a></h5>")
                 .append("</div>");
 
             // MAIN "rundown" table
