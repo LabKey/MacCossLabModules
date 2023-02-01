@@ -135,7 +135,6 @@
     </div>
 
     <% if (showSingleUser) { %>
-<%--            <div id="medianmem"></div>--%>
         <div style="width: 100%; display: flex;">
             <div id="memory" style="flex: 50%;"></div>
             <div id="passes" style="flex: 50%;"></div>
@@ -171,7 +170,6 @@
                     <td><%=run.getDuration()%></td>
                     <td><%=run.getPassedtests()%></td>
                     <td><%=run.getAveragemem()%></td>
-<%--                    <td><%=h(run.getMedianmem())%></td>--%>
                     <td><%=run.getFailedtests()%></td>
                     <td><%=run.getLeakedtests()%></td>
                     <td><%=h(run.getOs())%></td>

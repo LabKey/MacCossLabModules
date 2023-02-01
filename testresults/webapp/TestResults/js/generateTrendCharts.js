@@ -1,5 +1,4 @@
 // In order for script to work the following 4 divs must be included in the file which calls this must contain the following
-//<div id="medianmem" class="c3chart"></div>
 // <div id="duration" class="c3chart"></div>
 // <div id="passes" class="c3chart"></div>
 // <div id="memory" class="c3chart"></div>
@@ -80,7 +79,6 @@ function generateTrendCharts(trendsJson, options) {
         $('#passes').css("display", "none");
         $('#memory').css("display", "none");
         $('#failGraph').css("display", "none");
-        $('#medianmem').css("display", "none");
         return;
     }
 
@@ -89,7 +87,6 @@ function generateTrendCharts(trendsJson, options) {
     var avgMemory = trendsJson.avgMemory;
     var avgTestRuns = trendsJson.avgTestRuns;
     var avgFailures = trendsJson.avgFailures;
-    // var medianmem = trendsJson.medianMemory;
 
     window.GraphTrainRuns = new Set();
 
@@ -147,7 +144,6 @@ function generateTrendCharts(trendsJson, options) {
     avgMemory.unshift(window.GraphInfo.memory.name);
     avgTestRuns.unshift(window.GraphInfo.passes.name);
     avgFailures.unshift(window.GraphInfo.failures.name);
-    // medianmem.unshift("Median Memory");
 
     var axisSettings = {
         x: {
@@ -158,20 +154,6 @@ function generateTrendCharts(trendsJson, options) {
     };
 
     window.GraphObjects = [];
-
-    /*c3.generate({
-        bindto: '#medianmem',
-        padding: { bottom: 25 },
-        data: {
-            x: 'x',
-            columns: [dates, medianmem],
-            colors: { 'Median Memory (calculated from the last entries of a run)' : '#ffff00' }
-        },
-        axis: {
-            x: { type: 'timeseries', localtime: false, tick: { rotate: 75, format: dateFormat } },
-            y: { label: { text: 'Memory (MB)', position: 'outer-middle' } }
-        }
-    });*/
 
     var durationChart = c3.generate({
         bindto: '#duration',
