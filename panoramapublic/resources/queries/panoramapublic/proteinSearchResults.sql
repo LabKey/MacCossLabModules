@@ -28,30 +28,34 @@ WHERE (
         OR (
                 seq.SeqId IN
                 (
-                    SELECT SeqId
-                    FROM protein.sequences s
-                    WHERE LOWER(s.BestName) LIKE
-                    LOWER((CASE WHEN exactMatch = true THEN '' ELSE '%' END) || proteinLabel || (CASE WHEN exactMatch = true THEN '' ELSE '%' END) )
+                    SELECT s2.SeqId
+                    FROM (
+                             SELECT s1.SeqId, s1.seqName
+                             FROM (
+                                      SELECT SeqId, s.BestName as seqName
+                                      FROM protein.sequences s
+                                      WHERE s.BestName LIKE ('%' || proteinLabel || '%')
 
-                    UNION
+                                      UNION
 
-                    SELECT SeqId
-                    FROM protein.Annotations a
-                    WHERE LOWER(a.AnnotVal) LIKE
-                    LOWER((CASE WHEN exactMatch = true THEN '' ELSE '%' END) || proteinLabel || (CASE WHEN exactMatch = true THEN '' ELSE '%' END) )
+                                      SELECT SeqId, a.AnnotVal as seqName
+                                      FROM protein.Annotations a
+                                      WHERE a.AnnotVal LIKE ('%' || proteinLabel || '%')
 
-                    UNION
+                                      UNION
 
-                    SELECT SeqId
-                    FROM protein.FastaSequences fs
-                    WHERE LOWER(fs.lookupstring) LIKE
-                    LOWER((CASE WHEN exactMatch = true THEN '' ELSE '%' END) || proteinLabel || (CASE WHEN exactMatch = true THEN '' ELSE '%' END) )
+                                      SELECT SeqId, fs.lookupstring as seqName
+                                      FROM protein.FastaSequences fs
+                                      WHERE fs.lookupstring LIKE ('%' || proteinLabel || '%')
 
-                    UNION
-                    SELECT SeqId
-                    FROM protein.Identifiers i
-                    WHERE LOWER(i.Identifier)  LIKE
-                    LOWER((CASE WHEN exactMatch = true THEN '' ELSE '%' END) || proteinLabel || (CASE WHEN exactMatch = true THEN '' ELSE '%' END) )
+                                      UNION
+
+                                      SELECT SeqId, i.Identifier as seqName
+                                      FROM protein.Identifiers i
+                                      WHERE i.Identifier LIKE ('%' || proteinLabel || '%')
+                                  ) s1
+                             WHERE (exactMatch = FALSE) OR (exactMatch = TRUE AND LOWER(s1.seqName) = LOWER(proteinLabel))
+                         ) s2
                 )
             )
     )
