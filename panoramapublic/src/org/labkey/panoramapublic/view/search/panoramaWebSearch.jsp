@@ -424,13 +424,27 @@
                         if (expWebpart.length === 1) {
                             let wp = new LABKEY.QueryWebPart({
                                 renderTo: 'webpart_'+ expWebpart[0].webPartId,
-                                title: "The searched protein " + searchCriteriaString + " appeared in the following experiments",
+                                title: 'Panorama Public Experiments',
                                 schemaName: 'panoramapublic',
                                 queryName: 'proteinSearch',
-                                showFilterDescription: false,
+                                showFilterDescription: true,
                                 containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                                 parameters: proteinParameters,
                                 success: function () {
+                                    //Make the filter description user-friendly (ex: from "?proteinLabel = xyz" to using "Protein = xyz")
+                                    let els = document.getElementsByClassName('lk-region-context-action');
+                                    if (els && els.length > 0) {
+                                        for (let i = 0; i < els.length; i++) {
+                                            let txt = els[i].textContent;
+                                            if (txt.startsWith('proteinLabel')) {
+                                                txt = txt.replace('proteinLabel', 'Protein');
+                                            }
+                                            else if (txt.startsWith('exactMatch')) {
+                                                txt = txt.replace('exactMatch', 'Exact Match');
+                                            }
+                                            document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
+                                        }
+                                    }
                                 }
                             });
                         }
@@ -446,13 +460,27 @@
                         if (expWebpart.length === 1) {
                             let wp = new LABKEY.QueryWebPart({
                                 renderTo: 'webpart_'+ expWebpart[0].webPartId,
-                                title: "The searched peptide " + searchCriteriaString + " appeared in the following experiments",
+                                title: 'Panorama Public Experiments',
                                 schemaName: 'panoramapublic',
                                 queryName: 'peptideSearch',
-                                showFilterDescription: false,
+                                showFilterDescription: true,
                                 containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                                 parameters: peptideParameters,
                                 success: function () {
+                                    //Make the filter description user-friendly (ex: from "?peptideSequence = rrr" to using "Peptide Sequence = rrr")
+                                    let els = document.getElementsByClassName('lk-region-context-action');
+                                    if (els && els.length > 0) {
+                                        for (let i = 0; i < els.length; i++) {
+                                            let txt = els[i].textContent;
+                                            if (txt.startsWith('peptideSequence')) {
+                                                txt = txt.replace('peptideSequence', 'Peptide Sequence');
+                                            }
+                                            else if (txt.startsWith('exactMatch')) {
+                                                txt = txt.replace('exactMatch', 'Exact Match');
+                                            }
+                                            document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
+                                        }
+                                    }
                                 }
                             });
                         }
