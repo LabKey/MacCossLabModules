@@ -8751,11 +8751,21 @@ public class PanoramaPublicController extends SpringActionController
                                 .href(PageFlowUtil.urlProvider(ProjectUrls.class)
                                 .getBeginURL(_expAnnot.getContainer())).build();
             }
+            Button viewEntryButton = null;
+            CatalogEntry entry = CatalogEntryManager.getEntryForExperiment(_expAnnot);
+            if (entry != null)
+            {
+                ActionURL url = new ActionURL(PanoramaPublicController.ViewCatalogEntryAction.class, _expAnnot.getContainer())
+                        .addParameter("id", entry.getId());
+                viewEntryButton = new Button.ButtonBuilder("View Entry").href(url).build();
+            }
             return new HtmlView(
                     DIV("Thank you for submitting your entry for the Panorama Public catalog. " +
                                     "Your entry will be reviewed by an administrator and included in the slideshow " +
                                     "on " + AppProps.getInstance().getBaseServerUrl(),
-                            DIV(at(style, "margin-top:10px"), backBtn)));
+                            DIV(at(style, "margin-top:10px"),
+                                    viewEntryButton != null ? SPAN(at(style, "margin-right:10px;"), viewEntryButton) : HtmlString.EMPTY_STRING,
+                                    SPAN(backBtn))));
         }
     }
 
@@ -8892,11 +8902,11 @@ public class PanoramaPublicController extends SpringActionController
             return _imageAttachment != null ? _imageAttachment.getName() : null;
         }
 
-        public ActionURL getImageUrl()
+        public String getImageUrlEncoded()
         {
             if (_imageAttachment != null)
             {
-                return getCatalogImageDownloadUrl(_experimentAnnotations, _imageAttachment.getName());
+                return getCatalogImageDownloadUrl(_experimentAnnotations, _imageAttachment.getName()).getLocalURIString();
             }
             return null;
         }
@@ -8962,7 +8972,7 @@ public class PanoramaPublicController extends SpringActionController
 
             ensureCorrectContainer(getContainer(), expAnnotations.getContainer(), getViewContext()); // container check
 
-            return new CatalogEntryWebPart(expAnnotations, getUser());
+            return new CatalogEntryWebPart(expAnnotations, getUser(), true);
         }
 
         @Override

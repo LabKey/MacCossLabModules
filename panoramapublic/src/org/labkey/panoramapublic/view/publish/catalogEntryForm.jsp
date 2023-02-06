@@ -42,7 +42,7 @@
     var form = bean.getForm();
 
     var attachedFile = bean.getImageFileName();
-    var attachmentUrl = bean.getImageUrl().getLocalURIString();
+    var attachmentUrl = bean.getImageUrlEncoded();
 
     CatalogEntrySettings settings = CatalogEntryManager.getCatalogEntrySettings();
     int descriptionCharLimit = settings.getMaxTextChars();
@@ -136,7 +136,7 @@
         </table>
         <br>
         <%=button("Submit").submit(true).disableOnClick(true)%>
-        &nbsp
+        &nbsp;
         <%=button("Cancel").href(cancelUrl)%>
     </form>
 </div>

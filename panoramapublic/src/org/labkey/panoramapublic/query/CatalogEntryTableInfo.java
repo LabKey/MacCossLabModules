@@ -76,12 +76,6 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
                 }
                 super.renderGridCellContents(ctx, out);
             }
-            @Override
-            public void addQueryFieldKeys(Set<FieldKey> keys)
-            {
-                super.addQueryFieldKeys(keys);
-                keys.add(FieldKey.fromParts("Id"));
-            }
         });
         addColumn(viewCol);
 
@@ -100,6 +94,8 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
         var imageFileNameCol = wrapColumn("ImageFile", getRealTable().getColumn("ImageFileName"));
         imageFileNameCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
         {
+            private final FieldKey _shortUrlFieldKey = new FieldKey(getColumnInfo().getFieldKey().getParent(), "ShortUrl");
+
             @Override
             public Object getValue(RenderContext ctx)
             {
@@ -116,7 +112,7 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
             public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
             {
                 String fileName = (String) getValue(ctx);
-                ShortURLRecord shortUrl = ctx.get(FieldKey.fromParts("ShortUrl"), ShortURLRecord.class);
+                ShortURLRecord shortUrl = ctx.get(_shortUrlFieldKey, ShortURLRecord.class);
                 ExperimentAnnotations expAnnotations = shortUrl != null ? ExperimentAnnotationsManager.getExperimentForShortUrl(shortUrl) : null;
                 if (fileName != null && expAnnotations != null)
                 {
@@ -134,7 +130,7 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
             public void addQueryFieldKeys(Set<FieldKey> keys)
             {
                 super.addQueryFieldKeys(keys);
-                keys.add(FieldKey.fromParts("ShortUrl"));
+                keys.add(_shortUrlFieldKey);
             }
         });
         addColumn(imageFileNameCol);
