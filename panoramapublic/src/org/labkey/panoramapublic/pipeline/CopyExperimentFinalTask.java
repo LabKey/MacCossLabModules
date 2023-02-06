@@ -87,7 +87,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -202,8 +201,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // Create notifications. Do this at the end after everything else is done.
             PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), js.getJournalExperiment(), js.getLatestSubmission(),
                     reviewer.first, reviewer.second, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
-
-            postEmailNotification(jobSupport, user, log, sourceExperiment, js, targetExperiment, reviewer.first, reviewer.second, previousCopy != null);
 
             transaction.commit();
         }
@@ -574,53 +571,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     {
         Doi doi = DataCiteService.create(useTestDb, targetExpt);
         targetExpt.setDoi(doi.getDoi());
-    }
-
-    private void postEmailNotification(CopyExperimentJobSupport jobSupport, User pipelineJobUser, Logger log, ExperimentAnnotations sourceExperiment,
-                                       JournalSubmission js, ExperimentAnnotations targetExperiment,
-                                       User reviewer, String reviewerPassword, boolean recopy)
-    {
-        // This is the user that was selected as the "Submitter" in the ExperimentAnnotations form, and will be used in the "Submitter" field
-        // when announcing data on Panorama Public.
-        User pxSubmitter = sourceExperiment.getSubmitterUser();
-
-        // This is the user that clicked the "Submit" button.  Typically this is the same as the user above.
-        // If not, send email to both
-        User formSubmitter = UserManager.getUser(js.getCreatedBy());
-        assert formSubmitter != null;
-
-        Set<String> toAddresses = new HashSet<>();
-        if(pxSubmitter != null) toAddresses.add(pxSubmitter.getEmail());
-        toAddresses.add(formSubmitter.getEmail());
-        toAddresses.addAll(jobSupport.toEmailAddresses());
-
-        String subject = String.format("Submission to %s: %s", jobSupport.getJournal().getName(), targetExperiment.getShortUrl().renderShortURL());
-        String emailBody = PanoramaPublicNotification.getExperimentCopiedEmailBody(sourceExperiment, targetExperiment,
-                    js.getJournalExperiment(), js.getLatestSubmission(), jobSupport.getJournal(),
-                    reviewer, reviewerPassword,
-                    formSubmitter,
-                    pipelineJobUser,
-                    recopy);
-
-        if(jobSupport.emailSubmitter())
-        {
-            log.info("Emailing submitter.");
-            try
-            {
-                PanoramaPublicNotification.sendEmailNotification(subject, emailBody, targetExperiment.getContainer(), pipelineJobUser, toAddresses, jobSupport.replyToAddress());
-                PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, js.getJournalExperiment(), jobSupport.getJournal(), true);
-            }
-            catch (Exception e)
-            {
-                log.info("Could not send email to submitter. Error was: " + e.getMessage(), e);
-                PanoramaPublicNotification.postEmailContentsWithError(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, js.getJournalExperiment(), jobSupport.getJournal(), e.getMessage());
-            }
-        }
-        else
-        {
-            // Post the email contents to the message board.
-            PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, js.getJournalExperiment(), jobSupport.getJournal(), false);
-        }
     }
 
     private boolean updateDataPaths(Container target, FileContentService service, User user, Logger logger) throws BatchValidationException

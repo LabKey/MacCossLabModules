@@ -6442,7 +6442,12 @@ public class PanoramaPublicController extends SpringActionController
 
 
             // Post to the message thread associated with this submission
-            PanoramaPublicNotification.notifyDataPublished(_expAnnot, _copiedExperiment, _journal, _journalSubmission.getJournalExperiment(), _doiError, getUser());
+            StringBuilder message = new StringBuilder();
+            message.append(_madePublic ? String.format("Data was made public%s.", (_addedPublication ? " and publication details were added" : ""))
+                                  : _addedPublication ?  "Publication details were updated." : "");
+            message.append(_copiedExperiment.getPxid() != null ? String.format(" Accession %s will be %s on ProteomeXchange by a %s administrator.",
+                                    _copiedExperiment.getPxid(), _madePublic ? "made public" : "updated", _journal.getName()) : "");
+            PanoramaPublicNotification.notifyDataPublished(_expAnnot, _copiedExperiment, _journal, _journalSubmission.getJournalExperiment(), _doiError, message.toString(), getUser());
 
             return true;
         }
@@ -8587,6 +8592,11 @@ public class PanoramaPublicController extends SpringActionController
             url.addParameter("forSubmit", false);
         }
         return url;
+    }
+
+    public static ActionURL getMakePublicUrl(int experimentAnnotationsId, Container container)
+    {
+        return new ActionURL(PanoramaPublicController.MakePublicAction.class, container).addParameter("id", experimentAnnotationsId);
     }
 
     public static class TestCase extends AbstractActionPermissionTest
