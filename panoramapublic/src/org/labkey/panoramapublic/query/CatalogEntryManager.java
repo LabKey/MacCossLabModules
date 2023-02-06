@@ -151,7 +151,7 @@ public class CatalogEntryManager
                 Collections.singleton("Id"), filter, new Sort(FieldKey.fromParts("Id")))
                 .getArrayList(Integer.class);
 
-        if (entryCount <= entryIdList.size())
+        if (entryCount < entryIdList.size())
         {
             filter.addInClause(FieldKey.fromParts("Id"), getSubList(entryIdList, entryCount, LocalDate.now()));
         }
@@ -228,8 +228,8 @@ public class CatalogEntryManager
             List<Integer> testList = List.of(11, 5, 4, 3, 8, 10, 1);
             testGetSubList(testList, 3);
 
-            testGetSubList(11, 4);
             testGetSubList(1000, 25);
+            testGetSubList(25, 25);
             testGetSubList(26, 100);
         }
 
