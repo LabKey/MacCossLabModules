@@ -1,5 +1,6 @@
 package org.labkey.test.tests.panoramapublic;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
@@ -27,6 +28,8 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.File;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -206,9 +209,9 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         copyExperimentAndVerify(projectName, folderName, null, experimentTitle, null, false, true, destinationFolder);
     }
 
-    void copyExperimentAndVerify(String projectName, String folderName, @Nullable String subfolderName, String experimentTitle, String destinationFolder)
+    void copyExperimentAndVerify(String projectName, String folderName, @Nullable List<String> subfolders, String experimentTitle, String destinationFolder)
     {
-        copyExperimentAndVerify(projectName, folderName, subfolderName, experimentTitle, null, false, true, destinationFolder);
+        copyExperimentAndVerify(projectName, folderName, subfolders, experimentTitle, null, false, true, destinationFolder);
     }
 
     void makeCopy(String projectName, String folderName, String experimentTitle, String destinationFolder, boolean recopy, boolean deleteOldCopy)
@@ -220,7 +223,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         makeCopy(projectName, folderName, experimentTitle, recopy, deleteOldCopy, destinationFolder);
     }
 
-    void copyExperimentAndVerify(String projectName, String folderName, @Nullable String subfolderName, String experimentTitle,
+    void copyExperimentAndVerify(String projectName, String folderName, @Nullable List<String> subfolders, String experimentTitle,
                                  @Nullable Integer version, boolean recopy, boolean deleteOldCopy, String destinationFolder)
     {
         if(isImpersonating())
@@ -228,7 +231,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
             stopImpersonating();
         }
         makeCopy(projectName, folderName, experimentTitle, recopy, deleteOldCopy, destinationFolder);
-        verifyCopy(experimentTitle, version, projectName, folderName, subfolderName, recopy);
+        verifyCopy(experimentTitle, version, projectName, folderName, subfolders, recopy);
 
         stopImpersonating();
     }
@@ -290,7 +293,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         }
     }
 
-    private void verifyCopy(String experimentTitle, @Nullable Integer version, String projectName, String folderName, String subfolderName, boolean recopy)
+    private void verifyCopy(String experimentTitle, @Nullable Integer version, String projectName, String folderName, List<String> subfolders, boolean recopy)
     {
         // Verify the copy
         goToProjectHome(PANORAMA_PUBLIC);
@@ -314,13 +317,17 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
                 experimentTitle, // Title of the experiment
                 "Data License", "CC BY 4.0" // This is the default data license
         );
-        if(subfolderName != null)
+        if(CollectionUtils.isNotEmpty(subfolders))
         {
             SubfoldersWebPart subfoldersWp = SubfoldersWebPart.getWebPart(getDriver());
             assertNotNull(subfoldersWp);
             List<String> subfolderNames = subfoldersWp.GetSubfolderNames();
-            assertEquals(1, subfolderNames.size());
-            assertEquals(subfolderName.toUpperCase(), subfolderNames.get(0));
+            assertEquals("Unexpected subfolder count", subfolders.size(), subfolderNames.size());
+            List<String> namesUpperCase = new ArrayList<>(subfolders);
+            namesUpperCase.replaceAll(String::toUpperCase);
+            Collections.sort(namesUpperCase);
+            Collections.sort(subfolderNames);
+            assertEquals("Unexpected subfolder names", namesUpperCase, subfolderNames);
         }
 
         // Verify that notifications got posted on message board

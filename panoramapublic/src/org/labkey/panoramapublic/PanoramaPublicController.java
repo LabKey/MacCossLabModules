@@ -208,8 +208,6 @@ import java.util.stream.Collectors;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.Experiment;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.Library;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.LibraryProtein;
-import static org.labkey.api.targetedms.TargetedMSService.FolderType.QC;
-import static org.labkey.api.targetedms.TargetedMSService.FolderType.Undefined;
 import static org.labkey.api.targetedms.TargetedMSService.RAW_FILES_DIR;
 import static org.labkey.api.targetedms.TargetedMSService.RAW_FILES_TAB;
 import static org.labkey.api.util.DOM.*;
@@ -1843,14 +1841,6 @@ public class PanoramaPublicController extends SpringActionController
                     // not have read permissions.
                     return getExperimentIncludesHiddenFoldersView(_experimentAnnotations, hiddenFolders);
                 }
-            }
-
-            // Cannot submit if this is not a supported folder type
-            TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(_experimentAnnotations.getContainer());
-            if (!isSupportedFolderType(folderType))
-            {
-                errors.reject(ERROR_MSG, "Targeted MS folders of type \"" + folderType + "\" cannot be submitted.");
-                return new SimpleErrorView(errors);
             }
 
             // Do not allow submitting a library folder with conflicts.  This check is also done on any library sub-folders
@@ -5467,29 +5457,26 @@ public class PanoramaPublicController extends SpringActionController
             _fullDetails = fullDetails;
 
             Container c = _experimentAnnotations.getContainer();
-            TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(c);
-            if(isSupportedFolderType(folderType))
-            {
-                if (!_experimentAnnotations.isJournalCopy())
-                {
-                    _lastSubmittedRecord = SubmissionManager.getNewestJournalSubmission(_experimentAnnotations);
 
-                    // Should see the "Submit" or "Resubmit" button only if
-                    // 1. User is an admin in the folder
-                    // 2. AND this is a NOT journal copy (i.e. a folder in the Panorama Public project)
-                    // 3. AND if this experiment has been copied to Panorama Public, the copy is not final (paper published and data public).
-                    _canPublish = c.hasPermission(user, AdminPermission.class) && (ExperimentAnnotationsManager.canSubmitExperiment(_experimentAnnotations, _lastSubmittedRecord));
-                    if (_lastSubmittedRecord != null)
-                    {
-                        Submission lastCopiedSubmission = _lastSubmittedRecord.getLatestCopiedSubmission();
-                        _journalCopy = lastCopiedSubmission != null ? ExperimentAnnotationsManager.get(lastCopiedSubmission.getCopiedExperimentId()) : null;
-                    }
-                }
-                else
+            if (!_experimentAnnotations.isJournalCopy())
+            {
+                _lastSubmittedRecord = SubmissionManager.getNewestJournalSubmission(_experimentAnnotations);
+
+                // Should see the "Submit" or "Resubmit" button only if
+                // 1. User is an admin in the folder
+                // 2. AND this is a NOT journal copy (i.e. a folder in the Panorama Public project)
+                // 3. AND if this experiment has been copied to Panorama Public, the copy is not final (paper published and data public).
+                _canPublish = c.hasPermission(user, AdminPermission.class) && (ExperimentAnnotationsManager.canSubmitExperiment(_experimentAnnotations, _lastSubmittedRecord));
+                if (_lastSubmittedRecord != null)
                 {
-                    _lastSubmittedRecord = SubmissionManager.getSubmissionForJournalCopy(_experimentAnnotations);
-                    _journalCopy = _experimentAnnotations;
+                    Submission lastCopiedSubmission = _lastSubmittedRecord.getLatestCopiedSubmission();
+                    _journalCopy = lastCopiedSubmission != null ? ExperimentAnnotationsManager.get(lastCopiedSubmission.getCopiedExperimentId()) : null;
                 }
+            }
+            else
+            {
+                _lastSubmittedRecord = SubmissionManager.getSubmissionForJournalCopy(_experimentAnnotations);
+                _journalCopy = _experimentAnnotations;
             }
 
             if (_experimentAnnotations.isJournalCopy() && _experimentAnnotations.getSourceExperimentId() != null)
@@ -5675,19 +5662,6 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         return null;
-    }
-
-    private static boolean isSupportedSubFolderType(Container container)
-    {
-        TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(container);
-        return folderType == Undefined // This is not a TargetedMS folder type; could be a Collaboration folder
-                || isSupportedFolderType(folderType); // If the subfolder is a TargetedMS folder it should be
-                                                      // one of the supported types.
-    }
-
-    private static boolean isSupportedFolderType(TargetedMSService.FolderType folderType)
-    {
-        return folderType == Experiment || isLibraryFolder(folderType) || folderType == QC;
     }
 
     private static boolean isLibraryFolder(TargetedMSService.FolderType folderType)
@@ -6035,15 +6009,6 @@ public class PanoramaPublicController extends SpringActionController
             if (hiddenSubfolders.size() > 0)
             {
                 errors.reject(ERROR_MSG, "User needs read permissions in all the subfolders to be able to include them in the experiment.");
-                return;
-            }
-
-            List<Container> unsupportedFolderTypes = allSubfolders.stream().filter(container -> !isSupportedSubFolderType(container)).collect(Collectors.toList());
-            if (unsupportedFolderTypes.size() > 0)
-            {
-                org.labkey.api.util.Path parentPath = _expAnnot.getContainer().getParsedPath();
-                errors.reject(ERROR_MSG, "The folder type of the following subfolders is not supported. Only 'Experimental Data' and 'Library' folders can be included in an experiment.");
-                unsupportedFolderTypes.stream().forEach(f -> errors.reject(ERROR_MSG, parentPath.relativize(f.getParsedPath()).toString()));
                 return;
             }
 
