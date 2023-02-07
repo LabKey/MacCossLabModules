@@ -8594,11 +8594,6 @@ public class PanoramaPublicController extends SpringActionController
         return url;
     }
 
-    public static ActionURL getMakePublicUrl(int experimentAnnotationsId, Container container)
-    {
-        return new ActionURL(PanoramaPublicController.MakePublicAction.class, container).addParameter("id", experimentAnnotationsId);
-    }
-
     public static class TestCase extends AbstractActionPermissionTest
     {
         @Override

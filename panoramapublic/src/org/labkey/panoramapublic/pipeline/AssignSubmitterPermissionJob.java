@@ -59,6 +59,7 @@ public class AssignSubmitterPermissionJob extends PipelineJob
 
         int done = 0;
         int updated = 0;
+        int notExptFolders = 0;
         int total = containers.size();
 
         try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
@@ -77,11 +78,11 @@ public class AssignSubmitterPermissionJob extends PipelineJob
                 }
                 else
                 {
-                    getLogger().info(String.format("'%s' does not contain a valid experiment", container.getPath()));
-                    continue;
+                    getLogger().info(String.format("'%s' - no valid experiment", container.getPath()));
+                    notExptFolders++;
                 }
-                done++;
 
+                done++;
                 if (done % 100 == 0)
                 {
                     getLogger().info(done + "/" + total + " done.");
@@ -90,8 +91,8 @@ public class AssignSubmitterPermissionJob extends PipelineJob
             transaction.commit();
         }
 
-        getLogger().info(done + "/" + total + " done.");
-        getLogger().info("Assigned PanoramaPublicSubmitterRole in " + updated + " containers.");
+        getLogger().info("Total folders: " + total + "; Folders with valid experiments: " + (total - notExptFolders));
+        getLogger().info("Assigned PanoramaPublicSubmitterRole in " + updated + " folders.");
     }
 
     private boolean addPermission(User user, String userType, Container container, boolean dryRun, Logger logger)
