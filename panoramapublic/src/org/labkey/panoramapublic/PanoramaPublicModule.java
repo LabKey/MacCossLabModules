@@ -112,11 +112,8 @@ public class PanoramaPublicModule extends SpringModule
         RoleManager.registerPermission(new PanoramaPublicSubmitterPermission());
 
         // Add a link in the admin console to manage journals.
-        ActionURL url = new ActionURL(PanoramaPublicController.JournalGroupsAdminViewAction.class, ContainerManager.getRoot());
+        ActionURL url = new ActionURL(PanoramaPublicController.PanoramaPublicAdminViewAction.class, ContainerManager.getRoot());
         AdminConsole.addLink(AdminConsole.SettingsLinkType.Configuration, "panorama public", url, AdminPermission.class);
-
-        ActionURL addModuleLink = new ActionURL(PanoramaPublicController.AddPanoramaPublicModuleAction.class, ContainerManager.getRoot());
-        AdminConsole.addLink(AdminConsole.SettingsLinkType.Configuration, "Panorama Public - Add Module", addModuleLink, AdminPermission.class);
 
         PanoramaPublicListener listener = new PanoramaPublicListener();
         ExperimentService.get().addExperimentListener(listener);
