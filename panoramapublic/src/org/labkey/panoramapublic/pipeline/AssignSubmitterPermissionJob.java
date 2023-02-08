@@ -22,39 +22,39 @@ import org.labkey.panoramapublic.security.PanoramaPublicSubmitterRole;
 public class AssignSubmitterPermissionJob extends PipelineJob
 {
     private boolean _dryRun;
-    private Container _container;
+    private Container _project;
 
     // For serialization
     protected AssignSubmitterPermissionJob()
     {
     }
 
-    public AssignSubmitterPermissionJob(ViewBackgroundInfo info, @NotNull PipeRoot root, boolean dryRun, Container container)
+    public AssignSubmitterPermissionJob(ViewBackgroundInfo info, @NotNull PipeRoot root, boolean dryRun, Container project)
     {
         super("Panorama Public", info, root);
         setLogFile(root.getRootNioPath().resolve(FileUtil.makeFileNameWithTimestamp("PanoramaPublic-assign-submitter-role", "log")));
         _dryRun = dryRun;
-        _container = container;
+        _project = project;
     }
 
     @Override
     public void run()
     {
         setStatus(PipelineJob.TaskStatus.running);
-        if (_container != null)
+        if (_project != null)
         {
             assignRole();
             setStatus(PipelineJob.TaskStatus.complete);
         }
         else
         {
-            getLogger().error("Input container was null. Exiting...");
+            getLogger().error("Input project was null. Exiting...");
         }
     }
 
     private void assignRole()
     {
-        var containers = ContainerManager.getAllChildren(_container, getUser());
+        var containers = ContainerManager.getAllChildren(_project, getUser());
         getLogger().info("Total number of folders: " + containers.size());
 
         int done = 0;
@@ -69,8 +69,8 @@ public class AssignSubmitterPermissionJob extends PipelineJob
                 ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(container);
                 if (expAnnotations != null && expAnnotations.isJournalCopy())
                 {
-                    boolean submitterUpdated = addPermission(expAnnotations.getSubmitterUser(), "Submitter", container, _dryRun, getLogger());
-                    boolean labHeadUpdated = addPermission(expAnnotations.getLabHeadUser(), "Lab Head", container, _dryRun, getLogger());
+                    boolean submitterUpdated = assignRole(expAnnotations.getSubmitterUser(), "Submitter", container, _dryRun, getLogger());
+                    boolean labHeadUpdated = assignRole(expAnnotations.getLabHeadUser(), "Lab Head", container, _dryRun, getLogger());
                     if (submitterUpdated || labHeadUpdated)
                     {
                         updated++;
@@ -91,11 +91,11 @@ public class AssignSubmitterPermissionJob extends PipelineJob
             transaction.commit();
         }
 
-        getLogger().info("Total folders: " + total + "; Folders with valid experiments: " + (total - notExptFolders));
+        getLogger().info("All folders: " + total + "; Folders with valid experiments: " + (total - notExptFolders));
         getLogger().info("Assigned PanoramaPublicSubmitterRole in " + updated + " folders.");
     }
 
-    private boolean addPermission(User user, String userType, Container container, boolean dryRun, Logger logger)
+    private boolean assignRole(User user, String userType, Container container, boolean dryRun, Logger logger)
     {
         if (user == null) return false;
 

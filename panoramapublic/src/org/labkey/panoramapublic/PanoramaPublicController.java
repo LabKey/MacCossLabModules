@@ -213,6 +213,7 @@ import static org.labkey.api.targetedms.TargetedMSService.RAW_FILES_TAB;
 import static org.labkey.api.util.DOM.*;
 import static org.labkey.api.util.DOM.Attribute.action;
 import static org.labkey.api.util.DOM.Attribute.border;
+import static org.labkey.api.util.DOM.Attribute.checked;
 import static org.labkey.api.util.DOM.Attribute.colspan;
 import static org.labkey.api.util.DOM.Attribute.href;
 import static org.labkey.api.util.DOM.Attribute.method;
@@ -453,7 +454,7 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    private static void addPanoramaPublicAdminConsoleNav(@NotNull NavTree root, @NotNull Container container)
+    private static void addPanoramaPublicAdminConsoleNav(NavTree root, Container container)
     {
         root.addChild("Panorama Public Admin Console", new ActionURL(PanoramaPublicAdminViewAction.class, container));
     }
@@ -8361,7 +8362,7 @@ public class PanoramaPublicController extends SpringActionController
                                     at(method, "POST"),
                                     TABLE(
                                     TR(TD(at(style, "padding-right:10px;"), LABEL("Dry Run: ")),
-                                            TD(CHECKBOX(at(name, "dryRun")))),
+                                            TD(CHECKBOX(at(name, "dryRun", checked, form.isDryRun())))),
                                     TR(TD(at(style, "padding-right:10px;"), LABEL("Project: ")),
                                             TD(INPUT(at(name, "project", value, form.getProject()))))
                                     ),
@@ -8381,10 +8382,10 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, "Please enter the name of a project");
                 return false;
             }
-            Container container = ContainerManager.getForPath("/" + form.getProject());
+            Container container = ContainerManager.getForPath(form.getProject());
             if (container == null)
             {
-                errors.reject(ERROR_MSG, "Cannot find a container for project /" + form.getProject());
+                errors.reject(ERROR_MSG, "Cannot find project " + form.getProject());
                 return false;
             }
 
