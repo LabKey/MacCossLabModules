@@ -1254,7 +1254,7 @@ public class PanoramaPublicController extends SpringActionController
                             )
                         )),
                             new Button.ButtonBuilder("Save").submit(true).build(),
-                            new Button.ButtonBuilder("Cancel").submit(false).href(new ActionURL(JournalGroupsAdminViewAction.class, getContainer())).build()
+                            new Button.ButtonBuilder("Cancel").submit(false).href(new ActionURL(PanoramaPublicAdminViewAction.class, getContainer())).build()
                     )
                 )
             );
@@ -1314,7 +1314,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getSuccessView(ManageCatalogEntryForm form)
         {
-            ActionURL adminUrl = new ActionURL(JournalGroupsAdminViewAction.class, getContainer());
+            ActionURL adminUrl = new ActionURL(PanoramaPublicAdminViewAction.class, getContainer());
             return new HtmlView(
                     DIV("Panorama Public catalog entry settings were saved.",
                             BR(),
