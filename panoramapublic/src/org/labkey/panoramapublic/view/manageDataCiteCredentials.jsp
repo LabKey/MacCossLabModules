@@ -1,14 +1,14 @@
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.JournalGroupsAdminViewAction" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PanoramaPublicAdminViewAction" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.DataCiteCredentialsForm" %>
 <%@ page extends="org.labkey.api.jsp.FormPage" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
 <%
     DataCiteCredentialsForm form = ((JspView<DataCiteCredentialsForm>) HttpView.currentView()).getModelBean();
-    ActionURL panoramaPublicAdminUrl = urlFor(JournalGroupsAdminViewAction.class);
+    ActionURL panoramaPublicAdminUrl = urlFor(PanoramaPublicAdminViewAction.class);
 %>
 <p>
 <labkey:form method="post">

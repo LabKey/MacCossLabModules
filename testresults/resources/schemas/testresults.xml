@@ -100,7 +100,6 @@
             <column columnName="averagemem"/>
             <column columnName="log"/>
             <column columnName="githash"/>
-            <column columnName="medianmem"/>
         </columns>
     </table>
     <table tableName="trainruns" tableDbType="TABLE">

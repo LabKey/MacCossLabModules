@@ -19,7 +19,7 @@ input::placeholder {
     cursor: pointer;
     display: block;
     float: left;
-    font-family: "Roboto",Arial,Helvetica,sans-serif;
+    font-family: Roboto,Arial,Helvetica,sans-serif;
     font-weight: normal;
     font-size: 13px;
     height: 25px;
@@ -74,4 +74,16 @@ input::placeholder {
     top: 0;
     left: 0;
     opacity: 1;
+}
+
+.clear-all-button {
+    background: none!important;
+    border: none;
+    padding: 0!important;
+    /*optional*/
+    font-family: "Roboto",Arial,Helvetica,sans-serif;
+    /*input has OS specific font-family*/
+    color: #3495d2;
+    text-decoration: underline;
+    cursor: pointer;
 }

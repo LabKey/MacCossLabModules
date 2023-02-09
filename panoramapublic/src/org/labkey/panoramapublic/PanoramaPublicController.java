@@ -154,7 +154,7 @@ import org.labkey.panoramapublic.model.speclib.SpecLibDependencyType;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
 import org.labkey.panoramapublic.model.speclib.SpecLibSourceType;
 import org.labkey.panoramapublic.model.speclib.SpectralLibrary;
-import org.labkey.panoramapublic.pipeline.AddPanoramaPublicModuleJob;
+import org.labkey.panoramapublic.pipeline.AssignSubmitterPermissionJob;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
 import org.labkey.panoramapublic.pipeline.PxDataValidationPipelineJob;
 import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
@@ -221,8 +221,6 @@ import java.util.stream.Collectors;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.Experiment;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.Library;
 import static org.labkey.api.targetedms.TargetedMSService.FolderType.LibraryProtein;
-import static org.labkey.api.targetedms.TargetedMSService.FolderType.QC;
-import static org.labkey.api.targetedms.TargetedMSService.FolderType.Undefined;
 import static org.labkey.api.targetedms.TargetedMSService.RAW_FILES_DIR;
 import static org.labkey.api.targetedms.TargetedMSService.RAW_FILES_TAB;
 import static org.labkey.api.util.DOM.*;
@@ -266,7 +264,7 @@ public class PanoramaPublicController extends SpringActionController
     // ------------------------------------------------------------------------
     @AdminConsoleAction
     @RequiresPermission(AdminOperationsPermission.class)
-    public static class JournalGroupsAdminViewAction extends SimpleViewAction
+    public static class PanoramaPublicAdminViewAction extends SimpleViewAction
     {
         @Override
         public ModelAndView getView(Object o, BindException errors)
@@ -279,26 +277,27 @@ public class PanoramaPublicController extends SpringActionController
             qView.setFrame(WebPartView.FrameType.NONE);
 
             VBox view = new VBox();
-            view.addView(new HtmlView("<div style=\"margin:5px;\">Journal groups are used in conjunction with the \"publication protocol\" implemented for the panoramapublic module. " +
-                    "The goal of the publication protocol is to provide a mechanism for journals to copy data associated with a manuscript from the author's  project " +
-                    " on a Panorama server to the journal's project. " +
-                    "Creating a new journal group via this admin console does the following:<ol>" +
-                    "<li>Creates a project for the journal with the appropriate web parts added</li>" +
-                    "<li>Creates a new security group for members of the journal</li>" +
-                    "<li>Create an entry in the Journal table of the panoramapublic schema that links the journal  to the project</li></ol></div>"));
-
-            if (getContainer().hasPermission(getUser(), AdminOperationsPermission.class))
-            {
-                ActionURL newJournalUrl = new ActionURL(CreateJournalGroupAction.class, getContainer());
-                view.addView(new HtmlView("<div><a href=\"" + newJournalUrl + "\">Create a new journal group </a></div>"));
-            }
+            view.addView(new HtmlView(DIV(at(style, "margin:5px;"),
+                    "Journal groups are used in conjunction with the \"publication protocol\" implemented for the panoramapublic module. " +
+                    "The goal of the publication protocol is to provide a mechanism to copy data associated with a manuscript from the author's project " +
+                    "to a journal project. The main journal project on PanoramaWeb is Panorama Public. Other journal projects can be " +
+                    "created for the purpose of testing. " +
+                    "Creating a new \"Journal\" group via this admin console does the following:",
+                    OL(
+                            LI("Creates a new project with the appropriate web parts added"),
+                            LI("Creates a new security group for project administrators"),
+                            LI("Creates an entry in the Journal table of the panoramapublic schema")
+                    ),
+                    DIV(new Link.LinkBuilder("Create a new journal group").href(new ActionURL(CreateJournalGroupAction.class, getContainer())))
+            )));
 
             view.addView(qView);
             view.addView(getPXCredentialsLink());
             view.addView(getDataCiteCredentialsLink());
             view.addView(getPanoramaPublicCatalogSettingsLink());
+            view.addView(getAssignSubmitterPermissionsLink());
             view.setFrame(WebPartView.FrameType.PORTAL);
-            view.setTitle("Journal groups");
+            view.setTitle("Panorama Public Settings");
             return view;
         }
 
@@ -322,11 +321,18 @@ public class PanoramaPublicController extends SpringActionController
             return new HtmlView(DIV(at(style, "margin-top:20px;"),
                     new Link.LinkBuilder("Panorama Public Catalog Settings").href(url).build()));
         }
+        
+        private ModelAndView getAssignSubmitterPermissionsLink()
+        {
+            ActionURL url = new ActionURL(AssignSubmitterPermissionAction.class, getContainer());
+            return new HtmlView(DIV(at(style, "margin-top:20px;"),
+                    new Link.LinkBuilder("Assign PanoramaPublicSubmitterRole").href(url).build()));
+        }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Journal Groups");
+            root.addChild("Panorama Public Admin Console");
         }
     }
 
@@ -464,12 +470,14 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            if(root != null)
-            {
-                root.addChild("Journal groups", new ActionURL(JournalGroupsAdminViewAction.class, getContainer()));
-                root.addChild("Create New Journal Group");
-            }
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
+            root.addChild("Create New Journal Group");
         }
+    }
+
+    private static void addPanoramaPublicAdminConsoleNav(NavTree root, Container container)
+    {
+        root.addChild("Panorama Public Admin Console", new ActionURL(PanoramaPublicAdminViewAction.class, container));
     }
 
     public static class CreateJournalGroupForm
@@ -562,7 +570,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public @NotNull URLHelper getSuccessURL(JournalForm form)
         {
-            return new ActionURL(JournalGroupsAdminViewAction.class, getContainer());
+            return new ActionURL(PanoramaPublicAdminViewAction.class, getContainer());
         }
     }
 
@@ -631,11 +639,8 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            if(root != null)
-            {
-                root.addChild("Journal groups", new ActionURL(JournalGroupsAdminViewAction.class, getContainer()));
-                root.addChild("Journal group details");
-            }
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
+            root.addChild("Journal group details");
         }
     }
 
@@ -990,7 +995,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getSuccessView(DataCiteCredentialsForm form)
         {
-            ActionURL adminUrl = new ActionURL(JournalGroupsAdminViewAction.class, getContainer());
+            ActionURL adminUrl = new ActionURL(PanoramaPublicAdminViewAction.class, getContainer());
             return new HtmlView(
                     DIV("DataCite credentials saved!",
                     BR(),
@@ -1023,6 +1028,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
             root.addChild("Set DataCite Credentials");
         }
     }
@@ -1136,7 +1142,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getSuccessView(PXCredentialsForm form)
         {
-            ActionURL adminUrl = new ActionURL(JournalGroupsAdminViewAction.class, getContainer());
+            ActionURL adminUrl = new ActionURL(PanoramaPublicAdminViewAction.class, getContainer());
             return new HtmlView(
                     DIV("ProteomeXchange credentials saved!",
                     BR(),
@@ -1166,6 +1172,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
             root.addChild("Set ProteomeXchange Credentials");
         }
     }
@@ -2060,14 +2067,6 @@ public class PanoramaPublicController extends SpringActionController
                     // not have read permissions.
                     return getExperimentIncludesHiddenFoldersView(_experimentAnnotations, hiddenFolders);
                 }
-            }
-
-            // Cannot submit if this is not a supported folder type
-            TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(_experimentAnnotations.getContainer());
-            if (!isSupportedFolderType(folderType))
-            {
-                errors.reject(ERROR_MSG, "Targeted MS folders of type \"" + folderType + "\" cannot be submitted.");
-                return new SimpleErrorView(errors);
             }
 
             // Do not allow submitting a library folder with conflicts.  This check is also done on any library sub-folders
@@ -5690,29 +5689,26 @@ public class PanoramaPublicController extends SpringActionController
             _fullDetails = fullDetails;
 
             Container c = _experimentAnnotations.getContainer();
-            TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(c);
-            if(isSupportedFolderType(folderType))
-            {
-                if (!_experimentAnnotations.isJournalCopy())
-                {
-                    _lastSubmittedRecord = SubmissionManager.getNewestJournalSubmission(_experimentAnnotations);
 
-                    // Should see the "Submit" or "Resubmit" button only if
-                    // 1. User is an admin in the folder
-                    // 2. AND this is a NOT journal copy (i.e. a folder in the Panorama Public project)
-                    // 3. AND if this experiment has been copied to Panorama Public, the copy is not final (paper published and data public).
-                    _canPublish = c.hasPermission(user, AdminPermission.class) && (ExperimentAnnotationsManager.canSubmitExperiment(_experimentAnnotations, _lastSubmittedRecord));
-                    if (_lastSubmittedRecord != null)
-                    {
-                        Submission lastCopiedSubmission = _lastSubmittedRecord.getLatestCopiedSubmission();
-                        _journalCopy = lastCopiedSubmission != null ? ExperimentAnnotationsManager.get(lastCopiedSubmission.getCopiedExperimentId()) : null;
-                    }
-                }
-                else
+            if (!_experimentAnnotations.isJournalCopy())
+            {
+                _lastSubmittedRecord = SubmissionManager.getNewestJournalSubmission(_experimentAnnotations);
+
+                // Should see the "Submit" or "Resubmit" button only if
+                // 1. User is an admin in the folder
+                // 2. AND this is a NOT journal copy (i.e. a folder in the Panorama Public project)
+                // 3. AND if this experiment has been copied to Panorama Public, the copy is not final (paper published and data public).
+                _canPublish = c.hasPermission(user, AdminPermission.class) && (ExperimentAnnotationsManager.canSubmitExperiment(_experimentAnnotations, _lastSubmittedRecord));
+                if (_lastSubmittedRecord != null)
                 {
-                    _lastSubmittedRecord = SubmissionManager.getSubmissionForJournalCopy(_experimentAnnotations);
-                    _journalCopy = _experimentAnnotations;
+                    Submission lastCopiedSubmission = _lastSubmittedRecord.getLatestCopiedSubmission();
+                    _journalCopy = lastCopiedSubmission != null ? ExperimentAnnotationsManager.get(lastCopiedSubmission.getCopiedExperimentId()) : null;
                 }
+            }
+            else
+            {
+                _lastSubmittedRecord = SubmissionManager.getSubmissionForJournalCopy(_experimentAnnotations);
+                _journalCopy = _experimentAnnotations;
             }
 
             if (_experimentAnnotations.isJournalCopy() && _experimentAnnotations.getSourceExperimentId() != null)
@@ -5898,19 +5894,6 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         return null;
-    }
-
-    private static boolean isSupportedSubFolderType(Container container)
-    {
-        TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(container);
-        return folderType == Undefined // This is not a TargetedMS folder type; could be a Collaboration folder
-                || isSupportedFolderType(folderType); // If the subfolder is a TargetedMS folder it should be
-                                                      // one of the supported types.
-    }
-
-    private static boolean isSupportedFolderType(TargetedMSService.FolderType folderType)
-    {
-        return folderType == Experiment || isLibraryFolder(folderType) || folderType == QC;
     }
 
     private static boolean isLibraryFolder(TargetedMSService.FolderType folderType)
@@ -6258,15 +6241,6 @@ public class PanoramaPublicController extends SpringActionController
             if (hiddenSubfolders.size() > 0)
             {
                 errors.reject(ERROR_MSG, "User needs read permissions in all the subfolders to be able to include them in the experiment.");
-                return;
-            }
-
-            List<Container> unsupportedFolderTypes = allSubfolders.stream().filter(container -> !isSupportedSubFolderType(container)).collect(Collectors.toList());
-            if (unsupportedFolderTypes.size() > 0)
-            {
-                org.labkey.api.util.Path parentPath = _expAnnot.getContainer().getParsedPath();
-                errors.reject(ERROR_MSG, "The folder type of the following subfolders is not supported. Only 'Experimental Data' and 'Library' folders can be included in an experiment.");
-                unsupportedFolderTypes.stream().forEach(f -> errors.reject(ERROR_MSG, parentPath.relativize(f.getParsedPath()).toString()));
                 return;
             }
 
@@ -9173,39 +9147,59 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     // ------------------------------------------------------------------------
-    // BEGIN Add the PanoramaPublic module to existing TargetedMS containers
+    // BEGIN Assign PanoramaPublicSubmitterRole to data submitters and lab heads
     // ------------------------------------------------------------------------
     @RequiresSiteAdmin
-    public class AddPanoramaPublicModuleAction extends FormViewAction<AddPanoramaPublicModuleForm>
+    public class AssignSubmitterPermissionAction extends FormViewAction<AssignSubmitterPermissionForm>
     {
         @Override
-        public void validateCommand(AddPanoramaPublicModuleForm target, Errors errors) {}
+        public void validateCommand(AssignSubmitterPermissionForm target, Errors errors) {}
 
         @Override
-        public ModelAndView getView(AddPanoramaPublicModuleForm form, boolean reshow, BindException errors)
+        public ModelAndView getView(AssignSubmitterPermissionForm form, boolean reshow, BindException errors)
         {
-            return new HtmlView("Add PanoramaPublic Module",
-                                DIV("Add the PanoramaPublic module to all TargetedMS type containers under " + getContainer().getPath(),
-                                    FORM(
-                                            at(method, "POST"),
-                                            CHECKBOX(at(name, "dryRun")),
-                                            LABEL("Dry run"),
-                                            BR(),
-                                            new Button.ButtonBuilder("Start").submit(true).build()
+            return new HtmlView("Assign PanoramaPublicSubmitterRole",
+                    DIV(LK.ERRORS(errors),
+                            "Assign PanoramaPublicSubmitterRole to data submitters and lab heads",
+                            FORM(
+                                    at(method, "POST"),
+                                    TABLE(
+                                    TR(TD(at(style, "padding-right:10px;"), LABEL("Dry Run: ")),
+                                            TD(CHECKBOX(at(name, "dryRun", checked, form.isDryRun())))),
+                                    TR(TD(at(style, "padding-right:10px;"), LABEL("Project: ")),
+                                            TD(INPUT(at(name, "project", value, form.getProject()))))
+                                    ),
+                                    DIV(at(style, "margin-top:10px"),
+                                        new Button.ButtonBuilder("Start").submit(true).style("margin-right:10px").build(),
+                                        new Button.ButtonBuilder("Cancel").href(new ActionURL(PanoramaPublicAdminViewAction.class, getContainer())).build()
                                     )
-                                ));
+                            )
+                    ));
         }
 
         @Override
-        public boolean handlePost(AddPanoramaPublicModuleForm form, BindException errors) throws Exception
+        public boolean handlePost(AssignSubmitterPermissionForm form, BindException errors) throws Exception
         {
-            PipelineJob job = new AddPanoramaPublicModuleJob(getViewBackgroundInfo(), PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()), form.isDryRun());
+            if (StringUtils.isEmpty(form.getProject()))
+            {
+                errors.reject(ERROR_MSG, "Please enter the name of a project");
+                return false;
+            }
+            Container container = ContainerManager.getForPath(form.getProject());
+            if (container == null)
+            {
+                errors.reject(ERROR_MSG, "Cannot find project " + form.getProject());
+                return false;
+            }
+
+            PipelineJob job = new AssignSubmitterPermissionJob(getViewBackgroundInfo(), PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()),
+                    form.isDryRun(), container);
             PipelineService.get().queueJob(job);
             return true;
         }
 
         @Override
-        public URLHelper getSuccessURL(AddPanoramaPublicModuleForm form)
+        public URLHelper getSuccessURL(AssignSubmitterPermissionForm form)
         {
             return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
         }
@@ -9213,13 +9207,15 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Add Panorama Public Module");
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
+            root.addChild("Assign PanoramaPublicSubmitterRole");
         }
     }
 
-    private static class AddPanoramaPublicModuleForm
+    private static class AssignSubmitterPermissionForm
     {
         private boolean _dryRun;
+        private String _project;
 
         public boolean isDryRun()
         {
@@ -9230,11 +9226,20 @@ public class PanoramaPublicController extends SpringActionController
         {
             _dryRun = dryRun;
         }
+
+        public String getProject()
+        {
+            return _project;
+        }
+
+        public void setProject(String project)
+        {
+            _project = project;
+        }
     }
     // ------------------------------------------------------------------------
-    // END Add the PanoramaPublic module to all existing TargetedMS containers
+    // END Assign PanoramaPublicSubmitterRole to data submitters and lab heads
     // ------------------------------------------------------------------------
-
 
     public static ActionURL getEditExperimentDetailsURL(Container c, int experimentAnnotationsId, URLHelper returnURL)
     {
@@ -9437,7 +9442,7 @@ public class PanoramaPublicController extends SpringActionController
             // @AdminConsoleAction
             // @RequiresPermission(AdminOperationsPermission.class)
             assertForAdminOperationsPermission(ContainerManager.getRoot(), user,
-                new JournalGroupsAdminViewAction()
+                new PanoramaPublicAdminViewAction()
             );
         }
     }

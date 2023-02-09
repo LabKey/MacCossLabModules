@@ -60,12 +60,7 @@
         sortedRuns.add(r);
         if (r.isTrainRun())
         {
-            cal.setTime(r.getPostTime());
-            cal.set(Calendar.HOUR_OF_DAY, 0);
-            cal.set(Calendar.MINUTE, 0);
-            cal.set(Calendar.SECOND, 0);
-            cal.set(Calendar.MILLISECOND, 0);
-            trainRuns.add(cal.getTime().getTime());
+            trainRuns.add(TestsDataBean.getGroupDate(r.getPostTime()).getTime());
         }
     }
 %>
@@ -140,7 +135,6 @@
     </div>
 
     <% if (showSingleUser) { %>
-<%--            <div id="medianmem"></div>--%>
         <div style="width: 100%; display: flex;">
             <div id="memory" style="flex: 50%;"></div>
             <div id="passes" style="flex: 50%;"></div>
@@ -176,7 +170,6 @@
                     <td><%=run.getDuration()%></td>
                     <td><%=run.getPassedtests()%></td>
                     <td><%=run.getAveragemem()%></td>
-<%--                    <td><%=h(run.getMedianmem())%></td>--%>
                     <td><%=run.getFailedtests()%></td>
                     <td><%=run.getLeakedtests()%></td>
                     <td><%=h(run.getOs())%></td>

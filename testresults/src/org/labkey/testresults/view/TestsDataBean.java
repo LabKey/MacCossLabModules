@@ -280,7 +280,6 @@ public class TestsDataBean
         double[] avgTestRuns = new double[size];
         int[] avgMemory = new int[size];
         double[] avgFailures = new double[size];
-//        double[] medianMemory = new double[size];
         int i = 0;
         for (Map.Entry<Date, List<RunDetail>> entry : dates.entrySet()) {
             List<RunDetail> runs = entry.getValue();
@@ -293,13 +292,11 @@ public class TestsDataBean
                 failTotal += run.getFailedtests();
                 durationTotal += run.getDuration();
                 avgMemoryTotal += run.getAverageMemory();
-//                medianMem = run.getMedian1000Memory();
             }
             avgTestRuns[i] = round((double) passTotal/runs.size(),2);
             avgFailures[i] = round(((double)failTotal)/runs.size(),2);
             avgMemory[i] = avgMemoryTotal/runs.size();
             avgDuration[i] = round(((double)durationTotal)/runs.size(),2);
-//            medianMemory[i] = medianMem;
             i++;
         }
         long[] milliSecondDates = new long[dates.size()];
@@ -314,7 +311,6 @@ public class TestsDataBean
         jo.put("avgMemory", avgMemory);
         jo.put("avgFailures", avgFailures);
         jo.put("avgTestRuns", avgTestRuns);
-//        jo.put("medianMemory", medianMemory);
         jo.put("dates", milliSecondDates);
         return jo;
     }

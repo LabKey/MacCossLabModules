@@ -250,7 +250,6 @@ public class TestResultsController extends SpringActionController
                         e.printStackTrace();
                     }
                     int avgMem = 0;
-                    int medianmem = 0;
                     if (passes.length != 0)
                     {
                         for (TestPassDetail pass : passes)
@@ -258,16 +257,6 @@ public class TestResultsController extends SpringActionController
                             avgMem += pass.getTotalMemory();
                         }
                         avgMem = avgMem / passes.length;
-                        /*if (passes.length >= 1000) {
-                            medianmem = (int)passes[(passes.length-500)].getTotalMemory();
-                            avgMem = (int)passes[(passes.length-500)].getTotalMemory();
-                        } else if (passes.length >= 100) {
-                            medianmem = (int)passes[(passes.length-50)].getTotalMemory();
-                            avgMem = (int)passes[(passes.length-50)].getTotalMemory();
-                        } else {
-                            medianmem = (int)passes[(passes.length)].getTotalMemory();
-                            avgMem = (int)passes[(passes.length)].getTotalMemory();
-                        }*/
                     }
 
                     run.setPointsummary(passSummary);
@@ -275,7 +264,6 @@ public class TestResultsController extends SpringActionController
                     run.setFailedtests(failures.length);
                     run.setLeakedtests(leaks.length);
                     run.setAveragemem(avgMem);
-                    run.setMedianmem(medianmem);
 
                     Map<String, Object> runMap = new HashMap<>();
                     runMap.put("pointsummary", new Parameter.TypedValue(passSummary, JdbcType.BINARY));
@@ -283,7 +271,6 @@ public class TestResultsController extends SpringActionController
                     runMap.put("failedtests", failures.length);
                     runMap.put("leakedtests", leaks.length);
                     runMap.put("averagemem", avgMem);
-                    runMap.put("medianmem", medianmem);
                     Table.update(null, TestResultsSchema.getTableInfoTestRuns(), runMap, run.getId());
 
                     // Set all to empty array so that memory does not run out.
@@ -1349,7 +1336,6 @@ public class TestResultsController extends SpringActionController
                 int lastHour = 0;
                 Date timestampDay = xmlTimestamp;
                 int avgMemory = 0;
-                double medianMem = 0;
                 for (int i = 0; i < nListPasses.getLength(); i++) {
                     NodeList nlTests = ((Element) nListPasses.item(i)).getElementsByTagName("test");
                     int passId = Integer.parseInt(((Element) nListPasses.item(i)).getAttribute("id"));
@@ -1402,18 +1388,6 @@ public class TestResultsController extends SpringActionController
                 }
                 if (!passes.isEmpty()) {
                     avgMemory /= passes.size();
-                    /*if (passes.size() >= 1000) {
-                        medianMem = passes.get(passes.size()-500).getTotalMemory();
-                        avgMemory = (int)passes.get(passes.size()-500).getTotalMemory();
-                    }
-                    else if (passes.size() >= 100) {
-                        medianMem = passes.get(passes.size()-50).getTotalMemory();
-                        avgMemory = (int)passes.get(passes.size()-50).getTotalMemory();
-                    }
-                    else {
-                        medianMem = passes.get(passes.size()-1).getTotalMemory();
-                        avgMemory = (int)passes.get(passes.size()-1).getTotalMemory();
-                    }*/
                 }
                 // stores failures in database
                 lastHour = startHour;
@@ -1453,7 +1427,7 @@ public class TestResultsController extends SpringActionController
                 byte[] compressedLog = log != null ? compressString(log) : null;
 
                 RunDetail run = new RunDetail(userid, duration, postTime, xmlTimestamp, os, revision, gitHash, c, false, compressedXML,
-                        pointSummary, passes.size(), failures.size(), memoryLeaks.size() + handleLeaks.size(), avgMemory, compressedLog, (int)medianMem); //TODO change date AND USERID
+                        pointSummary, passes.size(), failures.size(), memoryLeaks.size() + handleLeaks.size(), avgMemory, compressedLog); //TODO change date AND USERID
                 // stores test run in database and gets the id(foreign key)
                 run = Table.insert(null, TestResultsSchema.getTableInfoTestRuns(), run);
                 int runId = run.getId();

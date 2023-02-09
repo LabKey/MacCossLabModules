@@ -3,16 +3,21 @@ package org.labkey.test.tests.panoramapublic;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.labkey.api.view.Portal;
+import org.labkey.api.view.WebPartFactory;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
+import org.labkey.test.WebDriverWrapper;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.CustomizeView;
 import org.labkey.test.components.panoramapublic.PanoramaPublicSearchWebPart;
+import org.labkey.test.selenium.RefindingWebElement;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.PermissionsHelper;
+import org.labkey.test.util.PortalHelper;
 
 import java.util.Arrays;
 
@@ -48,6 +53,9 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
     {
         goToProjectHome();
         portalHelper.addBodyWebPart("Panorama Public Search");
+        portalHelper.addBodyWebPart("Targeted MS Experiment List");
+        portalHelper.removeWebPart("Mass Spec Search");
+        portalHelper.removeWebPart("Targeted MS Runs");
 
         setupSubfolder(getProjectName(), SUBFOLDER_1, FolderType.Experiment);
         importData(SKY_FILE_1, 1);
@@ -79,32 +87,43 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
     }
 
     @Test
-    public void testExperimentalSearch()
+    public void testExperimentSearch()
     {
+        log("Experiment Search with Author");
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        DataRegionTable table = panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME)
-                .search();
+        panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME).clickSearch();
+        WebDriverWrapper.waitFor(() -> Locator.tagWithClassContaining("tr", "-row").findElements(getDriver()).size() == 1, 3000);
+
+        DataRegionTable table = new DataRegionTable("Targeted MS Experiment List", getDriver());
         CustomizeView customizeView = table.openCustomizeGrid();
         customizeView.addColumn("Authors");
         customizeView.applyCustomView(0);
         checker().verifyEquals("Incorrect search result for author", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect result", AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + ",", table.getDataAsText(0, "Authors"));
 
-        table = panoramaPublicSearch
+        log("Experiment Search with Organism and Instrument");
+        panoramaPublicSearch
                 .setOrganism("Homo")
                 .setAuthor("")
                 .setInstrument("Thermo")
-                .search();
+                .clickSearch();
+        WebDriverWrapper.waitFor(() -> Locator.tagWithClassContaining("tr", "-row").findElements(getDriver()).size() == 2, 3000);
+
+        table = new DataRegionTable("Targeted MS Experiment List", getDriver());
         checker().verifyEquals("Incorrect search results", 2, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
 
-        table = panoramaPublicSearch.setOrganism("")
+        log("Experiment Search with Author full name, Title, and Organism");
+        panoramaPublicSearch.setOrganism("")
                 .setInstrument("")
                 .setTitle("Experiment")
                 .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
-                .search();
+                .clickSearch();
+        WebDriverWrapper.waitFor(() -> Locator.tagWithClassContaining("tr", "-row").findElements(getDriver()).size() == 1, 3000);
+
+        table = new DataRegionTable("Targeted MS Experiment List", getDriver());
         checker().verifyEquals("Incorrect search results", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
@@ -113,10 +132,18 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
     @Test
     public void testProteinSearch()
     {
-        log("Protein : Partial match and results across folder");
+        log("Empty protein search");
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        DataRegionTable table = panoramaPublicSearch.gotoProteinSearch().setProtein("R").search();
+        panoramaPublicSearch.gotoProteinSearch().setProtein("").clickSearch();
+        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched protein '' appeared in the following experiments");
+        checker().verifyEquals("Incorrect protein searched with partial match", 0, table.getDataRowCount());
+
+        log("Protein : Partial match and results across folder");
+        panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
+        panoramaPublicSearch.gotoProteinSearch().setProtein("R").clickSearch();
+
+        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched protein 'R' appeared in the following experiments");
         checker().verifyEquals("Incorrect protein searched with partial match", 2, table.getDataRowCount());
 
         clickAndWait(Locator.linkWithText("3"));
@@ -135,7 +162,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         log("Protein : Exact match and result should be one row");
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        table = panoramaPublicSearch.gotoProteinSearch().setProtein("00706094|Alpha").setProteinExactMatch(true).search();
+        panoramaPublicSearch.gotoProteinSearch().setProtein("00706094|Alpha").setProteinExactMatch(true).clickSearch();
+        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("The searched protein"), getDriver()));
         checker().verifyEquals("Incorrect protein searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactProteinMatch");
 
@@ -146,17 +174,25 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         log("Protein : Exact match and no result");
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        table = panoramaPublicSearch.gotoProteinSearch().setProtein("00706094Alpha").setProteinExactMatch(true).search();
+        panoramaPublicSearch.gotoProteinSearch().setProtein("00706094Alpha").setProteinExactMatch(true).clickSearch();
+        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("The searched protein"), getDriver()));
         checker().verifyEquals("Incorrect protein searched with exact match", 0, table.getDataRowCount());
     }
 
     @Test
     public void testPeptideSearch()
     {
-        log("Peptide : Partial match and results across folder");
+        log("Empty peptide Search");
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        DataRegionTable table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("VL").search();
+        panoramaPublicSearch.gotoPeptideSearch().setPeptide("").clickSearch();
+        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide '' appeared in the following experiments");
+        checker().verifyEquals("Incorrect peptide searched with partial match", 0, table.getDataRowCount());
+
+        log("Peptide : Partial match and results across folder");
+        panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
+        panoramaPublicSearch.gotoPeptideSearch().setPeptide("VL").clickSearch();
+        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide 'VL' appeared in the following experiments");
         checker().verifyEquals("Incorrect peptide searched with partial match", 2, table.getDataRowCount());
 
         clickAndWait(Locator.linkWithText("3"));
@@ -174,7 +210,9 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         log("Peptide : Exact match and result should be one row");
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("GFCGLSQPK").setPeptideExactMatch(true).search();
+        panoramaPublicSearch.gotoPeptideSearch().setPeptide("GFCGLSQPK").setPeptideExactMatch(true).clickSearch();
+        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("The searched peptide"), getDriver()));
+
         checker().verifyEquals("Incorrect peptide searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactPeptideMatch");
 
@@ -185,7 +223,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         log("Peptide : Exact match and no result");
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("XYZ").setPeptideExactMatch(true).search();
+        panoramaPublicSearch.gotoPeptideSearch().setPeptide("XYZ").setPeptideExactMatch(true).clickSearch();
+        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("The searched peptide"), getDriver()));
         checker().verifyEquals("Incorrect peptide searched with exact match", 0, table.getDataRowCount());
     }
 
