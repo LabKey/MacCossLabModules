@@ -437,10 +437,10 @@
                                         for (let i = 0; i < els.length; i++) {
                                             let txt = els[i].textContent;
                                             if (txt.startsWith('proteinLabel')) {
-                                                txt = txt.replace('proteinLabel', 'Protein');
+                                                txt = txt.replace('proteinLabel =', 'Protein:');
                                             }
                                             else if (txt.startsWith('exactMatch')) {
-                                                txt = txt.replace('exactMatch', 'Exact Match');
+                                                txt = txt.replace('exactMatch = true', 'Exact Matches Only');
                                             }
                                             document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
                                         }
@@ -473,10 +473,10 @@
                                         for (let i = 0; i < els.length; i++) {
                                             let txt = els[i].textContent;
                                             if (txt.startsWith('peptideSequence')) {
-                                                txt = txt.replace('peptideSequence', 'Peptide Sequence');
+                                                txt = txt.replace('peptideSequence =', 'Peptide Sequence:');
                                             }
                                             else if (txt.startsWith('exactMatch')) {
-                                                txt = txt.replace('exactMatch', 'Exact Match');
+                                                txt = txt.replace('exactMatch = true', 'Exact Matches Only');
                                             }
                                             document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
                                         }
