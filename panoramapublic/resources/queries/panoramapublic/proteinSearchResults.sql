@@ -33,9 +33,9 @@ WHERE (
                              FROM (
 
                                      -- Note: there are special indexes on s.BestName, a.AnnotVal, fs.lookupstring, i.Identifier.
-                                     -- These indexes were creating with 'varchar_pattern_ops' like so, ex: CREATE INDEX IX_ProtSequences_Identifier_VarcharPatternOps ON prot.Identifiers (lower(Identifier) varchar_pattern_ops);
+                                     -- These indexes were created with 'varchar_pattern_ops' like so, ex: CREATE INDEX IX_ProtSequences_Identifier_VarcharPatternOps ON prot.Identifiers (lower(Identifier) varchar_pattern_ops);
                                      -- Adding these indexes were useful in allowing the query plan to use Index scan instead of Sequential scan which was time consuming
-                                     -- These indexes are supposed to work when using pattern expressions using LIKE, however, they only work when using prefix like below, which is acceptable here.
+                                     -- These indexes are supposed to work when using pattern expressions using LIKE, however, they only work when using prefix like used below, which is acceptable here.
 
                                       SELECT SeqId, s.BestName as seqName
                                       FROM protein.sequences s
