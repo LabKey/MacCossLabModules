@@ -136,14 +136,14 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoProteinSearch().setProtein("").clickSearch();
-        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched protein '' appeared in the following experiments");
+        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "Panorama Public Experiments");
         checker().verifyEquals("Incorrect protein searched with partial match", 0, table.getDataRowCount());
 
         log("Protein : Partial match and results across folder");
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoProteinSearch().setProtein("R").clickSearch();
 
-        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched protein 'R' appeared in the following experiments");
+        table = DataRegionTable.findDataRegionWithinWebpart(this, "Panorama Public Experiments");
         checker().verifyEquals("Incorrect protein searched with partial match", 2, table.getDataRowCount());
 
         clickAndWait(Locator.linkWithText("3"));
@@ -163,7 +163,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoProteinSearch().setProtein("00706094|Alpha").setProteinExactMatch(true).clickSearch();
-        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("The searched protein"), getDriver()));
+        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("Panorama Public Experiments"), getDriver()));
         checker().verifyEquals("Incorrect protein searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactProteinMatch");
 
@@ -175,7 +175,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoProteinSearch().setProtein("00706094Alpha").setProteinExactMatch(true).clickSearch();
-        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("The searched protein"), getDriver()));
+        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("Panorama Public Experiments"), getDriver()));
         checker().verifyEquals("Incorrect protein searched with exact match", 0, table.getDataRowCount());
     }
 
@@ -186,13 +186,13 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoPeptideSearch().setPeptide("").clickSearch();
-        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide '' appeared in the following experiments");
+        DataRegionTable table = DataRegionTable.findDataRegionWithinWebpart(this, "Panorama Public Experiments");
         checker().verifyEquals("Incorrect peptide searched with partial match", 0, table.getDataRowCount());
 
         log("Peptide : Partial match and results across folder");
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoPeptideSearch().setPeptide("VL").clickSearch();
-        table = DataRegionTable.findDataRegionWithinWebpart(this, "The searched peptide 'VL' appeared in the following experiments");
+        table = DataRegionTable.findDataRegionWithinWebpart(this, "Panorama Public Experiments");
         checker().verifyEquals("Incorrect peptide searched with partial match", 2, table.getDataRowCount());
 
         clickAndWait(Locator.linkWithText("3"));
@@ -211,7 +211,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoPeptideSearch().setPeptide("GFCGLSQPK").setPeptideExactMatch(true).clickSearch();
-        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("The searched peptide"), getDriver()));
+        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("Panorama Public Experiments"), getDriver()));
 
         checker().verifyEquals("Incorrect peptide searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactPeptideMatch");
@@ -224,7 +224,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoPeptideSearch().setPeptide("XYZ").setPeptideExactMatch(true).clickSearch();
-        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("The searched peptide"), getDriver()));
+        table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPartWithTitleContaining("Panorama Public Experiments"), getDriver()));
         checker().verifyEquals("Incorrect peptide searched with exact match", 0, table.getDataRowCount());
     }
 
