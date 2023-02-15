@@ -1,8 +1,11 @@
 package org.labkey.test.tests.panoramapublic;
 
+import org.apache.commons.collections4.MultiValuedMap;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerManager;
 import org.labkey.api.view.Portal;
 import org.labkey.api.view.WebPartFactory;
 import org.labkey.test.BaseWebDriverTest;
@@ -12,6 +15,7 @@ import org.labkey.test.WebDriverWrapper;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.CustomizeView;
+import org.labkey.test.components.FilesWebPart;
 import org.labkey.test.components.panoramapublic.PanoramaPublicSearchWebPart;
 import org.labkey.test.selenium.RefindingWebElement;
 import org.labkey.test.util.ApiPermissionsHelper;
@@ -20,6 +24,10 @@ import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PortalHelper;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static org.junit.Assert.assertEquals;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
@@ -129,6 +137,14 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
                 table.getColumnDataAsText("Title"));
     }
 
+    private List<String> getWebPartNames(String body, List<Portal.WebPart> parts)
+    {
+        MultiValuedMap<String, Portal.WebPart> lfocMap = Portal.getPartsByLocation(parts);
+        List<String> bodyParts;
+        bodyParts = lfocMap.get(body).stream().map(Portal.WebPart::getName).collect(Collectors.toList());
+        return bodyParts;
+    }
+
     @Test
     public void testProteinSearch()
     {
@@ -136,12 +152,14 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoProteinSearch().setProtein("").clickSearch();
+        waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
         DataRegionTable table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPart("Panorama Public Experiments"), getDriver()));
         checker().verifyEquals("Incorrect protein searched with partial match", 0, table.getDataRowCount());
 
         log("Protein : Partial match and results across folder");
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoProteinSearch().setProtein("R").clickSearch();
+        waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
 
         table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPart("Panorama Public Experiments"), getDriver()));
         checker().verifyEquals("Incorrect protein searched with partial match", 2, table.getDataRowCount());
@@ -163,6 +181,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoProteinSearch().setProtein("00706094|Alpha").setProteinExactMatch(true).clickSearch();
+        waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
+
         table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPart("Panorama Public Experiments"), getDriver()));
         checker().verifyEquals("Incorrect protein searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactProteinMatch");
@@ -175,6 +195,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         panoramaPublicSearch.gotoProteinSearch().setProtein("00706094Alpha").setProteinExactMatch(true).clickSearch();
+        waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
+
         table = new DataRegionTable.DataRegionFinder(getDriver()).find(new RefindingWebElement(PortalHelper.Locators.webPart("Panorama Public Experiments"), getDriver()));
         checker().verifyEquals("Incorrect protein searched with exact match", 0, table.getDataRowCount());
     }
