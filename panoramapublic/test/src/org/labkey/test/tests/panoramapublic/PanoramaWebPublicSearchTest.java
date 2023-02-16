@@ -152,14 +152,18 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         DataRegionTable table = panoramaPublicSearch.gotoProteinSearch().setProtein("").search();
+        waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
+
         checker().verifyEquals("Incorrect protein searched with partial match", 0, table.getDataRowCount());
 
         log("Protein : Partial match and results across folder");
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoProteinSearch().setProtein("R").search();
+        waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
+
         checker().verifyEquals("Incorrect protein searched with partial match", 2, table.getDataRowCount());
 
-        clickAndWait(Locator.linkWithText("3"));
+        waitAndClickAndWait(Locator.linkWithText("3"));
         DataRegionTable detailsTable = new DataRegionTable.DataRegionFinder(getDriver()).find();
         checker().verifyEquals("Incorrect detailed information for protein", Arrays.asList("00716246|Carbonic", "129823|Lactoperoxidase", "1351907|Serum"),
                 detailsTable.getColumnDataAsText("Label"));
@@ -176,10 +180,12 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoProteinSearch().setProtein("00706094|Alpha").setProteinExactMatch(true).search();
+        waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
+
         checker().verifyEquals("Incorrect protein searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactProteinMatch");
 
-        clickAndWait(Locator.linkWithText("1"));
+        waitAndClickAndWait(Locator.linkWithText("1"));
         detailsTable = new DataRegionTable.DataRegionFinder(getDriver()).find();
         checker().verifyEquals("Incorrect information", Arrays.asList("00706094|Alpha"), detailsTable.getColumnDataAsText("Label"));
 
@@ -187,6 +193,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoProteinSearch().setProtein("00706094Alpha").setProteinExactMatch(true).search();
+        waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
+
         checker().verifyEquals("Incorrect protein searched with exact match", 0, table.getDataRowCount());
     }
 
@@ -197,14 +205,16 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         DataRegionTable table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("").search();
+        waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
         checker().verifyEquals("Incorrect peptide searched with partial match", 0, table.getDataRowCount());
 
         log("Peptide : Partial match and results across folder");
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("VL").search();
+        waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
         checker().verifyEquals("Incorrect peptide searched with partial match", 2, table.getDataRowCount());
 
-        clickAndWait(Locator.linkWithText("3"));
+        waitAndClickAndWait(Locator.linkWithText("3"));
         DataRegionTable detailsTable = new DataRegionTable.DataRegionFinder(getDriver()).find();
         checker().verifyEquals("Incorrect detailed information for peptide", Arrays.asList("IVGYLDEEGVLDQNR", "VLDALDSIK", "VLVLDTDYK"),
                 detailsTable.getColumnDataAsText("ModifiedPeptideDisplayColumn"));
@@ -220,11 +230,12 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("GFCGLSQPK").setPeptideExactMatch(true).search();
+        waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
 
         checker().verifyEquals("Incorrect peptide searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactPeptideMatch");
 
-        clickAndWait(Locator.linkWithText("1"));
+        waitAndClickAndWait(Locator.linkWithText("1"));
         detailsTable = new DataRegionTable.DataRegionFinder(getDriver()).find();
         checker().verifyEquals("Incorrect information", Arrays.asList("GFCGLSQPK"), detailsTable.getColumnDataAsText("ModifiedPeptideDisplayColumn"));
 
@@ -232,6 +243,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("XYZ").setPeptideExactMatch(true).search();
+        waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
+
         checker().verifyEquals("Incorrect peptide searched with exact match", 0, table.getDataRowCount());
     }
 
