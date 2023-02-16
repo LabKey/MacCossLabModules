@@ -157,6 +157,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         checker().verifyEquals("Incorrect protein searched with partial match", 0, table.getDataRowCount());
 
         log("Protein : Partial match and results across folder");
+        clickAndWait(Locator.id("clear-all-button-id-protein"));
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoProteinSearch().setProtein("R").search();
         waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
@@ -209,6 +210,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         checker().verifyEquals("Incorrect peptide searched with partial match", 0, table.getDataRowCount());
 
         log("Peptide : Partial match and results across folder");
+        clickAndWait(Locator.id("clear-all-button-id-peptide"));
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("VL").search();
         waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
