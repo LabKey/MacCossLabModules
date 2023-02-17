@@ -267,7 +267,6 @@
         let expAnnotationFilters = [];
         let proteinParameters = {};
         let peptideParameters = {};
-        let searchCriteriaString = "";
 
         // render experiment list webpart
         // add filters in qwp and in the url for back button
@@ -315,19 +314,15 @@
                 clearInputFromExperimentTab();
                 clearInputFromPeptideTab();
 
-                searchCriteriaString = "";
-
                 let protein = document.getElementById(proteinNameItemId).value;
                 let exactProteinMatch = document.getElementById(exactProteinMatchesItemId).checked;
 
                 proteinParameters[proteinNameItemId] = protein;
                 updateUrlFilters(null, proteinNameItemId, protein);
-                searchCriteriaString += "'" + protein + "'";
 
                 if (exactProteinMatch) {
                     proteinParameters[exactMatch] = exactProteinMatch;
                     updateUrlFilters(null, exactProteinMatchesItemId, exactProteinMatch);
-                    searchCriteriaString += " with Exact Match ";
                 }
             }
             else if (activeTab === peptideSearchPanelItemId) {
@@ -335,26 +330,21 @@
                 clearInputFromExperimentTab();
                 clearInputFromProteinTab();
 
-                searchCriteriaString = "";
-
                 let peptide = document.getElementById(peptideSequenceItemId).value;
                 let exactPeptideMatch = document.getElementById(exactPeptideMatchesItemId).checked;
 
                 peptideParameters[peptideSequenceItemId] = peptide;
                 updateUrlFilters(null, peptideSequenceItemId, peptide);
-                searchCriteriaString += "'" + peptide + "'";
 
                 if (exactPeptideMatch) {
                     peptideParameters[exactMatch] = exactPeptideMatch;
                     updateUrlFilters(null, exactPeptideMatchesItemId, exactPeptideMatch);
-                    searchCriteriaString += " with Exact Match ";
                 }
             }
         }
         // getFiltersFromUrl and add to the filters
         else {
             let context = getFiltersFromUrl();
-            searchCriteriaString = "";
 
             if (activeTab === expSearchPanelItemId) {
                 parseUrlQueryParams()
@@ -362,22 +352,18 @@
             if (context[proteinNameItemId] || context[proteinNameItemId] === '') {
                 proteinParameters[proteinNameItemId] =  context[proteinNameItemId];
                 document.getElementById(proteinNameItemId).value = context[proteinNameItemId];
-                searchCriteriaString += "'" + context[proteinNameItemId] + "'";
             }
             if (context[exactProteinMatchesItemId]) {
                 proteinParameters[exactMatch] =  context[exactProteinMatchesItemId];
                 context[exactProteinMatchesItemId] === "true" ? (document.getElementById(exactProteinMatchesItemId).checked = true) : (document.getElementById(exactProteinMatchesItemId).checked = false);
-                searchCriteriaString += " with Exact Match ";
             }
             if (context[peptideSequenceItemId] || context[peptideSequenceItemId] === '') {
                 peptideParameters[peptideSequenceItemId] =  context[peptideSequenceItemId];
                 document.getElementById(peptideSequenceItemId).value = context[peptideSequenceItemId];
-                searchCriteriaString += "'" + context[peptideSequenceItemId] + "'";
             }
             if (context[exactPeptideMatchesItemId]) {
                 peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
                 document.getElementById(exactPeptideMatchesItemId).checked = context[exactPeptideMatchesItemId] === "true";
-                searchCriteriaString += " with Exact Match ";
             }
         }
 

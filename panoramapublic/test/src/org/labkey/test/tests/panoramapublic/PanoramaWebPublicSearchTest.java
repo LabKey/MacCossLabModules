@@ -4,10 +4,7 @@ import org.apache.commons.collections4.MultiValuedMap;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.labkey.api.data.Container;
-import org.labkey.api.data.ContainerManager;
 import org.labkey.api.view.Portal;
-import org.labkey.api.view.WebPartFactory;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
@@ -15,19 +12,14 @@ import org.labkey.test.WebDriverWrapper;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.CustomizeView;
-import org.labkey.test.components.FilesWebPart;
 import org.labkey.test.components.panoramapublic.PanoramaPublicSearchWebPart;
-import org.labkey.test.selenium.RefindingWebElement;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.PermissionsHelper;
-import org.labkey.test.util.PortalHelper;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static org.junit.Assert.assertEquals;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
