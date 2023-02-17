@@ -359,7 +359,7 @@
             if (activeTab === expSearchPanelItemId) {
                 parseUrlQueryParams()
             }
-            if (context[proteinNameItemId]) {
+            if (context[proteinNameItemId] || context[proteinNameItemId] === '') {
                 proteinParameters[proteinNameItemId] =  context[proteinNameItemId];
                 document.getElementById(proteinNameItemId).value = context[proteinNameItemId];
                 searchCriteriaString += "'" + context[proteinNameItemId] + "'";
@@ -369,7 +369,7 @@
                 context[exactProteinMatchesItemId] === "true" ? (document.getElementById(exactProteinMatchesItemId).checked = true) : (document.getElementById(exactProteinMatchesItemId).checked = false);
                 searchCriteriaString += " with Exact Match ";
             }
-            if (context[peptideSequenceItemId]) {
+            if (context[peptideSequenceItemId] || context[peptideSequenceItemId] === '') {
                 peptideParameters[peptideSequenceItemId] =  context[peptideSequenceItemId];
                 document.getElementById(peptideSequenceItemId).value = context[peptideSequenceItemId];
                 searchCriteriaString += "'" + context[peptideSequenceItemId] + "'";
