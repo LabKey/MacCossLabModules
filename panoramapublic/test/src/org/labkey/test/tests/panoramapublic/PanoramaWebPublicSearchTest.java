@@ -115,7 +115,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         table = panoramaPublicSearch.setTitle("Experiment")
                 .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
                 .search();
-
+        table = DataRegionTable.findDataRegionWithinWebpart(this,"Panorama Public Experiments");
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Default", "Organism CONTAINS ONE OF ('Homo sapiens (taxid:9606)')",
                         "Title CONTAINS ONE OF (Experiment)", "Instrument CONTAINS ONE OF ('Thermo Electron instrument model')",
                         "Authors CONTAINS ONE OF ('" + AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + "')"),
