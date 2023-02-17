@@ -104,6 +104,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
                 .setAuthor("")
                 .setInstrument("Thermo")
                 .search();
+        table = DataRegionTable.findDataRegionWithinWebpart(this,"Panorama Public Experiments");
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Default", "Organism CONTAINS ONE OF ('Homo sapiens (taxid:9606)')",
                         "Instrument CONTAINS ONE OF ('Thermo Electron instrument model')"), getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect search results", 2, table.getDataRowCount());
