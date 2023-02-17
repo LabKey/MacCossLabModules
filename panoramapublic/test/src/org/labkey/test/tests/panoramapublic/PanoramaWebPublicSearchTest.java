@@ -8,7 +8,6 @@ import org.labkey.api.view.Portal;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
-import org.labkey.test.WebDriverWrapper;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.CustomizeView;
@@ -92,10 +91,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         log("Experiment Search with Author");
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
-        panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME).clickSearch();
-        WebDriverWrapper.waitFor(() -> Locator.tagWithClassContaining("tr", "-row").findElements(getDriver()).size() == 1, 3000);
-
-        DataRegionTable table = new DataRegionTable("Targeted MS Experiment List", getDriver());
+        DataRegionTable table = panoramaPublicSearch.setAuthor(AUTHOR_LAST_NAME).search();
         CustomizeView customizeView = table.openCustomizeGrid();
         customizeView.addColumn("Authors");
         customizeView.applyCustomView(0);
@@ -103,38 +99,29 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         checker().verifyEquals("Incorrect result", AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + ",", table.getDataAsText(0, "Authors"));
 
         log("Experiment Search with Organism and Instrument");
-        panoramaPublicSearch
+        table = panoramaPublicSearch
                 .setOrganism("Homo")
                 .setAuthor("")
                 .setInstrument("Thermo")
-                .clickSearch();
-        WebDriverWrapper.waitFor(() -> Locator.tagWithClassContaining("tr", "-row").findElements(getDriver()).size() == 2, 3000);
-
-        table = new DataRegionTable("Targeted MS Experiment List", getDriver());
+                .search();
+        checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Default", "Organism CONTAINS ONE OF ('Homo sapiens (taxid:9606)')",
+                        "Instrument CONTAINS ONE OF ('Thermo Electron instrument model')"), getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect search results", 2, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
 
         log("Experiment Search with Author full name, Title, and Organism");
-        panoramaPublicSearch.setOrganism("")
-                .setInstrument("")
-                .setTitle("Experiment")
+        table = panoramaPublicSearch.setTitle("Experiment")
                 .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
-                .clickSearch();
-        WebDriverWrapper.waitFor(() -> Locator.tagWithClassContaining("tr", "-row").findElements(getDriver()).size() == 1, 3000);
+                .search();
 
-        table = new DataRegionTable("Targeted MS Experiment List", getDriver());
+        checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Default", "Organism CONTAINS ONE OF ('Homo sapiens (taxid:9606)')",
+                        "Title CONTAINS ONE OF (Experiment)", "Instrument CONTAINS ONE OF ('Thermo Electron instrument model')",
+                        "Authors CONTAINS ONE OF ('" + AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + "')"),
+                getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect search results", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
-    }
-
-    private List<String> getWebPartNames(String body, List<Portal.WebPart> parts)
-    {
-        MultiValuedMap<String, Portal.WebPart> lfocMap = Portal.getPartsByLocation(parts);
-        List<String> bodyParts;
-        bodyParts = lfocMap.get(body).stream().map(Portal.WebPart::getName).collect(Collectors.toList());
-        return bodyParts;
     }
 
     @Test
@@ -145,7 +132,6 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         DataRegionTable table = panoramaPublicSearch.gotoProteinSearch().setProtein("").search();
         waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
-
         checker().verifyEquals("Incorrect protein searched with partial match", 0, table.getDataRowCount());
 
         log("Protein : Partial match and results across folder");
@@ -153,7 +139,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoProteinSearch().setProtein("R").search();
         waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
-
+        checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Protein: R"),
+                getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect protein searched with partial match", 2, table.getDataRowCount());
 
         waitAndClickAndWait(Locator.linkWithText("3"));
@@ -175,6 +162,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         table = panoramaPublicSearch.gotoProteinSearch().setProtein("00706094|Alpha").setProteinExactMatch(true).search();
         waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
 
+        checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Protein: 00706094|Alpha", "Exact Matches Only"),
+                getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect protein searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactProteinMatch");
 
@@ -206,6 +195,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("VL").search();
         waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
+        checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Peptide Sequence: VL"),
+                getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect peptide searched with partial match", 2, table.getDataRowCount());
 
         waitAndClickAndWait(Locator.linkWithText("3"));
@@ -226,6 +217,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("GFCGLSQPK").setPeptideExactMatch(true).search();
         waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
 
+        checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Exact Matches Only", "Peptide Sequence: GFCGLSQPK"),
+                getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect peptide searched with exact match", 1, table.getDataRowCount());
         checker().screenShotIfNewError("ExactPeptideMatch");
 
@@ -240,6 +233,14 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         waitForElement(Locator.tagWithClass("span", "ctx-clear-var"));
 
         checker().verifyEquals("Incorrect peptide searched with exact match", 0, table.getDataRowCount());
+    }
+
+    private List<String> getWebPartNames(String body, List<Portal.WebPart> parts)
+    {
+        MultiValuedMap<String, Portal.WebPart> lfocMap = Portal.getPartsByLocation(parts);
+        List<String> bodyParts;
+        bodyParts = lfocMap.get(body).stream().map(Portal.WebPart::getName).collect(Collectors.toList());
+        return bodyParts;
     }
 
     @Override
