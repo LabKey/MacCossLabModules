@@ -231,7 +231,8 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
     {
         String projectName = getProjectName();
         String sourceFolder = "Folder 2";
-        String subfolder = "Subfolder_for_test";
+        String subfolder_collab = "Collaboration_subfolder_for_test";
+        String subfolder_mam = "MAM_subfolder_for_test";
         String targetFolder = "Test Copy 2";
         String experimentTitle = "This is a test experiment with subfolders";
 
@@ -245,21 +246,24 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         // Import a Skyline document to the folder
         importData(SKY_FILE_1, 1);
 
-        // Create a subfolder
-        _containerHelper.createSubfolder(projectName, sourceFolder, subfolder, "Collaboration", null, false);
+        // Create a Collaboration type subfolder
+        _containerHelper.createSubfolder(projectName, sourceFolder, subfolder_collab, "Collaboration", null, false);
+
+        // Create a TargetedMS (MAM) type subfolder
+        setupSubfolder(projectName, sourceFolder, subfolder_mam, FolderType.ExperimentMAM);
 
         goToProjectFolder(projectName, sourceFolder);
         testSubmitWithSubfolders(expWebPart);
 
         // Copy the experiment to the Panorama Public project
-        copyExperimentAndVerify(projectName, sourceFolder, subfolder, experimentTitle, targetFolder);
+        copyExperimentAndVerify(projectName, sourceFolder, List.of(subfolder_collab, subfolder_mam), experimentTitle, targetFolder);
 
-        // Remove permissions for SUBMITTER_2 from the subfolder, and try to resubmit the experiment as SUBMITTER_2. This user
+        // Remove permissions for SUBMITTER_2 from a subfolder, and try to resubmit the experiment as SUBMITTER_2. This user
         // should not be able to resubmit because the experiment was configured by SUBMITTER to include subfolders, and read permissions
         // in all subfolders are required for submitting an experiment.
-        goToProjectFolder(projectName, sourceFolder + "/" + subfolder);
+        goToProjectFolder(projectName, sourceFolder + "/" + subfolder_mam);
         ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
-        permissionsHelper.removeUserRoleAssignment(SUBMITTER_2, "Folder Administrator", projectName + "/" + sourceFolder + "/" + subfolder);
+        permissionsHelper.removeUserRoleAssignment(SUBMITTER_2, "Folder Administrator", projectName + "/" + sourceFolder + "/" + subfolder_mam);
         permissionsHelper.assertNoPermission(SUBMITTER_2, "Reader");
 
         goToProjectFolder(projectName, sourceFolder);
@@ -268,7 +272,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         goToDashboard();
         expWebPart.clickResubmit();
         assertTextPresent("This experiment is configured to include subfolders but you do not have read permissions in the following folders");
-        assertTextPresent(subfolder);
+        assertTextPresent(subfolder_mam);
         assertTextPresent("Read permissions are required in all subfolders to include data from subfolders");
         assertElementPresent(Locator.linkWithText("Back To Folder"));
         assertElementPresent(Locator.linkWithText("Exclude Subfolders"));
