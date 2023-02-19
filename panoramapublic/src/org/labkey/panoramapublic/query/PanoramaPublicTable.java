@@ -19,6 +19,8 @@ public class PanoramaPublicTable extends FilteredTable<PanoramaPublicSchema>
     private final FieldKey _containerFieldKey;
     private final boolean _noContainerFilter;
 
+    public static final String TABLE_ALIAS = "X";
+
     public PanoramaPublicTable(TableInfo table, PanoramaPublicSchema schema, ContainerFilter cf, @NotNull ContainerJoin joinType)
     {
         this(table, schema, cf, joinType, false);
@@ -51,8 +53,8 @@ public class PanoramaPublicTable extends FilteredTable<PanoramaPublicSchema>
     @NotNull
     public SQLFragment getFromSQL(String alias)
     {
-        SQLFragment sql = new SQLFragment("(SELECT X.* FROM ");
-        sql.append(super.getFromSQL("X"));
+        SQLFragment sql = new SQLFragment("(SELECT " + TABLE_ALIAS + ".* FROM ");
+        sql.append(super.getFromSQL(TABLE_ALIAS));
         sql.append(" ");
 
         if (getContainerFilter() != ContainerFilter.EVERYTHING)
@@ -81,7 +83,7 @@ public class PanoramaPublicTable extends FilteredTable<PanoramaPublicSchema>
             // If we don't add these here then the lookups in the schema browser will show null schema values: e.g. null.ExperimentAnnotations.Id
             // See Issue 40229: targetedms lookups target DB schema TableInfo instead of UserSchema version
             ForeignKey fk = columnInfo.getFk();
-            if (fk != null && PanoramaPublicSchema.SCHEMA_NAME.equalsIgnoreCase(fk.getLookupSchemaName()))
+            if (fk != null && PanoramaPublicSchema.SCHEMA_NAME.equalsIgnoreCase(fk.getLookupSchemaKey().toString()))
             {
                 columnInfo.setFk(new QueryForeignKey(getUserSchema(), getContainerFilter(), getUserSchema(), null,
                         fk.getLookupTableName(), fk.getLookupColumnName(), fk.getLookupDisplayName()));
@@ -93,7 +95,7 @@ public class PanoramaPublicTable extends FilteredTable<PanoramaPublicSchema>
                 {
                     columnInfo.setFk(new ContainerForeignKey(getUserSchema()));
                 }
-                if ("CreatedBy".equalsIgnoreCase(columnInfo.getName()) || "ModifiedBy".equalsIgnoreCase(columnInfo.getName()))
+                else if ("CreatedBy".equalsIgnoreCase(columnInfo.getName()) || "ModifiedBy".equalsIgnoreCase(columnInfo.getName()))
                 {
                     columnInfo.setFk(new UserIdQueryForeignKey(getUserSchema(), true));
                 }

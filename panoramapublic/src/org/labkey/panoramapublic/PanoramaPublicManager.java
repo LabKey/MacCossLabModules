@@ -110,6 +110,11 @@ public class PanoramaPublicManager
         return getSchema().getTable(PanoramaPublicSchema.TABLE_SPEC_LIB_SOURCE_FILE);
     }
 
+    public static TableInfo getTableInfoCatalogEntry()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_CATALOG_ENTRY);
+    }
+
     public static ITargetedMSRun getRunByLsid(String lsid, Container container)
     {
         return TargetedMSService.get().getRunByLsid(lsid, container);

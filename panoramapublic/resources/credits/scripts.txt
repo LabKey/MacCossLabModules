@@ -1,0 +1,4 @@
+{table}
+Library|Version|Source|License|LabKey Dev|Purpose
+Cropper.js|v1.5.13|https://fengyuanchen.github.io/cropperjs|{link:MIT License|https://github.com/fengyuanchen/cropperjs/blob/main/LICENSE}|vsharma|Used to crop images for Panorama Public catalog entries
+{table}
