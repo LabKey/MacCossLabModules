@@ -3375,10 +3375,7 @@ public class PanoramaPublicController extends SpringActionController
                 SubmissionManager.updateSubmission(_submission, getUser());
 
                 // Create notifications
-                Submission latestCopiedSubmission = _journalSubmission.getLatestCopiedSubmission();
-                ExperimentAnnotations journalCopy = latestCopiedSubmission != null
-                        ? ExperimentAnnotationsManager.get(latestCopiedSubmission.getCopiedExperimentId())
-                        : null;
+                ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.get(_journalSubmission.getLatestCopiedExperimentId());
                 PanoramaPublicNotification.notifyUpdated(_experimentAnnotations, _journal, journalExperiment, _submission, journalCopy, getUser());
 
                 transaction.commit();
@@ -3452,7 +3449,7 @@ public class PanoramaPublicController extends SpringActionController
             Submission submission = getSubmission();
             form.setKeepPrivate(submission.isKeepPrivate());
             // Do not use the lab head information provided in the previous submission request if the ExperimentAnnotations
-            // is now associated with a LabKey user.
+            // is now associated with a LabKey user as the lab head.
             if (exptAnnotations.getLabHeadUser() == null)
             {
                 form.setLabHeadName(submission.getLabHeadName());
