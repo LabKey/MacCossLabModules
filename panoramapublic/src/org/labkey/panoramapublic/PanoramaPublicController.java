@@ -3375,7 +3375,11 @@ public class PanoramaPublicController extends SpringActionController
                 SubmissionManager.updateSubmission(_submission, getUser());
 
                 // Create notifications
-                PanoramaPublicNotification.notifyUpdated(_experimentAnnotations, _journal, journalExperiment, _submission, getUser());
+                Submission latestCopiedSubmission = _journalSubmission.getLatestCopiedSubmission();
+                ExperimentAnnotations journalCopy = latestCopiedSubmission != null
+                        ? ExperimentAnnotationsManager.get(latestCopiedSubmission.getCopiedExperimentId())
+                        : null;
+                PanoramaPublicNotification.notifyUpdated(_experimentAnnotations, _journal, journalExperiment, _submission, journalCopy, getUser());
 
                 transaction.commit();
             }
@@ -3447,9 +3451,14 @@ public class PanoramaPublicController extends SpringActionController
             form.setJournalId(_journalSubmission.getJournalId());
             Submission submission = getSubmission();
             form.setKeepPrivate(submission.isKeepPrivate());
-            form.setLabHeadName(submission.getLabHeadName());
-            form.setLabHeadEmail(submission.getLabHeadEmail());
-            form.setLabHeadAffiliation(submission.getLabHeadAffiliation());
+            // Do not use the lab head information provided in the previous submission request if the ExperimentAnnotations
+            // is now associated with a LabKey user.
+            if (exptAnnotations.getLabHeadUser() == null)
+            {
+                form.setLabHeadName(submission.getLabHeadName());
+                form.setLabHeadEmail(submission.getLabHeadEmail());
+                form.setLabHeadAffiliation(submission.getLabHeadAffiliation());
+            }
             DataLicense license = submission.getDataLicense();
             form.setDataLicense(license == null ? DataLicense.defaultLicense().name() : license.name());
             if (_dataValidation != null)
@@ -6341,12 +6350,8 @@ public class PanoramaPublicController extends SpringActionController
 
 
             // Post to the message thread associated with this submission
-            StringBuilder message = new StringBuilder();
-            message.append(_madePublic ? String.format("Data was made public%s.", (_addedPublication ? " and publication details were added" : ""))
-                                  : _addedPublication ?  "Publication details were updated." : "");
-            message.append(_copiedExperiment.getPxid() != null ? String.format(" Accession %s will be %s on ProteomeXchange by a %s administrator.",
-                                    _copiedExperiment.getPxid(), _madePublic ? "made public" : "updated", _journal.getName()) : "");
-            PanoramaPublicNotification.notifyDataPublished(_expAnnot, _copiedExperiment, _journal, _journalSubmission.getJournalExperiment(), _doiError, message.toString(), getUser());
+            PanoramaPublicNotification.notifyDataPublished(_expAnnot, _copiedExperiment, _journal, _journalSubmission.getJournalExperiment(),
+                    _doiError, _madePublic, _addedPublication, getUser());
 
             return true;
         }

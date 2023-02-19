@@ -166,9 +166,9 @@ public class SubmissionManager
         return getJournalSubmission(container, new SQLFragment(" je.id = ? ").add(id));
     }
 
-    public static @Nullable JournalSubmission getJournalSubmission(int expeAnnotationsId, int journalId, @NotNull Container container)
+    public static @Nullable JournalSubmission getJournalSubmission(int expAnnotationsId, int journalId, @NotNull Container container)
     {
-        SQLFragment filter = new SQLFragment(" je.experimentAnnotationsId = ? AND je.journalId = ? ").add(expeAnnotationsId).add(journalId);
+        SQLFragment filter = new SQLFragment(" je.experimentAnnotationsId = ? AND je.journalId = ? ").add(expAnnotationsId).add(journalId);
         return getJournalSubmission(container, filter);
     }
 
@@ -222,6 +222,13 @@ public class SubmissionManager
             return getJournalSubmission(je);
         }
         return null;
+    }
+
+    public static @Nullable JournalSubmission getSubmissionForExperiment(@NotNull ExperimentAnnotations expAnnotations)
+    {
+        return expAnnotations.isJournalCopy()
+                ? getSubmissionForJournalCopy(expAnnotations)
+                : getNewestJournalSubmission(expAnnotations);
     }
 
     public static @NotNull JournalSubmission createNewSubmission(@NotNull PanoramaPublicController.PanoramaPublicRequest request,
