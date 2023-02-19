@@ -40,7 +40,6 @@ public class PanoramaPublicNotification
     private enum ACTION
     {
         NEW ("Submitted"),
-        // UPDATED ("Submission Updated"),
         DELETED ("Deleted"),
         COPIED ("Copied"),
         RESUBMITTED ("Resubmitted"),
@@ -62,19 +61,19 @@ public class PanoramaPublicNotification
     public static void notifyCreated(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, Submission submission, User user)
     {
         notifyUserAction(expAnnotations, journal, je, submission, null, user, ACTION.NEW,
-                "We have received your request to submit data to Panorama Public.");
+                String.format("We have received your request to submit data to %s.", journal.getName()));
     }
 
     public static void notifyUpdated(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, Submission submission, @Nullable ExperimentAnnotations currentJournalCopy, User user)
     {
         notifyUserAction(expAnnotations, journal, je, submission, currentJournalCopy, user, currentJournalCopy != null ? ACTION.RESUBMITTED : ACTION.NEW,
-                "Your submission request to Panorama Public has been updated.");
+                String.format("We have received the changes made to your pending submission request to %s.", journal.getName()));
     }
 
     public static void notifyResubmitted(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, Submission submission, ExperimentAnnotations currentJournalCopy, User user)
     {
         notifyUserAction(expAnnotations, journal, je, submission, currentJournalCopy, user, ACTION.RESUBMITTED,
-                "We have received your request to resubmit data to Panorama Public.");
+                String.format("We have received your request to resubmit data to %s.", journal.getName()));
     }
 
     private static void notifyUserAction(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, Submission submission,
@@ -106,7 +105,7 @@ public class PanoramaPublicNotification
     public static void notifyDeleted(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, User user)
     {
         StringBuilder messageBody = new StringBuilder();
-        messageBody.append("Your request to submit data to Panorama Public has been deleted.").append(NL);
+        messageBody.append(String.format("Your request to submit data to %s has been deleted.", journal.getName())).append(NL);
         messageBody.append(NL).append("* Folder: ").append(getContainerLink(expAnnotations.getContainer()));
         messageBody.append(NL).append("* ExperimentID: ").append(expAnnotations.getId());
 
@@ -131,11 +130,14 @@ public class PanoramaPublicNotification
     {
         StringBuilder messageBody = new StringBuilder();
         messageBody.append("Dear ").append(getUserName(user)).append(",").append(NL2);
-        messageBody.append(madePublic ? String.format("Thank you for making your data public%s.", (addedPublication ? " and adding publication details." : ""))
-                : addedPublication ?  "Thank you for adding publication details for your data." : "");
-        messageBody.append(journalCopy.hasPxid() ? String.format(" The accession %s (%s) will be %s on ProteomeXchange by a %s administrator.",
-                journalCopy.getPxid(), link(pxdLink(journalCopy.getPxid())), madePublic ? "announced" : "updated", journal.getName()) : "");
-        messageBody.append(NL2);
+        if (madePublic)
+        {
+            messageBody.append(String.format("Thank you for making your data public%s.", (addedPublication ? " and adding the following publication details" : "")));
+        }
+        else if (addedPublication)
+        {
+            messageBody.append("Thank you for adding the following publication details for your data.");
+        }
 
         if (journalCopy.hasPubmedId())
         {
@@ -149,15 +151,25 @@ public class PanoramaPublicNotification
         {
             messageBody.append(NL).append("* Citation: ").append(escape(journalCopy.getCitation()));
         }
+
+        if (journalCopy.hasPxid())
+        {
+            messageBody.append(NL2);
+            messageBody.append(String.format(" The accession %s (%s)", journalCopy.getPxid(), link(pxdLink(journalCopy.getPxid()))));
+            messageBody.append(madePublic ? " will be made public" : " will be updated");
+            messageBody.append(String.format(" on ProteomeXchange by a %s administrator.", journal.getName()));
+        }
         if (doiError != null)
         {
-            messageBody.append(NL).append("--------------------------------------------------------------------------------------------");
-            messageBody.append(NL).append("There was an error making the DOI findable. The error was: ").append(escape(doiError.getMessage()));
+            messageBody.append(NL2);
+            messageBody.append(NL).append("There was an error making the DOI public. The error was: ").append(escape(doiError.getMessage()));
+            messageBody.append(NL).append("We will investigate the problem and get back to you.");
         }
 
         postNotification(srcExperiment, journal, je, messageBody, false, ACTION.PUBLISHED.title(),
-                journalCopy.hasPxid() ? StatusOption.Active // Set the status to "Active" so that an admin can announce the data on ProteomeXchange.
-                                      : StatusOption.Closed,
+                (doiError != null || journalCopy.hasPxid())
+                        ? StatusOption.Active // Set the status to "Active" so that an admin can announce the data on ProteomeXchange.
+                        : StatusOption.Closed,
                 user);
     }
 
@@ -281,7 +293,7 @@ public class PanoramaPublicNotification
 
     private static void appendActionSubmitterDetails(User user, StringBuilder text)
     {
-        text.append("Requested by: " + getUserDetails(user));
+        text.append("Requested by: ").append(getUserDetails(user));
     }
 
     public static String getUserName(User user)
@@ -298,10 +310,6 @@ public class PanoramaPublicNotification
     {
         ActionURL url = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container);
         return link(container.getPath(), url.getEncodedLocalURIString());
-//        StringBuilder link = new StringBuilder("[").append(escape(container.getPath())).append("]");
-//        link.append("(").append(AppProps.getInstance().getBaseServerUrl()).append(url.getEncodedLocalURIString()).append(")");
-//
-//        return link.toString();
     }
 
     public static String bolditalics(String text)
@@ -419,7 +427,7 @@ public class PanoramaPublicNotification
         String fromUserName = getUserName(fromUser);
         if(StringUtils.isBlank(fromUserName))
         {
-            message.append(NL).append("The Panorama Public Team");
+            message.append(NL).append(String.format("The %s team", journalName));
         }
         else
         {
