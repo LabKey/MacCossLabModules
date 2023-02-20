@@ -15,9 +15,12 @@ import org.labkey.test.components.panoramapublic.PanoramaPublicSearchWebPart;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.PermissionsHelper;
+import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Category({External.class, MacCossLabModules.class})
@@ -99,30 +102,41 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         checker().verifyEquals("Incorrect result", AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + ",", table.getDataAsText(0, "Authors"));
 
         log("Experiment Search with Organism and Instrument");
-        table = panoramaPublicSearch
-                .setOrganism("Homo")
-                .setAuthor("")
-                .setInstrument("Thermo")
-                .search();
-        table = DataRegionTable.findDataRegionWithinWebpart(this,"Panorama Public Experiments");
-        checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Default", "Organism CONTAINS ONE OF ('Homo sapiens (taxid:9606)')",
-                        "Instrument CONTAINS ONE OF ('Thermo Electron instrument model')"), getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
+        try
+        {
+            table = panoramaPublicSearch
+                    .setOrganism("Homo")
+                    .setAuthor("")
+                    .setInstrument("Thermo")
+                    .search();
+        }
+        catch(StaleElementReferenceException e)
+        {
+            shortWait().until(ExpectedConditions.stalenessOf(Locator.tagWithAttribute("form","lk-region-form","Targeted MS Experiment List").findElement(getDriver())));
+        }
         checker().verifyEquals("Incorrect search results", 2, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
+        checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Default", "Organism CONTAINS ONE OF ('Homo sapiens (taxid:9606)')",
+                "Instrument CONTAINS ONE OF ('Thermo Electron instrument model')"), getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
 
         log("Experiment Search with Author full name, Title, and Organism");
-        table = panoramaPublicSearch.setTitle("Experiment")
-                .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
-                .search();
-        table = DataRegionTable.findDataRegionWithinWebpart(this,"Panorama Public Experiments");
-        checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Default", "Organism CONTAINS ONE OF ('Homo sapiens (taxid:9606)')",
-                        "Title CONTAINS ONE OF (Experiment)", "Instrument CONTAINS ONE OF ('Thermo Electron instrument model')",
-                        "Authors CONTAINS ONE OF ('" + AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + "')"),
-                getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
+        try{
+            table = panoramaPublicSearch.setTitle("Experiment")
+                    .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
+                    .search();
+        }
+        catch (StaleElementReferenceException e)
+        {
+            shortWait().until(ExpectedConditions.stalenessOf(Locator.tagWithAttribute("form","lk-region-form","Targeted MS Experiment List").findElement(getDriver())));
+        }
         checker().verifyEquals("Incorrect search results", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
+        checker().verifyEquals("Invalid filter values displayed", Set.copyOf(Arrays.asList("Default", "Organism CONTAINS ONE OF ('Homo sapiens (taxid:9606)')",
+                        "Title CONTAINS ONE OF (Experiment)", "Instrument CONTAINS ONE OF ('Thermo Electron instrument model')",
+                        "Authors CONTAINS ONE OF ('" + AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME + "')")),
+                Set.copyOf(getTexts(DataRegionTable.Locators.contextAction().findElements(table))));
     }
 
     @Test
