@@ -178,22 +178,33 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         return new DataValidationPage(this);
     }
 
-    void submitWithoutPXId()
+    String submitWithoutPXId()
     {
         clickAndWait(Locator.linkContainingText("Submit without a ProteomeXchange ID"));
-        submitForm();
+        return submitFormAndGetAccessLink();
     }
 
-    void submitWithoutPxIdButton()
+    String submitWithoutPxIdButton()
     {
         clickButton("Submit without a ProteomeXchange ID");
-        submitForm();
+        return submitFormAndGetAccessLink();
     }
 
-    void submitIncompletePxButton()
+    String submitIncompletePxButton()
     {
         clickButton("Continue with an Incomplete PX Submission");
+        return submitFormAndGetAccessLink();
+    }
+
+    private String submitFormAndGetAccessLink()
+    {
         submitForm();
+        goToDashboard();
+        assertTextPresent("Copy Pending!");
+        TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
+        String accessLink = expWebPart.getAccessLink();
+        assertNotNull("Expected a short access URL", accessLink);
+        return accessLink;
     }
 
     private void submitForm()
@@ -204,44 +215,45 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         clickAndWait(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
     }
 
-    void copyExperimentAndVerify(String projectName, String folderName, String experimentTitle, String destinationFolder)
+    void copyExperimentAndVerify(String projectName, String folderName, String experimentTitle, String destinationFolder, String shortAccessUrl)
     {
-        copyExperimentAndVerify(projectName, folderName, null, experimentTitle, null, false, true, destinationFolder);
+        copyExperimentAndVerify(projectName, folderName, null, experimentTitle, null, false, true, destinationFolder, shortAccessUrl);
     }
 
-    void copyExperimentAndVerify(String projectName, String folderName, @Nullable List<String> subfolders, String experimentTitle, String destinationFolder)
+    void copyExperimentAndVerify(String projectName, String folderName, @Nullable List<String> subfolders, String experimentTitle, String destinationFolder, String shortAccessUrl)
     {
-        copyExperimentAndVerify(projectName, folderName, subfolders, experimentTitle, null, false, true, destinationFolder);
+        copyExperimentAndVerify(projectName, folderName, subfolders, experimentTitle, null, false, true, destinationFolder, shortAccessUrl);
     }
 
-    void makeCopy(String projectName, String folderName, String experimentTitle, String destinationFolder, boolean recopy, boolean deleteOldCopy)
+    void makeCopy(String shortAccessUrl, String experimentTitle, String destinationFolder, boolean recopy, boolean deleteOldCopy)
     {
         if(isImpersonating())
         {
             stopImpersonating();
         }
-        makeCopy(projectName, folderName, experimentTitle, recopy, deleteOldCopy, destinationFolder);
+        makeCopy(shortAccessUrl, experimentTitle, recopy, deleteOldCopy, destinationFolder);
     }
 
     void copyExperimentAndVerify(String projectName, String folderName, @Nullable List<String> subfolders, String experimentTitle,
-                                 @Nullable Integer version, boolean recopy, boolean deleteOldCopy, String destinationFolder)
+                                 @Nullable Integer version, boolean recopy, boolean deleteOldCopy, String destinationFolder,
+                                 String shortAccessUrl)
     {
         if(isImpersonating())
         {
             stopImpersonating();
         }
-        makeCopy(projectName, folderName, experimentTitle, recopy, deleteOldCopy, destinationFolder);
-        verifyCopy(experimentTitle, version, projectName, folderName, subfolders, recopy);
+        makeCopy(shortAccessUrl, experimentTitle, recopy, deleteOldCopy, destinationFolder);
+        verifyCopy(shortAccessUrl, experimentTitle, version, projectName, folderName, subfolders, recopy);
 
         stopImpersonating();
     }
 
-    private void makeCopy(String projectName, String folderName, String experimentTitle, boolean recopy, boolean deleteOldCopy, String destinationFolder)
+    private void makeCopy(String shortAccessUrl, String experimentTitle, boolean recopy, boolean deleteOldCopy, String destinationFolder)
     {
         goToProjectHome(PANORAMA_PUBLIC);
         impersonateGroup(PANORAMA_PUBLIC_GROUP, false);
 
-        clickAndWait(Locator.linkContainingText("/" + projectName + "/" + folderName));
+        clickAndWait(Locator.linkContainingText(shortAccessUrl));
         Locator.XPathLocator copyLink = Locator.linkContainingText("Copy Link");
         assertNotNull(copyLink);
         clickAndWait(copyLink);
@@ -251,7 +263,6 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         // Enter the name of the destination folder in the Panorama Public project
         setFormElement(Locator.tagWithName("input", "destContainerName"), destinationFolder);
         uncheck("Assign ProteomeXchange ID:");
-        uncheck("Send Email to Submitter:");
         uncheck("Assign Digital Object Identifier:");
 
         if(recopy)
@@ -293,7 +304,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         }
     }
 
-    private void verifyCopy(String experimentTitle, @Nullable Integer version, String projectName, String folderName, List<String> subfolders, boolean recopy)
+    private void verifyCopy(String shortAccessUrl, String experimentTitle, @Nullable Integer version, String projectName, String folderName, List<String> subfolders, boolean recopy)
     {
         // Verify the copy
         goToProjectHome(PANORAMA_PUBLIC);
@@ -332,9 +343,8 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
         // Verify that notifications got posted on message board
         goToProjectHome(PANORAMA_PUBLIC);
-        clickAndWait(Locator.linkContainingText("/" + projectName + "/" + folderName));
-        assertTextPresent((recopy ? "RECOPIED": "COPIED") + ": Experiment ID ");
-        assertTextPresent("Email was not sent to submitter");
+        clickAndWait(Locator.linkContainingText(shortAccessUrl));
+        assertTextPresent((recopy ? "Recopied": "Copied") + " - " + shortAccessUrl);
         var text = "As requested, your data on " + PANORAMA_PUBLIC + " is private.";
         text += recopy ? " The reviewer account details remain unchanged." : " Here are the reviewer account details:";
         if (!recopy)
@@ -342,7 +352,8 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
             text += "\nEmail: " + REVIEWER_PREFIX;
         }
         String messageText = new BodyWebPart(getDriver(), "View Message").getComponentElement().getText();
-        assertTextPresent(new TextSearcher(messageText), text);
+        var srcFolderTxt = "Source folder: " + "/" + projectName + "/" + folderName;
+        assertTextPresent(new TextSearcher(messageText), text, srcFolderTxt);
     }
 
     @Override

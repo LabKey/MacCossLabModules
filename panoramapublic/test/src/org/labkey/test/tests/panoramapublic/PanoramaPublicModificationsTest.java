@@ -298,12 +298,10 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         validationPage.verifyModificationStatus(propionylation, true, propionyl.getUnimodId(), propionyl.getName());
         validationPage.verifyModificationStatus(methylPropionyl, true, methyl.getUnimodId(), methyl.getName(), propionyl.getUnimodId(), propionyl.getName());
 
-        submitIncompletePxButton();
-        goToDashboard();
-        assertTextPresent("Copy Pending!");
+        String shortAccessUrl = submitIncompletePxButton();
 
         // Copy the experiment to the Panorama Public project
-        copyExperimentAndVerify(projectName, folderName, experimentTitle, targetFolder);
+        copyExperimentAndVerify(projectName, folderName, experimentTitle, targetFolder, shortAccessUrl);
         goToProjectFolder(PANORAMA_PUBLIC, targetFolder);
         goToExperimentDetailsPage();
         var modsTable = new DataRegionTable(STRUCTURAL_MOD, this);

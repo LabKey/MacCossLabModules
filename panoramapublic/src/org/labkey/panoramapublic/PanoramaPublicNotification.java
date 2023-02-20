@@ -168,7 +168,7 @@ public class PanoramaPublicNotification
 
         postNotification(srcExperiment, journal, je, messageBody, false, ACTION.PUBLISHED.title(),
                 (doiError != null || journalCopy.hasPxid())
-                        ? StatusOption.Active // Set the status to "Active" so that an admin can announce the data on ProteomeXchange.
+                        ? StatusOption.Active
                         : StatusOption.Closed,
                 user);
     }
@@ -229,7 +229,7 @@ public class PanoramaPublicNotification
         }
 
         Announcement announcement = svc.insertAnnouncement(supportContainer, messagePoster, messageTitle, messageBody, true, je.getAnnouncementId(),
-                status.name(), combinedNotifyUserIds.size() == 0 ? null : new ArrayList<>(combinedNotifyUserIds));
+                status.name(), combinedNotifyUserIds.isEmpty() ? null : new ArrayList<>(combinedNotifyUserIds));
         if (je.getAnnouncementId() == null)
         {
             je.setAnnouncementId(announcement.getRowId());
