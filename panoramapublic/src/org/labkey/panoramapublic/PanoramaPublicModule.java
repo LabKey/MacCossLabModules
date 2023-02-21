@@ -18,6 +18,7 @@ package org.labkey.panoramapublic;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.labkey.api.attachments.AttachmentService;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.SimpleFilter;
@@ -39,6 +40,7 @@ import org.labkey.api.view.ShortURLService;
 import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartFactory;
 import org.labkey.api.view.WebPartView;
+import org.labkey.panoramapublic.catalog.CatalogImageAttachmentType;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
@@ -49,6 +51,7 @@ import org.labkey.panoramapublic.proteomexchange.SkylineVersion;
 import org.labkey.panoramapublic.proteomexchange.UnimodUtil;
 import org.labkey.panoramapublic.proteomexchange.validator.SkylineDocValidator;
 import org.labkey.panoramapublic.proteomexchange.validator.SpecLibValidator;
+import org.labkey.panoramapublic.query.CatalogEntryManager;
 import org.labkey.panoramapublic.query.ContainerJoin;
 import org.labkey.panoramapublic.query.ExperimentTitleDisplayColumn;
 import org.labkey.panoramapublic.query.JournalManager;
@@ -83,7 +86,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 22.005;
+        return 22.006;
     }
 
     @Override
@@ -97,6 +100,7 @@ public class PanoramaPublicModule extends SpringModule
     {
         addController(PanoramaPublicController.NAME, PanoramaPublicController.class);
         PanoramaPublicSchema.register(this);
+        AttachmentService.get().registerAttachmentType(CatalogImageAttachmentType.get());
     }
 
     @Override
@@ -361,6 +365,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(SpecLibValidator.TestCase.class);
         set.add(ContainerJoin.TestCase.class);
         set.add(Formula.TestCase.class);
+        set.add(CatalogEntryManager.TestCase.class);
         return set;
 
     }

@@ -73,6 +73,7 @@ import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
+import org.labkey.panoramapublic.query.CatalogEntryManager;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.ModificationInfoManager;
@@ -82,6 +83,7 @@ import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfo;
 import org.labkey.panoramapublic.security.PanoramaPublicSubmitterRole;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -172,6 +174,10 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // Create a new row in panoramapublic.ExperimentAnnotations and link it to the new experiment created during folder import.
             ExperimentAnnotations targetExperiment = createNewExperimentAnnotations(experiment, sourceExperiment, js, previousCopy, jobSupport, user, log);
 
+            // If there is a Panorama Public slideshow catalog entry associated with the previous copy of the experiment, move it to the
+            // new container.
+            moveCatalogEntry(previousCopy, targetExperiment, user);
+
             // Update the permissions on the source container and the new Panorama Public container
             updatePermissions(targetExperiment, sourceExperiment, previousCopy, jobSupport.getJournal(), user, log);
 
@@ -206,6 +212,23 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             postEmailNotification(jobSupport, user, log, sourceExperiment, js, targetExperiment, reviewer.first, reviewer.second, previousCopy != null);
 
             transaction.commit();
+        }
+    }
+
+    private void moveCatalogEntry(ExperimentAnnotations previousCopy, ExperimentAnnotations targetExperiment, User user) throws PipelineJobException
+    {
+        if (previousCopy == null)
+        {
+            return;
+        }
+        try
+        {
+            CatalogEntryManager.moveEntry(previousCopy, targetExperiment, user);
+        }
+        catch (IOException e)
+        {
+            throw new PipelineJobException(String.format("Could not move Panorama Public catalog entry from the previous copy of the data in folder '%s' to the new folder '%s'.",
+                    previousCopy.getContainer().getPath(), targetExperiment.getContainer().getPath()), e);
         }
     }
 
