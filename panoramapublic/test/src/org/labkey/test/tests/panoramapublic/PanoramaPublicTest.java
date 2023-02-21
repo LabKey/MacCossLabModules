@@ -10,11 +10,13 @@ import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentInsertPage;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
+import org.labkey.test.pages.pipeline.PipelineStatusDetailsPage;
 import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.PermissionsHelper;
+import org.labkey.test.util.PipelineStatusTable;
 import org.labkey.test.util.PortalHelper;
 
 import java.util.List;
@@ -276,6 +278,13 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         assertTextPresent("Read permissions are required in all subfolders to include data from subfolders");
         assertElementPresent(Locator.linkWithText("Back To Folder"));
         assertElementPresent(Locator.linkWithText("Exclude Subfolders"));
+
+        // TODO/REVIEW find a better place to put this check...
+        // Issue #47195 log file not copied
+        goToProjectFolder(PANORAMA_PUBLIC, targetFolder);
+        PipelineStatusTable pipelineStatusTable = goToDataPipeline();
+        PipelineStatusDetailsPage pipelineStatusDetailsPage = pipelineStatusTable.clickStatusLink(0);
+        assertTrue("Copy Job's log file not set to pipeline root", pipelineStatusDetailsPage.getFilePath().contains("@files"));  //Proxy check to see if Job's log file is set to the pipeline root.
     }
 
     @Override
