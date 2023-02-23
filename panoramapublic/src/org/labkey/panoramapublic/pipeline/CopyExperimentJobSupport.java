@@ -19,7 +19,6 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 
 import java.io.File;
-import java.util.List;
 
 /**
  * User: vsharma
@@ -41,10 +40,6 @@ public interface CopyExperimentJobSupport
 
     boolean assignDoi();
     boolean useDataCiteTestApi();
-
-    boolean emailSubmitter();
-    List<String> toEmailAddresses();
-    String replyToAddress();
 
     boolean deletePreviousCopy();
 }

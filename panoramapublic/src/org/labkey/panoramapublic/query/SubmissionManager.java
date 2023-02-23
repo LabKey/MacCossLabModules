@@ -1,6 +1,5 @@
 package org.labkey.panoramapublic.query;
 
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -21,9 +20,9 @@ import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
-import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.security.roles.EditorRole;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.api.view.ShortURLService;
@@ -42,7 +41,7 @@ import java.util.stream.Collectors;
 
 public class SubmissionManager
 {
-    private static final Logger LOG = LogManager.getLogger(SubmissionManager.class);
+    private static final Logger LOG = LogHelper.getLogger(SubmissionManager.class, "Panorama Public submissions");
 
     /**
      * @param id database row id of the submission
@@ -167,9 +166,9 @@ public class SubmissionManager
         return getJournalSubmission(container, new SQLFragment(" je.id = ? ").add(id));
     }
 
-    public static @Nullable JournalSubmission getJournalSubmission(int expeAnnotationsId, int journalId, @NotNull Container container)
+    public static @Nullable JournalSubmission getJournalSubmission(int expAnnotationsId, int journalId, @NotNull Container container)
     {
-        SQLFragment filter = new SQLFragment(" je.experimentAnnotationsId = ? AND je.journalId = ? ").add(expeAnnotationsId).add(journalId);
+        SQLFragment filter = new SQLFragment(" je.experimentAnnotationsId = ? AND je.journalId = ? ").add(expAnnotationsId).add(journalId);
         return getJournalSubmission(container, filter);
     }
 
@@ -225,6 +224,13 @@ public class SubmissionManager
         return null;
     }
 
+    public static @Nullable JournalSubmission getSubmissionForExperiment(@NotNull ExperimentAnnotations expAnnotations)
+    {
+        return expAnnotations.isJournalCopy()
+                ? getSubmissionForJournalCopy(expAnnotations)
+                : getNewestJournalSubmission(expAnnotations);
+    }
+
     public static @NotNull JournalSubmission createNewSubmission(@NotNull PanoramaPublicController.PanoramaPublicRequest request,
                                                                  @NotNull ShortURLRecord accessUrl, @NotNull ShortURLRecord copyUrl, @NotNull User user)
     {
@@ -260,17 +266,25 @@ public class SubmissionManager
     {
         ActionURL targetUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(targetExperiment.getContainer());
 
-        // If the user is not the one that created this shortUrl then we need to add this user as an editor to the record's SecurityPolicy.
-        // For example, a Panorama Public admin making a copy of user's data.
-        MutableSecurityPolicy policy = new MutableSecurityPolicy(SecurityPolicyManager.getPolicy(shortAccessUrlRecord));
-        if (!policy.getOwnPermissions(user).contains(UpdatePermission.class))
+        ensureEditorRole(shortAccessUrlRecord, user);
+
+        ShortURLService shortURLService = ShortURLService.get();
+        shortURLService.saveShortURL(shortAccessUrlRecord.getShortURL(), targetUrl, user);
+    }
+
+    private static void ensureEditorRole(@NotNull ShortURLRecord shortUrl, User user)
+    {
+        // If the user is not the one that created the shortUrl then we need to add this user as an editor to the record's SecurityPolicy.
+        // Examples: A Panorama Public admin making a copy of user's data will need permission to update the target of the shortUrl.
+        //           A folder admin updating the submission request made by another submitter may want to change the shortUrl. They
+        //           will need permission to delete the old shortUrl.
+        MutableSecurityPolicy policy = new MutableSecurityPolicy(SecurityPolicyManager.getPolicy(shortUrl));
+        boolean isEditor = policy.getAssignedRoles(user).stream().anyMatch(r -> r instanceof EditorRole);
+        if (!isEditor)
         {
             policy.addRoleAssignment(user, EditorRole.class);
             SecurityPolicyManager.savePolicy(policy);
         }
-
-        ShortURLService shortURLService = ShortURLService.get();
-        shortURLService.saveShortURL(shortAccessUrlRecord.getShortURL(), targetUrl, user);
     }
 
     /**
@@ -297,7 +311,7 @@ public class SubmissionManager
                 updateJournalExperiment(je, user); // Save with the new URL before deleting the old short URL
 
                 // Delete the old one
-                shortURLService.deleteShortURL(oldAccessUrl, user);
+                deleteShortUrl(oldAccessUrl, user, shortURLService);
             }
 
             if (newShortCopyUrl != null && !newShortCopyUrl.equals(oldCopyUrl.getShortURL()))
@@ -310,11 +324,17 @@ public class SubmissionManager
                 updateJournalExperiment(je, user); // Save with the new URL before deleting the old short URL
 
                 // Delete the old one
-                shortURLService.deleteShortURL(oldCopyUrl, user);
+                deleteShortUrl(oldCopyUrl, user, shortURLService);
             }
 
             transaction.commit();
         }
+    }
+
+    private static void deleteShortUrl(ShortURLRecord shortUrl, User user, ShortURLService shortURLService) throws ValidationException
+    {
+        ensureEditorRole(shortUrl, user);
+        shortURLService.deleteShortURL(shortUrl, user);
     }
 
     /**

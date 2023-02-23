@@ -5,6 +5,7 @@ import org.labkey.api.data.Container;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
+import org.labkey.api.data.Sort;
 import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableInfo;
@@ -49,7 +50,7 @@ public class ModificationInfoManager
         if (modInfo != null)
         {
             List<ExperimentModInfo.UnimodInfo> unimodInfos = new TableSelector(PanoramaPublicManager.getTableInfoIsotopeUnimodInfo(),
-                    new SimpleFilter(FieldKey.fromParts("ModInfoId"), modInfo.getId()), null).getArrayList(ExperimentModInfo.UnimodInfo.class);
+                    new SimpleFilter(FieldKey.fromParts("ModInfoId"), modInfo.getId()), new Sort("Id")).getArrayList(ExperimentModInfo.UnimodInfo.class);
             unimodInfos.forEach(modInfo::addUnimodInfo);
         }
     }

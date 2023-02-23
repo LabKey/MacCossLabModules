@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 @Category({External.class, MacCossLabModules.class})
@@ -84,7 +83,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         verifySubmissionsAndPublishedVersions(projectName, folderName, 1, 0, List.of(Boolean.FALSE), List.of("") , List.of(""), List.of(""));
 
         // Copy the experiment to the Panorama Public project
-        copyExperimentAndVerify(projectName, folderName, experimentTitle, targetFolder);
+        copyExperimentAndVerify(projectName, folderName, experimentTitle, targetFolder, shortAccessLink);
 
         // Verify that a version is not displayed in the Panorama Public copy since there is only one version.
         verifyExperimentVersion(PANORAMA_PUBLIC, targetFolder, null);
@@ -108,7 +107,8 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
                 2, // We are not deleting the first copy so this is version 2
                 true,
                 false, // Do not delete old copy
-                targetFolder);
+                targetFolder,
+                shortAccessLink);
 
         // Verify rows in Submission table. The short URL of the previous copy should have a '_v1' suffix.
         String v1Link = shortAccessLink.replace(".url", "_v1.url");
@@ -255,10 +255,10 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         setupSubfolder(projectName, sourceFolder, subfolder_mam, FolderType.ExperimentMAM);
 
         goToProjectFolder(projectName, sourceFolder);
-        testSubmitWithSubfolders(expWebPart);
+        String shortAccessUrl = testSubmitWithSubfolders(expWebPart);
 
         // Copy the experiment to the Panorama Public project
-        copyExperimentAndVerify(projectName, sourceFolder, List.of(subfolder_collab, subfolder_mam), experimentTitle, targetFolder);
+        copyExperimentAndVerify(projectName, sourceFolder, List.of(subfolder_collab, subfolder_mam), experimentTitle, targetFolder, shortAccessUrl);
 
         // Remove permissions for SUBMITTER_2 from a subfolder, and try to resubmit the experiment as SUBMITTER_2. This user
         // should not be able to resubmit because the experiment was configured by SUBMITTER to include subfolders, and read permissions
@@ -351,17 +351,10 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         validationPage = submitValidationJob();
         validationPage.verifySampleFileStatus(SKY_FILE_1, List.of(RAW_FILE_WIFF), List.of(RAW_FILE_WIFF_SCAN));
 
-        submitWithoutPxIdButton();
-
-        goToDashboard();
-        assertTextPresent("Copy Pending!");
-
-        String accessLink = expWebPart.getAccessLink();
-        assertNotNull("Expected a short access URL", accessLink);
-        return accessLink;
+        return submitWithoutPxIdButton();
     }
 
-    private void testSubmitWithSubfolders(TargetedMsExperimentWebPart expWebPart)
+    private String testSubmitWithSubfolders(TargetedMsExperimentWebPart expWebPart)
     {
         goToDashboard();
         expWebPart.clickSubmit();
@@ -378,10 +371,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
 
         clickAndWait(Locator.linkWithText(INCLUDE_SUBFOLDERS_AND_SUBMIT));
 
-        submitWithoutPXId();
-
-        goToDashboard();
-        assertTextPresent("Copy Pending!");
+        return submitWithoutPXId();
     }
 
     private void resubmitWithoutPxd()

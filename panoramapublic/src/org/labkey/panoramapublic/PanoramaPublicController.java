@@ -1517,39 +1517,6 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
-            List<String> recipientEmails = new ArrayList<>();
-            String replyToEmail = null;
-            if(form.isSendEmail())
-            {
-                if(StringUtils.isBlank(form.getToEmailAddresses()))
-                {
-                    errors.reject(ERROR_MSG, "Please enter at least one email address.");
-                    return false;
-                }
-
-                for(String email: form.getToEmailAddressList())
-                {
-                    ValidEmail vEmail = getValidEmail(email, "Invalid email address in \"To\" field: " + email, errors);
-                    if(vEmail != null)
-                    {
-                        recipientEmails.add(vEmail.getEmailAddress());
-                    }
-                }
-
-                if(!StringUtils.isBlank(form.getReplyToAddress()))
-                {
-                    ValidEmail vEmail = getValidEmail(form.getReplyToAddress(), "Invalid email address in \"Reply-To\" field: " + form.getReplyToAddress(), errors);
-                    if(vEmail != null)
-                    {
-                        replyToEmail = vEmail.getEmailAddress();
-                    }
-                }
-                if(errors.getErrorCount() > 0)
-                {
-                    return false;
-                }
-            }
-
             Container parentContainer = form.lookupDestParentContainer();
             if(parentContainer == null)
             {
@@ -1605,9 +1572,6 @@ public class PanoramaPublicController extends SpringActionController
                 job.setAssignDoi(form.isAssignDoi());
                 job.setUseDataCiteTestApi(form.isUseDataCiteTestApi());
                 job.setReviewerEmailPrefix(form.getReviewerEmailPrefix());
-                job.setEmailSubmitter(form.isSendEmail());
-                job.setToEmailAddresses(recipientEmails);
-                job.setReplyToAddress(replyToEmail);
                 job.setDeletePreviousCopy(form.isDeleteOldCopy());
                 PipelineService.get().queueJob(job);
 
@@ -1717,9 +1681,6 @@ public class PanoramaPublicController extends SpringActionController
         private boolean _usePxTestDb; // Use the test database for getting a PX ID if true
         private boolean _assignDoi;
         private boolean _useDataCiteTestApi;
-        private boolean _sendEmail;
-        private String _toEmailAddresses;
-        private String _replyToAddress;
         private boolean _deleteOldCopy;
 
         static void setDefaults(CopyExperimentForm form, ExperimentAnnotations sourceExperiment, Submission currentSubmission)
@@ -1734,33 +1695,6 @@ public class PanoramaPublicController extends SpringActionController
 
             form.setAssignDoi(true);
             form.setUseDataCiteTestApi(false);
-
-            form.setSendEmail(true);
-            Set<String> toEmailAddresses = new HashSet<>();
-            User submitter = UserManager.getUser(currentSubmission.getCreatedBy()); // User that clicked the submit button
-            if (submitter != null)
-            {
-                toEmailAddresses.add(submitter.getEmail());
-            }
-
-            User dataSubmitter = sourceExperiment.getSubmitterUser(); // User selected as the data submitter.
-                                                                      // May be different from the user that clicked the button.
-                                                                      // This user's name will be included in the PX announcement.
-            if(dataSubmitter != null)
-            {
-                toEmailAddresses.add(dataSubmitter.getEmail());
-            }
-            User labHead = sourceExperiment.getLabHeadUser();
-            if(labHead != null)
-            {
-                toEmailAddresses.add(labHead.getEmail());
-            }
-            else if (!StringUtils.isBlank(currentSubmission.getLabHeadEmail()))
-            {
-                // Email address of the lab head was entered in the data submission form
-                toEmailAddresses.add(currentSubmission.getLabHeadEmail());
-            }
-            form.setToEmailAddresses(StringUtils.join(toEmailAddresses, '\n'));
 
             Container sourceExptContainer = sourceExperiment.getContainer();
             Container project = sourceExptContainer.getProject();
@@ -1881,41 +1815,6 @@ public class PanoramaPublicController extends SpringActionController
         public void setUseDataCiteTestApi(boolean useDataCiteTestApi)
         {
             _useDataCiteTestApi = useDataCiteTestApi;
-        }
-
-        public boolean isSendEmail()
-        {
-            return _sendEmail;
-        }
-
-        public void setSendEmail(boolean sendEmail)
-        {
-            _sendEmail = sendEmail;
-        }
-
-        public String getToEmailAddresses()
-        {
-            return _toEmailAddresses;
-        }
-
-        public List<String> getToEmailAddressList()
-        {
-            return StringUtils.isBlank(_toEmailAddresses) ? Collections.emptyList() : Arrays.asList(StringUtils.split(_toEmailAddresses, "\n\r"));
-        }
-
-        public void setToEmailAddresses(String toEmailAddresses)
-        {
-            _toEmailAddresses = toEmailAddresses;
-        }
-
-        public String getReplyToAddress()
-        {
-            return _replyToAddress;
-        }
-
-        public void setReplyToAddress(String replyToAddress)
-        {
-            _replyToAddress = replyToAddress;
         }
 
         public boolean isDeleteOldCopy()
@@ -3692,7 +3591,8 @@ public class PanoramaPublicController extends SpringActionController
                 SubmissionManager.updateSubmission(_submission, getUser());
 
                 // Create notifications
-                PanoramaPublicNotification.notifyUpdated(_experimentAnnotations, _journal, journalExperiment, _submission, getUser());
+                ExperimentAnnotations journalCopy = ExperimentAnnotationsManager.get(_journalSubmission.getLatestCopiedExperimentId());
+                PanoramaPublicNotification.notifyUpdated(_experimentAnnotations, _journal, journalExperiment, _submission, journalCopy, getUser());
 
                 transaction.commit();
             }
@@ -3764,9 +3664,14 @@ public class PanoramaPublicController extends SpringActionController
             form.setJournalId(_journalSubmission.getJournalId());
             Submission submission = getSubmission();
             form.setKeepPrivate(submission.isKeepPrivate());
-            form.setLabHeadName(submission.getLabHeadName());
-            form.setLabHeadEmail(submission.getLabHeadEmail());
-            form.setLabHeadAffiliation(submission.getLabHeadAffiliation());
+            // Do not use the lab head information provided in the previous submission request if the ExperimentAnnotations
+            // is now associated with a LabKey user as the lab head.
+            if (exptAnnotations.getLabHeadUser() == null)
+            {
+                form.setLabHeadName(submission.getLabHeadName());
+                form.setLabHeadEmail(submission.getLabHeadEmail());
+                form.setLabHeadAffiliation(submission.getLabHeadAffiliation());
+            }
             DataLicense license = submission.getDataLicense();
             form.setDataLicense(license == null ? DataLicense.defaultLicense().name() : license.name());
             if (_dataValidation != null)
@@ -6639,7 +6544,8 @@ public class PanoramaPublicController extends SpringActionController
 
 
             // Post to the message thread associated with this submission
-            PanoramaPublicNotification.notifyDataPublished(_expAnnot, _copiedExperiment, _journal, _journalSubmission.getJournalExperiment(), _doiError, getUser());
+            PanoramaPublicNotification.notifyDataPublished(_expAnnot, _copiedExperiment, _journal, _journalSubmission.getJournalExperiment(),
+                    _doiError, _madePublic, _addedPublication, getUser());
 
             return true;
         }
@@ -9396,6 +9302,11 @@ public class PanoramaPublicController extends SpringActionController
             url.addParameter("forSubmit", false);
         }
         return url;
+    }
+
+    public static ActionURL getMakePublicUrl(int experimentAnnotationsId, Container container)
+    {
+        return new ActionURL(PanoramaPublicController.MakePublicAction.class, container).addParameter("id", experimentAnnotationsId);
     }
 
     public static ActionURL getAddCatalogEntryUrl(ExperimentAnnotations expAnnotations)

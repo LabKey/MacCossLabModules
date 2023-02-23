@@ -453,6 +453,11 @@ public class ExperimentAnnotations extends DbEntity
         _pxid = pxid;
     }
 
+    public boolean hasPxid()
+    {
+        return !StringUtils.isBlank(_pxid);
+    }
+
     public boolean isPublished()
     {
         return !StringUtils.isBlank(_publicationLink);

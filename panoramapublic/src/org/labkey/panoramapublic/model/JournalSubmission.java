@@ -133,6 +133,16 @@ public class JournalSubmission
     }
 
     /**
+     * @return the experimentId associated with the last copied submission request or null if there are no copied
+     * submission requests.
+     */
+    public @Nullable Integer getLatestCopiedExperimentId()
+    {
+        Submission latestCopiedSubmission = getLatestCopiedSubmission();
+        return latestCopiedSubmission != null ? latestCopiedSubmission.getCopiedExperimentId() : null;
+    }
+
+    /**
      * @return a submission request corresponding to the given experiment id (i.e. copiedExperimentId for the submission
      * matches the given experiment id).
      */
