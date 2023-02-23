@@ -119,7 +119,7 @@
                 <td>
                     <textarea id="descFieldInput" rows="8" cols="60" name="datasetDescription" ><%=h(form.getDatasetDescription())%></textarea>
                     <br/>
-                    <div id="remainingChars" style="margin-bottom:15px;color:darkgray">
+                    <div id="remainingChars" style="margin-bottom:15px;">
                         <span id="rchars"><%=descriptionCharLimit%></span> characters remaining
                     </div>
                 </td>

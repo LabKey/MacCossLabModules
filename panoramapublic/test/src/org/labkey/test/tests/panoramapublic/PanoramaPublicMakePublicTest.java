@@ -32,8 +32,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         String folderName = "Folder 1";
         String targetFolder = "Test Copy 1";
         String experimentTitle = "This is an experiment to test making data public";
-        setupSourceFolder(projectName, folderName, SUBMITTER);
-
+        setupSubmitAndCopy(projectName, folderName, targetFolder, experimentTitle);
         createFolderAdmin(projectName, folderName, ADMIN_2);
 
         impersonate(SUBMITTER);
@@ -62,6 +61,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         goToProjectFolder(projectName, folderName);
         impersonate(SUBMITTER);
         goToDashboard();
+        expWebPart = new TargetedMsExperimentWebPart(this);
         expWebPart.clickResubmit();
         resubmitWithoutPxd();
         goToDashboard();
@@ -83,6 +83,25 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         goToDashboard();
         expWebPart = new TargetedMsExperimentWebPart(this);
         assertFalse("Data has been made public, and a publication link has been added. Resubmit button should not be displayed.", expWebPart.hasResubmitLink());
+    }
+
+    protected void setupSubmitAndCopy(String projectName, String folderName, String targetFolder, String experimentTitle)
+    {
+        setupSourceFolder(projectName, folderName, SUBMITTER);
+
+        impersonate(SUBMITTER);
+        updateSubmitterAccountInfo("One");
+
+        // Import a Skyline document to the folder
+        importData(SKY_FILE_1, 1);
+
+        // Add the "Targeted MS Experiment" webpart and submit
+        TargetedMsExperimentWebPart expWebPart = createExperimentCompleteMetadata(experimentTitle);
+        expWebPart.clickSubmit();
+        String shortAccessUrl = submitWithoutPXId();
+
+        // Copy the experiment to the Panorama Public project
+        makeCopy(shortAccessUrl, experimentTitle, targetFolder, false, false);
     }
 
     private void verifyPanoramaPublicSubmitterRole(String userProject, String userFolder, String panoramaPublicProject, String panoramaPublicFolder)
