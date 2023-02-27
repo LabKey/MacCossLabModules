@@ -1227,7 +1227,7 @@ public class PanoramaPublicController extends SpringActionController
             HtmlView view = new HtmlView(
                 DIV(
                     ERRORS(errors),
-                    "Settings for Panorama Public slideshow catalog entries", BR(),
+                    "Settings for Panorama Public data catalog entries", BR(),
                     FORM(at(method, "POST", action, new ActionURL(ManageCatalogEntrySettings.class, getContainer())),
                         TABLE(TBODY(
                             TR(
@@ -5564,7 +5564,7 @@ public class PanoramaPublicController extends SpringActionController
                 result.addView(vBox);
             }
 
-            // Display details of the Panorama Public slideshow catalog entry for this experiment, if one exists
+            // Display details of the Panorama Public data catalog entry for this experiment, if one exists
             if (CatalogEntryWebPart.canBeDisplayed(exptAnnotations, getUser()))
             {
                 result.addView(new CatalogEntryWebPart(exptAnnotations, getUser()));

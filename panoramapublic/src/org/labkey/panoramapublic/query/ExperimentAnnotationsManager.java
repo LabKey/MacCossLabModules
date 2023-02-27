@@ -297,7 +297,7 @@ public class ExperimentAnnotationsManager
         // Delete any data validation rows for this experiment
         DataValidationManager.deleteValidations(expAnnotations.getId(), expAnnotations.getContainer());
 
-        // Delete the Panorama Public slideshow catalog entry for this experiment, if one exists
+        // Delete the Panorama Public catalog entry for this experiment, if one exists
         CatalogEntryManager.deleteEntryForExperiment(expAnnotations, user);
 
         Table.delete(PanoramaPublicManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());

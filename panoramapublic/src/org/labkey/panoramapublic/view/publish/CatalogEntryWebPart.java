@@ -52,7 +52,7 @@ public class CatalogEntryWebPart extends VBox
 
         if (entry == null)
         {
-            addView(new HtmlView(DIV("This dataset does not have an entry in the Panorama Public slideshow catalog. " +
+            addView(new HtmlView(DIV("This dataset does not have an entry in the Panorama Public data catalog. " +
                             "Click the button below to add an entry.",
                     BR(),
                     new Button.ButtonBuilder("Add Catalog Entry").href(PanoramaPublicController.getAddCatalogEntryUrl(expAnnotations)
