@@ -44,6 +44,8 @@ public class CatalogEntryManager
     public static String CATALOG_TEXT_CHAR_LIMIT = "Catalog text character limit";
     public static String CATALOG_MAX_ENTRIES = "Maximum entries to display in the slideshow";
 
+    public enum CatalogEntryType { All, Approved, Pending, Rejected }
+
     public static CatalogEntry get(int catalogEntryId)
     {
         return new TableSelector(PanoramaPublicManager.getTableInfoCatalogEntry(),null, null).getObject(catalogEntryId, CatalogEntry.class);
@@ -144,9 +146,10 @@ public class CatalogEntryManager
         }
     }
 
-    public static List<CatalogEntry> getApprovedEntries(int entryCount)
+    public static List<CatalogEntry> getEntries(@NotNull CatalogEntryType entryType, int entryCount)
     {
-        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("Approved"), true);
+        SimpleFilter filter = getFilterForEntryType(entryType);
+
         List<Integer> entryIdList = new TableSelector(PanoramaPublicManager.getTableInfoCatalogEntry(),
                 Collections.singleton("Id"), filter, new Sort(FieldKey.fromParts("Id")))
                 .getArrayList(Integer.class);
@@ -159,6 +162,23 @@ public class CatalogEntryManager
         return new TableSelector(PanoramaPublicManager.getTableInfoCatalogEntry(),
                 filter,
                 null).getArrayList(CatalogEntry.class);
+    }
+
+    public static boolean hasEntries(CatalogEntryType entryType)
+    {
+        return new TableSelector(PanoramaPublicManager.getTableInfoCatalogEntry(), getFilterForEntryType(entryType), null).exists();
+    }
+
+    private static SimpleFilter getFilterForEntryType(CatalogEntryType entryType)
+    {
+        FieldKey fieldKey = FieldKey.fromParts("Approved");
+        return switch (entryType)
+            {
+                case Approved -> new SimpleFilter(fieldKey, true);
+                case Rejected -> new SimpleFilter(fieldKey, false);
+                case Pending -> new SimpleFilter(fieldKey, null);
+                case All -> new SimpleFilter();
+            };
     }
 
     private static List<Integer> getSubList(List<Integer> entryIdList, int displayCount, LocalDate localDate)
