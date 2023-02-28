@@ -69,11 +69,11 @@ public class PanoramaPublicChromLibTest extends PanoramaPublicBaseTest
         // Add the "Targeted MS Experiment" webpart
         TargetedMsExperimentWebPart expWebPart = createExperimentCompleteMetadata(experimentTitle);
         // Submit the experiment
-        submitExperiment(expWebPart);
+        String shortAccessUrl = submitExperiment(expWebPart);
 
         // Copy the experiment to the Panorama Public project
         var targetFolder = "Copy of " + folderName;
-        copyExperimentAndVerify(projectName, folderName, null, experimentTitle, targetFolder);
+        copyExperimentAndVerify(projectName, folderName, null, experimentTitle, targetFolder, shortAccessUrl);
         // Download link, library statistics and revision in the ChromatogramLibraryDownloadWebpart
         goToProjectFolder(PANORAMA_PUBLIC, targetFolder);
         verifyChromLibDownloadWebPart(FolderType.Library, -1, 10, -1, 87, 1);
@@ -124,11 +124,11 @@ public class PanoramaPublicChromLibTest extends PanoramaPublicBaseTest
         ChromLibTestHelper.ChromLibState libStateSource = libHelper.getLibState(projectName + "/" + folderName);
 
         // Submit the experiment
-        submitExperiment(expWebPart);
+        String shortAccessUrl = submitExperiment(expWebPart);
 
         // Copy the experiment to the Panorama Public project
         var targetFolder = "Copy of " + folderName;
-        copyExperimentAndVerify(projectName, folderName, null, experimentTitle, targetFolder);
+        copyExperimentAndVerify(projectName, folderName, null, experimentTitle, targetFolder, shortAccessUrl);
         // Download link, library statistics and revision in the ChromatogramLibraryDownloadWebpart
         goToProjectFolder(PANORAMA_PUBLIC, targetFolder);
         verifyChromLibDownloadWebPart(folderType, proteinCount, peptideCount, moleculeCount, transitionCount, revision);
@@ -159,13 +159,11 @@ public class PanoramaPublicChromLibTest extends PanoramaPublicBaseTest
         assertTextPresent("Please resolve the conflicts before submitting");
     }
 
-    private void submitExperiment(TargetedMsExperimentWebPart expWebPart)
+    private String submitExperiment(TargetedMsExperimentWebPart expWebPart)
     {
         goToDashboard();
         expWebPart.clickSubmit();
-        submitWithoutPXId();
-        goToDashboard();
-        assertTextPresent("Copy Pending!");
+        return submitWithoutPXId();
     }
 
     private void verifyChromLibDownloadWebPart(FolderType folderType, int proteinCount, int peptideCount, int moleculeCount, int transitionCount, int libRevision)

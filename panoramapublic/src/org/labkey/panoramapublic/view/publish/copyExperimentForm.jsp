@@ -219,29 +219,6 @@
                 },
                 {
                     xtype: 'checkbox',
-                    fieldLabel: "Send Email to Submitter",
-                    checked: <%=form.isSendEmail()%>,
-                    name: 'sendEmail',
-                    boxLabel: 'If checked an email will be sent to the submitter.'
-                },
-                {
-                    xtype: 'textarea',
-                    fieldLabel: "Email address (To:)",
-                    value: <%=q(form.getToEmailAddresses())%>,
-                    name: 'toEmailAddresses',
-                    width: 450,
-                    height:70,
-                    afterBodyEl: '<span style="font-size: 0.9em;">Enter one email address per line</span>'
-                },
-                {
-                    xtype: 'textfield',
-                    fieldLabel: "Email address (Reply-To:)",
-                    value: <%=q(form.getReplyToAddress())%>,
-                    name: 'replyToAddress',
-                    width: 450
-                },
-                {
-                    xtype: 'checkbox',
                     hidden: <%=!isRecopy%>,
                     fieldLabel: "Delete Previous Copy",
                     checked: <%=form.isDeleteOldCopy()%>,

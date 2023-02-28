@@ -35,7 +35,6 @@ import org.labkey.panoramapublic.model.Journal;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 /**
  * User: vsharma
@@ -56,10 +55,6 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
 
     private boolean _assignDoi;
     private boolean _useDataCiteTestApi;
-
-    private boolean _emailSubmitter;
-    private List<String> _toEmailAddresses;
-    private String _replyToAddress;
 
     private boolean _deletePreviousCopy;
 
@@ -192,24 +187,6 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     }
 
     @Override
-    public boolean emailSubmitter()
-    {
-        return _emailSubmitter;
-    }
-
-    @Override
-    public List<String> toEmailAddresses()
-    {
-        return _toEmailAddresses;
-    }
-
-    @Override
-    public String replyToAddress()
-    {
-        return _replyToAddress;
-    }
-
-    @Override
     public boolean deletePreviousCopy()
     {
         return _deletePreviousCopy;
@@ -238,21 +215,6 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     public void setUseDataCiteTestApi(boolean useDataCiteTestApi)
     {
         _useDataCiteTestApi = useDataCiteTestApi;
-    }
-
-    public void setEmailSubmitter(boolean emailSubmitter)
-    {
-        _emailSubmitter = emailSubmitter;
-    }
-
-    public void setToEmailAddresses(List<String> toEmailAddresses)
-    {
-        _toEmailAddresses = toEmailAddresses;
-    }
-
-    public void setReplyToAddress(String replyToAddress)
-    {
-        _replyToAddress = replyToAddress;
     }
 
     public void setDeletePreviousCopy(boolean deletePreviousCopy)

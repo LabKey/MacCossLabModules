@@ -28,8 +28,10 @@ import org.labkey.api.view.VBox;
 import org.labkey.api.view.ViewContext;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
 
 import static org.labkey.api.util.DOM.Attribute.style;
@@ -83,15 +85,30 @@ public class TargetedMSExperimentWebPart extends VBox
                 navTree.addChild("DOI", new ActionURL(PanoramaPublicController.DoiOptionsAction.class, container).addParameter("id", expAnnotations.getId()));
                 navTree.addChild("Make Data Public", new ActionURL(PanoramaPublicController.MakePublicAction.class, container).addParameter("id", expAnnotations.getId()));
 
-                if (expAnnotations.isJournalCopy())
+                JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(expAnnotations);
+                if (submission != null)
                 {
-                    JournalSubmission submission = SubmissionManager.getSubmissionForJournalCopy(expAnnotations);
-                    ExperimentAnnotations sourceExpt = submission != null ? ExperimentAnnotationsManager.get(submission.getExperimentAnnotationsId()) : null;
-                    if (sourceExpt != null)
+                    if (expAnnotations.isJournalCopy())
                     {
-                        navTree.addChild("Source Experiment", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(sourceExpt.getContainer()));
+                        ExperimentAnnotations sourceExpt = ExperimentAnnotationsManager.get(submission.getExperimentAnnotationsId());
+                        if (sourceExpt != null)
+                        {
+                            navTree.addChild("Source Experiment", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(sourceExpt.getContainer()));
+                        }
+                    }
+                    if (submission.getAnnouncementId() != null)
+                    {
+                        // Add a link to view the support board messages related to this experiment.
+                        Journal journal = JournalManager.getJournal(submission.getJournalId());
+                        if (journal != null && journal.getSupportContainer() != null)
+                        {
+                            navTree.addChild("Support Messages",
+                                    new ActionURL("announcements", "thread", journal.getSupportContainer())
+                                            .addParameter("rowId", submission.getAnnouncementId()));
+                        }
                     }
                 }
+
                 setNavMenu(navTree);
             }
         }

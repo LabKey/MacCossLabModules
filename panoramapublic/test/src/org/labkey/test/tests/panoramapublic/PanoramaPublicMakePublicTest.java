@@ -45,12 +45,10 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         // Add the "Targeted MS Experiment" webpart and submit
         TargetedMsExperimentWebPart expWebPart = createExperimentCompleteMetadata(experimentTitle);
         expWebPart.clickSubmit();
-        submitWithoutPXId();
-        goToDashboard();
-        assertTextPresent("Copy Pending!");
+        String shortAccessUrl = submitWithoutPXId();
 
         // Copy the experiment to the Panorama Public project
-        makeCopy(projectName, folderName, experimentTitle, targetFolder, false, false);
+        makeCopy(shortAccessUrl, experimentTitle, targetFolder, false, false);
 
         verifyPanoramaPublicSubmitterRole(projectName, folderName, PANORAMA_PUBLIC, targetFolder);
 
@@ -70,7 +68,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         assertTextPresent("Copy Pending!");
 
         // Re-copy the experiment to the Panorama Public project. Do not delete the previous copy
-        makeCopy(projectName, folderName, experimentTitle, targetFolder, true, false);
+        makeCopy(shortAccessUrl, experimentTitle, targetFolder, true, false);
 
         // Verify that the "Make Public button is not visible in the older copy of the data.
         String v1Folder = targetFolder + " V.1";

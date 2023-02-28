@@ -89,7 +89,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -178,17 +177,18 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // new container.
             moveCatalogEntry(previousCopy, targetExperiment, user);
 
-            // Update the permissions on the source container and the new Panorama Public container
-            updatePermissions(targetExperiment, sourceExperiment, previousCopy, jobSupport.getJournal(), user, log);
-
-            // Update the DataFileUrl in exp.data and FilePathRoot in exp.experimentRun to point to the files in the Panorama Public container file root
-            updateDataPathsAndRawDataTab(targetExperiment, user, log);
-
             Submission currentSubmission = js.getLatestSubmission();
             if (currentSubmission == null)
             {
                 throw new PipelineJobException("Could not find a current submission request");
             }
+
+            // Update the permissions on the source container and the new Panorama Public container
+            updatePermissions(UserManager.getUser(currentSubmission.getCreatedBy()), targetExperiment, sourceExperiment, previousCopy, jobSupport.getJournal(), user, log);
+
+            // Update the DataFileUrl in exp.data and FilePathRoot in exp.experimentRun to point to the files in the Panorama Public container file root
+            updateDataPathsAndRawDataTab(targetExperiment, user, log);
+
 
             // Copy any Spectral library information provided by the user in the source container
             copySpecLibInfos(sourceExperiment, targetExperiment, user);
@@ -206,10 +206,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             js = updateSubmissionAndDeletePreviousCopy(js, currentSubmission, latestCopiedSubmission, targetExperiment, previousCopy, jobSupport, user, log);
 
             // Create notifications. Do this at the end after everything else is done.
-            PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), js.getJournalExperiment(), js.getLatestSubmission(),
+            PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), js.getJournalExperiment(), currentSubmission,
                     reviewer.first, reviewer.second, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
-
-            postEmailNotification(jobSupport, user, log, sourceExperiment, js, targetExperiment, reviewer.first, reviewer.second, previousCopy != null);
 
             transaction.commit();
         }
@@ -491,13 +489,13 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return copy;
     }
 
-    private void updatePermissions(ExperimentAnnotations targetExperiment, ExperimentAnnotations sourceExperiment, ExperimentAnnotations previousCopy,
-                                   Journal journal, User user, Logger log)
+    private void updatePermissions(User formSubmitter, ExperimentAnnotations targetExperiment, ExperimentAnnotations sourceExperiment, ExperimentAnnotations previousCopy,
+                                   Journal journal, User pipelineJobUser, Logger log)
     {
         // Remove the copy permissions given to the journal.
         log.info("Removing copy permissions given to " + journal.getName());
         Group journalGroup = SecurityManager.getGroup(journal.getLabkeyGroupId());
-        JournalManager.removeJournalPermissions(sourceExperiment, journalGroup, user);
+        JournalManager.removeJournalPermissions(sourceExperiment, journalGroup, pipelineJobUser);
 
         // Give read permissions to the authors (all users that are folder admins)
         log.info("Adding read permissions to all users that are folder admins in the source folder.");
@@ -505,18 +503,14 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         Container target = targetExperiment.getContainer();
         MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
-        User submitter = targetExperiment.getSubmitterUser();
-        User labHead = targetExperiment.getLabHeadUser();
         for (User folderAdmin: sourceFolderAdmins)
         {
             newPolicy.addRoleAssignment(folderAdmin, ReaderRole.class);
-
-            if (folderAdmin.equals(submitter) || folderAdmin.equals(labHead))
-            {
-                // Assign the PanoramaPublicSubmitterRole so that the submitter or lab head is able to make the copied folder public, and add publication information.
-                newPolicy.addRoleAssignment(folderAdmin, PanoramaPublicSubmitterRole.class, false);
-            }
         }
+        // Assign the PanoramaPublicSubmitterRole so that the submitter or lab head is able to make the copied folder public, and add publication information.
+        assignPanoramaPublicSubmitterRole(targetExperiment.getSubmitterUser(), newPolicy);
+        assignPanoramaPublicSubmitterRole(targetExperiment.getLabHeadUser(), newPolicy);
+        assignPanoramaPublicSubmitterRole(formSubmitter, newPolicy); // User that submitted the form. Can be different from the user selected as the data "submitter".
 
         if (previousCopy != null)
         {
@@ -528,6 +522,14 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         }
 
         SecurityPolicyManager.savePolicy(newPolicy);
+    }
+
+    private void assignPanoramaPublicSubmitterRole(User user, MutableSecurityPolicy policy)
+    {
+        if (user != null)
+        {
+            policy.addRoleAssignment(user, PanoramaPublicSubmitterRole.class, false);
+        }
     }
 
     private List<User> getUsersWithRole(Container container, Role role)
@@ -597,53 +599,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     {
         Doi doi = DataCiteService.create(useTestDb, targetExpt);
         targetExpt.setDoi(doi.getDoi());
-    }
-
-    private void postEmailNotification(CopyExperimentJobSupport jobSupport, User pipelineJobUser, Logger log, ExperimentAnnotations sourceExperiment,
-                                       JournalSubmission js, ExperimentAnnotations targetExperiment,
-                                       User reviewer, String reviewerPassword, boolean recopy)
-    {
-        // This is the user that was selected as the "Submitter" in the ExperimentAnnotations form, and will be used in the "Submitter" field
-        // when announcing data on Panorama Public.
-        User pxSubmitter = sourceExperiment.getSubmitterUser();
-
-        // This is the user that clicked the "Submit" button.  Typically this is the same as the user above.
-        // If not, send email to both
-        User formSubmitter = UserManager.getUser(js.getCreatedBy());
-        assert formSubmitter != null;
-
-        Set<String> toAddresses = new HashSet<>();
-        if(pxSubmitter != null) toAddresses.add(pxSubmitter.getEmail());
-        toAddresses.add(formSubmitter.getEmail());
-        toAddresses.addAll(jobSupport.toEmailAddresses());
-
-        String subject = String.format("Submission to %s: %s", jobSupport.getJournal().getName(), targetExperiment.getShortUrl().renderShortURL());
-        String emailBody = PanoramaPublicNotification.getExperimentCopiedEmailBody(sourceExperiment, targetExperiment,
-                    js.getJournalExperiment(), js.getLatestSubmission(), jobSupport.getJournal(),
-                    reviewer, reviewerPassword,
-                    formSubmitter,
-                    pipelineJobUser,
-                    recopy);
-
-        if(jobSupport.emailSubmitter())
-        {
-            log.info("Emailing submitter.");
-            try
-            {
-                PanoramaPublicNotification.sendEmailNotification(subject, emailBody, targetExperiment.getContainer(), pipelineJobUser, toAddresses, jobSupport.replyToAddress());
-                PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, js.getJournalExperiment(), jobSupport.getJournal(), true);
-            }
-            catch (Exception e)
-            {
-                log.info("Could not send email to submitter. Error was: " + e.getMessage(), e);
-                PanoramaPublicNotification.postEmailContentsWithError(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, js.getJournalExperiment(), jobSupport.getJournal(), e.getMessage());
-            }
-        }
-        else
-        {
-            // Post the email contents to the message board.
-            PanoramaPublicNotification.postEmailContents(subject, emailBody, toAddresses, pipelineJobUser, sourceExperiment, js.getJournalExperiment(), jobSupport.getJournal(), false);
-        }
     }
 
     private boolean updateDataPaths(Container target, FileContentService service, User user, Logger logger) throws BatchValidationException
