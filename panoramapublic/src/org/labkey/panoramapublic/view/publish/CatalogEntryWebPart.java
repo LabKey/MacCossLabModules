@@ -18,6 +18,7 @@ import org.labkey.panoramapublic.catalog.CatalogEntrySettings;
 import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.CatalogEntryManager;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.security.PanoramaPublicSubmitterPermission;
 
 import java.util.Set;
@@ -116,10 +117,16 @@ public class CatalogEntryWebPart extends VBox
 
     public static boolean canBeDisplayed(ExperimentAnnotations expAnnotations, User user)
     {
-        return CatalogEntryManager.getCatalogEntrySettings().isEnabled()
+        boolean canBeDisplayed = CatalogEntryManager.getCatalogEntrySettings().isEnabled()
                 && expAnnotations.isJournalCopy() // This is an experiment in the Panorama Public project
                 && expAnnotations.isPublic() // The folder is public
                 && expAnnotations.getContainer().hasOneOf(user, Set.of(AdminPermission.class, PanoramaPublicSubmitterPermission.class));
+        if (canBeDisplayed)
+        {
+            Integer maxVersion = ExperimentAnnotationsManager.getMaxVersionForExperiment(expAnnotations.getSourceExperimentId());
+            return expAnnotations.getDataVersion().equals(maxVersion);
+        }
+        return false;
     }
 
     public static Button.ButtonBuilder changeStatusButtonBuilder(Boolean status, int expAnnotationsId, int catalogEntryId, Container container)

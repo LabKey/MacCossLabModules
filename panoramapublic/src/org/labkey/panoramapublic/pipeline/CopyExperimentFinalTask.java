@@ -173,7 +173,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // Create a new row in panoramapublic.ExperimentAnnotations and link it to the new experiment created during folder import.
             ExperimentAnnotations targetExperiment = createNewExperimentAnnotations(experiment, sourceExperiment, js, previousCopy, jobSupport, user, log);
 
-            // If there is a Panorama Public catalog entry associated with the previous copy of the experiment, move it to the
+            // If there is a Panorama Public data catalog entry associated with the previous copy of the experiment, move it to the
             // new container.
             moveCatalogEntry(previousCopy, targetExperiment, user);
 

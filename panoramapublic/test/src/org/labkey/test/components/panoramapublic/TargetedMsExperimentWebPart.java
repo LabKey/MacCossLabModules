@@ -2,11 +2,13 @@ package org.labkey.test.components.panoramapublic;
 
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
+import org.labkey.test.WebTestHelper;
 import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.util.DataRegionTable;
 import org.openqa.selenium.WebElement;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class TargetedMsExperimentWebPart extends BodyWebPart <TargetedMsExperimentWebPart.ElementCache>
@@ -93,6 +95,18 @@ public class TargetedMsExperimentWebPart extends BodyWebPart <TargetedMsExperime
         getWrapper().clickAndWait(link);
     }
 
+    public void checkCatalogEntryLink(boolean expectLink)
+    {
+        if (expectLink)
+        {
+            assertNotNull("Expected to find the catalog entry link", elementCache().catalogEntryLink);
+        }
+        else
+        {
+            assertNull("Unexpected catalog entry link", elementCache().catalogEntryLink);
+        }
+    }
+
     @Override
     protected TargetedMsExperimentWebPart.ElementCache newElementCache()
     {
@@ -107,5 +121,6 @@ public class TargetedMsExperimentWebPart extends BodyWebPart <TargetedMsExperime
         private final WebElement dataVersionTag = Locator.tagWithAttribute("span", "id", "publishedDataVersion").descendant("span").findOptionalElement(this).orElse(null);
         private final WebElement makePublicButton = Locator.linkContainingText("Make Public").findWhenNeeded(this);
         private final WebElement addPublicationButton = Locator.linkContainingText("Add Publication").findWhenNeeded(this);
+        private final WebElement catalogEntryLink = Locator.tagWithAttributeContaining("a", "class", "catalogIcon").findOptionalElement(this).orElse(null);
     }
 }

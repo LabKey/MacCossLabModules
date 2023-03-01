@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.labkey.api.attachments.AttachmentFile;
 import org.labkey.api.attachments.AttachmentParent;
 import org.labkey.api.attachments.AttachmentService;
+import org.labkey.api.data.CompareType;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.data.SimpleFilter;
@@ -176,7 +177,7 @@ public class CatalogEntryManager
             {
                 case Approved -> new SimpleFilter(fieldKey, true);
                 case Rejected -> new SimpleFilter(fieldKey, false);
-                case Pending -> new SimpleFilter(fieldKey, null);
+                case Pending -> new SimpleFilter(fieldKey, null, CompareType.ISBLANK);
                 case All -> new SimpleFilter();
             };
     }

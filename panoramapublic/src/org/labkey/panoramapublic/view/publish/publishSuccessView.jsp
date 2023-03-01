@@ -28,16 +28,16 @@
     ExperimentAnnotations copiedExperiment = bean.getCopiedExperiment();
     boolean canAddCatalogEntry = CatalogEntryManager.getCatalogEntrySettings().isEnabled() && CatalogEntryManager.getEntryForExperiment(copiedExperiment) == null;
 
-    String successMsg = bean.isMadePublic()
+    String successMsg = bean.madePublic()
             ? String.format("Data on %s at %s was made public%s", bean.getJournalName(), bean.getAccessUrl(),
-                            (bean.isAddedPublication() ? " and publication details were added." : "."))
-            : bean.isAddedPublication() ?  String.format("Publication details were updated for data on %s at %s.", bean.getJournalName(), bean.getAccessUrl()) : "";
+                            (bean.addedPublication() ? " and publication details were added." : "."))
+            : bean.addedPublication() ?  String.format("Publication details were updated for data on %s at %s.", bean.getJournalName(), bean.getAccessUrl()) : "";
 
     String pxdMessage = null;
     if (copiedExperiment.getPxid() != null)
     {
         pxdMessage = String.format("Accession %s will be %s on ProteomeXchange by a %s administrator.",
-                copiedExperiment.getPxid(), bean.isMadePublic() ? "made public" : "updated", bean.getJournalName());
+                copiedExperiment.getPxid(), bean.madePublic() ? "made public" : "updated", bean.getJournalName());
     }
 %>
 
@@ -57,47 +57,12 @@
         Click the button below to add an entry in
         the Panorama Public data catalog.
         <div style="margin:15px 0 15px 0">
-            <%=button("Add Catalog Entry").href(PanoramaPublicController.getAddCatalogEntryUrl(copiedExperiment)).style("margin-left: 10px")%>
+            <%=button("Add Catalog Entry").href(PanoramaPublicController.getAddCatalogEntryUrl(copiedExperiment)).style("margin-left: 10px").primary(true)%>
         </div>
         <% if (CatalogEntryManager.hasEntries(CatalogEntryManager.CatalogEntryType.Approved)) { %>
         <div>
             <span style="text-decoration: underline; font-style: italic;">Slideshow preview:</span>
-            <div class="banner">
-                <table style="width: 100%;"><tbody>
-                <tr>
-                    <td height="100%" style="width: 100%">
-                        <table style="width: 100%;">
-                            <tbody>
-                            <tr>
-                                <td height="100%">
-                                    <div id="slides" style="width:100%;">
-                                        <div class="slideshow-container">
-                                            <a class="prev" onclick="plusSlides(-1)">&#10094;</a> <a class="next" onclick="plusSlides(1)">&#10095;</a>
-                                        </div>
-                                        <br />
-                                        <div style="text-align:center" class="slideshow-dots"></div>
-                                    </div>
-                                </td>
-                                <td height="100%" style="width:100%;vertical-align: middle;">
-                                    <table id="description">
-                                        <tbody>
-                                        <tr>
-                                            <td class="slideshow-texts"></td>
-                                        </tr>
-                                        <tr><td height="100">&nbsp;</td></tr>
-                                        </tbody>
-                                    </table>
-                                </td>
-                            </tr>
-                            </tbody>
-                        </table>
-                    </td>
-                    <!-- Add an empty cell with padding so that the description text stays inside the background -->
-                    <td style="padding-right: 50px;text-align: center; vertical-align: top">&nbsp;</td>
-                </tr>
-                </tbody>
-                </table>
-            </div>
+            <div id="slideshowPlaceholder"></div>
         </div>
         <% } %>
     </div>
@@ -112,8 +77,9 @@
 
     <% if (canAddCatalogEntry) { %>
         Ext4.onReady(function() {
-            slideIndex = 0;
-            initSlides(3, <%=q(CatalogEntryManager.CatalogEntryType.Approved.toString())%>);
+            if (appendSlidesContainer("slideshowPlaceholder")) {
+                initSlides(3, <%=q(CatalogEntryManager.CatalogEntryType.Approved.toString())%>);
+            }
         });
 
         window.onresize = function() {

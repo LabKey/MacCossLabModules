@@ -126,7 +126,7 @@
             <tr>
                 <td class="labkey-form-label" style="text-align:center;">Image:</td>
                 <td>
-                    <input id="imageFileInput" type="file" size="50" style="border: none; background-color: transparent;" accept="image/png,image/jpeg" />
+                    <input id="imageFileInput" type="file" size="50" style="border: none; background-color: transparent;" accept="image/png,image/jpeg" name="imageFileInput" />
                     <input id="modifiedImage" name="imageFile" type="hidden"/>
                     <input id="imageFileName" name="imageFileName" type="hidden"/>
                     <div style="margin-top:5px;" class="greyText">

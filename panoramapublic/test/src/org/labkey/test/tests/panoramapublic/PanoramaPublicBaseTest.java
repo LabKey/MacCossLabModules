@@ -286,9 +286,10 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         // Wait for the pipeline job to finish
         waitForText("Copying experiment");
         waitForPipelineJobsToComplete(1, "Copying experiment: " + experimentTitle, false);
+        stopImpersonating();
     }
 
-    private void uncheck(String label)
+    protected final void uncheck(String label)
     {
         scrollIntoView(Ext4Helper.Locators.checkbox(this, label));
         int tries = 1;

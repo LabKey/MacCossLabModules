@@ -5586,7 +5586,7 @@ public class PanoramaPublicController extends SpringActionController
         private final boolean _fullDetails;
         private boolean _canPublish;
         private String _version;
-        private boolean _isCurrentVersion;
+        private boolean _isCurrentVersion = true;
         private ActionURL _versionsUrl;
         private ExperimentAnnotations _journalCopy;
 
@@ -5631,18 +5631,14 @@ public class PanoramaPublicController extends SpringActionController
                         // This is the current version; Display a link to see all published versions
                         _versionsUrl = new ActionURL(PanoramaPublicController.ShowPublishedVersions.class, _experimentAnnotations.getContainer());
                         _versionsUrl.addParameter("id", _experimentAnnotations.getId());
-                        _isCurrentVersion = true;
                     }
                     else
                     {
                         // This is not the current version; Display a link to the current version
                         ExperimentAnnotations maxExpt = publishedVersions.stream().filter(e -> e.getDataVersion().equals(maxVersion)).findFirst().orElse(null);
                         _versionsUrl = maxExpt != null ? PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(maxExpt.getContainer()) : null;
+                        _isCurrentVersion = false;
                     }
-                }
-                else
-                {
-                    _isCurrentVersion = true;
                 }
             }
         }
@@ -6669,7 +6665,7 @@ public class PanoramaPublicController extends SpringActionController
 
     public static class PublishSuccessViewBean
     {
-        private final Container _sourceContainer;
+        private final Container _sourceContainer; // folder where the action was triggered. Could be the user's folder or the copy on Panorama Public.
         private final ExperimentAnnotations _copiedExperiment;
         private final boolean _madePublic;
         private final boolean _addedPublication;
@@ -6695,12 +6691,12 @@ public class PanoramaPublicController extends SpringActionController
             return _copiedExperiment;
         }
 
-        public boolean isMadePublic()
+        public boolean madePublic()
         {
             return _madePublic;
         }
 
-        public boolean isAddedPublication()
+        public boolean addedPublication()
         {
             return _addedPublication;
         }
@@ -8529,6 +8525,7 @@ public class PanoramaPublicController extends SpringActionController
         abstract CatalogEntry getCatalogEntry(ExperimentAnnotations expAnnotations, String description, @Nullable String imageFileName, Errors errors);
         abstract AttachmentFile getValidatedImageFile(CatalogEntryForm form, CatalogEntrySettings settings, Errors errors);
         abstract void saveEntry(CatalogEntry entry, AttachmentFile imageFile, ExperimentAnnotations expAnnotations) throws IOException;
+        abstract void sendNotification(ExperimentAnnotations expAnnotations);
 
         @Override
         public ModelAndView getView(CatalogEntryForm form, boolean reshow, BindException errors)
@@ -8602,6 +8599,9 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG,"Unable to save image file. Error was: " + e.getMessage());
                 return false;
             }
+
+            sendNotification(_expAnnot);
+
             return true;
         }
 
@@ -8727,6 +8727,16 @@ public class PanoramaPublicController extends SpringActionController
         {
             CatalogEntryManager.saveEntry(entry, imageFile, expAnnotations, getUser());
         }
+
+        @Override
+        void sendNotification(ExperimentAnnotations expAnnotations)
+        {
+            // Post a message that a catalog entry has been added.
+            JournalSubmission submission = SubmissionManager.getSubmissionForJournalCopy(expAnnotations);
+            Journal journal = JournalManager.getJournal(submission.getJournalId());
+            JournalExperiment je = SubmissionManager.getJournalExperiment(submission.getJournalExperimentId());
+            PanoramaPublicNotification.notifyCatalogEntryAdded(expAnnotations, journal, je, getUser());
+        }
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
@@ -8790,6 +8800,12 @@ public class PanoramaPublicController extends SpringActionController
         void saveEntry(CatalogEntry entry, AttachmentFile imageFile, ExperimentAnnotations expAnnotations) throws IOException
         {
             CatalogEntryManager.updateEntry(entry, expAnnotations, imageFile, getUser());
+        }
+
+        @Override
+        void sendNotification(ExperimentAnnotations expAnnotations)
+        {
+            // Don't post a message if the catalog entry is edited.
         }
     }
 
@@ -9080,7 +9096,7 @@ public class PanoramaPublicController extends SpringActionController
 
         public CatalogEntryType getCatalogEntryType()
         {
-            return EnumUtils.getEnum(CatalogEntryType.class, _entryType, CatalogEntryType.All);
+            return EnumUtils.getEnum(CatalogEntryType.class, _entryType, CatalogEntryType.Approved);
         }
     }
 

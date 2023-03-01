@@ -1,5 +1,5 @@
 /*
-  Methods to display the Panorama Public catalog slideshow.
+  Methods to display the Panorama Public data catalog slideshow.
  */
 
 let slideIndex;
@@ -25,6 +25,7 @@ function showSlidesTimer()
 
 function initSlides(maxEntries, entryType)
 {
+    slideIndex = 0;
     const queryParams = {};
     if (Number.isSafeInteger(maxEntries) && maxEntries > 0)
     {
@@ -61,13 +62,15 @@ function addSlides(json)
         let slideshowDots = document.getElementsByClassName('slideshow-dots')[0];
         let slideshowTexts = document.getElementsByClassName('slideshow-texts')[0];
 
-        // console.log("Catalog length: " + catalog.length);
+        console.log("Catalog length: " + catalog.length);
+        const existingSlideCount = slideshowDots.children.length;
+        console.log("Existing slide count: " + existingSlideCount);
         for(let i = 0; i < catalog.length; i++)
         {
             let entry = catalog[i];
             // console.log("Entry: " + entry.accessUrl + ", " + entry.title + ", " + entry.imageUrl);
             appendCoverSlide(entry, slideshowContainer);
-            appendDot(slideshowDots, i + 1);
+            appendDot(slideshowDots, i + existingSlideCount + 1);
             appendText(entry, slideshowTexts);
         }
         showSlides();
@@ -107,6 +110,7 @@ function appendDot(dotsContainer, index)
     dot.setAttribute('class', cls);
     dot.setAttribute('onclick', 'currentSlide(' + index + ')');
     dotsContainer.appendChild(dot);
+    dotsContainer.appendChild(document.createTextNode(" ") );
 }
 
 function appendText(entry, textsContainer)
@@ -216,4 +220,41 @@ function currentSlide(index)
     dots[index-1].className += " active";
     slideIndex = index;
     wait = true;
+}
+
+function appendSlidesContainer(parentDivId)
+{
+    const parentDiv = document.getElementById(parentDivId);
+    if (!parentDiv)
+    {
+        return false;
+    }
+
+    let slideshowHtml = '';
+    slideshowHtml += '<div class="banner">' +
+                     '<table style="width: 100%;"><tbody><tr><td height="100%" style="width: 100%">' +
+                     '<table style="width: 100%;"><tbody><tr>' +
+
+                     '<td height="100%"><div id="slides" style="width:100%;">' +
+                     '<div class="slideshow-container">' +
+                     '<a class="prev" onclick="plusSlides(-1)">&#10094;</a> <a class="next" onclick="plusSlides(1)">&#10095;</a>' +
+                     '</div>' +
+                     '<br/><div style="text-align:center" class="slideshow-dots"></div>' +
+                     '</div></td>' +
+
+                     '<td height="100%" style="width:100%;vertical-align: middle;">' +
+                     '<table id="description"><tbody>' +
+                     '<tr><td class="slideshow-texts"></td></tr>' +
+                     '<tr><td height="100">&nbsp;</td></tr>' +
+                     '</tbody></table></td>' +
+
+                     '</tr></tbody></table>' +
+                     '</td>' +
+                     '<!-- Add an empty cell with padding so that the description text stays inside the background -->' +
+                     '<td style="padding-right: 50px;text-align: center; vertical-align: top">&nbsp;</td>' +
+                     '</tr></tbody></table>' +
+                     '</div>';
+
+    parentDiv.innerHTML = slideshowHtml;
+    return true;
 }

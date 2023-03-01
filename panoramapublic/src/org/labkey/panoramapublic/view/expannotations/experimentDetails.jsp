@@ -80,7 +80,7 @@
     ActionURL catalogEntryUrl = null;
     String iconCls = "catalogIcon";
     String catalogEntryTooltip = "Panorama Public Catalog Entry";
-    if (annotDetails.isCurrentVersion() && CatalogEntryWebPart.canBeDisplayed(annot, getUser()))
+    if (CatalogEntryWebPart.canBeDisplayed(annot, getUser()))
     {
         CatalogEntry entry = CatalogEntryManager.getEntryForExperiment(annot);
         if (entry != null)
@@ -282,9 +282,7 @@
     <% } %>
     <%}%>
     <% if (catalogEntryUrl != null) { %>
-    <span style="margin-left:5px;">
-        <%=iconLink(iconCls, catalogEntryTooltip, catalogEntryUrl)%>
-    </span>
+        <%=iconLink(iconCls, catalogEntryTooltip, catalogEntryUrl).style("margin-left:8px;")%>
     <% } %>
 </div>
 
