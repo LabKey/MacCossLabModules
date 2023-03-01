@@ -58,9 +58,9 @@ function addSlides(json)
         }
         const catalog = json["catalog"];
 
-        let slideshowContainer = document.getElementsByClassName('slideshow-container')[0];
-        let slideshowDots = document.getElementsByClassName('slideshow-dots')[0];
-        let slideshowTexts = document.getElementsByClassName('slideshow-texts')[0];
+        const slideshowContainer = document.getElementsByClassName('slideshow-container')[0];
+        const slideshowDots = document.getElementsByClassName('slideshow-dots')[0];
+        const slideshowTexts = document.getElementsByClassName('slideshow-texts')[0];
 
         console.log("Catalog length: " + catalog.length);
         const existingSlideCount = slideshowDots.children.length;

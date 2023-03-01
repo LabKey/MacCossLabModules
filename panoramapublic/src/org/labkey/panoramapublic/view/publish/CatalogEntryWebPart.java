@@ -117,16 +117,11 @@ public class CatalogEntryWebPart extends VBox
 
     public static boolean canBeDisplayed(ExperimentAnnotations expAnnotations, User user)
     {
-        boolean canBeDisplayed = CatalogEntryManager.getCatalogEntrySettings().isEnabled()
+        return CatalogEntryManager.getCatalogEntrySettings().isEnabled()
                 && expAnnotations.isJournalCopy() // This is an experiment in the Panorama Public project
                 && expAnnotations.isPublic() // The folder is public
-                && expAnnotations.getContainer().hasOneOf(user, Set.of(AdminPermission.class, PanoramaPublicSubmitterPermission.class));
-        if (canBeDisplayed)
-        {
-            Integer maxVersion = ExperimentAnnotationsManager.getMaxVersionForExperiment(expAnnotations.getSourceExperimentId());
-            return expAnnotations.getDataVersion().equals(maxVersion);
-        }
-        return false;
+                && expAnnotations.getContainer().hasOneOf(user, Set.of(AdminPermission.class, PanoramaPublicSubmitterPermission.class))
+                && ExperimentAnnotationsManager.isCurrentVersion(expAnnotations);
     }
 
     public static Button.ButtonBuilder changeStatusButtonBuilder(Boolean status, int expAnnotationsId, int catalogEntryId, Container container)

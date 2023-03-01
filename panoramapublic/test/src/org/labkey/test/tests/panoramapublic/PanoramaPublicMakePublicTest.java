@@ -14,7 +14,6 @@ import org.labkey.test.pages.admin.PermissionsPage;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.PermissionsHelper;
-import org.labkey.test.util.PortalHelper;
 import org.openqa.selenium.NoSuchElementException;
 
 import java.io.File;
@@ -40,7 +39,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         String folderName = "Folder 1";
         String targetFolder = "Test Copy 1";
         String experimentTitle = "This is an experiment to test making data public";
-        String shortAccessUrl = setupSubmitAndCopy(projectName, folderName, targetFolder, experimentTitle);
+        String shortAccessUrl = setupFolderSubmitAndCopy(projectName, folderName, targetFolder, experimentTitle);
 
         verifyPanoramaPublicSubmitterRole(projectName, folderName, PANORAMA_PUBLIC, targetFolder);
 
@@ -79,11 +78,11 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         String folderName = "Folder Catalog Entry";
         String targetFolder = "Test Copy Catalog Entry";
         String experimentTitle = "This is an experiment to test adding a catalog entry";
-        String shortAccessUrl = setupSubmitAndCopy(projectName, folderName, targetFolder, experimentTitle);
+        String shortAccessUrl = setupFolderSubmitAndCopy(projectName, folderName, targetFolder, experimentTitle);
 
         // 1. Make the data public and add a catalog entry
         addCatalogEntry(PANORAMA_PUBLIC, targetFolder);
-        // - Verify that the catalog entry cannot be viewed in the user's submitted folder
+        // - Verify that the catalog entry cannot be viewed in the user's source folder
         verifyCatalogEntryWebpart(projectName, folderName, false);
         // Verify permissions - only PanoramaPublicSubmitterRole can view / edit / delete the catalog entry in the
         // Panorama Public folder
@@ -174,7 +173,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         }
     }
 
-    private String setupSubmitAndCopy(String projectName, String folderName, String targetFolder, String experimentTitle)
+    private String setupFolderSubmitAndCopy(String projectName, String folderName, String targetFolder, String experimentTitle)
     {
         setupSourceFolder(projectName, folderName, SUBMITTER);
 

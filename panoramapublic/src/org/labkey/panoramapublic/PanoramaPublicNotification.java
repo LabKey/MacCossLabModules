@@ -183,7 +183,7 @@ public class PanoramaPublicNotification
         StringBuilder messageBody = new StringBuilder();
         messageBody.append("Dear ").append(getUserName(user)).append(",").append(NL2);
         messageBody.append("Thank you for providing an entry for the Panorama Public data catalog.")
-                .append(" We will review your entry and add it to the slideshow on ")
+                .append(" We will review your entry and, upon approval, add it to the slideshow on ")
                 .append(LookAndFeelProperties.getInstance(ContainerManager.getRoot()).getShortName())
                 .append(" (").append(AppProps.getInstance().getBaseServerUrl()).append(").");
 

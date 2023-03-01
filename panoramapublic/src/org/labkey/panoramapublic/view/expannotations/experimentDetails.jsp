@@ -85,8 +85,7 @@
         CatalogEntry entry = CatalogEntryManager.getEntryForExperiment(annot);
         if (entry != null)
         {
-            catalogEntryUrl = new ActionURL(PanoramaPublicController.ViewCatalogEntryAction.class, annot.getContainer())
-                    .addParameter("id", entry.getId());
+            catalogEntryUrl = PanoramaPublicController.getViewCatalogEntryUrl(annot, entry);
             iconCls += " catalogIconGreen";
         }
         else

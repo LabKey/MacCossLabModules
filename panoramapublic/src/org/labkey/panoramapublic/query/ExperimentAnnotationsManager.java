@@ -544,6 +544,20 @@ public class ExperimentAnnotationsManager
     }
 
     /**
+     * @param experimentAnnotations
+     * @return true if the given experiment is a journal copy, and is the most recent version.
+     */
+    public static boolean isCurrentVersion(ExperimentAnnotations experimentAnnotations)
+    {
+        if (experimentAnnotations != null && experimentAnnotations.isJournalCopy())
+        {
+            Integer maxVersion = ExperimentAnnotationsManager.getMaxVersionForExperiment(experimentAnnotations.getSourceExperimentId());
+            return experimentAnnotations.getDataVersion().equals(maxVersion);
+        }
+        return false;
+    }
+
+    /**
      * @return a list of ExperimentAnnotation copies for the given sourceExperimentId.
      */
     public static List<ExperimentAnnotations> getPublishedVersionsOfExperiment(int sourceExperimentId)

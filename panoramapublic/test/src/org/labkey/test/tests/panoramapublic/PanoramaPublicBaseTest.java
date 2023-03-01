@@ -244,8 +244,6 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         }
         makeCopy(shortAccessUrl, experimentTitle, recopy, deleteOldCopy, destinationFolder);
         verifyCopy(shortAccessUrl, experimentTitle, version, projectName, folderName, subfolders, recopy);
-
-        stopImpersonating();
     }
 
     private void makeCopy(String shortAccessUrl, String experimentTitle, boolean recopy, boolean deleteOldCopy, String destinationFolder)

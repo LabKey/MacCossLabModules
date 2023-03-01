@@ -6666,7 +6666,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class PublishSuccessViewBean
     {
         private final Container _sourceContainer; // folder where the action was triggered. Could be the user's folder or the copy on Panorama Public.
-        private final ExperimentAnnotations _copiedExperiment;
+        private final ExperimentAnnotations _copiedExperiment; // Copy of the experiment on Panorama Public.
         private final boolean _madePublic;
         private final boolean _addedPublication;
         private final String _journalName;
@@ -8536,6 +8536,13 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors);
             }
 
+            // We expect this action to be invoked in the Panorama Public copy of an experiment, so there should be a shortUrl.
+            if (expAnnot.getShortUrl() == null)
+            {
+                errors.reject(ERROR_MSG, "Experiment does not have a short access URL. Catalog entry cannot be added.");
+                return new SimpleErrorView(errors);
+            }
+
             CatalogEntryBean bean = getViewBean(form, expAnnot, reshow, errors);
             if (!reshow && errors.hasErrors())
             {
@@ -8669,8 +8676,7 @@ public class PanoramaPublicController extends SpringActionController
             CatalogEntry entry = CatalogEntryManager.getEntryForExperiment(_expAnnot);
             if (entry != null)
             {
-                ActionURL url = new ActionURL(PanoramaPublicController.ViewCatalogEntryAction.class, _expAnnot.getContainer())
-                        .addParameter("id", entry.getId());
+                ActionURL url = PanoramaPublicController.getViewCatalogEntryUrl(_expAnnot, entry);
                 viewEntryButton = new Button.ButtonBuilder("View Entry").href(url).build();
             }
             return new HtmlView(
@@ -9380,6 +9386,12 @@ public class PanoramaPublicController extends SpringActionController
     {
         return new ActionURL(PanoramaPublicController.AddCatalogEntryAction.class, expAnnotations.getContainer())
                 .addParameter("id", expAnnotations.getId());
+    }
+
+    public static ActionURL getViewCatalogEntryUrl(ExperimentAnnotations expAnnotations, CatalogEntry entry)
+    {
+        return new ActionURL(PanoramaPublicController.ViewCatalogEntryAction.class, expAnnotations.getContainer())
+                .addParameter("id", entry.getId());
     }
 
     public static ActionURL getCatalogImageDownloadUrl(ExperimentAnnotations expAnnotations, String filename)
