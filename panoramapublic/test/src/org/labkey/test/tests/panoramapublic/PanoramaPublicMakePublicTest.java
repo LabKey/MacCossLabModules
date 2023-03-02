@@ -80,6 +80,18 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         String experimentTitle = "This is an experiment to test adding a catalog entry";
         String shortAccessUrl = setupFolderSubmitAndCopy(projectName, folderName, targetFolder, experimentTitle);
 
+        // Enable Panorama Public catalog entries in the admin console.
+        goToAdminConsole().goToSettingsSection();
+        clickAndWait(Locator.linkWithText("Panorama Public"));
+        clickAndWait(Locator.linkWithText("Panorama Public Catalog Settings"));
+        checkCheckbox(Locator.input("enabled"));
+        setFormElement(Locator.input("maxFileSize"), "5242880");
+        setFormElement(Locator.input("imgWidth"), "600");
+        setFormElement(Locator.input("imgHeight"), "400");
+        setFormElement(Locator.input("maxTextChars"), "500");
+        setFormElement(Locator.input("maxEntries"), "25");
+        clickButton("Save", "Panorama Public catalog entry settings were saved");
+
         // 1. Make the data public and add a catalog entry
         addCatalogEntry(PANORAMA_PUBLIC, targetFolder);
         // - Verify that the catalog entry cannot be viewed in the user's source folder

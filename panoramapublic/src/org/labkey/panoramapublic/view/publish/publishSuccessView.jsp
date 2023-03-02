@@ -80,11 +80,11 @@
             if (appendSlidesContainer("slideshowPlaceholder")) {
                 initSlides(3, <%=q(CatalogEntryManager.CatalogEntryType.Approved.toString())%>);
             }
-        });
 
-        window.onresize = function() {
-            setDescSize(false);
-        }
+            window.onresize = function() {
+                setDescSize(false);
+            }
+        });
     <% } %>
 
 </script>

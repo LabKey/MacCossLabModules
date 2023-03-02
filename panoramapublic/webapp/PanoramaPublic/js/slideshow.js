@@ -9,10 +9,13 @@ let wait;
 function setDescSize(fixed)
 {
     let desc = document.getElementById("description");
-    if (fixed) {
-        desc.style.width = desc.offsetWidth + "px";
-    } else {
-        desc.style.width = "90%";
+    if (desc) {
+        if (fixed) {
+            desc.style.width = desc.offsetWidth + "px";
+        }
+        else {
+            desc.style.width = "90%";
+        }
     }
 }
 

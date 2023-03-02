@@ -61,11 +61,11 @@
         if (appendSlidesContainer("slideshowPlaceholder")) {
             initSlides(maxEntries, entryType);
         }
-    });
 
-    window.onresize = function() {
-        setDescSize(false);
-    }
+        window.onresize = function() {
+            setDescSize(false);
+        }
+    });
 
     function viewSlideshow()
     {
