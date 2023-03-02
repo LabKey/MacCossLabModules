@@ -1,11 +1,13 @@
 package org.labkey.test.tests.panoramapublic;
 
+import org.apache.hc.core5.http.HttpStatus;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
+import org.labkey.test.WebTestHelper;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.BodyWebPart;
@@ -15,9 +17,11 @@ import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.PermissionsHelper;
 import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.WebElement;
 
 import java.io.File;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -177,7 +181,10 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         {
             assertTextPresent("Panorama Public Catalog Entry");
             BodyWebPart catalogEntryWp = new BodyWebPart(getDriver(), "Panorama Public Catalog Entry");
-            Locator.XPathLocator.tag("img").withAttributeContaining("src", IMAGE_FILE).findElement(catalogEntryWp);
+            WebElement imgTag = Locator.XPathLocator.tag("img").withAttributeContaining("src", IMAGE_FILE).findElement(catalogEntryWp);
+            int responseCode = WebTestHelper.getHttpResponse(imgTag.getAttribute("src")).getResponseCode();
+            assertEquals("Catalog entry image is missing. Unexpected response code. " + responseCode, HttpStatus.SC_OK, responseCode);
+
         }
         else
         {
