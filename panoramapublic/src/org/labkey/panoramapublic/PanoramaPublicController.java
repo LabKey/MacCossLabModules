@@ -8740,8 +8740,7 @@ public class PanoramaPublicController extends SpringActionController
             // Post a message that a catalog entry has been added.
             JournalSubmission submission = SubmissionManager.getSubmissionForJournalCopy(expAnnotations);
             Journal journal = JournalManager.getJournal(submission.getJournalId());
-            JournalExperiment je = SubmissionManager.getJournalExperiment(submission.getJournalExperimentId());
-            PanoramaPublicNotification.notifyCatalogEntryAdded(expAnnotations, journal, je, getUser());
+            PanoramaPublicNotification.notifyCatalogEntryAdded(expAnnotations, journal, submission.getJournalExperiment(), getUser());
         }
     }
 

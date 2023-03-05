@@ -156,7 +156,7 @@ public class SubmissionManager
         return getJournalSubmission(getJournalExperiment(id));
     }
 
-    public static JournalExperiment getJournalExperiment(int id)
+    private static JournalExperiment getJournalExperiment(int id)
     {
         return new TableSelector(PanoramaPublicManager.getTableInfoJournalExperiment(), null, null).getObject(id, JournalExperiment.class);
     }

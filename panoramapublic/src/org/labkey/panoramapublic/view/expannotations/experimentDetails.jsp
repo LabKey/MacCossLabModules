@@ -44,6 +44,7 @@
 <%@ page import="org.labkey.panoramapublic.query.CatalogEntryManager" %>
 <%@ page import="org.labkey.panoramapublic.view.publish.CatalogEntryWebPart" %>
 <%@ page import="org.labkey.panoramapublic.model.CatalogEntry" %>
+<%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -219,11 +220,11 @@
  }
  a.catalogIconGreen
  {
-     background: url("../../PanoramaPublic/images/slideshow-icon-green.png") no-repeat bottom 0 right 0;
+     background: url("<%= h(AppProps.getInstance().getContextPath()) %>/PanoramaPublic/images/slideshow-icon-green.png") no-repeat bottom 0 right 0;
  }
  a.catalogIconGrey
  {
-     background: url("../../PanoramaPublic/images/slideshow-icon.png") no-repeat bottom 0 right 0;
+     background: url("<%= h(AppProps.getInstance().getContextPath()) %>/PanoramaPublic/images/slideshow-icon.png") no-repeat bottom 0 right 0;
  }
 
 </style>
