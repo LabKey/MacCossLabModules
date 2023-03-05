@@ -18,6 +18,7 @@ import org.labkey.panoramapublic.catalog.CatalogEntrySettings;
 import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.CatalogEntryManager;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.security.PanoramaPublicSubmitterPermission;
 
 import java.util.Set;
@@ -52,7 +53,7 @@ public class CatalogEntryWebPart extends VBox
 
         if (entry == null)
         {
-            addView(new HtmlView(DIV("This dataset does not have an entry in the Panorama Public slideshow catalog. " +
+            addView(new HtmlView(DIV("This dataset does not have an entry in the Panorama Public data catalog. " +
                             "Click the button below to add an entry.",
                     BR(),
                     new Button.ButtonBuilder("Add Catalog Entry").href(PanoramaPublicController.getAddCatalogEntryUrl(expAnnotations)
@@ -119,7 +120,8 @@ public class CatalogEntryWebPart extends VBox
         return CatalogEntryManager.getCatalogEntrySettings().isEnabled()
                 && expAnnotations.isJournalCopy() // This is an experiment in the Panorama Public project
                 && expAnnotations.isPublic() // The folder is public
-                && expAnnotations.getContainer().hasOneOf(user, Set.of(AdminPermission.class, PanoramaPublicSubmitterPermission.class));
+                && expAnnotations.getContainer().hasOneOf(user, Set.of(AdminPermission.class, PanoramaPublicSubmitterPermission.class))
+                && ExperimentAnnotationsManager.isCurrentVersion(expAnnotations);
     }
 
     public static Button.ButtonBuilder changeStatusButtonBuilder(Boolean status, int expAnnotationsId, int catalogEntryId, Container container)

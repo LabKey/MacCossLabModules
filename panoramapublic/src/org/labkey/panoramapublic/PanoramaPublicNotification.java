@@ -9,9 +9,12 @@ import org.labkey.api.announcements.DiscussionService.StatusOption;
 import org.labkey.api.announcements.api.Announcement;
 import org.labkey.api.announcements.api.AnnouncementService;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerManager;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
+import org.labkey.api.settings.AppProps;
+import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.NotFoundException;
@@ -44,7 +47,8 @@ public class PanoramaPublicNotification
         COPIED ("Copied"),
         RESUBMITTED ("Resubmitted"),
         RECOPIED ("Recopied"),
-        PUBLISHED ("Published");
+        PUBLISHED ("Published"),
+        CATALOG_ENTRY ("Catalog Entry");
 
         private final String _title;
         ACTION(String title)
@@ -171,6 +175,19 @@ public class PanoramaPublicNotification
                         ? StatusOption.Active
                         : StatusOption.Closed,
                 user);
+    }
+
+
+    public static void notifyCatalogEntryAdded(ExperimentAnnotations srcExperiment, Journal journal, JournalExperiment je,  User user)
+    {
+        StringBuilder messageBody = new StringBuilder();
+        messageBody.append("Dear ").append(getUserName(user)).append(",").append(NL2);
+        messageBody.append("Thank you for providing an entry for the Panorama Public data catalog.")
+                .append(" We will review your entry and, upon approval, add it to the slideshow on ")
+                .append(LookAndFeelProperties.getInstance(ContainerManager.getRoot()).getShortName())
+                .append(" (").append(AppProps.getInstance().getBaseServerUrl()).append(").");
+
+        postNotification(srcExperiment, journal, je, messageBody, false, ACTION.CATALOG_ENTRY.title(), StatusOption.Active, user);
     }
 
     private static void postNotification(ExperimentAnnotations experimentAnnotations, Journal journal, JournalExperiment je,
