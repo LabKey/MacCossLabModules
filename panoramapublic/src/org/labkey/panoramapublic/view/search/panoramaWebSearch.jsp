@@ -431,6 +431,10 @@
                                             document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
                                         }
                                     }
+                                    let clrVar = document.getElementsByClassName('labkey-button ctx-clear-var');
+                                    if (clrVar && clrVar.length === 1) {
+                                        clrVar[0].style.visibility = 'hidden';
+                                    }
                                 }
                             });
                         }
@@ -466,6 +470,10 @@
                                             }
                                             document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
                                         }
+                                    }
+                                    let clrVar = document.getElementsByClassName('labkey-button ctx-clear-var');
+                                    if (clrVar && clrVar.length === 1) {
+                                        clrVar[0].style.visibility = 'hidden';
                                     }
                                 }
                             });
