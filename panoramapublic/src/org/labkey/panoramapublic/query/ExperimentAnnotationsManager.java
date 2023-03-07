@@ -297,7 +297,7 @@ public class ExperimentAnnotationsManager
         // Delete any data validation rows for this experiment
         DataValidationManager.deleteValidations(expAnnotations.getId(), expAnnotations.getContainer());
 
-        // Delete the Panorama Public slideshow catalog entry for this experiment, if one exists
+        // Delete the Panorama Public data catalog entry for this experiment, if one exists
         CatalogEntryManager.deleteEntryForExperiment(expAnnotations, user);
 
         Table.delete(PanoramaPublicManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());
@@ -541,6 +541,20 @@ public class ExperimentAnnotationsManager
                 .append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "")
                 .append(" WHERE DataVersion IS NOT NULL AND SourceExperimentId = ? ").add(experimentAnnotationsId);
         return new SqlSelector(PanoramaPublicManager.getSchema(), sql).getObject(Integer.class);
+    }
+
+    /**
+     * @param experimentAnnotations
+     * @return true if the given experiment is a journal copy, and is the most recent version.
+     */
+    public static boolean isCurrentVersion(ExperimentAnnotations experimentAnnotations)
+    {
+        if (experimentAnnotations != null && experimentAnnotations.isJournalCopy())
+        {
+            Integer maxVersion = ExperimentAnnotationsManager.getMaxVersionForExperiment(experimentAnnotations.getSourceExperimentId());
+            return experimentAnnotations.getDataVersion().equals(maxVersion);
+        }
+        return false;
     }
 
     /**

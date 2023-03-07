@@ -41,6 +41,10 @@
 <%@ page import="org.labkey.api.util.DOM" %>
 <%@ page import="static org.labkey.api.util.DOM.Attribute.title" %>
 <%@ page import="static org.labkey.api.util.DOM.Attribute.href" %>
+<%@ page import="org.labkey.panoramapublic.query.CatalogEntryManager" %>
+<%@ page import="org.labkey.panoramapublic.view.publish.CatalogEntryWebPart" %>
+<%@ page import="org.labkey.panoramapublic.model.CatalogEntry" %>
+<%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -73,6 +77,24 @@
     // User needs to be the folder admin to publish an experiment.
     final boolean canPublish = annotDetails.isCanPublish();
     final boolean showingFullDetails = annotDetails.isFullDetails();
+
+    ActionURL catalogEntryUrl = null;
+    String iconCls = "catalogIcon";
+    String catalogEntryTooltip = "Panorama Public Catalog Entry";
+    if (CatalogEntryWebPart.canBeDisplayed(annot, getUser()))
+    {
+        CatalogEntry entry = CatalogEntryManager.getEntryForExperiment(annot);
+        if (entry != null)
+        {
+            catalogEntryUrl = PanoramaPublicController.getViewCatalogEntryUrl(annot, entry);
+            iconCls += " catalogIconGreen";
+        }
+        else
+        {
+            catalogEntryUrl = PanoramaPublicController.getAddCatalogEntryUrl(annot);
+            iconCls += " catalogIconGrey";
+        }
+    }
 
     HtmlString pxStatusIndicator = null;
     if (canEdit)
@@ -191,6 +213,19 @@
  {
      display: block;
  }
+ a.catalogIcon {
+     display: inline-block;
+     height: 20px;
+     width: 25px;
+ }
+ a.catalogIconGreen
+ {
+     background: url("<%= h(AppProps.getInstance().getContextPath()) %>/PanoramaPublic/images/slideshow-icon-green.png") no-repeat bottom 0 right 0;
+ }
+ a.catalogIconGrey
+ {
+     background: url("<%= h(AppProps.getInstance().getContextPath()) %>/PanoramaPublic/images/slideshow-icon.png") no-repeat bottom 0 right 0;
+ }
 
 </style>
 <script type="text/javascript">
@@ -246,6 +281,9 @@
     <span><%=pxStatusIndicator%></span>
     <% } %>
     <%}%>
+    <% if (catalogEntryUrl != null) { %>
+        <%=iconLink(iconCls, catalogEntryTooltip, catalogEntryUrl).style("margin-left:8px;")%>
+    <% } %>
 </div>
 
 <% if(!StringUtils.isBlank(accessUrl)) {%>
@@ -253,7 +291,6 @@
        <strong><%=h(linkText)%>: </strong>
        <span id="accessUrl" style="margin-top:5px;"><a href="<%=h(accessUrl)%>"><%=h(accessUrl)%></a></span>
        <a class="button-small button-small-green" style="margin:0px 5px 0px 2px;" href="" onclick="showShareLink(this, '<%=h(accessUrl)%>'); return false;">Share</a>
-
         <% if (annotDetails.hasVersion()) {%>
         <span class="link" id="publishedDataVersion" style="margin-left:10px;"><strong>Version: <span style="color:<%=h(annotDetails.isCurrentVersion() ? "green" : "red")%>;"><%=h(annotDetails.getVersion())%></span>
                 <% if (annotDetails.hasVersionsLink()) { %>

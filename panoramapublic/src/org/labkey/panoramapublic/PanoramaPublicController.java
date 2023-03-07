@@ -16,6 +16,7 @@
 package org.labkey.panoramapublic;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -172,6 +173,7 @@ import org.labkey.panoramapublic.proteomexchange.UnimodModification;
 import org.labkey.panoramapublic.proteomexchange.UnimodModifications;
 import org.labkey.panoramapublic.proteomexchange.UnimodUtil;
 import org.labkey.panoramapublic.query.CatalogEntryManager;
+import org.labkey.panoramapublic.query.CatalogEntryManager.CatalogEntryType;
 import org.labkey.panoramapublic.query.DataValidationManager;
 import org.labkey.panoramapublic.query.DataValidationManager.MissingMetadata;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
@@ -1225,7 +1227,7 @@ public class PanoramaPublicController extends SpringActionController
             HtmlView view = new HtmlView(
                 DIV(
                     ERRORS(errors),
-                    "Settings for Panorama Public slideshow catalog entries", BR(),
+                    "Settings for Panorama Public data catalog entries", BR(),
                     FORM(at(method, "POST", action, new ActionURL(ManageCatalogEntrySettings.class, getContainer())),
                         TABLE(TBODY(
                             TR(
@@ -5562,7 +5564,7 @@ public class PanoramaPublicController extends SpringActionController
                 result.addView(vBox);
             }
 
-            // Display details of the Panorama Public slideshow catalog entry for this experiment, if one exists
+            // Display details of the Panorama Public data catalog entry for this experiment, if one exists
             if (CatalogEntryWebPart.canBeDisplayed(exptAnnotations, getUser()))
             {
                 result.addView(new CatalogEntryWebPart(exptAnnotations, getUser()));
@@ -5584,7 +5586,7 @@ public class PanoramaPublicController extends SpringActionController
         private final boolean _fullDetails;
         private boolean _canPublish;
         private String _version;
-        private boolean _isCurrentVersion;
+        private boolean _isCurrentVersion = true;
         private ActionURL _versionsUrl;
         private ExperimentAnnotations _journalCopy;
 
@@ -5629,13 +5631,13 @@ public class PanoramaPublicController extends SpringActionController
                         // This is the current version; Display a link to see all published versions
                         _versionsUrl = new ActionURL(PanoramaPublicController.ShowPublishedVersions.class, _experimentAnnotations.getContainer());
                         _versionsUrl.addParameter("id", _experimentAnnotations.getId());
-                        _isCurrentVersion = true;
                     }
                     else
                     {
                         // This is not the current version; Display a link to the current version
                         ExperimentAnnotations maxExpt = publishedVersions.stream().filter(e -> e.getDataVersion().equals(maxVersion)).findFirst().orElse(null);
                         _versionsUrl = maxExpt != null ? PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(maxExpt.getContainer()) : null;
+                        _isCurrentVersion = false;
                     }
                 }
             }
@@ -6594,33 +6596,11 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getSuccessView(PublicationDetailsForm form)
         {
-            var shortUrl = _copiedExperiment.getShortUrl().renderShortURL();
-            var successMsg = _madePublic ? String.format("Data on %s at %s was made public%s",
-                                                               _journal.getName(),
-                                                               shortUrl,
-                                                               (_addedPublication ? " and publication details were added." : "."))
-                                   : _addedPublication ?  String.format("Publication details were updated for data on %s at %s.", _journal.getName(), shortUrl) : "";
-            Link viewDataLink = new Link.LinkBuilder("View Data")
-                    .href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_copiedExperiment.getContainer()))
-                    .target("_blank").build();
-            Button backToFolderBtn = new Button.ButtonBuilder("Back to Folder")
-                    .href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())).build();
-
-            return new HtmlView(
-                    DIV(successMsg, SPAN(at(style, "margin-left:10px;"), viewDataLink),
-                            _copiedExperiment.getPxid() != null ?
-                                    DIV(at(style, "margin-top:10px;"),
-                                            String.format("Accession %s will be %s on ProteomeXchange by a %s administrator.",
-                                                    _copiedExperiment.getPxid(), _madePublic ? "made public" : "updated", _journal.getName()))
-                                    : "",
-                            canAddCatalogEntry(_copiedExperiment)
-                                    ? DIV(at(style, "margin-top:10px;"), "You can add an image and a brief description of " +
-                                    "your data that will be displayed in a slideshow on the PanoramaWeb homepage. Click the button to " +
-                                    "add an entry in the Panorama Public slideshow catalog. ", getAddCatalogEntryButton(_copiedExperiment))
-                                    : "",
-                            DIV(at(style, "margin-top:20px;"), backToFolderBtn)
-                    )
-            );
+            PublishSuccessViewBean bean = new PublishSuccessViewBean(_expAnnot.getContainer(), _copiedExperiment, _madePublic, _addedPublication, _journal.getName());
+            JspView view = new JspView("/org/labkey/panoramapublic/view/publish/publishSuccessView.jsp", bean);
+            view.setTitle("Data Published");
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            return view;
         }
 
         private boolean canAddCatalogEntry(ExperimentAnnotations expAnnot)
@@ -6682,6 +6662,56 @@ public class PanoramaPublicController extends SpringActionController
             return _accessUrl;
         }
     }
+
+    public static class PublishSuccessViewBean
+    {
+        private final Container _sourceContainer; // folder where the action was triggered. Could be the user's folder or the copy on Panorama Public.
+        private final ExperimentAnnotations _copiedExperiment; // Copy of the experiment on Panorama Public.
+        private final boolean _madePublic;
+        private final boolean _addedPublication;
+        private final String _journalName;
+
+        public PublishSuccessViewBean(Container sourceContainer, ExperimentAnnotations copiedExperiment, boolean madePublic, boolean addedPublication,
+                                      String journalName)
+        {
+            _sourceContainer = sourceContainer;
+            _copiedExperiment = copiedExperiment;
+            _madePublic = madePublic;
+            _addedPublication = addedPublication;
+            _journalName = journalName;
+        }
+
+        public Container getSourceContainer()
+        {
+            return _sourceContainer;
+        }
+
+        public ExperimentAnnotations getCopiedExperiment()
+        {
+            return _copiedExperiment;
+        }
+
+        public boolean madePublic()
+        {
+            return _madePublic;
+        }
+
+        public boolean addedPublication()
+        {
+            return _addedPublication;
+        }
+
+        public String getJournalName()
+        {
+            return _journalName;
+        }
+
+        public String getAccessUrl()
+        {
+            return _copiedExperiment.getShortUrl().renderShortURL();
+        }
+    }
+
     public static class PublicationDetailsForm extends ExperimentIdForm
     {
         private String _link;
@@ -8495,6 +8525,7 @@ public class PanoramaPublicController extends SpringActionController
         abstract CatalogEntry getCatalogEntry(ExperimentAnnotations expAnnotations, String description, @Nullable String imageFileName, Errors errors);
         abstract AttachmentFile getValidatedImageFile(CatalogEntryForm form, CatalogEntrySettings settings, Errors errors);
         abstract void saveEntry(CatalogEntry entry, AttachmentFile imageFile, ExperimentAnnotations expAnnotations) throws IOException;
+        abstract void sendNotification(ExperimentAnnotations expAnnotations);
 
         @Override
         public ModelAndView getView(CatalogEntryForm form, boolean reshow, BindException errors)
@@ -8502,6 +8533,13 @@ public class PanoramaPublicController extends SpringActionController
             ExperimentAnnotations expAnnot = getValidExperiment(form, getContainer(), getViewContext(), errors); // container check
             if (expAnnot == null)
             {
+                return new SimpleErrorView(errors);
+            }
+
+            // We expect this action to be invoked in the Panorama Public copy of an experiment, so there should be a shortUrl.
+            if (expAnnot.getShortUrl() == null)
+            {
+                errors.reject(ERROR_MSG, "Experiment does not have a short access URL. Catalog entry cannot be added.");
                 return new SimpleErrorView(errors);
             }
 
@@ -8568,6 +8606,9 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG,"Unable to save image file. Error was: " + e.getMessage());
                 return false;
             }
+
+            sendNotification(_expAnnot);
+
             return true;
         }
 
@@ -8635,12 +8676,11 @@ public class PanoramaPublicController extends SpringActionController
             CatalogEntry entry = CatalogEntryManager.getEntryForExperiment(_expAnnot);
             if (entry != null)
             {
-                ActionURL url = new ActionURL(PanoramaPublicController.ViewCatalogEntryAction.class, _expAnnot.getContainer())
-                        .addParameter("id", entry.getId());
+                ActionURL url = PanoramaPublicController.getViewCatalogEntryUrl(_expAnnot, entry);
                 viewEntryButton = new Button.ButtonBuilder("View Entry").href(url).build();
             }
             return new HtmlView(
-                    DIV("Thank you for submitting your entry for the Panorama Public catalog. " +
+                    DIV("Thank you for submitting your entry for the Panorama Public data catalog. " +
                                     "Your entry will be reviewed by an administrator and included in the slideshow " +
                                     "on " + AppProps.getInstance().getBaseServerUrl(),
                             DIV(at(style, "margin-top:10px"),
@@ -8692,6 +8732,15 @@ public class PanoramaPublicController extends SpringActionController
         void saveEntry(CatalogEntry entry, AttachmentFile imageFile, ExperimentAnnotations expAnnotations) throws IOException
         {
             CatalogEntryManager.saveEntry(entry, imageFile, expAnnotations, getUser());
+        }
+
+        @Override
+        void sendNotification(ExperimentAnnotations expAnnotations)
+        {
+            // Post a message that a catalog entry has been added.
+            JournalSubmission submission = SubmissionManager.getSubmissionForJournalCopy(expAnnotations);
+            Journal journal = JournalManager.getJournal(submission.getJournalId());
+            PanoramaPublicNotification.notifyCatalogEntryAdded(expAnnotations, journal, submission.getJournalExperiment(), getUser());
         }
     }
 
@@ -8756,6 +8805,12 @@ public class PanoramaPublicController extends SpringActionController
         void saveEntry(CatalogEntry entry, AttachmentFile imageFile, ExperimentAnnotations expAnnotations) throws IOException
         {
             CatalogEntryManager.updateEntry(entry, expAnnotations, imageFile, getUser());
+        }
+
+        @Override
+        void sendNotification(ExperimentAnnotations expAnnotations)
+        {
+            // Don't post a message if the catalog entry is edited.
         }
     }
 
@@ -9000,7 +9055,7 @@ public class PanoramaPublicController extends SpringActionController
             int maxEntries = form.getMaxEntries() != null ? form.getMaxEntries()
                     : CatalogEntryManager.getCatalogEntrySettings().getMaxDisplayEntries();
 
-            List<CatalogEntry> entryList = CatalogEntryManager.getApprovedEntries(maxEntries);
+            List<CatalogEntry> entryList = CatalogEntryManager.getEntries(form.getCatalogEntryType(), maxEntries);
             for (CatalogEntry entry : entryList)
             {
                 ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.getExperimentForShortUrl(entry.getShortUrl());
@@ -9022,6 +9077,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class CatalogForm
     {
         private Integer _maxEntries;
+        private String _entryType;
 
         public Integer getMaxEntries()
         {
@@ -9032,7 +9088,23 @@ public class PanoramaPublicController extends SpringActionController
         {
             _maxEntries = maxEntries;
         }
+
+        public String getEntryType()
+        {
+            return _entryType;
+        }
+
+        public void setEntryType(String entryType)
+        {
+            _entryType = entryType;
+        }
+
+        public CatalogEntryType getCatalogEntryType()
+        {
+            return EnumUtils.getEnum(CatalogEntryType.class, _entryType, CatalogEntryType.Approved);
+        }
     }
+
 
     @RequiresPermission(ReadPermission.class)
     public static class ViewSlideshowAction extends SimpleViewAction
@@ -9313,6 +9385,12 @@ public class PanoramaPublicController extends SpringActionController
     {
         return new ActionURL(PanoramaPublicController.AddCatalogEntryAction.class, expAnnotations.getContainer())
                 .addParameter("id", expAnnotations.getId());
+    }
+
+    public static ActionURL getViewCatalogEntryUrl(ExperimentAnnotations expAnnotations, CatalogEntry entry)
+    {
+        return new ActionURL(PanoramaPublicController.ViewCatalogEntryAction.class, expAnnotations.getContainer())
+                .addParameter("id", entry.getId());
     }
 
     public static ActionURL getCatalogImageDownloadUrl(ExperimentAnnotations expAnnotations, String filename)
