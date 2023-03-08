@@ -34,14 +34,11 @@ import org.labkey.api.query.DefaultSchema;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.QuerySchema;
+import org.labkey.api.query.UserIdQueryForeignKey;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.User;
-import org.labkey.api.security.UserUrls;
 import org.labkey.api.security.permissions.AdminPermission;
-import org.labkey.api.util.PageFlowUtil;
-import org.labkey.api.util.StringExpression;
-import org.labkey.api.util.StringExpressionFactory;
 import org.labkey.api.view.ActionURL;
 
 import java.io.IOException;
@@ -85,12 +82,7 @@ public class SignUpSchema extends UserSchema
                 ContainerForeignKey.initColumn(result.getMutableColumn(FieldKey.fromParts("Container")), this);
 
             var userIdCol = result.getMutableColumn(FieldKey.fromParts("labkeyUserId"));
-            userIdCol.setDisplayColumnFactory(colInfo -> {
-                DataColumn col = new DataColumn(colInfo);
-                StringExpression strExpr = StringExpressionFactory.create(PageFlowUtil.urlProvider(UserUrls.class).getUserDetailsURL(getContainer(), null) + "userId=${labkeyUserId}");
-                col.setURLExpression(strExpr);
-                return col;
-            });
+            userIdCol.setFk(new UserIdQueryForeignKey(this, true));
 
             if(name.equals(TABLE_MOVED_USERS))
             {

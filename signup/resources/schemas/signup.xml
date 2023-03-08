@@ -28,14 +28,26 @@
             <column columnName="organization"/>
             <column columnName="key"/>
             <column columnName="container"/>
-            <column columnName="labkeyuserid"/>
+            <column columnName="labkeyuserid">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
         </columns>
     </table>
     <table tableDbType="TABLE" tableName="movedusers" >
         <columns>
             <column columnName="_ts"/>
             <column columnName="id"/>
-            <column columnName="labkeyuserid"/>
+            <column columnName="labkeyuserid">
+                <fk>
+                    <fkColumnName>UserId</fkColumnName>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>UsersData</fkTable>
+                </fk>
+            </column>
             <column columnName="oldgroup"/>
             <column columnName="newgroup"/>
         </columns>
