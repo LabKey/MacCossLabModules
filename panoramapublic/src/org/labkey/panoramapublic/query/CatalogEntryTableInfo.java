@@ -51,8 +51,7 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
                 ExperimentAnnotations expAnnotations = entry != null ? ExperimentAnnotationsManager.getExperimentForShortUrl(entry.getShortUrl()) : null;
                 if (entry != null && expAnnotations != null)
                 {
-                    return new ActionURL(PanoramaPublicController.ViewCatalogEntryAction.class, expAnnotations.getContainer())
-                                    .addParameter("id", entry.getId());
+                    return PanoramaPublicController.getViewCatalogEntryUrl(expAnnotations, entry);
                 }
                 return super.getValue(ctx);
             }

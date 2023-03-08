@@ -19,6 +19,8 @@ package org.labkey.panoramapublic;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.collections.CaseInsensitiveHashSet;
+import org.labkey.api.data.ActionButton;
+import org.labkey.api.data.ButtonBar;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
@@ -39,6 +41,8 @@ import org.labkey.api.query.QueryView;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
+import org.labkey.api.view.ActionURL;
+import org.labkey.api.view.DataView;
 import org.labkey.api.view.ViewContext;
 import org.labkey.panoramapublic.model.speclib.SpecLibDependencyType;
 import org.labkey.panoramapublic.model.speclib.SpecLibSourceType;
@@ -393,6 +397,23 @@ public class PanoramaPublicSchema extends UserSchema
                 protected boolean canUpdate()
                 {
                     return false;
+                }
+            };
+        }
+
+        else if (TABLE_CATALOG_ENTRY.equalsIgnoreCase(settings.getQueryName()))
+        {
+            return new QueryView(this, settings, errors)
+            {
+                @Override
+                protected void populateButtonBar(DataView view, ButtonBar bar)
+                {
+                    super.populateButtonBar(view, bar);
+
+                    ActionButton slideshowButton = new ActionButton("View Slideshow");
+                    slideshowButton.setURL(new ActionURL(PanoramaPublicController.ViewSlideshowAction.class, getContainer()));
+                    slideshowButton.setDisplayPermission(AdminOperationsPermission.class);
+                    bar.add(slideshowButton);
                 }
             };
         }

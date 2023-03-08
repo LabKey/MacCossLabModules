@@ -25,6 +25,8 @@
 <%@ page import="org.labkey.panoramapublic.catalog.CatalogEntrySettings" %>
 <%@ page import="org.labkey.panoramapublic.query.CatalogEntryManager" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
+<%@ page import="org.labkey.api.settings.LookAndFeelProperties" %>
+<%@ page import="org.labkey.api.data.ContainerManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%!
     @Override
@@ -94,21 +96,18 @@
     }
     .noRemainingChars
     {
-        color:red;
+        color:red !important;
+    }
+    .greyText
+    {
+        color:grey;
     }
 </style>
 
 <div style="margin-top:10px;">
     <div style="margin-bottom:15px;">
-        Use the form below to provide a brief description and a title figure for your data that will be displayed in a
-        slideshow on <%=h(AppProps.getInstance().getBaseServerUrl())%>.
-        <ul>
-            <li>The description must be <%=descriptionCharLimit%> characters or less. </li>
-            <li>The image must be a PNG or JPEG/JPG file that is less that <%=h(maxFileSizeMb)%>, and preferably
-                <%=imgWidth%> (width) x <%=imgHeight%> (height) pixels in dimensions.</li>
-        </ul>
-        You will be able to crop the image to fit the required aspect ratio for the slideshow. For best quality, however,
-        the image should be resized in an image processing software before uploading.
+        Use the form below to provide a brief description and an image that will be displayed in a slideshow on
+        <%=h(LookAndFeelProperties.getInstance(ContainerManager.getRoot()).getShortName())%> (<%=h(AppProps.getInstance().getBaseServerUrl())%>).
     </div>
     <form id="catalogEntryForm" method="post" enctype="multipart/form-data">
         <labkey:csrf />
@@ -119,7 +118,7 @@
                 <td>
                     <textarea id="descFieldInput" rows="8" cols="60" name="datasetDescription" ><%=h(form.getDatasetDescription())%></textarea>
                     <br/>
-                    <div id="remainingChars" style="margin-bottom:15px;color:darkgray">
+                    <div id="remainingChars" style="margin-bottom:15px;" class="greyText">
                         <span id="rchars"><%=descriptionCharLimit%></span> characters remaining
                     </div>
                 </td>
@@ -127,9 +126,12 @@
             <tr>
                 <td class="labkey-form-label" style="text-align:center;">Image:</td>
                 <td>
-                    <input id="imageFileInput" type="file" size="50" style="border: none; background-color: transparent;" accept="image/png,image/jpeg" />
+                    <input id="imageFileInput" type="file" size="50" style="border: none; background-color: transparent;" accept="image/png,image/jpeg" name="imageFileInput" />
                     <input id="modifiedImage" name="imageFile" type="hidden"/>
                     <input id="imageFileName" name="imageFileName" type="hidden"/>
+                    <div style="margin-top:5px;" class="greyText">
+                        PNG or JPG/JPEG file less than 5MB. Preferred dimensions 600(width) x 400(height) pixels.
+                    </div>
                     <div id="preview" style="margin-top:10px; padding:10px;"></div>
                 </td>
             </tr>
@@ -150,6 +152,7 @@
     </div>
     <div id="cropperButtons" style="margin-top:5px; text-align:center">
         Drag and resize the crop-box over the image, and click the "Crop" button to fit image to the slideshow dimensions.
+        For best quality the image should be resized in an image processing software before uploading.
         <div style="margin-top:5px;">
             <a class="labkey-button" id="btnCrop">Crop</a>
             <a class="labkey-button" style="margin-left:5px;" id="btnCancel">Cancel</a>

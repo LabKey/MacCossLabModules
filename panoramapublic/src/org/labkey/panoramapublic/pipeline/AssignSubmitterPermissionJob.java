@@ -10,12 +10,15 @@ import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.SecurityPolicyManager;
 import org.labkey.api.security.User;
+import org.labkey.api.security.UserManager;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
+import org.labkey.panoramapublic.query.SubmissionManager;
 import org.labkey.panoramapublic.security.PanoramaPublicSubmitterPermission;
 import org.labkey.panoramapublic.security.PanoramaPublicSubmitterRole;
 
@@ -71,7 +74,17 @@ public class AssignSubmitterPermissionJob extends PipelineJob
                 {
                     boolean submitterUpdated = assignRole(expAnnotations.getSubmitterUser(), "Submitter", container, _dryRun, getLogger());
                     boolean labHeadUpdated = assignRole(expAnnotations.getLabHeadUser(), "Lab Head", container, _dryRun, getLogger());
-                    if (submitterUpdated || labHeadUpdated)
+
+                    JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(expAnnotations);
+                    boolean formSubmitterUpdated = false;
+                    if (submission != null)
+                    {
+                        // Assign the role to the user that submitted the request. This may not be the same as the user selected as the "Submitter".
+                        User formSubmitter = UserManager.getUser(submission.getJournalExperiment().getCreatedBy());
+                        assignRole(formSubmitter, "Form submitter", container, _dryRun, getLogger());
+                    }
+
+                    if (submitterUpdated || labHeadUpdated || formSubmitterUpdated)
                     {
                         updated++;
                     }
