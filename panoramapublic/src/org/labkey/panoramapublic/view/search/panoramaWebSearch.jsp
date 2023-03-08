@@ -433,7 +433,7 @@
                                     }
                                     let clrVar = document.getElementsByClassName('labkey-button ctx-clear-var');
                                     if (clrVar && clrVar.length === 1) {
-                                        clrVar[0].style.visibility = 'hidden';
+                                        clrVar[0].remove();
                                     }
                                 }
                             });
@@ -473,7 +473,7 @@
                                     }
                                     let clrVar = document.getElementsByClassName('labkey-button ctx-clear-var');
                                     if (clrVar && clrVar.length === 1) {
-                                        clrVar[0].style.visibility = 'hidden';
+                                        clrVar[0].remove();
                                     }
                                 }
                             });

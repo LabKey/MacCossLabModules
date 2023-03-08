@@ -147,7 +147,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         DataRegionTable table = panoramaPublicSearch.gotoProteinSearch().setProtein("").search();
         waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotVisible(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertTextNotPresent("Clear Variables");
         checker().verifyEquals("Incorrect protein searched with partial match", 0, table.getDataRowCount());
 
         log("Protein : Partial match and results across folder");
@@ -155,7 +156,9 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoProteinSearch().setProtein("R").search();
         waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotVisible(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertTextNotPresent("Clear Variables");
+
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Protein: R"),
                 getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect protein searched with partial match", 2, table.getDataRowCount());
@@ -178,7 +181,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoProteinSearch().setProtein("00706094|Alpha").setProteinExactMatch(true).search();
         waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotVisible(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertTextNotPresent("Clear Variables");
 
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Protein: 00706094|Alpha", "Exact Matches Only"),
                 getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
@@ -194,7 +198,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoProteinSearch().setProtein("00706094Alpha").setProteinExactMatch(true).search();
         waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotVisible(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertTextNotPresent("Clear Variables");
 
         checker().verifyEquals("Incorrect protein searched with exact match", 0, table.getDataRowCount());
     }
@@ -207,7 +212,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         DataRegionTable table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("").search();
         waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotVisible(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertTextNotPresent("Clear Variables");
         checker().verifyEquals("Incorrect peptide searched with partial match", 0, table.getDataRowCount());
 
         log("Peptide : Partial match and results across folder");
@@ -215,7 +221,9 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("VL").search();
         waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotVisible(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertTextNotPresent("Clear Variables");
+
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Peptide Sequence: VL"),
                 getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect peptide searched with partial match", 2, table.getDataRowCount());
@@ -237,7 +245,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("GFCGLSQPK").setPeptideExactMatch(true).search();
         waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotVisible(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertTextNotPresent("Clear Variables");
 
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Exact Matches Only", "Peptide Sequence: GFCGLSQPK"),
                 getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
@@ -253,7 +262,8 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("XYZ").setPeptideExactMatch(true).search();
         waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotVisible(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
+        assertTextNotPresent("Clear Variables");
 
         checker().verifyEquals("Incorrect peptide searched with exact match", 0, table.getDataRowCount());
     }
