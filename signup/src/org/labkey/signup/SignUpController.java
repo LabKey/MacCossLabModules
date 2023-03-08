@@ -17,6 +17,7 @@
 package org.labkey.signup;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.labkey.api.action.ApiResponse;
@@ -409,31 +410,16 @@ public class SignUpController extends SpringActionController
                 return false;
             }
 
-            SecurityManager.NewUserStatus newUserStatus;
-
             // User creation should be in a transaction
             try (DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
             {
                 // Add user to LabKey core database
-                newUserStatus = SecurityManager.addUser(_email, null);
+                SecurityManager.NewUserStatus newUserStatus = SecurityManager.addUser(_email, null);
                 User newUser = newUserStatus.getUser();
                 // Set user's first, last, and organization name
                 newUser.setFirstName(_tempUser.getFirstName());
                 newUser.setLastName(_tempUser.getLastName());
                 newUser.setDescription(StringUtils.isBlank(_tempUser.getOrganization()) ? "" : "Organization: " + _tempUser.getOrganization()); // don't add anything if organization is empty
-
-                Container c = _tempUser.getContainer();
-                PropertyManager.PropertyMap property = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, false);
-                if (property != null && property.get(SignUpModule.SIGNUP_GROUP_NAME) != null)
-                {
-                    Integer groupId = SecurityManager.getGroupId(c.getProject(), property.get(SignUpModule.SIGNUP_GROUP_NAME));
-                    if (groupId != null)
-                    {
-                        final Group group = SecurityManager.getGroup(groupId);
-                        SecurityManager.addMember(group, newUser);
-                        UserManager.updateUser(newUser, newUser); // Update user in LabKey core database.
-                    }
-                }
 
                 // ---------------------------------------------------------------------------------------------- //
                 // Copied from LoginController.attemptSetPassword(ValidEmail email, URLHelper returnUrlHelper, String auditMessage, boolean clearVerification, BindException errors)
@@ -485,6 +471,19 @@ public class SignUpController extends SpringActionController
 
                 _tempUser.setLabkeyUserId(newUser.getUserId());
                 Table.update(null, SignUpManager.getTableInfoTempUsers(), _tempUser, _tempUser.getUserId());
+
+                Container c = _tempUser.getContainer();
+                PropertyManager.PropertyMap property = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, false);
+                if (property != null && property.get(SignUpModule.SIGNUP_GROUP_NAME) != null)
+                {
+                    Integer groupId = SecurityManager.getGroupId(c.getProject(), property.get(SignUpModule.SIGNUP_GROUP_NAME));
+                    if (groupId != null)
+                    {
+                        final Group group = SecurityManager.getGroup(groupId);
+                        SecurityManager.addMember(group, newUser);
+                        UserManager.updateUser(newUser, newUser); // Update user in LabKey core database.
+                    }
+                }
 
                 transaction.commit();
             }
@@ -599,6 +598,15 @@ public class SignUpController extends SpringActionController
         @Override
         public boolean handlePost(SignupForm signupForm, BindException errors) throws Exception
         {
+            // Validate with EmailValidator first. ValidEmail(email) will not throw an exception if the domain is
+            // missing from the email. The default domain configured for the server is appended.
+            EmailValidator validator = EmailValidator.getInstance();
+            if(!validator.isValid(signupForm.getEmail()))
+            {
+                errors.reject(ERROR_MSG,"'" + signupForm.getEmail() + "' is not a valid email address.");
+                return false;
+            }
+
             ValidEmail email;
             try
             {
