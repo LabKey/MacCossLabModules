@@ -349,32 +349,21 @@
             if (activeTab === expSearchPanelItemId) {
                 parseUrlQueryParams()
             }
-            if (activeTab === proteinSearchPanelItemId) {
-
-                if (context[proteinNameItemId] === undefined) {
-                    context[proteinNameItemId] = '';
-                }
-                proteinParameters[proteinNameItemId] = context[proteinNameItemId];
+            if (context[proteinNameItemId] || context[proteinNameItemId] === '') {
+                proteinParameters[proteinNameItemId] =  context[proteinNameItemId];
                 document.getElementById(proteinNameItemId).value = context[proteinNameItemId];
-
-                if (context[exactProteinMatchesItemId]) {
-                    proteinParameters[exactMatch] =  context[exactProteinMatchesItemId];
-                    context[exactProteinMatchesItemId] === "true" ? (document.getElementById(exactProteinMatchesItemId).checked = true) : (document.getElementById(exactProteinMatchesItemId).checked = false);
-                }
             }
-
-            if (activeTab === peptideSearchPanelItemId) {
-
-                if (context[peptideSequenceItemId] === undefined) {
-                    context[peptideSequenceItemId] = '';
-                }
+            if (context[exactProteinMatchesItemId]) {
+                proteinParameters[exactMatch] =  context[exactProteinMatchesItemId];
+                context[exactProteinMatchesItemId] === "true" ? (document.getElementById(exactProteinMatchesItemId).checked = true) : (document.getElementById(exactProteinMatchesItemId).checked = false);
+            }
+            if (context[peptideSequenceItemId] || context[peptideSequenceItemId] === '') {
                 peptideParameters[peptideSequenceItemId] =  context[peptideSequenceItemId];
                 document.getElementById(peptideSequenceItemId).value = context[peptideSequenceItemId];
-
-                if (context[exactPeptideMatchesItemId]) {
-                    peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
-                    document.getElementById(exactPeptideMatchesItemId).checked = context[exactPeptideMatchesItemId] === "true";
-                }
+            }
+            if (context[exactPeptideMatchesItemId]) {
+                peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
+                document.getElementById(exactPeptideMatchesItemId).checked = context[exactPeptideMatchesItemId] === "true";
             }
         }
 
@@ -418,7 +407,7 @@
                     pageId: 'DefaultDashboard',
                     success: function (wp) {
                         let expWebpart = wp.body.filter(webpart => webpart.name === "Targeted MS Experiment List");
-                        if (expWebpart.length === 1) {
+                        if (expWebpart.length === 1 && proteinParameters[proteinNameItemId] !== undefined) {
                             let wp = new LABKEY.QueryWebPart({
                                 renderTo: 'webpart_'+ expWebpart[0].webPartId,
                                 title: 'Panorama Public Experiments',
@@ -458,7 +447,7 @@
                     pageId: 'DefaultDashboard',
                     success: function (wp) {
                         let expWebpart = wp.body.filter(webpart => webpart.name === "Targeted MS Experiment List");
-                        if (expWebpart.length === 1) {
+                        if (expWebpart.length === 1 && peptideParameters[peptideSequenceItemId] !== undefined) {
                             let wp = new LABKEY.QueryWebPart({
                                 renderTo: 'webpart_'+ expWebpart[0].webPartId,
                                 title: 'Panorama Public Experiments',
