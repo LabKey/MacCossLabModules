@@ -349,21 +349,32 @@
             if (activeTab === expSearchPanelItemId) {
                 parseUrlQueryParams()
             }
-            if (context[proteinNameItemId] || context[proteinNameItemId] === '') {
-                proteinParameters[proteinNameItemId] =  context[proteinNameItemId];
+            if (activeTab === proteinSearchPanelItemId) {
+
+                if (context[proteinNameItemId] === undefined) {
+                    context[proteinNameItemId] = '';
+                }
+                proteinParameters[proteinNameItemId] = context[proteinNameItemId];
                 document.getElementById(proteinNameItemId).value = context[proteinNameItemId];
+
+                if (context[exactProteinMatchesItemId]) {
+                    proteinParameters[exactMatch] =  context[exactProteinMatchesItemId];
+                    context[exactProteinMatchesItemId] === "true" ? (document.getElementById(exactProteinMatchesItemId).checked = true) : (document.getElementById(exactProteinMatchesItemId).checked = false);
+                }
             }
-            if (context[exactProteinMatchesItemId]) {
-                proteinParameters[exactMatch] =  context[exactProteinMatchesItemId];
-                context[exactProteinMatchesItemId] === "true" ? (document.getElementById(exactProteinMatchesItemId).checked = true) : (document.getElementById(exactProteinMatchesItemId).checked = false);
-            }
-            if (context[peptideSequenceItemId] || context[peptideSequenceItemId] === '') {
+
+            if (activeTab === peptideSearchPanelItemId) {
+
+                if (context[peptideSequenceItemId] === undefined) {
+                    context[peptideSequenceItemId] = '';
+                }
                 peptideParameters[peptideSequenceItemId] =  context[peptideSequenceItemId];
                 document.getElementById(peptideSequenceItemId).value = context[peptideSequenceItemId];
-            }
-            if (context[exactPeptideMatchesItemId]) {
-                peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
-                document.getElementById(exactPeptideMatchesItemId).checked = context[exactPeptideMatchesItemId] === "true";
+
+                if (context[exactPeptideMatchesItemId]) {
+                    peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
+                    document.getElementById(exactPeptideMatchesItemId).checked = context[exactPeptideMatchesItemId] === "true";
+                }
             }
         }
 
@@ -432,7 +443,7 @@
                                         }
                                     }
                                     let clrVar = document.getElementsByClassName('labkey-button ctx-clear-var');
-                                    if (clrVar && clrVar.length === 1) {
+                                    if (clrVar && clrVar.length === 1 && clrVar[0].textContent === "Clear Variables") {
                                         clrVar[0].remove();
                                     }
                                 }
@@ -472,7 +483,7 @@
                                         }
                                     }
                                     let clrVar = document.getElementsByClassName('labkey-button ctx-clear-var');
-                                    if (clrVar && clrVar.length === 1) {
+                                    if (clrVar && clrVar.length === 1 && clrVar[0].textContent === "Clear Variables") {
                                         clrVar[0].remove();
                                     }
                                 }
