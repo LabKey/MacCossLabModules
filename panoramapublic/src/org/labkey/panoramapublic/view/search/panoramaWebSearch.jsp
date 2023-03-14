@@ -407,7 +407,7 @@
                     pageId: 'DefaultDashboard',
                     success: function (wp) {
                         let expWebpart = wp.body.filter(webpart => webpart.name === "Targeted MS Experiment List");
-                        if (expWebpart.length === 1) {
+                        if (expWebpart.length === 1 && proteinParameters[proteinNameItemId] !== undefined) {
                             let wp = new LABKEY.QueryWebPart({
                                 renderTo: 'webpart_'+ expWebpart[0].webPartId,
                                 title: 'Panorama Public Experiments',
@@ -431,6 +431,10 @@
                                             document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
                                         }
                                     }
+                                    let clrVar = document.getElementsByClassName('labkey-button ctx-clear-var');
+                                    if (clrVar && clrVar.length === 1 && clrVar[0].textContent === "Clear Variables") {
+                                        clrVar[0].remove();
+                                    }
                                 }
                             });
                         }
@@ -443,7 +447,7 @@
                     pageId: 'DefaultDashboard',
                     success: function (wp) {
                         let expWebpart = wp.body.filter(webpart => webpart.name === "Targeted MS Experiment List");
-                        if (expWebpart.length === 1) {
+                        if (expWebpart.length === 1 && peptideParameters[peptideSequenceItemId] !== undefined) {
                             let wp = new LABKEY.QueryWebPart({
                                 renderTo: 'webpart_'+ expWebpart[0].webPartId,
                                 title: 'Panorama Public Experiments',
@@ -466,6 +470,10 @@
                                             }
                                             document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
                                         }
+                                    }
+                                    let clrVar = document.getElementsByClassName('labkey-button ctx-clear-var');
+                                    if (clrVar && clrVar.length === 1 && clrVar[0].textContent === "Clear Variables") {
+                                        clrVar[0].remove();
                                     }
                                 }
                             });
