@@ -1,16 +1,16 @@
 PARAMETERS
 (
-    moleculeName VARCHAR,
+    smallMolecule VARCHAR,
     exactMatch BIT DEFAULT FALSE
 )
 
 SELECT created,
-       count(MoleculeName) AS matches,
+       count(smallMolecule) AS matches,
        title,
        organism,
        citation,
        pxid,
-       MoleculeName,
+       smallMolecule,
        exactMatch,
        container
 FROM smallMoleculeSearchResults

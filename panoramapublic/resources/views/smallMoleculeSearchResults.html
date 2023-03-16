@@ -1,0 +1,24 @@
+<div id="search-indicator"></div>
+<script type="text/javascript">
+
+        let webpart = <%=webpartContext%>;
+        const queryString = window.location.search;
+        console.log("queryString = " + queryString);
+        const urlParams = new URLSearchParams(queryString);
+        const smallMolecule = urlParams.get('smallMolecule');
+        const exactMatch = urlParams.get('exactMatch');
+
+        let wp = new LABKEY.QueryWebPart({
+            renderTo: webpart.wrapperDivId,
+            frame: 'portal',
+            title: 'Search criteria : ' + smallMolecule + ' & exact match: ' + exactMatch ,
+            schemaName: 'targetedms',
+            queryName: 'smallMoleculeSearchResults',
+            showFilterDescription: false,
+            parameters: {smallMolecule : smallMolecule, exactMatch: exactMatch},
+            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
+            success: function () {
+            }
+        });
+        wp.render();
+</script>

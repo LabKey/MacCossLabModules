@@ -4,7 +4,11 @@
         <column name="FileName" />
         <column name="Instrument" />
         <column name="Label" />
-        <column name="MoleculeName" />
+        <column name="smallMolecule">
+            <properties>
+                <property name="columnTitle" value="Molecule Name"/>
+            </properties>
+        </column>
         <column name="MassMonoisotopic" />
         <column name="MassAverage" />
         <column name="IonFormula" />

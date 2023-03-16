@@ -1,6 +1,6 @@
 PARAMETERS
 (
-    moleculeName VARCHAR,
+    smallMolecule VARCHAR,
     exactMatch BIT DEFAULT FALSE
 )
 
@@ -9,7 +9,7 @@ SELECT trn.FileName,
        m.Id, -- Need this ID to successfully render the formatted peptide in ModifiedPeptideHtmlMarker //TODO is it required for small molecule
        m.PeptideGroupId.Label,
        ex.created,
-       m.MoleculeName,
+       m.MoleculeName AS smallMolecule,
        m.NoteAnnotations,
        m.MassMonoisotopic,
        m.MassAverage,
@@ -25,5 +25,5 @@ FROM panoramapublic.experimentannotations ex
          INNER JOIN targetedms.runs trn ON trn.ExperimentRunLSID = rn.lsid
          INNER JOIN targetedms.molecule m ON m.peptidegroupid.runid = trn.id
 
-WHERE (exactMatch = TRUE AND LOWER(m.MoleculeName) = LOWER(moleculeName)) OR
-      (exactMatch = FALSE AND LOWER(m.MoleculeName) LIKE '%' || LOWER(moleculeName) || '%')
+WHERE (exactMatch = TRUE AND LOWER(m.MoleculeName) = LOWER(smallMolecule)) OR
+      (exactMatch = FALSE AND LOWER(m.MoleculeName) LIKE '%' || LOWER(smallMolecule) || '%')

@@ -192,6 +192,10 @@
     const peptideSequenceItemId = 'peptideSequence';
     const exactPeptideMatchesItemId = 'exactPeptideMatches';
 
+    const smallMoleculeSearchPanelItemId = 'smallMoleculeSearchPanel';
+    const smallMoleculeItemId = 'smallMolecule';
+    const exactSmallMoleculeMatchesItemId = 'exactSmallMoleculeMatches';
+
     let activeTab = undefined;
 
     $(document).ready(function() {
@@ -220,6 +224,11 @@
 
         document.getElementById(peptideSearchPanelItemId).addEventListener("click", function() {
             activeTab = peptideSearchPanelItemId;
+            updateUrlFilters(activeTab);
+        });
+
+        document.getElementById(smallMoleculeSearchPanelItemId).addEventListener("click", function() {
+            activeTab = smallMoleculeSearchPanelItemId;
             updateUrlFilters(activeTab);
         });
     });
@@ -255,6 +264,11 @@
         document.getElementById(exactPeptideMatchesItemId).checked = false;
     };
 
+    let clearInputFromSmallMoleculeTab = function () {
+        document.getElementById(smallMoleculeItemId).value = ""
+        document.getElementById(exactSmallMoleculeMatchesItemId).checked = false;
+    };
+
     let createFilter = function(itemId, filterText) {
         let arr = filterText.split(',');
         let filterArr = [];
@@ -283,17 +297,28 @@
             case "protein":
                 clearInputFromProteinTab();
                 break;
+            case "smallMolecule":
+                clearInputFromProteinTab();
+                break;
             default:
                 break;
         }
         resetUrl();
     };
 
+    let removeClearVariablesButton = function () {
+        let clrVar = document.getElementsByClassName('labkey-button ctx-clear-var');
+        if (clrVar && clrVar.length === 1 && clrVar[0].textContent === "Clear Variables") {
+            clrVar[0].remove();
+        }
+    }
+
     let handleRendering = function (onTabClick) {
 
         let expAnnotationFilters = [];
         let proteinParameters = {};
         let peptideParameters = {};
+        let smallMoleculeParameters = {};
 
         // render experiment list webpart
         // add filters in qwp and in the url for back button
@@ -306,6 +331,7 @@
                 addSelectedTabToUrl(activeTab);
                 clearInputFromProteinTab();
                 clearInputFromPeptideTab();
+                clearInputFromSmallMoleculeTab();
 
                 let author = document.getElementById(authorsItemId).value;
                 let title = document.getElementById(titleItemId).value;
@@ -340,6 +366,7 @@
 
                 clearInputFromExperimentTab();
                 clearInputFromPeptideTab();
+                clearInputFromSmallMoleculeTab();
 
                 let protein = document.getElementById(proteinNameItemId).value;
                 let exactProteinMatch = document.getElementById(exactProteinMatchesItemId).checked;
@@ -356,6 +383,7 @@
 
                 clearInputFromExperimentTab();
                 clearInputFromProteinTab();
+                clearInputFromSmallMoleculeTab();
 
                 let peptide = document.getElementById(peptideSequenceItemId).value;
                 let exactPeptideMatch = document.getElementById(exactPeptideMatchesItemId).checked;
@@ -366,6 +394,23 @@
                 if (exactPeptideMatch) {
                     peptideParameters[exactMatch] = exactPeptideMatch;
                     updateUrlFilters(null, exactPeptideMatchesItemId, exactPeptideMatch);
+                }
+            }
+            else if (activeTab === smallMoleculeSearchPanelItemId) {
+
+                clearInputFromExperimentTab();
+                clearInputFromProteinTab();
+                clearInputFromPeptideTab();
+
+                let smallMolecule = document.getElementById(smallMoleculeItemId).value;
+                let exactSmallMoleculeMatch = document.getElementById(exactSmallMoleculeMatchesItemId).checked;
+
+                smallMoleculeParameters[smallMoleculeItemId] = smallMolecule;
+                updateUrlFilters(null, smallMoleculeItemId, smallMolecule);
+
+                if (exactSmallMoleculeMatch) {
+                    smallMoleculeParameters[exactMatch] = exactSmallMoleculeMatch;
+                    updateUrlFilters(null, exactSmallMoleculeMatchesItemId, exactSmallMoleculeMatch);
                 }
             }
         }
@@ -392,13 +437,22 @@
                 peptideParameters[exactMatch] =  context[exactPeptideMatchesItemId];
                 document.getElementById(exactPeptideMatchesItemId).checked = context[exactPeptideMatchesItemId] === "true";
             }
+            if (context[smallMoleculeItemId] || context[smallMoleculeItemId] === '') {
+                smallMoleculeParameters[smallMoleculeItemId] =  context[smallMoleculeItemId];
+                document.getElementById(smallMoleculeItemId).value = context[smallMoleculeItemId];
+            }
+            if (context[exactSmallMoleculeMatchesItemId]) {
+                smallMoleculeParameters[exactMatch] =  context[exactSmallMoleculeMatchesItemId];
+                document.getElementById(exactSmallMoleculeMatchesItemId).checked = context[exactSmallMoleculeMatchesItemId] === "true";
+            }
         }
 
         // render search qwps if search is clicked or page is reloaded (user hit back) and there are url parameters
         // also, handle empty inputs
         if (onTabClick || (expAnnotationFilters.length > 0 || activeTab === expSearchPanelItemId) ||
                 (proteinParameters[proteinNameItemId] || activeTab === proteinSearchPanelItemId) ||
-                (peptideParameters[peptideSequenceItemId] || activeTab === peptideSearchPanelItemId)) {
+                (peptideParameters[peptideSequenceItemId] || activeTab === peptideSearchPanelItemId) ||
+                (peptideParameters[smallMoleculeItemId] || activeTab === smallMoleculeSearchPanelItemId)) {
 
             if (expAnnotationFilters.length > 0 || activeTab === expSearchPanelItemId) {
 
@@ -458,10 +512,7 @@
                                             document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
                                         }
                                     }
-                                    let clrVar = document.getElementsByClassName('labkey-button ctx-clear-var');
-                                    if (clrVar && clrVar.length === 1 && clrVar[0].textContent === "Clear Variables") {
-                                        clrVar[0].remove();
-                                    }
+                                    removeClearVariablesButton();
                                 }
                             });
                         }
@@ -498,10 +549,45 @@
                                             document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
                                         }
                                     }
-                                    let clrVar = document.getElementsByClassName('labkey-button ctx-clear-var');
-                                    if (clrVar && clrVar.length === 1 && clrVar[0].textContent === "Clear Variables") {
-                                        clrVar[0].remove();
+                                    removeClearVariablesButton();
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+            else if (smallMoleculeParameters[smallMoleculeItemId] || activeTab === smallMoleculeSearchPanelItemId) {
+                LABKEY.Portal.getWebParts({
+                    containerPath: this.containerPath,
+                    pageId: 'DefaultDashboard',
+                    success: function (wp) {
+                        let expWebpart = wp.body.filter(webpart => webpart.name === "Targeted MS Experiment List");
+                        if (expWebpart.length === 1 && smallMoleculeParameters[smallMoleculeItemId] !== undefined) {
+                            let wp = new LABKEY.QueryWebPart({
+                                renderTo: 'webpart_'+ expWebpart[0].webPartId,
+                                title: 'Panorama Public Experiments',
+                                schemaName: 'targetedms',
+                                queryName: 'smallMoleculeSearch',
+                                showFilterDescription: true,
+                                containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
+                                parameters: smallMoleculeParameters,
+                                success: function () {
+                                    //Make the filter description user-friendly (ex: from "?smallMolecule = rrr" to using "Molecule = rrr")
+                                    let els = document.getElementsByClassName('lk-region-context-action');
+                                    if (els && els.length > 0) {
+                                        // TODO
+                                        // for (let i = 0; i < els.length; i++) {
+                                        //     let txt = els[i].textContent;
+                                        //     if (txt.startsWith('peptideSequence')) {
+                                        //         txt = txt.replace('peptideSequence =', 'Peptide Sequence:');
+                                        //     }
+                                        //     else if (txt.startsWith('exactMatch')) {
+                                        //         txt = txt.replace('exactMatch = true', 'Exact Matches Only');
+                                        //     }
+                                        //     document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
+                                        // }
                                     }
+                                    removeClearVariablesButton();
                                 }
                             });
                         }
@@ -567,6 +653,12 @@
                         break;
                     case exactPeptideMatchesItemId:
                         context[exactPeptideMatchesItemId] = t[1];
+                        break;
+                    case smallMoleculeItemId:
+                        context[smallMoleculeItemId] = t[1];
+                        break;
+                    case exactSmallMoleculeMatchesItemId:
+                        context[exactSmallMoleculeMatchesItemId] = t[1];
                         break;
                     default:
                         context[t[0]] = t[1];
