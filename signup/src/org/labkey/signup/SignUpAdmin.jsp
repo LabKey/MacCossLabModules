@@ -55,7 +55,7 @@
 <!--Creates drop down list of all containers-->
 <h4 style="padding:0px; margin: 0px;">Add new user group rule</h4>
 <form <%=formAction(AddPropertyAction.class, Method.Post)%>><labkey:csrf/>
-    <select id="containerId" name="containerId" onchange="loadGroups(this.value)">
+    <select id="folderId" name="folderId" onchange="loadGroups(this.value)">
         <option disabled selected> -- select an option -- </option>
         <%for(Container c: list) {
         m.put(String.valueOf(c.getRowId()), SecurityManager.getGroups(c.getProject(), false));%> <!--Adds container and associated groups to map-->
@@ -82,7 +82,7 @@
             <tr>
                 <td><%=h(c.getPath())%></td>
                 <td><%=h(property.get(SignUpModule.SIGNUP_GROUP_NAME))%></td>
-                <td><%=link("Remove", urlFor(RemovePropertyAction.class).addParameter("containerId", c.getRowId())).usePost()%></td>
+                <td><%=link("Remove", urlFor(RemovePropertyAction.class).addParameter("folderId", c.getRowId())).usePost()%></td>
             </tr>
         <%}
     }%>
