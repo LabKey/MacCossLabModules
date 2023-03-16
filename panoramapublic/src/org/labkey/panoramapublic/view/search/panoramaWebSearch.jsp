@@ -43,6 +43,9 @@
     <input style="visibility: hidden" type="radio" name="active_tabs" id="peptideSearchPanel" class="search-panel-btn-3">
     <label for="peptideSearchPanel" class="search-panel-btn" >Peptide Search</label>
 
+    <input style="visibility: hidden" type="radio" name="active_tabs" id="smallMoleculeSearchPanel" class="search-panel-btn-4">
+    <label for="smallMoleculeSearchPanel" class="search-panel-btn" >Small Molecule Search</label>
+
     <div class="tabs-container">
         <div class="tab-1 search-tab">
             <table class="lk-fields-table">
@@ -136,6 +139,30 @@
                     <td style="width: 25px"></td>
                     <td>
                         <button id="clear-all-button-id-peptide" class="clear-all-button" onclick="clearInputFieldsAndResetURL('peptide');">Clear All</button>
+                    </td>
+                </tr>
+                <tr style="height: 10px"></tr>
+            </table>
+        </div>
+        <div class="tab-4 search-tab">
+            <table class="lk-fields-table">
+                <tr style="height: 10px"></tr>
+                <tr>
+                    <td style="width: 5px"></td>
+                    <td>Molecule Name:<%=helpPopup("Molecule Name", "Enter the name of the molecule, as captured in Skyline document.")%></td>
+                </tr>
+                <tr>
+                    <td style="width: 5px"></td>
+                    <td nowrap><input class="bootstrap-tagsinput" size="20" type="text" id="smallMolecule" name="smallMolecule" value=""/></td>
+
+                    <td style="width: 10px"></td>
+
+                    <td>Exact Matches Only:<%=helpPopup("Exact Matches Only", "If checked, the search will match the molecule name from the Skyline document exactly; if unchecked, it will match any molecules where the name contains the search term.")%></td>
+                    <td style="padding-top: 0.75%; padding-left: 5px"><labkey:checkbox id="exactSmallMoleculeMatches" name="exactSmallMoleculeMatches" value=""/></td>
+
+                    <td style="width: 25px"></td>
+                    <td>
+                        <button id="clear-all-button-id-small-molecule" class="clear-all-button" onclick="clearInputFieldsAndResetURL('smallMolecule');">Clear All</button>
                     </td>
                 </tr>
                 <tr style="height: 10px"></tr>
