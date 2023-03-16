@@ -1,14 +1,14 @@
 <customView xmlns="http://labkey.org/data/xml/queryCustomView" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             canOverride="true">
     <columns>
-        <column name="FileName" />
-        <column name="Instrument" />
-        <column name="Label" />
         <column name="smallMolecule">
             <properties>
                 <property name="columnTitle" value="Molecule Name"/>
             </properties>
         </column>
+        <column name="FileName" />
+        <column name="Instrument" />
+        <column name="Label" />
         <column name="MassMonoisotopic" />
         <column name="MassAverage" />
         <column name="IonFormula" />
