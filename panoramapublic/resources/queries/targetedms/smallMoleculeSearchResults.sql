@@ -6,7 +6,6 @@ PARAMETERS
 
 SELECT trn.FileName,
        ex.Instrument,
-       m.Id, -- Need this ID to successfully render the formatted peptide in ModifiedPeptideHtmlMarker //TODO is it required for small molecule
        m.PeptideGroupId.Label,
        ex.created,
        m.MoleculeName AS smallMolecule,

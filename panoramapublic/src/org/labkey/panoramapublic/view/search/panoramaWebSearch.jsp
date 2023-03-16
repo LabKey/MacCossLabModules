@@ -313,6 +313,23 @@
         }
     }
 
+    function makeFilterDescriptionUserFriendly(inputName, replaceWith) {
+        //Make the filter description user-friendly (ex: from "?peptide = rrr" to using "Peptide Sequence = rrr")
+        let els = document.getElementsByClassName('lk-region-context-action');
+        if (els && els.length > 0) {
+            for (let i = 0; i < els.length; i++) {
+                let txt = els[i].textContent;
+                if (txt.startsWith(inputName)) {
+                    txt = txt.replace(inputName + ' =', replaceWith + ':');
+                }
+                else if (txt.startsWith('exactMatch')) {
+                    txt = txt.replace('exactMatch = true', 'Exact Matches Only');
+                }
+                document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
+            }
+        }
+    }
+
     let handleRendering = function (onTabClick) {
 
         let expAnnotationFilters = [];
@@ -498,20 +515,7 @@
                                 containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                                 parameters: proteinParameters,
                                 success: function () {
-                                    //Make the filter description user-friendly (ex: from "?proteinLabel = xyz" to using "Protein = xyz")
-                                    let els = document.getElementsByClassName('lk-region-context-action');
-                                    if (els && els.length > 0) {
-                                        for (let i = 0; i < els.length; i++) {
-                                            let txt = els[i].textContent;
-                                            if (txt.startsWith('proteinLabel')) {
-                                                txt = txt.replace('proteinLabel =', 'Protein:');
-                                            }
-                                            else if (txt.startsWith('exactMatch')) {
-                                                txt = txt.replace('exactMatch = true', 'Exact Matches Only');
-                                            }
-                                            document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
-                                        }
-                                    }
+                                    makeFilterDescriptionUserFriendly("proteinLabel", "Protein");
                                     removeClearVariablesButton();
                                 }
                             });
@@ -535,20 +539,7 @@
                                 containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                                 parameters: peptideParameters,
                                 success: function () {
-                                    //Make the filter description user-friendly (ex: from "?peptideSequence = rrr" to using "Peptide Sequence = rrr")
-                                    let els = document.getElementsByClassName('lk-region-context-action');
-                                    if (els && els.length > 0) {
-                                        for (let i = 0; i < els.length; i++) {
-                                            let txt = els[i].textContent;
-                                            if (txt.startsWith('peptideSequence')) {
-                                                txt = txt.replace('peptideSequence =', 'Peptide Sequence:');
-                                            }
-                                            else if (txt.startsWith('exactMatch')) {
-                                                txt = txt.replace('exactMatch = true', 'Exact Matches Only');
-                                            }
-                                            document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
-                                        }
-                                    }
+                                    makeFilterDescriptionUserFriendly("peptideSequence", "Peptide Sequence");
                                     removeClearVariablesButton();
                                 }
                             });
@@ -572,21 +563,7 @@
                                 containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
                                 parameters: smallMoleculeParameters,
                                 success: function () {
-                                    //Make the filter description user-friendly (ex: from "?smallMolecule = rrr" to using "Molecule = rrr")
-                                    let els = document.getElementsByClassName('lk-region-context-action');
-                                    if (els && els.length > 0) {
-                                        // TODO
-                                        // for (let i = 0; i < els.length; i++) {
-                                        //     let txt = els[i].textContent;
-                                        //     if (txt.startsWith('peptideSequence')) {
-                                        //         txt = txt.replace('peptideSequence =', 'Peptide Sequence:');
-                                        //     }
-                                        //     else if (txt.startsWith('exactMatch')) {
-                                        //         txt = txt.replace('exactMatch = true', 'Exact Matches Only');
-                                        //     }
-                                        //     document.getElementsByClassName('lk-region-context-action')[i].textContent = txt;
-                                        // }
-                                    }
+                                    makeFilterDescriptionUserFriendly("smallMolecule", "Molecule Name");
                                     removeClearVariablesButton();
                                 }
                             });
