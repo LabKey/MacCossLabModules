@@ -3,7 +3,6 @@
 
         let webpart = <%=webpartContext%>;
         const queryString = window.location.search;
-        console.log("queryString = " + queryString);
         const urlParams = new URLSearchParams(queryString);
         const smallMolecule = urlParams.get('smallMolecule');
         const exactMatch = urlParams.get('exactMatch');

@@ -1,13 +1,6 @@
 <div id="search-indicator"></div>
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
-    Ext4.onReady(function(){
-        Ext4.create('Ext.panel.Panel', {
-            border: false,
-            renderTo: 'search-indicator',
-        });
-        Ext4.get('search-indicator').mask('Search is running, results pending...');
-
         let webpart = <%=webpartContext%>;
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
@@ -24,12 +17,7 @@
             parameters: {proteinLabel : label, exactMatch: exactMatch},
             containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
             success: function () {
-                if (Ext4.get('search-indicator')) {
-                    Ext4.get('search-indicator').unmask();
-                }
             }
         });
         wp.render();
-    });
-
 </script>
