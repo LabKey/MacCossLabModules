@@ -1,10 +1,10 @@
 <customView xmlns="http://labkey.org/data/xml/queryCustomView" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             canOverride="true">
     <columns>
-        <column name="FileName" />
-        <column name="Instrument" />
         <column name="ModifiedPeptideDisplayColumn" />
         <column name="CalcNeutralMass" />
         <column name="Label" />
+        <column name="FileName" />
+        <column name="Instrument" />
     </columns>
 </customView>
