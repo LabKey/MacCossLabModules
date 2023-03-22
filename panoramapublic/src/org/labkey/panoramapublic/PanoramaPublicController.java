@@ -1575,6 +1575,7 @@ public class PanoramaPublicController extends SpringActionController
                 job.setUseDataCiteTestApi(form.isUseDataCiteTestApi());
                 job.setReviewerEmailPrefix(form.getReviewerEmailPrefix());
                 job.setDeletePreviousCopy(form.isDeleteOldCopy());
+                job.setTargetContainer(target);
                 PipelineService.get().queueJob(job);
 
                 _successURL = PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlBegin(target);

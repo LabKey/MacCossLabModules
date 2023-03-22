@@ -17,6 +17,7 @@ package org.labkey.panoramapublic.pipeline;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.labkey.api.data.Container;
 import org.labkey.api.pipeline.LocalDirectory;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
@@ -57,6 +58,8 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     private boolean _useDataCiteTestApi;
 
     private boolean _deletePreviousCopy;
+
+    private Container _targetContainer;
 
 
     @JsonCreator
@@ -220,5 +223,15 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     public void setDeletePreviousCopy(boolean deletePreviousCopy)
     {
         _deletePreviousCopy = deletePreviousCopy;
+    }
+
+    public Container getTargetContainer()
+    {
+        return _targetContainer;
+    }
+
+    public void setTargetContainer(Container targetContainer)
+    {
+        _targetContainer = targetContainer;
     }
 }
