@@ -15,9 +15,7 @@
             queryName: 'smallMoleculeSearchResults',
             showFilterDescription: false,
             parameters: {smallMolecule : smallMolecule, exactMatch: exactMatch},
-            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
-            success: function () {
-            }
+            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders
         });
         wp.render();
 </script>

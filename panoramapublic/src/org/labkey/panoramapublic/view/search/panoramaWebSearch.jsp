@@ -260,12 +260,12 @@
     };
 
     let clearInputFromPeptideTab = function () {
-        document.getElementById(peptideSequenceItemId).value = ""
+        document.getElementById(peptideSequenceItemId).value = "";
         document.getElementById(exactPeptideMatchesItemId).checked = false;
     };
 
     let clearInputFromSmallMoleculeTab = function () {
-        document.getElementById(smallMoleculeItemId).value = ""
+        document.getElementById(smallMoleculeItemId).value = "";
         document.getElementById(exactSmallMoleculeMatchesItemId).checked = false;
     };
 
@@ -298,7 +298,7 @@
                 clearInputFromProteinTab();
                 break;
             case "smallMolecule":
-                clearInputFromProteinTab();
+                clearInputFromSmallMoleculeTab();
                 break;
             default:
                 break;

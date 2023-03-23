@@ -15,9 +15,7 @@
             queryName: 'proteinSearchResults',
             showFilterDescription: false,
             parameters: {proteinLabel : label, exactMatch: exactMatch},
-            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders,
-            success: function () {
-            }
+            containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders
         });
         wp.render();
 </script>
