@@ -155,7 +155,10 @@ public class PanoramaPublicNotification
         {
             messageBody.append(NL).append("* Citation: ").append(escape(journalCopy.getCitation()));
         }
-
+        if (madePublic)
+        {
+            messageBody.append(NL).append("The data will be available under the ").append(journalCopy.getDataLicense().getDisplayName()).append(" license.");
+        }
         if (journalCopy.hasPxid())
         {
             messageBody.append(NL2);
@@ -205,11 +208,9 @@ public class PanoramaPublicNotification
         messageBody.append(NL2).append("Best regards,");
         messageBody.append(NL).append(getUserName(journalAdmin));
 
-        messageBody.append(NL2).append("---").append(NL2);
-        appendActionSubmitterDetails(user, messageBody);
-
         if (addCopyLink)
         {
+            messageBody.append(NL2).append("---");
             messageBody.append(NL).append("For Panorama administrators:").append(" ").append(link("Copy Link", je.getShortCopyUrl().renderShortURL()));
         }
 
@@ -308,11 +309,6 @@ public class PanoramaPublicNotification
         }
     }
 
-    private static void appendActionSubmitterDetails(User user, StringBuilder text)
-    {
-        text.append("Requested by: ").append(getUserDetails(user));
-    }
-
     public static String getUserName(User user)
     {
         return !StringUtils.isBlank(user.getFullName()) ? user.getFullName() : user.getFriendlyName();
@@ -326,7 +322,7 @@ public class PanoramaPublicNotification
     private static String getContainerLink(Container container)
     {
         ActionURL url = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container);
-        return link(container.getPath(), url.getEncodedLocalURIString());
+        return link(container.getPath(), url.getURIString());
     }
 
     public static String bolditalics(String text)
@@ -437,7 +433,9 @@ public class PanoramaPublicNotification
         {
             message.append(NL2)
                     .append("When you are ready to make the data public you can click the \"Make Public\" button in your data folder or click this link: ")
-                    .append(bold(link("Make Data Public", PanoramaPublicController.getMakePublicUrl(targetExperiment.getId(), targetExperiment.getContainer()).getEncodedLocalURIString())));
+                    .append(bold(link("Make Data Public",
+                            PanoramaPublicController.getMakePublicUrl(targetExperiment.getId(), targetExperiment.getContainer()).getURIString()
+                            )));
         }
 
         message.append(NL2).append("Best regards,");

@@ -6633,6 +6633,7 @@ public class PanoramaPublicController extends SpringActionController
         private final String _accessUrl;
         private final boolean _isPublic;
         private final boolean _isPeerReviewed;
+        private final DataLicense _license;
 
         public PublicationDetailsBean(PublicationDetailsForm form, ExperimentAnnotations copiedExperiment)
         {
@@ -6640,6 +6641,7 @@ public class PanoramaPublicController extends SpringActionController
             _isPublic = copiedExperiment.isPublic();
             _isPeerReviewed = copiedExperiment.isPeerReviewed();
             _accessUrl = copiedExperiment.getShortUrl().renderShortURL();
+            _license = copiedExperiment.getDataLicense();
         }
 
         public PublicationDetailsForm getForm()
@@ -6660,6 +6662,11 @@ public class PanoramaPublicController extends SpringActionController
         public String getAccessUrl()
         {
             return _accessUrl;
+        }
+
+        public DataLicense getLicense()
+        {
+            return _license;
         }
     }
 

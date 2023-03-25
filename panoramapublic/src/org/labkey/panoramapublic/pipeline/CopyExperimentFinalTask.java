@@ -38,6 +38,7 @@ import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.Group;
+import org.labkey.api.security.InvalidGroupMembershipException;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicy;
@@ -327,6 +328,12 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 assignReader(reviewer, targetExperiment.getContainer());
                 js.getJournalExperiment().setReviewer(reviewer.getUserId());
                 SubmissionManager.updateJournalExperiment(js.getJournalExperiment(), user);
+
+                // Add reviewer to the "Reviewers" group
+                // This group already exists in the Panorama Public project on panoramaweb.org.
+                // CONSIDER: Make this configurable through the Panorama Public admin console.
+                addToGroup(reviewer, "Reviewers", targetExperiment.getContainer().getProject(), log);
+
                 return new Pair<>(reviewer, reviewerPassword);
             }
         }
@@ -507,10 +514,15 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         {
             newPolicy.addRoleAssignment(folderAdmin, ReaderRole.class);
         }
+
         // Assign the PanoramaPublicSubmitterRole so that the submitter or lab head is able to make the copied folder public, and add publication information.
-        assignPanoramaPublicSubmitterRole(targetExperiment.getSubmitterUser(), newPolicy);
-        assignPanoramaPublicSubmitterRole(targetExperiment.getLabHeadUser(), newPolicy);
-        assignPanoramaPublicSubmitterRole(formSubmitter, newPolicy); // User that submitted the form. Can be different from the user selected as the data "submitter".
+        List<User> submitters = List.of(targetExperiment.getSubmitterUser(),
+                targetExperiment.getLabHeadUser(),
+                formSubmitter);  // User that submitted the form. Can be different from the user selected as the data submitter
+        assignPanoramaPublicSubmitterRole(submitters, newPolicy, log);
+
+        addToSubmittersGroup(submitters, target.getProject(), log);
+
 
         if (previousCopy != null)
         {
@@ -524,11 +536,43 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         SecurityPolicyManager.savePolicy(newPolicy);
     }
 
-    private void assignPanoramaPublicSubmitterRole(User user, MutableSecurityPolicy policy)
+    private void assignPanoramaPublicSubmitterRole(List<User> users, MutableSecurityPolicy policy, Logger log)
     {
-        if (user != null)
+        for (User user: users)
         {
+            log.info("Assigning " + PanoramaPublicSubmitterRole.class.getName() + " to " + user.getEmail());
             policy.addRoleAssignment(user, PanoramaPublicSubmitterRole.class, false);
+        }
+    }
+
+    private void addToSubmittersGroup(List<User> users, Container project, Logger log)
+    {
+        for (User user: users)
+        {
+            // This group already exists in the Panorama Public project on panoramaweb.org.
+            // CONSIDER: Make this configurable through the Panorama Public admin console.
+            addToGroup(user, "Panorama Public Submitters", project, log);
+        }
+    }
+
+    private void addToGroup(User user, String groupName, Container project, Logger log)
+    {
+        Integer groupId = SecurityManager.getGroupId(project, groupName, false);
+        if (groupId != null)
+        {
+            Group group = SecurityManager.getGroup(groupId);
+            if (group != null)
+            {
+                try
+                {
+                    log.info("Adding user " + user.getEmail() + " to group " + group.getName());
+                    SecurityManager.addMember(group, user);
+                }
+                catch (InvalidGroupMembershipException e)
+                {
+                    log.warn("Unable to add user " + user.getEmail() + " to group " + group.getName(), e);
+                }
+            }
         }
     }
 
