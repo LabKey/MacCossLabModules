@@ -157,7 +157,7 @@ public class PanoramaPublicNotification
         }
         if (madePublic)
         {
-            messageBody.append(NL).append("The data will be available under the ").append(journalCopy.getDataLicense().getDisplayName()).append(" license.");
+            messageBody.append(NL2).append("The data will be available under the ").append(journalCopy.getDataLicense().getDisplayName()).append(" license.");
         }
         if (journalCopy.hasPxid())
         {
@@ -287,7 +287,7 @@ public class PanoramaPublicNotification
         text.append(NL2);
         text.append(italics("Submission details:"));
         text.append(NL).append("* Source folder: ").append(getContainerLink(exptAnnotations.getContainer()));
-        text.append(NL).append("* Permanent URL: ").append(link(journalExperiment.getShortAccessUrl().renderShortURL()));
+        text.append(NL).append("* Permanent link: ").append(link(journalExperiment.getShortAccessUrl().renderShortURL()));
         text.append(NL).append("* Reviewer account requested: ").append(bold(submission.isKeepPrivate() ? "Yes" : "No"));
         text.append(NL).append("* PX ID requested: ").append(bold(submission.isPxidRequested() ? "Yes" : "No"));
         if (submission.isIncompletePxSubmission())
@@ -386,8 +386,8 @@ public class PanoramaPublicNotification
         {
             message.append("Thank you for your request to submit data to ").append(journalName).append(". ");
         }
-        message.append(String.format("Your data has been %s, and the permanent URL (%s)", recopy ? "recopied" : "copied", accessUrlLink))
-                .append(String.format(" now links to the %scopy on %s.", recopy ? "new " : "", journalName))
+        message.append(String.format("Your data has been %s, and the permanent link (%s)", recopy ? "recopied" : "copied", accessUrlLink))
+                .append(String.format(" now points to the %scopy on %s.", recopy ? "new " : "", journalName))
                 .append(" Please take a moment to verify that the copy is accurate.");
 
         if(reviewer != null)
@@ -423,9 +423,9 @@ public class PanoramaPublicNotification
         }
 
         message.append(NL2)
-                .append("The permanent URL (").append(accessUrlLink).append(")")
+                .append("The permanent link (").append(accessUrlLink).append(")")
                 .append(" is the unique identifier of your data on ").append(journalName).append(".")
-                .append(" You can put the permanent URL")
+                .append(" You can put the permanent link")
                 .append(targetExperiment.hasPxid() ? " and the ProteomeXchange ID " : " ")
                 .append("in your manuscript. ");
 

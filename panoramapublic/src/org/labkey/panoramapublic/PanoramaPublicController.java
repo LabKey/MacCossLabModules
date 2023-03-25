@@ -2406,7 +2406,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             else
             {
-                errors.reject(ERROR_MSG, "Please enter a short access URL.");
+                errors.reject(ERROR_MSG, "Please enter a permanent link.");
             }
 
             if (_experimentAnnotations.isIncludeSubfolders())
@@ -2723,7 +2723,7 @@ public class PanoramaPublicController extends SpringActionController
         private final List<Journal> _journalList;
         private final List<DataLicense> _dataLicenseList;
         private final ExperimentAnnotations _experimentAnnotations;
-        private final boolean _accessUrlEditable; // flag which determines if the "Short Access URL" field in the form is editable
+        private final boolean _accessUrlEditable; // flag which determines if the "Permanent Link" field in the form is editable
 
         public PublishExperimentFormBean(PublishExperimentForm form, List<Journal> journalList, List<DataLicense> dataLicenseList, ExperimentAnnotations experimentAnnotations)
         {
@@ -2732,7 +2732,7 @@ public class PanoramaPublicController extends SpringActionController
             _dataLicenseList = dataLicenseList;
             _experimentAnnotations = experimentAnnotations;
             JournalSubmission js = SubmissionManager.getJournalSubmission(experimentAnnotations.getId(), form.getJournalId(), experimentAnnotations.getContainer());
-            // "Short Access URL" field in the form should not be editable if one or more copies of this experiment already exist in the journal project
+            // "Permanent Link" field in the form should not be editable if one or more copies of this experiment already exist in the journal project
             _accessUrlEditable = js == null ? true : js.getCopiedSubmissions().size() == 0;
         }
 
@@ -8546,7 +8546,7 @@ public class PanoramaPublicController extends SpringActionController
             // We expect this action to be invoked in the Panorama Public copy of an experiment, so there should be a shortUrl.
             if (expAnnot.getShortUrl() == null)
             {
-                errors.reject(ERROR_MSG, "Experiment does not have a short access URL. Catalog entry cannot be added.");
+                errors.reject(ERROR_MSG, "Experiment does not have a permanent link. Catalog entry cannot be added.");
                 return new SimpleErrorView(errors);
             }
 

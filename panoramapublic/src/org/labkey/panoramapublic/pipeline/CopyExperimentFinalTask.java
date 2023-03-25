@@ -460,14 +460,14 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         targetExperiment = ExperimentAnnotationsManager.save(targetExperiment, user);
 
         // Update the target of the short access URL to the journal's copy of the experiment.
-        log.info("Updating access URL to point to the new copy of the data.");
+        log.info("Updating permanent link to point to the new copy of the data.");
         try
         {
             SubmissionManager.updateAccessUrlTarget(js.getShortAccessUrl(), targetExperiment, user);
         }
         catch (ValidationException e)
         {
-            throw new PipelineJobException("Error updating the target of the short access URL '" + js.getShortAccessUrl().getShortURL() + "' to '"
+            throw new PipelineJobException("Error updating the target of the permanent link '" + js.getShortAccessUrl().getShortURL() + "' to '"
                     + targetExperiment.getContainer().getPath() + "'", e);
         }
 
@@ -862,7 +862,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             throw new PipelineJobException("Error saving shortUrl '" + versionedShortUrl + "'", e);
         }
 
-        log.info("Setting the short access URL on the previous copy to " + newShortUrl.getShortURL());
+        log.info("Setting the permanent link on the previous copy to " + newShortUrl.getShortURL());
         previousCopy.setShortUrl(newShortUrl);
         if (previousCopy.getDoi() != null)
         {

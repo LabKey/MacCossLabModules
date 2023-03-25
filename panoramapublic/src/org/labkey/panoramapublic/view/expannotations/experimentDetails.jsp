@@ -152,7 +152,7 @@
     }
     String labHeadName = annotDetails.getLabHeadName();
     String accessUrl = accessUrlRecord == null ? null : accessUrlRecord.renderShortURL();
-    String linkText = accessUrl == null ? null : (annot.isJournalCopy() ? "Link" : (journalCopyPending ? "Access link" : journal.getName() + " link"));
+    String linkText = accessUrl == null ? null : "Permanent Link";
     DataLicense license = annot.getDataLicense();
 %>
 <style>
