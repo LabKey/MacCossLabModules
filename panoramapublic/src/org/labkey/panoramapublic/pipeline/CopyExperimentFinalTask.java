@@ -88,9 +88,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -516,12 +518,10 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         }
 
         // Assign the PanoramaPublicSubmitterRole so that the submitter or lab head is able to make the copied folder public, and add publication information.
-        List<User> submitters = List.of(targetExperiment.getSubmitterUser(),
-                targetExperiment.getLabHeadUser(),
-                formSubmitter);  // User that submitted the form. Can be different from the user selected as the data submitter
-        assignPanoramaPublicSubmitterRole(submitters, newPolicy, log);
+        assignPanoramaPublicSubmitterRole(newPolicy, log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(),
+                targetExperiment.getLabHeadUser(), formSubmitter); // User that submitted the form. Can be different from the user selected as the data submitter
 
-        addToSubmittersGroup(submitters, target.getProject(), log);
+        addToSubmittersGroup(target.getProject(), log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(), formSubmitter);
 
 
         if (previousCopy != null)
@@ -536,23 +536,21 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         SecurityPolicyManager.savePolicy(newPolicy);
     }
 
-    private void assignPanoramaPublicSubmitterRole(List<User> users, MutableSecurityPolicy policy, Logger log)
+    private void assignPanoramaPublicSubmitterRole(MutableSecurityPolicy policy, Logger log, User... users)
     {
-        for (User user: users)
-        {
+        Arrays.stream(users).filter(Objects::nonNull).forEach(user -> {
             log.info("Assigning " + PanoramaPublicSubmitterRole.class.getName() + " to " + user.getEmail());
             policy.addRoleAssignment(user, PanoramaPublicSubmitterRole.class, false);
-        }
+        });
     }
 
-    private void addToSubmittersGroup(List<User> users, Container project, Logger log)
+    private void addToSubmittersGroup(Container project, Logger log, User... users)
     {
-        for (User user: users)
-        {
+        Arrays.stream(users).filter(Objects::nonNull).forEach(user -> {
             // This group already exists in the Panorama Public project on panoramaweb.org.
             // CONSIDER: Make this configurable through the Panorama Public admin console.
             addToGroup(user, "Panorama Public Submitters", project, log);
-        }
+        });
     }
 
     private void addToGroup(User user, String groupName, Container project, Logger log)
