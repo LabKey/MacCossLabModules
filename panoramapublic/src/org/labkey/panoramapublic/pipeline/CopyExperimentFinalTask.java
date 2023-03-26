@@ -519,7 +519,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         // Assign the PanoramaPublicSubmitterRole so that the submitter or lab head is able to make the copied folder public, and add publication information.
         assignPanoramaPublicSubmitterRole(newPolicy, log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(),
-                targetExperiment.getLabHeadUser(), formSubmitter); // User that submitted the form. Can be different from the user selected as the data submitter
+                formSubmitter); // User that submitted the form. Can be different from the user selected as the data submitter
 
         addToSubmittersGroup(target.getProject(), log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(), formSubmitter);
 
@@ -539,7 +539,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     private void assignPanoramaPublicSubmitterRole(MutableSecurityPolicy policy, Logger log, User... users)
     {
         Arrays.stream(users).filter(Objects::nonNull).forEach(user -> {
-            log.info("Assigning " + PanoramaPublicSubmitterRole.class.getName() + " to " + user.getEmail());
+            log.info("Assigning " + PanoramaPublicSubmitterRole.class.getSimpleName() + " to " + user.getEmail());
             policy.addRoleAssignment(user, PanoramaPublicSubmitterRole.class, false);
         });
     }

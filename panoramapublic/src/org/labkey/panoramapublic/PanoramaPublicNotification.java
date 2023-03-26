@@ -155,7 +155,7 @@ public class PanoramaPublicNotification
         {
             messageBody.append(NL).append("* Citation: ").append(escape(journalCopy.getCitation()));
         }
-        if (madePublic)
+        if (madePublic && journalCopy.getDataLicense() != null)
         {
             messageBody.append(NL2).append("The data will be available under the ").append(journalCopy.getDataLicense().getDisplayName()).append(" license.");
         }
@@ -433,9 +433,7 @@ public class PanoramaPublicNotification
         {
             message.append(NL2)
                     .append("When you are ready to make the data public you can click the \"Make Public\" button in your data folder or click this link: ")
-                    .append(bold(link("Make Data Public",
-                            PanoramaPublicController.getMakePublicUrl(targetExperiment.getId(), targetExperiment.getContainer()).getURIString()
-                            )));
+                    .append(bold(link("Make Data Public", PanoramaPublicController.getMakePublicUrl(targetExperiment.getId(), targetExperiment.getContainer()).getURIString())));
         }
 
         message.append(NL2).append("Best regards,");
