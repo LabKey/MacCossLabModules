@@ -154,6 +154,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         DataRegionTable table = panoramaPublicSearch.gotoProteinSearch().setProtein("").search();
         checker().verifyEquals("Incorrect protein searched with partial match", 0, table.getDataRowCount());
+        checker().verifyTrue("Clear variables button should not be present", isElementPresent(Locator.tagContainingText("span", "Clear Variables")));
 
         log("Protein : Partial match and results across folder");
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
@@ -161,6 +162,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Protein: R"),
                 getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect protein searched with partial match", 3, table.getDataRowCount());
+        checker().verifyTrue("Clear variables button should not be present", isElementPresent(Locator.tagContainingText("span", "Clear Variables")));
 
         waitAndClickAndWait(Locator.linkWithText("3"));
         DataRegionTable detailsTable = new DataRegionTable.DataRegionFinder(getDriver()).find();
@@ -203,6 +205,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         DataRegionTable table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("").search();
         checker().verifyEquals("Incorrect peptide searched with partial match", 0, table.getDataRowCount());
+        checker().verifyTrue("Clear variables button should not be present", isElementPresent(Locator.tagContainingText("span", "Clear Variables")));
 
         log("Peptide : Partial match and results across folder");
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
@@ -210,6 +213,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Peptide Sequence: VL"),
                 getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect peptide searched with partial match", 3, table.getDataRowCount());
+        checker().verifyTrue("Clear variables button should not be present", isElementPresent(Locator.tagContainingText("span", "Clear Variables")));
 
         waitAndClickAndWait(Locator.linkWithText("3"));
         DataRegionTable detailsTable = new DataRegionTable.DataRegionFinder(getDriver()).find();
@@ -250,6 +254,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         DataRegionTable table = panoramaPublicSearch.gotoSmallMoleculeSearch().search();
         checker().verifyEquals("Incorrect small molecule searched with empty string", 0, table.getDataRowCount());
+        checker().verifyTrue("Clear variables button should not be present", isElementPresent(Locator.tagContainingText("span", "Clear Variables")));
 
         log("Small Molecule : Search with partial match");
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
@@ -257,6 +262,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Molecule Name: PC"),
                 getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect small molecule searched with partial match", 1, table.getDataRowCount());
+        checker().verifyTrue("Clear variables button should not be present", isElementPresent(Locator.tagContainingText("span", "Clear Variables")));
 
         waitAndClickAndWait(Locator.linkWithText("58"));
         DataRegionTable detailsTable = new DataRegionTable.DataRegionFinder(getDriver()).find();
@@ -281,14 +287,6 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoSmallMoleculeSearch().setSmallMolecule("Hello").search();
         checker().verifyEquals("Incorrect small molecule searched result", 0, table.getDataRowCount());
-    }
-
-    private List<String> getWebPartNames(String body, List<Portal.WebPart> parts)
-    {
-        MultiValuedMap<String, Portal.WebPart> lfocMap = Portal.getPartsByLocation(parts);
-        List<String> bodyParts;
-        bodyParts = lfocMap.get(body).stream().map(Portal.WebPart::getName).collect(Collectors.toList());
-        return bodyParts;
     }
 
     @Override
