@@ -29,9 +29,11 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
 {
     private static final String SKY_FILE_1 = "Study9S_Site52_v1.sky.zip";
     private static final String SKY_FILE_2 = "Olga_srm_course_heavy_light_w_maxquant_lib.sky.zip";
+    private static final String SKY_FILE_3 = "smallmol_plus_peptides.sky.zip";
 
     private static final String SUBFOLDER_1 = "First Subfolder";
     private static final String SUBFOLDER_2 = "Second Subfolder";
+    private static final String SUBFOLDER_3 = "Third Subfolder";
 
     private static final String AUTHOR_FIRST_NAME = "Jane";
     private static final String AUTHOR_LAST_NAME = "Doe";
@@ -65,6 +67,10 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
 
         setupSubfolder(getProjectName(), SUBFOLDER_2, FolderType.Experiment);
         importData(SKY_FILE_2, 1);
+
+        setupSubfolder(getProjectName(), SUBFOLDER_3, FolderType.Experiment);
+        importData(SKY_FILE_3, 1);
+        createExperimentCompleteMetadata("Experiment for small molecule search");
 
         _userHelper.createUser(SUBMITTER);
         permissionsHelper.addMemberToRole(SUBMITTER, "Folder Administrator", PermissionsHelper.MemberType.user, getProjectName() + "/" + SUBFOLDER_2);
@@ -110,25 +116,26 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
                     .setInstrument("Thermo")
                     .search();
         }
-        catch(StaleElementReferenceException e)
+        catch (StaleElementReferenceException e)
         {
-            shortWait().until(ExpectedConditions.stalenessOf(Locator.tagWithAttribute("form","lk-region-form","Targeted MS Experiment List").findElement(getDriver())));
+            shortWait().until(ExpectedConditions.stalenessOf(Locator.tagWithAttribute("form", "lk-region-form", "Targeted MS Experiment List").findElement(getDriver())));
         }
-        checker().verifyEquals("Incorrect search results", 2, table.getDataRowCount());
-        checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Submitter Experiment"),
+        checker().verifyEquals("Incorrect search results", 3, table.getDataRowCount());
+        checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Experiment for small molecule search", " Submitter Experiment"),
                 table.getColumnDataAsText("Title"));
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Default", "Organism CONTAINS ONE OF ('Homo sapiens (taxid:9606)')",
                 "Instrument CONTAINS ONE OF ('Thermo Electron instrument model')"), getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
 
         log("Experiment Search with Author full name, Title, and Organism");
-        try{
+        try
+        {
             table = panoramaPublicSearch.setTitle("Experiment")
                     .setAuthor(AUTHOR_FIRST_NAME + " " + AUTHOR_LAST_NAME)
                     .search();
         }
         catch (StaleElementReferenceException e)
         {
-            shortWait().until(ExpectedConditions.stalenessOf(Locator.tagWithAttribute("form","lk-region-form","Targeted MS Experiment List").findElement(getDriver())));
+            shortWait().until(ExpectedConditions.stalenessOf(Locator.tagWithAttribute("form", "lk-region-form", "Targeted MS Experiment List").findElement(getDriver())));
         }
         checker().verifyEquals("Incorrect search results", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Submitter Experiment"),
@@ -146,22 +153,14 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         DataRegionTable table = panoramaPublicSearch.gotoProteinSearch().setProtein("").search();
-        waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
-        assertElementNotPresent("'Clear Variables' button is present", Locator.tagContainingText("span", "Clear Variables"));
         checker().verifyEquals("Incorrect protein searched with partial match", 0, table.getDataRowCount());
 
         log("Protein : Partial match and results across folder");
-        clickAndWait(Locator.id("clear-all-button-id-protein"));
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoProteinSearch().setProtein("R").search();
-        waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
-        assertElementNotPresent("'Clear Variables' button is present", Locator.tagContainingText("span", "Clear Variables"));
-
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Protein: R"),
                 getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
-        checker().verifyEquals("Incorrect protein searched with partial match", 2, table.getDataRowCount());
+        checker().verifyEquals("Incorrect protein searched with partial match", 3, table.getDataRowCount());
 
         waitAndClickAndWait(Locator.linkWithText("3"));
         DataRegionTable detailsTable = new DataRegionTable.DataRegionFinder(getDriver()).find();
@@ -180,10 +179,6 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoProteinSearch().setProtein("00706094|Alpha").setProteinExactMatch(true).search();
-        waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
-        assertElementNotPresent("'Clear Variables' button is present", Locator.tagContainingText("span", "Clear Variables"));
-
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Protein: 00706094|Alpha", "Exact Matches Only"),
                 getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect protein searched with exact match", 1, table.getDataRowCount());
@@ -197,10 +192,6 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoProteinSearch().setProtein("00706094Alpha").setProteinExactMatch(true).search();
-        waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
-        assertElementNotPresent("'Clear Variables' button is present", Locator.tagContainingText("span", "Clear Variables"));
-
         checker().verifyEquals("Incorrect protein searched with exact match", 0, table.getDataRowCount());
     }
 
@@ -211,22 +202,14 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         DataRegionTable table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("").search();
-        waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
-        assertElementNotPresent("'Clear Variables' button is present", Locator.tagContainingText("span", "Clear Variables"));
         checker().verifyEquals("Incorrect peptide searched with partial match", 0, table.getDataRowCount());
 
         log("Peptide : Partial match and results across folder");
-        clickAndWait(Locator.id("clear-all-button-id-peptide"));
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("VL").search();
-        waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
-        assertElementNotPresent("'Clear Variables' button is present", Locator.tagContainingText("span", "Clear Variables"));
-
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Peptide Sequence: VL"),
                 getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
-        checker().verifyEquals("Incorrect peptide searched with partial match", 2, table.getDataRowCount());
+        checker().verifyEquals("Incorrect peptide searched with partial match", 3, table.getDataRowCount());
 
         waitAndClickAndWait(Locator.linkWithText("3"));
         DataRegionTable detailsTable = new DataRegionTable.DataRegionFinder(getDriver()).find();
@@ -244,10 +227,6 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("GFCGLSQPK").setPeptideExactMatch(true).search();
-        waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
-        assertElementNotPresent("'Clear Variables' button is present", Locator.tagContainingText("span", "Clear Variables"));
-
         checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Exact Matches Only", "Peptide Sequence: GFCGLSQPK"),
                 getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
         checker().verifyEquals("Incorrect peptide searched with exact match", 1, table.getDataRowCount());
@@ -261,11 +240,47 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         goToProjectHome();
         panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
         table = panoramaPublicSearch.gotoPeptideSearch().setPeptide("XYZ").setPeptideExactMatch(true).search();
-        waitForElement(Locator.tagWithClass("div", "lk-region-context-action"));
-        assertElementNotPresent(Locator.tagWithClass("span", "ctx-clear-var"));
-        assertElementNotPresent("'Clear Variables' button is present", Locator.tagContainingText("span", "Clear Variables"));
-
         checker().verifyEquals("Incorrect peptide searched with exact match", 0, table.getDataRowCount());
+    }
+
+    @Test
+    public void testSmallMoleculeSearch()
+    {
+        goToProjectHome();
+        PanoramaPublicSearchWebPart panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
+        DataRegionTable table = panoramaPublicSearch.gotoSmallMoleculeSearch().search();
+        checker().verifyEquals("Incorrect small molecule searched with empty string", 0, table.getDataRowCount());
+
+        log("Small Molecule : Search with partial match");
+        panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
+        table = panoramaPublicSearch.gotoSmallMoleculeSearch().setSmallMolecule("PC").search();
+        checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Molecule Name: PC"),
+                getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
+        checker().verifyEquals("Incorrect small molecule searched with partial match", 1, table.getDataRowCount());
+
+        waitAndClickAndWait(Locator.linkWithText("58"));
+        DataRegionTable detailsTable = new DataRegionTable.DataRegionFinder(getDriver()).find();
+        checker().verifyEquals("Incorrect number of rows displayed for small molecule", 58, detailsTable.getDataRowCount());
+        goBack();
+
+        log("Small Molecule :Exact match and result should be one row");
+        goToProjectHome();
+        panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
+        table = panoramaPublicSearch.gotoSmallMoleculeSearch().setSmallMolecule("PC aa C24:0").setSmallMoleculeExactMatch(true).search();
+        checker().verifyEquals("Invalid filter values displayed", Arrays.asList("Exact Matches Only", "Molecule Name: PC aa C24:0"),
+                getTexts(DataRegionTable.Locators.contextAction().findElements(table)));
+        checker().verifyEquals("Incorrect small molecule searched with exact match", 1, table.getDataRowCount());
+        checker().screenShotIfNewError("ExactSmallMoleculeMatchError");
+
+        waitAndClickAndWait(Locator.linkWithText("1"));
+        detailsTable = new DataRegionTable.DataRegionFinder(getDriver()).find();
+        checker().verifyEquals("Incorrect information", Arrays.asList("PC aa C24:0"), detailsTable.getColumnDataAsText("Molecule"));
+
+        log("Small Molecule :Exact match and no result");
+        goToProjectHome();
+        panoramaPublicSearch = new PanoramaPublicSearchWebPart(getDriver(), "Panorama Public Search");
+        table = panoramaPublicSearch.gotoSmallMoleculeSearch().setSmallMolecule("Hello").search();
+        checker().verifyEquals("Incorrect small molecule searched result", 0, table.getDataRowCount());
     }
 
     private List<String> getWebPartNames(String body, List<Portal.WebPart> parts)
