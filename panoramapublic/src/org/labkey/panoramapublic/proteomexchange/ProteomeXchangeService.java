@@ -25,6 +25,7 @@ import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.jetbrains.annotations.NotNull;
+import org.labkey.api.util.PageFlowUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -172,6 +173,11 @@ public class ProteomeXchangeService
                 || !response.contains("info=There were a total of 0 different CV errors or warnings.")
                 || !response.contains("info=There was a total of 0 non-CV warnings.")
                 || !response.contains("info=There was a total of 0 non-CV errors.");
+    }
+
+    public static String toUrl(@NotNull String pxdAccession)
+    {
+        return "http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=" + PageFlowUtil.encode(pxdAccession);
     }
 }
 

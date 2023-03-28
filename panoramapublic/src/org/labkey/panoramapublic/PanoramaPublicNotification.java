@@ -19,10 +19,12 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.panoramapublic.datacite.DataCiteException;
+import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.model.Submission;
+import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
 
@@ -412,7 +414,7 @@ public class PanoramaPublicNotification
         if(targetExperiment.hasPxid())
         {
             message.append(NL2)
-                    .append("The ProteomeXchange ID reserved for your data is:")
+                    .append("The ProteomeXchange ID reserved for the data is:")
                     .append(NL).append(targetExperiment.getPxid())
                     .append(" (").append(link(pxdLink(targetExperiment.getPxid()))).append(")");
 
@@ -420,6 +422,12 @@ public class PanoramaPublicNotification
             {
                 message.append(NL).append("The data will be submitted as \"supported by repository but incomplete data and/or metadata\" when it is made public on ProteomeXchange.");
             }
+        }
+
+        if (targetExperiment.hasDoi())
+        {
+            // Display the complete link: https://support.datacite.org/docs/datacite-doi-display-guidelines
+            message.append(NL2).append("The DOI for the data is: ").append(link(getDoiLink(targetExperiment)));
         }
 
         message.append(NL2)
@@ -452,15 +460,22 @@ public class PanoramaPublicNotification
         message.append(NL).append(String.format("* %s to folder: ", recopy ? "Recopied": "Copied")).append(getContainerLink(targetExperiment.getContainer()));
         if (targetExperiment.hasDoi())
         {
-            message.append(NL).append("* DOI: ").append(link(targetExperiment.getDoi(), "https://doi.org/" + PageFlowUtil.encode(targetExperiment.getDoi())));
+            // Display the complete link: https://support.datacite.org/docs/datacite-doi-display-guidelines
+            message.append(NL).append("* DOI: ").append(link(getDoiLink(targetExperiment)));
         }
 
         return message.toString();
     }
 
+    @NotNull
+    private static String getDoiLink(ExperimentAnnotations targetExperiment)
+    {
+        return DataCiteService.toUrl(targetExperiment.getDoi());
+    }
+
     private static String pxdLink(String pxdAccession)
     {
-        return "http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=" + pxdAccession;
+        return ProteomeXchangeService.toUrl(pxdAccession);
     }
 
     public static class TestCase extends Assert

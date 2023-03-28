@@ -39,6 +39,7 @@ import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.InvalidGroupMembershipException;
+import org.labkey.api.security.MemberType;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicy;
@@ -546,32 +547,61 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
     private void addToSubmittersGroup(Container project, Logger log, User... users)
     {
-        Arrays.stream(users).filter(Objects::nonNull).forEach(user -> {
-            // This group already exists in the Panorama Public project on panoramaweb.org.
-            // CONSIDER: Make this configurable through the Panorama Public admin console.
-            addToGroup(user, "Panorama Public Submitters", project, log);
-        });
+        String groupName = "Panorama Public Submitters";
+        Group group = getGroup(groupName, project, log);
+        if (group != null)
+        {
+            Arrays.stream(users).filter(Objects::nonNull).forEach(user -> {
+                // This group already exists in the Panorama Public project on panoramaweb.org.
+                // CONSIDER: Make this configurable through the Panorama Public admin console.
+                addToGroup(user, group, log);
+            });
+        }
     }
 
     private void addToGroup(User user, String groupName, Container project, Logger log)
     {
-        Integer groupId = SecurityManager.getGroupId(project, groupName, false);
-        if (groupId != null)
+        Group group = getGroup(groupName, project, log);
+        if (group != null)
         {
-            Group group = SecurityManager.getGroup(groupId);
-            if (group != null)
+            addToGroup(user, group, log);
+            return;
+        }
+    }
+
+    private void addToGroup(User user, Group group, Logger log)
+    {
+        try
+        {
+            if (SecurityManager.getGroupMembers(group, MemberType.ACTIVE_USERS).contains(user))
             {
-                try
-                {
-                    log.info("Adding user " + user.getEmail() + " to group " + group.getName());
-                    SecurityManager.addMember(group, user);
-                }
-                catch (InvalidGroupMembershipException e)
-                {
-                    log.warn("Unable to add user " + user.getEmail() + " to group " + group.getName(), e);
-                }
+                log.info("User " + user.getEmail() + " is already a member of group " + group.getName());
+            }
+            else
+            {
+                log.info("Adding user " + user.getEmail() + " to group " + group.getName());
+                SecurityManager.addMember(group, user);
             }
         }
+        catch (InvalidGroupMembershipException e)
+        {
+            log.warn("Unable to add user " + user.getEmail() + " to group " + group.getName(), e);
+        }
+    }
+
+    private Group getGroup(String groupName, Container project, Logger log)
+    {
+        Integer groupId = SecurityManager.getGroupId(project, groupName, false);
+        Group group = null;
+        if (groupId != null)
+        {
+            group = SecurityManager.getGroup(groupId);
+        }
+        if (group == null)
+        {
+            log.warn("Did not find a security group with name " + groupName + " in the project " + project.getName());
+        }
+        return group;
     }
 
     private List<User> getUsersWithRole(Container container, Role role)

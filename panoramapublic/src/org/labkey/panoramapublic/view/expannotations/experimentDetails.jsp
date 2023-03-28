@@ -45,6 +45,8 @@
 <%@ page import="org.labkey.panoramapublic.view.publish.CatalogEntryWebPart" %>
 <%@ page import="org.labkey.panoramapublic.model.CatalogEntry" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
+<%@ page import="org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService" %>
+<%@ page import="org.labkey.panoramapublic.datacite.DataCiteService" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -316,13 +318,13 @@
     <%if(annot.getPxid() != null){%>
     <%if(addSep) {%> <span style="margin-right:10px;margin-left:10px;">|</span> <%}%>
     <span class="link">
-        <strong>ProteomeXchange: </strong><a href="http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=<%=h(annot.getPxid())%>" target="_blank"><%=h(annot.getPxid())%></a>
+        <strong>ProteomeXchange: </strong><%= link(annot.getPxid()).href(ProteomeXchangeService.toUrl(annot.getPxid())).target("_blank").rel("noopener noreferrer").clearClasses() %>
     </span>
     <% addSep = true; }%>
     <%if(annot.hasDoi()){%>
     <%if(addSep) {%> <span style="margin-right:10px;margin-left:10px;">|</span> <%}%>
     <span class="link">
-        <strong>doi:</strong><a href="https://doi.org/<%=h(annot.getDoi())%>" target="_blank"><%=h(annot.getDoi())%></a>
+        <strong>doi: </strong><%= DataCiteService.toLink(annot.getDoi()).target("_blank").clearClasses() %>
     </span>
     <%}%>
 </div>

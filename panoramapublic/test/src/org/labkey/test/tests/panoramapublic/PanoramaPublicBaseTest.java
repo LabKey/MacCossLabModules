@@ -39,6 +39,8 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 {
     static String PANORAMA_PUBLIC = "Panorama Public " + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
     static final String PANORAMA_PUBLIC_GROUP = "panoramapublictest";
+    static final String PANORAMA_PUBLIC_SUBMITTERS = "Panorama Public Submitters";
+    static final String REVIEWERS = "Reviewers";
 
     static final String ADMIN_USER = "admin@panoramapublic.test";
     static final String SUBMITTER = "submitter@panoramapublic.test";
@@ -94,6 +96,10 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         DataRegionTable expListTable = DataRegionTable.findDataRegionWithinWebpart(this, "Targeted MS Experiment List");
         assertEquals(0, expListTable.getDataRowCount()); // Table should be empty since we have not yet copied any experiments.
         portalHelper.addWebPart("Messages");
+
+        // Add a "Panorama Public Submitter" and a "Reviewers" permissions group
+        _permissionsHelper.createProjectGroup(REVIEWERS, PANORAMA_PUBLIC);
+        _permissionsHelper.createProjectGroup(PANORAMA_PUBLIC_SUBMITTERS, PANORAMA_PUBLIC);
     }
 
     @NotNull
