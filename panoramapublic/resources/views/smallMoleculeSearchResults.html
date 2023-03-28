@@ -1,20 +1,20 @@
 <div id="search-indicator"></div>
-<script type="text/javascript" nonce="<%=getScriptNonce()%>">
+<script type="text/javascript">
 
         let webpart = <%=webpartContext%>;
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
-        const label = urlParams.get('proteinLabel');
+        const smallMolecule = urlParams.get('smallMolecule');
         const exactMatch = urlParams.get('exactMatch');
 
         let wp = new LABKEY.QueryWebPart({
             renderTo: webpart.wrapperDivId,
             frame: 'portal',
-            title: 'Search criteria : ' + label + ' & exact match: ' + exactMatch,
-            schemaName: 'panoramapublic',
-            queryName: 'proteinSearchResults',
+            title: 'Search criteria : ' + smallMolecule + ' & exact match: ' + exactMatch ,
+            schemaName: 'targetedms',
+            queryName: 'smallMoleculeSearchResults',
             showFilterDescription: false,
-            parameters: {proteinLabel : label, exactMatch: exactMatch},
+            parameters: {smallMolecule : smallMolecule, exactMatch: exactMatch},
             containerFilter: LABKEY.Query.containerFilter.currentAndSubfolders
         });
         wp.render();

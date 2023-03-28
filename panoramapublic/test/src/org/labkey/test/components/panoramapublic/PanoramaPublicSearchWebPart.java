@@ -101,6 +101,23 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
         return this;
     }
 
+    public PanoramaPublicSearchWebPart setSmallMolecule(String value)
+    {
+        elementCache().smallMolecule.set(value);
+        return this;
+    }
+
+    public String getSmallMolecule()
+    {
+        return elementCache().smallMolecule.get();
+    }
+
+    public PanoramaPublicSearchWebPart setSmallMoleculeExactMatch(boolean value)
+    {
+        elementCache().smallMoleculeExactMatch.set(value);
+        return this;
+    }
+
     public PanoramaPublicSearchWebPart gotoExperimentSearch()
     {
         elementCache().experimentSearchTab.click();
@@ -119,15 +136,23 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
         return this;
     }
 
+    public PanoramaPublicSearchWebPart gotoSmallMoleculeSearch()
+    {
+        elementCache().smallMoleculeTab.click();
+        return this;
+    }
+
     public DataRegionTable search()
     {
         elementCache().search.click();
+        getWrapper().sleep(500); // for dataregion table to load after every search
         return new DataRegionTable.DataRegionFinder(getDriver()).refindWhenNeeded(this);
     }
 
-    public void clickSearch()
+    public DataRegionTable clearAll()
     {
-        elementCache().search.click();
+        elementCache().clearAll.click();
+        return new DataRegionTable.DataRegionFinder(getDriver()).refindWhenNeeded(this);
     }
 
     protected class ElementCache extends BodyWebPart.ElementCache
@@ -153,6 +178,12 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
         final Input peptide = Input.Input(Locator.input("peptideSequence"), getDriver()).findWhenNeeded(this);
         final Checkbox peptideExactMatch = new Checkbox(Locator.inputById("exactPeptideMatches").findWhenNeeded(this));
 
+        //Small Molecule Search
+        final WebElement smallMoleculeTab = Locator.tagWithText("label", "Small Molecule Search").findWhenNeeded(this);
+        final Input smallMolecule = Input.Input(Locator.input("smallMolecule"), getDriver()).findWhenNeeded(this);
+        final Checkbox smallMoleculeExactMatch = new Checkbox(Locator.inputById("exactSmallMoleculeMatches").findWhenNeeded(this));
+
+        final WebElement clearAll = Locator.button("Clear All").findWhenNeeded(this);
         final WebElement search = Locator.button("Search").findWhenNeeded(this);
     }
 }
