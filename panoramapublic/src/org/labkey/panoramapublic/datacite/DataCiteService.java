@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.old.JSONObject;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.util.Link;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.io.DataOutputStream;
@@ -233,6 +234,23 @@ public class DataCiteService
             throw new DataCiteException("DataCite " + (test ? "test " : "") + "configuration is missing the following properties: " + StringUtils.join(missing, ","));
         }
         return config;
+    }
+
+    public static String toUrl(@NotNull String doi)
+    {
+        // Regular expression for modern DOIs is /^10.\d{4,9}/[-._;()/:A-Z0-9]+$/i  (https://www.crossref.org/blog/dois-and-matching-regular-expressions/)
+        // DOI example from Panorama Public: 10.6069/9cd7-b485; Prefix: 10.6069, Suffix: 9cd7-b485
+        // The suffix part of the DOI can be anything (https://support.datacite.org/docs/doi-basics#suffix)
+        // BUT, auto-generated DOI suffixes contain only a-z, 0-9 and -.  (https://support.datacite.org/docs/what-characters-should-i-use-in-the-suffix-of-my-doi)
+        // So we don't need to URI-encode the DOI.
+        return "https://doi.org/" + doi;
+    }
+
+    public static Link.LinkBuilder toLink(@NotNull String doi)
+    {
+        // Display the complete link: https://support.datacite.org/docs/datacite-doi-display-guidelines
+        String url = toUrl(doi);
+        return new Link.LinkBuilder(url).href(url).rel("noopener noreferrer");
     }
 
     /**

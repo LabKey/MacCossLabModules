@@ -22,6 +22,7 @@ import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
+import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.query.ContainerJoin;
 import org.labkey.panoramapublic.query.PanoramaPublicTable;
 import org.labkey.panoramapublic.query.SpecLibInfoManager;
@@ -75,7 +76,7 @@ public class SpecLibInfoTableInfo extends PanoramaPublicTable
                     String accession =  ctx.get(colInfo.getFieldKey(), String.class);
                     if (accession != null && accession.matches(PanoramaPublicController.EditSpecLibInfoAction.PXD))
                     {
-                        return "http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=" + accession;
+                        return ProteomeXchangeService.toUrl(accession);
                     }
                     return super.renderURL(ctx);
                 }
