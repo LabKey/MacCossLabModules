@@ -41,6 +41,8 @@ public class ProteomeXchangeService
     public static final String PXID = "PX[DT]\\d{6}";
     private static final Pattern PXID_IN_RESPONSE = Pattern.compile("identifier=(" + PXID + ")");
 
+    private static final String PROTEOME_CENTRAL_URL = "https://proteomecentral.proteomexchange.org";
+
     private enum METHOD {submitDataset, validateXML, requestID}
 
     public static String validatePxXml(File pxxmlFile, boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
@@ -142,7 +144,7 @@ public class ProteomeXchangeService
     private static String postRequest(MultipartEntityBuilder builder) throws IOException, ProteomeXchangeServiceException, ParseException
     {
         String responseMessage;
-        HttpPost post = new HttpPost("http://proteomecentral.proteomexchange.org/cgi/Dataset");
+        HttpPost post = new HttpPost(PROTEOME_CENTRAL_URL + "/cgi/Dataset");
         post.setEntity(builder.build());
 
         // execute the POST request
@@ -177,7 +179,7 @@ public class ProteomeXchangeService
 
     public static String toUrl(@NotNull String pxdAccession)
     {
-        return "http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=" + PageFlowUtil.encode(pxdAccession);
+        return PROTEOME_CENTRAL_URL + "/cgi/GetDataset?ID=" + PageFlowUtil.encode(pxdAccession);
     }
 }
 
