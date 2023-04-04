@@ -1539,13 +1539,15 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
+            String previousVersionName = null;
             Submission previousSubmission = _journalSubmission.getLatestCopiedSubmission();
             if (previousSubmission != null)
             {
                 // Target folder name is automatically populated in the copy experiment form. Unless the admin making the copy changed the
                 // folder name we expect the previous copy of the data to have the same folder name. Rename the old folder so that we can
                 // use the same folder name for the new copy.
-                if (!renamePreviousFolder(previousSubmission, destinationFolder, errors))
+                previousVersionName = renamePreviousFolder(previousSubmission, destinationFolder, errors);
+                if (previousVersionName == null)
                 {
                     return false;
                 }
@@ -1575,7 +1577,7 @@ public class PanoramaPublicController extends SpringActionController
                 job.setUseDataCiteTestApi(form.isUseDataCiteTestApi());
                 job.setReviewerEmailPrefix(form.getReviewerEmailPrefix());
                 job.setDeletePreviousCopy(form.isDeleteOldCopy());
-                job.setTargetContainer(target);
+                job.setPreviousVersionName(previousVersionName);
                 PipelineService.get().queueJob(job);
 
                 _successURL = PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlBegin(target);
@@ -1587,8 +1589,9 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
-        private boolean renamePreviousFolder(Submission previousSubmission, String targetContainerName, BindException errors)
+        private String renamePreviousFolder(Submission previousSubmission, String targetContainerName, BindException errors)
         {
+            String newPath = null;
             ExperimentAnnotations previousCopy = ExperimentAnnotationsManager.get(previousSubmission.getCopiedExperimentId());
             if (previousCopy != null)
             {
@@ -1602,21 +1605,23 @@ public class PanoramaPublicController extends SpringActionController
                         {
                             errors.reject(ERROR_MSG, "Previous experiment copy (Id: " + previousCopy.getId() + ") does not have a version. " +
                                     "Cannot rename previous folder.");
-                            return false;
+                            return null;
                         }
                         // Rename the container where the old copy lives so that the same folder name can be used for the new copy.
                         String newName = previousContainer.getName() + " V." + version;
                         if (ContainerManager.getChild(previousContainer.getParent(), newName) != null)
                         {
                             errors.reject(ERROR_MSG, "Cannot rename previous folder to '" + newName + "'. A folder with that name already exists.");
-                            return false;
+                            return null;
                         }
                         ContainerManager.rename(previousContainer, getUser(), newName);
+
+                        newPath = FileContentService.get().getFileRoot(previousContainer.getParent()) + File.separator + newName;
                         transaction.commit();
                     }
                 }
             }
-            return true;
+            return newPath;
         }
 
         private ValidEmail getValidEmail(String email, String errMsg, BindException errors)

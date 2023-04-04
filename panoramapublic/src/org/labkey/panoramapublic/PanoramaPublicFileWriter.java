@@ -2,46 +2,37 @@ package org.labkey.panoramapublic;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.labkey.api.admin.BaseFolderWriter;
+import org.labkey.api.admin.FolderExportContext;
+import org.labkey.api.admin.FolderWriter;
+import org.labkey.api.admin.FolderWriterFactory;
 import org.labkey.api.data.Container;
 import org.labkey.api.files.FileContentService;
-import org.labkey.panoramapublic.pipeline.ExperimentExportTask;
+import org.labkey.api.writer.VirtualFile;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-
-public class PanoramaPublicFileWriter
+/**
+ * This file writer moves (instead of copy) the file from the temp directory into the public folder and updates the
+ * symlink in the original folder.
+ */
+public class PanoramaPublicFileWriter extends BaseFolderWriter
 {
-    private static final Logger _log = LogManager.getLogger(ExperimentExportTask.class);
+    // Use a different directory than "files" so file importer doesn't pick it up
+    public static final String FILE_MV = "filesMv";
+    private static final Logger _log = LogManager.getLogger(PanoramaPublicFileWriter.class);
 
-    private void moveAndSymLinkDirectory(File source, File target) throws IOException
+    @Override
+    public String getDataType()
     {
-        for (File file : source.listFiles())
-        {
-            if (file.isDirectory())
-            {
-                Path targetPath = Path.of(target.getPath(), file.getName());
-                Files.createDirectory(targetPath);
-                _log.info("Creating directory: " + targetPath);
-
-                moveAndSymLinkDirectory(file, targetPath.toFile());
-            }
-            else
-            {
-                _log.info("Creating file: " + Path.of(target.getPath(), file.getName()));
-                Files.move(file.toPath(), Path.of(target.getPath(), file.getName()), REPLACE_EXISTING);
-                Files.createSymbolicLink(file.toPath(), target.toPath());
-            }
-        }
+        return PanoramaPublicManager.PANORAMA_PUBLIC_FILES;
     }
 
-    public void write(Container c, Container target) throws Exception
+    @Override
+    public void write(Container c, FolderExportContext ctx, VirtualFile vf) throws Exception
     {
         File sourceRoot = FileContentService.get().getFileRoot(c);
-        File targetRoot = FileContentService.get().getFileRoot(target);
 
         if (null == sourceRoot)
         {
@@ -49,28 +40,30 @@ public class PanoramaPublicFileWriter
             return;
         }
 
-        if (null == targetRoot)
-        {
-            _log.error("File copy target folder not found: " + target);
-            return;
-        }
-
-        File sourceFiles = new File(sourceRoot.getPath().concat("\\").concat(FileContentService.FILES_LINK));
-        File targetFiles = new File(targetRoot.getPath().concat("\\").concat(FileContentService.FILES_LINK));
+        File sourceFiles = new File(sourceRoot.getPath(), FileContentService.FILES_LINK);
+        File targetFiles = new File(vf.getLocation() ,FILE_MV);
 
         if (!sourceFiles.exists())
         {
-            _log.error("File copy source files directory not found: " + sourceFiles);
+            _log.warn("File copy source files directory not found: " + sourceFiles);
             return;
         }
 
         if (!targetFiles.exists())
         {
-            _log.error("File copy target files directory not found: " + targetFiles);
-            return;
+            Files.createDirectory(targetFiles.toPath());
         }
 
-        moveAndSymLinkDirectory(sourceFiles, targetFiles);
+        PanoramaPublicManager.get().moveAndSymLinkDirectory(sourceFiles, targetFiles, true);
+    }
+
+    public static class Factory implements FolderWriterFactory
+    {
+        @Override
+        public FolderWriter create()
+        {
+            return new PanoramaPublicFileWriter();
+        }
     }
 
 

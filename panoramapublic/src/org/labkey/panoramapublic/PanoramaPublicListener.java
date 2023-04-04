@@ -23,6 +23,7 @@ import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentListener;
 import org.labkey.api.exp.api.ExperimentService;
+import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.security.User;
@@ -72,11 +73,31 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     public void containerDeleted(Container c, User user)
     {
         JournalManager.deleteProjectJournal(c, user);
+
+        // Remove symlinks in the folder and targeting the folder
+        FileContentService fcs = FileContentService.get();
+        if (fcs != null)
+        {
+            if (fcs.getFileRoot(c) != null)
+            {
+                PanoramaPublicManager.get().fireSymlinkContainerDelete(fcs.getFileRoot(c).getPath());
+            }
+        }
     }
 
     @Override
     public void containerMoved(Container c, Container oldParent, User user)
     {
+        // Update symlinks to new target
+        FileContentService fcs = FileContentService.get();
+        if (fcs != null)
+        {
+            if (fcs.getFileRoot(oldParent) != null && fcs.getFileRoot(c) != null)
+            {
+                PanoramaPublicManager.get().fireSymlinkUpdateContainer(
+                        fcs.getFileRoot(oldParent).getPath(), fcs.getFileRoot(c).getPath());
+            }
+        }
     }
 
     @Override
@@ -88,6 +109,12 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     @Override
     public void propertyChange(PropertyChangeEvent evt)
     {
+        // Needed for container rename to realign symlinks
+        if (evt.getPropertyName().equals(ContainerManager.Property.Name.name())
+                && evt instanceof ContainerManager.ContainerPropertyChangeEvent ce)
+        {
+            PanoramaPublicManager.get().fireSymlinkUpdateContainer((String) ce.getOldValue(), (String) ce.getNewValue());
+        }
     }
 
     // ShortURLListener

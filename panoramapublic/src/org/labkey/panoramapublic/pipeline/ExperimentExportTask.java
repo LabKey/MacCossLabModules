@@ -36,7 +36,7 @@ import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.writer.FileSystemFile;
-import org.labkey.panoramapublic.PanoramaPublicFileWriter;
+import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.io.File;
@@ -108,13 +108,16 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
 
         Set<String> templateWriterSet = PageFlowUtil.set(templateWriterTypes);
 
-        // Windows cannot do symlink so copy over the files
-        if (SystemUtils.IS_OS_WINDOWS)
+        // If this is a re-copy then we need an actual copy for tracking the previous version.
+        // If on Windows (not the production server use-case), Windows cannot do symlink so just copy over the files.
+        if (support.getPreviousVersionName() != null || SystemUtils.IS_OS_WINDOWS)
         {
-            _log.info("Windows experiment copy.");
             templateWriterSet.add(FolderArchiveDataTypes.FILES);
         }
-
+        else
+        {
+            templateWriterSet.add(PanoramaPublicManager.PANORAMA_PUBLIC_FILES);
+        }
 
         boolean includeSubfolders = exptAnnotations.isIncludeSubfolders();
         Container source = exptAnnotations.getContainer();
@@ -141,11 +144,6 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
         FilesMetadataWriter filesMetadataWriter = new FilesMetadataWriter();
         filesMetadataWriter.write(exptAnnotations.getContainer(), exptAnnotations.isIncludeSubfolders(), vf, user, getJob().getLogger());
 
-        if (!SystemUtils.IS_OS_WINDOWS)
-        {
-            PanoramaPublicFileWriter fileWriter = new PanoramaPublicFileWriter();
-            fileWriter.write(source, support.getTargetContainer());
-        }
     }
 
     public static class Factory extends AbstractTaskFactory<AbstractTaskFactorySettings, Factory>

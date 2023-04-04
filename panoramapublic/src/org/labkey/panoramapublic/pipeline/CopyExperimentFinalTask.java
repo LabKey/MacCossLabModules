@@ -205,11 +205,26 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             js = updateSubmissionAndDeletePreviousCopy(js, currentSubmission, latestCopiedSubmission, targetExperiment, previousCopy, jobSupport, user, log);
 
+            alignSymlinks(job, jobSupport);
+
             // Create notifications. Do this at the end after everything else is done.
             PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), js.getJournalExperiment(), currentSubmission,
                     reviewer.first, reviewer.second, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
 
             transaction.commit();
+        }
+    }
+
+    // After a full file copy is done re-align the experiment project's symlinks to the newest version of the public project
+    private void alignSymlinks(PipelineJob job, CopyExperimentJobSupport jobSupport)
+    {
+        if (jobSupport.getPreviousVersionName() != null)
+        {
+            FileContentService fcs = FileContentService.get();
+            if (fcs != null)
+            {
+                PanoramaPublicManager.get().fireSymlinkUpdateContainer(jobSupport.getPreviousVersionName(), fcs.getFileRoot(job.getContainer()).getPath());
+            }
         }
     }
 

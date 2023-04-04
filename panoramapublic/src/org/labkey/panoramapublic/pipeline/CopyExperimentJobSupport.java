@@ -15,7 +15,6 @@
  */
 package org.labkey.panoramapublic.pipeline;
 
-import org.labkey.api.data.Container;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 
@@ -44,5 +43,5 @@ public interface CopyExperimentJobSupport
 
     boolean deletePreviousCopy();
 
-    Container getTargetContainer();
+    String getPreviousVersionName();
 }
