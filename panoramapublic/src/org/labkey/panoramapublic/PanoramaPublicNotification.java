@@ -19,10 +19,12 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.panoramapublic.datacite.DataCiteException;
+import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.model.Submission;
+import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
 
@@ -155,7 +157,10 @@ public class PanoramaPublicNotification
         {
             messageBody.append(NL).append("* Citation: ").append(escape(journalCopy.getCitation()));
         }
-
+        if (madePublic && journalCopy.getDataLicense() != null)
+        {
+            messageBody.append(NL2).append("The data will be available under the ").append(journalCopy.getDataLicense().getDisplayName()).append(" license.");
+        }
         if (journalCopy.hasPxid())
         {
             messageBody.append(NL2);
@@ -205,11 +210,9 @@ public class PanoramaPublicNotification
         messageBody.append(NL2).append("Best regards,");
         messageBody.append(NL).append(getUserName(journalAdmin));
 
-        messageBody.append(NL2).append("---").append(NL2);
-        appendActionSubmitterDetails(user, messageBody);
-
         if (addCopyLink)
         {
+            messageBody.append(NL2).append("---");
             messageBody.append(NL).append("For Panorama administrators:").append(" ").append(link("Copy Link", je.getShortCopyUrl().renderShortURL()));
         }
 
@@ -286,7 +289,7 @@ public class PanoramaPublicNotification
         text.append(NL2);
         text.append(italics("Submission details:"));
         text.append(NL).append("* Source folder: ").append(getContainerLink(exptAnnotations.getContainer()));
-        text.append(NL).append("* Permanent URL: ").append(link(journalExperiment.getShortAccessUrl().renderShortURL()));
+        text.append(NL).append("* Permanent link: ").append(link(journalExperiment.getShortAccessUrl().renderShortURL()));
         text.append(NL).append("* Reviewer account requested: ").append(bold(submission.isKeepPrivate() ? "Yes" : "No"));
         text.append(NL).append("* PX ID requested: ").append(bold(submission.isPxidRequested() ? "Yes" : "No"));
         if (submission.isIncompletePxSubmission())
@@ -308,11 +311,6 @@ public class PanoramaPublicNotification
         }
     }
 
-    private static void appendActionSubmitterDetails(User user, StringBuilder text)
-    {
-        text.append("Requested by: ").append(getUserDetails(user));
-    }
-
     public static String getUserName(User user)
     {
         return !StringUtils.isBlank(user.getFullName()) ? user.getFullName() : user.getFriendlyName();
@@ -326,7 +324,7 @@ public class PanoramaPublicNotification
     private static String getContainerLink(Container container)
     {
         ActionURL url = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container);
-        return link(container.getPath(), url.getEncodedLocalURIString());
+        return link(container.getPath(), url.getURIString());
     }
 
     public static String bolditalics(String text)
@@ -390,8 +388,8 @@ public class PanoramaPublicNotification
         {
             message.append("Thank you for your request to submit data to ").append(journalName).append(". ");
         }
-        message.append(String.format("Your data has been %s, and the permanent URL (%s)", recopy ? "recopied" : "copied", accessUrlLink))
-                .append(String.format(" now links to the %scopy on %s.", recopy ? "new " : "", journalName))
+        message.append(String.format("Your data has been %s, and the permanent link (%s)", recopy ? "recopied" : "copied", accessUrlLink))
+                .append(String.format(" now points to the %scopy on %s.", recopy ? "new " : "", journalName))
                 .append(" Please take a moment to verify that the copy is accurate.");
 
         if(reviewer != null)
@@ -416,7 +414,7 @@ public class PanoramaPublicNotification
         if(targetExperiment.hasPxid())
         {
             message.append(NL2)
-                    .append("The ProteomeXchange ID reserved for your data is:")
+                    .append("The ProteomeXchange ID reserved for the data is:")
                     .append(NL).append(targetExperiment.getPxid())
                     .append(" (").append(link(pxdLink(targetExperiment.getPxid()))).append(")");
 
@@ -426,10 +424,16 @@ public class PanoramaPublicNotification
             }
         }
 
+        if (targetExperiment.hasDoi())
+        {
+            // Display the complete link: https://support.datacite.org/docs/datacite-doi-display-guidelines
+            message.append(NL2).append("The DOI for the data is: ").append(link(getDoiLink(targetExperiment)));
+        }
+
         message.append(NL2)
-                .append("The permanent URL (").append(accessUrlLink).append(")")
+                .append("The permanent link (").append(accessUrlLink).append(")")
                 .append(" is the unique identifier of your data on ").append(journalName).append(".")
-                .append(" You can put the permanent URL")
+                .append(" You can put the permanent link")
                 .append(targetExperiment.hasPxid() ? " and the ProteomeXchange ID " : " ")
                 .append("in your manuscript. ");
 
@@ -437,7 +441,7 @@ public class PanoramaPublicNotification
         {
             message.append(NL2)
                     .append("When you are ready to make the data public you can click the \"Make Public\" button in your data folder or click this link: ")
-                    .append(bold(link("Make Data Public", PanoramaPublicController.getMakePublicUrl(targetExperiment.getId(), targetExperiment.getContainer()).getEncodedLocalURIString())));
+                    .append(bold(link("Make Data Public", PanoramaPublicController.getMakePublicUrl(targetExperiment.getId(), targetExperiment.getContainer()).getURIString())));
         }
 
         message.append(NL2).append("Best regards,");
@@ -456,15 +460,22 @@ public class PanoramaPublicNotification
         message.append(NL).append(String.format("* %s to folder: ", recopy ? "Recopied": "Copied")).append(getContainerLink(targetExperiment.getContainer()));
         if (targetExperiment.hasDoi())
         {
-            message.append(NL).append("* DOI: ").append(link(targetExperiment.getDoi(), "https://doi.org/" + PageFlowUtil.encode(targetExperiment.getDoi())));
+            // Display the complete link: https://support.datacite.org/docs/datacite-doi-display-guidelines
+            message.append(NL).append("* DOI: ").append(link(getDoiLink(targetExperiment)));
         }
 
         return message.toString();
     }
 
+    @NotNull
+    private static String getDoiLink(ExperimentAnnotations targetExperiment)
+    {
+        return DataCiteService.toUrl(targetExperiment.getDoi());
+    }
+
     private static String pxdLink(String pxdAccession)
     {
-        return "http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=" + pxdAccession;
+        return ProteomeXchangeService.toUrl(pxdAccession);
     }
 
     public static class TestCase extends Assert

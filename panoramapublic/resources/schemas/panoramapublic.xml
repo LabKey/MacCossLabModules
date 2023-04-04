@@ -216,7 +216,7 @@
                 <url>/panoramapublic-showExperimentAnnotations.view?id=${ExperimentAnnotationsId}</url>
             </column>
             <column columnName="ShortAccessURL">
-                <columnTitle>Access Link</columnTitle>
+                <columnTitle>Permanent Link</columnTitle>
                 <fk>
                     <fkColumnName>EntityId</fkColumnName>
                     <fkDbSchema>core</fkDbSchema>

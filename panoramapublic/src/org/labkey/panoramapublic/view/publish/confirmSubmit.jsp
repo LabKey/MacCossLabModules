@@ -73,8 +73,6 @@
     <% } else { %>
     You are giving access to <%=h(journal)%> to make a copy of your data.
     <% } %>
-    The access link is: <%=h(ShortURLRecord.renderShortURL(form.getShortAccessUrl()))%>.
-    <br>
     <%if(form.isKeepPrivate()) {%>
     Your data on <%=h(journal)%> will be kept private
     <%if(!form.isResubmit()) { %> and a reviewer account will be provided to you.<% } else {%>
@@ -82,6 +80,9 @@
     <%} else { %>
     Your data on <%=h(journal)%> will be made public.
     <% } %>
+    <br>
+    The permanent link for the data is: <%=h(ShortURLRecord.renderShortURL(form.getShortAccessUrl()))%>.
+    <br>
     <%if(form.isGetPxid()) { %>
         <br><br>
         <%if(!form.isResubmit()) { %>
