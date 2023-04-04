@@ -1,8 +1,8 @@
 package org.labkey.panoramapublic.model.validation;
 
 import org.jetbrains.annotations.NotNull;
-import org.json.old.JSONArray;
-import org.json.old.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.labkey.api.data.Container;
 import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;

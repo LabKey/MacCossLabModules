@@ -1,7 +1,7 @@
 package org.labkey.panoramapublic.model.validation;
 
 import org.jetbrains.annotations.NotNull;
-import org.json.old.JSONObject;
+import org.json.JSONObject;
 import org.labkey.api.data.Container;
 import org.labkey.api.files.FileContentService;
 

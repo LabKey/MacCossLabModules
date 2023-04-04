@@ -1,6 +1,4 @@
-<%@ page import="org.json.old.JSONObject" %>
-<%@ page import="org.labkey.api.data.statistics.MathStat" %>
-<%@ page import="org.labkey.api.data.statistics.StatsService" %>
+<%@ page import="org.json.JSONObject" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.testresults.TestResultsController.ShowRunAction" %>
@@ -8,16 +6,16 @@
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.RunProblems" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
+<%@ page import="org.labkey.testresults.model.TestLeakDetail" %>
 <%@ page import="org.labkey.testresults.model.User" %>
 <%@ page import="org.labkey.testresults.view.RunDownBean" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="java.util.Arrays" %>
 <%@ page import="java.util.Date" %>
 <%@ page import="java.util.List" %>
-<%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
 <%@ page import="java.util.Map" %>
-<%@ page import="java.util.Arrays" %>
-<%@ page import="org.labkey.testresults.model.TestLeakDetail" %>
+<%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     /*
@@ -324,7 +322,7 @@
         <br />
         <br />
 
-        <!--Basic test run information about duration, # of passses, # of failures, and # of testmemoryleaks-->
+        <!--Basic test run information about duration, # of passes, # of failures, and # of testmemoryleaks-->
         <div class="centeredContent">
         <% if (!topFailures.isEmpty()) { %>
             <!--Top Failures, occurrences, and language pie chart table-->
@@ -419,7 +417,7 @@
 <% if (memoryChartData != null) { %>
     <script>
         var pointRatio = 30;
-        var jsonObject = <%=memoryChartData.getJavaScriptFragment(0)%>;
+        var jsonObject = <%=json(memoryChartData, 0)%>;
         // start c3 chart generation
         var memoryUsageChart = c3.generate({
             bindto: '#memoryGraph',
@@ -598,7 +596,7 @@ $(function() {
 <% if (trendsJson != null) { %>
     <script src="<%=h(contextPath)%>/TestResults/js/generateTrendCharts.js"></script>
     <script type="text/javascript">
-        var trendsJson = <%=trendsJson.getJavaScriptFragment(0)%>;
+        var trendsJson = <%=json(trendsJson, 0)%>;
         generateTrendCharts(trendsJson);
     </script>
 <% } %>
