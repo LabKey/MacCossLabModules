@@ -25,6 +25,7 @@ import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.jetbrains.annotations.NotNull;
+import org.labkey.api.util.PageFlowUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,6 +40,8 @@ public class ProteomeXchangeService
 
     public static final String PXID = "PX[DT]\\d{6}";
     private static final Pattern PXID_IN_RESPONSE = Pattern.compile("identifier=(" + PXID + ")");
+
+    private static final String PROTEOME_CENTRAL_URL = "https://proteomecentral.proteomexchange.org";
 
     private enum METHOD {submitDataset, validateXML, requestID}
 
@@ -141,7 +144,7 @@ public class ProteomeXchangeService
     private static String postRequest(MultipartEntityBuilder builder) throws IOException, ProteomeXchangeServiceException, ParseException
     {
         String responseMessage;
-        HttpPost post = new HttpPost("http://proteomecentral.proteomexchange.org/cgi/Dataset");
+        HttpPost post = new HttpPost(PROTEOME_CENTRAL_URL + "/cgi/Dataset");
         post.setEntity(builder.build());
 
         // execute the POST request
@@ -172,6 +175,11 @@ public class ProteomeXchangeService
                 || !response.contains("info=There were a total of 0 different CV errors or warnings.")
                 || !response.contains("info=There was a total of 0 non-CV warnings.")
                 || !response.contains("info=There was a total of 0 non-CV errors.");
+    }
+
+    public static String toUrl(@NotNull String pxdAccession)
+    {
+        return PROTEOME_CENTRAL_URL + "/cgi/GetDataset?ID=" + PageFlowUtil.encode(pxdAccession);
     }
 }
 

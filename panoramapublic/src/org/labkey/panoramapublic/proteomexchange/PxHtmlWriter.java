@@ -155,7 +155,7 @@ public class PxHtmlWriter extends PxWriter
         {
             list.addItem("PX Version", String.valueOf(version), false);
         }
-        list.addItem("Access URL", getAccessUrlString(accessUrl), accessUrl == null);
+        list.addItem("Permanent Link", getAccessUrlString(accessUrl), accessUrl == null);
         list.end();
         trNoFilter("Dataset identifier", list.getHtml());
     }

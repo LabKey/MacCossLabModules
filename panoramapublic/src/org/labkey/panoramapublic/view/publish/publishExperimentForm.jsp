@@ -221,7 +221,7 @@
                 <%if (!bean.isAccessUrlEditable()) { %>
                 {
                     xtype: 'displayfield',
-                    fieldLabel: "Short Access URL",
+                    fieldLabel: "Permanent Link",
                     value: <%=q(shortAccessUrl)%>
                 },
                 {
@@ -234,7 +234,7 @@
                     xtype: 'textfield',
                     name: 'shortAccessUrl',
                     value: <%=q(shortAccessUrl)%>,
-                    fieldLabel: 'Access Link',
+                    fieldLabel: 'Permanent Link',
                     beforeBodyEl: '<span class="urlPart">' + urlFixedPre + '</span>',
                     afterBodyEl: urlFixedPost + accessUrlMessage,
                     msgTarget : 'side',
