@@ -20,9 +20,12 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.DbSchemaType;
 import org.labkey.api.data.TableInfo;
+import org.labkey.api.files.FileContentService;
+import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
@@ -33,8 +36,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
@@ -47,7 +52,7 @@ public class PanoramaPublicManager
     public static String PANORAMA_PUBLIC_FILES = "Panorama Public Files";
 
     // Register symlinks created when copying files to Panorama Public
-    private final List<DataSymlinkListener> _symLinkListeners = new CopyOnWriteArrayList<>();
+    private final Map<String, DataSymlinkListener> _symLinkListeners = new ConcurrentHashMap<>();
 
     private PanoramaPublicManager()
     {
@@ -166,47 +171,106 @@ public class PanoramaPublicManager
 
     public void registerSymlinkListener(DataSymlinkListener symlinkListener)
     {
-        _symLinkListeners.add(symlinkListener);
+        _symLinkListeners.put(symlinkListener.getSymlink().toString(), symlinkListener);
     }
 
-    public void removeSymlinkListener(DataSymlinkListener symlinkListener)
+    public void removeSymlinkListener(String symlink)
     {
-        _symLinkListeners.remove(symlinkListener);
+        _symLinkListeners.remove(symlink);
+    }
+
+    private void registerContainerSymlinks(File source)
+    {
+        for (File file : Objects.requireNonNull(source.listFiles()))
+        {
+            if (file.isDirectory())
+            {
+                registerContainerSymlinks(file);
+            }
+            else
+            {
+                Path filePath = file.toPath();
+                if (Files.isSymbolicLink(file.toPath()) && !_symLinkListeners.containsKey(filePath.toString()))
+                {
+                    try
+                    {
+                        Path target = Files.readSymbolicLink(file.toPath());
+                        registerSymlinkListener(new DataSymlinkListener(filePath, target));
+                    }
+                    catch (IOException e)
+                    {
+                        _log.warn("Unable to resolve symlink for registration: " + file.toPath());
+                    }
+                }
+            }
+        }
+    }
+
+    public void initContainerSymlinks()
+    {
+        Set<Container> containers = ContainerManager.getAllChildrenWithModule(ContainerManager.getRoot(), ModuleLoader.getInstance().getModule(PanoramaPublicModule.class));
+        for (Container container : containers)
+        {
+            Set<Container> tree = ContainerManager.getAllChildren(container);
+            for (Container node : tree)
+            {
+                FileContentService fcs = FileContentService.get();
+                if (null != fcs && null != fcs.getFileRoot(node))
+                {
+                    File root = fcs.getFileRoot(node);
+                    if (null != root)
+                    {
+                        registerContainerSymlinks(root);
+                    }
+                }
+            }
+        }
     }
 
     public void fireSymlinkContainerDelete(String container)
     {
-        for (DataSymlinkListener symLinkListener : _symLinkListeners)
+        for (DataSymlinkListener symLinkListener : _symLinkListeners.values())
         {
             // Unregister and delete any symlinks targeting the container
             if (symLinkListener.deleteTargetContainer(container))
-                removeSymlinkListener(symLinkListener);
+                removeSymlinkListener(symLinkListener.getSymlink().toString());
 
             // Unregister any symlinks in the container
             if (symLinkListener.isSymlinkInContainer(container))
-                removeSymlinkListener(symLinkListener);
+                removeSymlinkListener(symLinkListener.getSymlink().toString());
         }
+    }
+
+    public void fireSymlinkDeleted(Path deleted)
+    {
+        _symLinkListeners.remove(deleted.toString());
     }
 
     public void fireSymlinkUpdateContainer(String oldContainer, String newContainer)
     {
-        for (DataSymlinkListener symLinkListener : _symLinkListeners)
+        for (DataSymlinkListener symLinkListener : _symLinkListeners.values())
         {
             symLinkListener.updateTargetContainer(oldContainer, newContainer);
         }
     }
 
-    private void fireSymlinkUpdate(Path oldTarget, Path newTarget)
+    public void fireSymlinkUpdate(Path oldTarget, Path newTarget)
     {
-        for (DataSymlinkListener symLinkListener : _symLinkListeners)
+        for (DataSymlinkListener symLinkListener : _symLinkListeners.values())
         {
             symLinkListener.update(oldTarget, newTarget);
         }
     }
 
+    public void fireSymlinkLocationUpdate(Path oldLocation, Path newLocation)
+    {
+        DataSymlinkListener listener = _symLinkListeners.remove(oldLocation.toString());
+        _symLinkListeners.put(newLocation.toString(), new DataSymlinkListener(newLocation, listener.getTarget()));
+    }
+
     public void moveAndSymLinkDirectory(File source, File target, boolean createSourceSymLinks) throws IOException
     {
-        for (File file : source.listFiles())
+        for (File file : Objects.requireNonNull(source.listFiles()))
         {
             if (file.isDirectory())
             {

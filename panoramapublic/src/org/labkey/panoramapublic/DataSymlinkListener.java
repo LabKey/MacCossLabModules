@@ -21,6 +21,16 @@ public class DataSymlinkListener
         _target = target;
     }
 
+    public Path getSymlink()
+    {
+        return _symlink;
+    }
+
+    public Path getTarget()
+    {
+        return _target;
+    }
+
     public void update(Path oldTarget, Path newTarget)
     {
         if (!_target.equals(oldTarget))

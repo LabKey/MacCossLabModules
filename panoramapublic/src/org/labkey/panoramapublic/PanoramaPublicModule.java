@@ -24,6 +24,7 @@ import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.exp.api.ExperimentService;
+import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.ModuleContext;
 import org.labkey.api.module.SpringModule;
 import org.labkey.api.pipeline.PipelineService;
@@ -136,6 +137,14 @@ public class PanoramaPublicModule extends SpringModule
         TargetedMSService.get().addProteinSearchResultCustomizer(ExperimentTitleDisplayColumn.getPeptideGroupJoinTableCustomizer());
 
         FolderSerializationRegistry.get().addFactories(new PanoramaPublicFileWriter.Factory(), new PanoramaPublicFileImporter.Factory());
+
+        FileContentService fileContentService = FileContentService.get();
+        if (null != fileContentService)
+        {
+            fileContentService.addFileListener(new PanoramaPublicFileListener());
+        }
+
+        PanoramaPublicManager.get().initContainerSymlinks();
     }
 
     @NotNull
