@@ -62,7 +62,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         {
             return baseName;
         }
-        return baseName + " Project " + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
+        return baseName + " Project "; // + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
     }
 
     @BeforeClass

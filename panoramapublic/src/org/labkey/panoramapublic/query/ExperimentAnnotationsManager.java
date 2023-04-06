@@ -28,6 +28,7 @@ import org.labkey.api.data.SqlExecutor;
 import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableSelector;
+import org.labkey.api.data.dialect.SqlDialect;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentService;
@@ -477,21 +478,22 @@ public class ExperimentAnnotationsManager
         // CONSIDER: Add this method to TargetedMSService?
         TargetedMSService svc = TargetedMSService.get();
         UserSchema targetedmsSchema = svc.getUserSchema(user, experimentAnnotations.getContainer());
+        SqlDialect d = targetedmsSchema.getDbSchema().getSqlDialect();
 
         SQLFragment sql = new SQLFragment("SELECT Id FROM ").append(svc.getTableInfoRuns(), "r")
                 .append(" WHERE PeptideCount > 0 ")
                 .append(" AND Deleted = ? " ).add(Boolean.FALSE)
                 .append(" AND Container IN ");
-        if(experimentAnnotations.isIncludeSubfolders())
+        if (experimentAnnotations.isIncludeSubfolders())
         {
             List<Container> containers = ContainerManager.getAllChildren(experimentAnnotations.getContainer(), user);
-            sql.append(ContainerManager.getIdsAsCsvList(new HashSet<>(containers)));
+            sql.append(ContainerManager.getIdsAsCsvList(new HashSet<>(containers), d));
         }
         else
         {
-            sql.append("('");
-            sql.append(experimentAnnotations.getContainer().getId());
-            sql.append("')");
+            sql.append("(");
+            sql.appendValue(experimentAnnotations.getContainer(),d);
+            sql.append(")");
         }
 
         return new SqlSelector(targetedmsSchema.getDbSchema(), sql).exists();
