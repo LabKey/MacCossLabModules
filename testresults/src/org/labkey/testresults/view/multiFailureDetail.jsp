@@ -1,24 +1,20 @@
-<%@ page import="org.labkey.api.data.Container" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
+<%@ page import="org.json.JSONObject" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
-<%@ page import="org.labkey.testresults.TestResultsController" %>
 <%@ page import="org.labkey.testresults.view.TestsDataBean" %>
+<%@ page import="java.text.DateFormat" %>
+<%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="java.util.ArrayList" %>
 <%@ page import="java.util.Arrays" %>
 <%@ page import="java.util.Collections" %>
+<%@ page import="java.util.Comparator" %>
 <%@ page import="java.util.Date" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.TreeMap" %>
-<%@ page import="java.util.ArrayList" %>
-<%@ page import="java.util.Comparator" %>
-<%@ page import="org.json.old.JSONObject" %>
-<%@ page import="java.text.DateFormat" %>
-<%@ page import="java.text.SimpleDateFormat" %>
-<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%
@@ -173,7 +169,7 @@
         failureTrends.append("dates", entry.getKey().getTime());
     }
 %>
-<% if(failureTrends != null && failureTrends.size() > 0) {%>
+<% if(!failureTrends.isEmpty()) {%>
     <script type="text/javascript">
         var failureJSON = jQuery.parseJSON( <%= q(failureTrends.toString()) %> );
         var dates = failureJSON.dates;

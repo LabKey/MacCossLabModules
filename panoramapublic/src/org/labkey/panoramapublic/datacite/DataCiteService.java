@@ -4,7 +4,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.json.old.JSONObject;
+import org.json.JSONObject;
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.util.Link;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;

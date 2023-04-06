@@ -2,8 +2,8 @@ package org.labkey.panoramapublic.model.validation;
 
 import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
-import org.json.old.JSONArray;
-import org.json.old.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.labkey.api.data.Container;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
 import org.labkey.panoramapublic.query.DataValidationManager;

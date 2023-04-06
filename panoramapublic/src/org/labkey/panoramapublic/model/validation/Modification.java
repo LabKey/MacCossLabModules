@@ -3,8 +3,8 @@ package org.labkey.panoramapublic.model.validation;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.json.old.JSONArray;
-import org.json.old.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.labkey.panoramapublic.query.modification.ExperimentModInfo;
 
 import java.util.Collections;

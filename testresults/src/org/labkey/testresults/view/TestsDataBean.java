@@ -15,8 +15,8 @@
  */
 package org.labkey.testresults.view;
 
-import org.json.old.JSONArray;
-import org.json.old.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SqlSelector;
 import org.labkey.testresults.TestResultsController;
