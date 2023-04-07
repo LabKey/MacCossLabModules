@@ -1596,6 +1596,7 @@ public class PanoramaPublicController extends SpringActionController
             if (previousCopy != null)
             {
                 Container previousContainer = previousCopy.getContainer();
+                newPath = previousContainer.getPath();
                 if (targetContainerName.equals(previousContainer.getName()))
                 {
                     try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
