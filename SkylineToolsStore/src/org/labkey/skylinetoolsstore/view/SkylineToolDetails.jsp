@@ -684,7 +684,7 @@ a { text-decoration: none; }
             });
         }
 
-        window.location.href = "<%=h(urlFor(SkylineToolsStoreController.DownloadToolAction.class))%>id=" + toolId;
+        window.location.href = <%= q(urlFor(SkylineToolsStoreController.DownloadToolAction.class).addParameter("id", tool.getRowId())) %>;
     }
 
     function popToolOwners() {
