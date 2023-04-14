@@ -20,6 +20,8 @@ import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebElement;
 
 import java.io.File;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -45,7 +47,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         String experimentTitle = "This is an experiment to test making data public";
         String shortAccessUrl = setupFolderSubmitAndCopy(projectName, folderName, targetFolder, experimentTitle);
 
-        verifyPanoramaPublicSubmitterRole(projectName, folderName, PANORAMA_PUBLIC, targetFolder);
+        verifyPermissions(projectName, folderName, PANORAMA_PUBLIC, targetFolder);
 
         // Verify that the submitter can make the data public
         verifyMakePublic(PANORAMA_PUBLIC, targetFolder, SUBMITTER, true);
@@ -228,7 +230,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         assertTextPresent("Copy Pending!");
     }
 
-    private void verifyPanoramaPublicSubmitterRole(String userProject, String userFolder, String panoramaPublicProject, String panoramaPublicFolder)
+    private void verifyPermissions(String userProject, String userFolder, String panoramaPublicProject, String panoramaPublicFolder)
     {
         if (isImpersonating())
         {
@@ -238,6 +240,14 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         goToProjectFolder(panoramaPublicProject, panoramaPublicFolder);
         PermissionsPage permsPage = navBar().goToPermissionsPage();
         assertTrue("Expected submitter " + SUBMITTER + " to be assigned the " + role + " role in the copied folder.", permsPage.isUserInRole(SUBMITTER, role));
+
+        ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
+        permissionsHelper.assertGroupExists(PANORAMA_PUBLIC_SUBMITTERS, PANORAMA_PUBLIC);
+        permissionsHelper.assertGroupExists(REVIEWERS, PANORAMA_PUBLIC);
+        permissionsHelper.assertUserInGroup(SUBMITTER, PANORAMA_PUBLIC_SUBMITTERS, PANORAMA_PUBLIC, PermissionsHelper.PrincipalType.USER);
+
+        String reviewerEmail = getReviewerEmail(panoramaPublicProject, panoramaPublicFolder);
+        permissionsHelper.assertUserInGroup(reviewerEmail, REVIEWERS, PANORAMA_PUBLIC, PermissionsHelper.PrincipalType.USER);
 
         goToProjectFolder(userProject, userFolder);
         permsPage = navBar().goToPermissionsPage();
@@ -251,6 +261,23 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
             // Exception thrown should be about not finding the "Panorama Public Submitter" role on the permissions page.
             assertTrue(e.getMessage().contains(role));
         }
+    }
+
+    private String getReviewerEmail(String panoramaPublicProject, String panoramaPublicFolder)
+    {
+        // Get the reviewer's email from the notification messages
+        goToProjectFolder(panoramaPublicProject, panoramaPublicFolder);
+        TargetedMsExperimentWebPart expWp = new TargetedMsExperimentWebPart(this);
+        expWp.getWebParMenu().clickSubMenu(true, "Support Messages");
+        String bodyText = getBodyText();
+        Pattern pattern = Pattern.compile(REVIEWER_PREFIX + "\\d*@proteinms\\.net");
+        Matcher matcher = pattern.matcher(bodyText);
+        if (matcher.find())
+        {
+            return matcher.group();
+        }
+        Assert.fail("Could not get reviewer email from support messages.");
+        return null;
     }
 
     private void resubmitWithoutPxd(boolean keepPrivate)

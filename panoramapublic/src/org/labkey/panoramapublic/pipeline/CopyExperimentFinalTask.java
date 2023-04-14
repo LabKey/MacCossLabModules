@@ -38,6 +38,8 @@ import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.Group;
+import org.labkey.api.security.InvalidGroupMembershipException;
+import org.labkey.api.security.MemberType;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicy;
@@ -87,9 +89,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -342,6 +346,12 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 assignReader(reviewer, targetExperiment.getContainer());
                 js.getJournalExperiment().setReviewer(reviewer.getUserId());
                 SubmissionManager.updateJournalExperiment(js.getJournalExperiment(), user);
+
+                // Add reviewer to the "Reviewers" group
+                // This group already exists in the Panorama Public project on panoramaweb.org.
+                // CONSIDER: Make this configurable through the Panorama Public admin console.
+                addToGroup(reviewer, "Reviewers", targetExperiment.getContainer().getProject(), log);
+
                 return new Pair<>(reviewer, reviewerPassword);
             }
         }
@@ -468,14 +478,14 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         targetExperiment = ExperimentAnnotationsManager.save(targetExperiment, user);
 
         // Update the target of the short access URL to the journal's copy of the experiment.
-        log.info("Updating access URL to point to the new copy of the data.");
+        log.info("Updating permanent link to point to the new copy of the data.");
         try
         {
             SubmissionManager.updateAccessUrlTarget(js.getShortAccessUrl(), targetExperiment, user);
         }
         catch (ValidationException e)
         {
-            throw new PipelineJobException("Error updating the target of the short access URL '" + js.getShortAccessUrl().getShortURL() + "' to '"
+            throw new PipelineJobException("Error updating the target of the permanent link '" + js.getShortAccessUrl().getShortURL() + "' to '"
                     + targetExperiment.getContainer().getPath() + "'", e);
         }
 
@@ -522,10 +532,13 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         {
             newPolicy.addRoleAssignment(folderAdmin, ReaderRole.class);
         }
+
         // Assign the PanoramaPublicSubmitterRole so that the submitter or lab head is able to make the copied folder public, and add publication information.
-        assignPanoramaPublicSubmitterRole(targetExperiment.getSubmitterUser(), newPolicy);
-        assignPanoramaPublicSubmitterRole(targetExperiment.getLabHeadUser(), newPolicy);
-        assignPanoramaPublicSubmitterRole(formSubmitter, newPolicy); // User that submitted the form. Can be different from the user selected as the data "submitter".
+        assignPanoramaPublicSubmitterRole(newPolicy, log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(),
+                formSubmitter); // User that submitted the form. Can be different from the user selected as the data submitter
+
+        addToSubmittersGroup(target.getProject(), log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(), formSubmitter);
+
 
         if (previousCopy != null)
         {
@@ -539,12 +552,71 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         SecurityPolicyManager.savePolicy(newPolicy);
     }
 
-    private void assignPanoramaPublicSubmitterRole(User user, MutableSecurityPolicy policy)
+    private void assignPanoramaPublicSubmitterRole(MutableSecurityPolicy policy, Logger log, User... users)
     {
-        if (user != null)
-        {
+        Arrays.stream(users).filter(Objects::nonNull).forEach(user -> {
+            log.info("Assigning " + PanoramaPublicSubmitterRole.class.getSimpleName() + " to " + user.getEmail());
             policy.addRoleAssignment(user, PanoramaPublicSubmitterRole.class, false);
+        });
+    }
+
+    private void addToSubmittersGroup(Container project, Logger log, User... users)
+    {
+        String groupName = "Panorama Public Submitters";
+        Group group = getGroup(groupName, project, log);
+        if (group != null)
+        {
+            Arrays.stream(users).filter(Objects::nonNull).forEach(user -> {
+                // This group already exists in the Panorama Public project on panoramaweb.org.
+                // CONSIDER: Make this configurable through the Panorama Public admin console.
+                addToGroup(user, group, log);
+            });
         }
+    }
+
+    private void addToGroup(User user, String groupName, Container project, Logger log)
+    {
+        Group group = getGroup(groupName, project, log);
+        if (group != null)
+        {
+            addToGroup(user, group, log);
+            return;
+        }
+    }
+
+    private void addToGroup(User user, Group group, Logger log)
+    {
+        try
+        {
+            if (SecurityManager.getGroupMembers(group, MemberType.ACTIVE_USERS).contains(user))
+            {
+                log.info("User " + user.getEmail() + " is already a member of group " + group.getName());
+            }
+            else
+            {
+                log.info("Adding user " + user.getEmail() + " to group " + group.getName());
+                SecurityManager.addMember(group, user);
+            }
+        }
+        catch (InvalidGroupMembershipException e)
+        {
+            log.warn("Unable to add user " + user.getEmail() + " to group " + group.getName(), e);
+        }
+    }
+
+    private Group getGroup(String groupName, Container project, Logger log)
+    {
+        Integer groupId = SecurityManager.getGroupId(project, groupName, false);
+        Group group = null;
+        if (groupId != null)
+        {
+            group = SecurityManager.getGroup(groupId);
+        }
+        if (group == null)
+        {
+            log.warn("Did not find a security group with name " + groupName + " in the project " + project.getName());
+        }
+        return group;
     }
 
     private List<User> getUsersWithRole(Container container, Role role)
@@ -833,7 +905,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             throw new PipelineJobException("Error saving shortUrl '" + versionedShortUrl + "'", e);
         }
 
-        log.info("Setting the short access URL on the previous copy to " + newShortUrl.getShortURL());
+        log.info("Setting the permanent link on the previous copy to " + newShortUrl.getShortURL());
         previousCopy.setShortUrl(newShortUrl);
         if (previousCopy.getDoi() != null)
         {
