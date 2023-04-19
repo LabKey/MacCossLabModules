@@ -108,9 +108,9 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
 
         Set<String> templateWriterSet = PageFlowUtil.set(templateWriterTypes);
 
-        // If this is a re-copy then we need an actual copy for tracking the previous version.
-        // If on Windows (not the production server use-case), Windows cannot do symlink so just copy over the files.
-        if (support.getPreviousVersionName() != null || SystemUtils.IS_OS_WINDOWS)
+        // If on Windows (not the production server use-case), Windows cannot do symlink without admin permissions so
+        // just copy over the files.
+        if (SystemUtils.IS_OS_WINDOWS)
         {
             templateWriterSet.add(FolderArchiveDataTypes.FILES);
         }

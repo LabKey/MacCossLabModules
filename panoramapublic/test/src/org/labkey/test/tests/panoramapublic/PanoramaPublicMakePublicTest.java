@@ -4,6 +4,7 @@ import org.apache.hc.core5.http.HttpStatus;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.labkey.remoteapi.CommandException;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
@@ -20,6 +21,7 @@ import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebElement;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,7 +40,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
     private static final String IMAGE_PATH = "TargetedMS/panoramapublic/" + IMAGE_FILE;
 
     @Test
-    public void testExperimentCopy()
+    public void testExperimentCopy() throws IOException, CommandException
     {
         // Set up our source folder. We will create an experiment and submit it to our "Panorama Public" project.
         String projectName = getProjectName();

@@ -36,6 +36,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -190,7 +191,7 @@ public class PanoramaPublicManager
             else
             {
                 Path filePath = file.toPath();
-                if (Files.isSymbolicLink(file.toPath()) && !_symLinkListeners.containsKey(filePath.toString()))
+                if (Files.isSymbolicLink(filePath) && !_symLinkListeners.containsKey(filePath.toString()))
                 {
                     try
                     {
@@ -286,9 +287,10 @@ public class PanoramaPublicManager
             else
             {
                 Path targetPath = Path.of(target.getPath(), file.getName());
+                Path filePath = file.toPath();
 
                 // If this has already been copied, don't copy the symlink
-                if (Files.isSymbolicLink(file.toPath()) && file.toPath().compareTo(targetPath) == 0)
+                if (Files.isSymbolicLink(filePath) && filePath.compareTo(targetPath) == 0)
                     continue;
 
                 // Don't move over logs
@@ -296,17 +298,104 @@ public class PanoramaPublicManager
                     continue;
 
                 // TODO: Does this work on a different file system?
-                Files.move(file.toPath(), targetPath, REPLACE_EXISTING);
-                fireSymlinkUpdate(file.toPath(), targetPath);
 
-                _log.info("File moved to " + targetPath);
+                // Symbolic link should move the target file over. This would be for a re-copy to public.
+                if (Files.isSymbolicLink(filePath))
+                {
+                    Path oldPath = Files.readSymbolicLink(filePath);
+                    Files.move(oldPath, targetPath, REPLACE_EXISTING);
+                    fireSymlinkUpdate(oldPath, targetPath);
+                    _log.info("File moved from " + oldPath + " to " + targetPath);
+
+                    Path symlink = Files.createSymbolicLink(oldPath, targetPath);
+                    registerSymlinkListener(new DataSymlinkListener(symlink, targetPath));
+                    _log.info("Symlink created: " + symlink);
+
+                    Files.delete(filePath);
+                    fireSymlinkDeleted(filePath);
+                }
+                else
+                {
+                    Files.move(filePath, targetPath, REPLACE_EXISTING);
+                    fireSymlinkUpdate(filePath, targetPath);
+                }
+
                 if (createSourceSymLinks)
                 {
-                    Path symlink = Files.createSymbolicLink(file.toPath(), targetPath);
+                    Path symlink = Files.createSymbolicLink(filePath, targetPath);
                     registerSymlinkListener(new DataSymlinkListener(symlink, targetPath));
                     _log.info("Symlink created: " + symlink);
                 }
             }
         }
+    }
+
+    private void verifyFileTreeSymlinks(File source, Map<String, String> linkMissingRegistration, Map<String, String> linkRegisteredTargetIncorrect,
+                                        Map<String, DataSymlinkListener> leftoverRegisteredSymlinks) throws IOException
+    {
+        for (File file : Objects.requireNonNull(source.listFiles()))
+        {
+            if (file.isDirectory())
+            {
+                verifyFileTreeSymlinks(file, linkMissingRegistration, linkRegisteredTargetIncorrect, leftoverRegisteredSymlinks);
+            }
+            else
+            {
+                Path filePath = file.toPath();
+                if (Files.isSymbolicLink(filePath))
+                {
+                    Path targetPath = Files.readSymbolicLink(filePath);
+                    DataSymlinkListener registeredLink = _symLinkListeners.get(filePath.toString());
+                    if (registeredLink == null)
+                    {
+                        linkMissingRegistration.put(filePath.toString(), targetPath.toString());
+                    }
+                    else if (!registeredLink.getTarget().equals(targetPath))
+                    {
+                        linkRegisteredTargetIncorrect.put(filePath.toString(), targetPath.toString());
+                        leftoverRegisteredSymlinks.remove(filePath.toString());
+                    }
+                    else
+                    {
+                        leftoverRegisteredSymlinks.remove(filePath.toString());
+                    }
+                }
+            }
+        }
+    }
+
+    public boolean verifySymlinks() throws IOException
+    {
+        Map<String, String> linkMissingRegistration = new HashMap<>();
+        Map<String, String> linkRegisteredTargetIncorrect = new HashMap<>();
+        Map<String, DataSymlinkListener> leftoverRegisteredSymlinks = new HashMap<>(_symLinkListeners);
+        Set<Container> containers = ContainerManager.getAllChildrenWithModule(ContainerManager.getRoot(), ModuleLoader.getInstance().getModule(PanoramaPublicModule.class));
+        for (Container container : containers)
+        {
+            Set<Container> tree = ContainerManager.getAllChildren(container);
+            for (Container node : tree)
+            {
+                FileContentService fcs = FileContentService.get();
+                if (null != fcs && null != fcs.getFileRoot(node))
+                {
+                    File root = fcs.getFileRoot(node);
+                    if (null != root)
+                    {
+                        verifyFileTreeSymlinks(root, linkMissingRegistration, linkRegisteredTargetIncorrect, leftoverRegisteredSymlinks);
+                    }
+                }
+            }
+        }
+
+        if(linkMissingRegistration.size() > 0)
+            _log.error("Symlinks not registered: " + linkMissingRegistration);
+
+        if(linkRegisteredTargetIncorrect.size() > 0)
+            _log.error("Symlinks registered with incorrect target: " + linkRegisteredTargetIncorrect);
+
+        if(leftoverRegisteredSymlinks.size() > 0)
+            _log.error("Registered symlinks with no symlink on file: " + leftoverRegisteredSymlinks);
+
+        return linkMissingRegistration.size() == 0 || linkRegisteredTargetIncorrect.size() == 0 || leftoverRegisteredSymlinks.size() == 0;
     }
 }

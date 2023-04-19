@@ -9058,6 +9058,20 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
+    public static class VerifySymlinksAction extends ReadOnlyApiAction<CatalogForm>
+    {
+        @Override
+        public Object execute(CatalogForm catalogForm, BindException errors) throws Exception
+        {
+            if (PanoramaPublicManager.get().verifySymlinks())
+                return success();
+
+            errors.reject(ERROR_MSG, "Problems with symlink registration. See log for details.");
+            return null;
+        }
+    }
+
+    @RequiresPermission(ReadPermission.class)
     public static class GetCatalogApiAction extends ReadOnlyApiAction<CatalogForm>
     {
         @Override

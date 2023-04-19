@@ -3,8 +3,13 @@ package org.labkey.test.tests.panoramapublic;
 import org.apache.commons.collections4.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.labkey.remoteapi.CommandException;
+import org.labkey.remoteapi.CommandResponse;
+import org.labkey.remoteapi.Connection;
+import org.labkey.remoteapi.SimpleGetCommand;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
@@ -27,6 +32,7 @@ import org.labkey.test.util.TextSearcher;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.File;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,6 +81,16 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         init.setupFolder(FolderType.Experiment);
     }
 
+    @After
+    public void afterTest() throws IOException, CommandException
+    {
+        if (isImpersonating())
+        {
+            stopImpersonating();
+        }
+        verifySymlinks();
+    }
+
     private void createPanoramaPublicJournalProject()
     {
         // Create a "Panorama Public" project where we will copy data.
@@ -100,6 +116,16 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         // Add a "Panorama Public Submitter" and a "Reviewers" permissions group
         _permissionsHelper.createProjectGroup(REVIEWERS, PANORAMA_PUBLIC);
         _permissionsHelper.createProjectGroup(PANORAMA_PUBLIC_SUBMITTERS, PANORAMA_PUBLIC);
+    }
+
+    boolean verifySymlinks() throws IOException, CommandException
+    {
+        Connection connection = createDefaultConnection();
+        SimpleGetCommand command = new SimpleGetCommand("PanoramaPublic", "verifySymlinks");
+        CommandResponse verifyResponse = command.execute(connection, "/");
+
+        // Failure will throw exception and put results in log
+        return verifyResponse.getProperty("success") != null;
     }
 
     @NotNull
