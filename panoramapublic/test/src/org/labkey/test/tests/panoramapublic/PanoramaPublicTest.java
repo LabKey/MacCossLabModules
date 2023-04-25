@@ -134,7 +134,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         verifySubmissionsAndPublishedVersions(projectName, folderName, 2, 2, List.of(Boolean.TRUE, Boolean.TRUE), List.of("", experimentTitle), List.of("", "2"), List.of("", shortAccessLink));
 
         // Submitter should be able to delete their folder after it has been copied to Panorama Public
-        goToProjectFolder(projectName, folderName);
+        goToHome();
         impersonate(SUBMITTER);
         apiContainerHelper.deleteFolder(projectName, folderName);
         assertFalse("Expected the submitter's container to have been deleted",
