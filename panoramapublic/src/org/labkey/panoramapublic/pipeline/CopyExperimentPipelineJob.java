@@ -35,6 +35,7 @@ import org.labkey.panoramapublic.model.Journal;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 
 /**
  * User: vsharma
@@ -59,6 +60,8 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     private boolean _deletePreviousCopy;
 
     private String _previousVersionName;
+
+    private Path _exportTargetPath;
 
 
     @JsonCreator
@@ -155,7 +158,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     @Override
     public File getExportDir()
     {
-        return new File(getLocalDirectory().getLocalDirectoryFile(), PipelineService.EXPORT_DIR);
+        return _exportTargetPath.toFile();
     }
 
     @Override
@@ -232,5 +235,11 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     public void setPreviousVersionName(String previousVersionName)
     {
         _previousVersionName = previousVersionName;
+    }
+
+    @Override
+    public void setExportTargetPath(Path exportTargetPath)
+    {
+        _exportTargetPath = exportTargetPath;
     }
 }

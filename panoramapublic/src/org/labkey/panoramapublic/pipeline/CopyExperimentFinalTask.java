@@ -211,6 +211,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             alignSymlinks(job, jobSupport);
 
+            FileUtil.deleteDir(jobSupport.getExportDir());
+
             // Create notifications. Do this at the end after everything else is done.
             PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), js.getJournalExperiment(), currentSubmission,
                     reviewer.first, reviewer.second, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);

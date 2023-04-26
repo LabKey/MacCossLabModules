@@ -1499,6 +1499,20 @@ public class PanoramaPublicController extends SpringActionController
             return true;
         }
 
+        private Path getExportFilesDir(Container c)
+        {
+            FileContentService fcs = FileContentService.get();
+            if(fcs != null)
+            {
+                Path fileRoot = fcs.getFileRootPath(c, FileContentService.ContentType.files);
+                if (fileRoot != null)
+                {
+                    return fileRoot.resolve(PipelineService.EXPORT_DIR);
+                }
+            }
+            return null;
+        }
+
         @Override
         public boolean handlePost(CopyExperimentForm form, BindException errors)
         {
@@ -1561,6 +1575,7 @@ public class PanoramaPublicController extends SpringActionController
 
             // Create the new target container.
             Container target = ContainerManager.createContainer(parentContainer, destinationFolder, null, null, NormalContainerType.NAME, getUser());
+            Path targetPath = getExportFilesDir(target);
 
             try{
                 PipeRoot root = PipelineService.get().findPipelineRoot(target);
@@ -1578,6 +1593,8 @@ public class PanoramaPublicController extends SpringActionController
                 job.setReviewerEmailPrefix(form.getReviewerEmailPrefix());
                 job.setDeletePreviousCopy(form.isDeleteOldCopy());
                 job.setPreviousVersionName(previousVersionName);
+                job.setExportTargetPath(getExportFilesDir(target));
+
                 PipelineService.get().queueJob(job);
 
                 _successURL = PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlBegin(target);
