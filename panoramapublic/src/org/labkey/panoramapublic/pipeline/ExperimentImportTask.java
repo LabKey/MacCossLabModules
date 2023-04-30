@@ -82,7 +82,8 @@ public class ExperimentImportTask extends PipelineJob.Task<ExperimentImportTask.
         }
 
         File folderXml = new File(importDir, "folder.xml");
-        if(!folderXml.exists()){
+        if(!folderXml.exists())
+        {
             throw new Exception("This directory doesn't contain an appropriate xml: " + importDir.getAbsolutePath());
         }
 

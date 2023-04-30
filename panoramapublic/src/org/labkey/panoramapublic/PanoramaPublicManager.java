@@ -29,6 +29,7 @@ import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
+import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 
@@ -40,7 +41,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
@@ -53,8 +53,6 @@ public class PanoramaPublicManager
     public static String PANORAMA_PUBLIC_FILES = "Panorama Public Files";
 
     // Register symlinks created when copying files to Panorama Public
-    private final Map<String, DataSymlinkListener> _symLinkListeners = new ConcurrentHashMap<>();
-
     private PanoramaPublicManager()
     {
         // prevent external construction with a private default constructor
@@ -170,44 +168,31 @@ public class PanoramaPublicManager
         return PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container, TargetedMSService.RAW_FILES_TAB);
     }
 
-    public void registerSymlinkListener(DataSymlinkListener symlinkListener)
-    {
-        _symLinkListeners.put(symlinkListener.getSymlink().toString(), symlinkListener);
-    }
-
-    public void removeSymlinkListener(String symlink)
-    {
-        _symLinkListeners.remove(symlink);
-    }
-
-    private void registerContainerSymlinks(File source)
+    private void handleContainerSymlinks(File source, SymlinkHandler handler)
     {
         for (File file : Objects.requireNonNull(source.listFiles()))
         {
             if (file.isDirectory())
             {
-                registerContainerSymlinks(file);
+                handleContainerSymlinks(file, handler);
             }
             else
             {
                 Path filePath = file.toPath();
-                if (Files.isSymbolicLink(filePath) && !_symLinkListeners.containsKey(filePath.toString()))
+                if (Files.isSymbolicLink(filePath))
                 {
-                    try
-                    {
-                        Path target = Files.readSymbolicLink(file.toPath());
-                        registerSymlinkListener(new DataSymlinkListener(filePath, target));
-                    }
-                    catch (IOException e)
-                    {
-                        _log.warn("Unable to resolve symlink for registration: " + file.toPath());
+                    try {
+                        Path target = Files.readSymbolicLink(filePath);
+                        handler.handleSymlink(filePath, target);
+                    } catch (IOException x) {
+                        _log.error("Unable to resolve symlink target for symlink at " + filePath);
                     }
                 }
             }
         }
     }
 
-    public void initContainerSymlinks()
+    private void handleAllSymlinks(SymlinkHandler handler)
     {
         Set<Container> containers = ContainerManager.getAllChildrenWithModule(ContainerManager.getRoot(), ModuleLoader.getInstance().getModule(PanoramaPublicModule.class));
         for (Container container : containers)
@@ -221,52 +206,77 @@ public class PanoramaPublicManager
                     File root = fcs.getFileRoot(node);
                     if (null != root)
                     {
-                        registerContainerSymlinks(root);
+                        handleContainerSymlinks(root, handler);
                     }
                 }
             }
         }
     }
 
-    public void fireSymlinkContainerDelete(String container)
+    private String normalizeContainerPath(String path)
     {
-        for (DataSymlinkListener symLinkListener : _symLinkListeners.values())
-        {
-            // Unregister and delete any symlinks targeting the container
-            if (symLinkListener.deleteTargetContainer(container))
-                removeSymlinkListener(symLinkListener.getSymlink().toString());
+        File file = new File(path);
+        if (file.isAbsolute() || path.startsWith(File.separator))
+            return path + File.separator;
 
-            // Unregister any symlinks in the container
-            if (symLinkListener.isSymlinkInContainer(container))
-                removeSymlinkListener(symLinkListener.getSymlink().toString());
-        }
+        return File.separator + path + File.separator;
     }
 
-    public void fireSymlinkDeleted(Path deleted)
+    public void fireSymlinkContainerDelete(String container)
     {
-        _symLinkListeners.remove(deleted.toString());
+        String containerPath = normalizeContainerPath(container);
+        handleAllSymlinks((link, target) -> {
+            if (String.valueOf(target).contains(containerPath))
+            {
+                try
+                {
+                    Files.delete(link);
+                }
+                catch (IOException e)
+                {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
     }
 
     public void fireSymlinkUpdateContainer(String oldContainer, String newContainer)
     {
-        for (DataSymlinkListener symLinkListener : _symLinkListeners.values())
-        {
-            symLinkListener.updateTargetContainer(oldContainer, newContainer);
-        }
+        String oldContainerPath = normalizeContainerPath(oldContainer);
+        String newContainerPath = normalizeContainerPath(newContainer);
+        handleAllSymlinks((link, target) -> {
+            if (String.valueOf(target).contains(oldContainerPath))
+            {
+                Path newTarget = Path.of(target.toString().replace(oldContainerPath, newContainerPath));
+                try
+                {
+                    Files.delete(link);
+                    Files.createSymbolicLink(link, newTarget);
+                }
+                catch (IOException e)
+                {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
     }
 
     public void fireSymlinkUpdate(Path oldTarget, Path newTarget)
     {
-        for (DataSymlinkListener symLinkListener : _symLinkListeners.values())
-        {
-            symLinkListener.update(oldTarget, newTarget);
-        }
-    }
+        handleAllSymlinks((link, target) -> {
+            if (!target.equals(oldTarget))
+                return;
 
-    public void fireSymlinkLocationUpdate(Path oldLocation, Path newLocation)
-    {
-        DataSymlinkListener listener = _symLinkListeners.remove(oldLocation.toString());
-        _symLinkListeners.put(newLocation.toString(), new DataSymlinkListener(newLocation, listener.getTarget()));
+            try
+            {
+                Files.delete(link);
+                Files.createSymbolicLink(link, newTarget);
+            }
+            catch (IOException e)
+            {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public void moveAndSymLinkDirectory(File source, File target, boolean createSourceSymLinks) throws IOException
@@ -308,11 +318,9 @@ public class PanoramaPublicManager
                     _log.info("File moved from " + oldPath + " to " + targetPath);
 
                     Path symlink = Files.createSymbolicLink(oldPath, targetPath);
-                    registerSymlinkListener(new DataSymlinkListener(symlink, targetPath));
                     _log.info("Symlink created: " + symlink);
 
                     Files.delete(filePath);
-                    fireSymlinkDeleted(filePath);
                 }
                 else
                 {
@@ -323,41 +331,34 @@ public class PanoramaPublicManager
                 if (createSourceSymLinks)
                 {
                     Path symlink = Files.createSymbolicLink(filePath, targetPath);
-                    registerSymlinkListener(new DataSymlinkListener(symlink, targetPath));
                     _log.info("Symlink created: " + symlink);
                 }
             }
         }
     }
 
-    private void verifyFileTreeSymlinks(File source, Map<String, String> linkMissingRegistration, Map<String, String> linkRegisteredTargetIncorrect,
-                                        Map<String, DataSymlinkListener> leftoverRegisteredSymlinks) throws IOException
+    private void verifyFileTreeSymlinks(File source, Map<String, String> linkInvalidTarget, Map<String, String> linkWithSymlinkTarget) throws IOException
     {
         for (File file : Objects.requireNonNull(source.listFiles()))
         {
             if (file.isDirectory())
             {
-                verifyFileTreeSymlinks(file, linkMissingRegistration, linkRegisteredTargetIncorrect, leftoverRegisteredSymlinks);
+                verifyFileTreeSymlinks(file, linkInvalidTarget, linkWithSymlinkTarget);
             }
             else
             {
                 Path filePath = file.toPath();
                 if (Files.isSymbolicLink(filePath))
                 {
+                    // Verify target file exists and is not a symbolic link
                     Path targetPath = Files.readSymbolicLink(filePath);
-                    DataSymlinkListener registeredLink = _symLinkListeners.get(filePath.toString());
-                    if (registeredLink == null)
+                    if (!FileUtil.isFileAndExists(targetPath))
                     {
-                        linkMissingRegistration.put(filePath.toString(), targetPath.toString());
+                        linkInvalidTarget.put(filePath.toString(), targetPath.toString());
                     }
-                    else if (!registeredLink.getTarget().equals(targetPath))
+                    else if (Files.isSymbolicLink(targetPath))
                     {
-                        linkRegisteredTargetIncorrect.put(filePath.toString(), targetPath.toString());
-                        leftoverRegisteredSymlinks.remove(filePath.toString());
-                    }
-                    else
-                    {
-                        leftoverRegisteredSymlinks.remove(filePath.toString());
+                        linkWithSymlinkTarget.put(filePath.toString(), targetPath.toString());
                     }
                 }
             }
@@ -366,9 +367,8 @@ public class PanoramaPublicManager
 
     public boolean verifySymlinks() throws IOException
     {
-        Map<String, String> linkMissingRegistration = new HashMap<>();
-        Map<String, String> linkRegisteredTargetIncorrect = new HashMap<>();
-        Map<String, DataSymlinkListener> leftoverRegisteredSymlinks = new HashMap<>(_symLinkListeners);
+        Map<String, String> linkInvalidTarget = new HashMap<>();
+        Map<String, String> linkWithSymlinkTarget = new HashMap<>();
         Set<Container> containers = ContainerManager.getAllChildrenWithModule(ContainerManager.getRoot(), ModuleLoader.getInstance().getModule(PanoramaPublicModule.class));
         for (Container container : containers)
         {
@@ -381,21 +381,18 @@ public class PanoramaPublicManager
                     File root = fcs.getFileRoot(node);
                     if (null != root)
                     {
-                        verifyFileTreeSymlinks(root, linkMissingRegistration, linkRegisteredTargetIncorrect, leftoverRegisteredSymlinks);
+                        verifyFileTreeSymlinks(root, linkInvalidTarget, linkWithSymlinkTarget);
                     }
                 }
             }
         }
 
-        if(linkMissingRegistration.size() > 0)
-            _log.error("Symlinks not registered: " + linkMissingRegistration);
+        if(linkInvalidTarget.size() > 0)
+            _log.error("Symlinks with invalid targets: " + linkInvalidTarget);
 
-        if(linkRegisteredTargetIncorrect.size() > 0)
-            _log.error("Symlinks registered with incorrect target: " + linkRegisteredTargetIncorrect);
+        if(linkWithSymlinkTarget.size() > 0)
+            _log.error("Symlinks targeting symlinks: " + linkWithSymlinkTarget);
 
-        if(leftoverRegisteredSymlinks.size() > 0)
-            _log.error("Registered symlinks with no symlink on file: " + leftoverRegisteredSymlinks);
-
-        return linkMissingRegistration.size() == 0 || linkRegisteredTargetIncorrect.size() == 0 || leftoverRegisteredSymlinks.size() == 0;
+        return linkInvalidTarget.size() == 0 && linkWithSymlinkTarget.size() == 0;
     }
 }
