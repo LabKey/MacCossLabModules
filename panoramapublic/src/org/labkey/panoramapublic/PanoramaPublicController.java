@@ -1575,7 +1575,6 @@ public class PanoramaPublicController extends SpringActionController
 
             // Create the new target container.
             Container target = ContainerManager.createContainer(parentContainer, destinationFolder, null, null, NormalContainerType.NAME, getUser());
-            Path targetPath = getExportFilesDir(target);
 
             try{
                 PipeRoot root = PipelineService.get().findPipelineRoot(target);

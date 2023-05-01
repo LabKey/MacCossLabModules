@@ -85,6 +85,7 @@ import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfo;
 import org.labkey.panoramapublic.security.PanoramaPublicSubmitterRole;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -211,7 +212,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             alignSymlinks(job, jobSupport);
 
-            FileUtil.deleteDir(jobSupport.getExportDir());
+            cleanupExportDirectory(user, jobSupport.getExportDir());
 
             // Create notifications. Do this at the end after everything else is done.
             PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), js.getJournalExperiment(), currentSubmission,
@@ -219,6 +220,16 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             transaction.commit();
         }
+    }
+
+    private void cleanupExportDirectory(User user, File directory) throws IOException
+    {
+        List<? extends ExpData> datas = ExperimentService.get().getExpDatasUnderPath(directory.toPath());
+        for (ExpData data : datas)
+        {
+            data.delete(user);
+        }
+        FileUtil.deleteDir(directory);
     }
 
     // After a full file copy is done re-align the experiment project's symlinks to the newest version of the public project

@@ -44,6 +44,12 @@ public class PanoramaPublicFileImporter implements FolderImporter
             return;
         }
 
+        if (null == job)
+        {
+            _log.error("Pipeline job not found.");
+            return;
+        }
+
         File targetFiles = new File(targetRoot.getPath(), FileContentService.FILES_LINK);
         File sourceFiles = new File(root.getLocation(), PanoramaPublicFileWriter.FILE_MV);
 
