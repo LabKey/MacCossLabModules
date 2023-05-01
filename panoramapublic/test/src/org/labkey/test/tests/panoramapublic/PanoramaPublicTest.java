@@ -3,6 +3,7 @@ package org.labkey.test.tests.panoramapublic;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.labkey.api.util.FileUtil;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
@@ -10,6 +11,7 @@ import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentInsertPage;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
+import org.labkey.test.components.targetedms.TargetedMSRunsTable;
 import org.labkey.test.pages.pipeline.PipelineStatusDetailsPage;
 import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.ApiPermissionsHelper;
@@ -96,7 +98,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         impersonate(SUBMITTER);
         goToDashboard();
         expWebPart.clickResubmit();
-        resubmitWithoutPxd();
+        resubmitWithoutPxd(true);
         goToDashboard();
         assertTextPresent("Copy Pending!");
 
@@ -287,6 +289,94 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         assertTrue("Copy Job's log file not set to pipeline root", pipelineStatusDetailsPage.getFilePath().contains("@files"));  //Proxy check to see if Job's log file is set to the pipeline root.
     }
 
+    @Test
+    public void testSymLinks()
+    {
+        String projectName = getProjectName();
+        String sourceFolder = "Folder 3";
+
+        String targetFolder = "Test Copy 3";
+        String experimentTitle = "This is a test for Panorama Public symlinks";
+
+        setupSourceFolder(projectName, sourceFolder, SUBMITTER);
+        impersonate(SUBMITTER);
+        updateSubmitterAccountInfo("One");
+
+        // Import Skyline documents to the folder
+        importData(SKY_FILE_1, 1);
+        importData(SKY_FILE_SMALLMOL_PEP, 2);
+        importData(QC_1_FILE, 3, false);
+        // Upload some raw files
+        portalHelper.click(Locator.folderTab("Raw Data"));
+        _fileBrowserHelper.uploadFile(getSampleDataPath(RAW_FILE_WIFF));
+        _fileBrowserHelper.uploadFile(getSampleDataPath(RAW_FILE_WIFF_SCAN));
+
+        // Add the "Targeted MS Experiment" webpart
+        TargetedMsExperimentWebPart expWebPart = createExperimentCompleteMetadata(experimentTitle);
+        expWebPart.clickSubmit();
+        String shortAccessUrl = submitWithoutPXId();
+
+        // Copy the experiment to the Panorama Public project
+        copyExperimentAndVerify(projectName, sourceFolder, null, experimentTitle, targetFolder, shortAccessUrl);
+        // TODO: verify symlinks after the first copy.  All files in the submitted folder should be symlinked to the files in the Panorama Public copy.
+
+        // Prepare to resubmit
+        goToProjectFolder(projectName, sourceFolder);
+        impersonate(SUBMITTER);
+
+        // Reorganize data in subfolders.
+        String subfolder1 = "SystemSuitability";
+        String subfolder2 = "ExperimentalData";
+        setupSubfolder(projectName, sourceFolder, subfolder1, FolderType.QC);
+        setupSubfolder(projectName, sourceFolder, subfolder2, FolderType.Experiment);
+
+        // Add QC document to the "SystemSuitability" subfolder
+        goToProjectFolder(projectName, sourceFolder + "/" + subfolder1);
+        importData(QC_1_FILE, 1, false);
+
+        // Add the small molecule document to "ExperimentalData" subfolder, and remove it from the parent folder
+        goToProjectFolder(projectName, sourceFolder + "/" + subfolder2);
+        importData(SKY_FILE_SMALLMOL_PEP, 1);
+        goToProjectFolder(projectName, sourceFolder);
+        TargetedMSRunsTable runsTable = new TargetedMSRunsTable(this);
+        runsTable.deleteRun(SKY_FILE_SMALLMOL_PEP); // delete the run
+        goToModule("FileContent");
+        _fileBrowserHelper.deleteFile(SKY_FILE_SMALLMOL_PEP); // delete the .sky.zip
+        _fileBrowserHelper.deleteFile(FileUtil.getBaseName(SKY_FILE_SMALLMOL_PEP, 2)); // delete the exploded folder
+
+        // Rename one of the raw files
+        portalHelper.click(Locator.folderTab("Raw Data"));
+        _fileBrowserHelper.renameFile(RAW_FILE_WIFF, RAW_FILE_WIFF + ".RENAMED");
+
+
+        // Include subfolders in the experiment
+        goToDashboard();
+        expWebPart = new TargetedMsExperimentWebPart(this);
+        expWebPart.clickMoreDetails();
+        clickButton("Include Subfolders");
+
+        // Resubmit
+        goToDashboard();
+        expWebPart.clickResubmit();
+        resubmitWithoutPxd(false);
+        goToDashboard();
+        assertTextPresent("Copy Pending!");
+
+        // Copy, and keep the previous copy
+        copyExperimentAndVerify(projectName, sourceFolder, List.of(subfolder1, subfolder2), experimentTitle,
+                2, // We are not deleting the first copy so this is version 2
+                true,
+                false, // Do not delete old copy
+                targetFolder,
+                shortAccessUrl);
+
+        // TODO: verify expected symlinks here.
+        //  - Files that were deleted from the submitted folder should not be moved from the old copy to the new one
+        //  - Renamed file in the submitted folder (Site52_041009_Study9S_Phase-I.wiff -> Site52_041009_Study9S_Phase-I.wiff.RENAMED):
+        //    should still be named Site52_041009_Study9S_Phase-I.wiff in the previous copy (Test Copy 3 V.1),
+        //    and link to Site52_041009_Study9S_Phase-I.wiff.RENAMED in the current copy (Test Copy 3)
+    }
+
     @Override
     protected void setupSourceFolder(String projectName, String folderName, String ... adminUsers)
     {
@@ -374,9 +464,17 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         return submitWithoutPXId();
     }
 
-    private void resubmitWithoutPxd()
+
+    private void resubmitWithoutPxd(boolean fromDataValidationPage)
     {
-        clickButton("Submit without a ProteomeXchange ID");
+        if (fromDataValidationPage)
+        {
+            clickButton("Submit without a ProteomeXchange ID");
+        }
+        else
+        {
+            clickAndWait(Locator.linkContainingText("Submit without a ProteomeXchange ID"));
+        }
         waitForText("Resubmit Request to ");
         click(Ext4Helper.Locators.ext4Button(("Resubmit")));
         waitForText("Confirm resubmission request to");
