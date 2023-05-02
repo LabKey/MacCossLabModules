@@ -19,6 +19,7 @@ package org.labkey.skylinetoolsstore;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.NavTrailAction;
@@ -332,7 +333,7 @@ public class SkylineToolsStoreController extends SpringActionController
 
     public static SafeToRender getUsersForAutocomplete()
     {
-        org.json.JSONArray jsonArray = UserManager.getActiveUsers().stream()
+        JSONArray jsonArray = UserManager.getActiveUsers().stream()
             .map(User::getEmail)
             .collect(LabKeyCollectors.toJSONArray());
 
