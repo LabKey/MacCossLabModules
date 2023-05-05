@@ -15,6 +15,7 @@ import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineService;
+import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.security.User;
 import org.labkey.api.writer.VirtualFile;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
@@ -92,7 +93,7 @@ public class PanoramaPublicFileImporter implements FolderImporter
 
         PanoramaPublicManager.get().moveAndSymLinkDirectory(job.getUser(), job.getContainer(), sourceFiles, targetFiles, false);
 
-        alignDataFileUrls(job.getUser(), root);
+        alignDataFileUrls(job.getUser(), ctx.getContainer(), root);
     }
 
     private List<ExpRun> getAllExpRuns(Container container)
@@ -109,21 +110,25 @@ public class PanoramaPublicFileImporter implements FolderImporter
         return allRuns;
     }
 
-    private void alignDataFileUrls(User user, Container targetContainer, VirtualFile root)
+    private void alignDataFileUrls(User user, Container targetContainer, VirtualFile root) throws BatchValidationException
     {
         FileContentService fcs = FileContentService.get();
         if (null == fcs)
             return;
 
-        List<? extends ExpData> datas = ExperimentService.get().getExpDatasUnderPath(Paths.get(root.getLocation()));
-        for (ExpData data : datas)
+        for (ExpRun run : getAllExpRuns(targetContainer))
         {
-            if (null != data.getRun() && data.getDataFileUrl().contains(FileContentService.FILES_LINK))
+            Path fileRootPath = fcs.getFileRootPath(run.getContainer(), FileContentService.ContentType.files);
+            if(fileRootPath == null || !Files.exists(fileRootPath))
             {
-                Path fileRootPath = fcs.getFileRootPath(data.getRun().getContainer(), FileContentService.ContentType.files);
-                if (null != fileRootPath)
-                {
+                _log.error("File root path for container " + run.getContainer().getPath() + " does not exist: " + fileRootPath);
+                return;
+            }
 
+            for (ExpData data : run.getAllDataUsedByRun())
+            {
+                if (null != data.getRun() && data.getDataFileUrl().contains(FileContentService.FILES_LINK))
+                {
                     String[] parts = Objects.requireNonNull(data.getFilePath()).toString().split("Run\\d+");
                     if (parts.length > 1)
                     {
@@ -134,6 +139,10 @@ public class PanoramaPublicFileImporter implements FolderImporter
                         {
                             data.setDataFileURI(newDataPath.toUri());
                             data.save(user);
+
+                            String[] relativePath = newDataPath.toString().split(FileContentService.FILES_LINK);
+                            run.setFilePathRoot(new File(relativePath[0] + FileContentService.FILES_LINK));
+                            run.save(user);
                         }
                         else
                         {
