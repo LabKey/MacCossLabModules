@@ -1593,6 +1593,7 @@ public class PanoramaPublicController extends SpringActionController
                 job.setDeletePreviousCopy(form.isDeleteOldCopy());
                 job.setPreviousVersionName(previousVersionName);
                 job.setExportTargetPath(getExportFilesDir(target));
+                job.setExportSourceContainer(form.getContainer());
 
                 PipelineService.get().queueJob(job);
 

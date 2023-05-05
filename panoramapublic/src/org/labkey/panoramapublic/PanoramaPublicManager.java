@@ -27,6 +27,7 @@ import org.labkey.api.data.TableInfo;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.portal.ProjectUrls;
+import org.labkey.api.security.User;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileUtil;
@@ -279,8 +280,12 @@ public class PanoramaPublicManager
         });
     }
 
-    public void moveAndSymLinkDirectory(File source, File target, boolean createSourceSymLinks) throws IOException
+    public void moveAndSymLinkDirectory(User user, Container c, File source, File target, boolean createSourceSymLinks) throws IOException
     {
+        FileContentService fcs = FileContentService.get();
+        if (null == fcs)
+            throw new RuntimeException("Unable to access FileContentService");
+
         for (File file : Objects.requireNonNull(source.listFiles()))
         {
             if (file.isDirectory())
@@ -292,7 +297,7 @@ public class PanoramaPublicManager
                     _log.info("Directory created: " + targetPath);
                 }
 
-                moveAndSymLinkDirectory(file, targetPath.toFile(), createSourceSymLinks);
+                moveAndSymLinkDirectory(user, c, file, targetPath.toFile(), createSourceSymLinks);
             }
             else
             {
@@ -307,24 +312,25 @@ public class PanoramaPublicManager
                 if (FilenameUtils.getExtension(file.getPath()).equals("log"))
                     continue;
 
-                // TODO: Does this work on a different file system?
-
                 // Symbolic link should move the target file over. This would be for a re-copy to public.
                 if (Files.isSymbolicLink(filePath))
                 {
                     Path oldPath = Files.readSymbolicLink(filePath);
                     Files.move(oldPath, targetPath, REPLACE_EXISTING);
+                    fcs.fireFileCreateEvent(targetPath, user, c);
+
                     fireSymlinkUpdate(oldPath, targetPath);
                     _log.info("File moved from " + oldPath + " to " + targetPath);
 
                     Path symlink = Files.createSymbolicLink(oldPath, targetPath);
                     _log.info("Symlink created: " + symlink);
-
-                    Files.delete(filePath);
                 }
                 else
                 {
                     Files.move(filePath, targetPath, REPLACE_EXISTING);
+                    fcs.fireFileCreateEvent(targetPath, user, c);
+
+                    Files.createSymbolicLink(filePath, targetPath);
                     fireSymlinkUpdate(filePath, targetPath);
                 }
 

@@ -17,6 +17,7 @@ package org.labkey.panoramapublic.pipeline;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.labkey.api.data.Container;
 import org.labkey.api.pipeline.LocalDirectory;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
@@ -62,6 +63,8 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     private String _previousVersionName;
 
     private Path _exportTargetPath;
+
+    private Container _exportSourceContainer;
 
 
     @JsonCreator
@@ -241,5 +244,15 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     public void setExportTargetPath(Path exportTargetPath)
     {
         _exportTargetPath = exportTargetPath;
+    }
+
+    public Container getExportSourceContainer()
+    {
+        return _exportSourceContainer;
+    }
+
+    public void setExportSourceContainer(Container exportSourceContainer)
+    {
+        _exportSourceContainer = exportSourceContainer;
     }
 }

@@ -392,10 +392,10 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // DataFileUrl in exp.data and FilePathRoot in exp.experimentRun point to locations in the 'export' directory.
             // We are now copying all files from the source container to the target container file root. Update the paths
             // to point to locations in the target container file root, and delete the 'export' directory
-            if (!updateDataPaths(targetExperiment.getContainer(), service, user, log))
-            {
-                throw new PipelineJobException("Unable to update all data file paths.");
-            }
+//            if (!updateDataPaths(targetExperiment.getContainer(), service, user, log))
+//            {
+//                throw new PipelineJobException("Unable to update all data file paths.");
+//            }
         }
     }
 

@@ -4,6 +4,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.SQLFragment;
+import org.labkey.api.exp.api.ExpData;
+import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileListener;
 import org.labkey.api.security.User;
 
@@ -30,13 +32,21 @@ public class PanoramaPublicFileListener implements FileListener
     {
         // Update any symlinks targeting the file
         PanoramaPublicManager.get().fireSymlinkUpdate(src.toPath(), dest.toPath());
+
+        ExpData data = ExperimentService.get().getExpDataByURL(src, null);
+        if (null != data)
+            data.setDataFileURI(dest.toURI());
+
         return 0;
     }
 
     @Override
     public void fileDeleted(@NotNull File deleted, @Nullable User user, @Nullable Container container)
     {
-        // TODO: Handle deleting target files
+        ExpData data = ExperimentService.get().getExpDataByURL(deleted, container);
+
+        if (null != data)
+            data.delete(user);
     }
 
     @Override

@@ -11,7 +11,6 @@ import org.labkey.api.files.FileContentService;
 import org.labkey.api.writer.VirtualFile;
 
 import java.io.File;
-import java.nio.file.Files;
 
 /**
  * This file writer moves (instead of copy) the file from the temp directory into the public folder and updates the
@@ -49,12 +48,12 @@ public class PanoramaPublicFileWriter extends BaseFolderWriter
             return;
         }
 
-        if (!targetFiles.exists())
-        {
-            Files.createDirectory(targetFiles.toPath());
-        }
-
-        PanoramaPublicManager.get().moveAndSymLinkDirectory(sourceFiles, targetFiles, true);
+//        if (!targetFiles.exists())
+//        {
+//            Files.createDirectory(targetFiles.toPath());
+//        }
+//
+//        PanoramaPublicManager.get().moveAndSymLinkDirectory(sourceFiles, targetFiles, true);
     }
 
     public static class Factory implements FolderWriterFactory
