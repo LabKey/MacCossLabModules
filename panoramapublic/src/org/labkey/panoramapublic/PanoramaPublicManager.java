@@ -312,6 +312,15 @@ public class PanoramaPublicManager
                 if (FilenameUtils.getExtension(file.getPath()).equals("log"))
                     continue;
 
+                if (FilenameUtils.getExtension(file.getPath()).equals("clib"))
+                {
+                    // Copy the clib file over
+                    Files.copy(filePath, targetPath, REPLACE_EXISTING);
+                    fcs.fireFileCreateEvent(targetPath, user, c);
+
+                    continue;
+                }
+
                 // Symbolic link should move the target file over. This would be for a re-copy to public.
                 if (Files.isSymbolicLink(filePath))
                 {
