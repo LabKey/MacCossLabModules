@@ -28,7 +28,7 @@ public class PanoramaPublicSymlinkManager
 {
     private static final Logger _log = LogHelper.getLogger(PanoramaPublicSymlinkManager.class, "Handling symlinks between public and private folders");
 
-    private static final boolean DEBUG_SYMLINKS_ON_WINDOWS = false;
+    private static final boolean DEBUG_SYMLINKS_ON_WINDOWS = false; // Note: To debug on Windows, you must run as administrator
 
     private static final PanoramaPublicSymlinkManager _instance = new PanoramaPublicSymlinkManager();
 
