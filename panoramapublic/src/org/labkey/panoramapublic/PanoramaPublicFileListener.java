@@ -31,7 +31,7 @@ public class PanoramaPublicFileListener implements FileListener
     public int fileMoved(@NotNull File src, @NotNull File dest, @Nullable User user, @Nullable Container container)
     {
         // Update any symlinks targeting the file
-        PanoramaPublicManager.get().fireSymlinkUpdate(src.toPath(), dest.toPath());
+        PanoramaPublicSymlinkManager.get().fireSymlinkUpdate(src.toPath(), dest.toPath());
 
         ExpData data = ExperimentService.get().getExpDataByURL(src, null);
         if (null != data)

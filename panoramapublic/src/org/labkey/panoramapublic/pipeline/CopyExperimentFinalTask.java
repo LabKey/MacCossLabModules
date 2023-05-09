@@ -65,6 +65,7 @@ import org.labkey.api.view.ShortURLService;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicNotification;
+import org.labkey.panoramapublic.PanoramaPublicSymlinkManager;
 import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.datacite.Doi;
@@ -240,7 +241,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             FileContentService fcs = FileContentService.get();
             if (fcs != null)
             {
-                PanoramaPublicManager.get().fireSymlinkUpdateContainer(jobSupport.getPreviousVersionName(), fcs.getFileRoot(job.getContainer()).getPath());
+                PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(jobSupport.getPreviousVersionName(), fcs.getFileRoot(job.getContainer()).getPath());
             }
         }
     }

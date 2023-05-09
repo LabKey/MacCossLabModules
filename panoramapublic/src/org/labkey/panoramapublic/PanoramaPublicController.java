@@ -9080,7 +9080,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public Object execute(CatalogForm catalogForm, BindException errors) throws Exception
         {
-            if (PanoramaPublicManager.get().verifySymlinks())
+            if (PanoramaPublicSymlinkManager.get().verifySymlinks())
                 return success();
 
             errors.reject(ERROR_MSG, "Problems with symlink registration. See log for details.");

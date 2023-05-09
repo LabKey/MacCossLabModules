@@ -84,7 +84,7 @@ public class ExperimentAnnotationsManager
      * @param experimentId FK -> exp.experiment.rowId
      * @return ExperimentAnnotations object with the given experimentId
      */
-    private static ExperimentAnnotations getForExperimentId(int experimentId)
+    public static ExperimentAnnotations getForExperimentId(int experimentId)
     {
         return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),
                 new SimpleFilter(FieldKey.fromParts("ExperimentId"), experimentId), null).getObject(ExperimentAnnotations.class);

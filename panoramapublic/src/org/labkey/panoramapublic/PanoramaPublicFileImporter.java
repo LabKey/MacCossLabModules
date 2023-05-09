@@ -91,7 +91,7 @@ public class PanoramaPublicFileImporter implements FolderImporter
             Files.createDirectories(targetFiles.toPath());
         }
 
-        PanoramaPublicManager.get().moveAndSymLinkDirectory(job.getUser(), job.getContainer(), sourceFiles, targetFiles, false);
+        PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(job.getUser(), job.getContainer(), sourceFiles, targetFiles, false);
 
         alignDataFileUrls(job.getUser(), ctx.getContainer(), root);
     }

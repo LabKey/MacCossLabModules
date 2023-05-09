@@ -74,13 +74,21 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     {
         JournalManager.deleteProjectJournal(c, user);
 
+        ExperimentService.get().getExperiments(c, user, false, false).forEach(experiment -> {
+            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.getForExperimentId(experiment.getRowId());
+            if (null != expAnnot && null != expAnnot.getSourceExperimentPath())
+            {
+                PanoramaPublicSymlinkManager.get().fireSymlinkCopiedExperimentDelete(expAnnot);
+            }
+        });
+
         // Remove symlinks in the folder and targeting the folder
         FileContentService fcs = FileContentService.get();
         if (fcs != null)
         {
             if (fcs.getFileRoot(c) != null)
             {
-                PanoramaPublicManager.get().fireSymlinkContainerDelete(fcs.getFileRoot(c).getPath());
+                PanoramaPublicSymlinkManager.get().fireSymlinkContainerDelete(fcs.getFileRoot(c).getPath());
             }
         }
     }
@@ -94,7 +102,7 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
         {
             if (fcs.getFileRoot(oldParent) != null && fcs.getFileRoot(c) != null)
             {
-                PanoramaPublicManager.get().fireSymlinkUpdateContainer(
+                PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(
                         fcs.getFileRoot(oldParent).getPath(), fcs.getFileRoot(c).getPath());
             }
         }
@@ -113,7 +121,7 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
         if (evt.getPropertyName().equals(ContainerManager.Property.Name.name())
                 && evt instanceof ContainerManager.ContainerPropertyChangeEvent ce)
         {
-            PanoramaPublicManager.get().fireSymlinkUpdateContainer((String) ce.getOldValue(), (String) ce.getNewValue());
+            PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer((String) ce.getOldValue(), (String) ce.getNewValue());
         }
     }
 
