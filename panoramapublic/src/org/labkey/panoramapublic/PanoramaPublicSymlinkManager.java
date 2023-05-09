@@ -1,7 +1,7 @@
 package org.labkey.panoramapublic;
 
 import org.apache.commons.io.FilenameUtils;
-import org.apache.logging.log4j.LogManager;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.Logger;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
@@ -10,6 +10,7 @@ import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.security.User;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.io.File;
@@ -25,7 +26,9 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class PanoramaPublicSymlinkManager
 {
-    private static final Logger _log = LogManager.getLogger(PanoramaPublicSymlinkManager.class);
+    private static final Logger _log = LogHelper.getLogger(PanoramaPublicSymlinkManager.class, "Handling symlinks between public and private folders");
+
+    private static final boolean DEBUG_SYMLINKS_ON_WINDOWS = false;
 
     private static final PanoramaPublicSymlinkManager _instance = new PanoramaPublicSymlinkManager();
 
@@ -105,12 +108,15 @@ public class PanoramaPublicSymlinkManager
         if (null != expAnnot.getSourceExperimentPath())
         {
             Container sourceContainer = ContainerService.get().getForPath(expAnnot.getSourceExperimentPath());
-            handleContainerSymlinks(sourceContainer, (link, target) -> {
-                Files.move(target, link, REPLACE_EXISTING);
-                _log.info("File moved from " + target + " to " + link);
+            if (null != sourceContainer)
+            {
+                handleContainerSymlinks(sourceContainer, (link, target) -> {
+                    Files.move(target, link, REPLACE_EXISTING);
+                    _log.info("File moved from " + target + " to " + link);
 
-                fireSymlinkUpdate(target, link);
-            });
+                    fireSymlinkUpdate(target, link);
+                });
+            }
         }
     }
 
@@ -203,9 +209,10 @@ public class PanoramaPublicSymlinkManager
                 if (FilenameUtils.getExtension(file.getPath()).equals("log"))
                     continue;
 
-                if (FilenameUtils.getExtension(file.getPath()).equals("clib"))
+                // If on Windows (not the production server use-case), Windows cannot do symlink without admin permissions so
+                // just copy over the files. Also, if the file is a clib file, special handling is required so just copy it over.
+                if ((!DEBUG_SYMLINKS_ON_WINDOWS && SystemUtils.IS_OS_WINDOWS) || FilenameUtils.getExtension(file.getPath()).equals("clib"))
                 {
-                    // Copy the clib file over
                     Files.copy(filePath, targetPath, REPLACE_EXISTING);
                     fcs.fireFileCreateEvent(targetPath, user, c);
 

@@ -15,7 +15,6 @@
  */
 package org.labkey.panoramapublic.pipeline;
 
-import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -103,21 +102,11 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
                 FolderArchiveDataTypes.CONTAINER_SPECIFIC_MODULE_PROPERTIES, // "Container specific module properties",
                 FolderArchiveDataTypes.EXPERIMENTS_AND_RUNS, // "Experiments and runs"
                 FolderArchiveDataTypes.LISTS, // "Lists"
-                TargetedMSService.QC_FOLDER_DATA_TYPE
-                };
+                TargetedMSService.QC_FOLDER_DATA_TYPE,
+                PanoramaPublicManager.PANORAMA_PUBLIC_FILES // "Panorama Public files move and symlink"
+        };
 
         Set<String> templateWriterSet = PageFlowUtil.set(templateWriterTypes);
-
-        // If on Windows (not the production server use-case), Windows cannot do symlink without admin permissions so
-        // just copy over the files.
-        if (SystemUtils.IS_OS_WINDOWS)
-        {
-            templateWriterSet.add(FolderArchiveDataTypes.FILES);
-        }
-        else
-        {
-            templateWriterSet.add(PanoramaPublicManager.PANORAMA_PUBLIC_FILES);
-        }
 
         boolean includeSubfolders = exptAnnotations.isIncludeSubfolders();
         Container source = exptAnnotations.getContainer();
