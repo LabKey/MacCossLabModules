@@ -32,7 +32,7 @@ public class PanoramaPublicSymlinkManager
 
     private static final PanoramaPublicSymlinkManager _instance = new PanoramaPublicSymlinkManager();
 
-    // Register symlinks created when copying files to Panorama Public
+    // Manage symlinks created when copying files to Panorama Public
     private PanoramaPublicSymlinkManager()
     {
         // prevent external construction with a private default constructor
@@ -183,68 +183,72 @@ public class PanoramaPublicSymlinkManager
         if (null == fcs)
             throw new RuntimeException("Unable to access FileContentService");
 
-        for (File file : Objects.requireNonNull(source.listFiles()))
+        File[] files = source.listFiles();
+        if (null != files)
         {
-            if (file.isDirectory())
+            for (File file : files)
             {
-                Path targetPath = Path.of(target.getPath(), file.getName());
-                if (!Files.exists(targetPath))
+                if (file.isDirectory())
                 {
-                    Files.createDirectory(targetPath);
-                    _log.info("Directory created: " + targetPath);
-                }
+                    Path targetPath = Path.of(target.getPath(), file.getName());
+                    if (!Files.exists(targetPath))
+                    {
+                        Files.createDirectory(targetPath);
+                        _log.info("Directory created: " + targetPath);
+                    }
 
-                moveAndSymLinkDirectory(user, c, file, targetPath.toFile(), createSourceSymLinks);
-            }
-            else
-            {
-                Path targetPath = Path.of(target.getPath(), file.getName());
-                Path filePath = file.toPath();
-
-                // If this has already been copied, don't copy the symlink
-                if (Files.isSymbolicLink(filePath) && filePath.compareTo(targetPath) == 0)
-                    continue;
-
-                // Don't move over logs
-                if (FilenameUtils.getExtension(file.getPath()).equals("log"))
-                    continue;
-
-                // If on Windows (not the production server use-case), Windows cannot do symlink without admin permissions so
-                // just copy over the files. Also, if the file is a clib file, special handling is required so just copy it over.
-                if ((!DEBUG_SYMLINKS_ON_WINDOWS && SystemUtils.IS_OS_WINDOWS) || FilenameUtils.getExtension(file.getPath()).equals("clib"))
-                {
-                    Files.copy(filePath, targetPath, REPLACE_EXISTING);
-                    fcs.fireFileCreateEvent(targetPath, user, c);
-
-                    continue;
-                }
-
-                // Symbolic link should move the target file over. This would be for a re-copy to public.
-                if (Files.isSymbolicLink(filePath))
-                {
-                    Path oldPath = Files.readSymbolicLink(filePath);
-                    Files.move(oldPath, targetPath, REPLACE_EXISTING);
-                    fcs.fireFileCreateEvent(targetPath, user, c);
-
-                    fireSymlinkUpdate(oldPath, targetPath);
-                    _log.info("File moved from " + oldPath + " to " + targetPath);
-
-                    Path symlink = Files.createSymbolicLink(oldPath, targetPath);
-                    _log.info("Symlink created: " + symlink);
+                    moveAndSymLinkDirectory(user, c, file, targetPath.toFile(), createSourceSymLinks);
                 }
                 else
                 {
-                    Files.move(filePath, targetPath, REPLACE_EXISTING);
-                    fcs.fireFileCreateEvent(targetPath, user, c);
+                    Path targetPath = Path.of(target.getPath(), file.getName());
+                    Path filePath = file.toPath();
 
-                    Files.createSymbolicLink(filePath, targetPath);
-                    fireSymlinkUpdate(filePath, targetPath);
-                }
+                    // If this has already been copied, don't copy the symlink
+                    if (Files.isSymbolicLink(filePath) && filePath.compareTo(targetPath) == 0)
+                        continue;
 
-                if (createSourceSymLinks)
-                {
-                    Path symlink = Files.createSymbolicLink(filePath, targetPath);
-                    _log.info("Symlink created: " + symlink);
+                    // Don't move over logs
+                    if (FilenameUtils.getExtension(file.getPath()).equals("log"))
+                        continue;
+
+                    // If on Windows (not the production server use-case), Windows cannot do symlink without admin permissions so
+                    // just copy over the files. Also, if the file is a clib file, special handling is required so just copy it over.
+                    if ((!DEBUG_SYMLINKS_ON_WINDOWS && SystemUtils.IS_OS_WINDOWS) || FilenameUtils.getExtension(file.getPath()).equals("clib"))
+                    {
+                        Files.copy(filePath, targetPath, REPLACE_EXISTING);
+                        fcs.fireFileCreateEvent(targetPath, user, c);
+
+                        continue;
+                    }
+
+                    // Symbolic link should move the target file over. This would be for a re-copy to public.
+                    if (Files.isSymbolicLink(filePath))
+                    {
+                        Path oldPath = Files.readSymbolicLink(filePath);
+                        Files.move(oldPath, targetPath, REPLACE_EXISTING);
+                        fcs.fireFileCreateEvent(targetPath, user, c);
+
+                        fireSymlinkUpdate(oldPath, targetPath);
+                        _log.info("File moved from " + oldPath + " to " + targetPath);
+
+                        Path symlink = Files.createSymbolicLink(oldPath, targetPath);
+                        _log.info("Symlink created: " + symlink);
+                    }
+                    else
+                    {
+                        Files.move(filePath, targetPath, REPLACE_EXISTING);
+                        fcs.fireFileCreateEvent(targetPath, user, c);
+
+                        Files.createSymbolicLink(filePath, targetPath);
+                        fireSymlinkUpdate(filePath, targetPath);
+                    }
+
+                    if (createSourceSymLinks)
+                    {
+                        Path symlink = Files.createSymbolicLink(filePath, targetPath);
+                        _log.info("Symlink created: " + symlink);
+                    }
                 }
             }
         }

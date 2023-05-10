@@ -70,30 +70,27 @@ public class PanoramaPublicFileImporter implements FolderImporter
             return;
         }
 
-        File targetFiles = new File(targetRoot.getPath(), FileContentService.FILES_LINK);
-
-        // Get source files including resolving subfolders
-        String divider = FileContentService.FILES_LINK + File.separator + PipelineService.EXPORT_DIR;
-        String subProject = root.getLocation().substring(root.getLocation().lastIndexOf(divider) + divider.length());
-        subProject = subProject.replace(File.separator + SubfolderWriter.DIRECTORY_NAME, "");
-
-        File sourceFiles = Paths.get(fcs.getFileRoot(((CopyExperimentPipelineJob) job).getExportSourceContainer()).getPath(), subProject, FileContentService.FILES_LINK).toFile();
-
-        if (!sourceFiles.exists())
+        if (job instanceof CopyExperimentPipelineJob j)
         {
-            // This is expected for full file copy instead of file move
-            return;
+            File targetFiles = new File(targetRoot.getPath(), FileContentService.FILES_LINK);
+
+            // Get source files including resolving subfolders
+            String divider = FileContentService.FILES_LINK + File.separator + PipelineService.EXPORT_DIR;
+            String subProject = root.getLocation().substring(root.getLocation().lastIndexOf(divider) + divider.length());
+            subProject = subProject.replace(File.separator + SubfolderWriter.DIRECTORY_NAME, "");
+
+            File sourceFiles = Paths.get(fcs.getFileRoot(j.getExportSourceContainer()).getPath(), subProject, FileContentService.FILES_LINK).toFile();
+
+            if (!targetFiles.exists())
+            {
+                _log.warn("Panorama public file copy target not found. Creating directory: " + targetFiles);
+                Files.createDirectories(targetFiles.toPath());
+            }
+
+            PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(j.getUser(), j.getContainer(), sourceFiles, targetFiles, false);
+
+            alignDataFileUrls(j.getUser(), ctx.getContainer(), root);
         }
-
-        if (!targetFiles.exists())
-        {
-            _log.warn("Panorama public file copy target not found. Creating directory: " + targetFiles);
-            Files.createDirectories(targetFiles.toPath());
-        }
-
-        PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(job.getUser(), job.getContainer(), sourceFiles, targetFiles, false);
-
-        alignDataFileUrls(job.getUser(), ctx.getContainer(), root);
     }
 
     private List<ExpRun> getAllExpRuns(Container container)
