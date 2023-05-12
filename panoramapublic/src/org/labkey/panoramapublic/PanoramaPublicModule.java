@@ -137,6 +137,7 @@ public class PanoramaPublicModule extends SpringModule
         TargetedMSService.get().addProteinSearchResultCustomizer(ExperimentTitleDisplayColumn.getPeptideGroupJoinTableCustomizer());
 
         FolderSerializationRegistry.get().addFactories(new PanoramaPublicFileWriter.Factory(), new PanoramaPublicFileImporter.Factory());
+        FolderSerializationRegistry.get().addImportFactory(new PanoramaPublicMetadataImporter.Factory());
 
         FileContentService fileContentService = FileContentService.get();
         if (null != fileContentService)

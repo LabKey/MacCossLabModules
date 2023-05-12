@@ -6,6 +6,7 @@ import org.junit.experimental.categories.Category;
 import org.labkey.api.util.FileUtil;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
+import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
@@ -20,7 +21,9 @@ import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PipelineStatusTable;
 import org.labkey.test.util.PortalHelper;
+import org.openqa.selenium.WebElement;
 
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -304,8 +307,9 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
 
         // Import Skyline documents to the folder
         importData(SKY_FILE_1, 1);
-        importData(SKY_FILE_SMALLMOL_PEP, 2);
-        importData(QC_1_FILE, 3, false);
+        importData(QC_1_FILE, 2, false);
+        importDataInSubfolder(getSampleDataFolder() + SKY_FILE_SMALLMOL_PEP, "SmallMoleculeFiles", 3);
+
         // Upload some raw files
         portalHelper.click(Locator.folderTab("Raw Data"));
         _fileBrowserHelper.uploadFile(getSampleDataPath(RAW_FILE_WIFF));
@@ -341,8 +345,8 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         TargetedMSRunsTable runsTable = new TargetedMSRunsTable(this);
         runsTable.deleteRun(SKY_FILE_SMALLMOL_PEP); // delete the run
         goToModule("FileContent");
-        _fileBrowserHelper.deleteFile(SKY_FILE_SMALLMOL_PEP); // delete the .sky.zip
-        _fileBrowserHelper.deleteFile(FileUtil.getBaseName(SKY_FILE_SMALLMOL_PEP, 2)); // delete the exploded folder
+        _fileBrowserHelper.deleteFile("SmallMoleculeFiles/" + SKY_FILE_SMALLMOL_PEP); // delete the .sky.zip
+        _fileBrowserHelper.deleteFile("SmallMoleculeFiles/" + FileUtil.getBaseName(SKY_FILE_SMALLMOL_PEP, 2)); // delete the exploded folder
 
         // Rename one of the raw files
         portalHelper.click(Locator.folderTab("Raw Data"));
@@ -375,6 +379,31 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         //  - Renamed file in the submitted folder (Site52_041009_Study9S_Phase-I.wiff -> Site52_041009_Study9S_Phase-I.wiff.RENAMED):
         //    should still be named Site52_041009_Study9S_Phase-I.wiff in the previous copy (Test Copy 3 V.1),
         //    and link to Site52_041009_Study9S_Phase-I.wiff.RENAMED in the current copy (Test Copy 3)
+    }
+
+    private void importDataInSubfolder(String file, String subfolder, int jobCount)
+    {
+        Locator.XPathLocator importButtonLoc = Locator.lkButton("Process and Import Data");
+        WebElement importButton = importButtonLoc.findElementOrNull(getDriver());
+        if (null == importButton)
+        {
+            goToModule("Pipeline");
+            importButton = importButtonLoc.findElement(getDriver());
+        }
+        clickAndWait(importButton);
+        String fileName = Paths.get(file).getFileName().toString();
+        if (!_fileBrowserHelper.fileIsPresent(subfolder))
+        {
+            _fileBrowserHelper.createFolder(subfolder);
+        }
+        _fileBrowserHelper.selectFileBrowserItem("/" + subfolder + "/");
+        if (!_fileBrowserHelper.fileIsPresent(fileName))
+        {
+            _fileBrowserHelper.uploadFile(TestFileUtils.getSampleData("TargetedMS/" + file));
+        }
+        _fileBrowserHelper.importFile(fileName, "Import Skyline Results");
+        waitForText("Skyline document import");
+        waitForPipelineJobsToComplete(jobCount, file, false);
     }
 
     @Override

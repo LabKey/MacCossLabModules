@@ -35,6 +35,9 @@ public class PanoramaPublicManager
     private static final Logger _log = LogManager.getLogger(PanoramaPublicManager.class);
 
     public static String PANORAMA_PUBLIC_FILES = "Panorama Public Files";
+    public static String PANORAMA_PUBLIC_METADATA = "Panorama Public Experiment Metadata";
+    public static int PRIORITY_PANORAMA_PUBLIC_METADATA = 1000;
+    public static int PRIORITY_PANORAMA_PUBLIC_FILES = PRIORITY_PANORAMA_PUBLIC_METADATA + 1;
 
     // Register symlinks created when copying files to Panorama Public
     private PanoramaPublicManager()

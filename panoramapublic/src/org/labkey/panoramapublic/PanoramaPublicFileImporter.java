@@ -1,11 +1,11 @@
 package org.labkey.panoramapublic;
 
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.admin.AbstractFolderImportFactory;
 import org.labkey.api.admin.FolderImportContext;
 import org.labkey.api.admin.FolderImporter;
+import org.labkey.api.admin.ImportException;
 import org.labkey.api.admin.SubfolderWriter;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
@@ -35,8 +35,6 @@ import java.util.Set;
  */
 public class PanoramaPublicFileImporter implements FolderImporter
 {
-    private static final Logger _log = LogManager.getLogger(PanoramaPublicFileImporter.class);
-
     @Override
     public String getDataType()
     {
@@ -52,6 +50,8 @@ public class PanoramaPublicFileImporter implements FolderImporter
     @Override
     public void process(@Nullable PipelineJob job, FolderImportContext ctx, VirtualFile root) throws Exception
     {
+        Logger log = ctx.getLogger();
+
         FileContentService fcs = FileContentService.get();
         if (null == fcs)
             return;
@@ -60,13 +60,13 @@ public class PanoramaPublicFileImporter implements FolderImporter
 
         if (null == targetRoot)
         {
-            _log.error("File copy target folder not found: " + ctx.getContainer().getPath());
+            log.error("File copy target folder not found: " + ctx.getContainer().getPath());
             return;
         }
 
         if (null == job)
         {
-            _log.error("Pipeline job not found.");
+            log.error("Pipeline job not found.");
             return;
         }
 
@@ -83,13 +83,14 @@ public class PanoramaPublicFileImporter implements FolderImporter
 
             if (!targetFiles.exists())
             {
-                _log.warn("Panorama public file copy target not found. Creating directory: " + targetFiles);
+                log.warn("Panorama public file copy target not found. Creating directory: " + targetFiles);
                 Files.createDirectories(targetFiles.toPath());
             }
 
-            PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(j.getUser(), j.getContainer(), sourceFiles, targetFiles, false);
+            log.info("Moving files and creating sym links in folder " + ctx.getContainer().getPath());
+            PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(j.getUser(), j.getContainer(), sourceFiles, targetFiles, false, log);
 
-            alignDataFileUrls(j.getUser(), ctx.getContainer(), root);
+            alignDataFileUrls(j.getUser(), ctx.getContainer(), root, log);
         }
     }
 
@@ -107,19 +108,22 @@ public class PanoramaPublicFileImporter implements FolderImporter
         return allRuns;
     }
 
-    private void alignDataFileUrls(User user, Container targetContainer, VirtualFile root) throws BatchValidationException
+    private void alignDataFileUrls(User user, Container targetContainer, VirtualFile root, Logger log) throws BatchValidationException, ImportException
     {
+        log.info("Aligning data files urls in folder: " + targetContainer.getPath());
+
         FileContentService fcs = FileContentService.get();
         if (null == fcs)
             return;
+
+        boolean errors = false;
 
         for (ExpRun run : getAllExpRuns(targetContainer))
         {
             Path fileRootPath = fcs.getFileRootPath(run.getContainer(), FileContentService.ContentType.files);
             if(fileRootPath == null || !Files.exists(fileRootPath))
             {
-                _log.error("File root path for container " + run.getContainer().getPath() + " does not exist: " + fileRootPath);
-                return;
+                throw new ImportException("File root path for container " + run.getContainer().getPath() + " does not exist: " + fileRootPath);
             }
 
             for (ExpData data : run.getAllDataUsedByRun())
@@ -143,11 +147,16 @@ public class PanoramaPublicFileImporter implements FolderImporter
                         }
                         else
                         {
-                            _log.error("Data file not found: " + newDataPath.toUri());
+                            log.error("Data file not found: " + newDataPath.toUri());
+                            errors = true;
                         }
                     }
                 }
             }
+        }
+        if (errors)
+        {
+            throw new ImportException("Data files urls could not be aligned.");
         }
     }
 
@@ -163,7 +172,7 @@ public class PanoramaPublicFileImporter implements FolderImporter
         public int getPriority()
         {
             // We want this to run last to do exp.data.datafileurl cleanup
-            return 1000;
+            return PanoramaPublicManager.PRIORITY_PANORAMA_PUBLIC_FILES;
         }
     }
 }

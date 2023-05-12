@@ -5650,7 +5650,7 @@ public class PanoramaPublicController extends SpringActionController
                 {
                     // Display the version only if there is more than one version of this dataset on Panorama Public
                     _version = _experimentAnnotations.getStringVersion(maxVersion);
-                    if (_experimentAnnotations.getDataVersion().equals(maxVersion))
+                    if (_experimentAnnotations.getDataVersion() != null && _experimentAnnotations.getDataVersion().equals(maxVersion))
                     {
                         // This is the current version; Display a link to see all published versions
                         _versionsUrl = new ActionURL(PanoramaPublicController.ShowPublishedVersions.class, _experimentAnnotations.getContainer());

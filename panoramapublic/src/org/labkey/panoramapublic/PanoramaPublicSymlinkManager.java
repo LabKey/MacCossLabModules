@@ -3,6 +3,7 @@ package org.labkey.panoramapublic;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.ContainerService;
@@ -111,10 +112,10 @@ public class PanoramaPublicSymlinkManager
             if (null != sourceContainer)
             {
                 handleContainerSymlinks(sourceContainer, (link, target) -> {
-                    Files.move(target, link, REPLACE_EXISTING);
-                    _log.info("File moved from " + target + " to " + link);
+                Files.move(target, link, REPLACE_EXISTING);
+                _log.info("File moved from " + target + " to " + link);
 
-                    fireSymlinkUpdate(target, link);
+                fireSymlinkUpdate(target, link);
                 });
             }
         }
@@ -177,8 +178,12 @@ public class PanoramaPublicSymlinkManager
         });
     }
 
-    public void moveAndSymLinkDirectory(User user, Container c, File source, File target, boolean createSourceSymLinks) throws IOException
+    public void moveAndSymLinkDirectory(User user, Container c, File source, File target, boolean createSourceSymLinks, @Nullable Logger log) throws IOException
     {
+        if (null == log)
+        {
+            log = _log;
+        }
         FileContentService fcs = FileContentService.get();
         if (null == fcs)
             throw new RuntimeException("Unable to access FileContentService");
@@ -194,10 +199,10 @@ public class PanoramaPublicSymlinkManager
                     if (!Files.exists(targetPath))
                     {
                         Files.createDirectory(targetPath);
-                        _log.info("Directory created: " + targetPath);
+                        log.debug("Directory created: " + targetPath);
                     }
 
-                    moveAndSymLinkDirectory(user, c, file, targetPath.toFile(), createSourceSymLinks);
+                    moveAndSymLinkDirectory(user, c, file, targetPath.toFile(), createSourceSymLinks, log);
                 }
                 else
                 {
@@ -230,10 +235,10 @@ public class PanoramaPublicSymlinkManager
                         fcs.fireFileCreateEvent(targetPath, user, c);
 
                         fireSymlinkUpdate(oldPath, targetPath);
-                        _log.info("File moved from " + oldPath + " to " + targetPath);
+                        log.debug("File moved from " + oldPath + " to " + targetPath);
 
                         Path symlink = Files.createSymbolicLink(oldPath, targetPath);
-                        _log.info("Symlink created: " + symlink);
+                        log.debug("Symlink created: " + symlink);
                     }
                     else
                     {
@@ -247,7 +252,7 @@ public class PanoramaPublicSymlinkManager
                     if (createSourceSymLinks)
                     {
                         Path symlink = Files.createSymbolicLink(filePath, targetPath);
-                        _log.info("Symlink created: " + symlink);
+                        log.debug("Symlink created: " + symlink);
                     }
                 }
             }
