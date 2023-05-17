@@ -27,6 +27,7 @@ import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
+import org.labkey.panoramapublic.query.JournalManager;
 
 public class PanoramaPublicManager
 {
@@ -39,7 +40,6 @@ public class PanoramaPublicManager
     public static int PRIORITY_PANORAMA_PUBLIC_METADATA = 1000;
     public static int PRIORITY_PANORAMA_PUBLIC_FILES = PRIORITY_PANORAMA_PUBLIC_METADATA + 1;
 
-    // Register symlinks created when copying files to Panorama Public
     private PanoramaPublicManager()
     {
         // prevent external construction with a private default constructor
@@ -155,7 +155,11 @@ public class PanoramaPublicManager
         return PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container, TargetedMSService.RAW_FILES_TAB);
     }
 
-
-
-
+    public static boolean canBeSymlinkTarget(Container container)
+    {
+        // Folders in a journal project (e.g. Panorama Public) are the only ones that can have symlink targets.
+        // Folders in other projects can contain symlinks but no symlink targets.
+        Container project = container.getProject();
+        return project != null ? JournalManager.isJournalProject(project) : false;
+    }
 }

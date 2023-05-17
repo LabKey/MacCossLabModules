@@ -13,15 +13,19 @@ import org.labkey.api.security.User;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
@@ -104,20 +108,64 @@ public class PanoramaPublicSymlinkManager
         return File.separator + path + File.separator;
     }
 
-    public void fireSymlinkCopiedExperimentDelete(ExperimentAnnotations expAnnot)
+    public void fireSymlinkCopiedExperimentDelete(ExperimentAnnotations expAnnot, Container container)
     {
-        if (null != expAnnot.getSourceExperimentPath())
+        Path deletedContainerPath = FileContentService.get().getFileRootPath(container, FileContentService.ContentType.files);
+
+        if (expAnnot.getDataVersion() != null && !ExperimentAnnotationsManager.isCurrentVersion(expAnnot))
         {
-            Container sourceContainer = ContainerService.get().getForPath(expAnnot.getSourceExperimentPath());
-            if (null != sourceContainer)
+            // Don't do anything. This folder for this experiment should not have any data files that are targets of symlinks.
+        }
+        List<ExperimentAnnotations> versions = ExperimentAnnotationsManager.getPublishedVersionsOfExperiment(expAnnot.getSourceExperimentId());
+
+        if (versions.size() > 1)
+        {
+            ExperimentAnnotations nextHighestVersion = versions.stream()
+                    .filter(version -> version.getDataVersion() != null && !version.getDataVersion().equals(expAnnot.getDataVersion()))
+                    .sorted(Comparator.comparing(ExperimentAnnotations::getDataVersion).reversed())
+                    .findFirst().orElse(null);
+
+            if (nextHighestVersion != null)
             {
-                handleContainerSymlinks(sourceContainer, (link, target) -> {
+                Container versionContainer = nextHighestVersion.getContainer();
+                handleContainerSymlinks(versionContainer, (link, target) -> {
+                    if (!target.startsWith(deletedContainerPath))
+                    {
+                        return;
+                    }
+                    Files.move(target, link, REPLACE_EXISTING); // Move the files back to the next highest version of the experiment
+                    _log.info("File moved from " + target + " to " + link);
+
+                    // This should update the symlinks in the submitted folder as well as
+                    // symlinks in versions older than this one to point to the files in the next highest version.
+                    fireSymlinkUpdate(target, link);
+                });
+            }
+        }
+
+        // If there were no previous versions then move the files back to the submitted folder.
+        // This will also take care of the case where there is a previous version but some files in the folder being
+        // deleted are not in the previous version (e.g. new files added to the source folder when data was resubmitted).
+        // These files should be moved back to the submitted folder
+        ExperimentAnnotations sourceExperiment = ExperimentAnnotationsManager.get(expAnnot.getSourceExperimentId());
+        Container sourceContainer = sourceExperiment != null ? sourceExperiment.getContainer() : null;
+        if (null == sourceContainer && null != expAnnot.getSourceExperimentPath())
+        {
+            // Submitter may have deleted the ExperimentAnnotations in their folder. Try to lookup by sourceExperimentPath
+            sourceContainer = ContainerService.get().getForPath(expAnnot.getSourceExperimentPath());
+        }
+        if (null != sourceContainer)
+        {
+            handleContainerSymlinks(sourceContainer, (link, target) -> {
+                if (!target.startsWith(deletedContainerPath))
+                {
+                    return;
+                }
                 Files.move(target, link, REPLACE_EXISTING);
                 _log.info("File moved from " + target + " to " + link);
 
-                fireSymlinkUpdate(target, link);
-                });
-            }
+                fireSymlinkUpdate(target, link); // TODO: do we need this here? We don't really want any symlinks targeting the source folder.
+            });
         }
     }
 
@@ -310,10 +358,16 @@ public class PanoramaPublicSymlinkManager
         }
 
         if(linkInvalidTarget.size() > 0)
-            _log.error("Symlinks with invalid targets: " + linkInvalidTarget);
+        {
+            String linkInvalidTargets = linkInvalidTarget.entrySet().stream().map(String::valueOf).collect(Collectors.joining("\n"));
+            _log.error(linkInvalidTarget.size() + " Symlinks with invalid targets: \n" + linkInvalidTargets);
+        }
 
         if(linkWithSymlinkTarget.size() > 0)
-            _log.error("Symlinks targeting symlinks: " + linkWithSymlinkTarget);
+        {
+            String linkWithSymlinkTargets = linkWithSymlinkTarget.entrySet().stream().map(String::valueOf).collect(Collectors.joining("\n"));
+            _log.error(linkWithSymlinkTarget.size() + " Symlinks targeting symlinks: \n" + linkWithSymlinkTargets);
+        }
 
         return linkInvalidTarget.size() == 0 && linkWithSymlinkTarget.size() == 0;
     }

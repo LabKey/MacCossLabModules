@@ -40,6 +40,8 @@ import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
 
 import java.beans.PropertyChangeEvent;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -74,13 +76,16 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     {
         JournalManager.deleteProjectJournal(c, user);
 
-        ExperimentService.get().getExperiments(c, user, false, false).forEach(experiment -> {
-            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.getForExperimentId(experiment.getRowId());
-            if (null != expAnnot && null != expAnnot.getSourceExperimentPath())
+        if (PanoramaPublicManager.canBeSymlinkTarget(c)) // Fire the event only if the container being moved is in the Panorama Public project.
+        {
+            // Look for an experiment that includes data in the given container.  This could be an experiment defined
+            // in the given container, or in an ancestor container that has 'IncludeSubfolders' set to true.
+            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.getExperimentIncludesContainer(c);
+            if (null != expAnnot)
             {
-                PanoramaPublicSymlinkManager.get().fireSymlinkCopiedExperimentDelete(expAnnot);
+                PanoramaPublicSymlinkManager.get().fireSymlinkCopiedExperimentDelete(expAnnot, c);
             }
-        });
+        }
 
         // Remove symlinks in the folder and targeting the folder
         FileContentService fcs = FileContentService.get();
@@ -96,14 +101,17 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     @Override
     public void containerMoved(Container c, Container oldParent, User user)
     {
-        // Update symlinks to new target
-        FileContentService fcs = FileContentService.get();
-        if (fcs != null)
+        if (PanoramaPublicManager.canBeSymlinkTarget(oldParent)) // Fire the event only if the container being moved is in the Panorama Public project.
         {
-            if (fcs.getFileRoot(oldParent) != null && fcs.getFileRoot(c) != null)
+            // Update symlinks to new target
+            FileContentService fcs = FileContentService.get();
+            if (fcs != null)
             {
-                PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(
-                        fcs.getFileRoot(oldParent).getPath(), fcs.getFileRoot(c).getPath());
+                if (fcs.getFileRoot(oldParent) != null && fcs.getFileRoot(c) != null)
+                {
+                    PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(
+                            fcs.getFileRoot(oldParent).getPath(), fcs.getFileRoot(c).getPath());
+                }
             }
         }
     }
@@ -121,7 +129,21 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
         if (evt.getPropertyName().equals(ContainerManager.Property.Name.name())
                 && evt instanceof ContainerManager.ContainerPropertyChangeEvent ce)
         {
-            PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer((String) ce.getOldValue(), (String) ce.getNewValue());
+            Container c = ((ContainerManager.ContainerPropertyChangeEvent) evt).container;
+
+            if (PanoramaPublicManager.canBeSymlinkTarget(c)) // Fire the event only if a folder in the Panorama Public project is being renamed.
+            {
+                FileContentService fcs = FileContentService.get();
+                if (fcs != null)
+                {
+                    Container parent = c.getParent();
+                    Path parentPath = fcs.getFileRootPath(parent);
+                    // ce.getOldValue() and ce.getNewValue() are just the names of the old and new containers. We need the full path.
+                    Path oldPath = parentPath.resolve((String) ce.getOldValue());
+                    Path newPath = parentPath.resolve((String) ce.getNewValue());
+                    PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldPath.toString(), newPath.toString());
+                }
+            }
         }
     }
 
