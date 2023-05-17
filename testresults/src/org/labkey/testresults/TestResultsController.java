@@ -343,7 +343,7 @@ public class TestResultsController extends SpringActionController
         {
             List<Integer> foundRuns = new ArrayList<>();
             SQLFragment sqlFragment = new SQLFragment();
-            sqlFragment.append("SELECT * FROM " + TestResultsSchema.getTableInfoTrain() + ";");
+            sqlFragment.append("SELECT * FROM " + TestResultsSchema.getTableInfoTrain());
             SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
             sqlSelector.forEach(rs -> foundRuns.add(rs.getInt("runid")));
             SimpleFilter filter = new SimpleFilter();
@@ -777,7 +777,7 @@ public class TestResultsController extends SpringActionController
                 new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentDelete);
             }
             SQLFragment sqlFragmentInsert = new SQLFragment();
-            sqlFragmentInsert.append("INSERT INTO " + TestResultsSchema.getTableInfoGlobalSettings() + " (warningb, errorb) VALUES (" + warningB + ", " + errorB +");");
+            sqlFragmentInsert.append("INSERT INTO " + TestResultsSchema.getTableInfoGlobalSettings() + " (warningb, errorb) VALUES (" + warningB + ", " + errorB +")");
             new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentInsert);
             transaction.commit();
             res.put("Message", "success!");
@@ -1556,10 +1556,8 @@ public class TestResultsController extends SpringActionController
     // executes a sql fragment to get runs and return an array RunDetail[]
     public static RunDetail[] executeGetRunsSQLFragment(SQLFragment fragment, Container c, boolean getXML, boolean getLog) {
         if (c != null) {
-            fragment.append(" AND container = ?;");
+            fragment.append(" AND container = ?");
             fragment.add(c.getEntityId());
-        } else {
-            fragment.append(";");
         }
         List<RunDetail> runs = new ArrayList<>();
         SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), fragment);
@@ -1711,7 +1709,7 @@ public class TestResultsController extends SpringActionController
 //        filter.addCondition()
 //        TestPassDetail[] passes = new TableSelector(TestResultsSchema.getInstance().getTableInfoTestFails(), filter, null).getArray(TestPassDetail.class);
         sqlFragment.append(" SELECT * FROM testresults.testpasses WHERE id = ANY(SELECT MAX(id) FROM " +
-                "testresults.testpasses WHERE (testrunid = ANY(?)) GROUP BY testrunid);");
+                "testresults.testpasses WHERE (testrunid = ANY(?)) GROUP BY testrunid)");
         sqlFragment.add(runIds);
         SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
         List<TestPassDetail> passes = new ArrayList<>();
