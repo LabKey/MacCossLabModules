@@ -8,7 +8,7 @@ import org.labkey.api.admin.FolderImporter;
 import org.labkey.api.admin.ImportException;
 import org.labkey.api.admin.SubfolderWriter;
 import org.labkey.api.data.Container;
-import org.labkey.api.data.ContainerManager;
+import org.labkey.api.data.ContainerService;
 import org.labkey.api.exp.api.ExpData;
 import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentService;
@@ -24,9 +24,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * This importer does a file move instead of copy to the temp directory and creates a symlink in place of the original
@@ -78,7 +76,8 @@ public class PanoramaPublicFileImporter implements FolderImporter
             String subProject = root.getLocation().substring(root.getLocation().lastIndexOf(divider) + divider.length());
             subProject = subProject.replace(File.separator + SubfolderWriter.DIRECTORY_NAME, "");
 
-            File sourceFiles = Paths.get(fcs.getFileRoot(expJob.getExportSourceContainer()).getPath(), subProject, FileContentService.FILES_LINK).toFile();
+            Path sourcePath = Paths.get(fcs.getFileRoot(expJob.getExportSourceContainer()).getPath(), subProject);
+            File sourceFiles = Paths.get(sourcePath.toString(), FileContentService.FILES_LINK).toFile();
 
             if (!targetFiles.exists())
             {
@@ -89,22 +88,16 @@ public class PanoramaPublicFileImporter implements FolderImporter
             log.info("Moving files and creating sym links in folder " + ctx.getContainer().getPath());
             PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(expJob.getUser(), expJob.getContainer(), sourceFiles, targetFiles, false, log);
 
-            alignDataFileUrls(expJob.getUser(), ctx.getContainer(), expJob.getExportSourceContainer(), log);
-        }
-    }
+            String sourceContainerPath = Paths.get(expJob.getExportSourceContainer().getPath(), subProject).toString().replace(File.separator, "/");
+            Container resolvedSourceContainer = ContainerService.get().getForPath(sourceContainerPath);
 
-    private List<ExpRun> getAllExpRuns(Container container)
-    {
-        Set<Container> children = ContainerManager.getAllChildren(container);
-        ExperimentService expService = ExperimentService.get();
-        List<ExpRun> allRuns = new ArrayList<>();
+            if (null == resolvedSourceContainer)
+            {
+                throw new ImportException("Invalid source container found for aligning data file urls: " + sourceContainerPath);
+            }
 
-        for(Container child: children)
-        {
-            List<? extends ExpRun> runs = expService.getExpRuns(child, null, null);
-            allRuns.addAll(runs);
+            alignDataFileUrls(expJob.getUser(), ctx.getContainer(), resolvedSourceContainer, log);
         }
-        return allRuns;
     }
 
     private void alignDataFileUrls(User user, Container targetContainer, Container sourceContainer, Logger log) throws BatchValidationException, ImportException
@@ -118,8 +111,8 @@ public class PanoramaPublicFileImporter implements FolderImporter
         boolean errors = false;
 
         // Get all source and target container runs
-        List<ExpRun> sourceRuns = getAllExpRuns(sourceContainer);
-        for (ExpRun run : getAllExpRuns(targetContainer))
+        List<? extends ExpRun> sourceRuns = ExperimentService.get().getExpRuns(sourceContainer, null, null);
+        for (ExpRun run : ExperimentService.get().getExpRuns(targetContainer, null, null))
         {
             // Find matching source run
             ExpRun sourceRun = sourceRuns.stream().filter(r -> r.getName().equals(run.getName())).findFirst().orElse(null);
