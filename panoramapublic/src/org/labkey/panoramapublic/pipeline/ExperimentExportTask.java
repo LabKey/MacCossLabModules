@@ -102,8 +102,7 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
                 FolderArchiveDataTypes.CONTAINER_SPECIFIC_MODULE_PROPERTIES, // "Container specific module properties",
                 FolderArchiveDataTypes.EXPERIMENTS_AND_RUNS, // "Experiments and runs"
                 FolderArchiveDataTypes.LISTS, // "Lists"
-                TargetedMSService.QC_FOLDER_DATA_TYPE,
-                PanoramaPublicManager.PANORAMA_PUBLIC_FILES // "Panorama Public files move and symlink"
+                TargetedMSService.QC_FOLDER_DATA_TYPE
         };
 
         Set<String> templateWriterSet = PageFlowUtil.set(templateWriterTypes);
