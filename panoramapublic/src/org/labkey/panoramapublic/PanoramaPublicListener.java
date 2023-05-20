@@ -40,7 +40,6 @@ import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
 
 import java.beans.PropertyChangeEvent;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -76,44 +75,13 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     {
         JournalManager.deleteProjectJournal(c, user);
 
-        if (PanoramaPublicManager.canBeSymlinkTarget(c)) // Fire the event only if the container being moved is in the Panorama Public project.
-        {
-            // Look for an experiment that includes data in the given container.  This could be an experiment defined
-            // in the given container, or in an ancestor container that has 'IncludeSubfolders' set to true.
-            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.getExperimentIncludesContainer(c);
-            if (null != expAnnot)
-            {
-                PanoramaPublicSymlinkManager.get().fireSymlinkCopiedExperimentDelete(expAnnot, c);
-            }
-        }
-
-        // Remove symlinks in the folder and targeting the folder
-        FileContentService fcs = FileContentService.get();
-        if (fcs != null)
-        {
-            if (fcs.getFileRoot(c) != null)
-            {
-                PanoramaPublicSymlinkManager.get().fireSymlinkContainerDelete(fcs.getFileRoot(c).getPath());
-            }
-        }
+        PanoramaPublicSymlinkManager.get().beforeContainerDeleted(c);
     }
 
     @Override
     public void containerMoved(Container c, Container oldParent, User user)
     {
-        if (PanoramaPublicManager.canBeSymlinkTarget(oldParent)) // Fire the event only if the container being moved is in the Panorama Public project.
-        {
-            // Update symlinks to new target
-            FileContentService fcs = FileContentService.get();
-            if (fcs != null)
-            {
-                if (fcs.getFileRoot(oldParent) != null && fcs.getFileRoot(c) != null)
-                {
-                    PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(
-                            fcs.getFileRoot(oldParent).getPath(), fcs.getFileRoot(c).getPath());
-                }
-            }
-        }
+        PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldParent, c);
     }
 
     @Override
@@ -141,7 +109,7 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
                     // ce.getOldValue() and ce.getNewValue() are just the names of the old and new containers. We need the full path.
                     Path oldPath = parentPath.resolve((String) ce.getOldValue());
                     Path newPath = parentPath.resolve((String) ce.getNewValue());
-                    PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldPath.toString(), newPath.toString());
+                    PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldPath.toString(), newPath.toString(), c);
                 }
             }
         }

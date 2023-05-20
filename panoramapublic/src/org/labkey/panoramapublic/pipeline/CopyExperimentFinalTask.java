@@ -201,7 +201,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             FileContentService fcs = FileContentService.get();
             if (fcs != null)
             {
-                PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(jobSupport.getPreviousVersionName(), fcs.getFileRoot(job.getContainer()).getPath());
+                PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(jobSupport.getPreviousVersionName(),
+                        fcs.getFileRoot(job.getContainer()).getPath(), job.getContainer());
             }
         }
     }

@@ -19,8 +19,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -86,9 +88,8 @@ public class PanoramaPublicSymlinkManager
         }
     }
 
-    private void handleAllSymlinks(PanoramaPublicSymlinkHandler handler)
+    private void handleAllSymlinks(Set<Container> containers, PanoramaPublicSymlinkHandler handler)
     {
-        Set<Container> containers = ContainerManager.getAllChildrenWithModule(ContainerManager.getRoot(), ModuleLoader.getInstance().getModule(PanoramaPublicModule.class));
         for (Container container : containers)
         {
             Set<Container> tree = ContainerManager.getAllChildren(container);
@@ -108,22 +109,43 @@ public class PanoramaPublicSymlinkManager
         return File.separator + path + File.separator;
     }
 
-    public void fireSymlinkCopiedExperimentDelete(ExperimentAnnotations expAnnot, Container container)
+    public void beforeContainerDeleted(Container container)
     {
-        Path deletedContainerPath = FileContentService.get().getFileRootPath(container, FileContentService.ContentType.files);
+        if (PanoramaPublicManager.canBeSymlinkTarget(container)) // Fire the event only if the container being deleted is in the Panorama Public project.
+        {
+            // Look for an experiment that includes data in the given container.  This could be an experiment defined
+            // in the given container, or in an ancestor container that has 'IncludeSubfolders' set to true.
+            ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.getExperimentIncludesContainer(container);
+            if (null != expAnnot)
+            {
+                fireSymlinkCopiedExperimentDelete(expAnnot, container);
+            }
+        }
+    }
 
+    /**
+     *
+     * @param expAnnot experiment associated with the container being deleted
+     * @param container container being deleted. This could be a subfolder of the experiment container if the experiment
+     *                  is configured to include subfolders.
+     */
+    private void fireSymlinkCopiedExperimentDelete(ExperimentAnnotations expAnnot, Container container)
+    {
         if (expAnnot.getDataVersion() != null && !ExperimentAnnotationsManager.isCurrentVersion(expAnnot))
         {
-            // Don't do anything. This folder for this experiment should not have any data files that are targets of symlinks.
+            // This is an older version of the data on Panorama Public, so the folder should not have any files that are symlink targets.
+            return;
         }
+
+        Path deletedContainerPath = FileContentService.get().getFileRootPath(container, FileContentService.ContentType.files);
+
         List<ExperimentAnnotations> versions = ExperimentAnnotationsManager.getPublishedVersionsOfExperiment(expAnnot.getSourceExperimentId());
 
         if (versions.size() > 1)
         {
             ExperimentAnnotations nextHighestVersion = versions.stream()
                     .filter(version -> version.getDataVersion() != null && !version.getDataVersion().equals(expAnnot.getDataVersion()))
-                    .sorted(Comparator.comparing(ExperimentAnnotations::getDataVersion).reversed())
-                    .findFirst().orElse(null);
+                    .max(Comparator.comparing(ExperimentAnnotations::getDataVersion)).orElse(null);
 
             if (nextHighestVersion != null)
             {
@@ -138,7 +160,7 @@ public class PanoramaPublicSymlinkManager
 
                     // This should update the symlinks in the submitted folder as well as
                     // symlinks in versions older than this one to point to the files in the next highest version.
-                    fireSymlinkUpdate(target, link);
+                    fireSymlinkUpdate(target, link, container);
                 });
             }
         }
@@ -147,8 +169,7 @@ public class PanoramaPublicSymlinkManager
         // This will also take care of the case where there is a previous version but some files in the folder being
         // deleted are not in the previous version (e.g. new files added to the source folder when data was resubmitted).
         // These files should be moved back to the submitted folder
-        ExperimentAnnotations sourceExperiment = ExperimentAnnotationsManager.get(expAnnot.getSourceExperimentId());
-        Container sourceContainer = sourceExperiment != null ? sourceExperiment.getContainer() : null;
+        Container sourceContainer = ExperimentAnnotationsManager.getSourceExperimentContainer(expAnnot);
         if (null == sourceContainer && null != expAnnot.getSourceExperimentPath())
         {
             // Submitter may have deleted the ExperimentAnnotations in their folder. Try to lookup by sourceExperimentPath
@@ -164,37 +185,64 @@ public class PanoramaPublicSymlinkManager
                 Files.move(target, link, REPLACE_EXISTING);
                 _log.info("File moved from " + target + " to " + link);
 
-                fireSymlinkUpdate(target, link); // TODO: do we need this here? We don't really want any symlinks targeting the source folder.
+                // Symlinks in the source container point to -> current version container on Panorama Public
+                // Symlinks in previous versions of the data on Panorama Public point to -> current version container on Panorama Public
+                // Only the container with the current version of the data on Panorama Public can have symlink targets.
+                // Here we are moving the file back to the source container, which means none of the previous versions had this file.
+                // So we don't need to fireSymlinkUpdate since there should not be any other symlinks targeting this file.
             });
         }
     }
 
-    public void fireSymlinkContainerDelete(String container)
+    public void fireSymlinkUpdateContainer(Container oldContainer, Container newContainer)
     {
-        String containerPath = normalizeContainerPath(container);
-        handleAllSymlinks((link, target) -> {
-            if (String.valueOf(target).contains(containerPath))
+        // Update symlinks to new target
+        FileContentService fcs = FileContentService.get();
+        if (fcs != null)
+        {
+            if (fcs.getFileRoot(oldContainer) != null && fcs.getFileRoot(newContainer) != null)
             {
-                try
-                {
-                    Files.delete(link);
-                }
-                catch (IOException e)
-                {
-                    throw new RuntimeException(e);
-                }
+                fireSymlinkUpdateContainer(fcs.getFileRoot(oldContainer).getPath(), fcs.getFileRoot(newContainer).getPath(), oldContainer);
             }
-        });
+        }
     }
 
-    public void fireSymlinkUpdateContainer(String oldContainer, String newContainer)
+    public void fireSymlinkUpdateContainer(String oldContainer, String newContainer, Container container)
     {
-        String oldContainerPath = normalizeContainerPath(oldContainer);
-        String newContainerPath = normalizeContainerPath(newContainer);
-        handleAllSymlinks((link, target) -> {
-            if (String.valueOf(target).contains(oldContainerPath))
-            {
-                Path newTarget = Path.of(target.toString().replace(oldContainerPath, newContainerPath));
+        if (PanoramaPublicManager.canBeSymlinkTarget(container))
+        {
+            String oldContainerPath = normalizeContainerPath(oldContainer);
+            String newContainerPath = normalizeContainerPath(newContainer);
+
+            Set<Container> containers = getSymlinkContainers(container);
+            handleAllSymlinks(containers, (link, target) -> {
+                if (String.valueOf(target).contains(oldContainerPath))
+                {
+                    Path newTarget = Path.of(target.toString().replace(oldContainerPath, newContainerPath));
+                    try
+                    {
+                        Files.delete(link);
+                        Files.createSymbolicLink(link, newTarget);
+                    }
+                    catch (IOException e)
+                    {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+        }
+    }
+
+    public void fireSymlinkUpdate(Path oldTarget, Path newTarget, Container container)
+    {
+        if (PanoramaPublicManager.canBeSymlinkTarget(container)) // Only files in the Panorama Public project can be symlink targets.
+        {
+            Set<Container> containers = getSymlinkContainers(container);
+
+            handleAllSymlinks(containers, (link, target) -> {
+                if (!target.equals(oldTarget))
+                    return;
+
                 try
                 {
                     Files.delete(link);
@@ -204,26 +252,8 @@ public class PanoramaPublicSymlinkManager
                 {
                     throw new RuntimeException(e);
                 }
-            }
-        });
-    }
-
-    public void fireSymlinkUpdate(Path oldTarget, Path newTarget)
-    {
-        handleAllSymlinks((link, target) -> {
-            if (!target.equals(oldTarget))
-                return;
-
-            try
-            {
-                Files.delete(link);
-                Files.createSymbolicLink(link, newTarget);
-            }
-            catch (IOException e)
-            {
-                throw new RuntimeException(e);
-            }
-        });
+            });
+        }
     }
 
     public void moveAndSymLinkDirectory(User user, Container c, File source, File target, boolean createSourceSymLinks, @Nullable Logger log) throws IOException
@@ -282,7 +312,7 @@ public class PanoramaPublicSymlinkManager
                         Files.move(oldPath, targetPath, REPLACE_EXISTING);
                         fcs.fireFileCreateEvent(targetPath, user, c);
 
-                        fireSymlinkUpdate(oldPath, targetPath);
+                        fireSymlinkUpdate(oldPath, targetPath, c); // c is the job container, which is the target container on Panorama Public
                         log.debug("File moved from " + oldPath + " to " + targetPath);
 
                         Path symlink = Files.createSymbolicLink(oldPath, targetPath);
@@ -294,7 +324,7 @@ public class PanoramaPublicSymlinkManager
                         fcs.fireFileCreateEvent(targetPath, user, c);
 
                         Files.createSymbolicLink(filePath, targetPath);
-                        fireSymlinkUpdate(filePath, targetPath);
+                        // We don't need to update any symlinks here since the source container should not have any symlink targets.
                     }
 
                     if (createSourceSymLinks)
@@ -372,4 +402,34 @@ public class PanoramaPublicSymlinkManager
         return linkInvalidTarget.size() == 0 && linkWithSymlinkTarget.size() == 0;
     }
 
+    /**
+     * Returns a set of containers that can have symlinks that target files in targetContainer. This includes the source container,
+     * and containers with previous versions of the experiment. Only the container with the current version of the experiment
+     * can have symlink targets.
+     * @param targetContainer
+     * @return A set of containers that can have symlinks that target files in targetContainer
+     */
+    private static Set<Container> getSymlinkContainers(Container targetContainer)
+    {
+        if (PanoramaPublicManager.canBeSymlinkTarget(targetContainer))
+        {
+            ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.getExperimentIncludesContainer(targetContainer);
+
+            if (expAnnotations != null && expAnnotations.getSourceExperimentId() != null)
+            {
+                Set<Container> symlinkContainers = new HashSet<>();
+                Container sourceContainer = ExperimentAnnotationsManager.getSourceExperimentContainer(expAnnotations);
+                if (sourceContainer != null)
+                {
+                    symlinkContainers.add(sourceContainer);
+                }
+                List<ExperimentAnnotations> exptVersions = ExperimentAnnotationsManager.getPublishedVersionsOfExperiment(expAnnotations.getSourceExperimentId());
+                exptVersions.stream().map(ExperimentAnnotations::getContainer)
+                        .filter(c -> !c.equals(targetContainer))
+                        .forEach(symlinkContainers::add); // Add containers for other versions
+                return symlinkContainers;
+            }
+        }
+        return Collections.emptySet();
+    }
 }
