@@ -8,7 +8,6 @@ import org.labkey.api.admin.FolderImporter;
 import org.labkey.api.admin.ImportException;
 import org.labkey.api.admin.SubfolderWriter;
 import org.labkey.api.data.Container;
-import org.labkey.api.data.ContainerService;
 import org.labkey.api.exp.api.ExpData;
 import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentService;
@@ -25,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * This importer does a file move instead of copy to the temp directory and creates a symlink in place of the original
@@ -88,19 +88,11 @@ public class PanoramaPublicFileImporter implements FolderImporter
             log.info("Moving files and creating sym links in folder " + ctx.getContainer().getPath());
             PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(expJob.getUser(), expJob.getContainer(), sourceFiles, targetFiles, false, log);
 
-            String sourceContainerPath = Paths.get(expJob.getExportSourceContainer().getPath(), subProject).toString().replace(File.separator, "/");
-            Container resolvedSourceContainer = ContainerService.get().getForPath(sourceContainerPath);
-
-            if (null == resolvedSourceContainer)
-            {
-                throw new ImportException("Invalid source container found for aligning data file urls: " + sourceContainerPath);
-            }
-
-            alignDataFileUrls(expJob.getUser(), ctx.getContainer(), resolvedSourceContainer, log);
+            alignDataFileUrls(expJob.getUser(), ctx.getContainer(), log);
         }
     }
 
-    private void alignDataFileUrls(User user, Container targetContainer, Container sourceContainer, Logger log) throws BatchValidationException, ImportException
+    private void alignDataFileUrls(User user, Container targetContainer, Logger log) throws BatchValidationException, ImportException
     {
         log.info("Aligning data files urls in folder: " + targetContainer.getPath());
 
@@ -108,66 +100,48 @@ public class PanoramaPublicFileImporter implements FolderImporter
         if (null == fcs)
             return;
 
+        ExperimentService expService = ExperimentService.get();
+        List<? extends ExpRun> runs = expService.getExpRuns(targetContainer, null, null);
         boolean errors = false;
 
-        // Get all source and target container runs
-        List<? extends ExpRun> sourceRuns = ExperimentService.get().getExpRuns(sourceContainer, null, null);
-        for (ExpRun run : ExperimentService.get().getExpRuns(targetContainer, null, null))
+        Path fileRootPath = fcs.getFileRootPath(targetContainer, FileContentService.ContentType.files);
+        if(fileRootPath == null || !Files.exists(fileRootPath))
         {
-            // Find matching source run
-            ExpRun sourceRun = sourceRuns.stream().filter(r -> r.getName().equals(run.getName())).findFirst().orElse(null);
-            if (null == sourceRun)
-            {
-                log.error("Source run not found for run: " + run.getName());
-                errors = true;
-                continue;
-            }
+            throw new ImportException("File root path for container " + targetContainer.getPath() + " does not exist: " + fileRootPath);
+        }
 
-            Path targetRootPath = fcs.getFileRootPath(run.getContainer(), FileContentService.ContentType.files);
-            if(targetRootPath == null || !Files.exists(targetRootPath))
-            {
-                throw new ImportException("Target file root path for container " + run.getContainer().getPath() + " does not exist: " + targetRootPath);
-            }
+        for (ExpRun run : runs)
+        {
+            run.setFilePathRootPath(fileRootPath);
+            run.save(user);
+            log.debug("Setting filePathRoot on copied run: " + run.getName() + " to: " + fileRootPath);
 
-            // Get source path relative to file root and apply to target file root
-            String sourcePath = sourceRun.getFilePathRootPath().toString();
-            String relativeSource = sourcePath.substring(sourcePath.lastIndexOf(FileContentService.FILES_LINK) + FileContentService.FILES_LINK.length());
-            Path targetRunPath = Paths.get(targetRootPath.toString(), relativeSource);
-
-            // Update run file path
-            if (targetRunPath.toFile().exists())
-            {
-                run.setFilePathRoot(targetRunPath.toFile());
-                run.save(user);
-                log.debug("Updated copied run: " + run.getName() + " with file path: " + targetRunPath);
-            }
-            else
-            {
-                log.error("Run file path not found: " + targetRunPath);
-                errors = true;
-            }
-
-            // Update data file urls
             for (ExpData data : run.getAllDataUsedByRun())
             {
-                // Find matching source data
-                ExpData sourceData = sourceRun.getAllDataUsedByRun().stream().filter(d -> d.getName().equals(data.getName())).findFirst().orElse(null);
-                if (null != sourceData && null != sourceData.getDataFileUrl())
+                if (null != data.getRun() && data.getDataFileUrl().contains(FileContentService.FILES_LINK))
                 {
-                    // Get source data path relative to file root and apply to target data file root
-                    String sourceDataName = sourceData.getDataFileUrl().substring(sourceData.getDataFileUrl().lastIndexOf(FileContentService.FILES_LINK) + FileContentService.FILES_LINK.length());
-                    Path targetDataPath = Paths.get(targetRootPath.toString(), sourceDataName);
+                    String[] parts = Objects.requireNonNull(data.getFilePath()).toString().split("Run\\d+");
 
-                    // Update data file url
-                    if (targetDataPath.toFile().exists())
+                    if (parts.length > 1)
                     {
-                        data.setDataFileURI(targetDataPath.toUri());
-                        data.save(user);
-                        log.debug("Updated copied data: " + data.getName() + " with file path: " + targetDataPath);
+                        String fileName = parts[1];
+                        Path newDataPath = Paths.get(fileRootPath.toString(), fileName);
+
+                        if (newDataPath.toFile().exists())
+                        {
+                            data.setDataFileURI(newDataPath.toUri());
+                            data.save(user);
+                            log.debug("Setting dataFileUri on copied data: " + data.getName() + " to: " + newDataPath);
+                        }
+                        else
+                        {
+                            log.error("Data file not found: " + newDataPath.toUri());
+                            errors = true;
+                        }
                     }
                     else
                     {
-                        log.error("Data file url not found: " + sourceData.getDataFileUrl());
+                        log.error("Unexpected data file path. Could not align dataFileUri. " + data.getFilePath().toString());
                         errors = true;
                     }
                 }
