@@ -185,7 +185,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
     private void cleanupExportDirectory(User user, File directory) throws IOException
     {
-        List<? extends ExpData> datas = ExperimentService.get().getExpDatasUnderPath(directory.toPath());
+        List<? extends ExpData> datas = ExperimentService.get().getExpDatasAtAndUnderPath(directory.toPath());
         for (ExpData data : datas)
         {
             data.delete(user);
