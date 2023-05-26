@@ -10,7 +10,7 @@ dependencies {
     BuildUtils.addExternalDependency(
         project,
         new ExternalDependency(
-            "org.xerial:sqlite-jdbc:3.7.2",
+            "org.xerial:sqlite-jdbc:${sqliteJdbcVersion}",
             "SQLite JDBC Driver",
             "bitbucket.org",
             "https://bitbucket.org/xerial/sqlite-jdbc/wiki/Home",
