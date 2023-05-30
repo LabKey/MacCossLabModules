@@ -79,6 +79,8 @@ import org.labkey.panoramapublic.security.PanoramaPublicSubmitterRole;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -175,11 +177,67 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             cleanupExportDirectory(user, jobSupport.getExportDir());
 
+            verifySymlinks(sourceExperiment.getContainer(), container, true);
+            if (null != previousCopy)
+            {
+                verifySymlinks(previousCopy.getContainer(), container, false);
+            }
+
             // Create notifications. Do this at the end after everything else is done.
             PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), js.getJournalExperiment(), currentSubmission,
                     reviewer.first, reviewer.second, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
 
             transaction.commit();
+        }
+    }
+
+    /**
+     * Verify symlinks created during the copy process are valid symlinks and point to the target container.
+     * @param source    The copied experiment source container
+     * @param target    The target container on Panorma Public
+     * @param matchingPath  If true the target files will have the same relative path in the target container
+     */
+    private void verifySymlinks(Container source, Container target, boolean matchingPath)
+    {
+        FileContentService fcs = FileContentService.get();
+        if (fcs != null)
+        {
+            Path targetRoot = fcs.getFileRootPath(target);
+            if (null != targetRoot)
+            {
+                Path targetFileRoot = Path.of(targetRoot.toString(), File.separator);
+                PanoramaPublicSymlinkManager.get().handleContainerSymlinks(source, (sourceFile, targetFile) -> {
+
+                    // valid path
+                    if (!FileUtil.isFileAndExists(targetFile))
+                    {
+                        throw new IllegalStateException("Symlink " + sourceFile + " points to an invalid target " + targetFile);
+                    }
+
+                    // we don't want symlinks pointing at other symlinks
+                    if (Files.isSymbolicLink(targetFile))
+                    {
+                        throw new IllegalStateException("Symlink " + sourceFile + " points to another symlink " + targetFile);
+                    }
+
+                    // Check if symlink target is in the target container
+                    if (!targetFile.startsWith(targetFileRoot))
+                    {
+                        throw new IllegalStateException("Symlink " + sourceFile + " points to " + targetFile + " which is outside the target container " + target.getPath());
+                    }
+
+                    // Symlink targets should have exact same relative path as the source file. Previous versions will not
+                    // necessarily have same path so don't check.
+                    if (matchingPath)
+                    {
+                        String targetFileRelative = targetFile.toString().substring(targetFileRoot.toString().length());
+                        if (!sourceFile.toString().endsWith(targetFileRelative))
+                        {
+                            throw new IllegalStateException("Symlink " + sourceFile + " points to " + targetFile + " which is not at the same path as the source file " + sourceFile);
+                        }
+                    }
+                });
+            }
         }
     }
 
