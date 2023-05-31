@@ -41,7 +41,7 @@ public class PanoramaPublicFileImporter implements FolderImporter
     @Override
     public String getDescription()
     {
-        return null;
+        return "Panorama Public Files";
     }
 
     @Override
@@ -89,6 +89,9 @@ public class PanoramaPublicFileImporter implements FolderImporter
             PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(expJob.getUser(), expJob.getContainer(), sourceFiles, targetFiles, false, log);
 
             alignDataFileUrls(expJob.getUser(), ctx.getContainer(), log);
+        }
+        else {
+            log.error("PanoramaPublicFileImporter does not handle job type: " + job.getClass().getName());
         }
     }
 

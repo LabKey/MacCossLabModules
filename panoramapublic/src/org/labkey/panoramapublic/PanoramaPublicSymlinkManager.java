@@ -35,7 +35,10 @@ public class PanoramaPublicSymlinkManager
 {
     private static final Logger _log = LogHelper.getLogger(PanoramaPublicSymlinkManager.class, "Handling symlinks between public and private folders");
 
-    private static final boolean DEBUG_SYMLINKS_ON_WINDOWS = false; // Note: To debug on Windows, you must run as administrator
+    // Note: The production server running this code is Linux. Windows requires extra permissions to create symlinks.
+    // If running this code on a Windows server, the Panorama Public copy will not use symlinks unless this flag is set to true.
+    // Additionally, you will have to run the server (or IntelliJ) as an administrator to run with symlinks.
+    private static final boolean DEBUG_SYMLINKS_ON_WINDOWS = false; 
 
     private static final PanoramaPublicSymlinkManager _instance = new PanoramaPublicSymlinkManager();
 

@@ -10,7 +10,9 @@ import org.labkey.api.files.FileListener;
 import org.labkey.api.security.User;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Collections;
 
 public class PanoramaPublicFileListener implements FileListener
 {
@@ -41,7 +43,7 @@ public class PanoramaPublicFileListener implements FileListener
     }
 
     @Override
-    public void fileDeleted(@NotNull File deleted, @Nullable User user, @Nullable Container container)
+    public void fileDeleted(@NotNull Path deleted, @Nullable User user, @Nullable Container container)
     {
         ExpData data = ExperimentService.get().getExpDataByURL(deleted, container);
 
@@ -52,12 +54,12 @@ public class PanoramaPublicFileListener implements FileListener
     @Override
     public Collection<File> listFiles(@Nullable Container container)
     {
-        return null;
+        return Collections.emptyList();
     }
 
     @Override
     public SQLFragment listFilesQuery()
     {
-        return null;
+        throw new UnsupportedOperationException("Not implemented");
     }
 }

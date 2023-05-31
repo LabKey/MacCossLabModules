@@ -51,7 +51,7 @@ public class PanoramaPublicMetadataImporter implements FolderImporter
     @Override
     public String getDescription()
     {
-        return null;
+        return "Panorama Public Metadata";
     }
 
     @Override
