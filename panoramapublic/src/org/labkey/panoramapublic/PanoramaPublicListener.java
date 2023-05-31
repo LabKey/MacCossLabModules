@@ -97,7 +97,7 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
         if (evt.getPropertyName().equals(ContainerManager.Property.Name.name())
                 && evt instanceof ContainerManager.ContainerPropertyChangeEvent ce)
         {
-            Container c = ((ContainerManager.ContainerPropertyChangeEvent) evt).container;
+            Container c = ce.container;
 
             if (PanoramaPublicManager.canBeSymlinkTarget(c)) // Fire the event only if a folder in the Panorama Public project is being renamed.
             {
