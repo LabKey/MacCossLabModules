@@ -227,7 +227,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         goToDashboard();
         expWebPart = new TargetedMsExperimentWebPart(this);
         expWebPart.clickResubmit();
-        resubmitWithoutPxd(keepPrivate);
+        resubmitWithoutPxd(false, keepPrivate);
         goToDashboard();
         assertTextPresent("Copy Pending!");
     }
@@ -280,21 +280,6 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         }
         Assert.fail("Could not get reviewer email from support messages.");
         return null;
-    }
-
-    private void resubmitWithoutPxd(boolean keepPrivate)
-    {
-        clickAndWait(Locator.linkContainingText("Submit without a ProteomeXchange ID"));
-        waitForText("Resubmit Request to ");
-        if (!keepPrivate)
-        {
-            uncheck("Keep Private:");
-        }
-        click(Ext4Helper.Locators.ext4Button(("Resubmit")));
-        waitForText("Confirm resubmission request to");
-        click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
-        waitForText("Request resubmitted to");
-        click(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
     }
 
     private void verifyMakePublic(String projectName, String folderName, String user, boolean isSubmitter)

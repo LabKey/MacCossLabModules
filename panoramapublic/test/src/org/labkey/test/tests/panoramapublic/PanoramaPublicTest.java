@@ -3,27 +3,21 @@ package org.labkey.test.tests.panoramapublic;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.labkey.api.util.FileUtil;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
-import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentInsertPage;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
-import org.labkey.test.components.targetedms.TargetedMSRunsTable;
 import org.labkey.test.pages.pipeline.PipelineStatusDetailsPage;
 import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
-import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PipelineStatusTable;
 import org.labkey.test.util.PortalHelper;
-import org.openqa.selenium.WebElement;
 
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,8 +30,6 @@ import static org.junit.Assert.assertTrue;
 @BaseWebDriverTest.ClassTimeout(minutes = 7)
 public class PanoramaPublicTest extends PanoramaPublicBaseTest
 {
-    public static final String SAMPLEDATA_FOLDER = "panoramapublic/";
-
     private static final String SKY_FILE_1 = "Study9S_Site52_v1.sky.zip";
     private static final String RAW_FILE_WIFF = "Site52_041009_Study9S_Phase-I.wiff";
     private static final String RAW_FILE_WIFF_SCAN = RAW_FILE_WIFF + ".scan";
@@ -101,7 +93,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         impersonate(SUBMITTER);
         goToDashboard();
         expWebPart.clickResubmit();
-        resubmitWithoutPxd(true);
+        resubmitWithoutPxd(true, true);
         goToDashboard();
         assertTextPresent("Copy Pending!");
 
@@ -292,119 +284,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         assertTrue("Copy Job's log file not set to pipeline root", pipelineStatusDetailsPage.getFilePath().contains("@files"));  //Proxy check to see if Job's log file is set to the pipeline root.
     }
 
-    @Test
-    public void testSymLinks()
-    {
-        String projectName = getProjectName();
-        String sourceFolder = "Folder 3";
 
-        String targetFolder = "Test Copy 3";
-        String experimentTitle = "This is a test for Panorama Public symlinks";
-
-        setupSourceFolder(projectName, sourceFolder, SUBMITTER);
-        impersonate(SUBMITTER);
-        updateSubmitterAccountInfo("One");
-
-        // Import Skyline documents to the folder
-        importData(SKY_FILE_1, 1);
-        importData(QC_1_FILE, 2, false);
-        importDataInSubfolder(getSampleDataFolder() + SKY_FILE_SMALLMOL_PEP, "SmallMoleculeFiles", 3);
-
-        // Upload some raw files
-        portalHelper.click(Locator.folderTab("Raw Data"));
-        _fileBrowserHelper.uploadFile(getSampleDataPath(RAW_FILE_WIFF));
-        _fileBrowserHelper.uploadFile(getSampleDataPath(RAW_FILE_WIFF_SCAN));
-
-        // Add the "Targeted MS Experiment" webpart
-        TargetedMsExperimentWebPart expWebPart = createExperimentCompleteMetadata(experimentTitle);
-        expWebPart.clickSubmit();
-        String shortAccessUrl = submitWithoutPXId();
-
-        // Copy the experiment to the Panorama Public project
-        copyExperimentAndVerify(projectName, sourceFolder, null, experimentTitle, targetFolder, shortAccessUrl);
-        // TODO: verify symlinks after the first copy.  All files in the submitted folder should be symlinked to the files in the Panorama Public copy.
-
-        // Prepare to resubmit
-        goToProjectFolder(projectName, sourceFolder);
-        impersonate(SUBMITTER);
-
-        // Reorganize data in subfolders.
-        String subfolder1 = "SystemSuitability";
-        String subfolder2 = "ExperimentalData";
-        setupSubfolder(projectName, sourceFolder, subfolder1, FolderType.QC);
-        setupSubfolder(projectName, sourceFolder, subfolder2, FolderType.Experiment);
-
-        // Add QC document to the "SystemSuitability" subfolder
-        goToProjectFolder(projectName, sourceFolder + "/" + subfolder1);
-        importData(QC_1_FILE, 1, false);
-
-        // Add the small molecule document to "ExperimentalData" subfolder, and remove it from the parent folder
-        goToProjectFolder(projectName, sourceFolder + "/" + subfolder2);
-        importData(SKY_FILE_SMALLMOL_PEP, 1);
-        goToProjectFolder(projectName, sourceFolder);
-        TargetedMSRunsTable runsTable = new TargetedMSRunsTable(this);
-        runsTable.deleteRun(SKY_FILE_SMALLMOL_PEP); // delete the run
-        goToModule("FileContent");
-        _fileBrowserHelper.deleteFile("SmallMoleculeFiles/" + SKY_FILE_SMALLMOL_PEP); // delete the .sky.zip
-        _fileBrowserHelper.deleteFile("SmallMoleculeFiles/" + FileUtil.getBaseName(SKY_FILE_SMALLMOL_PEP, 2)); // delete the exploded folder
-
-        // Rename one of the raw files
-        portalHelper.click(Locator.folderTab("Raw Data"));
-        _fileBrowserHelper.renameFile(RAW_FILE_WIFF, RAW_FILE_WIFF + ".RENAMED");
-
-
-        // Include subfolders in the experiment
-        goToDashboard();
-        expWebPart = new TargetedMsExperimentWebPart(this);
-        expWebPart.clickMoreDetails();
-        clickButton("Include Subfolders");
-
-        // Resubmit
-        goToDashboard();
-        expWebPart.clickResubmit();
-        resubmitWithoutPxd(false);
-        goToDashboard();
-        assertTextPresent("Copy Pending!");
-
-        // Copy, and keep the previous copy
-        copyExperimentAndVerify(projectName, sourceFolder, List.of(subfolder1, subfolder2), experimentTitle,
-                2, // We are not deleting the first copy so this is version 2
-                true,
-                false, // Do not delete old copy
-                targetFolder,
-                shortAccessUrl);
-
-        // TODO: verify expected symlinks here.
-        //  - Files that were deleted from the submitted folder should not be moved from the old copy to the new one
-        //  - Renamed file in the submitted folder (Site52_041009_Study9S_Phase-I.wiff -> Site52_041009_Study9S_Phase-I.wiff.RENAMED):
-        //    should still be named Site52_041009_Study9S_Phase-I.wiff in the previous copy (Test Copy 3 V.1),
-        //    and link to Site52_041009_Study9S_Phase-I.wiff.RENAMED in the current copy (Test Copy 3)
-    }
-
-    private void importDataInSubfolder(String file, String subfolder, int jobCount)
-    {
-        Locator.XPathLocator importButtonLoc = Locator.lkButton("Process and Import Data");
-        WebElement importButton = importButtonLoc.findElementOrNull(getDriver());
-        if (null == importButton)
-        {
-            goToModule("Pipeline");
-            importButton = importButtonLoc.findElement(getDriver());
-        }
-        clickAndWait(importButton);
-        String fileName = Paths.get(file).getFileName().toString();
-        if (!_fileBrowserHelper.fileIsPresent(subfolder))
-        {
-            _fileBrowserHelper.createFolder(subfolder);
-        }
-        _fileBrowserHelper.selectFileBrowserItem("/" + subfolder + "/");
-        if (!_fileBrowserHelper.fileIsPresent(fileName))
-        {
-            _fileBrowserHelper.uploadFile(TestFileUtils.getSampleData("TargetedMS/" + file));
-        }
-        _fileBrowserHelper.importFile(fileName, "Import Skyline Results");
-        waitForText("Skyline document import");
-        waitForPipelineJobsToComplete(jobCount, file, false);
-    }
 
     @Override
     protected void setupSourceFolder(String projectName, String folderName, String ... adminUsers)
@@ -491,25 +371,6 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         clickAndWait(Locator.linkWithText(INCLUDE_SUBFOLDERS_AND_SUBMIT));
 
         return submitWithoutPXId();
-    }
-
-
-    private void resubmitWithoutPxd(boolean fromDataValidationPage)
-    {
-        if (fromDataValidationPage)
-        {
-            clickButton("Submit without a ProteomeXchange ID");
-        }
-        else
-        {
-            clickAndWait(Locator.linkContainingText("Submit without a ProteomeXchange ID"));
-        }
-        waitForText("Resubmit Request to ");
-        click(Ext4Helper.Locators.ext4Button(("Resubmit")));
-        waitForText("Confirm resubmission request to");
-        click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
-        waitForText("Request resubmitted to");
-        click(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
     }
 
     private void verifyVersionCount(String experimentTitle, int count)

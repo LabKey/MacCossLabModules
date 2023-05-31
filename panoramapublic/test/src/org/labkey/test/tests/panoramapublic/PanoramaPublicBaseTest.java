@@ -53,6 +53,12 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
     static final String REVIEWER_PREFIX = "panoramapublictest_reviewer";
 
+    static final String SKY_FILE_1 = "Study9S_Site52_v1.sky.zip";
+    static final String RAW_FILE_WIFF = "Site52_041009_Study9S_Phase-I.wiff";
+    static final String RAW_FILE_WIFF_SCAN = RAW_FILE_WIFF + ".scan";
+
+    static final String SAMPLEDATA_FOLDER = "panoramapublic/";
+
     PortalHelper portalHelper = new PortalHelper(this);
 
     @Override
@@ -226,6 +232,28 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     {
         clickButton("Continue with an Incomplete PX Submission");
         return submitFormAndGetAccessLink();
+    }
+
+    void resubmitWithoutPxd(boolean fromDataValidationPage, boolean keepPrivate)
+    {
+        if (fromDataValidationPage)
+        {
+            clickButton("Submit without a ProteomeXchange ID");
+        }
+        else
+        {
+            clickAndWait(Locator.linkContainingText("Submit without a ProteomeXchange ID"));
+        }
+        waitForText("Resubmit Request to ");
+        if (!keepPrivate)
+        {
+            uncheck("Keep Private:");
+        }
+        click(Ext4Helper.Locators.ext4Button(("Resubmit")));
+        waitForText("Confirm resubmission request to");
+        click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
+        waitForText("Request resubmitted to");
+        click(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
     }
 
     private String submitFormAndGetAccessLink()
