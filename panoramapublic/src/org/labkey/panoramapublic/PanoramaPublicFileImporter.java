@@ -90,9 +90,6 @@ public class PanoramaPublicFileImporter implements FolderImporter
 
             alignDataFileUrls(expJob.getUser(), ctx.getContainer(), log);
         }
-        else {
-            log.error("PanoramaPublicFileImporter does not handle job type: " + job.getClass().getName());
-        }
     }
 
     private void alignDataFileUrls(User user, Container targetContainer, Logger log) throws BatchValidationException, ImportException
