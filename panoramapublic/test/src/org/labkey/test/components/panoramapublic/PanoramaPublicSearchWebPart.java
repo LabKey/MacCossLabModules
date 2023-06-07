@@ -12,7 +12,6 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
-import java.util.Optional;
 
 public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearchWebPart.ElementCache>
 {
@@ -165,18 +164,9 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
 
     private DataRegionTable doAndWaitForUpdate(Runnable runnable)
     {
-        DataRegionTable.DataRegionFinder dataRegionFinder = new DataRegionTable.DataRegionFinder(getDriver());
-        Optional<DataRegionTable> optionalDataRegion = dataRegionFinder.findOptional();
-        if (optionalDataRegion.isPresent())
-        {
-            optionalDataRegion.get().doAndWaitForUpdate(runnable);
-            return optionalDataRegion.get();
-        }
-        else
-        {
-            runnable.run();
-            return dataRegionFinder.refindWhenNeeded(this);
-        }
+        // Can't use `DataRegionTable.doAndWaitForUpdate`. Doesn't reuse the same data region.
+        getWrapper().doAndWaitForPageSignal(runnable, DataRegionTable.UPDATE_SIGNAL);
+        return new DataRegionTable.DataRegionFinder(getDriver()).refindWhenNeeded(this);
     }
 
     protected class ElementCache extends BodyWebPart<?>.ElementCache
