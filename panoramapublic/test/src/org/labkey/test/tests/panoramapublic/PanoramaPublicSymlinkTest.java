@@ -13,6 +13,8 @@ import org.labkey.test.components.targetedms.TargetedMSRunsTable;
 import org.labkey.test.util.APIContainerHelper;
 import org.openqa.selenium.WebElement;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
@@ -130,7 +132,7 @@ public class PanoramaPublicSymlinkTest extends PanoramaPublicBaseTest
 
         setupSourceFolder(projectName, sourceFolder, SUBMITTER);
         impersonate(SUBMITTER);
-        updateSubmitterAccountInfo("One");
+        updateSubmitterAccountInfo("Rollback");
 
         // Import Skyline documents to the folder
         importData(SKY_FILE_1, 1);
@@ -161,7 +163,6 @@ public class PanoramaPublicSymlinkTest extends PanoramaPublicBaseTest
         goToDashboard();
         expWebPart.clickResubmit();
         resubmitWithoutPxd(false, true);
-        goToDashboard();
         assertTextPresent("Copy Pending!");
 
         // Copy, and keep the previous copy
@@ -194,6 +195,25 @@ public class PanoramaPublicSymlinkTest extends PanoramaPublicBaseTest
         // v1_folder/@files/RawFiles/Site52_041009_Study9S_Phase-I.wiff -> current_copy/@files/RawFiles/Site52_041009_Study9S_Phase-I.wiff.RENAMED
         // v1_folder/@files/RawFiles/Site52_041009_Study9S_Phase-I.wiff.scan -- FILE SHOULD NOT EXISTS IN V.1 copy
 
+        log("Verifying files in source folder");
+        File filesLoc = TestFileUtils.getDefaultFileRoot(projectName + "/" + sourceFolder);
+        assertTrue("sky.zip should be sym link", Files.isSymbolicLink(new File(filesLoc, "/" + SKY_FILE_1).toPath()));
+        assertTrue("file(.sky) in the " + SKY_FOLDER_NAME + " is not sym link",
+                Files.isSymbolicLink(new File(filesLoc, "/" + SKY_FOLDER_NAME + "/" + SKY_FOLDER_NAME + ".sky").toPath()));
+        assertTrue("file(.skyd) in the " + SKY_FOLDER_NAME + " is not sym link",
+                Files.isSymbolicLink(new File(filesLoc, "/" + SKY_FOLDER_NAME + "/" + SKY_FOLDER_NAME + ".skyd").toPath()));
+        assertTrue("Rename raw file missing", new File(filesLoc + "/RawFiles/" + RAW_FILE_WIFF + ".RENAMED").exists());
+        assertTrue("Additional raw file missing", new File(filesLoc + "/RawFiles/" + RAW_FILE_WIFF_SCAN).exists());
+
+        log("Verifying files in copied folder");
+        filesLoc = TestFileUtils.getDefaultFileRoot(PANORAMA_PUBLIC + "/" + v1Folder);
+        assertTrue(v1Folder + " sky.zip should be sym link", Files.isSymbolicLink(new File(filesLoc, "/" + SKY_FILE_1).toPath()));
+        assertTrue(v1Folder + " file(.sky) in the " + SKY_FOLDER_NAME + " should be a sym link",
+                Files.isSymbolicLink(new File(filesLoc, "/" + SKY_FOLDER_NAME + "/" + SKY_FOLDER_NAME + ".sky").toPath()));
+        assertTrue(v1Folder + " file(.skyd) in the " + SKY_FOLDER_NAME + " should be a sym link",
+                Files.isSymbolicLink(new File(filesLoc, "/" + SKY_FOLDER_NAME + "/" + SKY_FOLDER_NAME + ".skyd").toPath()));
+        assertFalse("Rename raw file should not be present", new File(filesLoc + "/RawFiles/" + RAW_FILE_WIFF + ".RENAMED").exists());
+        assertFalse("Additional new raw file should not be present", new File(filesLoc + "/RawFiles/" + RAW_FILE_WIFF_SCAN).exists());
 
         APIContainerHelper apiContainerHelper = new APIContainerHelper(this);
 
@@ -212,6 +232,16 @@ public class PanoramaPublicSymlinkTest extends PanoramaPublicBaseTest
         // In V.1 version folder:
         // NONE OF THE FILES SHOULD BE SYMLINKS
 
+        log("Verifying files in target folder after delete");
+        filesLoc = TestFileUtils.getDefaultFileRoot(PANORAMA_PUBLIC + "/" + v1Folder);
+        assertFalse("sky.zip should not be sym link", Files.isSymbolicLink(new File(filesLoc, "/" + SKY_FILE_1).toPath()));
+        assertFalse(v1Folder + " file(.sky) in the " + SKY_FOLDER_NAME + " should be a sym link",
+                Files.isSymbolicLink(new File(filesLoc, "/" + SKY_FOLDER_NAME + "/" + SKY_FOLDER_NAME + ".sky").toPath()));
+        assertFalse(v1Folder + " file(.skyd) in the " + SKY_FOLDER_NAME + " should be a sym link",
+                Files.isSymbolicLink(new File(filesLoc, "/" + SKY_FOLDER_NAME + "/" + SKY_FOLDER_NAME + ".skyd").toPath()));
+        assertTrue("Original raw file should be present", new File(filesLoc + "/RawFiles/" + RAW_FILE_WIFF).exists());
+        assertFalse("Rename raw file should not be present", new File(filesLoc + "/RawFiles/" + RAW_FILE_WIFF + ".RENAMED").exists());
+        assertFalse("Additional new raw file should not be present", new File(filesLoc + "/RawFiles/" + RAW_FILE_WIFF_SCAN).exists());
 
         // Delete the older copy as well. Symlinked files should be moved back to the source folder
         apiContainerHelper.deleteFolder(PANORAMA_PUBLIC, v1Folder);
@@ -226,6 +256,16 @@ public class PanoramaPublicSymlinkTest extends PanoramaPublicBaseTest
         // sourceFolder/@files/Study9S_Site52_v1/Study9S_Site52_v1.skyd
         // sourceFolder/@files/RawFiles/Site52_041009_Study9S_Phase-I.wiff.RENAMED
         // sourceFolder/@files/RawFiles/Site52_041009_Study9S_Phase-I.wiff.scan
+
+        log("Verifying files in source folder after deleting target folder");
+        filesLoc = TestFileUtils.getDefaultFileRoot(projectName + "/" + sourceFolder);
+        assertFalse("sky.zip should be sym link", Files.isSymbolicLink(new File(filesLoc, "/" + SKY_FILE_1).toPath()));
+        assertFalse("file(.sky) in the " + SKY_FOLDER_NAME + " is not sym link",
+                Files.isSymbolicLink(new File(filesLoc, "/" + SKY_FOLDER_NAME + "/" + SKY_FOLDER_NAME + ".sky").toPath()));
+        assertFalse("file(.skyd) in the " + SKY_FOLDER_NAME + " is not sym link",
+                Files.isSymbolicLink(new File(filesLoc, "/" + SKY_FOLDER_NAME + "/" + SKY_FOLDER_NAME + ".skyd").toPath()));
+        assertTrue("Rename raw file missing", new File(filesLoc + "/RawFiles/" + RAW_FILE_WIFF + ".RENAMED").exists());
+        assertTrue("Additional raw file missing", new File(filesLoc + "/RawFiles/" + RAW_FILE_WIFF_SCAN).exists());
     }
 
     private void importDataInSubfolder(String file, String subfolder, int jobCount)
