@@ -8,10 +8,16 @@ import org.labkey.test.util.DataRegionTable;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+import java.time.Duration;
 
 public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearchWebPart.ElementCache>
 {
     private static String title = "Panorama Public Search";
+
+    private final WebDriverWait tabWait = new WebDriverWait(getDriver(), Duration.ofSeconds(1));
 
     public PanoramaPublicSearchWebPart(WebDriver driver, String title)
     {
@@ -121,41 +127,49 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
     public PanoramaPublicSearchWebPart gotoExperimentSearch()
     {
         elementCache().experimentSearchTab.click();
+        tabWait.until(ExpectedConditions.visibilityOf(elementCache().author.getComponentElement()));
         return this;
     }
 
     public PanoramaPublicSearchWebPart gotoProteinSearch()
     {
         elementCache().proteinTab.click();
+        tabWait.until(ExpectedConditions.visibilityOf(elementCache().protein.getComponentElement()));
         return this;
     }
 
     public PanoramaPublicSearchWebPart gotoPeptideSearch()
     {
         elementCache().peptideTab.click();
+        tabWait.until(ExpectedConditions.visibilityOf(elementCache().peptide.getComponentElement()));
         return this;
     }
 
     public PanoramaPublicSearchWebPart gotoSmallMoleculeSearch()
     {
         elementCache().smallMoleculeTab.click();
+        tabWait.until(ExpectedConditions.visibilityOf(elementCache().smallMolecule.getComponentElement()));
         return this;
     }
 
     public DataRegionTable search()
     {
-        elementCache().search.click();
-        getWrapper().sleep(500); // for dataregion table to load after every search
-        return new DataRegionTable.DataRegionFinder(getDriver()).refindWhenNeeded(this);
+        return doAndWaitForUpdate(() -> elementCache().search.click());
     }
 
     public DataRegionTable clearAll()
     {
-        elementCache().clearAll.click();
+        return doAndWaitForUpdate(() -> elementCache().clearAll.click());
+    }
+
+    private DataRegionTable doAndWaitForUpdate(Runnable runnable)
+    {
+        // Can't use `DataRegionTable.doAndWaitForUpdate`. Doesn't reuse the same data region.
+        getWrapper().doAndWaitForPageSignal(runnable, DataRegionTable.UPDATE_SIGNAL);
         return new DataRegionTable.DataRegionFinder(getDriver()).refindWhenNeeded(this);
     }
 
-    protected class ElementCache extends BodyWebPart.ElementCache
+    protected class ElementCache extends BodyWebPart<?>.ElementCache
     {
         //Experiment search
         final WebElement experimentSearchTab = Locator.tagWithText("label", "Experiment Search").findWhenNeeded(this);
