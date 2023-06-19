@@ -54,6 +54,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     static final String REVIEWER_PREFIX = "panoramapublictest_reviewer";
 
     static final String SKY_FILE_1 = "Study9S_Site52_v1.sky.zip";
+    static final String SKY_FOLDER_NAME = "Study9S_Site52_v1";
     static final String RAW_FILE_WIFF = "Site52_041009_Study9S_Phase-I.wiff";
     static final String RAW_FILE_WIFF_SCAN = RAW_FILE_WIFF + ".scan";
 
@@ -252,8 +253,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         click(Ext4Helper.Locators.ext4Button(("Resubmit")));
         waitForText("Confirm resubmission request to");
         click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
-        waitForText("Request resubmitted to");
-        click(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
+        waitAndClickAndWait(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
     }
 
     private String submitFormAndGetAccessLink()
