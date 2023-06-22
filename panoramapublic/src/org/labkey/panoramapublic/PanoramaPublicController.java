@@ -1589,6 +1589,7 @@ public class PanoramaPublicController extends SpringActionController
                 job.setUsePxTestDb(form.isUsePxTestDb());
                 job.setAssignDoi(form.isAssignDoi());
                 job.setUseDataCiteTestApi(form.isUseDataCiteTestApi());
+                job.setMoveAndSymlink(form.isMoveAndSymlink());
                 job.setReviewerEmailPrefix(form.getReviewerEmailPrefix());
                 job.setDeletePreviousCopy(form.isDeleteOldCopy());
                 job.setPreviousVersionName(previousVersionName);
@@ -1707,6 +1708,8 @@ public class PanoramaPublicController extends SpringActionController
         private boolean _usePxTestDb; // Use the test database for getting a PX ID if true
         private boolean _assignDoi;
         private boolean _useDataCiteTestApi;
+
+        private boolean _moveAndSymlink;
         private boolean _deleteOldCopy;
 
         static void setDefaults(CopyExperimentForm form, ExperimentAnnotations sourceExperiment, Submission currentSubmission)
@@ -1720,6 +1723,7 @@ public class PanoramaPublicController extends SpringActionController
             form.setUsePxTestDb(false);
 
             form.setAssignDoi(true);
+            form.setMoveAndSymlink(true);
             form.setUseDataCiteTestApi(false);
 
             Container sourceExptContainer = sourceExperiment.getContainer();
@@ -1841,6 +1845,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setUseDataCiteTestApi(boolean useDataCiteTestApi)
         {
             _useDataCiteTestApi = useDataCiteTestApi;
+        }
+
+        public boolean isMoveAndSymlink()
+        {
+            return _moveAndSymlink;
+        }
+
+        public void setMoveAndSymlink(boolean moveAndSymlink)
+        {
+            _moveAndSymlink = moveAndSymlink;
         }
 
         public boolean isDeleteOldCopy()

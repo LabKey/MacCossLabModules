@@ -9,10 +9,10 @@ import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.ContainerService;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.ModuleLoader;
-import org.labkey.api.security.User;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
 import java.io.File;
@@ -259,7 +259,7 @@ public class PanoramaPublicSymlinkManager
         }
     }
 
-    public void moveAndSymLinkDirectory(User user, Container c, File source, File target, boolean createSourceSymLinks, @Nullable Logger log) throws IOException
+    public void moveAndSymLinkDirectory(CopyExperimentPipelineJob job, File source, File target, boolean createSourceSymLinks, @Nullable Logger log) throws IOException
     {
         if (null == log)
         {
@@ -283,7 +283,7 @@ public class PanoramaPublicSymlinkManager
                         log.debug("Directory created: " + targetPath);
                     }
 
-                    moveAndSymLinkDirectory(user, c, file, targetPath.toFile(), createSourceSymLinks, log);
+                    moveAndSymLinkDirectory(job, file, targetPath.toFile(), createSourceSymLinks, log);
                 }
                 else
                 {
@@ -298,12 +298,14 @@ public class PanoramaPublicSymlinkManager
                     if (FilenameUtils.getExtension(file.getPath()).equals("log"))
                         continue;
 
+                    // Check if move and symlink is manually disabled from the copy form.
                     // If on Windows (not the production server use-case), Windows cannot do symlink without admin permissions so
                     // just copy over the files. Also, if the file is a clib file, special handling is required so just copy it over.
-                    if ((!DEBUG_SYMLINKS_ON_WINDOWS && SystemUtils.IS_OS_WINDOWS) || FilenameUtils.getExtension(file.getPath()).equals("clib"))
+                    if (!job.isMoveAndSymlink() || (!DEBUG_SYMLINKS_ON_WINDOWS && SystemUtils.IS_OS_WINDOWS)
+                            || FilenameUtils.getExtension(file.getPath()).equals("clib"))
                     {
                         Files.copy(filePath, targetPath, REPLACE_EXISTING);
-                        fcs.fireFileCreateEvent(targetPath, user, c);
+                        fcs.fireFileCreateEvent(targetPath, job.getUser(), job.getContainer());
 
                         continue;
                     }
@@ -313,9 +315,9 @@ public class PanoramaPublicSymlinkManager
                     {
                         Path oldPath = Files.readSymbolicLink(filePath);
                         Files.move(oldPath, targetPath, REPLACE_EXISTING);
-                        fcs.fireFileCreateEvent(targetPath, user, c);
+                        fcs.fireFileCreateEvent(targetPath, job.getUser(), job.getContainer());
 
-                        fireSymlinkUpdate(oldPath, targetPath, c); // c is the job container, which is the target container on Panorama Public
+                        fireSymlinkUpdate(oldPath, targetPath, job.getContainer()); // job container is the target container on Panorama Public
                         log.debug("File moved from " + oldPath + " to " + targetPath);
 
                         Path symlink = Files.createSymbolicLink(oldPath, targetPath);
@@ -324,7 +326,7 @@ public class PanoramaPublicSymlinkManager
                     else
                     {
                         Files.move(filePath, targetPath, REPLACE_EXISTING);
-                        fcs.fireFileCreateEvent(targetPath, user, c);
+                        fcs.fireFileCreateEvent(targetPath, job.getUser(), job.getContainer());
 
                         Files.createSymbolicLink(filePath, targetPath);
                         // We don't need to update any symlinks here since the source container should not have any symlink targets.

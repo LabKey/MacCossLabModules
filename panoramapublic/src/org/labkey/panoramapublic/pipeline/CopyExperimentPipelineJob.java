@@ -57,6 +57,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
 
     private boolean _assignDoi;
     private boolean _useDataCiteTestApi;
+    private boolean _moveAndSymlink;
 
     private boolean _deletePreviousCopy;
 
@@ -195,6 +196,12 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     }
 
     @Override
+    public boolean isMoveAndSymlink()
+    {
+        return _moveAndSymlink;
+    }
+
+    @Override
     public boolean deletePreviousCopy()
     {
         return _deletePreviousCopy;
@@ -223,6 +230,11 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     public void setUseDataCiteTestApi(boolean useDataCiteTestApi)
     {
         _useDataCiteTestApi = useDataCiteTestApi;
+    }
+
+    public void setMoveAndSymlink(boolean moveAndSymlink)
+    {
+        _moveAndSymlink = moveAndSymlink;
     }
 
     public void setDeletePreviousCopy(boolean deletePreviousCopy)

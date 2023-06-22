@@ -42,6 +42,8 @@ public interface CopyExperimentJobSupport
     boolean assignDoi();
     boolean useDataCiteTestApi();
 
+    boolean isMoveAndSymlink();
+
     boolean deletePreviousCopy();
 
     String getPreviousVersionName();

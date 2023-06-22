@@ -86,7 +86,7 @@ public class PanoramaPublicFileImporter implements FolderImporter
             }
 
             log.info("Moving files and creating sym links in folder " + ctx.getContainer().getPath());
-            PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(expJob.getUser(), expJob.getContainer(), sourceFiles, targetFiles, false, log);
+            PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(expJob, sourceFiles, targetFiles, false, log);
 
             alignDataFileUrls(expJob.getUser(), ctx.getContainer(), log);
         }
