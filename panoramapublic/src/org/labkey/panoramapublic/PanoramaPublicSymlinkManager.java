@@ -38,7 +38,7 @@ public class PanoramaPublicSymlinkManager
     // Note: The production server running this code is Linux. Windows requires extra permissions to create symlinks.
     // If running this code on a Windows server, the Panorama Public copy will not use symlinks unless this flag is set to true.
     // Additionally, you will have to run the server (or IntelliJ) as an administrator to run with symlinks.
-    private static final boolean DEBUG_SYMLINKS_ON_WINDOWS = true;
+    private static final boolean DEBUG_SYMLINKS_ON_WINDOWS = false;
 
     private static final PanoramaPublicSymlinkManager _instance = new PanoramaPublicSymlinkManager();
 
