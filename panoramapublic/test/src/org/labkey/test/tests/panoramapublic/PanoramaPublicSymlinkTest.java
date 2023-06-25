@@ -14,6 +14,7 @@ import org.labkey.test.util.APIContainerHelper;
 import org.openqa.selenium.WebElement;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -22,7 +23,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @Category({External.class, MacCossLabModules.class})
-@BaseWebDriverTest.ClassTimeout(minutes = 5)
+@BaseWebDriverTest.ClassTimeout(minutes = 10)
 public class PanoramaPublicSymlinkTest extends PanoramaPublicBaseTest
 {
 
@@ -32,14 +33,126 @@ public class PanoramaPublicSymlinkTest extends PanoramaPublicBaseTest
         return SAMPLEDATA_FOLDER;
     }
 
+    private void fileCheck(String parent, String file, String target, boolean symlink) throws IOException
+    {
+        File f = new File(parent, file);
+        assertTrue(file + " in " + parent + " is missing", f.exists());
+        if (symlink)
+        {
+            assertTrue(file + " in " + parent + " is not sym link",
+                    Files.isSymbolicLink(f.toPath()));
+            assertTrue(file + " in " + parent + " is not pointing to correct target. Expected: " + target
+                    + " Actual: " + Files.readSymbolicLink(f.toPath()).toString(),
+                    Files.readSymbolicLink(f.toPath()).toString().startsWith(target));
+        }
+        else
+        {
+            assertFalse(file + " in " + parent + " is sym link",
+                    Files.isSymbolicLink(f.toPath()));
+        }
+    }
+
+    private void verifySmallMolFiles(String filesLoc, String filesTarget, boolean symlinks) throws IOException
+    {
+        fileCheck(filesLoc, SMALLMOL_PLUS_PEPTIDES_SKY_ZIP, filesTarget, symlinks);
+
+        // directory should never be symlink
+        fileCheck(filesLoc, SMALLMOL_PLUS_PEPTIDES, filesTarget, false);
+
+        fileCheck(filesLoc + SMALLMOL_PLUS_PEPTIDES, SMALLMOL_PLUS_PEPTIDES_SKY, filesTarget, symlinks);
+        fileCheck(filesLoc + SMALLMOL_PLUS_PEPTIDES, SMALLMOL_PLUS_PEPTIDES_SKYD, filesTarget, symlinks);
+        fileCheck(filesLoc + SMALLMOL_PLUS_PEPTIDES, SMALLMOL_PLUS_PEPTIDES_SKY_VIEW, filesTarget, symlinks);
+    }
+
+    private void verifyQC1Files(String filesLoc, String filesTarget, boolean symlinks) throws IOException
+    {
+        fileCheck(filesLoc, QC_1_SKY_ZIP, filesTarget, symlinks);
+
+        // directory should never be symlink
+        fileCheck(filesLoc, QC_1, filesTarget, false);
+
+        fileCheck(filesLoc + QC_1, QC_1_SKY, filesTarget, symlinks);
+        fileCheck(filesLoc + QC_1, QC_1_SKY_VIEW, filesTarget, symlinks);
+        fileCheck(filesLoc + QC_1, QC_1_SKYD, filesTarget, symlinks);
+    }
+
+    private void verifyCopyFiles(String sourcePath, String targetPath, boolean symlinks) throws IOException
+    {
+        String filesLoc = TestFileUtils.getDefaultFileRoot(sourcePath).getPath() + File.separator;
+        String filesTarget = TestFileUtils.getDefaultFileRoot(targetPath).getPath() + File.separator;
+
+        fileCheck(filesLoc, SKY_FILE_1, filesTarget, symlinks);
+
+        // directory should never be symlink
+        fileCheck(filesLoc, SKY_FOLDER_NAME, filesTarget, false);
+
+        fileCheck(filesLoc + SKY_FOLDER_NAME, SKY_FOLDER_NAME + ".skyd", filesTarget, symlinks);
+        fileCheck(filesLoc + SKY_FOLDER_NAME, SKY_FOLDER_NAME + ".sky", filesTarget, symlinks);
+        fileCheck(filesLoc + SKY_FOLDER_NAME, SKY_FOLDER_NAME + ".sky.view", filesTarget, symlinks);
+
+        // directory should never be symlink
+        fileCheck(filesLoc, "RawFiles", filesTarget, false);
+
+        fileCheck(filesLoc + "RawFiles", RAW_FILE_WIFF_SCAN, filesTarget, symlinks);
+        fileCheck(filesLoc + "RawFiles", RAW_FILE_WIFF, filesTarget, symlinks);
+
+        verifyQC1Files(filesLoc, filesTarget, symlinks);
+
+        // directory should never be symlink
+        fileCheck(filesLoc, SMALL_MOL_FILES, filesTarget, false);
+        filesLoc = TestFileUtils.getDefaultFileRoot(sourcePath).getPath() + File.separator + SMALL_MOL_FILES + File.separator;
+
+        verifySmallMolFiles(filesLoc, filesTarget, symlinks);
+    }
+
+    private void verifyCopySubfolderFiles(String sourcePath, String targetPath, boolean symlinks) throws IOException
+    {
+        String filesLoc = TestFileUtils.getDefaultFileRoot(sourcePath).getPath() + File.separator;
+        String filesTarget = TestFileUtils.getDefaultFileRoot(targetPath).getParent() + File.separator;
+
+        fileCheck(filesLoc, SKY_FILE_1, filesTarget, symlinks);
+
+        // directory should never be symlink
+        fileCheck(filesLoc, SKY_FOLDER_NAME, filesTarget, false);
+
+        fileCheck(filesLoc + SKY_FOLDER_NAME, SKY_FOLDER_NAME + ".skyd", filesTarget, symlinks);
+        fileCheck(filesLoc + SKY_FOLDER_NAME, SKY_FOLDER_NAME + ".sky", filesTarget, symlinks);
+        fileCheck(filesLoc + SKY_FOLDER_NAME, SKY_FOLDER_NAME + ".sky.view", filesTarget, symlinks);
+
+        // directory should never be symlink
+        fileCheck(filesLoc, "RawFiles", filesTarget, false);
+
+        fileCheck(filesLoc + "RawFiles", RAW_FILE_WIFF_SCAN, filesTarget, symlinks);
+        fileCheck(filesLoc + "RawFiles", RAW_FILE_WIFF_RENAMED, filesTarget, symlinks);
+
+        verifyQC1Files(filesLoc, filesTarget, symlinks);
+
+        filesLoc = TestFileUtils.getDefaultFileRoot(sourcePath + File.separator + "ExperimentalData").getPath() + File.separator;
+        verifySmallMolFiles(filesLoc, filesTarget, symlinks);
+
+        filesLoc = TestFileUtils.getDefaultFileRoot(sourcePath + File.separator + "SystemSuitability").getPath() + File.separator;
+        verifyQC1Files(filesLoc, filesTarget, symlinks);
+    }
+
     @Test
-    public void testSymLinks()
+    public void testSymLinks() throws IOException
+    {
+        testCopyOrSymlink(true);
+    }
+
+    @Test
+    public void testFileCopy() throws IOException
+    {
+        testCopyOrSymlink(false);
+    }
+
+    private void testCopyOrSymlink(boolean useSymlinks) throws IOException
     {
         String projectName = getProjectName();
-        String sourceFolder = "Folder 3";
+        String sourceFolder = "Folder 3" + (useSymlinks ? " Symlinks" : " Copy");
 
-        String targetFolder = "Test Copy 3";
-        String experimentTitle = "This is a test for Panorama Public symlinks";
+        String targetFolder = "Test Copy 3" + (useSymlinks ? " Symlinks" : " Copy");
+        String experimentTitle = "This is a test for Panorama Public file " + (useSymlinks ? "symlinks" : "copy") + " functionality";
 
         setupSourceFolder(projectName, sourceFolder, SUBMITTER);
         impersonate(SUBMITTER);
@@ -62,7 +175,12 @@ public class PanoramaPublicSymlinkTest extends PanoramaPublicBaseTest
 
         // Copy the experiment to the Panorama Public project
         copyExperimentAndVerify(projectName, sourceFolder, null, experimentTitle, targetFolder, shortAccessUrl);
-        // TODO: verify symlinks after the first copy.  All files in the submitted folder should be symlinked to the files in the Panorama Public copy.
+
+        // Verify files symlinked or copied correctly
+        String targetPath = PANORAMA_PUBLIC + File.separator + targetFolder + File.separator;
+        verifyCopyFiles(projectName + File.separator + sourceFolder + File.separator, targetPath, true);
+        verifyCopyFiles(targetPath, targetPath, false);
+
 
         // Prepare to resubmit
         goToProjectFolder(projectName, sourceFolder);
@@ -112,13 +230,22 @@ public class PanoramaPublicSymlinkTest extends PanoramaPublicBaseTest
                 true,
                 false, // Do not delete old copy
                 targetFolder,
-                shortAccessUrl);
+                shortAccessUrl,
+                useSymlinks);
 
-        // TODO: verify expected symlinks here.
-        //  - Files that were deleted from the submitted folder should not be moved from the old copy to the new one
-        //  - Renamed file in the submitted folder (Site52_041009_Study9S_Phase-I.wiff -> Site52_041009_Study9S_Phase-I.wiff.RENAMED):
-        //    should still be named Site52_041009_Study9S_Phase-I.wiff in the previous copy (Test Copy 3 V.1),
-        //    and link to Site52_041009_Study9S_Phase-I.wiff.RENAMED in the current copy (Test Copy 3)
+        verifyCopySubfolderFiles(projectName + File.separator + sourceFolder + File.separator, targetPath, useSymlinks);
+        verifyCopySubfolderFiles(targetPath, targetPath, false);
+
+        // Verify files that were deleted from the submitted folder should not be moved from the old copy to the new one
+        String filesTarget = TestFileUtils.getDefaultFileRoot(targetPath).getPath() + File.separator;
+        String filesTargetParent = filesTarget + "SmallMoleculeFiles" + File.separator;
+        filesTarget = filesTargetParent + SKY_FILE_SMALLMOL_PEP;
+        File f = new File(filesTarget);
+        assertFalse(filesTarget + " should not exist in " + filesTargetParent + ".", f.exists());
+
+        filesTarget = filesTargetParent + FileUtil.getBaseName(SKY_FILE_SMALLMOL_PEP, 2);
+        f = new File(filesTarget);
+        assertFalse(filesTarget + " should not exist in " + filesTargetParent + ".", f.exists());
     }
 
     @Test
