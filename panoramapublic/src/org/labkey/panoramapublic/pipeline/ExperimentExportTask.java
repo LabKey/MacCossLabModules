@@ -16,10 +16,11 @@
 package org.labkey.panoramapublic.pipeline;
 
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.labkey.api.admin.FolderArchiveDataTypes;
 import org.labkey.api.admin.FolderExportContext;
 import org.labkey.api.admin.FolderWriterImpl;
-import org.labkey.api.admin.FolderArchiveDataTypes;
 import org.labkey.api.admin.StaticLoggerGetter;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.PHI;
@@ -34,11 +35,13 @@ import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.writer.FileSystemFile;
+import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * User: vsharma
@@ -47,6 +50,8 @@ import java.util.List;
  */
 public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.Factory>
 {
+    private static final Logger _log = LogManager.getLogger(ExperimentExportTask.class);
+
     private ExperimentExportTask(Factory factory, PipelineJob job)
     {
         super(factory, job);
@@ -97,16 +102,16 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
                 FolderArchiveDataTypes.CONTAINER_SPECIFIC_MODULE_PROPERTIES, // "Container specific module properties",
                 FolderArchiveDataTypes.EXPERIMENTS_AND_RUNS, // "Experiments and runs"
                 FolderArchiveDataTypes.LISTS, // "Lists"
-                FolderArchiveDataTypes.FILES,  // "Files"
                 TargetedMSService.QC_FOLDER_DATA_TYPE
-                };
+        };
 
+        Set<String> templateWriterSet = PageFlowUtil.set(templateWriterTypes);
 
         boolean includeSubfolders = exptAnnotations.isIncludeSubfolders();
         Container source = exptAnnotations.getContainer();
         FolderWriterImpl writer = new FolderWriterImpl();
 
-        FolderExportContext ctx = new FolderExportContext(user, source, PageFlowUtil.set(templateWriterTypes),
+        FolderExportContext ctx = new FolderExportContext(user, source, templateWriterSet,
                 null, includeSubfolders, PHI.NotPHI, false,
                 false, false, new StaticLoggerGetter(LogManager.getLogger(FolderWriterImpl.class)));
 
@@ -126,6 +131,7 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
         writer.write(source, ctx, vf);
         FilesMetadataWriter filesMetadataWriter = new FilesMetadataWriter();
         filesMetadataWriter.write(exptAnnotations.getContainer(), exptAnnotations.isIncludeSubfolders(), vf, user, getJob().getLogger());
+
     }
 
     public static class Factory extends AbstractTaskFactory<AbstractTaskFactorySettings, Factory>

@@ -19,6 +19,7 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 
 import java.io.File;
+import java.nio.file.Path;
 
 /**
  * User: vsharma
@@ -41,5 +42,11 @@ public interface CopyExperimentJobSupport
     boolean assignDoi();
     boolean useDataCiteTestApi();
 
+    boolean isMoveAndSymlink();
+
     boolean deletePreviousCopy();
+
+    String getPreviousVersionName();
+
+    void setExportTargetPath(Path exportTargetPath);
 }

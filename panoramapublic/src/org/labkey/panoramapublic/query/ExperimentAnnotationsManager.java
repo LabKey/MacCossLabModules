@@ -84,7 +84,7 @@ public class ExperimentAnnotationsManager
      * @param experimentId FK -> exp.experiment.rowId
      * @return ExperimentAnnotations object with the given experimentId
      */
-    private static ExperimentAnnotations getForExperimentId(int experimentId)
+    public static ExperimentAnnotations getForExperimentId(int experimentId)
     {
         return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),
                 new SimpleFilter(FieldKey.fromParts("ExperimentId"), experimentId), null).getObject(ExperimentAnnotations.class);
@@ -552,7 +552,7 @@ public class ExperimentAnnotationsManager
         if (experimentAnnotations != null && experimentAnnotations.isJournalCopy())
         {
             Integer maxVersion = ExperimentAnnotationsManager.getMaxVersionForExperiment(experimentAnnotations.getSourceExperimentId());
-            return experimentAnnotations.getDataVersion().equals(maxVersion);
+            return experimentAnnotations.getDataVersion() != null && experimentAnnotations.getDataVersion().equals(maxVersion);
         }
         return false;
     }
@@ -566,6 +566,12 @@ public class ExperimentAnnotationsManager
         Sort sort = new Sort();
         sort.appendSortColumn(FieldKey.fromParts("Created"), Sort.SortDirection.DESC, true);
         return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(), filter, sort).getArrayList(ExperimentAnnotations.class);
+    }
+
+    public static @Nullable Container getSourceExperimentContainer(ExperimentAnnotations expAnnotations)
+    {
+        ExperimentAnnotations sourceExpt = ExperimentAnnotationsManager.get(expAnnotations.getSourceExperimentId());
+        return sourceExpt != null ? sourceExpt.getContainer() : null;
     }
 
     /**
