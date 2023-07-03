@@ -164,7 +164,7 @@
                     autoScroll: true,
                     title : '',
                     border: true,
-                    width: 450,
+                    width: 650,
                     height:150,
                     listeners: {
                         select: function(node, record, index, eOpts){
@@ -220,7 +220,7 @@
                     fieldLabel: "Reviewer Email Prefix",
                     value: <%=q(form.getReviewerEmailPrefix())%>,
                     name: 'reviewerEmailPrefix',
-                    width: 450,
+                    width: 650,
                     afterBodyEl: '<span style="font-size: 0.9em;">A new LabKey user account email_prefix(unique numeric suffix)@proteinms.net will be created. </span>',
                     msgTarget : 'under'
                 },

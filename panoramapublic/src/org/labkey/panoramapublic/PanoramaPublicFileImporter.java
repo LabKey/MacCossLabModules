@@ -85,8 +85,15 @@ public class PanoramaPublicFileImporter implements FolderImporter
                 Files.createDirectories(targetFiles.toPath());
             }
 
-            log.info("Moving files and creating sym links in folder " + ctx.getContainer().getPath());
-            PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(expJob, sourceFiles, targetFiles, false, log);
+            if (expJob.isMoveAndSymlink())
+            {
+                log.info("Moving files and creating sym links in folder " + expJob.getContainer().getPath());
+            }
+            else
+            {
+                log.info("Copying files to folder " + expJob.getContainer().getPath());
+            }
+            PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(expJob, sourceFiles, targetFiles, log);
 
             alignDataFileUrls(expJob.getUser(), ctx.getContainer(), log);
         }

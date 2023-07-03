@@ -75,13 +75,13 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     {
         JournalManager.deleteProjectJournal(c, user);
 
-        PanoramaPublicSymlinkManager.get().beforeContainerDeleted(c);
+        PanoramaPublicSymlinkManager.get().beforeContainerDeleted(c, user);
     }
 
     @Override
     public void containerMoved(Container c, Container oldParent, User user)
     {
-        PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldParent, c);
+        PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldParent, c, user);
     }
 
     @Override
@@ -109,7 +109,7 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
                     // ce.getOldValue() and ce.getNewValue() are just the names of the old and new containers. We need the full path.
                     Path oldPath = parentPath.resolve((String) ce.getOldValue());
                     Path newPath = parentPath.resolve((String) ce.getNewValue());
-                    PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldPath.toString(), newPath.toString(), c);
+                    PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldPath.toString(), newPath.toString(), c, null);
                 }
             }
         }
