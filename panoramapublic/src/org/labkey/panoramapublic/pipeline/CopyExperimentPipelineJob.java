@@ -17,6 +17,7 @@ package org.labkey.panoramapublic.pipeline;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.labkey.api.data.Container;
 import org.labkey.api.pipeline.LocalDirectory;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
@@ -35,6 +36,7 @@ import org.labkey.panoramapublic.model.Journal;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 
 /**
  * User: vsharma
@@ -55,8 +57,15 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
 
     private boolean _assignDoi;
     private boolean _useDataCiteTestApi;
+    private boolean _moveAndSymlink;
 
     private boolean _deletePreviousCopy;
+
+    private String _previousVersionName;
+
+    private Path _exportTargetPath;
+
+    private Container _exportSourceContainer;
 
 
     @JsonCreator
@@ -153,7 +162,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     @Override
     public File getExportDir()
     {
-        return new File(getLocalDirectory().getLocalDirectoryFile(), PipelineService.EXPORT_DIR);
+        return _exportTargetPath.toFile();
     }
 
     @Override
@@ -187,6 +196,12 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     }
 
     @Override
+    public boolean isMoveAndSymlink()
+    {
+        return _moveAndSymlink;
+    }
+
+    @Override
     public boolean deletePreviousCopy()
     {
         return _deletePreviousCopy;
@@ -217,8 +232,39 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
         _useDataCiteTestApi = useDataCiteTestApi;
     }
 
+    public void setMoveAndSymlink(boolean moveAndSymlink)
+    {
+        _moveAndSymlink = moveAndSymlink;
+    }
+
     public void setDeletePreviousCopy(boolean deletePreviousCopy)
     {
         _deletePreviousCopy = deletePreviousCopy;
+    }
+
+    public String getPreviousVersionName()
+    {
+        return _previousVersionName;
+    }
+
+    public void setPreviousVersionName(String previousVersionName)
+    {
+        _previousVersionName = previousVersionName;
+    }
+
+    @Override
+    public void setExportTargetPath(Path exportTargetPath)
+    {
+        _exportTargetPath = exportTargetPath;
+    }
+
+    public Container getExportSourceContainer()
+    {
+        return _exportSourceContainer;
+    }
+
+    public void setExportSourceContainer(Container exportSourceContainer)
+    {
+        _exportSourceContainer = exportSourceContainer;
     }
 }

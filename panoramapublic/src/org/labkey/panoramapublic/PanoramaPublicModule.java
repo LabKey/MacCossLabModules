@@ -18,11 +18,13 @@ package org.labkey.panoramapublic;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.labkey.api.admin.FolderSerializationRegistry;
 import org.labkey.api.attachments.AttachmentService;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.exp.api.ExperimentService;
+import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.ModuleContext;
 import org.labkey.api.module.SpringModule;
 import org.labkey.api.pipeline.PipelineService;
@@ -133,6 +135,15 @@ public class PanoramaPublicModule extends SpringModule
         TargetedMSService.get().addModificationSearchResultCustomizer(ExperimentTitleDisplayColumn.getModSearchTableCustomizer());
         TargetedMSService.get().addPeptideSearchResultCustomizers(ExperimentTitleDisplayColumn.getPeptideGroupJoinTableCustomizer());
         TargetedMSService.get().addProteinSearchResultCustomizer(ExperimentTitleDisplayColumn.getPeptideGroupJoinTableCustomizer());
+
+        FolderSerializationRegistry.get().addImportFactory(new PanoramaPublicFileImporter.Factory());
+        FolderSerializationRegistry.get().addImportFactory(new PanoramaPublicMetadataImporter.Factory());
+
+        FileContentService fileContentService = FileContentService.get();
+        if (null != fileContentService)
+        {
+            fileContentService.addFileListener(new PanoramaPublicFileListener());
+        }
     }
 
     @NotNull
