@@ -109,7 +109,7 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
                     // ce.getOldValue() and ce.getNewValue() are just the names of the old and new containers. We need the full path.
                     Path oldPath = parentPath.resolve((String) ce.getOldValue());
                     Path newPath = parentPath.resolve((String) ce.getNewValue());
-                    PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldPath.toString(), newPath.toString(), c, null);
+                    PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldPath.toString(), newPath.toString(), c, ce.user);
                 }
             }
         }

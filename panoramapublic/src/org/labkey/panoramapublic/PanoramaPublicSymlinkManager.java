@@ -44,7 +44,6 @@ public class PanoramaPublicSymlinkManager
     private static final boolean DEBUG_SYMLINKS_ON_WINDOWS = false;
 
     private static final PanoramaPublicSymlinkManager _instance = new PanoramaPublicSymlinkManager();
-    // public static final String PANORAMA_PUBLIC_SYMLINKS_EVENT = "PanoramaPublicSymlinks";
 
     // Manage symlinks created when copying files to Panorama Public
     private PanoramaPublicSymlinkManager()
@@ -255,17 +254,16 @@ public class PanoramaPublicSymlinkManager
         addFileAuditEvent(link, linkContainer, user, "Replaced symlink with target file " + target);
     }
 
-    private void addReplaceTargetWithSymlinkAuditEvent(Path link, Path target, Container linkContainer, User user)
+    private void addReplaceTargetWithSymlinkAuditEvent(Path link, Path target, Container container, User user)
     {
-        addFileAuditEvent(link, linkContainer, user, "Replaced target file with symlink to " + target);
+        addFileAuditEvent(link, container, user, "Replaced target file with symlink to " + target);
     }
 
-    private void addFileAuditEvent(Path link, Container linkContainer, User user, String comment)
+    private void addFileAuditEvent(Path link, Container container, User user, String comment)
     {
         FileSystemAuditProvider.FileSystemAuditEvent event =  new FileSystemAuditProvider.FileSystemAuditEvent(
-                linkContainer != null ? linkContainer.getId() : null,comment);
-        event.setFile(link.toAbsolutePath().toString());
-        // event.setUserComment(PANORAMA_PUBLIC_SYMLINKS_EVENT);
+                container != null ? container.getId() : null, comment);
+        event.setFile(link.toString());
         AuditLogService.get().addEvent(user, event);
     }
 
@@ -377,12 +375,11 @@ public class PanoramaPublicSymlinkManager
 
                         Path symlink = Files.createSymbolicLink(oldPath, targetPath);
                         Container oldTargetContainer = getContainerForFilePath(oldPath);
-                        // FileContentService.get().getContainersForFilePath()
-                        // Container oldTargetContainer = ContainerManager.getForPath(oldPath.toString());
                         if (oldTargetContainer != null)
                         {
-                            // Add an audit event in the container that had the symlink target before moving
-                            // the target to the new Panorama Public container
+                            // The target of the symlink has been moved from a previous version on Panorama Public to the
+                            // new version on Panorama Public. And, a symink has been created in the previous version container.
+                            // Add an audit event in the previous version container.
                             addReplaceTargetWithSymlinkAuditEvent(symlink, targetPath, oldTargetContainer, job.getUser());
                         }
                         log.debug("Replaced old target with symlink: " + symlink);
@@ -402,6 +399,7 @@ public class PanoramaPublicSymlinkManager
         }
     }
 
+    // Copied from FileContentService.get().getContainersForFilePath(java.nio.file.Path path)
     private Container getContainerForFilePath(java.nio.file.Path path)
     {
         // Ignore cloud files for now

@@ -87,7 +87,7 @@ public class PanoramaPublicFileImporter implements FolderImporter
 
             if (expJob.isMoveAndSymlink())
             {
-                log.info("Moving files and creating sym links in folder " + expJob.getContainer().getPath());
+                log.info("Moving files to folder " + expJob.getContainer().getPath() + " and creating symlinks");
             }
             else
             {
