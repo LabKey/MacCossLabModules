@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -378,7 +379,7 @@ public class PanoramaPublicSymlinkManager
                         if (oldTargetContainer != null)
                         {
                             // The target of the symlink has been moved from a previous version on Panorama Public to the
-                            // new version on Panorama Public. And, a symink has been created in the previous version container.
+                            // new version on Panorama Public, and a symink has been created in the previous version container.
                             // Add an audit event in the previous version container.
                             addReplaceTargetWithSymlinkAuditEvent(symlink, targetPath, oldTargetContainer, job.getUser());
                         }
@@ -399,51 +400,31 @@ public class PanoramaPublicSymlinkManager
         }
     }
 
-    // Copied from FileContentService.get().getContainersForFilePath(java.nio.file.Path path)
-    private Container getContainerForFilePath(java.nio.file.Path path)
+    // Get the container for the given file path.
+    // Example: if the file path is C:\Users\vsharma\WORK\LabKey\build\deploy\files\Panorama Public\TestProject V.1\@files\Study9S_Site52_v1.sky.zip
+    // this will return the container for "/Panorama Public/TestProject V.1"
+    private Container getContainerForFilePath(Path path)
     {
-        // Ignore cloud files for now
-        if (FileUtil.hasCloudScheme(path))
-            return null;
+        org.labkey.api.util.Path lkPath = org.labkey.api.util.Path.rootPath;
 
-        // If the path is under the default root, do optimistic simple match for containers under the default root
-        File defaultRoot = FileContentService.get().getSiteDefaultRoot();
-        java.nio.file.Path defaultRootPath = defaultRoot.toPath();
+        Path defaultRootPath = FileContentService.get().getSiteDefaultRoot().toPath();
         if (path.startsWith(defaultRootPath))
         {
-            java.nio.file.Path rel = defaultRootPath.relativize(path);
-            if (rel.getNameCount() > 0)
+            Path rel = defaultRootPath.relativize(path);
+
+            Iterator<Path> iter = rel.iterator();
+            while (iter.hasNext())
             {
-                Container root = ContainerManager.getRoot();
-                Container next = root;
-                while (rel.getNameCount() > 0)
+                Path next = iter.next();
+                if (FileContentService.FILES_LINK.equals(next.getFileName().toString()))
                 {
-                    // check if there exists a child container that matches the next path segment
-                    java.nio.file.Path top = rel.subpath(0, 1);
-                    assert top != null;
-                    Container child = next.getChild(top.getFileName().toString());
-                    if (child == null)
-                        break;
-
-                    next = child;
-                    if (rel.getNameCount() == 1)
-                    {
-                        break;
-                    }
-                    rel = rel.subpath(1, rel.getNameCount());
+                    break;
                 }
-
-                if (next != null && !next.equals(root))
-                {
-                    // verify our naive file path is correct for the container -- it may have a file root other than the default
-                    java.nio.file.Path fileRoot = FileContentService.get().getFileRootPath(next);
-                    if (fileRoot != null && path.startsWith(fileRoot))
-                        return next;
-                }
+                lkPath = lkPath.resolve(org.labkey.api.util.Path.parse(next.toString()));
             }
         }
 
-        return null;
+        return org.labkey.api.util.Path.rootPath.equals(lkPath) ? null : ContainerManager.getForPath(lkPath);
     }
 
     private void verifyFileTreeSymlinks(File source, Map<String, String> linkInvalidTarget, Map<String, String> linkWithSymlinkTarget) throws IOException
