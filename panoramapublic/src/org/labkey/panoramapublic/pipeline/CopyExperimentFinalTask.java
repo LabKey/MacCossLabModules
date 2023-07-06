@@ -206,7 +206,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             if (null != targetRoot)
             {
                 Path targetFileRoot = Path.of(targetRoot.toString(), File.separator);
-                PanoramaPublicSymlinkManager.get().handleContainerSymlinks(source, (sourceFile, targetFile) -> {
+                PanoramaPublicSymlinkManager.get().handleContainerSymlinks(source, null, (sourceFile, targetFile, c, u) -> {
 
                     // valid path
                     if (!FileUtil.isFileAndExists(targetFile))
@@ -241,7 +241,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         }
     }
 
-    private void cleanupExportDirectory(User user, File directory) throws IOException
+    private void cleanupExportDirectory(User user, File directory)
     {
         List<? extends ExpData> datas = ExperimentService.get().getExpDatasUnderPath(directory.toPath(), null, true);
         for (ExpData data : datas)
@@ -255,12 +255,12 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     private void alignSymlinks(PipelineJob job, CopyExperimentJobSupport jobSupport)
     {
         if (jobSupport.getPreviousVersionName() != null)
+    {
+        FileContentService fcs = FileContentService.get();
+        if (fcs != null)
         {
-            FileContentService fcs = FileContentService.get();
-            if (fcs != null)
-            {
                 PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(jobSupport.getPreviousVersionName(),
-                        fcs.getFileRoot(job.getContainer()).getPath(), job.getContainer());
+                        fcs.getFileRoot(job.getContainer()).getPath(), job.getContainer(), job.getUser());
             }
         }
     }
