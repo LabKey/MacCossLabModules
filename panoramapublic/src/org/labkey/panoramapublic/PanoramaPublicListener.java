@@ -23,6 +23,7 @@ import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentListener;
 import org.labkey.api.exp.api.ExperimentService;
+import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.security.User;
@@ -39,6 +40,7 @@ import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
 
 import java.beans.PropertyChangeEvent;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -72,11 +74,14 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     public void containerDeleted(Container c, User user)
     {
         JournalManager.deleteProjectJournal(c, user);
+
+        PanoramaPublicSymlinkManager.get().beforeContainerDeleted(c);
     }
 
     @Override
     public void containerMoved(Container c, Container oldParent, User user)
     {
+        PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldParent, c);
     }
 
     @Override
@@ -88,6 +93,26 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     @Override
     public void propertyChange(PropertyChangeEvent evt)
     {
+        // Needed for container rename to realign symlinks
+        if (evt.getPropertyName().equals(ContainerManager.Property.Name.name())
+                && evt instanceof ContainerManager.ContainerPropertyChangeEvent ce)
+        {
+            Container c = ce.container;
+
+            if (PanoramaPublicManager.canBeSymlinkTarget(c)) // Fire the event only if a folder in the Panorama Public project is being renamed.
+            {
+                FileContentService fcs = FileContentService.get();
+                if (fcs != null)
+                {
+                    Container parent = c.getParent();
+                    Path parentPath = fcs.getFileRootPath(parent);
+                    // ce.getOldValue() and ce.getNewValue() are just the names of the old and new containers. We need the full path.
+                    Path oldPath = parentPath.resolve((String) ce.getOldValue());
+                    Path newPath = parentPath.resolve((String) ce.getNewValue());
+                    PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldPath.toString(), newPath.toString(), c);
+                }
+            }
+        }
     }
 
     // ShortURLListener

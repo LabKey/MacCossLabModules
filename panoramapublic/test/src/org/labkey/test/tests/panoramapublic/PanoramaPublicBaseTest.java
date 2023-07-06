@@ -3,8 +3,13 @@ package org.labkey.test.tests.panoramapublic;
 import org.apache.commons.collections4.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.labkey.remoteapi.CommandException;
+import org.labkey.remoteapi.CommandResponse;
+import org.labkey.remoteapi.Connection;
+import org.labkey.remoteapi.SimpleGetCommand;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
@@ -27,6 +32,7 @@ import org.labkey.test.util.TextSearcher;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.File;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,6 +52,25 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     static final String SUBMITTER = "submitter@panoramapublic.test";
 
     static final String REVIEWER_PREFIX = "panoramapublictest_reviewer";
+
+    static final String SKY_FILE_1 = "Study9S_Site52_v1.sky.zip";
+    static final String SKY_FOLDER_NAME = "Study9S_Site52_v1";
+    static final String RAW_FILE_WIFF = "Site52_041009_Study9S_Phase-I.wiff";
+    static final String RAW_FILE_WIFF_RENAMED = RAW_FILE_WIFF + ".RENAMED";
+    static final String RAW_FILE_WIFF_SCAN = RAW_FILE_WIFF + ".scan";
+    static final String QC_1 = "QC_1";
+    static final String QC_1_SKY = QC_1 + ".sky";
+    static final String QC_1_SKY_ZIP = QC_1_SKY + ".zip";
+    static final String QC_1_SKY_VIEW = QC_1_SKY + ".view";
+    static final String QC_1_SKYD = QC_1_SKY + "d";
+    static final String SMALL_MOL_FILES = "SmallMoleculeFiles";
+    static final String SMALLMOL_PLUS_PEPTIDES = "smallmol_plus_peptides";
+    static final String SMALLMOL_PLUS_PEPTIDES_SKY = SMALLMOL_PLUS_PEPTIDES + ".sky";
+    static final String SMALLMOL_PLUS_PEPTIDES_SKYD = SMALLMOL_PLUS_PEPTIDES_SKY + "d";
+    static final String SMALLMOL_PLUS_PEPTIDES_SKY_VIEW = SMALLMOL_PLUS_PEPTIDES_SKY + ".view";
+    static final String SMALLMOL_PLUS_PEPTIDES_SKY_ZIP = SMALLMOL_PLUS_PEPTIDES_SKY + ".zip";
+
+    static final String SAMPLEDATA_FOLDER = "panoramapublic/";
 
     PortalHelper portalHelper = new PortalHelper(this);
 
@@ -75,6 +100,16 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         init.setupFolder(FolderType.Experiment);
     }
 
+    @After
+    public void afterTest() throws IOException, CommandException
+    {
+        if (isImpersonating())
+        {
+            stopImpersonating();
+        }
+        verifySymlinks();
+    }
+
     private void createPanoramaPublicJournalProject()
     {
         // Create a "Panorama Public" project where we will copy data.
@@ -100,6 +135,16 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         // Add a "Panorama Public Submitter" and a "Reviewers" permissions group
         _permissionsHelper.createProjectGroup(REVIEWERS, PANORAMA_PUBLIC);
         _permissionsHelper.createProjectGroup(PANORAMA_PUBLIC_SUBMITTERS, PANORAMA_PUBLIC);
+    }
+
+    boolean verifySymlinks() throws IOException, CommandException
+    {
+        Connection connection = createDefaultConnection();
+        SimpleGetCommand command = new SimpleGetCommand("PanoramaPublic", "verifySymlinks");
+        CommandResponse verifyResponse = command.execute(connection, "/");
+
+        // Failure will throw exception and put results in log
+        return verifyResponse.getProperty("success") != null;
     }
 
     @NotNull
@@ -202,6 +247,27 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         return submitFormAndGetAccessLink();
     }
 
+    void resubmitWithoutPxd(boolean fromDataValidationPage, boolean keepPrivate)
+    {
+        if (fromDataValidationPage)
+        {
+            clickButton("Submit without a ProteomeXchange ID");
+        }
+        else
+        {
+            clickAndWait(Locator.linkContainingText("Submit without a ProteomeXchange ID"));
+        }
+        waitForText("Resubmit Request to ");
+        if (!keepPrivate)
+        {
+            uncheck("Keep Private:");
+        }
+        click(Ext4Helper.Locators.ext4Button(("Resubmit")));
+        waitForText("Confirm resubmission request to");
+        click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
+        waitAndClickAndWait(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
+    }
+
     private String submitFormAndGetAccessLink()
     {
         submitForm();
@@ -237,22 +303,30 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         {
             stopImpersonating();
         }
-        makeCopy(shortAccessUrl, experimentTitle, recopy, deleteOldCopy, destinationFolder);
+        makeCopy(shortAccessUrl, experimentTitle, recopy, deleteOldCopy, destinationFolder, true);
     }
 
     void copyExperimentAndVerify(String projectName, String folderName, @Nullable List<String> subfolders, String experimentTitle,
                                  @Nullable Integer version, boolean recopy, boolean deleteOldCopy, String destinationFolder,
                                  String shortAccessUrl)
     {
+        copyExperimentAndVerify(projectName, folderName, subfolders, experimentTitle, version, recopy, deleteOldCopy,
+                destinationFolder, shortAccessUrl, true);
+    }
+
+    void copyExperimentAndVerify(String projectName, String folderName, @Nullable List<String> subfolders, String experimentTitle,
+                                 @Nullable Integer version, boolean recopy, boolean deleteOldCopy, String destinationFolder,
+                                 String shortAccessUrl, boolean symlinks)
+    {
         if(isImpersonating())
         {
             stopImpersonating();
         }
-        makeCopy(shortAccessUrl, experimentTitle, recopy, deleteOldCopy, destinationFolder);
+        makeCopy(shortAccessUrl, experimentTitle, recopy, deleteOldCopy, destinationFolder, symlinks);
         verifyCopy(shortAccessUrl, experimentTitle, version, projectName, folderName, subfolders, recopy);
     }
 
-    private void makeCopy(String shortAccessUrl, String experimentTitle, boolean recopy, boolean deleteOldCopy, String destinationFolder)
+    private void makeCopy(String shortAccessUrl, String experimentTitle, boolean recopy, boolean deleteOldCopy, String destinationFolder, boolean symlinks)
     {
         goToProjectHome(PANORAMA_PUBLIC);
         impersonateGroup(PANORAMA_PUBLIC_GROUP, false);
@@ -268,6 +342,10 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         setFormElement(Locator.tagWithName("input", "destContainerName"), destinationFolder);
         uncheck("Assign ProteomeXchange ID:");
         uncheck("Assign Digital Object Identifier:");
+        if (!symlinks)
+        {
+            uncheck("Move and Symlink Files:");
+        }
 
         if(recopy)
         {

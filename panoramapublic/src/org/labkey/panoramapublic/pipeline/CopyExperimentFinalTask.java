@@ -24,8 +24,6 @@ import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.exp.api.ExpData;
-import org.labkey.api.exp.api.ExpExperiment;
-import org.labkey.api.exp.api.ExpRun;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.files.view.FilesWebPart;
@@ -35,7 +33,6 @@ import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
 import org.labkey.api.pipeline.RecordedActionSet;
 import org.labkey.api.portal.ProjectUrls;
-import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.InvalidGroupMembershipException;
@@ -52,7 +49,6 @@ import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ReaderRole;
 import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
-import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
@@ -65,6 +61,7 @@ import org.labkey.api.view.ShortURLService;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicNotification;
+import org.labkey.panoramapublic.PanoramaPublicSymlinkManager;
 import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.datacite.Doi;
@@ -72,23 +69,18 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
-import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
 import org.labkey.panoramapublic.query.CatalogEntryManager;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
-import org.labkey.panoramapublic.query.ModificationInfoManager;
-import org.labkey.panoramapublic.query.SpecLibInfoManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
-import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfo;
-import org.labkey.panoramapublic.query.modification.ExperimentStructuralModInfo;
 import org.labkey.panoramapublic.security.PanoramaPublicSubmitterRole;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -131,35 +123,12 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
     private void finishUp(PipelineJob job, CopyExperimentJobSupport jobSupport) throws Exception
     {
-        // Get the experiment that was just created in the target folder as part of the folder import.
         Container container = job.getContainer();
         User user = job.getUser();
-        List<? extends ExpExperiment> experiments = ExperimentService.get().getExperiments(container, user, false, false);
-        if(experiments.size() == 0)
-        {
-            throw new PipelineJobException("No experiments found in the folder " + container.getPath());
-        }
-        else if (experiments.size() >  1)
-        {
-            throw new PipelineJobException("More than one experiment found in the folder " + container.getPath());
-        }
-        ExpExperiment experiment = experiments.get(0);
-
-        // Get a list of all the ExpRuns imported to subfolders of this folder.
-        int[] runRowIdsInSubfolders = getAllExpRunRowIdsInSubfolders(container);
 
         Logger log = job.getLogger();
         try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
         {
-            if(runRowIdsInSubfolders.length > 0)
-            {
-                // The folder export and import process, creates a new experiment in exp.experiment.
-                // However, only runs in the top-level folder are added to this experiment.
-                // We will add to the experiment all the runs imported to subfolders.
-                log.info("Adding runs imported in subfolders.");
-                ExperimentAnnotationsManager.addSelectedRunsToExperiment(experiment, runRowIdsInSubfolders, user);
-            }
-
             // Get the ExperimentAnnotations in the source container
             ExperimentAnnotations sourceExperiment = jobSupport.getExpAnnotations();
             // Get the submission request
@@ -174,8 +143,9 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // can be assigned to the new copy.
             ExperimentAnnotations previousCopy = getPreviousCopyRemoveShortUrl(latestCopiedSubmission, user);
 
-            // Create a new row in panoramapublic.ExperimentAnnotations and link it to the new experiment created during folder import.
-            ExperimentAnnotations targetExperiment = createNewExperimentAnnotations(experiment, sourceExperiment, js, previousCopy, jobSupport, user, log);
+            // Update the row in panoramapublic.ExperimentAnnotations - set the shortURL and version
+            ExperimentAnnotations targetExperiment = updateExperimentAnnotations(container, sourceExperiment, js, previousCopy, jobSupport, user, log);
+
 
             // If there is a Panorama Public data catalog entry associated with the previous copy of the experiment, move it to the
             // new container.
@@ -194,12 +164,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             updateDataPathsAndRawDataTab(targetExperiment, user, log);
 
 
-            // Copy any Spectral library information provided by the user in the source container
-            copySpecLibInfos(sourceExperiment, targetExperiment, user);
-
-            // Copy any modifications related information provided by the user in the source container
-            copyModificationInfos(sourceExperiment, targetExperiment, user);
-
             // Assign a reviewer account if one was requested
             Pair<User, String> reviewer = assignReviewer(js, targetExperiment, previousCopy, jobSupport, currentSubmission.isKeepPrivate(), user, log);
 
@@ -209,11 +173,95 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             js = updateSubmissionAndDeletePreviousCopy(js, currentSubmission, latestCopiedSubmission, targetExperiment, previousCopy, jobSupport, user, log);
 
+            alignSymlinks(job, jobSupport);
+
+            cleanupExportDirectory(user, jobSupport.getExportDir());
+
+            verifySymlinks(sourceExperiment.getContainer(), container, true);
+            if (null != previousCopy)
+            {
+                verifySymlinks(previousCopy.getContainer(), container, false);
+            }
+
             // Create notifications. Do this at the end after everything else is done.
             PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), js.getJournalExperiment(), currentSubmission,
                     reviewer.first, reviewer.second, user, previousCopy != null /*This is a re-copy if previousCopy exists*/);
 
             transaction.commit();
+        }
+    }
+
+    /**
+     * Verify symlinks created during the copy process are valid symlinks and point to the target container.
+     * @param source    The copied experiment source container
+     * @param target    The target container on Panorma Public
+     * @param matchingPath  If true the target files will have the same relative path in the target container
+     */
+    private void verifySymlinks(Container source, Container target, boolean matchingPath)
+    {
+        FileContentService fcs = FileContentService.get();
+        if (fcs != null)
+        {
+            Path targetRoot = fcs.getFileRootPath(target);
+            if (null != targetRoot)
+            {
+                Path targetFileRoot = Path.of(targetRoot.toString(), File.separator);
+                PanoramaPublicSymlinkManager.get().handleContainerSymlinks(source, (sourceFile, targetFile) -> {
+
+                    // valid path
+                    if (!FileUtil.isFileAndExists(targetFile))
+                    {
+                        throw new IllegalStateException("Symlink " + sourceFile + " points to an invalid target " + targetFile);
+                    }
+
+                    // we don't want symlinks pointing at other symlinks
+                    if (Files.isSymbolicLink(targetFile))
+                    {
+                        throw new IllegalStateException("Symlink " + sourceFile + " points to another symlink " + targetFile);
+                    }
+
+                    // Check if symlink target is in the target container
+                    if (!targetFile.startsWith(targetFileRoot))
+                    {
+                        throw new IllegalStateException("Symlink " + sourceFile + " points to " + targetFile + " which is outside the target container " + target.getPath());
+                    }
+
+                    // Symlink targets should have exact same relative path as the source file. Previous versions will not
+                    // necessarily have same path so don't check.
+                    if (matchingPath)
+                    {
+                        String targetFileRelative = targetFile.toString().substring(targetFileRoot.toString().length());
+                        if (!sourceFile.toString().endsWith(targetFileRelative))
+                        {
+                            throw new IllegalStateException("Symlink " + sourceFile + " points to " + targetFile + " which is not at the same path as the source file " + sourceFile);
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    private void cleanupExportDirectory(User user, File directory) throws IOException
+    {
+        List<? extends ExpData> datas = ExperimentService.get().getExpDatasUnderPath(directory.toPath(), null, true);
+        for (ExpData data : datas)
+        {
+            data.delete(user);
+        }
+        FileUtil.deleteDir(directory);
+    }
+
+    // After a full file copy is done re-align the experiment project's symlinks to the newest version of the public project
+    private void alignSymlinks(PipelineJob job, CopyExperimentJobSupport jobSupport)
+    {
+        if (jobSupport.getPreviousVersionName() != null)
+        {
+            FileContentService fcs = FileContentService.get();
+            if (fcs != null)
+            {
+                PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(jobSupport.getPreviousVersionName(),
+                        fcs.getFileRoot(job.getContainer()).getPath(), job.getContainer());
+            }
         }
     }
 
@@ -231,36 +279,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         {
             throw new PipelineJobException(String.format("Could not move Panorama Public catalog entry from the previous copy of the data in folder '%s' to the new folder '%s'.",
                     previousCopy.getContainer().getPath(), targetExperiment.getContainer().getPath()), e);
-        }
-    }
-
-    private void copySpecLibInfos(ExperimentAnnotations sourceExperiment, ExperimentAnnotations targetExperiment, User user)
-    {
-        List<SpecLibInfo> specLibInfos = SpecLibInfoManager.getForExperiment(sourceExperiment.getId(), sourceExperiment.getContainer());
-        for (SpecLibInfo info: specLibInfos)
-        {
-            info.setId(0);
-            info.setExperimentAnnotationsId(targetExperiment.getId());
-            SpecLibInfoManager.save(info, user);
-        }
-    }
-
-    private void copyModificationInfos(ExperimentAnnotations sourceExperiment, ExperimentAnnotations targetExperiment, User user)
-    {
-        List<ExperimentStructuralModInfo> strModInfos = ModificationInfoManager.getStructuralModInfosForExperiment(sourceExperiment.getId(), sourceExperiment.getContainer());
-        for (ExperimentStructuralModInfo info: strModInfos)
-        {
-            info.setId(0);
-            info.setExperimentAnnotationsId(targetExperiment.getId());
-            ModificationInfoManager.saveStructuralModInfo(info, user);
-        }
-
-        List<ExperimentIsotopeModInfo> isotopeModInfos = ModificationInfoManager.getIsotopeModInfosForExperiment(sourceExperiment.getId(), sourceExperiment.getContainer());
-        for (ExperimentIsotopeModInfo info: isotopeModInfos)
-        {
-            info.setId(0);
-            info.setExperimentAnnotationsId(targetExperiment.getId());
-            ModificationInfoManager.saveIsotopeModInfo(info, user);
         }
     }
 
@@ -349,7 +367,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return new Pair<>(null, null);
     }
 
-    private void updateDataPathsAndRawDataTab(ExperimentAnnotations targetExperiment, User user, Logger log) throws BatchValidationException, PipelineJobException
+    private void updateDataPathsAndRawDataTab(ExperimentAnnotations targetExperiment, User user, Logger log)
     {
         FileContentService service = FileContentService.get();
         if (service != null)
@@ -360,14 +378,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // we had to update the file root property on the Files webpart in the Raw Data tab in the Panorama Public copy.
             log.info("Updating the 'Raw Data' tab configuration");
             updateRawDataTabConfig(targetExperiment.getContainer(), service, user);
-
-            // DataFileUrl in exp.data and FilePathRoot in exp.experimentRun point to locations in the 'export' directory.
-            // We are now copying all files from the source container to the target container file root. Update the paths
-            // to point to locations in the target container file root, and delete the 'export' directory
-            if (!updateDataPaths(targetExperiment.getContainer(), service, user, log))
-            {
-                throw new PipelineJobException("Unable to update all data file paths.");
-            }
         }
     }
 
@@ -441,16 +451,17 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     }
 
     @NotNull
-    private ExperimentAnnotations createNewExperimentAnnotations(ExpExperiment experiment, ExperimentAnnotations sourceExperiment, JournalSubmission js,
-                                                                 ExperimentAnnotations previousCopy, CopyExperimentJobSupport jobSupport,
-                                                                 User user, Logger log) throws PipelineJobException
+    private ExperimentAnnotations updateExperimentAnnotations(Container targetContainer, ExperimentAnnotations sourceExperiment, JournalSubmission js,
+                                                              ExperimentAnnotations previousCopy, CopyExperimentJobSupport jobSupport,
+                                                              User user, Logger log) throws PipelineJobException
     {
-        log.info("Creating a new TargetedMS experiment entry in panoramapublic.ExperimentAnnotations.");
-        ExperimentAnnotations targetExperiment = createExperimentCopy(sourceExperiment);
-        targetExperiment.setExperimentId(experiment.getRowId());
-        targetExperiment.setContainer(experiment.getContainer());
-        targetExperiment.setSourceExperimentId(sourceExperiment.getId());
-        targetExperiment.setSourceExperimentPath(sourceExperiment.getContainer().getPath());
+
+        log.info("Updating TargetedMS experiment entry in target folder " + targetContainer.getPath());
+        ExperimentAnnotations targetExperiment = ExperimentAnnotationsManager.getExperimentInContainer(targetContainer);
+        if (targetExperiment == null)
+        {
+            throw new PipelineJobException("ExperimentAnnotations row does not exist in target folder: '" + targetContainer.getPath() + "'");
+        }
         targetExperiment.setShortUrl(js.getShortAccessUrl());
         Integer currentVersion = ExperimentAnnotationsManager.getMaxVersionForExperiment(sourceExperiment.getId());
         int version =  currentVersion == null ? 1 : currentVersion + 1;
@@ -475,28 +486,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         }
 
         return targetExperiment;
-    }
-
-    private ExperimentAnnotations createExperimentCopy(ExperimentAnnotations source)
-    {
-        ExperimentAnnotations copy = new ExperimentAnnotations();
-        copy.setTitle(source.getTitle());
-        copy.setExperimentDescription(source.getExperimentDescription());
-        copy.setSampleDescription(source.getSampleDescription());
-        copy.setOrganism(source.getOrganism());
-        copy.setInstrument(source.getInstrument());
-        copy.setSpikeIn(source.getSpikeIn());
-        copy.setCitation(source.getCitation());
-        copy.setAbstract(source.getAbstract());
-        copy.setPublicationLink(source.getPublicationLink());
-        copy.setIncludeSubfolders(source.isIncludeSubfolders());
-        copy.setKeywords(source.getKeywords());
-        copy.setLabHead(source.getLabHead());
-        copy.setSubmitter(source.getSubmitter());
-        copy.setLabHeadAffiliation(source.getLabHeadAffiliation());
-        copy.setSubmitterAffiliation(source.getSubmitterAffiliation());
-        copy.setPubmedId(source.getPubmedId());
-        return copy;
     }
 
     private void updatePermissions(User formSubmitter, ExperimentAnnotations targetExperiment, ExperimentAnnotations sourceExperiment, ExperimentAnnotations previousCopy,
@@ -565,7 +554,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         if (group != null)
         {
             addToGroup(user, group, log);
-            return;
         }
     }
 
@@ -673,121 +661,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         targetExpt.setDoi(doi.getDoi());
     }
 
-    private boolean updateDataPaths(Container target, FileContentService service, User user, Logger logger) throws BatchValidationException
-    {
-        List<ExpRun> allRuns = getAllExpRuns(target);
-
-        for(ExpRun run: allRuns)
-        {
-            Path fileRootPath = service.getFileRootPath(run.getContainer(), FileContentService.ContentType.files);
-            if(fileRootPath == null || !Files.exists(fileRootPath))
-            {
-                logger.error("File root path for container " + run.getContainer().getPath() + " does not exist: " + fileRootPath);
-                return false;
-            }
-
-            List<ExpData> allData = new ArrayList<>(run.getAllDataUsedByRun());
-
-            ITargetedMSRun tmsRun = PanoramaPublicManager.getRunByLsid(run.getLSID(), run.getContainer());
-            if(tmsRun == null)
-            {
-                logger.error("Could not find a targetedms run for exprun: " + run.getLSID() + " in container " + run.getContainer());
-                return false;
-            }
-            logger.info("Updating dataFileUrls for run " + tmsRun.getFileName() + "; targetedms run ID " + tmsRun.getId());
-
-            // list returned by run.getAllDataUsedByRun() may not include rows in exp.data that do not have a corresponding row in exp.dataInput.
-            // This is known to happen for entries for .skyd datas.
-            if(!addMissingDatas(allData, tmsRun, logger))
-            {
-                return false;
-            }
-
-            for(ExpData data: allData)
-            {
-                String fileName = FileUtil.getFileName(data.getFilePath());
-                Path newDataPath = fileRootPath.resolve(fileName);
-                if(!Files.exists(newDataPath))
-                {
-                    // This may be the .skyd file which is inside the exploded parent directory
-                    String parentDir = tmsRun.getBaseName();
-                    newDataPath = fileRootPath.resolve(parentDir) // Name of the exploded directory
-                                              .resolve(fileName); // Name of the file
-                }
-                if(Files.exists(newDataPath))
-                {
-                    logger.info("Updating dataFileUrl...");
-                    logger.info("from: " + data.getDataFileURI().toString());
-                    logger.info("to: " + newDataPath.toUri());
-                    data.setDataFileURI(newDataPath.toUri());
-                    data.save(user);
-                }
-                else
-                {
-                    logger.error("Data path does not exist: " + newDataPath);
-                    return false;
-                }
-            }
-
-            run.setFilePathRootPath(fileRootPath);
-            run.save(user);
-        }
-        return true;
-    }
-
-    private boolean addMissingDatas(List<ExpData> allData, ITargetedMSRun tmsRun, Logger logger)
-    {
-        Integer skyZipDataId = tmsRun.getDataId();
-        boolean skyZipDataIncluded = false;
-
-        Integer skydDataId = tmsRun.getSkydDataId();
-        boolean skydDataIncluded = false;
-
-        if(skydDataId == null)
-        {
-            // Document may not have a skydDataId, for example, if it does not have any imported replicates. So no .skyd file
-            logger.info("Targetedms run " + tmsRun.getId() + " in container " + tmsRun.getContainer() + " does not have a skydDataId." );
-            skydDataIncluded = true; // Set to true so we don't try to add it later
-        }
-
-        for(ExpData data: allData)
-        {
-            if(data.getRowId() == skyZipDataId)
-            {
-                skyZipDataIncluded = true;
-            }
-            else if((skydDataId != null) && (data.getRowId() == skydDataId))
-            {
-                skydDataIncluded = true;
-            }
-        }
-
-        if(!skyZipDataIncluded)
-        {
-            ExpData skyZipData = ExperimentService.get().getExpData(skyZipDataId);
-            if(skyZipData == null)
-            {
-                logger.error("Could not find expdata for dataId (.sky.zip): " + tmsRun.getDataId() +" for runId" + tmsRun.getId() + " in container " + tmsRun.getContainer());
-                return false;
-            }
-            logger.info("Adding ExpData for .sky.zip file");
-            allData.add(skyZipData);
-        }
-
-        if(!skydDataIncluded)
-        {
-            ExpData skydData = ExperimentService.get().getExpData(tmsRun.getSkydDataId());
-            if (skydData == null)
-            {
-                logger.error("Could not find expdata for skydDataId (.skyd): " + tmsRun.getDataId() + " for runId " + tmsRun.getId() + " in container " + tmsRun.getContainer());
-                return false;
-            }
-            logger.info("Adding ExpData for .skyd file");
-            allData.add(skydData);
-        }
-        return true;
-    }
-
     private void updateRawDataTabConfig(Container c, FileContentService service, User user)
     {
         Set<Container> children = ContainerManager.getAllChildren(c); // Includes parent
@@ -821,45 +694,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 Portal.updatePart(user, wp);
             }
         }
-    }
-
-    private List<ExpRun> getAllExpRuns(Container container)
-    {
-        Set<Container> children = ContainerManager.getAllChildren(container);
-        ExperimentService expService = ExperimentService.get();
-        List<ExpRun> allRuns = new ArrayList<>();
-
-        for(Container child: children)
-        {
-            List<? extends ExpRun> runs = expService.getExpRuns(child, null, null);
-            allRuns.addAll(runs);
-        }
-        return allRuns;
-    }
-
-    private static int[] getAllExpRunRowIdsInSubfolders(Container container)
-    {
-        Set<Container> children = ContainerManager.getAllChildren(container);
-        ExperimentService expService = ExperimentService.get();
-        List<Integer> expRunRowIds = new ArrayList<>();
-        for(Container child: children)
-        {
-            if(container.equals(child))
-            {
-                continue;
-            }
-            List<? extends ExpRun> runs = expService.getExpRuns(child, null, null);
-            for(ExpRun run: runs)
-            {
-                expRunRowIds.add(run.getRowId());
-            }
-        }
-        int[] intIds = new int[expRunRowIds.size()];
-        for(int i = 0; i < expRunRowIds.size(); i++)
-        {
-            intIds[i] = expRunRowIds.get(i);
-        }
-        return intIds;
     }
 
     private void updateLastCopiedExperiment(ExperimentAnnotations previousCopy, JournalSubmission js, Journal journal, User user, Logger log) throws PipelineJobException

@@ -16,6 +16,8 @@
 
 package org.labkey.panoramapublic;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.DbSchemaType;
@@ -25,10 +27,18 @@ import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
+import org.labkey.panoramapublic.query.JournalManager;
 
 public class PanoramaPublicManager
 {
     private static final PanoramaPublicManager _instance = new PanoramaPublicManager();
+
+    private static final Logger _log = LogManager.getLogger(PanoramaPublicManager.class);
+
+    public static String PANORAMA_PUBLIC_FILES = "Panorama Public Files";
+    public static String PANORAMA_PUBLIC_METADATA = "Panorama Public Experiment Metadata";
+    public static int PRIORITY_PANORAMA_PUBLIC_METADATA = 1000;
+    public static int PRIORITY_PANORAMA_PUBLIC_FILES = PRIORITY_PANORAMA_PUBLIC_METADATA + 1;
 
     private PanoramaPublicManager()
     {
@@ -143,5 +153,13 @@ public class PanoramaPublicManager
     public static ActionURL getRawDataTabUrl(Container container)
     {
         return PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container, TargetedMSService.RAW_FILES_TAB);
+    }
+
+    public static boolean canBeSymlinkTarget(Container container)
+    {
+        // Folders in a journal project (e.g. Panorama Public) are the only ones that can have symlink targets.
+        // Folders in other projects can contain symlinks but no symlink targets.
+        Container project = container.getProject();
+        return project != null ? JournalManager.isJournalProject(project) : false;
     }
 }

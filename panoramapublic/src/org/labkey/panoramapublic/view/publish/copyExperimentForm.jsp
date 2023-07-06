@@ -208,6 +208,13 @@
                     boxLabel: 'Check this box for tests so that we get a DOI with the DataCite test API.'
                 },
                 {
+                    xtype: 'checkbox',
+                    fieldLabel: "Move and Symlink Files",
+                    checked: <%=form.isMoveAndSymlink()%>,
+                    name: 'moveAndSymlink',
+                    boxLabel: 'Check this box to perform a move and symlink of the files instead of a full copy.'
+                },
+                {
                     xtype: 'textfield',
                     hidden: <%=!currentSubmission.isKeepPrivate() || isRecopy%>,
                     fieldLabel: "Reviewer Email Prefix",

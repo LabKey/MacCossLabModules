@@ -14,7 +14,6 @@ import org.labkey.test.pages.pipeline.PipelineStatusDetailsPage;
 import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
-import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PipelineStatusTable;
 import org.labkey.test.util.PortalHelper;
@@ -31,8 +30,6 @@ import static org.junit.Assert.assertTrue;
 @BaseWebDriverTest.ClassTimeout(minutes = 7)
 public class PanoramaPublicTest extends PanoramaPublicBaseTest
 {
-    public static final String SAMPLEDATA_FOLDER = "panoramapublic/";
-
     private static final String SKY_FILE_1 = "Study9S_Site52_v1.sky.zip";
     private static final String RAW_FILE_WIFF = "Site52_041009_Study9S_Phase-I.wiff";
     private static final String RAW_FILE_WIFF_SCAN = RAW_FILE_WIFF + ".scan";
@@ -96,7 +93,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         impersonate(SUBMITTER);
         goToDashboard();
         expWebPart.clickResubmit();
-        resubmitWithoutPxd();
+        resubmitWithoutPxd(true, true);
         goToDashboard();
         assertTextPresent("Copy Pending!");
 
@@ -134,7 +131,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         verifySubmissionsAndPublishedVersions(projectName, folderName, 2, 2, List.of(Boolean.TRUE, Boolean.TRUE), List.of("", experimentTitle), List.of("", "2"), List.of("", shortAccessLink));
 
         // Submitter should be able to delete their folder after it has been copied to Panorama Public
-        goToProjectFolder(projectName, folderName);
+        goToHome();
         impersonate(SUBMITTER);
         apiContainerHelper.deleteFolder(projectName, folderName);
         assertFalse("Expected the submitter's container to have been deleted",
@@ -287,6 +284,8 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         assertTrue("Copy Job's log file not set to pipeline root", pipelineStatusDetailsPage.getFilePath().contains("@files"));  //Proxy check to see if Job's log file is set to the pipeline root.
     }
 
+
+
     @Override
     protected void setupSourceFolder(String projectName, String folderName, String ... adminUsers)
     {
@@ -372,17 +371,6 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         clickAndWait(Locator.linkWithText(INCLUDE_SUBFOLDERS_AND_SUBMIT));
 
         return submitWithoutPXId();
-    }
-
-    private void resubmitWithoutPxd()
-    {
-        clickButton("Submit without a ProteomeXchange ID");
-        waitForText("Resubmit Request to ");
-        click(Ext4Helper.Locators.ext4Button(("Resubmit")));
-        waitForText("Confirm resubmission request to");
-        click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
-        waitForText("Request resubmitted to");
-        click(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
     }
 
     private void verifyVersionCount(String experimentTitle, int count)

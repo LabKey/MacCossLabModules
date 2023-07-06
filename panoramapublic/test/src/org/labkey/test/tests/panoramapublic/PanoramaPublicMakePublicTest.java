@@ -4,6 +4,7 @@ import org.apache.hc.core5.http.HttpStatus;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.labkey.remoteapi.CommandException;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
@@ -20,6 +21,7 @@ import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebElement;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,7 +40,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
     private static final String IMAGE_PATH = "TargetedMS/panoramapublic/" + IMAGE_FILE;
 
     @Test
-    public void testExperimentCopy()
+    public void testExperimentCopy() throws IOException, CommandException
     {
         // Set up our source folder. We will create an experiment and submit it to our "Panorama Public" project.
         String projectName = getProjectName();
@@ -225,7 +227,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         goToDashboard();
         expWebPart = new TargetedMsExperimentWebPart(this);
         expWebPart.clickResubmit();
-        resubmitWithoutPxd(keepPrivate);
+        resubmitWithoutPxd(false, keepPrivate);
         goToDashboard();
         assertTextPresent("Copy Pending!");
     }
@@ -278,21 +280,6 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         }
         Assert.fail("Could not get reviewer email from support messages.");
         return null;
-    }
-
-    private void resubmitWithoutPxd(boolean keepPrivate)
-    {
-        clickAndWait(Locator.linkContainingText("Submit without a ProteomeXchange ID"));
-        waitForText("Resubmit Request to ");
-        if (!keepPrivate)
-        {
-            uncheck("Keep Private:");
-        }
-        click(Ext4Helper.Locators.ext4Button(("Resubmit")));
-        waitForText("Confirm resubmission request to");
-        click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
-        waitForText("Request resubmitted to");
-        click(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
     }
 
     private void verifyMakePublic(String projectName, String folderName, String user, boolean isSubmitter)

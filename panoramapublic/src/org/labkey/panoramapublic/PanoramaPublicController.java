@@ -1499,6 +1499,20 @@ public class PanoramaPublicController extends SpringActionController
             return true;
         }
 
+        private Path getExportFilesDir(Container c)
+        {
+            FileContentService fcs = FileContentService.get();
+            if(fcs != null)
+            {
+                Path fileRoot = fcs.getFileRootPath(c, FileContentService.ContentType.files);
+                if (fileRoot != null)
+                {
+                    return fileRoot.resolve(PipelineService.EXPORT_DIR);
+                }
+            }
+            return null;
+        }
+
         @Override
         public boolean handlePost(CopyExperimentForm form, BindException errors)
         {
@@ -1539,13 +1553,15 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
+            String previousVersionName = null;
             Submission previousSubmission = _journalSubmission.getLatestCopiedSubmission();
             if (previousSubmission != null)
             {
                 // Target folder name is automatically populated in the copy experiment form. Unless the admin making the copy changed the
                 // folder name we expect the previous copy of the data to have the same folder name. Rename the old folder so that we can
                 // use the same folder name for the new copy.
-                if (!renamePreviousFolder(previousSubmission, destinationFolder, errors))
+                previousVersionName = renamePreviousFolder(previousSubmission, destinationFolder, errors);
+                if (previousVersionName == null)
                 {
                     return false;
                 }
@@ -1573,8 +1589,13 @@ public class PanoramaPublicController extends SpringActionController
                 job.setUsePxTestDb(form.isUsePxTestDb());
                 job.setAssignDoi(form.isAssignDoi());
                 job.setUseDataCiteTestApi(form.isUseDataCiteTestApi());
+                job.setMoveAndSymlink(form.isMoveAndSymlink());
                 job.setReviewerEmailPrefix(form.getReviewerEmailPrefix());
                 job.setDeletePreviousCopy(form.isDeleteOldCopy());
+                job.setPreviousVersionName(previousVersionName);
+                job.setExportTargetPath(getExportFilesDir(target));
+                job.setExportSourceContainer(form.getContainer());
+
                 PipelineService.get().queueJob(job);
 
                 _successURL = PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlBegin(target);
@@ -1586,12 +1607,14 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
-        private boolean renamePreviousFolder(Submission previousSubmission, String targetContainerName, BindException errors)
+        private String renamePreviousFolder(Submission previousSubmission, String targetContainerName, BindException errors)
         {
+            String newPath = null;
             ExperimentAnnotations previousCopy = ExperimentAnnotationsManager.get(previousSubmission.getCopiedExperimentId());
             if (previousCopy != null)
             {
                 Container previousContainer = previousCopy.getContainer();
+                newPath = previousContainer.getPath();
                 if (targetContainerName.equals(previousContainer.getName()))
                 {
                     try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
@@ -1601,21 +1624,23 @@ public class PanoramaPublicController extends SpringActionController
                         {
                             errors.reject(ERROR_MSG, "Previous experiment copy (Id: " + previousCopy.getId() + ") does not have a version. " +
                                     "Cannot rename previous folder.");
-                            return false;
+                            return null;
                         }
                         // Rename the container where the old copy lives so that the same folder name can be used for the new copy.
                         String newName = previousContainer.getName() + " V." + version;
                         if (ContainerManager.getChild(previousContainer.getParent(), newName) != null)
                         {
                             errors.reject(ERROR_MSG, "Cannot rename previous folder to '" + newName + "'. A folder with that name already exists.");
-                            return false;
+                            return null;
                         }
                         ContainerManager.rename(previousContainer, getUser(), newName);
+
+                        newPath = FileContentService.get().getFileRoot(previousContainer.getParent()) + File.separator + newName;
                         transaction.commit();
                     }
                 }
             }
-            return true;
+            return newPath;
         }
 
         private ValidEmail getValidEmail(String email, String errMsg, BindException errors)
@@ -1683,6 +1708,8 @@ public class PanoramaPublicController extends SpringActionController
         private boolean _usePxTestDb; // Use the test database for getting a PX ID if true
         private boolean _assignDoi;
         private boolean _useDataCiteTestApi;
+
+        private boolean _moveAndSymlink;
         private boolean _deleteOldCopy;
 
         static void setDefaults(CopyExperimentForm form, ExperimentAnnotations sourceExperiment, Submission currentSubmission)
@@ -1696,6 +1723,7 @@ public class PanoramaPublicController extends SpringActionController
             form.setUsePxTestDb(false);
 
             form.setAssignDoi(true);
+            form.setMoveAndSymlink(true);
             form.setUseDataCiteTestApi(false);
 
             Container sourceExptContainer = sourceExperiment.getContainer();
@@ -1817,6 +1845,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setUseDataCiteTestApi(boolean useDataCiteTestApi)
         {
             _useDataCiteTestApi = useDataCiteTestApi;
+        }
+
+        public boolean isMoveAndSymlink()
+        {
+            return _moveAndSymlink;
+        }
+
+        public void setMoveAndSymlink(boolean moveAndSymlink)
+        {
+            _moveAndSymlink = moveAndSymlink;
         }
 
         public boolean isDeleteOldCopy()
@@ -5626,7 +5664,7 @@ public class PanoramaPublicController extends SpringActionController
                 {
                     // Display the version only if there is more than one version of this dataset on Panorama Public
                     _version = _experimentAnnotations.getStringVersion(maxVersion);
-                    if (_experimentAnnotations.getDataVersion().equals(maxVersion))
+                    if (_experimentAnnotations.getDataVersion() != null && _experimentAnnotations.getDataVersion().equals(maxVersion))
                     {
                         // This is the current version; Display a link to see all published versions
                         _versionsUrl = new ActionURL(PanoramaPublicController.ShowPublishedVersions.class, _experimentAnnotations.getContainer());
@@ -9046,6 +9084,20 @@ public class PanoramaPublicController extends SpringActionController
             {
                 return new Pair<>(new CatalogImageAttachmentParent(shortUrl, expAnnot.getContainer()), form.getName());
             }
+            return null;
+        }
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public static class VerifySymlinksAction extends ReadOnlyApiAction<CatalogForm>
+    {
+        @Override
+        public Object execute(CatalogForm catalogForm, BindException errors) throws Exception
+        {
+            if (PanoramaPublicSymlinkManager.get().verifySymlinks())
+                return success();
+
+            errors.reject(ERROR_MSG, "Problems with symlink registration. See log for details.");
             return null;
         }
     }
