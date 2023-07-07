@@ -101,6 +101,7 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
                 FolderArchiveDataTypes.WIKIS_AND_THEIR_ATTACHMENTS, // "Wikis and their attachments",
                 FolderArchiveDataTypes.CONTAINER_SPECIFIC_MODULE_PROPERTIES, // "Container specific module properties",
                 FolderArchiveDataTypes.EXPERIMENTS_AND_RUNS, // "Experiments and runs"
+                FolderArchiveDataTypes.EXPERIMENT_RUNS,
                 FolderArchiveDataTypes.LIST_DESIGN, // "Lists"
                 FolderArchiveDataTypes.LIST_DATA,
                 TargetedMSService.QC_FOLDER_DATA_TYPE
