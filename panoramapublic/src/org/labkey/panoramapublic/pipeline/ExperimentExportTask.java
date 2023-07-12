@@ -35,7 +35,6 @@ import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.writer.FileSystemFile;
-import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.io.File;
@@ -101,6 +100,7 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
                 FolderArchiveDataTypes.WIKIS_AND_THEIR_ATTACHMENTS, // "Wikis and their attachments",
                 FolderArchiveDataTypes.CONTAINER_SPECIFIC_MODULE_PROPERTIES, // "Container specific module properties",
                 FolderArchiveDataTypes.EXPERIMENTS_AND_RUNS, // "Experiments and runs"
+                FolderArchiveDataTypes.EXPERIMENT_RUNS,
                 FolderArchiveDataTypes.LIST_DESIGN, // "Lists"
                 FolderArchiveDataTypes.LIST_DATA,
                 TargetedMSService.QC_FOLDER_DATA_TYPE
