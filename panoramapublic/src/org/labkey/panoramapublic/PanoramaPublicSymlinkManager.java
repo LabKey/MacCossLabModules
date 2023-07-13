@@ -26,7 +26,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -405,26 +404,7 @@ public class PanoramaPublicSymlinkManager
     // this will return the container for "/Panorama Public/TestProject V.1"
     private Container getContainerForFilePath(Path path)
     {
-        org.labkey.api.util.Path lkPath = org.labkey.api.util.Path.rootPath;
-
-        Path defaultRootPath = FileContentService.get().getSiteDefaultRoot().toPath();
-        if (path.startsWith(defaultRootPath))
-        {
-            Path rel = defaultRootPath.relativize(path);
-
-            Iterator<Path> iter = rel.iterator();
-            while (iter.hasNext())
-            {
-                Path next = iter.next();
-                if (FileContentService.FILES_LINK.equals(next.getFileName().toString()))
-                {
-                    break;
-                }
-                lkPath = lkPath.resolve(org.labkey.api.util.Path.parse(next.toString()));
-            }
-        }
-
-        return org.labkey.api.util.Path.rootPath.equals(lkPath) ? null : ContainerManager.getForPath(lkPath);
+        return FileContentService.get().getContainersForFilePath(path).stream().findFirst().orElse(null);
     }
 
     private void verifyFileTreeSymlinks(File source, Map<String, String> linkInvalidTarget, Map<String, String> linkWithSymlinkTarget) throws IOException
