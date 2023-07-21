@@ -4,6 +4,7 @@
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.api.portal.ProjectUrls" %>
+<%@ page import="org.labkey.api.util.HtmlString" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -32,11 +33,8 @@
         var items = [];
         if (<%=!bean.isPublic()%>) {
             let html = 'Data at ' + <%=qh(bean.getAccessUrl())%> + ' will be made public.';
-            if (<%= bean.getLicense() != null %>) {
-                html += ' It will be available under the ' + <%=qh(bean.getLicense().getDisplayName())%> + ' license.';
-            }
+            html += <%= bean.getLicense() != null ? qh("It will be available under the " + bean.getLicense().getDisplayName() + ".") : HtmlString.EMPTY_STRING %>;
             items.push({xtype: 'component', style: 'margin: 5px 0 5px 0', html: html});
-
         }
         if (<%=form.hasPubmedId()%>) {
             items.push({xtype: 'component', html: '<b>PubMed ID:</b> ' + <%=qh(form.getPubmedId())%>});
