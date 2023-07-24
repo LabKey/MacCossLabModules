@@ -87,13 +87,13 @@ public class PanoramaPublicFileImporter implements FolderImporter
 
             if (expJob.isMoveAndSymlink())
             {
-                log.info("Moving files to folder " + expJob.getContainer().getPath() + " and creating symlinks");
+                log.info("Moving files to folder " + ctx.getContainer().getPath() + " and creating symlinks");
             }
             else
             {
-                log.info("Copying files to folder " + expJob.getContainer().getPath());
+                log.info("Copying files to folder " + ctx.getContainer().getPath());
             }
-            PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(expJob, sourceFiles, targetFiles, log);
+            PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(expJob, ctx.getContainer(), sourceFiles, targetFiles, log);
 
             alignDataFileUrls(expJob.getUser(), ctx.getContainer(), log);
         }
