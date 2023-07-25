@@ -168,6 +168,14 @@ public class PanoramaPublicNotification
             messageBody.append(madePublic ? " will be made public" : " will be updated");
             messageBody.append(String.format(" on ProteomeXchange by a %s administrator.", journal.getName()));
         }
+
+        messageBody.append(NL2).append("If you haven't already done so, you can provide a brief description and an image to showcase your work in the slideshow on PanoramaWeb.")
+                               .append(" To add an entry for the slideshow, click the \"Panorama Public Catalog Entry\" icon located under the experiment title")
+                               .append(" in the \"Targeted MS Experiment\" panel in your data folder at ")
+                               .append(link(journalCopy.getShortUrl().renderShortURL())).append(".")
+                               .append(" Or, you can click this link: ")
+                               .append(bold(link("Add Catalog Entry", PanoramaPublicController.getAddCatalogEntryUrl(journalCopy).getURIString())));
+
         if (doiError != null)
         {
             messageBody.append(NL2);

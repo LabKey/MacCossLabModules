@@ -156,7 +156,8 @@ public class PanoramaPublicSymlinkManager
             if (nextHighestVersion != null)
             {
                 Container versionContainer = nextHighestVersion.getContainer();
-                handleContainerSymlinks(versionContainer, user, (link, target, c, u) -> {
+                // Handle symlinks in the versionContainer as well as any of its sub-containers that target files in the container being deleted.
+                handleAllSymlinks(Set.of(versionContainer), user, (link, target, c, u) -> {
                     if (!target.startsWith(deletedContainerPath))
                     {
                         return;
@@ -185,7 +186,8 @@ public class PanoramaPublicSymlinkManager
         }
         if (null != sourceContainer)
         {
-            handleContainerSymlinks(sourceContainer, user, (link, target, c, u) -> {
+            // Handle symlinks in the sourceContainer as well as any of its sub-containers that target files in the container being deleted.
+            handleAllSymlinks(Set.of(sourceContainer), user, (link, target, c, u) -> {
                 if (!target.startsWith(deletedContainerPath))
                 {
                     return;
@@ -244,26 +246,37 @@ public class PanoramaPublicSymlinkManager
         }
     }
 
+    private void addFileMovedAuditEvent(Path path, Path sourcePath, Container container, User user)
+    {
+        addFileAuditEvent(path, container, user, "Moved from " + sourcePath);
+    }
+
+    private void addLinkCreatedAuditEvent(Path link, Path target, Container linkContainer, User user)
+    {
+        addFileAuditEvent(link, linkContainer, user, "Symlink created. Target: " + target);
+    }
+
     private void addLinkUpdatedAuditEvent(Path link, Path newTarget, Container linkContainer, User user)
     {
-        addFileAuditEvent(link, linkContainer, user, "Updated symlink target to " + newTarget);
+        addFileAuditEvent(link, linkContainer, user, "Symlink updated. Target: " + newTarget);
     }
 
     private void addReplaceSymlinkWithTargetAuditEvent(Path link, Path target, Container linkContainer, User user)
     {
-        addFileAuditEvent(link, linkContainer, user, "Replaced symlink with target file " + target);
+        addFileAuditEvent(link, linkContainer, user, "Symlink replaced with target file " + target);
     }
 
     private void addReplaceTargetWithSymlinkAuditEvent(Path link, Path target, Container container, User user)
     {
-        addFileAuditEvent(link, container, user, "Replaced target file with symlink to " + target);
+        addFileAuditEvent(link, container, user, "Target file replaced with symlink. Target: " + target);
     }
 
     private void addFileAuditEvent(Path link, Container container, User user, String comment)
     {
         FileSystemAuditProvider.FileSystemAuditEvent event =  new FileSystemAuditProvider.FileSystemAuditEvent(
                 container != null ? container.getId() : null, comment);
-        event.setFile(link.toString());
+        event.setFile(link.getFileName().toString());
+        event.setDirectory(link.getParent().toString());
         AuditLogService.get().addEvent(user, event);
     }
 
@@ -300,7 +313,7 @@ public class PanoramaPublicSymlinkManager
         }
     }
 
-    public void moveAndSymLinkDirectory(CopyExperimentPipelineJob job, File source, File target, @Nullable Logger log) throws IOException
+    public void moveAndSymLinkDirectory(CopyExperimentPipelineJob job, Container targetContainer, File source, File target, @Nullable Logger log) throws IOException
     {
         if (null == log)
         {
@@ -311,6 +324,7 @@ public class PanoramaPublicSymlinkManager
             throw new RuntimeException("Unable to access FileContentService");
 
         File[] files = source.listFiles();
+        Container sourceContainer = getContainerForFilePath(source.toPath());
         if (null != files)
         {
             for (File file : files)
@@ -324,7 +338,7 @@ public class PanoramaPublicSymlinkManager
                         log.debug("Directory created: " + targetPath);
                     }
 
-                    moveAndSymLinkDirectory(job, file, targetPath.toFile(), log);
+                    moveAndSymLinkDirectory(job, targetContainer, file, targetPath.toFile(), log);
                 }
                 else
                 {
@@ -369,6 +383,7 @@ public class PanoramaPublicSymlinkManager
                         Files.move(oldPath, targetPath, REPLACE_EXISTING);
                         log.debug("Moved symlink target  " + oldPath + " to " + targetPath);
                         fcs.fireFileCreateEvent(targetPath, job.getUser(), job.getContainer());
+                        addFileMovedAuditEvent(targetPath, oldPath, targetContainer, job.getUser());
 
                         fireSymlinkUpdate(oldPath, targetPath, job.getContainer(), // job container is the target container on Panorama Public
                                 job.getUser(), log);
@@ -389,9 +404,11 @@ public class PanoramaPublicSymlinkManager
                         Files.move(filePath, targetPath, REPLACE_EXISTING);
                         log.debug("Moved file " + filePath + " to " + targetPath);
                         fcs.fireFileCreateEvent(targetPath, job.getUser(), job.getContainer());
+                        addFileMovedAuditEvent(targetPath, filePath, targetContainer, job.getUser());
 
                         Files.createSymbolicLink(filePath, targetPath);
                         log.debug("Created symlink " + filePath + " targeting " + targetPath);
+                        addLinkCreatedAuditEvent(filePath, targetPath, sourceContainer, job.getUser());
                         // We don't need to update any symlinks here since the source container should not have any symlink targets.
                     }
                 }

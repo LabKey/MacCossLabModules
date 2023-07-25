@@ -93,7 +93,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         impersonate(SUBMITTER);
         goToDashboard();
         expWebPart.clickResubmit();
-        resubmitWithoutPxd(true, true);
+        resubmitWithoutPxd(false, true);
         goToDashboard();
         assertTextPresent("Copy Pending!");
 
