@@ -185,6 +185,11 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             // Assign the ProteomeXchange ID and DOI at the end so that we don't we don't create these identifiers again in case the task has to be rerun due a previous error.
             assignExternalIdentifiers(targetExperiment, previousCopy, jobSupport, log);
+            targetExperiment = ExperimentAnnotationsManager.save(targetExperiment, user);
+            if (previousCopy != null)
+            {
+                ExperimentAnnotationsManager.save(previousCopy, user);
+            }
 
             // Create notifications. Do this at the end after everything else is done.
             PanoramaPublicNotification.notifyCopied(sourceExperiment, targetExperiment, jobSupport.getJournal(), js.getJournalExperiment(), currentSubmission,
@@ -392,6 +397,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             {
                 log.info("Copying DOI from the previous copy of the data.");
                 targetExperiment.setDoi(previousCopy.getDoi());
+                log.info("Removing DOI from the previous copy");
+                previousCopy.setDoi(null);
             }
             else
             {
@@ -742,11 +749,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         log.info("Setting the permanent link on the previous copy to " + newShortUrl.getShortURL());
         previousCopy.setShortUrl(newShortUrl);
-        if (previousCopy.getDoi() != null)
-        {
-            log.info("Removing DOI from the previous copy");
-            previousCopy.setDoi(null);
-        }
 
         ExperimentAnnotationsManager.save(previousCopy, user);
     }
