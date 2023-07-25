@@ -156,6 +156,7 @@ public class PanoramaPublicSymlinkManager
             if (nextHighestVersion != null)
             {
                 Container versionContainer = nextHighestVersion.getContainer();
+                // Handle symlinks in the versionContainer as well as any of its sub-containers that target files in the container being deleted.
                 handleAllSymlinks(Set.of(versionContainer), user, (link, target, c, u) -> {
                     if (!target.startsWith(deletedContainerPath))
                     {
@@ -185,6 +186,7 @@ public class PanoramaPublicSymlinkManager
         }
         if (null != sourceContainer)
         {
+            // Handle symlinks in the sourceContainer as well as any of its sub-containers that target files in the container being deleted.
             handleAllSymlinks(Set.of(sourceContainer), user, (link, target, c, u) -> {
                 if (!target.startsWith(deletedContainerPath))
                 {
