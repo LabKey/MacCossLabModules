@@ -5673,7 +5673,7 @@ public class PanoramaPublicController extends SpringActionController
                     else
                     {
                         // This is not the current version; Display a link to the current version
-                        ExperimentAnnotations maxExpt = publishedVersions.stream().filter(e -> e.getDataVersion().equals(maxVersion)).findFirst().orElse(null);
+                        ExperimentAnnotations maxExpt = publishedVersions.stream().filter(e -> e.getDataVersion() != null && e.getDataVersion().equals(maxVersion)).findFirst().orElse(null);
                         _versionsUrl = maxExpt != null ? PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(maxExpt.getContainer()) : null;
                         _isCurrentVersion = false;
                     }

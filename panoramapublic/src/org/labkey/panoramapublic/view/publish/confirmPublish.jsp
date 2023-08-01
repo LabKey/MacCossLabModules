@@ -32,11 +32,8 @@
         var items = [];
         if (<%=!bean.isPublic()%>) {
             let html = 'Data at ' + <%=qh(bean.getAccessUrl())%> + ' will be made public.';
-            if (<%= bean.getLicense() != null %>) {
-                html += ' It will be available under the ' + <%=qh(bean.getLicense().getDisplayName())%> + ' license.';
-            }
+            html += <%= qh(bean.getLicense() != null ? " It will be available under the " + bean.getLicense().getDisplayName() + " license." : "") %>;
             items.push({xtype: 'component', style: 'margin: 5px 0 5px 0', html: html});
-
         }
         if (<%=form.hasPubmedId()%>) {
             items.push({xtype: 'component', html: '<b>PubMed ID:</b> ' + <%=qh(form.getPubmedId())%>});
