@@ -84,6 +84,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -146,7 +147,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             // Update the row in panoramapublic.ExperimentAnnotations - set the shortURL and version
             ExperimentAnnotations targetExperiment = updateExperimentAnnotations(container, sourceExperiment, js, previousCopy, jobSupport, user, log);
 
-
             // If there is a Panorama Public data catalog entry associated with the previous copy of the experiment, move it to the
             // new container.
             moveCatalogEntry(previousCopy, targetExperiment, user);
@@ -181,6 +181,14 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             if (null != previousCopy)
             {
                 verifySymlinks(previousCopy.getContainer(), container, false);
+            }
+
+            // Assign the ProteomeXchange ID and DOI at the end so that we don't we don't create these identifiers again in case the task has to be rerun due a previous error.
+            assignExternalIdentifiers(targetExperiment, previousCopy, jobSupport, log);
+            targetExperiment = ExperimentAnnotationsManager.save(targetExperiment, user);
+            if (previousCopy != null)
+            {
+                ExperimentAnnotationsManager.save(previousCopy, user);
             }
 
             // Create notifications. Do this at the end after everything else is done.
@@ -389,6 +397,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             {
                 log.info("Copying DOI from the previous copy of the data.");
                 targetExperiment.setDoi(previousCopy.getDoi());
+                log.info("Removing DOI from the previous copy");
+                previousCopy.setDoi(null);
             }
             else
             {
@@ -425,6 +435,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 try
                 {
                     assignPxId(targetExperiment, jobSupport.usePxTestDb());
+                    log.info("Assigned ProteomeXchange ID: " + targetExperiment.getPxid());
                 }
                 catch(ProteomeXchangeServiceException e)
                 {
@@ -462,14 +473,12 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         {
             throw new PipelineJobException("ExperimentAnnotations row does not exist in target folder: '" + targetContainer.getPath() + "'");
         }
+
         targetExperiment.setShortUrl(js.getShortAccessUrl());
         Integer currentVersion = ExperimentAnnotationsManager.getMaxVersionForExperiment(sourceExperiment.getId());
         int version =  currentVersion == null ? 1 : currentVersion + 1;
         log.info("Setting version on new experiment to " + version);
         targetExperiment.setDataVersion(version);
-
-        assignPxId(jobSupport, log, targetExperiment, previousCopy);
-        assignDoi(jobSupport, log, targetExperiment, previousCopy);
 
         targetExperiment = ExperimentAnnotationsManager.save(targetExperiment, user);
 
@@ -488,6 +497,14 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return targetExperiment;
     }
 
+
+    private void assignExternalIdentifiers(ExperimentAnnotations targetExperiment, ExperimentAnnotations previousCopy, CopyExperimentJobSupport jobSupport,
+                                           Logger log) throws PipelineJobException
+    {
+        assignPxId(jobSupport, log, targetExperiment, previousCopy);
+        assignDoi(jobSupport, log, targetExperiment, previousCopy);
+    }
+
     private void updatePermissions(User formSubmitter, ExperimentAnnotations targetExperiment, ExperimentAnnotations sourceExperiment, ExperimentAnnotations previousCopy,
                                    Journal journal, User pipelineJobUser, Logger log)
     {
@@ -498,37 +515,43 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         // Give read permissions to the authors (all users that are folder admins)
         log.info("Adding read permissions to all users that are folder admins in the source folder.");
-        List<User> sourceFolderAdmins = getUsersWithRole(sourceExperiment.getContainer(), RoleManager.getRole(FolderAdminRole.class));
+        Set<User> allReaders = new HashSet<>(getUsersWithRole(sourceExperiment.getContainer(), RoleManager.getRole(FolderAdminRole.class)));
 
-        Container target = targetExperiment.getContainer();
-        MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
-        for (User folderAdmin: sourceFolderAdmins)
-        {
-            newPolicy.addRoleAssignment(folderAdmin, ReaderRole.class);
-        }
-
-        // Assign the PanoramaPublicSubmitterRole so that the submitter or lab head is able to make the copied folder public, and add publication information.
-        assignPanoramaPublicSubmitterRole(newPolicy, log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(),
-                formSubmitter); // User that submitted the form. Can be different from the user selected as the data submitter
-
-        addToSubmittersGroup(target.getProject(), log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(), formSubmitter);
-
+        // If the submitter and lab head user are members of a permission group in the source folder, they will not
+        // be included in the set of users returned by getUsersWithRole(). So add them here
+        allReaders.add(formSubmitter);  // User that submitted the form. Can be different from the user selected as the data submitter
+        allReaders.add(targetExperiment.getSubmitterUser());
+        allReaders.add(targetExperiment.getLabHeadUser());
 
         if (previousCopy != null)
         {
             // Users that had read access to the previous copy should be given read access to the new copy. This will include the reviewer
             // account if one was created for the previous copy.
             log.info("Adding read permissions to all users that had read access to previous copy.");
-            List<User> previousCopyReaders = getUsersWithRole(previousCopy.getContainer(), RoleManager.getRole(ReaderRole.class));
-            previousCopyReaders.forEach(u -> newPolicy.addRoleAssignment(u, ReaderRole.class));
+            allReaders.addAll(getUsersWithRole(previousCopy.getContainer(), RoleManager.getRole(ReaderRole.class)));
         }
 
+        Container target = targetExperiment.getContainer();
+        MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
+        allReaders.stream().filter(Objects::nonNull).forEach(u ->
+        {
+            log.info("Assigning " + ReaderRole.class.getSimpleName() + " to " + u.getEmail());
+            newPolicy.addRoleAssignment(u, ReaderRole.class);
+        });
+
+
+        // Assign the PanoramaPublicSubmitterRole so that the submitter or lab head is able to make the copied folder public, and add publication information.
+        assignPanoramaPublicSubmitterRole(newPolicy, log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(),
+                formSubmitter); // User that submitted the form. Can be different from the user selected as the data submitter
+
         SecurityPolicyManager.savePolicy(newPolicy);
+
+        addToSubmittersGroup(target.getProject(), log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(), formSubmitter);
     }
 
     private void assignPanoramaPublicSubmitterRole(MutableSecurityPolicy policy, Logger log, User... users)
     {
-        Arrays.stream(users).filter(Objects::nonNull).forEach(user -> {
+        Arrays.stream(users).filter(Objects::nonNull).collect(Collectors.toSet()).forEach(user -> {
             log.info("Assigning " + PanoramaPublicSubmitterRole.class.getSimpleName() + " to " + user.getEmail());
             policy.addRoleAssignment(user, PanoramaPublicSubmitterRole.class, false);
         });
@@ -540,7 +563,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         Group group = getGroup(groupName, project, log);
         if (group != null)
         {
-            Arrays.stream(users).filter(Objects::nonNull).forEach(user -> {
+            Arrays.stream(users).filter(Objects::nonNull).collect(Collectors.toSet()).forEach(user -> {
                 // This group already exists in the Panorama Public project on panoramaweb.org.
                 // CONSIDER: Make this configurable through the Panorama Public admin console.
                 addToGroup(user, group, log);
@@ -592,13 +615,13 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return group;
     }
 
-    private List<User> getUsersWithRole(Container container, Role role)
+    private Set<User> getUsersWithRole(Container container, Role role)
     {
         SecurityPolicy securityPolicy = container.getPolicy();
         return securityPolicy.getAssignments().stream()
                 .filter(r -> r.getRole().equals(role)
                         && UserManager.getUser(r.getUserId()) != null) // Ignore user groups
-                .map(r -> UserManager.getUser(r.getUserId())).collect(Collectors.toList());
+                .map(r -> UserManager.getUser(r.getUserId())).collect(Collectors.toSet());
 
     }
 
@@ -726,11 +749,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         log.info("Setting the permanent link on the previous copy to " + newShortUrl.getShortURL());
         previousCopy.setShortUrl(newShortUrl);
-        if (previousCopy.getDoi() != null)
-        {
-            log.info("Removing DOI from the previous copy");
-            previousCopy.setDoi(null);
-        }
 
         ExperimentAnnotationsManager.save(previousCopy, user);
     }
