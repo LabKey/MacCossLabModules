@@ -61,12 +61,6 @@ public class PanoramaPublicFileImporter implements FolderImporter
             return;
         }
 
-        if (null == job)
-        {
-            log.error("Pipeline job not found.");
-            return;
-        }
-
         if (job instanceof CopyExperimentPipelineJob expJob)
         {
             File targetFiles = new File(targetRoot.getPath(), FileContentService.FILES_LINK);
