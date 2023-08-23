@@ -1,0 +1,1 @@
+ALTER TABLE panoramapublic.experimentannotations ALTER COLUMN keywords TYPE TEXT;
