@@ -94,7 +94,9 @@
             <column columnName="SourceExperimentId"/>
             <column columnName="SourceExperimentPath"/>
             <column columnName="ShortUrl"/>
-            <column columnName="Keywords"/>
+            <column columnName="Keywords">
+                <inputRows>2</inputRows>
+            </column>
             <column columnName="LabHead">
                 <fk>
                     <fkColumnName>UserId</fkColumnName>
