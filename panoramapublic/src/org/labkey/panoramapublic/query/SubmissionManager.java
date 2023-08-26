@@ -283,7 +283,7 @@ public class SubmissionManager
         if (!isEditor)
         {
             policy.addRoleAssignment(user, EditorRole.class);
-            SecurityPolicyManager.savePolicy(policy);
+            SecurityPolicyManager.savePolicy(policy, User.getAdminServiceUser());
         }
     }
 

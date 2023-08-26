@@ -119,7 +119,7 @@ public class AssignSubmitterPermissionJob extends PipelineJob
                 logger.info(String.format("'%s', %s: %s - %s", container.getPath(), userType, user.getEmail(), "assigning"));
                 MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(container, container.getPolicy());
                 newPolicy.addRoleAssignment(user, PanoramaPublicSubmitterRole.class, false);
-                SecurityPolicyManager.savePolicy(newPolicy);
+                SecurityPolicyManager.savePolicy(newPolicy, User.getAdminServiceUser());
                 return true;
             }
             else

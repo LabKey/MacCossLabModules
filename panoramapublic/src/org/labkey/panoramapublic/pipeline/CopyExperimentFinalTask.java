@@ -544,7 +544,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         assignPanoramaPublicSubmitterRole(newPolicy, log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(),
                 formSubmitter); // User that submitted the form. Can be different from the user selected as the data submitter
 
-        SecurityPolicyManager.savePolicy(newPolicy);
+        SecurityPolicyManager.savePolicy(newPolicy, User.getAdminServiceUser());
 
         addToSubmittersGroup(target.getProject(), log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(), formSubmitter);
     }
@@ -654,7 +654,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     {
         MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
         newPolicy.addRoleAssignment(reader, ReaderRole.class);
-        SecurityPolicyManager.savePolicy(newPolicy);
+        SecurityPolicyManager.savePolicy(newPolicy, User.getAdminServiceUser());
     }
 
     public static String createPassword()

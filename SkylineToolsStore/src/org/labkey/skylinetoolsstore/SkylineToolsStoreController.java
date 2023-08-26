@@ -269,7 +269,7 @@ public class SkylineToolsStoreController extends SpringActionController
             for (User u : users)
                 policy.addRoleAssignment(u, role);
 
-        SecurityPolicyManager.savePolicy(policy);
+        SecurityPolicyManager.savePolicy(policy, User.getAdminServiceUser());
 
         return c;
     }
@@ -319,7 +319,7 @@ public class SkylineToolsStoreController extends SpringActionController
         if (from == null || to == null)
             return;
 
-        SecurityPolicyManager.savePolicy(copyPolicy(to, from.getPolicy()));
+        SecurityPolicyManager.savePolicy(copyPolicy(to, from.getPolicy()), User.getAdminServiceUser());
     }
 
     public static SkylineTool[] sortToolsByCreateDate(SkylineTool[] tools)
@@ -1359,7 +1359,7 @@ public class SkylineToolsStoreController extends SpringActionController
                 for (User u : newToolEditors)
                     policy.addRoleAssignment(u, RoleManager.getRole(EditorRole.class));
                 policy = filterPolicy(policy, toolOwnersUsers, new Role[]{RoleManager.getRole(EditorRole.class), RoleManager.getRole(FolderAdminRole.class)});
-                SecurityPolicyManager.savePolicy(policy);
+                SecurityPolicyManager.savePolicy(policy, User.getAdminServiceUser());
 
                 Container toolStoreContainer = tool != null ? tool.getContainerParent() : getContainer();
 

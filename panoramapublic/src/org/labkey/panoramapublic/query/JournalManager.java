@@ -241,7 +241,7 @@ public class JournalManager
             }
         }
         newPolicy.addRoleAssignment(journalGroup, CopyTargetedMSExperimentRole.class, false);
-        SecurityPolicyManager.savePolicy(newPolicy);
+        SecurityPolicyManager.savePolicy(newPolicy, User.getAdminServiceUser());
     }
 
     private static void removePermission(Container folder, UserPrincipal journalGroup)
@@ -260,7 +260,7 @@ public class JournalManager
                 newPolicy.addRoleAssignment(journalGroup, role);
             }
         }
-        SecurityPolicyManager.savePolicy(newPolicy);
+        SecurityPolicyManager.savePolicy(newPolicy, User.getAdminServiceUser());
     }
 
     public static void addJournalPermissions(ExperimentAnnotations exptAnnotations, UserPrincipal journalGroup, User user)
@@ -299,7 +299,7 @@ public class JournalManager
             // Add a role assignment to let another group manage the URL. This grants permission to the journal
             // to change where the URL redirects you to after they copy the data
             policy.addRoleAssignment(journalGroup, EditorRole.class);
-            SecurityPolicyManager.savePolicy(policy);
+            SecurityPolicyManager.savePolicy(policy, User.getAdminServiceUser());
         }
         return shortAccessURLRecord;
     }
