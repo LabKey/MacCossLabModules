@@ -286,14 +286,14 @@ public class JournalManager
         ShortURLRecord shortAccessURLRecord;
         try
         {
-            shortAccessURLRecord = shortUrlService.saveShortURL(shortUrl, longURL, user);
+            shortAccessURLRecord = shortUrlService.saveShortURL(shortUrl, longURL, User.getAdminServiceUser());
         }
         catch(UnauthorizedException e)
         {
             throw new ValidationException("Error saving link \"" + shortUrl + "\". It may already be in use. Error message was: " + e.getMessage());
         }
 
-        if(journalGroup != null)
+        if (journalGroup != null)
         {
             MutableSecurityPolicy policy = new MutableSecurityPolicy(SecurityPolicyManager.getPolicy(shortAccessURLRecord));
             // Add a role assignment to let another group manage the URL. This grants permission to the journal
