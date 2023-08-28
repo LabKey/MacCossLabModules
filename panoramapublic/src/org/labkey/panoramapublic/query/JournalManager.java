@@ -286,7 +286,7 @@ public class JournalManager
         ShortURLRecord shortAccessURLRecord;
         try
         {
-            shortAccessURLRecord = shortUrlService.saveShortURL(shortUrl, longURL, User.getAdminServiceUser());
+            shortAccessURLRecord = shortUrlService.saveShortURL(shortUrl, longURL, user);
         }
         catch(UnauthorizedException e)
         {
