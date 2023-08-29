@@ -23,7 +23,6 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.logging.log4j.Logger;
-import org.apache.xerces.impl.dv.util.Base64;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
@@ -148,13 +147,13 @@ import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.PxXml;
 import org.labkey.panoramapublic.model.Submission;
-import org.labkey.panoramapublic.model.validation.DataValidation;
-import org.labkey.panoramapublic.model.validation.PxStatus;
-import org.labkey.panoramapublic.model.validation.Status;
 import org.labkey.panoramapublic.model.speclib.SpecLibDependencyType;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
 import org.labkey.panoramapublic.model.speclib.SpecLibSourceType;
 import org.labkey.panoramapublic.model.speclib.SpectralLibrary;
+import org.labkey.panoramapublic.model.validation.DataValidation;
+import org.labkey.panoramapublic.model.validation.PxStatus;
+import org.labkey.panoramapublic.model.validation.Status;
 import org.labkey.panoramapublic.pipeline.AssignSubmitterPermissionJob;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
 import org.labkey.panoramapublic.pipeline.PxDataValidationPipelineJob;
@@ -211,6 +210,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -8684,7 +8684,7 @@ public class PanoramaPublicController extends SpringActionController
             }
 
             imageString = imageString.substring(prefix.length());
-            byte[] decodedBytes = Base64.decode(imageString);
+            byte[] decodedBytes = Base64.getDecoder().decode(imageString);
 
             long maxSize = Math.min(settings.getMaxFileSize(), AppProps.getInstance().getMaxBLOBSize());
             if (decodedBytes.length > maxSize)
