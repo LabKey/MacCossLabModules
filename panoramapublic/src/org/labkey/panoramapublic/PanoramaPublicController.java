@@ -436,7 +436,7 @@ public class PanoramaPublicController extends SpringActionController
                 // Assign project admin role to the group.
                 MutableSecurityPolicy policy = new MutableSecurityPolicy(SecurityPolicyManager.getPolicy(container));
                 policy.addRoleAssignment(group, ProjectAdminRole.class);
-                SecurityPolicyManager.savePolicy(policy);
+                SecurityPolicyManager.savePolicy(policy, getUser());
 
                 // Add the journal
                 _journal = new Journal();
@@ -6599,7 +6599,7 @@ public class PanoramaPublicController extends SpringActionController
             {
                 newPolicy.addRoleAssignment(publicDataUser.getUser(), ReaderRole.class);
             }
-            SecurityPolicyManager.savePolicy(newPolicy);
+            SecurityPolicyManager.savePolicy(newPolicy, User.getAdminServiceUser());
         }
 
         private void addDownloadDataWebpart(Container container)
