@@ -354,7 +354,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 {
                     throw new PipelineJobException("Error creating a new account for reviewer", e);
                 }
-                assignReader(reviewer, targetExperiment.getContainer());
+                assignReader(reviewer, targetExperiment.getContainer(), user);
                 js.getJournalExperiment().setReviewer(reviewer.getUserId());
                 SubmissionManager.updateJournalExperiment(js.getJournalExperiment(), user);
 
@@ -370,7 +370,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         {
             // Assign Site:Guests to reader role
             log.info("Making folder public.");
-            assignReader(SecurityManager.getGroup(Group.groupGuests), targetExperiment.getContainer());
+            assignReader(SecurityManager.getGroup(Group.groupGuests), targetExperiment.getContainer(), user);
         }
         return new Pair<>(null, null);
     }
@@ -544,7 +544,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         assignPanoramaPublicSubmitterRole(newPolicy, log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(),
                 formSubmitter); // User that submitted the form. Can be different from the user selected as the data submitter
 
-        SecurityPolicyManager.savePolicy(newPolicy, User.getAdminServiceUser());
+        SecurityPolicyManager.savePolicy(newPolicy, pipelineJobUser);
 
         addToSubmittersGroup(target.getProject(), log, targetExperiment.getSubmitterUser(), targetExperiment.getLabHeadUser(), formSubmitter);
     }
@@ -650,11 +650,11 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         return newUser.getUser();
     }
 
-    private void assignReader(UserPrincipal reader, Container target)
+    private void assignReader(UserPrincipal reader, Container target, User pipelineJobUser)
     {
         MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
         newPolicy.addRoleAssignment(reader, ReaderRole.class);
-        SecurityPolicyManager.savePolicy(newPolicy, User.getAdminServiceUser());
+        SecurityPolicyManager.savePolicy(newPolicy, pipelineJobUser);
     }
 
     public static String createPassword()
