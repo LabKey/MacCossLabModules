@@ -38,9 +38,9 @@ import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.data.Table;
 import org.labkey.api.portal.ProjectUrls;
-import org.labkey.api.security.AuthenticationManager;
+import org.labkey.api.security.AuthenticationManager.AuthenticationResult;
+import org.labkey.api.security.DbLoginService;
 import org.labkey.api.security.Group;
-import org.labkey.api.security.PasswordRule;
 import org.labkey.api.security.RequiresLogin;
 import org.labkey.api.security.RequiresNoPermission;
 import org.labkey.api.security.RequiresPermission;
@@ -70,7 +70,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.labkey.api.security.AuthenticationManager.AuthenticationStatus.Success;
 import static org.labkey.api.util.DOM.Attribute.method;
 import static org.labkey.api.util.DOM.Attribute.name;
 import static org.labkey.api.util.DOM.Attribute.style;
@@ -421,48 +420,8 @@ public class SignUpController extends SpringActionController
                 newUser.setLastName(_tempUser.getLastName());
                 newUser.setDescription(StringUtils.isBlank(_tempUser.getOrganization()) ? "" : "Organization: " + _tempUser.getOrganization()); // don't add anything if organization is empty
 
-                // ---------------------------------------------------------------------------------------------- //
-                // Copied from LoginController.attemptSetPassword(ValidEmail email, URLHelper returnUrlHelper, String auditMessage, boolean clearVerification, BindException errors)
-                // Can attemptSetPassword() be added to SecurityManager or AuthenticationManager?
-                // Can DbLoginManager be moved from platform.core.main to platform.api.main?
-                // -----------------------------------------------------------------------------------------------
-                String password = form.getPassword();
-                String password2 = form.getPassword2();
-                List<String> messages = new ArrayList<>();
-                // Cannot use DbLoginManager.getPasswordRule() because DbLoginManager is not an API class
-                // Can DbLoginManager be moved from platform.core.main to platform.api.main?
-                // On skyline.ms the selected "Password Strength" is "Weak"
-                if (!PasswordRule.Weak.isValidToStore(password, password2, newUser, messages))
-                {
-                    messages.forEach(message -> errors.reject("setPassword", message));
-                    return false;
-                }
-                try
-                {
-                    SecurityManager.setPassword(_email, password);
-                }
-                catch (SecurityManager.UserManagementException e)
-                {
-                    errors.reject("setPassword", "Setting password failed: " + e.getMessage() + ". Contact the " + LookAndFeelProperties.getInstance(ContainerManager.getRoot()).getShortName() + " team.");
-                    return false;
-                }
-
-                SecurityManager.setVerification(_email, null);
-                UserManager.addToUserHistory(newUser, "Verified and chose a password.");
-
-                if (getUser().isGuest())
-                {
-                    AuthenticationManager.PrimaryAuthenticationResult result = AuthenticationManager.authenticate(getViewContext().getRequest(),
-                            _email.getEmailAddress(), password, PageFlowUtil.urlProvider(ProjectUrls.class).getHomeURL(), true);
-
-                    if (result.getStatus() == Success)
-                    {
-                        // This user has passed primary authentication
-                        AuthenticationManager.setPrimaryAuthenticationResult(getViewContext().getRequest(), result);
-                    }
-                }
-
-                AuthenticationManager.AuthenticationResult result = AuthenticationManager.handleAuthentication(getViewContext().getRequest(), getContainer());
+                // Attempt to set this new user's password and log them in
+                AuthenticationResult result = DbLoginService.get().attemptSetPassword(getContainer(), getUser(), form.getPassword(), form.getPassword2(), getViewContext().getRequest(), _email, PageFlowUtil.urlProvider(ProjectUrls.class).getHomeURL(), "Verified and chose a password.", true, errors);
 
                 if (errors.hasErrors())
                     return false;
