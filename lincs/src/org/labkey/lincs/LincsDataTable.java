@@ -145,7 +145,7 @@ public class LincsDataTable extends FilteredTable
                 if(pspJob == null)
                 {
                     out.write("PSP job not found for runId: " + runId);
-                    if(userSchema.getUser().isInSiteAdminGroup())
+                    if(userSchema.getUser().hasSiteAdminPermission())
                     {
                         ActionURL url = new ActionURL(LincsController.SubmitPspJobAction.class, getContainer());
                         url.addParameter("runId", runId);
