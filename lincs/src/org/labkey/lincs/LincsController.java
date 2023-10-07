@@ -1210,7 +1210,7 @@ public class LincsController extends SpringActionController
             statusButton.setActionType(ActionButton.Action.GET);
             buttonBar.add(statusButton);
 
-            if (getUser().isInSiteAdminGroup())
+            if (getUser().hasSiteAdminPermission())
             {
                 ActionURL updateStatusUrl = new ActionURL(UpdatePspJobStatusAction.class, getViewContext().getContainer());
                 ActionButton updateButton = new ActionButton(updateStatusUrl, "Update Status");
@@ -1231,7 +1231,7 @@ public class LincsController extends SpringActionController
             DetailsView detailsView = new DetailsView(dr, pspJob.getId());
             view.addView(detailsView);
 
-            if(pspJob.getPipelineJobId() != null && getUser().isInSiteAdminGroup())
+            if(pspJob.getPipelineJobId() != null && getUser().hasSiteAdminPermission())
             {
                 ActionURL pipelineJobUrl = PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlDetails(getContainer(), pspJob.getPipelineJobId());
                 view.addView(new HtmlView(PageFlowUtil.link("View Pipeline Job. Status: " + PipelineService.get().getStatusFile(pspJob.getPipelineJobId()).getStatus()).href(pipelineJobUrl).toString()));

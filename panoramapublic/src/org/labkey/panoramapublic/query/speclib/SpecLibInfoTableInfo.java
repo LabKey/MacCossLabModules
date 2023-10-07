@@ -106,7 +106,7 @@ public class SpecLibInfoTableInfo extends PanoramaPublicTable
                 @Override
                 public Object getValue(RenderContext ctx)
                 {
-                    if (ctx.getViewContext().getUser().isInSiteAdminGroup())
+                    if (ctx.getViewContext().getUser().hasSiteAdminPermission())
                     {
                         // Show the password only to site admins
                         return super.getValue(ctx);
