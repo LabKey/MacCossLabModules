@@ -157,6 +157,9 @@ public class PanoramaPublicManager
 
     public static boolean canBeSymlinkTarget(Container container)
     {
+        // not all webdav files and directories belong to a container
+        if (null == container)
+            return false;
         // Folders in a journal project (e.g. Panorama Public) are the only ones that can have symlink targets.
         // Folders in other projects can contain symlinks but no symlink targets.
         Container project = container.getProject();
