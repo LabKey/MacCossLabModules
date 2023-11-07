@@ -107,7 +107,7 @@
         color: red;
     }
 </style>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     var urlFixedPre = <%=q(AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + "/")%>;
     var urlFixedPost = <%=q(ShortURLRecord.URL_SUFFIX)%>;
