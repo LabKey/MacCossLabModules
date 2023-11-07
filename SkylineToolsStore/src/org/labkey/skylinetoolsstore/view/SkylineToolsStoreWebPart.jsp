@@ -384,7 +384,7 @@
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
 
-<script>
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     var READ_MORE_TEXT = "Read more";
     var READ_LESS_TEXT = "Close";
     var BASE_SLIDE_TIME = 100;

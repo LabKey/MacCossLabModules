@@ -77,7 +77,7 @@
     <input type="submit" value="Submit">
 </form>
 <!-- Selects the View Type in the combobox -->
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     document.getElementById("<%=h(viewType)%>").selected = "true";
 </script>
 
@@ -133,7 +133,7 @@
 </table>
 
 <!-- Pie Chart -->
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     var piechart = c3.generate({
         bindto: '#piechart',
         data: {
@@ -170,7 +170,7 @@
     }
 %>
 <% if(!failureTrends.isEmpty()) {%>
-    <script type="text/javascript">
+    <script type="text/javascript" nonce="<%=getScriptNonce()%>">
         var failureJSON = jQuery.parseJSON( <%= q(failureTrends.toString()) %> );
         var dates = failureJSON.dates;
         for (var i = 0; i < dates.length; i++) {

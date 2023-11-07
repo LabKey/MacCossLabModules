@@ -25,7 +25,7 @@
 %>
 
 <%@include file="menu.jsp" %>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     LABKEY.requiresCss("/TestResults/css/style.css");
     var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
     var popupData = function(data) {
@@ -90,7 +90,7 @@
     <button onclick="showLog();">View Log</button>
 
     <!--Script to handle deleting of run-->
-    <script>
+    <script type="text/javascript" nonce="<%=getScriptNonce()%>">
         <% if (run.isFlagged()) { %>
         var current = "<%=h(contextPath)%>/TestResults/img/flagon.png";
         var opposite = "<%=h(contextPath)%>/TestResults/img/flagoff.png";
@@ -200,7 +200,7 @@ if (leaks.length > 0) { %>
     <tr><td<% if (hang != null) { %> style="background: yellow;"<% } %>>Posted: <%=h(formatDateTime(run.getPostTime()))%></td></tr>
     </table>
 <!--Handles add/remove from training data set-->
-<script>
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     $('#trainset').click(function() {
         var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
         $(this).off().text("Please wait...");
@@ -214,7 +214,7 @@ if (leaks.length > 0) { %>
     });
 </script>
 <!--Script using c3 & d3js which generates memory graph-->
-<script>
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     var jsonObject = jQuery.parseJSON( <%=q(data.getMemoryJson(run.getId(), false).toString())%>);
     var passes = [];
     var pass = 0;

@@ -25,7 +25,7 @@
     Container c = getViewContext().getContainer();
     List<User> noRunsForUser = new ArrayList<>();
 %>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     LABKEY.requiresCss("/TestResults/css/style.css");
 </script>
 <link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
@@ -191,7 +191,7 @@
         <% } %>
     </table>
 </div>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
 

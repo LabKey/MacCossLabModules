@@ -38,7 +38,7 @@
 
 <div id="combinationModInfoForm"></div>
 
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     const elementOrder = {}; // Order of elements in a normalized formula
     let idx = 0;

@@ -58,7 +58,7 @@
     Container c = getViewContext().getContainer();
     DateFormat dfMDHM = new SimpleDateFormat("MM/dd HH:mm:ss");
 %>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     LABKEY.requiresCss("/TestResults/css/style.css");
 </script>
 <link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
@@ -286,7 +286,7 @@
             </div>
         </div>
     </div>
-    <script type="text/javascript">
+    <script type="text/javascript" nonce="<%=getScriptNonce()%>">
         $('#stats').text("<%=errorRuns%> Errors | <%=warningRuns%> Warnings | <%=goodRuns%> Passes | <%=missingUsers.length%> Missing");
     </script>
     <% } %>
@@ -302,7 +302,7 @@
                     <option value="<%=h(ViewType.YEAR)%>" id="<%=h(ViewType.YEAR)%>">Year</option>
                 </select>
             </center>
-            <script type="text/javascript">
+            <script type="text/javascript" nonce="<%=getScriptNonce()%>">
                 $('#viewType').on('change', function() {
                     let url = <%=jsURL(new ActionURL(TestResultsController.BeginAction.class, c).addParameter("end", df.format(selectedDate)))%>;
                     url.searchParams.set('viewType', this.value);
@@ -338,7 +338,7 @@
                     <td><%=topFailures.get(key).size()%></td>
                     <td>
                         <div id="<%=h(key)%>" class="c3chart" style="width: 120px; height: 120px;"></div>
-                        <script>
+                        <script type="text/javascript" nonce="<%=getScriptNonce()%>">
                             var <%=h(key)%> = c3.generate({
                                 bindto: '#<%=h(key)%>',
                                 data: {
@@ -415,7 +415,7 @@
     </div>
 
 <% if (memoryChartData != null) { %>
-    <script>
+    <script type="text/javascript" nonce="<%=getScriptNonce()%>">
         var pointRatio = 30;
         var jsonObject = <%=json(memoryChartData, 0)%>;
         // start c3 chart generation
@@ -511,7 +511,7 @@
 </div>
 </div>
 
-<script>
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 $(function() {
     const csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
 
@@ -589,19 +589,19 @@ $(function() {
     $(".matrix-leak-handle").tooltip();
 });
 </script>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     document.getElementById("<%=h(viewType)%>").selected = "true";
 </script>
 
 <% if (trendsJson != null) { %>
     <script src="<%=h(contextPath)%>/TestResults/js/generateTrendCharts.js"></script>
-    <script type="text/javascript">
+    <script type="text/javascript" nonce="<%=getScriptNonce()%>">
         var trendsJson = <%=json(trendsJson, 0)%>;
         generateTrendCharts(trendsJson);
     </script>
 <% } %>
 
-<script>
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 /* Initialize sortable table */
 $(function() {
     $(".rundown-user-passes").tooltip();

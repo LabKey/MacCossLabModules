@@ -30,7 +30,7 @@
 
 <div id="missingFilesDiv"/>
 
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     Ext4.onReady(function() {
 

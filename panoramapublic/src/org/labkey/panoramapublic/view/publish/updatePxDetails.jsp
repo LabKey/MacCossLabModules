@@ -30,7 +30,7 @@
     </ul>
 </div>
 <div style="margin-top:15px;" id="updateDetailsForm"></div>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     Ext4.onReady(function(){
 

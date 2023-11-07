@@ -230,7 +230,7 @@
  }
 
 </style>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     Ext4.onReady(function(){
 
@@ -369,7 +369,7 @@
 
 </div>
 
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     var SHOW_MORE_TEXT = "[Show more]";
     var SHOW_LESS_TEXT = "[Show less]";

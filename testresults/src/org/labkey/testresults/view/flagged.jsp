@@ -17,7 +17,7 @@
 %>
 
 <%@include file="menu.jsp" %>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     LABKEY.requiresCss("/TestResults/css/style.css");
 </script>
 <p>Runs which are flagged will not show up in the Overview breakdown, Long Term, and Failure pages.  This includes graphs, charts, and any other sort of data visualization.</p>

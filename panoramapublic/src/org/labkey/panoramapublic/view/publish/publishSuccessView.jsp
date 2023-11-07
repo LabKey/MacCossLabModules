@@ -73,7 +73,7 @@
     </div>
 </div>
 
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     <% if (canAddCatalogEntry) { %>
         Ext4.onReady(function() {
