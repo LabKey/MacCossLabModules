@@ -43,7 +43,7 @@
     span.heading {margin-bottom:20px 10px 20px 10px;}
 </style>
 
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     // Download Ext4 js and css files.
     // LABKEY.requiresExt4Sandbox();

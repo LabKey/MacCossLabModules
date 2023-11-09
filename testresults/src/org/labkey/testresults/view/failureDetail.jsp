@@ -173,7 +173,7 @@
 %>
 
 <%@include file="menu.jsp" %>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     LABKEY.requiresCss("/TestResults/css/style.css");
     LABKEY.requiresCss("/TestResults/css/tablesorter-default.css");
 </script>
@@ -250,7 +250,7 @@
     </tbody>
 </table>
 
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 $(document).ready(function() {
     const problemData = <%=json(problemData, 0)%>;
 

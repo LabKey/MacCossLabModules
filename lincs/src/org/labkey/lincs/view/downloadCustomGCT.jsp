@@ -48,7 +48,7 @@
     downloadGctUrl.addParameter("fileName", fileName);
 %>
 
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     LABKEY.requiresCss("/lincs/lincs.css");
     LABKEY.requiresScript("/lincs/lincs.js");

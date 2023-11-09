@@ -57,7 +57,7 @@
 
     <% if (trendsJson != null) { %>
         <script src="<%=h(contextPath)%>/TestResults/js/generateTrendCharts.js"></script>
-        <script type="text/javascript">
+        <script type="text/javascript" nonce="<%=getScriptNonce()%>">
             var trendsJson = jQuery.parseJSON(<%= q(trendsJson.toString())%>);
             var failureJson = jQuery.parseJSON(<%= q(failureJson.toString())%>);
             var runCountPerDayJson = jQuery.parseJSON(<%=q(runCountPerDayJson.toString())%>);

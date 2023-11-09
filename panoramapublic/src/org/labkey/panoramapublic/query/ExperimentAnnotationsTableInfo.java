@@ -622,9 +622,9 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
     private static class AutoCompleteColumn extends DataColumn
     {
-        private String _autoCompletionUrl;
-        private boolean _prefetch;
-        private String _placeholderText;
+        private final String _autoCompletionUrl;
+        private final boolean _prefetch;
+        private final String _placeholderText;
 
         public AutoCompleteColumn(ColumnInfo col, ActionURL autocompletionUrl, boolean prefetch, String placeHolderText)
         {
@@ -647,14 +647,14 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             String renderId = getRenderId();
             StringBuilder sb = new StringBuilder();
 
-            sb.append("<script type=\"text/javascript\">");
+            sb.append("<script type=\"text/javascript\" nonce=\"").append(HttpView.currentPageConfig().getScriptNonce()).append("\">");
             sb.append("LABKEY.requiresScript([\"/PanoramaPublic/js/ExpAnnotAutoComplete.js\"], function() {\n");
             sb.append("Ext4.onReady(function(){\n");
             sb.append("    initAutoComplete(").append(_autoCompletionUrl).append(", '").append(renderId).append("', ").append(_prefetch ? "true": "false").append(");\n");
             sb.append("});});\n");
             sb.append("</script>\n");
             sb.append("<div style=\"margin-top:5px;\" id=\"").append(renderId).append("\" class=\"scrollable-dropdown-menu\">");
-            sb.append("<input type=\"text\" class=\"tags\" placeholder=\"" + _placeholderText + "\" name=\"" + name + "\" value=\"" + valueString + "\">");
+            sb.append("<input type=\"text\" class=\"tags\" placeholder=\"").append(_placeholderText).append("\" name=\"").append(name).append("\" value=\"").append(valueString).append("\">");
             sb.append("</div>");
             sb.append("<div style=\"font-size:11px\">").append(PageFlowUtil.filter(getHelpText(), true, false)).append("</div>");
 

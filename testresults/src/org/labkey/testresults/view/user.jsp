@@ -64,7 +64,7 @@
         }
     }
 %>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     LABKEY.requiresCss("/TestResults/css/style.css");
 </script>
 <link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
@@ -196,7 +196,7 @@
 <% } %>
     </div>
 
-<script>
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     function paramRedirect(startDate, endDate) {
         if (!startDate) {
             var dateRange = $('#jrange input').val();
@@ -266,7 +266,7 @@
 <!--Javascript which uses c3 & d3js to paint charts with given trendJson data-->
 <% if (trendsJson != null) { %>
 <script src="<%= h(contextPath) %>/TestResults/js/generateTrendCharts.js"></script>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     function generateCharts() {
         var trendsJson = jQuery.parseJSON( <%= q(trendsJson.toString()) %> );
         var memData = null;

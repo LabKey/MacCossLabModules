@@ -44,7 +44,7 @@
 
 <div style="margin-top:10px;" id="validationProgressDiv"></div>
 
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     var htmlEncode = Ext4.util.Format.htmlEncode;
 

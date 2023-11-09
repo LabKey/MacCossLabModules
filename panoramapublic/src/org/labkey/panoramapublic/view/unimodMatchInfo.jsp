@@ -46,7 +46,7 @@
 <% } %>
 <div style="width:800px;margin-top:30px; margin-left:8px;"><%=button("Cancel").href(form.getCancelActionURL(PanoramaPublicController.getViewExperimentDetailsURL(form.getId(), getContainer()))).style("padding:4px 15px")%></div>
 
-<script type="text/javascript">
+<script type="text/javascript" nonce=<%=getScriptNonce()%>>
 
     Ext4.onReady(function(){
 

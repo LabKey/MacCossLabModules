@@ -21,7 +21,7 @@
 
 <%@include file="menu.jsp" %>
 <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     LABKEY.requiresCss("/TestResults/css/style.css");
 </script>
 <p>All the files listed below at one point or another failed to post.  When a run is successfully posted through this page it gets removed from the list.</p>
@@ -48,7 +48,7 @@
     </table><br/>
 <% } %>
 <p><a href="filecontent-begin.view">Files</a></p>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     $(document).ajaxStart(function() {
         $("#loading").show();
     }).ajaxStop(function() {

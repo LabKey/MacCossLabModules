@@ -47,7 +47,7 @@
 <div id="pxLinks"></div>
 <div id="pxMethodsForm"></div>
 
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     Ext4.onReady(function(){
 

@@ -139,7 +139,7 @@
 <%
 JSONObject json = new JSONObject(m);
 %>
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     function showAdd(group) {
         if (group.length > 1)

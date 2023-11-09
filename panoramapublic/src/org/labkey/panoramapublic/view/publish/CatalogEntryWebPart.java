@@ -1,6 +1,5 @@
 package org.labkey.panoramapublic.view.publish;
 
-import org.labkey.api.action.UrlProvider;
 import org.labkey.api.data.Container;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.User;

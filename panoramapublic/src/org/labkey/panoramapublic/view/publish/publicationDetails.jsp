@@ -24,7 +24,7 @@
 
 <div id="publishDataForm"></div>
 
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     Ext4.onReady(function(){
 

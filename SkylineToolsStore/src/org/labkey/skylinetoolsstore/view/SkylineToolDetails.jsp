@@ -594,7 +594,7 @@ a { text-decoration: none; }
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
 
-<script>
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     $(function() {
         initRatingSlider($("#ratingSlider"), $("#ratingSliderOver"), $("#reviewValue"));
         initRatingSlider($("#ratingSliderPop"), $("#ratingSliderOverPop"), $("#reviewValuePop"));

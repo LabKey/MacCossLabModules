@@ -176,7 +176,7 @@
 
 </div>
 
-<script>
+<script type="text/javascript" nonce="<%=getScriptNonce()%>">
     const expSearchPanelItemId = 'expSearchPanel';
     const authorsItemId = 'Authors';
     const titleItemId = 'Title';
