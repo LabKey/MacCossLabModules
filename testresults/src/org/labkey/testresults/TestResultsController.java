@@ -82,7 +82,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartRequest;
-import org.springframework.web.multipart.commons.CommonsMultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -1188,7 +1187,7 @@ public class TestResultsController extends SpringActionController
         }
 
         private static String SaveXML(MultipartFile file, Container c) {
-            String fileName = ((CommonsMultipartFile) file).getFileItem().getName();
+            String fileName = file.getOriginalFilename();
             try
             {
                 File f = makeFile(c, fileName);
