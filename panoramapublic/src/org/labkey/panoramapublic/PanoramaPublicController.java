@@ -714,14 +714,7 @@ public class PanoramaPublicController extends SpringActionController
             VBox view = new VBox();
             if (errors.getErrorCount() > 0)
             {
-                HtmlStringBuilder html = HtmlStringBuilder.of();
-                for(ObjectError error: errors.getAllErrors())
-                {
-                    HtmlString errHtml = createHtmlFragment(SPAN(cl("labkey-error"), error.getDefaultMessage()));
-                    html.append(errHtml);
-                }
-                html.append(createHtml(BR()));
-                view.addView(new HtmlView(html));
+                view.addView(new HtmlView(ERRORS(errors)));
             }
 
             view.addView(new HtmlView(
