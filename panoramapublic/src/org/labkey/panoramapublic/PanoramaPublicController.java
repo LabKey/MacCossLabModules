@@ -124,6 +124,7 @@ import org.labkey.api.util.DOM;
 import org.labkey.api.util.ExceptionUtil;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
+import org.labkey.api.util.HtmlStringBuilder;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
@@ -711,16 +712,16 @@ public class PanoramaPublicController extends SpringActionController
             }
 
             VBox view = new VBox();
-            if(errors.getErrorCount() > 0)
+            if (errors.getErrorCount() > 0)
             {
-                StringBuilder html = new StringBuilder();
+                HtmlStringBuilder html = HtmlStringBuilder.of();
                 for(ObjectError error: errors.getAllErrors())
                 {
                     HtmlString errHtml = createHtmlFragment(SPAN(cl("labkey-error"), error.getDefaultMessage()));
-                    errHtml.appendTo(html);
+                    html.append(errHtml);
                 }
-                BR().appendTo(html);
-                view.addView(new HtmlView(HtmlString.unsafe(html.toString())));
+                html.append(createHtml(BR()));
+                view.addView(new HtmlView(html));
             }
 
             view.addView(new HtmlView(
@@ -4668,7 +4669,7 @@ public class PanoramaPublicController extends SpringActionController
                 pxInfo.setVersion(PxXmlManager.getNextVersion(js.getJournalExperimentId()));
                 writer.write(pxInfo);
 
-                return new HtmlView(HtmlString.unsafe(summaryHtml.toString()));
+                return HtmlView.unsafe(summaryHtml.toString());
             }
             else
             {
