@@ -1376,7 +1376,8 @@ public class LincsController extends SpringActionController
             view.addView(new HtmlView(
                     DOM.P(
                         DOM.P("Status for job: " + pspJob.getId() +", PSP job Id: " + pspJob.getPspJobId() + ", Run Id: " + pspJob.getRunId()),
-                        DOM.BR("JSON Output:"),
+                        "JSON Output:",
+                        DOM.BR(),
                         DOM.P(DOM.PRE(jsonStatus)))));
             view.setTitle("PSP job status");
             view.setFrame(WebPartView.FrameType.PORTAL);
