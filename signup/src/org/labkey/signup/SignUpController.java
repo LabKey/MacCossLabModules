@@ -549,7 +549,7 @@ public class SignUpController extends SpringActionController
                 }
                 else
                 {
-                    return new HtmlView(PageFlowUtil.filter(message));
+                    return HtmlView.of(message);
                 }
             }
         }
