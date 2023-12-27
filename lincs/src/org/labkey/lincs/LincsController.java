@@ -63,6 +63,7 @@ import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.SkylineAnnotation;
 import org.labkey.api.targetedms.TargetedMSService;
+import org.labkey.api.util.DOM;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
@@ -1234,7 +1235,7 @@ public class LincsController extends SpringActionController
             if(pspJob.getPipelineJobId() != null && getUser().hasSiteAdminPermission())
             {
                 ActionURL pipelineJobUrl = PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlDetails(getContainer(), pspJob.getPipelineJobId());
-                view.addView(new HtmlView(PageFlowUtil.link("View Pipeline Job. Status: " + PipelineService.get().getStatusFile(pspJob.getPipelineJobId()).getStatus()).href(pipelineJobUrl).toString()));
+                view.addView(new HtmlView(PageFlowUtil.link("View Pipeline Job. Status: " + PipelineService.get().getStatusFile(pspJob.getPipelineJobId()).getStatus()).href(pipelineJobUrl)));
             }
 
             view.setTitle("PSP Job Details");
@@ -1372,13 +1373,12 @@ public class LincsController extends SpringActionController
                 return new SimpleErrorView(errors);
             }
 
-            StringBuilder sb = new StringBuilder();
-            sb.append("<p>").append("Status for job: " + pspJob.getId() +", PSP job Id: ").append(PageFlowUtil.filter(pspJob.getPspJobId()))
-                    .append(", Run Id: ")
-                    .append(pspJob.getRunId()).append("</p>");
-            sb.append("<br>JSON Output:</br>");
-            sb.append("<p><pre>").append(PageFlowUtil.filter(jsonStatus)).append("</pre></p>");
-            view.addView(new HtmlView(sb.toString()));
+            view.addView(new HtmlView(
+                    DOM.P(
+                        DOM.P("Status for job: " + pspJob.getId() +", PSP job Id: " + pspJob.getPspJobId() + ", Run Id: " + pspJob.getRunId()),
+                        "JSON Output:",
+                        DOM.BR(),
+                        DOM.P(DOM.PRE(jsonStatus)))));
             view.setTitle("PSP job status");
             view.setFrame(WebPartView.FrameType.PORTAL);
             return view;

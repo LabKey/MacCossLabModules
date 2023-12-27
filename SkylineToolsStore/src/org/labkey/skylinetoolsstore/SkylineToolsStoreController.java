@@ -445,7 +445,7 @@ public class SkylineToolsStoreController extends SpringActionController
             {
                 // Make sure that the tool store module is enabled in the folder where the user is trying
                 // to insert the new tool.
-                return new HtmlView("The Skyline Tool Store is not available in this folder.");
+                return HtmlView.of("The Skyline Tool Store is not available in this folder.");
             }
 
             if (httpServletRequest.getMethod().equalsIgnoreCase("post") &&
