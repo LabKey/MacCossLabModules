@@ -54,6 +54,7 @@ import org.labkey.panoramapublic.query.ContainerJoin;
 import org.labkey.panoramapublic.query.DataValidationTableInfo;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsTableInfo;
 import org.labkey.panoramapublic.query.JournalExperimentTableInfo;
+import org.labkey.panoramapublic.query.MyDataTableInfo;
 import org.labkey.panoramapublic.query.PanoramaPublicTable;
 import org.labkey.panoramapublic.query.SubmissionTableInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfoTableInfo;
@@ -94,6 +95,7 @@ public class PanoramaPublicSchema extends UserSchema
     public static final String TABLE_LIB_SOURCE_TYPE = "SpecLibSourceType";
 
     public static final String TABLE_CATALOG_ENTRY = "CatalogEntry";
+    public static final String TABLE_MY_DATA = "MyPanoramaPublicData";
 
     public PanoramaPublicSchema(User user, Container container)
     {
@@ -128,6 +130,10 @@ public class PanoramaPublicSchema extends UserSchema
         if (TABLE_EXPERIMENT_ANNOTATIONS.equalsIgnoreCase(name))
         {
             return new ExperimentAnnotationsTableInfo(this, cf);
+        }
+        if (TABLE_MY_DATA.equalsIgnoreCase(name))
+        {
+            return new MyDataTableInfo(this, cf, getUser());
         }
         if (TABLE_JOURNAL_EXPERIMENT.equalsIgnoreCase(name))
         {

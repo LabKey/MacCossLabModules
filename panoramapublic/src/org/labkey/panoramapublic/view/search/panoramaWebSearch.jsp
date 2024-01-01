@@ -479,6 +479,17 @@
                     success: function (wp) {
                         let expWebpart = wp.body.filter(webpart => webpart.name === "Targeted MS Experiment List");
                         if (expWebpart.length === 1) {
+
+                            let buttonBarItems = [];
+                            if (!LABKEY.user.isGuest)
+                            {
+                                buttonBarItems = [
+                                    {text: 'My Data', url: LABKEY.ActionURL.buildURL('panoramapublic', 'myDataView', null, {userId: LABKEY.user.id}
+                                    )},
+                                    LABKEY.QueryWebPart.standardButtons.views
+                               ];
+                            }
+
                             let wp = new LABKEY.QueryWebPart({
                                 renderTo: 'webpart_'+ expWebpart[0].webPartId,
                                 title: 'Panorama Public Experiments',
@@ -491,6 +502,10 @@
                                 showExportButtons: false,//this needs to be set to false otherwise setting selectRecordSelector to false still shows the checkbox column
                                 showDetailsColumn: false,
                                 dataRegionName: "Targeted MS Experiment List",
+                                buttonBar: {
+                                    includeStandardButtons: true,
+                                    items: buttonBarItems,
+                                },
                                 success: function () {
                                 }
                             });

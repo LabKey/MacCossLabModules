@@ -192,6 +192,7 @@ import org.labkey.panoramapublic.speclib.SpecLibReader;
 import org.labkey.panoramapublic.speclib.SpecLibReaderException;
 import org.labkey.panoramapublic.view.PanoramaPublicRunListView;
 import org.labkey.panoramapublic.view.expannotations.ExperimentAnnotationsFormDataRegion;
+import org.labkey.panoramapublic.view.expannotations.MyDataView;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentsWebPart;
 import org.labkey.panoramapublic.view.publish.CatalogEntryWebPart;
@@ -9180,6 +9181,51 @@ public class PanoramaPublicController extends SpringActionController
             JspView<Object> view = new JspView<>("/org/labkey/panoramapublic/view/viewSlideshow.jsp", null, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
+        }
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    @RequiresLogin
+    public class MyDataViewAction extends SimpleViewAction<MyDataForm>
+    {
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("My Panorama Public Data");
+        }
+
+        @Override
+        public ModelAndView getView(MyDataForm form, BindException errors) throws Exception
+        {
+            User user = UserManager.getUser(form.getUserId());
+            if (user == null)
+            {
+                errors.addError(new LabKeyError("Could not find a user for id: " + form.getUserId()));
+                return new SimpleErrorView(errors);
+            }
+            if (!getUser().equals(user))
+            {
+                errors.addError(new LabKeyError("User did not match. You cannot view datasets for other users."));
+                return new SimpleErrorView(errors);
+            }
+
+            return new MyDataView(getViewContext(), getUser().getUserId());
+        }
+    }
+
+    public static class MyDataForm
+    {
+        private int _userId;
+
+        public int getUserId()
+        {
+            return _userId;
+        }
+
+        public void setUserId(int userId)
+        {
+            _userId = userId;
         }
     }
 

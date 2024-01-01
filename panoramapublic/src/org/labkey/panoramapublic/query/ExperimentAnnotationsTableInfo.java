@@ -27,6 +27,7 @@ import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
+import org.labkey.api.data.IconDisplayColumn;
 import org.labkey.api.data.JdbcType;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.SQLFragment;
@@ -53,6 +54,7 @@ import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
+import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.PageFlowUtil;
@@ -65,8 +67,10 @@ import org.labkey.api.view.template.ClientDependency;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
+import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.view.publish.CatalogEntryWebPart;
 import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
 import java.io.IOException;
@@ -90,10 +94,15 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
     public ExperimentAnnotationsTableInfo(final PanoramaPublicSchema schema, ContainerFilter cf)
     {
-        this(PanoramaPublicManager.getTableInfoExperimentAnnotations(), schema, cf);
+        this(PanoramaPublicManager.getTableInfoExperimentAnnotations(), schema, cf, null);
     }
 
-    public ExperimentAnnotationsTableInfo(TableInfo tableInfo, PanoramaPublicSchema schema, ContainerFilter cf)
+    public ExperimentAnnotationsTableInfo(final PanoramaPublicSchema schema, ContainerFilter cf, User user)
+    {
+        this(PanoramaPublicManager.getTableInfoExperimentAnnotations(), schema, cf, user);
+    }
+
+    public ExperimentAnnotationsTableInfo(TableInfo tableInfo, PanoramaPublicSchema schema, ContainerFilter cf, User users)
     {
         super(tableInfo, schema, cf);
 
@@ -337,6 +346,24 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         getMutableColumn("CreatedBy").setFk(new UserIdQueryForeignKey(schema));
         getMutableColumn("ModifiedBy").setFk(new UserIdQueryForeignKey(schema));
 
+//        if (user != null && !user.isGuest())
+//        {
+//            var catalogEntryCol = wrapColumn("CatalogEntry", getRealTable().getColumn("Id"));
+//            catalogEntryCol.setLabel("CatalogEntry");
+//            catalogEntryCol.setDescription("Link to add or view the catalog entry for the experiment");
+//            ActionURL catalogEntryUrl = new ActionURL(PanoramaPublicController.CatalogEntryAction.class, getContainer());
+//            catalogEntryCol.setDisplayColumnFactory(colInfo -> new CatalogEntryIconColumn(colInfo, 22, 22, catalogEntryUrl, "id",
+//                    AppProps.getInstance().getContextPath() + "/PanoramaPublic/images/slideshow-icon.png")
+//            {
+//                @Override
+//                public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+//                {
+//                    super.renderGridCellContents(ctx, out);
+//                }
+//            });
+//            addColumn(catalogEntryCol);
+//        }
+
         List<FieldKey> visibleColumns = new ArrayList<>();
         visibleColumns.add(FieldKey.fromParts("Share"));
         visibleColumns.add(FieldKey.fromParts("Title"));
@@ -347,6 +374,12 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         visibleColumns.add(FieldKey.fromParts("Keywords"));
         visibleColumns.add(FieldKey.fromParts("Citation"));
         visibleColumns.add(FieldKey.fromParts("pxid"));
+//        if (user != null && !user.isGuest())
+//        {
+//            visibleColumns.add(FieldKey.fromParts("Public"));
+//            // visibleColumns.add(FieldKey.fromParts("Version"));
+//            visibleColumns.add(FieldKey.fromParts("CatalogEntry"));
+//        }
 
         setDefaultVisibleColumns(visibleColumns);
     }
@@ -724,4 +757,78 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             return "input-picker-div-instrument";
         }
     }
+
+//    public class CatalogEntryIconColumn extends DataColumn
+//    {
+//        private int _height;
+//        private int _width;
+//        private String _imageTitle;
+//        @NotNull
+//        private final ActionURL _linkURL;
+//        private final String _parameterName;
+//        private String _imageURL;
+//
+//        public CatalogEntryIconColumn(ColumnInfo col, int height, int width, @NotNull ActionURL linkURL, String parameterName, String imageURL)
+//        {
+//            super(col);
+//            _linkURL = linkURL;
+//            _parameterName = parameterName;
+//            _imageURL = imageURL;
+//            _imageTitle = "Catalog Entry";
+//            super.setCaption("Catalog Entry");
+//            _height = height;
+//            _width = width;
+//            // setWidth(Integer.toString(_width));
+//        }
+//
+//        @Override
+//        public void setCaption(String caption)
+//        {
+//            _imageTitle = caption;
+//        }
+//
+//        @Override
+//        public boolean isFilterable()
+//        {
+//            return false;
+//        }
+//
+//        @Override
+//        public boolean isSortable()
+//        {
+//            return false;
+//        }
+//
+//        @Override
+//        public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+//        {
+//            ActionURL linkURL = _linkURL.clone();
+//            Integer experimentId = ctx.get(FieldKey.fromParts("id"), Integer.class);
+//            // Object value = ctx.getRow().get(getColumnInfo().getAlias());
+//            if (experimentId != null)
+//            {
+//                ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(experimentId);
+//
+//                if (CatalogEntryWebPart.canBeDisplayed(expAnnot, ctx.getViewContext().getUser()))
+//                {
+//                    CatalogEntry entry = CatalogEntryManager.getEntryForExperiment(expAnnot);
+//                    linkURL.setContainer(expAnnot.getContainer());
+//
+//                    if (entry != null)
+//                    {
+//                        _imageURL = AppProps.getInstance().getContextPath() + "/PanoramaPublic/images/slideshow-icon-green.png";
+//                        _imageTitle = "View catalog entry";
+//                    }
+//                    else
+//                    {
+//                        _imageURL = AppProps.getInstance().getContextPath() + "/PanoramaPublic/images/slideshow-icon.png";
+//                        _imageTitle = "Add catalog entry";
+//                    }
+//                    linkURL.addParameter(_parameterName, experimentId.toString());
+//                    out.write("<a href=\"" + linkURL.getLocalURIString() + "\" title=\"" + PageFlowUtil.filter(_imageTitle) + "\"><img src=\"" + _imageURL + "\" height=\"" + _height + "\" width=\"" + _width + "\"/></a>");
+//                }
+//            }
+//            HtmlString.EMPTY_STRING.appendTo(out);
+//        }
+//    }
 }
