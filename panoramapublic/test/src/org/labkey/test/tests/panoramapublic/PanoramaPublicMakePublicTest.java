@@ -4,10 +4,8 @@ import org.apache.hc.core5.http.HttpStatus;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.labkey.remoteapi.CommandException;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
-import org.labkey.test.TestFileUtils;
 import org.labkey.test.WebTestHelper;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
@@ -20,8 +18,6 @@ import org.labkey.test.util.PermissionsHelper;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebElement;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,11 +32,8 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
     private static final String SKY_FILE_1 = "MRMer.zip";
     private static final String ADMIN_2 = "admin_2@panoramapublic.test";
 
-    private static final String IMAGE_FILE = "skyline_panorama_workflow.png";
-    private static final String IMAGE_PATH = "TargetedMS/panoramapublic/" + IMAGE_FILE;
-
     @Test
-    public void testExperimentCopy() throws IOException, CommandException
+    public void testExperimentCopy()
     {
         // Set up our source folder. We will create an experiment and submit it to our "Panorama Public" project.
         String projectName = getProjectName();
@@ -89,16 +82,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         String shortAccessUrl = setupFolderSubmitAndCopy(projectName, folderName, targetFolder, experimentTitle);
 
         // Enable Panorama Public catalog entries in the admin console.
-        goToAdminConsole().goToSettingsSection();
-        clickAndWait(Locator.linkWithText("Panorama Public"));
-        clickAndWait(Locator.linkWithText("Panorama Public Catalog Settings"));
-        checkCheckbox(Locator.input("enabled"));
-        setFormElement(Locator.input("maxFileSize"), "5242880");
-        setFormElement(Locator.input("imgWidth"), "600");
-        setFormElement(Locator.input("imgHeight"), "400");
-        setFormElement(Locator.input("maxTextChars"), "500");
-        setFormElement(Locator.input("maxEntries"), "25");
-        clickButton("Save", "Panorama Public catalog entry settings were saved");
+        enableCatalogEntries();
 
         // 1. Make the data public and add a catalog entry
         addCatalogEntry(PANORAMA_PUBLIC, targetFolder);
@@ -160,15 +144,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         assertTextPresent("Data on Panorama Public", "was made public.");
 
         clickButton("Add Catalog Entry");
-        assertTextPresent("Use the form below to provide a brief description and an image that will be displayed in a slideshow ");
-        setFormElement(Locator.textarea("datasetDescription"), "Cool research with Skyline");
-        File imageFile = TestFileUtils.getSampleData(IMAGE_PATH);
-        setFormElement(Locator.input("imageFileInput"), imageFile);
-        assertTextPresent("Drag and resize the crop-box");
-        clickButton("Crop", 0);
-        // waitForElementToDisappear(Locator.IdLocator.id("cropperContainer"));
-        clickButton("Submit");
-        assertTextPresent("Thank you for submitting your entry for the Panorama Public data catalog");
+        createCatalogEntry();
         clickButton("View Entry");
         assertTextPresent("Pending approval");
         assertElementNotPresent("Approve button should be displayed only for site admins.", Locator.lkButton("Approve"));
@@ -185,7 +161,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         {
             assertTextPresent("Panorama Public Catalog Entry");
             BodyWebPart catalogEntryWp = new BodyWebPart(getDriver(), "Panorama Public Catalog Entry");
-            WebElement imgTag = Locator.XPathLocator.tag("img").withAttributeContaining("src", IMAGE_FILE).findElement(catalogEntryWp);
+            WebElement imgTag = Locator.XPathLocator.tag("img").withAttributeContaining("src", CATALOG_IMAGE_FILE).findElement(catalogEntryWp);
             int responseCode = WebTestHelper.getHttpResponse(imgTag.getAttribute("src")).getResponseCode();
             assertEquals("Catalog entry image is missing. Unexpected response code. " + responseCode, HttpStatus.SC_OK, responseCode);
 
@@ -198,25 +174,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
 
     private String setupFolderSubmitAndCopy(String projectName, String folderName, String targetFolder, String experimentTitle)
     {
-        setupSourceFolder(projectName, folderName, SUBMITTER);
-
-        createFolderAdmin(projectName, folderName, ADMIN_2);
-
-        impersonate(SUBMITTER);
-        updateSubmitterAccountInfo("One");
-
-        // Import a Skyline document to the folder
-        importData(SKY_FILE_1, 1);
-
-        // Add the "Targeted MS Experiment" webpart and submit
-        TargetedMsExperimentWebPart expWebPart = createExperimentCompleteMetadata(experimentTitle);
-        expWebPart.clickSubmit();
-        String shortAccessUrl = submitWithoutPXId();
-
-        // Copy the experiment to the Panorama Public project
-        makeCopy(shortAccessUrl, experimentTitle, targetFolder, false, false);
-
-        return shortAccessUrl;
+        return setupFolderSubmitAndCopy(projectName, folderName, targetFolder, experimentTitle, SUBMITTER, "One", ADMIN_2, SKY_FILE_1);
     }
 
     private void resubmitFolder(String projectName, String folderName, String submitter, boolean keepPrivate)
@@ -322,51 +280,11 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
 
     private void makeDataPublic()
     {
-        makePublic(true);
+        makeDataPublic(true);
     }
 
     private void addPublication()
     {
-        makePublic(false);
-    }
-
-    private void makePublic(boolean unpublishedData)
-    {
-        TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
-
-        if (unpublishedData)
-        {
-            expWebPart.clickMakePublic();
-            assertTextPresent("Publication Details");
-            _ext4Helper.checkCheckbox(Ext4Helper.Locators.checkbox(this, "Unpublished:"));
-        }
-        else
-        {
-            expWebPart.clickAddPublication();
-            assertTextPresent("Publication Details");
-            setFormElement(Locator.input("link"), "http://panorama-publication-test.org");
-            setFormElement(Locator.tagWithName("textarea", "citation"), "Paper citation goes here");
-        }
-
-        clickButton("Continue");
-        assertTextPresent("Confirm Publication Details");
-        clickButton("OK");
-        if (unpublishedData)
-        {
-            assertTextPresent("Data on Panorama Public", "was made public.");
-        }
-        else
-        {
-            assertTextPresent("Publication details were updated for data on Panorama Public");
-        }
-        clickAndWait(Locator.linkContainingText("Back to Folder"));
-    }
-
-    private void createFolderAdmin(String projectName, String folderName, String user)
-    {
-        ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
-        _userHelper.deleteUser(user);
-        _userHelper.createUser(user);
-        permissionsHelper.addMemberToRole(user, "Folder Administrator", PermissionsHelper.MemberType.user, projectName + "/" + folderName);
+        makeDataPublic(false);
     }
 }
