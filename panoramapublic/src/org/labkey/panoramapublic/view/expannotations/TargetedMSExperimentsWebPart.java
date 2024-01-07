@@ -17,11 +17,8 @@ package org.labkey.panoramapublic.view.expannotations;
 
 import org.labkey.api.data.ActionButton;
 import org.labkey.api.data.ButtonBar;
-import org.labkey.api.data.CompareType;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.DataRegion;
-import org.labkey.api.data.SimpleFilter;
-import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.QuerySettings;
 import org.labkey.api.query.QueryView;
 import org.labkey.api.security.permissions.DeletePermission;
@@ -39,20 +36,13 @@ import org.labkey.panoramapublic.PanoramaPublicSchema;
 public class TargetedMSExperimentsWebPart extends QueryView
 {
     public static final String WEB_PART_NAME = "Targeted MS Experiment List";
-//    private Integer _userId;
 
-//    public TargetedMSExperimentsWebPart(ViewContext portalCtx)
-//    {
-//        this(portalCtx, null);
-//    }
-
-    public TargetedMSExperimentsWebPart(ViewContext portalCtx/*, Integer userId*/)
+    public TargetedMSExperimentsWebPart(ViewContext portalCtx)
     {
         super(new PanoramaPublicSchema(portalCtx.getUser(), portalCtx.getContainer()));
 
         setTitle(WEB_PART_NAME);
 
-//        _userId = userId;
         setSettings(createQuerySettings(portalCtx, WEB_PART_NAME));
 
         setShowDetailsColumn(false);
@@ -75,15 +65,6 @@ public class TargetedMSExperimentsWebPart extends QueryView
             settings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
         }
 
-//        if (_userId != null)
-//        {
-//            SimpleFilter.OrClause or = new SimpleFilter.OrClause();
-//            or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("submitter"), CompareType.EQUAL, _userId));
-//            or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("labhead"), CompareType.EQUAL, _userId));
-//            SimpleFilter filter = new SimpleFilter();
-//            filter.addClause(or);
-//            settings.setBaseFilter(filter);
-//        }
         return settings;
     }
 
@@ -98,12 +79,12 @@ public class TargetedMSExperimentsWebPart extends QueryView
         deleteExperimentAnnotation.setRequiresSelection(true);
         bb.add(deleteExperimentAnnotation);
 
-//        if (!view.getViewContext().getUser().isGuest())
-//        {
-//            ActionURL viewMyDataUrl = new ActionURL(PanoramaPublicController.MyDataViewAction.class, getContainer());
-//            viewMyDataUrl.addParameter("userId", view.getViewContext().getUser().getUserId());
-//            ActionButton viewMyDataButton = new ActionButton(viewMyDataUrl, "My Data");
-//            bb.add(viewMyDataButton);
-//        }
+        if (!view.getViewContext().getUser().isGuest())
+        {
+            ActionURL viewMyDataUrl = new ActionURL(PanoramaPublicController.MyDataViewAction.class, getContainer());
+            viewMyDataUrl.addParameter("userId", view.getViewContext().getUser().getUserId());
+            ActionButton viewMyDataButton = new ActionButton(viewMyDataUrl, "My Data");
+            bb.add(viewMyDataButton);
+        }
     }
 }

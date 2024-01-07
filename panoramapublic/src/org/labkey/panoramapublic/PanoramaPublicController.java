@@ -9188,7 +9188,6 @@ public class PanoramaPublicController extends SpringActionController
     @RequiresLogin
     public class MyDataViewAction extends SimpleViewAction<MyDataForm>
     {
-
         @Override
         public void addNavTrail(NavTree root)
         {
@@ -9198,32 +9197,51 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getView(MyDataForm form, BindException errors) throws Exception
         {
+            if (form.getUserId() == null)
+            {
+                errors.addError(new LabKeyError("Did not find a user id in the request"));
+                return new SimpleErrorView(errors);
+            }
             User user = UserManager.getUser(form.getUserId());
             if (user == null)
             {
                 errors.addError(new LabKeyError("Could not find a user for id: " + form.getUserId()));
-                return new SimpleErrorView(errors);
             }
-            if (!getUser().equals(user))
+            else if (!user.equals(getUser()))
             {
-                errors.addError(new LabKeyError("User did not match. You cannot view datasets for other users."));
+                errors.addError(new LabKeyError("User did not match. You cannot view datasets for other users"));
+            }
+            if (errors.hasErrors())
+            {
                 return new SimpleErrorView(errors);
             }
 
-            return new MyDataView(getViewContext(), getUser().getUserId());
+            QuerySettings settings = new QuerySettings(getViewContext(),  "MyPanoramaPublicData", "MyPanoramaPublicData");
+            settings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
+            QueryView view = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), settings, errors);
+            view.setTitle("Panorama Public Experiments");
+            view.setShowRecordSelectors(false);
+            view.setShowExportButtons(false);
+            view.setShowDetailsColumn(false);
+            view.setShowDeleteButton(false);
+            view.setShowUpdateColumn(false);
+            view.setShowInsertNewButton(false);
+            view.disableContainerFilterSelection();
+            return view;
+//            return new MyDataView(getViewContext(), getUser().getUserId(), errors);
         }
     }
 
     public static class MyDataForm
     {
-        private int _userId;
+        private Integer _userId;
 
-        public int getUserId()
+        public Integer getUserId()
         {
             return _userId;
         }
 
-        public void setUserId(int userId)
+        public void setUserId(Integer userId)
         {
             _userId = userId;
         }

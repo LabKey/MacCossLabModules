@@ -2,9 +2,11 @@ package org.labkey.panoramapublic.query;
 
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.ColumnInfo;
+import org.labkey.api.data.CompareType;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.RenderContext;
+import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
 import org.labkey.api.settings.AppProps;
@@ -32,18 +34,21 @@ import static org.labkey.api.util.DOM.at;
 
 public class MyDataTableInfo extends ExperimentAnnotationsTableInfo
 {
+    public static final String NAME = "MyPanoramaPublicData";
 
     public MyDataTableInfo(PanoramaPublicSchema schema, ContainerFilter cf, User user)
     {
-        super(schema, cf, user);
+        super(schema, cf);
 
-        if (user != null && !user.isGuest())
+        if (user != null)
         {
-            var catalogEntryCol = wrapColumn("CatalogEntry", getRealTable().getColumn("Id"));
-            catalogEntryCol.setLabel("CatalogEntry");
-            catalogEntryCol.setDescription("Link to add or view the catalog entry for the experiment");
-            catalogEntryCol.setDisplayColumnFactory(CatalogEntryIconColumn::new);
-            addColumn(catalogEntryCol);
+            // Display rows where the given user is either the submitter or the lab head.
+            SimpleFilter.OrClause or = new SimpleFilter.OrClause();
+            or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("submitter"), CompareType.EQUAL, user.getUserId()));
+            or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("labhead"), CompareType.EQUAL, user.getUserId()));
+            SimpleFilter filter = new SimpleFilter();
+            filter.addClause(or);
+            addCondition(filter);
         }
 
         List<FieldKey> visibleColumns = new ArrayList<>();
@@ -56,10 +61,7 @@ public class MyDataTableInfo extends ExperimentAnnotationsTableInfo
         visibleColumns.add(FieldKey.fromParts("Citation"));
         visibleColumns.add(FieldKey.fromParts("pxid"));
         visibleColumns.add(FieldKey.fromParts("Public"));
-        if (user != null && !user.isGuest())
-        {
-            visibleColumns.add(FieldKey.fromParts("CatalogEntry"));
-        }
+        visibleColumns.add(FieldKey.fromParts("CatalogEntry"));
         setDefaultVisibleColumns(visibleColumns);
     }
 

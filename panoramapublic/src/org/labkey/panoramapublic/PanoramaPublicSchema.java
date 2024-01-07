@@ -95,7 +95,6 @@ public class PanoramaPublicSchema extends UserSchema
     public static final String TABLE_LIB_SOURCE_TYPE = "SpecLibSourceType";
 
     public static final String TABLE_CATALOG_ENTRY = "CatalogEntry";
-    public static final String TABLE_MY_DATA = "MyPanoramaPublicData";
 
     public PanoramaPublicSchema(User user, Container container)
     {
@@ -131,7 +130,7 @@ public class PanoramaPublicSchema extends UserSchema
         {
             return new ExperimentAnnotationsTableInfo(this, cf);
         }
-        if (TABLE_MY_DATA.equalsIgnoreCase(name))
+        if (MyDataTableInfo.NAME.equalsIgnoreCase(name))
         {
             return new MyDataTableInfo(this, cf, getUser());
         }
