@@ -420,12 +420,11 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
     private ExprColumn getCatalogEntryCol()
     {
-        SQLFragment catalogEntrySql = new SQLFragment(" (SELECT entry.id AS CatalogEntryId ")
+        SQLFragment catalogEntrySql = new SQLFragment(" (SELECT entry.id AS CatalogEntry ")
                 .append(" FROM ").append(PanoramaPublicManager.getTableInfoCatalogEntry(), "entry")
                 .append(" WHERE ")
-                .append(" entry.shortUrl = ? ") // .append(ExprColumn.STR_TABLE_ALIAS).append(".shortUrl")
+                .append(" entry.shortUrl = ").append(ExprColumn.STR_TABLE_ALIAS).append(".shortUrl")
                 .append(") ");
-        catalogEntrySql.add(ExprColumn.STR_TABLE_ALIAS + ".shortUrl");
         ExprColumn col = new ExprColumn(this, "CatalogEntry", catalogEntrySql, JdbcType.INTEGER);
         col.setDescription("Add or view the catalog entry for the experiment");
         return col;
