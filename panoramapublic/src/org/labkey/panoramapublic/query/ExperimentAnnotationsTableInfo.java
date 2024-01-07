@@ -423,8 +423,9 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         SQLFragment catalogEntrySql = new SQLFragment(" (SELECT entry.id AS CatalogEntryId ")
                 .append(" FROM ").append(PanoramaPublicManager.getTableInfoCatalogEntry(), "entry")
                 .append(" WHERE ")
-                .append(" entry.shortUrl = ").append(ExprColumn.STR_TABLE_ALIAS).append(".shortUrl")
+                .append(" entry.shortUrl = ? ") // .append(ExprColumn.STR_TABLE_ALIAS).append(".shortUrl")
                 .append(") ");
+        catalogEntrySql.add(ExprColumn.STR_TABLE_ALIAS + ".shortUrl");
         ExprColumn col = new ExprColumn(this, "CatalogEntry", catalogEntrySql, JdbcType.INTEGER);
         col.setDescription("Add or view the catalog entry for the experiment");
         return col;
@@ -779,9 +780,8 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                     String imageUrl = entry != null ? AppProps.getInstance().getContextPath() + "/PanoramaPublic/images/slideshow-icon-green.png"
                                                     : AppProps.getInstance().getContextPath() + "/PanoramaPublic/images/slideshow-icon.png";
                     String imageTitle = entry != null ? "View catalog entry" : "Add catalog entry";
-                    ActionURL returnUrl = ctx.getViewContext().getActionURL().clone();
-                    ActionURL catalogEntryLink = entry != null ? PanoramaPublicController.getViewCatalogEntryUrl(expAnnot, entry).addReturnURL(returnUrl)
-                                                               : PanoramaPublicController.getAddCatalogEntryUrl(expAnnot).addReturnURL(returnUrl);
+                    ActionURL catalogEntryLink = entry != null ? PanoramaPublicController.getViewCatalogEntryUrl(expAnnot, entry)
+                                                               : PanoramaPublicController.getAddCatalogEntryUrl(expAnnot).addReturnURL(ctx.getViewContext().getActionURL().clone());
                     DOM.A(at(href, catalogEntryLink.getLocalURIString(), title, PageFlowUtil.filter(imageTitle)),
                             DOM.IMG(at(src, imageUrl, height, 22, width, 22)))
                             .appendTo(out);

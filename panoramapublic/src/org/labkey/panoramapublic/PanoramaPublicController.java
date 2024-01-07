@@ -192,7 +192,6 @@ import org.labkey.panoramapublic.speclib.SpecLibReader;
 import org.labkey.panoramapublic.speclib.SpecLibReaderException;
 import org.labkey.panoramapublic.view.PanoramaPublicRunListView;
 import org.labkey.panoramapublic.view.expannotations.ExperimentAnnotationsFormDataRegion;
-import org.labkey.panoramapublic.view.expannotations.MyDataView;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentsWebPart;
 import org.labkey.panoramapublic.view.publish.CatalogEntryWebPart;
@@ -9228,7 +9227,6 @@ public class PanoramaPublicController extends SpringActionController
             view.setShowInsertNewButton(false);
             view.disableContainerFilterSelection();
             return view;
-//            return new MyDataView(getViewContext(), getUser().getUserId(), errors);
         }
     }
 
