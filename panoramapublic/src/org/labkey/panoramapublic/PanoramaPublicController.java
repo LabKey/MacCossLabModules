@@ -178,6 +178,7 @@ import org.labkey.panoramapublic.query.DataValidationManager.MissingMetadata;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.ModificationInfoManager;
+import org.labkey.panoramapublic.query.MyDataTableInfo;
 import org.labkey.panoramapublic.query.PxXmlManager;
 import org.labkey.panoramapublic.query.SpecLibInfoManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
@@ -9215,7 +9216,7 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors);
             }
 
-            QuerySettings settings = new QuerySettings(getViewContext(),  "MyPanoramaPublicData", "MyPanoramaPublicData");
+            QuerySettings settings = new QuerySettings(getViewContext(),  MyDataTableInfo.NAME, MyDataTableInfo.NAME);
             settings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
             QueryView view = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), settings, errors);
             view.setTitle("Panorama Public Experiments");

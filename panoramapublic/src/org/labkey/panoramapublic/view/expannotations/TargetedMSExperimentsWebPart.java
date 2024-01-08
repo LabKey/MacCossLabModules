@@ -64,7 +64,6 @@ public class TargetedMSExperimentsWebPart extends QueryView
         {
             settings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
         }
-
         return settings;
     }
 

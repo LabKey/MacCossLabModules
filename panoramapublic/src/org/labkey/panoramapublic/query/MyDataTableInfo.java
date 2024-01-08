@@ -20,7 +20,7 @@ public class MyDataTableInfo extends ExperimentAnnotationsTableInfo
 
         if (user != null)
         {
-            // Display rows where the given user is either the submitter or the lab head.
+            // Filter to rows where the given user is either the submitter or the lab head.
             SimpleFilter.OrClause or = new SimpleFilter.OrClause();
             or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("submitter"), CompareType.EQUAL, user.getUserId()));
             or.addClause(new CompareType.EqualsCompareClause(FieldKey.fromParts("labhead"), CompareType.EQUAL, user.getUserId()));
