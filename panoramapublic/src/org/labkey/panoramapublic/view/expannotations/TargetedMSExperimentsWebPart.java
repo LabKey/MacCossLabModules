@@ -81,7 +81,6 @@ public class TargetedMSExperimentsWebPart extends QueryView
         if (!view.getViewContext().getUser().isGuest())
         {
             ActionURL viewMyDataUrl = new ActionURL(PanoramaPublicController.MyDataViewAction.class, getContainer());
-            viewMyDataUrl.addParameter("userId", view.getViewContext().getUser().getUserId());
             ActionButton viewMyDataButton = new ActionButton(viewMyDataUrl, "My Data");
             bb.add(viewMyDataButton);
         }

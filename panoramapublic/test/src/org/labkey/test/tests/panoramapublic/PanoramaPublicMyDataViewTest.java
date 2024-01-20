@@ -182,7 +182,7 @@ public class PanoramaPublicMyDataViewTest extends PanoramaPublicBaseTest
             else
             {
                 // This data is not public. The Catalog Entry column should be blank.
-                assertEquals("Unexpected value in \"Catalog Entry\" column for row " + row, "", table.getDataAsText(row, catalogEntryCol));
+                assertEquals("Unexpected value in \"Catalog Entry\" column for row " + row, "", table.getDataAsText(row, catalogEntryCol).trim());
             }
         }
     }

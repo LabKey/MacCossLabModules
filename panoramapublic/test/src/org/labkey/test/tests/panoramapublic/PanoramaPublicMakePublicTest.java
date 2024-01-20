@@ -148,7 +148,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         clickButton("View Entry");
         assertTextPresent("Pending approval");
         assertElementNotPresent("Approve button should be displayed only for site admins.", Locator.lkButton("Approve"));
-        clickButton("Back to Folder");
+        clickButton("Back");
     }
 
     private void verifyCatalogEntryWebpart(String projectName, String folderName, boolean expectWebpart)

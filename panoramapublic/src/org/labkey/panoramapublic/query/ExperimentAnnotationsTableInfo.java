@@ -779,15 +779,16 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                     String imageUrl = entry != null ? AppProps.getInstance().getContextPath() + "/PanoramaPublic/images/slideshow-icon-green.png"
                                                     : AppProps.getInstance().getContextPath() + "/PanoramaPublic/images/slideshow-icon.png";
                     String imageTitle = entry != null ? "View catalog entry" : "Add catalog entry";
-                    ActionURL catalogEntryLink = entry != null ? PanoramaPublicController.getViewCatalogEntryUrl(expAnnot, entry)
-                                                               : PanoramaPublicController.getAddCatalogEntryUrl(expAnnot).addReturnURL(ctx.getViewContext().getActionURL().clone());
+                    ActionURL returnUrl = ctx.getViewContext().getActionURL().clone();
+                    ActionURL catalogEntryLink = entry != null ? PanoramaPublicController.getViewCatalogEntryUrl(expAnnot, entry).addReturnURL(returnUrl)
+                                                               : PanoramaPublicController.getAddCatalogEntryUrl(expAnnot).addReturnURL(returnUrl);
                     DOM.A(at(href, catalogEntryLink.getLocalURIString(), title, PageFlowUtil.filter(imageTitle)),
                             DOM.IMG(at(src, imageUrl, height, 22, width, 22)))
                             .appendTo(out);
                     return;
                 }
             }
-            HtmlString.EMPTY_STRING.appendTo(out);
+            HtmlString.NBSP.appendTo(out);
         }
     }
 }

@@ -8953,7 +8953,7 @@ public class PanoramaPublicController extends SpringActionController
 
             ensureCorrectContainer(getContainer(), expAnnotations.getContainer(), getViewContext()); // container check
 
-            return new CatalogEntryWebPart(expAnnotations, getUser(), true);
+            return new CatalogEntryWebPart(expAnnotations, getUser(), form.getReturnActionURL(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer())));
         }
 
         @Override
@@ -9186,7 +9186,7 @@ public class PanoramaPublicController extends SpringActionController
 
     @RequiresPermission(ReadPermission.class)
     @RequiresLogin
-    public class MyDataViewAction extends SimpleViewAction<MyDataForm>
+    public class MyDataViewAction extends SimpleViewAction<Object>
     {
         @Override
         public void addNavTrail(NavTree root)
@@ -9195,27 +9195,8 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public ModelAndView getView(MyDataForm form, BindException errors) throws Exception
+        public ModelAndView getView(Object o, BindException errors) throws Exception
         {
-            if (form.getUserId() == null)
-            {
-                errors.addError(new LabKeyError("Did not find a user id in the request"));
-                return new SimpleErrorView(errors);
-            }
-            User user = UserManager.getUser(form.getUserId());
-            if (user == null)
-            {
-                errors.addError(new LabKeyError("Could not find a user for id: " + form.getUserId()));
-            }
-            else if (!user.equals(getUser()))
-            {
-                errors.addError(new LabKeyError("User did not match. You cannot view datasets for other users"));
-            }
-            if (errors.hasErrors())
-            {
-                return new SimpleErrorView(errors);
-            }
-
             QuerySettings settings = new QuerySettings(getViewContext(),  MyDataTableInfo.NAME, MyDataTableInfo.NAME);
             settings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
             QueryView view = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), settings, errors);
@@ -9228,21 +9209,6 @@ public class PanoramaPublicController extends SpringActionController
             view.setShowInsertNewButton(false);
             view.disableContainerFilterSelection();
             return view;
-        }
-    }
-
-    public static class MyDataForm
-    {
-        private Integer _userId;
-
-        public Integer getUserId()
-        {
-            return _userId;
-        }
-
-        public void setUserId(Integer userId)
-        {
-            _userId = userId;
         }
     }
 

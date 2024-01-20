@@ -484,7 +484,7 @@
                             if (!LABKEY.user.isGuest)
                             {
                                 buttonBarItems = [
-                                    {text: 'My Data', url: LABKEY.ActionURL.buildURL('panoramapublic', 'myDataView', null, {userId: LABKEY.user.id})},
+                                    {text: 'My Data', url: LABKEY.ActionURL.buildURL('panoramapublic', 'myDataView')},
                                     LABKEY.QueryWebPart.standardButtons.views
                                ];
                             }
