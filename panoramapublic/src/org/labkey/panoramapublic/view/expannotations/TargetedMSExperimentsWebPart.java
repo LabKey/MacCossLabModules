@@ -77,5 +77,12 @@ public class TargetedMSExperimentsWebPart extends QueryView
         deleteExperimentAnnotation.setDisplayPermission(DeletePermission.class);
         deleteExperimentAnnotation.setRequiresSelection(true);
         bb.add(deleteExperimentAnnotation);
+
+        if (!view.getViewContext().getUser().isGuest())
+        {
+            ActionURL viewMyDataUrl = new ActionURL(PanoramaPublicController.MyDataViewAction.class, getContainer());
+            ActionButton viewMyDataButton = new ActionButton(viewMyDataUrl, "My Data");
+            bb.add(viewMyDataButton);
+        }
     }
 }

@@ -1,13 +1,11 @@
 package org.labkey.panoramapublic.view.publish;
 
-import org.labkey.api.action.UrlProvider;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
-import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.User;
 import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.util.Button;
 import org.labkey.api.util.HtmlString;
-import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
@@ -40,10 +38,10 @@ public class CatalogEntryWebPart extends VBox
 {
     public CatalogEntryWebPart(ExperimentAnnotations expAnnotations, User user)
     {
-        this(expAnnotations, user, false);
+        this(expAnnotations, user, null);
     }
 
-    public CatalogEntryWebPart(ExperimentAnnotations expAnnotations, User user, boolean standalone)
+    public CatalogEntryWebPart(ExperimentAnnotations expAnnotations, User user, @Nullable ActionURL returnUrl)
     {
         Container container = expAnnotations.getContainer();
         setTitle("Panorama Public Catalog Entry");
@@ -108,9 +106,8 @@ public class CatalogEntryWebPart extends VBox
                     HtmlString.NBSP,
                     new Button.ButtonBuilder("Delete").href(deleteUrl)
                             .usePost("Are you sure you want to delete the Panorama Public catalog entry for this experiment?"),
-                    standalone ? DIV(at(style, "margin-top:25px;"),
-                                     new Button.ButtonBuilder("Back to Folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container)))
-                               : HtmlString.EMPTY_STRING
+                    returnUrl != null ? DIV(at(style, "margin-top:25px;"), new Button.ButtonBuilder("Back").href(returnUrl))
+                                      : HtmlString.EMPTY_STRING
             )));
         }
     }

@@ -54,6 +54,7 @@ import org.labkey.panoramapublic.query.ContainerJoin;
 import org.labkey.panoramapublic.query.DataValidationTableInfo;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsTableInfo;
 import org.labkey.panoramapublic.query.JournalExperimentTableInfo;
+import org.labkey.panoramapublic.query.MyDataTableInfo;
 import org.labkey.panoramapublic.query.PanoramaPublicTable;
 import org.labkey.panoramapublic.query.SubmissionTableInfo;
 import org.labkey.panoramapublic.query.modification.ExperimentIsotopeModInfoTableInfo;
@@ -128,6 +129,10 @@ public class PanoramaPublicSchema extends UserSchema
         if (TABLE_EXPERIMENT_ANNOTATIONS.equalsIgnoreCase(name))
         {
             return new ExperimentAnnotationsTableInfo(this, cf);
+        }
+        if (MyDataTableInfo.NAME.equalsIgnoreCase(name))
+        {
+            return new MyDataTableInfo(this, cf, getUser());
         }
         if (TABLE_JOURNAL_EXPERIMENT.equalsIgnoreCase(name))
         {

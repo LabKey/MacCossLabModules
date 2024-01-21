@@ -53,6 +53,7 @@ import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ProjectAdminRole;
 import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
+import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.PageFlowUtil;
@@ -65,8 +66,10 @@ import org.labkey.api.view.template.ClientDependency;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
+import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.view.publish.CatalogEntryWebPart;
 import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
 import java.io.IOException;
@@ -75,8 +78,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static org.labkey.api.util.DOM.Attribute.height;
+import static org.labkey.api.util.DOM.Attribute.href;
 import static org.labkey.api.util.DOM.Attribute.onclick;
 import static org.labkey.api.util.DOM.Attribute.src;
+import static org.labkey.api.util.DOM.Attribute.title;
+import static org.labkey.api.util.DOM.Attribute.width;
 import static org.labkey.api.util.DOM.IMG;
 import static org.labkey.api.util.DOM.at;
 
@@ -337,6 +344,10 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         getMutableColumn("CreatedBy").setFk(new UserIdQueryForeignKey(schema));
         getMutableColumn("ModifiedBy").setFk(new UserIdQueryForeignKey(schema));
 
+        ExprColumn catalogEntryCol = getCatalogEntryCol();
+        catalogEntryCol.setDisplayColumnFactory(colInfo -> new CatalogEntryIconColumn(colInfo));
+        addColumn(catalogEntryCol);
+
         List<FieldKey> visibleColumns = new ArrayList<>();
         visibleColumns.add(FieldKey.fromParts("Share"));
         visibleColumns.add(FieldKey.fromParts("Title"));
@@ -405,6 +416,18 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         allVersionsLink.addParameter("id", "${Id}");
         versionCountCol.setURL(StringExpressionFactory.createURL(allVersionsLink));
         return versionCountCol;
+    }
+
+    private ExprColumn getCatalogEntryCol()
+    {
+        SQLFragment catalogEntrySql = new SQLFragment(" (SELECT entry.id AS CatalogEntry ")
+                .append(" FROM ").append(PanoramaPublicManager.getTableInfoCatalogEntry(), "entry")
+                .append(" WHERE ")
+                .append(" entry.shortUrl = ").append(ExprColumn.STR_TABLE_ALIAS).append(".shortUrl")
+                .append(") ");
+        ExprColumn col = new ExprColumn(this, "CatalogEntry", catalogEntrySql, JdbcType.INTEGER);
+        col.setDescription("Add or view the catalog entry for the experiment");
+        return col;
     }
 
     @Override
@@ -722,6 +745,50 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         String getRenderId()
         {
             return "input-picker-div-instrument";
+        }
+    }
+
+    public static class CatalogEntryIconColumn extends DataColumn
+    {
+        public CatalogEntryIconColumn(ColumnInfo col)
+        {
+            super(col);
+            super.setCaption("Catalog Entry");
+        }
+
+        @Override
+        public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+        {
+            User user = ctx.getViewContext().getUser();
+            if (user == null || user.isGuest())
+            {
+                HtmlString.NBSP.appendTo(out);
+                return;
+            }
+            Integer catalogEntryId = ctx.get(getColumnInfo().getFieldKey(), Integer.class);
+
+            // Get the experiment connected with this catalog entry.
+            Integer experimentId = ctx.get(FieldKey.fromParts("id"), Integer.class);
+            if (experimentId != null)
+            {
+                ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(experimentId);
+                // Display the catalog entry link only if the user has the required permissions (Admin or PanoramaPublicSubmitter) in the the experiment folder.
+                if (expAnnot != null && CatalogEntryWebPart.canBeDisplayed(expAnnot, user))
+                {
+                    CatalogEntry entry = catalogEntryId == null ? null : CatalogEntryManager.get(catalogEntryId);
+                    String imageUrl = entry != null ? AppProps.getInstance().getContextPath() + "/PanoramaPublic/images/slideshow-icon-green.png"
+                                                    : AppProps.getInstance().getContextPath() + "/PanoramaPublic/images/slideshow-icon.png";
+                    String imageTitle = entry != null ? "View catalog entry" : "Add catalog entry";
+                    ActionURL returnUrl = ctx.getViewContext().getActionURL().clone();
+                    ActionURL catalogEntryLink = entry != null ? PanoramaPublicController.getViewCatalogEntryUrl(expAnnot, entry).addReturnURL(returnUrl)
+                                                               : PanoramaPublicController.getAddCatalogEntryUrl(expAnnot).addReturnURL(returnUrl);
+                    DOM.A(at(href, catalogEntryLink.getLocalURIString(), title, PageFlowUtil.filter(imageTitle)),
+                            DOM.IMG(at(src, imageUrl, height, 22, width, 22)))
+                            .appendTo(out);
+                    return;
+                }
+            }
+            HtmlString.NBSP.appendTo(out);
         }
     }
 }
