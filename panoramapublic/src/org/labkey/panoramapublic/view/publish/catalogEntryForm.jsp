@@ -53,7 +53,7 @@
     int imgWidth = settings.getImgWidth();
     int imgHeight = settings.getImgHeight();
 
-    ActionURL cancelUrl = PanoramaPublicController.getViewExperimentDetailsURL(form.getId(), form.getContainer());
+    ActionURL cancelUrl = bean.getForm().getReturnActionURL(PanoramaPublicController.getViewExperimentDetailsURL(form.getId(), form.getContainer()));
 
 %>
 <labkey:errors/>
