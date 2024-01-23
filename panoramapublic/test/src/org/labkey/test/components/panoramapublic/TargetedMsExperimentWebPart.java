@@ -43,7 +43,7 @@ public class TargetedMsExperimentWebPart extends BodyWebPart <TargetedMsExperime
 
     public void clickSubmit()
     {
-        getWrapper().clickAndWait(Locator.linkContainingText("Submit"));
+        getWrapper().clickAndWait(Locator.linkWithText("Submit"));
     }
 
     public void clickResubmit()

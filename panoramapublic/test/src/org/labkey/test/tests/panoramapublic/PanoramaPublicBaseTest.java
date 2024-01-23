@@ -70,6 +70,9 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     static final String SMALLMOL_PLUS_PEPTIDES_SKY_VIEW = SMALLMOL_PLUS_PEPTIDES_SKY + ".view";
     static final String SMALLMOL_PLUS_PEPTIDES_SKY_ZIP = SMALLMOL_PLUS_PEPTIDES_SKY + ".zip";
 
+    static final String CATALOG_IMAGE_FILE = "skyline_panorama_workflow.png";
+    static final String CATALOG_IMAGE_PATH = "TargetedMS/panoramapublic/" + CATALOG_IMAGE_FILE;
+
     static final String SAMPLEDATA_FOLDER = "panoramapublic/";
 
     PortalHelper portalHelper = new PortalHelper(this);
@@ -194,10 +197,9 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         setupSubfolder(projectName, folderName, folderType); // Create the subfolder
 
         ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
+        _userHelper.ensureUsersExist(List.of(adminUsers));
         for(String user: adminUsers)
         {
-            _userHelper.deleteUser(user);
-            _userHelper.createUser(user);
             permissionsHelper.addMemberToRole(user, "Folder Administrator", PermissionsHelper.MemberType.user, projectName + "/" + folderName);
         }
     }
@@ -454,6 +456,103 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     public File getSampleDataPath(String file)
     {
         return TestFileUtils.getSampleData("TargetedMS/" + getSampleDataFolder() + file);
+    }
+
+    protected String setupFolderSubmitAndCopy(String projectName, String folderName, String targetFolder, String experimentTitle, String submitter, @Nullable String submitterLastName,
+                                              @Nullable String admin, String skylineDocName)
+    {
+        setupSourceFolder(projectName, folderName, submitter);
+
+        if (admin != null)
+        {
+            createFolderAdmin(projectName, folderName, admin);
+        }
+
+        impersonate(submitter);
+        if (submitterLastName != null)
+        {
+            updateSubmitterAccountInfo(submitterLastName);
+        }
+
+        // Import a Skyline document to the folder
+        importData(skylineDocName, 1);
+
+        // Add the "Targeted MS Experiment" webpart and submit
+        TargetedMsExperimentWebPart expWebPart = createExperimentCompleteMetadata(experimentTitle);
+        expWebPart.clickSubmit();
+        String shortAccessUrl = submitWithoutPXId();
+
+        // Copy the experiment to the Panorama Public project
+        makeCopy(shortAccessUrl, experimentTitle, targetFolder, false, false);
+
+        return shortAccessUrl;
+    }
+
+    private void createFolderAdmin(String projectName, String folderName, String user)
+    {
+        _userHelper.ensureUsersExist(Collections.singletonList(user));
+        ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
+        permissionsHelper.addMemberToRole(user, "Folder Administrator", PermissionsHelper.MemberType.user, projectName + "/" + folderName);
+    }
+
+    protected void makeDataPublic(boolean unpublishedData)
+    {
+        TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
+
+        if (unpublishedData)
+        {
+            expWebPart.clickMakePublic();
+            assertTextPresent("Publication Details");
+            _ext4Helper.checkCheckbox(Ext4Helper.Locators.checkbox(this, "Unpublished:"));
+        }
+        else
+        {
+            expWebPart.clickAddPublication();
+            assertTextPresent("Publication Details");
+            setFormElement(Locator.input("link"), "http://panorama-publication-test.org");
+            setFormElement(Locator.tagWithName("textarea", "citation"), "Paper citation goes here");
+        }
+
+        clickButton("Continue");
+        assertTextPresent("Confirm Publication Details");
+        clickButton("OK");
+        if (unpublishedData)
+        {
+            assertTextPresent("Data on Panorama Public", "was made public.");
+        }
+        else
+        {
+            assertTextPresent("Publication details were updated for data on Panorama Public");
+        }
+        clickAndWait(Locator.linkContainingText("Back to Folder"));
+    }
+
+    protected void createCatalogEntry()
+    {
+        assertTextPresent("Use the form below to provide a brief description and an image that will be displayed in a slideshow ");
+        setFormElement(Locator.textarea("datasetDescription"), "Cool research with Skyline");
+        File imageFile = TestFileUtils.getSampleData(CATALOG_IMAGE_PATH);
+        setFormElement(Locator.input("imageFileInput"), imageFile);
+        assertTextPresent("Drag and resize the crop-box");
+        clickButton("Crop", 0);
+        // waitForElementToDisappear(Locator.IdLocator.id("cropperContainer"));
+        clickButton("Submit");
+        assertTextPresent("Thank you for submitting your entry for the Panorama Public data catalog");
+    }
+
+    protected void enableCatalogEntries()
+    {
+        goToAdminConsole().goToSettingsSection();
+        clickAndWait(Locator.linkWithText("Panorama Public"));
+        clickAndWait(Locator.linkWithText("Panorama Public Catalog Settings"));
+        checkCheckbox(Locator.input("enabled"));
+        setFormElement(Locator.input("maxFileSize"), "5242880");
+        setFormElement(Locator.input("imgWidth"), "600");
+        setFormElement(Locator.input("imgHeight"), "400");
+        setFormElement(Locator.input("maxTextChars"), "500");
+        setFormElement(Locator.input("maxEntries"), "25");
+        clickButton("Save");
+        waitForText("Panorama Public catalog entry settings were saved");
     }
 
     @Override
