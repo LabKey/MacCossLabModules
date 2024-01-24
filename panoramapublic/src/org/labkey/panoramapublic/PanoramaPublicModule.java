@@ -45,6 +45,7 @@ import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentType;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
+import org.labkey.panoramapublic.pipeline.CopyExperimentFinalTask;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
 import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
@@ -377,6 +378,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(ContainerJoin.TestCase.class);
         set.add(Formula.TestCase.class);
         set.add(CatalogEntryManager.TestCase.class);
+        set.add(CopyExperimentFinalTask.TestCase.class);
         return set;
 
     }
