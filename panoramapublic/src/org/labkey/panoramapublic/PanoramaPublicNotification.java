@@ -321,12 +321,12 @@ public class PanoramaPublicNotification
 
     public static String getUserName(User user)
     {
-        return !StringUtils.isBlank(user.getFullName()) ? user.getFullName() : user.getFriendlyName();
+        return escape(!StringUtils.isBlank(user.getFullName()) ? user.getFullName() : user.getFriendlyName());
     }
 
     private static String getUserDetails(User user)
     {
-        return escape(getUserName(user)) + " (" + escape(user.getEmail()) + ")";
+        return getUserName(user) + escape(" (" + user.getEmail() + ")");
     }
 
     private static String getContainerLink(Container container)
@@ -385,7 +385,7 @@ public class PanoramaPublicNotification
                                                         User fromUser,
                                                         boolean recopy)
     {
-        String journalName = journal.getName();
+        String journalName = escape(journal.getName());
 
         String accessUrlLink = link(targetExperiment.getShortUrl().renderShortURL());
 
@@ -405,7 +405,7 @@ public class PanoramaPublicNotification
             message.append(NL2)
                     .append("As requested, your data on ").append(journalName).append(" is private.  Here are the reviewer account details:")
                     .append(NL).append("Email: ").append(reviewer.getEmail())
-                    .append(NL).append("Password: ").append(reviewerPassword);
+                    .append(NL).append("Password: ").append(escape(reviewerPassword));
         }
         else
         {

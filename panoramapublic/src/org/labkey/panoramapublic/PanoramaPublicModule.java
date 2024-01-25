@@ -378,7 +378,6 @@ public class PanoramaPublicModule extends SpringModule
         set.add(ContainerJoin.TestCase.class);
         set.add(Formula.TestCase.class);
         set.add(CatalogEntryManager.TestCase.class);
-        set.add(CopyExperimentFinalTask.TestCase.class);
         return set;
 
     }

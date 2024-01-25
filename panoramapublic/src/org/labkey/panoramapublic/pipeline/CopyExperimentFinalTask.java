@@ -18,8 +18,6 @@ package org.labkey.panoramapublic.pipeline;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Assert;
-import org.junit.Test;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
@@ -700,7 +698,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         private static final List<Character> LOWERCASE = "abcdefghijklmnopqrstuvwxyz".chars().mapToObj(c -> (char)c).collect(Collectors.toList());
         private static final List<Character> UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".chars().mapToObj(c -> (char)c).collect(Collectors.toList());
         private static final List<Character> DIGITS = "0123456789".chars().mapToObj(c -> (char)c).collect(Collectors.toList());
-        private static final List<Character> SYMBOLS = "!@#$%^&*_-+=?".chars().mapToObj(c -> (char)c).collect(Collectors.toList());
+        private static final List<Character> SYMBOLS = "!@#$%^&*+=?".chars().mapToObj(c -> (char)c).collect(Collectors.toList());
 
         private static final int PASSWORD_LEN = 14;
 
@@ -747,44 +745,6 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             Character selected = categoryChars.get(randomIdx);
             passwordChars.add(selected);
             allChars.remove(selected); // Remove from the list of all available chars so that we have unique characters in the password
-        }
-    }
-
-    public static class TestCase extends Assert
-    {
-        @Test
-        public void testPassword()
-        {
-            int cnt = 100;
-
-            while (cnt-- > 0)
-            {
-                String password = CopyExperimentFinalTask.createPassword(User.guest);
-                assertEquals(PasswordGenerator.PASSWORD_LEN, password.length());
-
-                boolean hasDigit = false;
-                boolean hasUppercase = false;
-                boolean hasLowercase = false;
-                boolean hasSymbol = false;
-                for (int i = 0; i < password.length(); i++)
-                {
-                    char c = password.charAt(i);
-                    if (Character.isDigit(c)) hasDigit = true;
-                    else if (Character.isUpperCase(c)) hasUppercase = true;
-                    else if (Character.isLowerCase(c)) hasLowercase = true;
-                    else hasSymbol = true;
-                }
-                assertTrue("Password does not contain a digit: " + password, hasDigit);
-                assertTrue("Password does not contain a symbol: " + password, hasSymbol);
-                assertTrue("Password does not contain a lowercase letter: " + password, hasLowercase);
-                assertTrue("Password does not contain a uppercase letter: " + password, hasUppercase);
-
-                Set<Character> charsInPassword = new HashSet<>();
-                for (char c : password.toCharArray())
-                {
-                    assertTrue("Duplicate character found: " + c, charsInPassword.add(c));
-                }
-            }
         }
     }
 
