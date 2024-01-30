@@ -45,6 +45,7 @@ import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentType;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
+import org.labkey.panoramapublic.pipeline.CopyExperimentFinalTask;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
 import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;

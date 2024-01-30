@@ -37,9 +37,12 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOnlyTest
 {
@@ -74,6 +77,10 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     static final String CATALOG_IMAGE_PATH = "TargetedMS/panoramapublic/" + CATALOG_IMAGE_FILE;
 
     static final String SAMPLEDATA_FOLDER = "panoramapublic/";
+
+    private static final Pattern REVIEWER_PASSWORD_LINE = Pattern.compile("Password:\s(\\S+)");
+    private static final String PASSWORD_SPECIAL_CHARS = "!@#$%^&*+=?";
+    private static final int REVIEWER_PASSWORD_LEN = 14;
 
     PortalHelper portalHelper = new PortalHelper(this);
 
@@ -439,6 +446,20 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         String messageText = new BodyWebPart(getDriver(), "View Message").getComponentElement().getText();
         var srcFolderTxt = "Source folder: " + "/" + projectName + "/" + folderName;
         assertTextPresent(new TextSearcher(messageText), text, srcFolderTxt);
+
+        // Unescaped special Markdown characters in the message may cause the password to render incorrectly.
+        // Extract the reviewer password and check that it has the correct length and expected characters.
+        Matcher match = REVIEWER_PASSWORD_LINE.matcher(messageText);
+        assertTrue("Could not find reviewer password in the message", match.find());
+        String password = match.group(1);
+        assertEquals("Unexpected length of reviewer password", REVIEWER_PASSWORD_LEN, password.length());
+        for (int i = 0; i < password.length(); i++)
+        {
+            char c = password.charAt(i);
+            assertTrue("Unexpected character '"+ c + "' in reviewer password " + password,
+                    Character.isUpperCase(c) || Character.isLowerCase(c)
+                            || Character.isDigit(c) || PASSWORD_SPECIAL_CHARS.contains(String.valueOf(c)));
+        }
     }
 
     @Override
