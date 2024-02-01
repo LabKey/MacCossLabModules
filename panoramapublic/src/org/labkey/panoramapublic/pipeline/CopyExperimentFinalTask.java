@@ -15,7 +15,6 @@
  */
 package org.labkey.panoramapublic.pipeline;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -38,6 +37,7 @@ import org.labkey.api.security.Group;
 import org.labkey.api.security.InvalidGroupMembershipException;
 import org.labkey.api.security.MemberType;
 import org.labkey.api.security.MutableSecurityPolicy;
+import org.labkey.api.security.PasswordRule;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.SecurityPolicy;
 import org.labkey.api.security.SecurityPolicyManager;
@@ -81,6 +81,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -145,7 +147,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             ExperimentAnnotations previousCopy = getPreviousCopyRemoveShortUrl(latestCopiedSubmission, user);
 
             // Update the row in panoramapublic.ExperimentAnnotations - set the shortURL and version
-            ExperimentAnnotations targetExperiment = updateExperimentAnnotations(container, sourceExperiment, js, previousCopy, jobSupport, user, log);
+            ExperimentAnnotations targetExperiment = updateExperimentAnnotations(container, sourceExperiment, js, user, log);
 
             // If there is a Panorama Public data catalog entry associated with the previous copy of the experiment, move it to the
             // new container.
@@ -340,11 +342,10 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         {
             if (previousCopy == null || previousCopy.isPublic())
             {
-                String reviewerPassword = createPassword();
-                User reviewer;
+                ReviewerAndPassword reviewerAndPassword;
                 try
                 {
-                    reviewer = createReviewerAccount(jobSupport.getReviewerEmailPrefix(), reviewerPassword, user, log);
+                    reviewerAndPassword = createReviewerAccount(jobSupport.getReviewerEmailPrefix(), user, log);
                 }
                 catch (ValidEmail.InvalidEmailException e)
                 {
@@ -354,6 +355,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 {
                     throw new PipelineJobException("Error creating a new account for reviewer", e);
                 }
+                User reviewer = reviewerAndPassword.getReviewer();
                 assignReader(reviewer, targetExperiment.getContainer(), user);
                 js.getJournalExperiment().setReviewer(reviewer.getUserId());
                 SubmissionManager.updateJournalExperiment(js.getJournalExperiment(), user);
@@ -363,7 +365,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 // CONSIDER: Make this configurable through the Panorama Public admin console.
                 addToGroup(reviewer, "Reviewers", targetExperiment.getContainer().getProject(), log);
 
-                return new Pair<>(reviewer, reviewerPassword);
+                return new Pair<>(reviewer, reviewerAndPassword.getPassword());
             }
         }
         else
@@ -463,10 +465,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
     @NotNull
     private ExperimentAnnotations updateExperimentAnnotations(Container targetContainer, ExperimentAnnotations sourceExperiment, JournalSubmission js,
-                                                              ExperimentAnnotations previousCopy, CopyExperimentJobSupport jobSupport,
                                                               User user, Logger log) throws PipelineJobException
     {
-
         log.info("Updating TargetedMS experiment entry in target folder " + targetContainer.getPath());
         ExperimentAnnotations targetExperiment = ExperimentAnnotationsManager.getExperimentInContainer(targetContainer);
         if (targetExperiment == null)
@@ -625,7 +625,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
     }
 
-    private User createReviewerAccount(String reviewerEmailPrefix, String password, User user, Logger log) throws ValidEmail.InvalidEmailException, SecurityManager.UserManagementException
+    private ReviewerAndPassword createReviewerAccount(String reviewerEmailPrefix, User user, Logger log) throws ValidEmail.InvalidEmailException, SecurityManager.UserManagementException
     {
         if(StringUtils.isBlank(reviewerEmailPrefix))
         {
@@ -644,10 +644,14 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         log.info("Creating a reviewer account.");
         SecurityManager.NewUserStatus newUser = SecurityManager.addUser(email, user, true);
-        SecurityManager.setPassword(email, password);
+        log.info("Created reviewer with email: " + newUser.getUser().getEmail());
 
-        log.info("Created reviewer with email: User " + newUser.getUser().getEmail());
-        return newUser.getUser();
+        log.info("Generating password.");
+        String password = createPassword(newUser.getUser());
+        SecurityManager.setPassword(email, password);
+        log.info("Set reviewer password successfully.");
+
+        return new ReviewerAndPassword(newUser.getUser(), password);
     }
 
     private void assignReader(UserPrincipal reader, Container target, User pipelineJobUser)
@@ -657,9 +661,91 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         SecurityPolicyManager.savePolicy(newPolicy, pipelineJobUser);
     }
 
-    public static String createPassword()
+    private static class ReviewerAndPassword
     {
-        return RandomStringUtils.randomAlphabetic(8);
+        private final User _reviewer;
+        private final String _password;
+
+        public ReviewerAndPassword(@NotNull User reviewer, @NotNull String password)
+        {
+            _reviewer = reviewer;
+            _password = password;
+        }
+
+        public User getReviewer()
+        {
+            return _reviewer;
+        }
+
+        public String getPassword()
+        {
+            return _password;
+        }
+    }
+
+    private static String createPassword(User user)
+    {
+        String password;
+        do {
+            password = PasswordGenerator.generate();
+        } while (!PasswordRule.Strong.isValidForLogin(password, user, null));
+
+        return password;
+    }
+
+    private static class PasswordGenerator
+    {
+        private static final List<Character> LOWERCASE = "abcdefghijklmnopqrstuvwxyz".chars().mapToObj(c -> (char)c).collect(Collectors.toList());
+        private static final List<Character> UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".chars().mapToObj(c -> (char)c).collect(Collectors.toList());
+        private static final List<Character> DIGITS = "0123456789".chars().mapToObj(c -> (char)c).collect(Collectors.toList());
+        private static final List<Character> SYMBOLS = "!@#$%^&*+=?".chars().mapToObj(c -> (char)c).collect(Collectors.toList());
+
+        private static final int PASSWORD_LEN = 14;
+
+        public static String generate()
+        {
+            SecureRandom random = new SecureRandom();
+
+            List<Character> passwordChars = new ArrayList<>(PASSWORD_LEN);
+            List<Character> allChars = new ArrayList<>();
+
+            // Initialize the list with all possible characters
+            allChars.addAll(LOWERCASE);
+            allChars.addAll(UPPERCASE);
+            allChars.addAll(DIGITS);
+            allChars.addAll(SYMBOLS);
+
+            // Ensure that there is at least one character from each character category.
+            addChar(LOWERCASE, passwordChars, allChars, random);
+            addChar(UPPERCASE, passwordChars, allChars, random);
+            addChar(DIGITS, passwordChars, allChars, random);
+            addChar(SYMBOLS, passwordChars, allChars, random);
+
+            // Shuffle the list of remaining characters
+            Collections.shuffle(allChars);
+
+            // Add more characters until we are at the desired password length
+            while (passwordChars.size() < PASSWORD_LEN)
+            {
+                addChar(allChars, passwordChars, allChars, random);
+            }
+
+            Collections.shuffle(passwordChars);
+
+            return passwordChars.stream().map(String::valueOf).collect(Collectors.joining());
+        }
+
+        /**
+         * Pick a random character from the given character category, add it to the list of password characters, and
+         * remove it from the list of all available characters to ensure character uniqueness in the password.
+         */
+        private static void addChar(List<Character> categoryChars, List<Character> passwordChars, List<Character> allChars, SecureRandom random)
+        {
+            int randomIdx = random.nextInt(0, categoryChars.size());
+            Character selected = categoryChars.get(randomIdx);
+            passwordChars.add(selected);
+            allChars.remove(selected); // Remove from the list of all available chars so that we have unique characters in the password
+        }
     }
 
     private void assignPxId(ExperimentAnnotations targetExpt, boolean useTestDb) throws ProteomeXchangeServiceException
