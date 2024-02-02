@@ -1114,6 +1114,7 @@ public class SkylineToolsStoreController extends SpringActionController
             if (resource == null || !resource.isFile())
                 throw new NotFoundException("Resource could not be found: " + path.toString());
 
+            // Issue 49580: https://www.labkey.org/MacCoss/Issue%20Tracker/issues-details.view?issueId=49580
             // Add our own 'Content-Disposition' header so that it overwrites the one set in
             // ResponseHelper.setContentDisposition(HttpServletResponse response, ContentDispositionType type, @NotNull String filename)
             // Skyline expects the 'Content-Disposition' header value to look like this: filename="MSstatsShiny.zip".
