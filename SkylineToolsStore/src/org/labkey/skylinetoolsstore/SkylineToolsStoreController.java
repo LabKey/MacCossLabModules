@@ -67,13 +67,14 @@ import org.labkey.api.util.SafeToRender;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
-import org.labkey.api.view.HttpRedirectView;
 import org.labkey.api.view.HttpView;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.api.view.RedirectException;
 import org.labkey.api.view.UnauthorizedException;
+import org.labkey.api.webdav.WebdavResource;
+import org.labkey.api.webdav.WebdavService;
 import org.labkey.skylinetoolsstore.model.Rating;
 import org.labkey.skylinetoolsstore.model.SkylineTool;
 import org.labkey.skylinetoolsstore.view.SkylineToolDetails;
@@ -105,6 +106,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1101,9 +1103,27 @@ public class SkylineToolsStoreController extends SpringActionController
                     "Path=/; Domain=;");
             }
 
-            return new HttpRedirectView(
-                AppProps.getInstance().getContextPath() + "/files" + tool.lookupContainer().getPath()
-                + "/" + tool.getZipName());
+            Container toolContainer = ContainerManager.getForId(tool.getContainerId());
+            if (toolContainer == null)
+            {
+                throw new NotFoundException("Tool container not found");
+            }
+
+            org.labkey.api.util.Path path = WebdavService.getPath().append(toolContainer.getParsedPath()).append(FileContentService.FILES_LINK).append(tool.getZipName());
+            WebdavResource resource = WebdavService.get().getResolver().lookup(path);
+            if (resource == null || !resource.isFile())
+                throw new NotFoundException("Resource could not be found: " + path.toString());
+
+            // Add our own 'Content-Disposition' header so that it overwrites the one set in
+            // ResponseHelper.setContentDisposition(HttpServletResponse response, ContentDispositionType type, @NotNull String filename)
+            // Skyline expects the 'Content-Disposition' header value to look like this: filename="MSstatsShiny.zip".
+            Map<String, String> headers = Collections.singletonMap("Content-Disposition", "filename=\""+ tool.getZipName() + "\"");
+            PageFlowUtil.streamFile(getViewContext().getResponse(),
+                    headers,
+                    resource.getName(),
+                    resource.getInputStream(getUser()),
+                    true);
+            return null;
         }
 
         protected boolean recordDownload(HttpServletRequest httpServletRequest, int toolId)
