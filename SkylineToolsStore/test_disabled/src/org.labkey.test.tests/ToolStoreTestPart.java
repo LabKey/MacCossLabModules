@@ -110,7 +110,7 @@ public abstract class ToolStoreTestPart extends BaseWebDriverTest
        log("Installing " + fileName);
        //clickAndWait(Locator.linkContainingText("LabKey Server"));
         String base = getBaseURL();
-        getDriver().get(base+"/skylinetoolsstore/ToolStoreTest/insert.view?");
+        getDriver().get(base+"/ToolStoreTest/skylinetoolsstore-insert.view");
         getDriver().findElement(By.name("toolZip")).sendKeys(getToolPath(fileName));
         click(Locator.xpath("//input[contains(@value, 'Upload Tool')]"));
     }

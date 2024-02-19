@@ -344,7 +344,7 @@
                     </div>
                 </div>
 <% } %>
-                <p class="content"><%= h(tool.getDescription(), true) %><br />[<a href="<%=h(detailsUrl)%>">Tool Details</a>, <a href="/labkey/project/home/software/Skyline/tools/Support/<%=h(tool.getName())%>/begin.view?" target="_blank">Support Board</a>]</p>
+                <p class="content"><%= h(tool.getDescription(), true) %><br />[<a href="<%=h(detailsUrl)%>">Tool Details</a>, <a href="/labkey/home/software/Skyline/tools/Support/<%=h(tool.getName())%>/project-begin.view" target="_blank">Support Board</a>]</p>
 
                 <div class="toolButtons">
 
