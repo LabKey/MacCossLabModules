@@ -69,6 +69,12 @@ public class SendTestResultsEmail implements org.quartz.Job
     {
         // Sends email for all runs since 8:01 the previous morning, at 8am every morning
         Container parent = ContainerManager.getHomeContainer().getChild("development");
+        if (parent == null)
+        {
+            LOG.debug("No /home/development container found, skipping email generation");
+            return new Pair<>("", "");
+        }
+
         //parent = ContainerManager.getForPath(new Path(new String[]{"home"})); // DEV ONLY, localhost container path
 
         List<Container> containers = ContainerManager.getAllChildren(parent, from);
