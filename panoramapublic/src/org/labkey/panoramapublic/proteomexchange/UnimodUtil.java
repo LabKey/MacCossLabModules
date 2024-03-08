@@ -335,6 +335,7 @@ public class UnimodUtil
 
 
             matches = getMatchesIfWildcardModification(label13C15N, allAminoAcids);
+            // "UNIMOD:2088, Label:13C(2)15N(1), C'2N' - C2N, Sites: G, Isotopic: true, Structural: false" (ADDED 2/29/2024)
             // "UNIMOD:1297, Label:13C(3)15N(1), C'3N' - C3N, Sites: A, Isotopic: true"
             // "UNIMOD:1298, Label:13C(4)15N(1), C'4N' - C4N, Sites: D, Isotopic: true"
             // "UNIMOD:268, Label:13C(5)15N(1), C'5N' - C5N, Sites: P:E:V:M, Isotopic: true"
@@ -342,9 +343,9 @@ public class UnimodUtil
             // "UNIMOD:259, Label:13C(6)15N(2), C'6N'2 - C6N2, Sites: K, Isotopic: true"
             // "UNIMOD:267, Label:13C(6)15N(4), C'6N'4 - C6N4, Sites: R, Isotopic: true"
             // "UNIMOD:269, Label:13C(9)15N(1), C'9N' - C9N, Sites: F, Isotopic: true"
-            assertEquals(7, matches.size());
+            assertEquals(8, matches.size());
             matchIds = matches.stream().map(UnimodModification::getId).sorted().collect(Collectors.toList());
-            expectedMatchIds = List.of(1297, 1298, 268, 695, 259, 267, 269).stream().sorted().collect(Collectors.toList());
+            expectedMatchIds = List.of(2088, 1297, 1298, 268, 695, 259, 267, 269).stream().sorted().collect(Collectors.toList());
             assertArrayEquals("Unexpected Unimod Ids for label13C15N", expectedMatchIds.toArray(), matchIds.toArray());
         }
     }
