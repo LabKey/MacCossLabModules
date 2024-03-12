@@ -45,20 +45,33 @@ public class UnimodParser
     public UnimodModifications parse() throws PxException
     {
         Module module = ModuleLoader.getInstance().getModule(PanoramaPublicModule.class);
-        FileResource resource = (FileResource)module.getModuleResolver().lookup(Path.parse("unimod.xml"));
+        UnimodModifications uMods = new UnimodModifications();
+        File unimodXml = getXmlFile("unimod.xml", module);
+        parse(unimodXml, uMods, true);
+        // unimod_xl.xml contains master entries for crosslinks, e.g. Xlink:BuUrBu
+        // Details are on this page: https://www.unimod.org/xlink.html. Link to download the file is also available on this page.
+        File unimodXlXml = getXmlFile("unimod_xl.xml", module);
+        parse(unimodXlXml, uMods, false);
+        return uMods;
+    }
+
+    @NotNull
+    private File getXmlFile(String fileName, Module module) throws PxException
+    {
+        FileResource resource = (FileResource) module.getModuleResolver().lookup(Path.parse(fileName));
         if(resource == null)
         {
-            throw new PxException("UNIMOD xml file resource not found.");
+            throw new PxException("UNIMOD xml file resource, " + fileName + ", not found.");
         }
         File unimodXml = resource.getFile();
         if(unimodXml == null)
         {
-            throw new PxException("UNIMOD xml file not found.");
+            throw new PxException("UNIMOD xml file, " + fileName + ", not found.");
         }
-        return parse(unimodXml);
+        return unimodXml;
     }
 
-    private UnimodModifications parse(File unimodXml) throws PxException
+    private void parse(File unimodXml, UnimodModifications uMods, boolean isPrimaryXml) throws PxException
     {
         if(!unimodXml.exists())
         {
@@ -84,10 +97,12 @@ public class UnimodParser
             throw new PxException("UNIMOD xml document has no root document element.");
         }
 
-        UnimodModifications uMods = new UnimodModifications();
         readModifications(root, uMods);
-        readAminoAcids(root, uMods);
-        return uMods;
+        if (isPrimaryXml)
+        {
+            readAminoAcids(root, uMods);
+            updateDiffIsotopeMods(uMods);
+        }
     }
 
     private void readAminoAcids(Element root, UnimodModifications uMods) throws PxException
@@ -136,6 +151,16 @@ public class UnimodParser
                 }
             }
         }
+    }
+
+    // For isotope modifications that are the heavy versions of a structural modification, calculate the isotope formula
+    // as the difference between the formula of the modification and the formula of the associated, unlabeled structural
+    // modification.
+    // For example: the isotope formula for Dimethyl:2H(6) is the difference between the formulas of Dimethyl:2H(6) and Dimethyl.
+    // This difference is H'6C2-H2 - H4C2 = H'6-H6
+    // This is how it is represented in Skyline, so we need to be able to lookup Unimod matches based on this formula.
+    private void updateDiffIsotopeMods(UnimodModifications uMods)
+    {
         for (UnimodModification uMod: uMods.getModifications())
         {
             if (uMod.isIsotopeLabel())
