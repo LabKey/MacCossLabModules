@@ -40,10 +40,12 @@ import java.util.Set;
 
 public class UnimodParser
 {
+    private static final String NAMESPACE = "http://www.unimod.org/xmlns/schema/unimod_2";
+
     public UnimodModifications parse() throws PxException
     {
         Module module = ModuleLoader.getInstance().getModule(PanoramaPublicModule.class);
-        FileResource resource = (FileResource)module.getModuleResolver().lookup(Path.parse("unimod_NO_NAMESPACE.xml"));
+        FileResource resource = (FileResource)module.getModuleResolver().lookup(Path.parse("unimod.xml"));
         if(resource == null)
         {
             throw new PxException("UNIMOD xml file resource not found.");
@@ -63,6 +65,7 @@ public class UnimodParser
             throw new PxException("UNIMOD xml file does not exist: " + unimodXml);
         }
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setNamespaceAware(true);
         DocumentBuilder db;
         Document document;
         try
@@ -89,7 +92,7 @@ public class UnimodParser
 
     private void readAminoAcids(Element root, UnimodModifications uMods) throws PxException
     {
-        NodeList list = root.getElementsByTagName("aa");
+        NodeList list = root.getElementsByTagNameNS(NAMESPACE, "aa");
         for(int i = 0; i < list.getLength(); i++)
         {
             Node n =  list.item(i);
@@ -109,7 +112,7 @@ public class UnimodParser
             return;
         }
 
-        NodeList nl = aaEl.getElementsByTagName("element");
+        NodeList nl = aaEl.getElementsByTagNameNS(NAMESPACE, "element");
         Map<String, Integer> composition = new HashMap<>();
         for(int i = 0; i < nl.getLength(); i++)
         {
@@ -123,7 +126,7 @@ public class UnimodParser
 
     private void readModifications(Element root, UnimodModifications uMods) throws PxException
     {
-        NodeList list = root.getElementsByTagName("mod");
+        NodeList list = root.getElementsByTagNameNS(NAMESPACE, "mod");
         for(int i = 0; i < list.getLength(); i++)
         {
             Node n =  list.item(i);
@@ -195,10 +198,10 @@ public class UnimodParser
         String title = modEl.getAttribute("title");
         Integer id = Integer.parseInt(modEl.getAttribute("record_id"));
 
-        NodeList deltaEl = modEl.getElementsByTagName("delta");
+        NodeList deltaEl = modEl.getElementsByTagNameNS(NAMESPACE, "delta");
         UnimodModification uMod = new UnimodModification(id, title, getFormula(deltaEl));
 
-        NodeList nl = modEl.getElementsByTagName("specificity");
+        NodeList nl = modEl.getElementsByTagNameNS(NAMESPACE, "specificity");
         for(int i = 0; i < nl.getLength(); i++)
         {
             Element specEl = (Element) nl.item(i);
@@ -237,7 +240,7 @@ public class UnimodParser
 
         if(nl.getLength() > 0)
         {
-            nl = ((Element)nl.item(0)).getElementsByTagName("element");
+            nl = ((Element)nl.item(0)).getElementsByTagNameNS(NAMESPACE, "element");
             for(int i = 0; i < nl.getLength(); i++)
             {
                 Element el = (Element)nl.item(i);
@@ -264,7 +267,7 @@ public class UnimodParser
         Formula formula = new Formula();
         if(nl.getLength() > 0)
         {
-            nl = ((Element)nl.item(0)).getElementsByTagName("element");
+            nl = ((Element)nl.item(0)).getElementsByTagNameNS(NAMESPACE, "element");
             for(int i = 0; i < nl.getLength(); i++)
             {
                 Element el = (Element)nl.item(i);
