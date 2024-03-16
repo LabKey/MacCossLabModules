@@ -51,6 +51,7 @@ import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.security.permissions.Permission;
 import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ProjectAdminRole;
+import org.labkey.api.security.roles.ReaderRole;
 import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.settings.AppProps;
@@ -236,53 +237,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         runCountColumn.setLabel("Skyline Docs");
         addColumn(runCountColumn);
 
-        var isPublicCol = wrapColumn("Public", getRealTable().getColumn("Id"));
-        isPublicCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
-        {
-            @Override
-            public Object getValue(RenderContext ctx)
-            {
-                Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
-                ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
-                if(expAnnotations != null)
-                {
-                    return expAnnotations.isPublic() ? "Yes" : "No";
-                }
-                return "Row not found in ExperimentAnnotations for id " + experimentAnnotationsId;
-            }
-            @Override
-            public Object getDisplayValue(RenderContext ctx)
-            {
-                return getValue(ctx);
-            }
-            @Override
-            public @NotNull HtmlString getFormattedHtml(RenderContext ctx)
-            {
-                return HtmlString.of((String)getValue(ctx));
-            }
-            @Override
-            public Class getValueClass()
-            {
-                return String.class;
-            }
-            @Override
-            public Class getDisplayValueClass()
-            {
-                return String.class;
-            }
-
-            @Override
-            public boolean isFilterable()
-            {
-                return false;
-            }
-
-            @Override
-            public boolean isSortable()
-            {
-                return false;
-            }
-        });
+        var isPublicCol = getIsPublicCol();
         addColumn(isPublicCol);
 
         var licenseCol = wrapColumn("Data License", getRealTable().getColumn("Id"));
@@ -428,6 +383,19 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         ExprColumn col = new ExprColumn(this, "CatalogEntry", catalogEntrySql, JdbcType.INTEGER);
         col.setDescription("Add or view the catalog entry for the experiment");
         return col;
+    }
+
+    private ExprColumn getIsPublicCol()
+    {
+        SQLFragment isPublicColSql = new SQLFragment(" (SELECT CASE WHEN EXISTS (SELECT 1 FROM ")
+                .append(CoreSchema.getInstance().getTableInfoRoleAssignments())
+                .append(" WHERE userId = ? AND role = ? AND resourceId = ").append(ExprColumn.STR_TABLE_ALIAS + ".Container").append(")")
+                .append(" THEN 'Yes' ELSE 'No' END ) ")
+                .add(Group.groupGuests)
+                .add(ReaderRole.class.getName());
+
+        ExprColumn isPublicCol = new ExprColumn(this, "Public", isPublicColSql, JdbcType.VARCHAR);
+        return isPublicCol;
     }
 
     @Override
