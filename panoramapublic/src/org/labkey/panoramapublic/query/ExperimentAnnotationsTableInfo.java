@@ -387,6 +387,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
     private ExprColumn getIsPublicCol()
     {
+        // Panorama Public dataset folders do not inherit permissions from the parent folder, so we don't need to worry about that case.
         SQLFragment isPublicColSql = new SQLFragment(" (SELECT CASE WHEN EXISTS (SELECT 1 FROM ")
                 .append(CoreSchema.getInstance().getTableInfoRoleAssignments())
                 .append(" WHERE userId = ? AND role = ? AND resourceId = ").append(ExprColumn.STR_TABLE_ALIAS + ".Container").append(")")
