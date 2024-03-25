@@ -13,6 +13,7 @@ import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
 import org.labkey.test.pages.admin.PermissionsPage;
 import org.labkey.test.util.ApiPermissionsHelper;
+import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.PermissionsHelper;
 import org.openqa.selenium.NoSuchElementException;
@@ -42,6 +43,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         String experimentTitle = "This is an experiment to test making data public";
         String shortAccessUrl = setupFolderSubmitAndCopy(projectName, folderName, targetFolder, experimentTitle);
 
+        verifyIsPublicColumn(PANORAMA_PUBLIC, experimentTitle, false);
         verifyPermissions(projectName, folderName, PANORAMA_PUBLIC, targetFolder);
 
         // Verify that the submitter can make the data public
@@ -62,6 +64,8 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         // Verify that the submitter can make data public, and add publication details
         verifyMakePublic(PANORAMA_PUBLIC, targetFolder, SUBMITTER, true, true);
         verifyMakePublic(PANORAMA_PUBLIC, v1Folder, ADMIN_2, false);
+
+        verifyIsPublicColumn(PANORAMA_PUBLIC, experimentTitle, true);
 
         // Data has been made public, and publication link and citation have been added.  User should not able to resubmit
         goToProjectFolder(projectName, folderName);
@@ -221,6 +225,22 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
             // Exception thrown should be about not finding the "Panorama Public Submitter" role on the permissions page.
             assertTrue(e.getMessage().contains(role));
         }
+    }
+
+    private void verifyIsPublicColumn(String panoramaPublicProject, String experimentTitle, boolean isPublic)
+    {
+        if (isImpersonating())
+        {
+            stopImpersonating(true);
+        }
+        goToProjectHome(panoramaPublicProject);
+
+        DataRegionTable expListTable = DataRegionTable.findDataRegionWithinWebpart(this, "Targeted MS Experiment List");
+        expListTable.ensureColumnsPresent("Title", "DataVersion", "Public");
+        expListTable.setFilter("Title", "Equals", experimentTitle);
+        expListTable.setFilter("DataVersion", "Equals", "1");
+        assertEquals(1, expListTable.getDataRowCount());
+        assertEquals(isPublic ? "Yes" : "No", expListTable.getDataAsText(0, "Public"));
     }
 
     private String getReviewerEmail(String panoramaPublicProject, String panoramaPublicFolder)
