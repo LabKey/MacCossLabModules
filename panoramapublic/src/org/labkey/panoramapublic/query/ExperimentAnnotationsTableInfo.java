@@ -57,6 +57,7 @@ import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.HtmlString;
+import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.SimpleNamedObject;
 import org.labkey.api.util.StringExpressionFactory;
@@ -64,6 +65,7 @@ import org.labkey.api.util.UniqueID;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HttpView;
 import org.labkey.api.view.template.ClientDependency;
+import org.labkey.api.view.template.PageConfig;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
@@ -81,10 +83,10 @@ import java.util.Set;
 
 import static org.labkey.api.util.DOM.Attribute.height;
 import static org.labkey.api.util.DOM.Attribute.href;
-import static org.labkey.api.util.DOM.Attribute.onclick;
 import static org.labkey.api.util.DOM.Attribute.src;
 import static org.labkey.api.util.DOM.Attribute.title;
 import static org.labkey.api.util.DOM.Attribute.width;
+import static org.labkey.api.util.DOM.DIV;
 import static org.labkey.api.util.DOM.IMG;
 import static org.labkey.api.util.DOM.at;
 
@@ -149,13 +151,16 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                         if(id != null && container != null)
                         {
                             ActionURL detailsPage = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container); // experiment container
-                            DOM.SPAN(at(onclick, "viewExperimentDetails(this,'" + container.getPath() + "', '" + id + "','" + detailsPage + "')")
+                            PageConfig pageConfig = HttpView.currentPageConfig();
+                            String spanId = pageConfig.makeId("expt_details_");
+                            DOM.SPAN(at(DOM.Attribute.id, spanId)
                                             .data("active", "false") // will be rendered as "data-active" attribute
                                             .data("loaded", "false"), // will be rendered as "data-loaded" attribute
                                     IMG(at(DOM.Attribute.id, "expandcontract-" + id)
                                             .at(src, PageFlowUtil.staticResourceUrl("_images/plus.gif"))),
                                     HtmlString.NBSP)
                                     .appendTo(out);
+                            pageConfig.addHandler(spanId, "click", "viewExperimentDetails(this,'" + container.getPath() + "', '" + id + "','" + detailsPage + "')");
                         }
                         super.renderGridCellContents(ctx, out);
                     }
@@ -204,11 +209,12 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                 }
                 else
                 {
-                    String content = "<div><a class=\"button-small button-small-green\" style=\"margin:0px 5px 0px 2px;\""
-                                     + "href=\"\" onclick=\"showShareLink(this, '" + PageFlowUtil.filter(accessUrl) + "');return false;\""
-                               + ">Share</a>";
-                    content += "</div>";
-                    out.write(content);
+                    var link = new Link.LinkBuilder("Share")
+                            .clearClasses().addClass("button-small button-small-green")
+                            .style("margin:0px 5px 0px 2px;")
+                            .onClick("showShareLink(this, '" + PageFlowUtil.filter(accessUrl) + "');return false;");
+                    DIV(link.build()).appendTo(out);
+
                 }
             }
         });

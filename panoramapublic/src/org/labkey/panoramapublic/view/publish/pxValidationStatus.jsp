@@ -263,18 +263,27 @@
         const action = isStructuralModType(modType) ? 'deleteStructuralModInfo' : 'deleteIsotopeModInfo';
 
         const linkText = matchCount === 1 ? "Delete Match" : "Delete Matches";
-        return '<a class="labkey-text-link" style="margin-left:5px;" onClick="deleteModInfo(' + modInfoId + ',' + experimentAnnotationsId
-                + ', \'' + skylineModName + '\', \'' + action + '\');">' + linkText + '</a>';
+        const id = 'delete-assigned-unimod-id-' + Ext4.id();
+        const html = '<a id="' + id +'" href="#" class="labkey-text-link" style="margin-left:5px;" >' + linkText + '</a>';
+        const callback = () => {
+            console.log("attaching event handler for id " + id);
+            LABKEY.Utils.attachEventHandler(id, "click", function () {
+                return deleteModInfo(modInfoId, experimentAnnotationsId, skylineModName, action);
+            });
+        };
+        return {"html": html, "callback": callback }
+        // return '<a class="labkey-text-link" style="margin-left:5px;" onClick="deleteModInfo(' + modInfoId + ',' + experimentAnnotationsId
+        //         + ', \'' + skylineModName + '\', \'' + action + '\');">' + linkText + '</a>';
     }
 
     function deleteModInfo(modInfoId, experimentAnnotationsId, skylineModName, action) {
-        const confirmMsg = "Are you sure you want to delete the saved Unimod information for modification " + skylineModName + "?";
+        const confirmMsg = "Are you sure you want to delete the saved Unimod information for modification '" + skylineModName + "'?";
         const params = {
             'id': experimentAnnotationsId,
             'modInfoId': modInfoId,
             'returnUrl': returnUrl
         };
-        var href = LABKEY.ActionURL.buildURL('panoramapublic', action, LABKEY.ActionURL.getContainer(), params);
+        const href = LABKEY.ActionURL.buildURL('panoramapublic', action, LABKEY.ActionURL.getContainer(), params);
         return LABKEY.Utils.confirmAndPost(confirmMsg, href);
     }
 
@@ -331,8 +340,16 @@
                                     sep = isotopic ? '</br>' : '<b> + </b>';
                                 }
                                 if (record.data['modInfoId']) {
-                                    ret += deleteModInfoLink(record.data['modInfoId'], record.data['skylineModName'],
+                                    const link = deleteModInfoLink(record.data['modInfoId'], record.data['skylineModName'],
                                             <%=experimentAnnotationsId%>, record.data['modType'], matches.length);
+                                    ret += link.html;
+                                    Ext4.defer(function()
+                                    {
+                                        // Attach the onclick handler in a deferred function so that it fires after the renderer function is executed.
+                                        // This cannot be added to the "afterrender" listener since the renderer function is executing after "afterrender"
+                                        // is fired.
+                                        link.callback();
+                                    }, 100);
                                 }
                                 return ret;
                             }

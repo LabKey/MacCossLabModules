@@ -87,7 +87,7 @@
                     </td>
                     <td style="width: 25px"></td>
                     <td>
-                        <button id="clear-all-button-id-experiment" class="clear-all-button" onclick="clearInputFieldsAndResetURL('experiment');">Clear All</button>
+                        <%=button("Clear All").id("clear-all-button-id-experiment").addClass("clear-all-button").onClick("clearInputFieldsAndResetURL('experiment')").build()%>
                     </td>
                 </tr>
                 <tr>
@@ -114,7 +114,7 @@
 
                     <td style="width: 25px"></td>
                     <td>
-                        <button id="clear-all-button-id-protein" class="clear-all-button" onclick="clearInputFieldsAndResetURL('protein');">Clear All</button>
+                        <%=button("Clear All").id("clear-all-button-id-protein").addClass("clear-all-button").onClick("clearInputFieldsAndResetURL('protein')").build()%>
                     </td>
                 </tr>
                 <tr style="height: 10px"></tr>
@@ -138,7 +138,7 @@
 
                     <td style="width: 25px"></td>
                     <td>
-                        <button id="clear-all-button-id-peptide" class="clear-all-button" onclick="clearInputFieldsAndResetURL('peptide');">Clear All</button>
+                        <%=button("Clear All").id("clear-all-button-id-peptide").addClass("clear-all-button").onClick("clearInputFieldsAndResetURL('peptide')").build()%>
                     </td>
                 </tr>
                 <tr style="height: 10px"></tr>
@@ -162,7 +162,7 @@
 
                     <td style="width: 25px"></td>
                     <td>
-                        <button id="clear-all-button-id-small-molecule" class="clear-all-button" onclick="clearInputFieldsAndResetURL('smallMolecule');">Clear All</button>
+                        <%=button("Clear All").id("clear-all-button-id-small-molecule").addClass("clear-all-button").onClick("clearInputFieldsAndResetURL('smallMolecule')").build()%>
                     </td>
                 </tr>
                 <tr style="height: 10px"></tr>
@@ -170,7 +170,7 @@
         </div>
     </div>
     <div>
-        <button id="search-button-id" class="labkey-button" onclick="handleRendering('true');">Search</button>
+        <%=button("Search").id("search-button-id").addClass("labkey-button").onClick("handleRendering('true')").build()%>
     </div>
     <div id="search-criteria-id"/>
 
