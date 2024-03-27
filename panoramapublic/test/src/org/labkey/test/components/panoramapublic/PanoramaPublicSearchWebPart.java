@@ -197,7 +197,7 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
         final Input smallMolecule = Input.Input(Locator.input("smallMolecule"), getDriver()).findWhenNeeded(this);
         final Checkbox smallMoleculeExactMatch = new Checkbox(Locator.inputById("exactSmallMoleculeMatches").findWhenNeeded(this));
 
-        final WebElement clearAll = Locator.button("Clear All").findWhenNeeded(this);
-        final WebElement search = Locator.button("Search").findWhenNeeded(this);
+        final WebElement clearAll = Locator.lkButton("Clear All").findWhenNeeded(this);
+        final WebElement search = Locator.lkButton("Search").findWhenNeeded(this);
     }
 }
