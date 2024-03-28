@@ -140,24 +140,33 @@
 
     function onChange(field, newValue, oldValue, eOpts)
     {
-        // console.log(newValue, oldValue);
-        var comboboxId = field.id ;
-        var owningDiv = Ext4.get(comboboxId + '_selected');
+        const comboboxId = field.id ;
+        const owningDiv = Ext4.get(comboboxId + '_selected');
 
         if(!owningDiv) return;
 
-        var selectedHtml = "";
-        for(var i = 0; i < newValue.length; i += 1)
+        let selectedHtml = "";
+        const deleteIconsMap = {}; // map of deleteIconId -> annotation value
+        for(let i = 0; i < newValue.length; i += 1)
         {
-            var record = field.findRecordByValue(newValue[i]);
-            var nameValue = newValue[i];
-            var displayValue = record ? record.get("DisplayName") : nameValue;
-            var spanId = comboboxId + "_span";
-            selectedHtml += '<img src="/labkey/_images/delete.png" style="width:10px; height:10px; margin-right:3px" ';
-            selectedHtml += "onclick=\"deleteSelected('" + comboboxId + "', '" + nameValue + "');\"/>";
-            selectedHtml += '<span id="' +spanId + '">' + displayValue + '</span><br>';
+            const record = field.findRecordByValue(newValue[i]);
+            const nameValue = newValue[i];
+            const displayValue = record ? record.get("DisplayName") : nameValue;
+            const deleteIconId = comboboxId + "-delete-icon-" + Ext4.id();
+            selectedHtml += "<img src='<%=getWebappURL("/_images/delete.png")%>' style='width:10px; height:10px; margin-right:3px' id='" + deleteIconId + "'/>";
+            selectedHtml += '<span>' + Ext4.util.Format.htmlEncode(displayValue) + '</span><br>';
+            deleteIconsMap[deleteIconId] = nameValue;
         }
         owningDiv.dom.innerHTML = selectedHtml;
+
+        // Attach event handlers to the delete icons
+        Object.keys(deleteIconsMap).forEach(iconId => {
+            const annotationVal = deleteIconsMap[iconId];
+            document.getElementById(iconId).addEventListener('click', function()
+            {
+                deleteSelected(comboboxId, annotationVal);
+            });
+        })
     }
 
     function deleteSelected(comboBoxId, valToRemove)
@@ -280,7 +289,8 @@
         </tr>
         <tr>
             <td colspan="2" style="text-align:left; font-weight:bold; padding-top:20px;">
-                <span style="text-decoration:underline;cursor:pointer" onclick="toggleAdvanced()" id="toggleAdvanced">Show all annotations</span>
+                <span style="text-decoration:underline;cursor:pointer" id="toggleAdvanced">Show all annotations</span>
+                <% addHandler("toggleAdvanced", "click", "toggleAdvanced()"); %>
             </td>
         </tr>
         <tr id="annotationListAdvanced">

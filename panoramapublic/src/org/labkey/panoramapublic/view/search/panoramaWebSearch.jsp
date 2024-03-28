@@ -87,7 +87,8 @@
                     </td>
                     <td style="width: 25px"></td>
                     <td>
-                        <%=button("Clear All").id("clear-all-button-id-experiment").addClass("clear-all-button").onClick("clearInputFieldsAndResetURL('experiment')").build()%>
+                        <button id="clear-all-button-id-experiment" class="clear-all-button">Clear All</button>
+                        <% addHandler("clear-all-button-id-experiment", "click", "clearInputFieldsAndResetURL('experiment')"); %>
                     </td>
                 </tr>
                 <tr>
@@ -114,7 +115,8 @@
 
                     <td style="width: 25px"></td>
                     <td>
-                        <%=button("Clear All").id("clear-all-button-id-protein").addClass("clear-all-button").onClick("clearInputFieldsAndResetURL('protein')").build()%>
+                        <button id="clear-all-button-id-protein" class="clear-all-button">Clear All</button>
+                        <% addHandler("clear-all-button-id-protein", "click", "clearInputFieldsAndResetURL('protein')"); %>
                     </td>
                 </tr>
                 <tr style="height: 10px"></tr>
@@ -138,7 +140,8 @@
 
                     <td style="width: 25px"></td>
                     <td>
-                        <%=button("Clear All").id("clear-all-button-id-peptide").addClass("clear-all-button").onClick("clearInputFieldsAndResetURL('peptide')").build()%>
+                        <button id="clear-all-button-id-peptide" class="clear-all-button">Clear All</button>
+                        <% addHandler("clear-all-button-id-peptide", "click", "clearInputFieldsAndResetURL('peptide')"); %>
                     </td>
                 </tr>
                 <tr style="height: 10px"></tr>
@@ -162,7 +165,8 @@
 
                     <td style="width: 25px"></td>
                     <td>
-                        <%=button("Clear All").id("clear-all-button-id-small-molecule").addClass("clear-all-button").onClick("clearInputFieldsAndResetURL('smallMolecule')").build()%>
+                        <button id="clear-all-button-id-small-molecule" class="clear-all-button">Clear All</button>
+                        <% addHandler("clear-all-button-id-small-molecule", "click", "clearInputFieldsAndResetURL('smallMolecule')"); %>
                     </td>
                 </tr>
                 <tr style="height: 10px"></tr>
@@ -170,7 +174,8 @@
         </div>
     </div>
     <div>
-        <%=button("Search").id("search-button-id").addClass("labkey-button").onClick("handleRendering('true')").build()%>
+        <button id="search-button-id" class="labkey-button">Search</button>
+        <% addHandler("search-button-id", "click", "handleRendering('true')"); %>
     </div>
     <div id="search-criteria-id"/>
 

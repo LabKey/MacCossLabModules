@@ -260,20 +260,17 @@
 
     function deleteModInfoLink(modInfoId, skylineModName, experimentAnnotationsId, modType, matchCount) {
         if (!modType) return;
-        const action = isStructuralModType(modType) ? 'deleteStructuralModInfo' : 'deleteIsotopeModInfo';
 
         const linkText = matchCount === 1 ? "Delete Match" : "Delete Matches";
         const id = 'delete-assigned-unimod-id-' + Ext4.id();
         const html = '<a id="' + id +'" href="#" class="labkey-text-link" style="margin-left:5px;" >' + linkText + '</a>';
         const callback = () => {
-            console.log("attaching event handler for id " + id);
+            const action = isStructuralModType(modType) ? 'deleteStructuralModInfo' : 'deleteIsotopeModInfo';
             LABKEY.Utils.attachEventHandler(id, "click", function () {
                 return deleteModInfo(modInfoId, experimentAnnotationsId, skylineModName, action);
             });
         };
         return {"html": html, "callback": callback }
-        // return '<a class="labkey-text-link" style="margin-left:5px;" onClick="deleteModInfo(' + modInfoId + ',' + experimentAnnotationsId
-        //         + ', \'' + skylineModName + '\', \'' + action + '\');">' + linkText + '</a>';
     }
 
     function deleteModInfo(modInfoId, experimentAnnotationsId, skylineModName, action) {
@@ -346,8 +343,6 @@
                                     Ext4.defer(function()
                                     {
                                         // Attach the onclick handler in a deferred function so that it fires after the renderer function is executed.
-                                        // This cannot be added to the "afterrender" listener since the renderer function is executing after "afterrender"
-                                        // is fired.
                                         link.callback();
                                     }, 100);
                                 }
