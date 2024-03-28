@@ -91,15 +91,15 @@ public class RunDownBean extends TestsDataBean
             }
 
             double mem1 = getLeakMemoryAverage(l1);
-            double mem2 = getLeakHandleAverage(l2);
-            if (mem1 != mem2)
+            double mem2 = getLeakMemoryAverage(l2);
+            if (Double.compare(mem2, mem1) != 0)
             {
-                return (int)(mem2 - mem1);
+                return Double.compare(mem2, mem1);
             }
 
             double handle1 = getLeakHandleAverage(l1);
             double handle2 = getLeakHandleAverage(l2);
-            return (int)(handle2 - handle1);
+            return Double.compare(handle2, handle1);
         });
         Map<String, List<TestLeakDetail>> newMap = new LinkedHashMap<>();
         if (n == 0)
