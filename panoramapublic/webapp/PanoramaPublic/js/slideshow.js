@@ -5,6 +5,7 @@
 let slideIndex;
 let slides, dots, text;
 let wait;
+const DOT_NAV_ID_PREFIX = "slideshow-dot-";
 
 function setDescSize(fixed)
 {
@@ -76,6 +77,17 @@ function addSlides(json)
             appendDot(slideshowDots, i + existingSlideCount + 1);
             appendText(entry, slideshowTexts);
         }
+
+        // Attach the 'onclick' event handlers
+        for(let i = 0; i < catalog.length; i++)
+        {
+            const index = i + existingSlideCount + 1;
+            const el = document.getElementById(DOT_NAV_ID_PREFIX + index);
+            if (el)
+            {
+                el.onclick = function() { currentSlide(index); };
+            }
+        }
         showSlides();
     }
     else
@@ -111,7 +123,7 @@ function appendDot(dotsContainer, index)
     const dot = document.createElement('span');
     const cls = index === 1 ? "dot active" : "dot";
     dot.setAttribute('class', cls);
-    dot.setAttribute('onclick', 'currentSlide(' + index + ')');
+    dot.setAttribute('id', DOT_NAV_ID_PREFIX + index);
     dotsContainer.appendChild(dot);
     dotsContainer.appendChild(document.createTextNode(" ") );
 }
@@ -178,6 +190,8 @@ function showSlides()
 
 function plusSlides(position)
 {
+    if (!slides) return;
+
     let i;
     setDescSize(true);
     slideIndex += position;
@@ -233,6 +247,9 @@ function appendSlidesContainer(parentDivId)
         return false;
     }
 
+    const nextSlideBtnId = "next-slide-btn";
+    const prevSlideBtnId = "prev-slide-btn";
+
     let slideshowHtml = '';
     slideshowHtml += '<div class="banner">' +
                      '<table style="width: 100%;"><tbody><tr><td height="100%" style="width: 100%">' +
@@ -240,7 +257,7 @@ function appendSlidesContainer(parentDivId)
 
                      '<td height="100%"><div id="slides" style="width:100%;">' +
                      '<div class="slideshow-container">' +
-                     '<a class="prev" onclick="plusSlides(-1)">&#10094;</a> <a class="next" onclick="plusSlides(1)">&#10095;</a>' +
+                     '<a class="prev" id="' + prevSlideBtnId + '">&#10094;</a> <a class="next" id="' + nextSlideBtnId + '">&#10095;</a>' +
                      '</div>' +
                      '<br/><div style="text-align:center" class="slideshow-dots"></div>' +
                      '</div></td>' +
@@ -259,5 +276,8 @@ function appendSlidesContainer(parentDivId)
                      '</div>';
 
     parentDiv.innerHTML = slideshowHtml;
+    document.getElementById(nextSlideBtnId).onclick = function() { plusSlides(-1); };
+    document.getElementById(prevSlideBtnId).onclick = function() { plusSlides(1); };
+
     return true;
 }

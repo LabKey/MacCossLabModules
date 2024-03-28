@@ -7,9 +7,13 @@
         var url = LABKEY.ActionURL.buildURL("lincs", "createCustomGCT", LABKEY.ActionURL.getContainer());
         window.location = url;
     }
+    LABKEY.Utils.onReady(function()
+    {
+        document.getElementById("customGctButton").onclick = function() { showCustomGCTForm(); };
+    });
 
 </script>
 
 <div style="margin:20px;">
-    <a class="button" id="customGctButton" onclick="showCustomGCTForm()">Create Custom GCT</a>
+    <a class="button" id="customGctButton">Create Custom GCT</a>
 </div>

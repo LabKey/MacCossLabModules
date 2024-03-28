@@ -292,7 +292,9 @@
     <div class="link">
        <strong><%=h(linkText)%>: </strong>
        <span id="accessUrl" style="margin-top:5px;"><a href="<%=h(accessUrl)%>"><%=h(accessUrl)%></a></span>
-       <a class="button-small button-small-green" style="margin:0px 5px 0px 2px;" href="" onclick="showShareLink(this, '<%=h(accessUrl)%>'); return false;">Share</a>
+        <%=link("Share").clearClasses().addClass("button-small button-small-green")
+                .style("margin:0px 5px 0px 2px")
+                .onClick("showShareLink(this, " + q(accessUrl) + "); return false;")%>
         <% if (annotDetails.hasVersion()) {%>
         <span class="link" id="publishedDataVersion" style="margin-left:10px;"><strong>Version: <span style="color:<%=h(annotDetails.isCurrentVersion() ? "green" : "red")%>;"><%=h(annotDetails.getVersion())%></span>
                 <% if (annotDetails.hasVersionsLink()) { %>
