@@ -91,10 +91,10 @@ public class RunDownBean extends TestsDataBean
             }
 
             double mem1 = getLeakMemoryAverage(l1);
-            double mem2 = getLeakHandleAverage(l2);
-            if (Double.compare(mem1, mem2) != 0)
+            double mem2 = getLeakMemoryAverage(l2);
+            if (Double.compare(mem2, mem1) != 0)
             {
-                return Double.compare(mem1, mem2);
+                return Double.compare(mem2, mem1);
             }
 
             double handle1 = getLeakHandleAverage(l1);
