@@ -212,7 +212,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                     var link = new Link.LinkBuilder("Share")
                             .clearClasses().addClass("button-small button-small-green")
                             .style("margin:0px 5px 0px 2px;")
-                            .onClick("showShareLink(this, '" + PageFlowUtil.filter(accessUrl) + "');return false;");
+                            .onClick("showShareLink(this, " + PageFlowUtil.jsString(accessUrl) + ");return false;");
                     DIV(link.build()).appendTo(out);
 
                 }
