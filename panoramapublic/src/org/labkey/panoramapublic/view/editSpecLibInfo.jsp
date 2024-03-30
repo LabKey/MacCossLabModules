@@ -1,10 +1,10 @@
+<%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.panoramapublic.model.speclib.SpecLibSourceType" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.model.speclib.SpecLibDependencyType" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
+<%@ page import="org.labkey.panoramapublic.model.speclib.SpecLibSourceType" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -29,11 +29,18 @@
     <b>File</b>: <%=h(library.getFileNameHint())%>
 </div>
 <labkey:errors/>
-<div id="editSpecLibInfoForm"/>
+<div id="editSpecLibInfoForm"></div>
 
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     Ext4.onReady(function(){
+
+        const libraryUrl = LABKEY.Utils.helpPopup("Library URL", "URL where the library can be downloaded");
+        const sourceAccession = LABKEY.Utils.helpPopup("Repository Accession", "Accession or identifier of the data in the repository. " +
+             "This can be a ProteomeXchange ID (e.g. PXD000001), a MassIVE identifier (e.g. MSV000000001) or a PeptideAtlas identifier (e.g. PASS00001).");
+        const sourceUsername = LABKEY.Utils.helpPopup("Repository Username", "Username to access the data in the repository if the data is private.");
+        const sourcePassword = LABKEY.Utils.helpPopup("Repository Password", "Password to access the data in the repository if the data is private.");
+        const dependencyType = LABKEY.Utils.helpPopup("Dependency Type", "How the library was used with the Skyline document.");
 
         var form = Ext4.create('Ext.form.Panel', {
             renderTo: "editSpecLibInfoForm",
@@ -96,7 +103,7 @@
                     fieldLabel: "Library URL",
                     disabled: <%=!SpecLibSourceType.PUBLIC_LIBRARY.name().equals(form.getSourceType())%>,
                     value: <%=q(form.getSourceUrl())%>,
-                    afterLabelTextTpl: <%=q(helpPopup("URL where the library can be downloaded").inlineScript())%>
+                    afterLabelTextTpl: libraryUrl.html
                 },
                 {
                     xtype: 'textfield',
@@ -105,9 +112,7 @@
                     fieldLabel: "Accession",
                     disabled: <%=!SpecLibSourceType.OTHER_REPOSITORY.name().equals(form.getSourceType())%>,
                     value: <%=q(form.getSourceAccession())%>,
-                    afterLabelTextTpl: <%=q(helpPopup("Repository Accession", "Accession or identifier of the data in the repository. " +
-                     "This can be a ProteomeXchange ID (e.g. PXD000001), a MassIVE identifier (e.g. MSV000000001)" +
-                      " or a PeptideAtlas identifier (e.g. PASS00001).").inlineScript())%>
+                    afterLabelTextTpl: sourceAccession.html
                 },
                 {
                     xtype: 'textfield',
@@ -116,7 +121,7 @@
                     fieldLabel: "User Name",
                     disabled: <%=!SpecLibSourceType.OTHER_REPOSITORY.name().equals(form.getSourceType())%>,
                     value: <%=q(form.getSourceUsername())%>,
-                    afterLabelTextTpl: <%=q(helpPopup("Repository Username", "Username to access the data in the repository if the data is private.").inlineScript())%>
+                    afterLabelTextTpl: sourceUsername.html
                 },
                 {
                     xtype: 'textfield',
@@ -125,7 +130,7 @@
                     fieldLabel: "Password",
                     disabled: <%=!SpecLibSourceType.OTHER_REPOSITORY.name().equals(form.getSourceType())%>,
                     value: "", // Don't display the password; make the user enter it every time they edit
-                    afterLabelTextTpl: <%=q(helpPopup("Repository Password", "Password to access the data in the repository if the data is private.").inlineScript())%>
+                    afterLabelTextTpl: sourcePassword.html
                 },
                 {
                     xtype: 'combobox',
@@ -134,7 +139,7 @@
                     allowBlank: true,
                     editable: false,
                     value: <%=form.getDependencyType() != null ? q(form.getDependencyType()) : null%>,
-                    afterLabelTextTpl: <%=q(helpPopup("How the library was used with the Skyline document.").inlineScript())%>,
+                    afterLabelTextTpl: dependencyType.html,
                     store: [
                         <% for (SpecLibDependencyType sourceType: SpecLibDependencyType.values()) { %>
                         [ <%= q(sourceType.name()) %>, <%= q(sourceType.getLabel()) %> ],
@@ -163,6 +168,12 @@
                     }
                 }]
         });
+
+        libraryUrl.callback();
+        sourceAccession.callback();
+        sourceUsername.callback();
+        sourcePassword.callback();
+        dependencyType.callback();
     });
 
     function toggleTextFields(ownerCt, disable, fields) {
