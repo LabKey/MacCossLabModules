@@ -109,6 +109,6 @@
         </tr>
         </tbody>
     </table>
-    <button style="margin: 15px 0 20px 0" onclick="viewSlideshow()">View</button>
+    <%=button("View").style("margin:15px 0 20px 0").onClick("viewSlideshow()").build()%>
 </div>
 <div id="slideshowPlaceholder"></div>
