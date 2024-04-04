@@ -1,8 +1,19 @@
 <%@ page import="org.springframework.validation.BindingResult" %>
 <%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreController" %>
 <%@ page import="org.labkey.api.util.PageFlowUtil" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("skylinetoolsstore/js/functions.js");
+    }
+%>
+
 <%
     Object errorAttribute = request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "form");
     Object hideForm = request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "hideForm");
@@ -19,7 +30,6 @@
 
     final String contextPath = AppProps.getInstance().getContextPath();
     final String imgDir = contextPath + "/skylinetoolsstore/img/";
-    final String jsDir = contextPath + "/skylinetoolsstore/js/";
 %>
 <style>
     #slider
@@ -71,10 +81,6 @@
 <br />
 <%= PageFlowUtil.generateBackButton()  %>
 
-<script type="text/javascript" src="<%= h(jsDir) %>functions.js"></script>
-<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
-<link rel="stylesheet" href="https://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
     $(function() {
         initRatingSlider($("#slider"), $("#sliderover"), $("#ratingvalue"));

@@ -23,16 +23,35 @@
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.Arrays" %>
 <%@ page import="org.labkey.api.portal.ProjectUrls" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
+<%@ page import="org.labkey.api.settings.AppProps" %>
+<%@ page import="org.labkey.api.util.DOM" %>
+<%@ page import="static org.labkey.api.util.DOM.IMG" %>
+<%@ page import="static org.labkey.api.util.DOM.Attribute.src" %>
+<%@ page import="static org.labkey.api.util.DOM.Attribute.alt" %>
+<%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("skylinetoolsstore/js/functions.js");
+    }
+
+    public final HtmlString editIconImgHtml = HtmlString.unsafe(IMG(DOM.at(src, getWebappURL("skylinetoolsstore/img/pencil.png")).at(alt, "Pencil")).renderToString());
+%>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" nonce="<%=getScriptNonce()%>"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.min.css">
+
 <%
     JspView<?> me = (JspView<?>) HttpView.currentView();
     final SkylineTool tool = (SkylineTool)me.getModelBean();
     final boolean admin = getUser().hasSiteAdminPermission();
 
     final String contextPath = AppProps.getInstance().getContextPath();
-    final String cssDir = contextPath + "/skylinetoolsstore/css/";
     final String imgDir = contextPath + "/skylinetoolsstore/img/";
-    final String jsDir = contextPath + "/skylinetoolsstore/js/";
 
     final SafeToRender autocompleteUsers = admin ? SkylineToolsStoreController.getUsersForAutocomplete() : HtmlString.unsafe("\"\"");
 
@@ -249,7 +268,7 @@ a { text-decoration: none; }
 }
 .ratinginput
 {
-    width:400px;
+    width:380px;
     float:left;
     border:0 !important;
 }
@@ -385,16 +404,14 @@ a { text-decoration: none; }
     <div style="float:left; width:351px;">
         <img id="toolIcon" src="<%= h(tool.getIconUrl()) %>" class="logoWrap" alt="<%= h(tool.getName()) %>">
 <% if (toolEditor) { %>
-        <a id="editIcon" class="toolProperty" title="Icon" onclick="editTool($(this), 'Icon')">
-            <img src="<%= h(imgDir) %>pencil.png" />
-        </a>
+        <%=link(editIconImgHtml).clearClasses().addClass("toolProperty").id("editIcon").title("Icon").onClick("editTool($(this), 'Icon')")%>
 <% } %>
         <div class="block">
             <h2><%= h(tool.getName()) %></h2>
             <p>
                 Version <%= h(tool.getVersion()) %>
 <% if (allVersions.length > 1) { %>
-                [<a onclick="$('#allVersionsPop').dialog('open')">View All</a>]
+                [<%=link("View All").clearClasses().onClick("$('#allVersionsPop').dialog('open')")%>]
             </p>
 <% } %>
             </p>
@@ -407,20 +424,21 @@ a { text-decoration: none; }
 <% } %>
         </div>
 
-        <button class="banner-button-small" onclick="window.open('<%=h(urlProvider(ProjectUrls.class).getBeginURL(getContainer().getChild("Support").getChild(tool.getName())))%>', '_blank')">Support Board</button>
+        <button id="tool-support-board-btn" class="banner-button-small">Support Board</button>
+        <% addHandler("tool-support-board-btn", "click", "window.open(" + q(urlProvider(ProjectUrls.class).getBeginURL(getContainer().getChild("Support").getChild(tool.getName()))) + ", '_blank')"); %>
     </div>
 <% if (toolEditor) { %>
     <div class="menuMouseArea sprocket">
         <img src="<%= h(imgDir) %>gear.png" title="Settings" alt="Sprocket" />
         <ul class="dropMenu">
-            <li><a onclick="$('#uploadPop').dialog('open')">Upload new version</a></li>
-            <li><a onclick="$('#uploadSuppPop').dialog('open')">Upload supplementary file</a></li>
+            <li><%=link("Upload new version").clearClasses().onClick("$('#uploadPop').dialog('open')")%></li>
+            <li><%=link("Upload supplementary file").clearClasses().onClick("$('#uploadSuppPop').dialog('open')")%></li>
 <% if (multipleVersions) { %>
-            <li><a onclick="$('#delToolLatestDlg').dialog('open')">Delete latest version</a></li>
+            <li><%=link("Delete latest version").clearClasses().onClick("$('#delToolLatestDlg').dialog('open')")%></li>
 <% } %>
 <% if (admin) { %>
-            <li><a onclick="$('#delToolAllDlg').dialog('open')">Delete</a></li>
-            <li><a onclick="popToolOwners()">Manage tool owners</a></li>
+            <li><%=link("Delete").clearClasses().onClick("$('#delToolAllDlg').dialog('open')")%></li>
+            <li><%=link("Manage tool owners").clearClasses().onClick("popToolOwners()")%></li>
 <% } %>
         </ul>
     </div>
@@ -429,11 +447,12 @@ a { text-decoration: none; }
     <p id="toolDescription" class="toolProperty" title="Description">
         <span class="toolPropertyValue"><%= h(tool.getDescription(), true) %></span>
 <% if (toolEditor) { %>
-        <a onclick="editTool($(this))"><img src="<%= h(imgDir) %>pencil.png" alt="Pencil" title="Edit" /></a>
+        <%=link(editIconImgHtml).clearClasses().onClick("editTool($(this))")%>
 <% } %>
     </p>
     <div id="downloadArea">
-        <button class="banner-button" onclick="downloadTool(<%= h(tool.getRowId()) %>);">Download <%=h(tool.getName())%></button>
+        <button id="download-tool-btn" class="banner-button">Download <%=h(tool.getName())%></button>
+        <% addHandler("download-tool-btn", "click", "downloadTool(" + tool.getRowId() + ")"); %>
         <br>
         <strong>Downloaded: <span id="downloadcounter"><%= numDownloads %></span></strong>
     </div>
@@ -463,7 +482,7 @@ a { text-decoration: none; }
         <span class="boldfont">Organization:</span>
         <span class="toolPropertyValue"><%= h(tool.getOrganization()) %></span>
 <% if (toolEditor) { %>
-        <a onclick="editTool($(this))"><img src="<%= h(imgDir) %>pencil.png" alt="Pencil" title="Edit" /></a>
+       <%=link(editIconImgHtml).clearClasses().onClick("editTool($(this))")%>
 <% } %>
     </div>
 <% } %>
@@ -473,7 +492,7 @@ a { text-decoration: none; }
         <span class="boldfont">Authors:</span>
         <span class="toolPropertyValue"><%= h(tool.getAuthors()) %></span>
 <% if (toolEditor) { %>
-        <a onclick="editTool($(this), 'author')"><img src="<%= h(imgDir) %>pencil.png" alt="Pencil" title="Edit" /></a>
+        <%=link(editIconImgHtml).clearClasses().onClick("editTool($(this, 'author'))")%>
 <% } %>
     </div>
 <% } %>
@@ -483,7 +502,7 @@ a { text-decoration: none; }
         <span class="boldfont">Languages:</span>
         <span class="toolPropertyValue"><%= h(tool.getLanguages()) %></span>
 <% if (toolEditor) { %>
-        <a onclick="editTool($(this))"><img src="<%= h(imgDir) %>pencil.png" alt="Pencil" title="Edit" /></a>
+        <%=link(editIconImgHtml).clearClasses().onClick("editTool($(this))")%>
 <% } %>
     </div>
 <% } %>
@@ -491,9 +510,9 @@ a { text-decoration: none; }
     <div class="barItem toolProperty" title="Provider's Website">
         <!--<img src="<%= h(imgDir) %>link.png" alt="Provider" />-->
         <span class="boldfont">More Information:</span>
-        <a href="<%= h(tool.getProvider()) %>" target="_blank"><span class="toolPropertyValue"><%= h(tool.getProvider()) %></span></a>
+        <a href="<%= h(tool.getProvider()) %>" target="_blank" rel="noopener noreferrer"><span class="toolPropertyValue"><%= h(tool.getProvider()) %></span></a>
 <% if (toolEditor) { %>
-        <a onclick="editTool($(this), 'provider')"><img src="<%= h(imgDir) %>pencil.png" alt="Pencil" title="Edit" /></a>
+        <%=link(editIconImgHtml).clearClasses().onClick("editTool($(this), 'provider')")%>
 <% } %>
     </div>
 
@@ -508,7 +527,7 @@ a { text-decoration: none; }
     <input type="text" name="title" class="ratinginput">
     <input type="text" id="reviewValue" name="value" style="display:none;" value="5">
     <br><br>
-    <textarea name="review" rows="6" cols="40" class="ratinginput"></textarea><br /><br />
+    <textarea name="review" rows="3" class="ratinginput"></textarea><br /><br />
     <input type="hidden" name="toolId" value="<%= tool.getRowId() %>" />
     <input type="hidden" name="ratingId" value="" />
     <div id="ratingSlider" style="float:left; margin-top:15px; margin-left:10px;">
@@ -534,9 +553,6 @@ a { text-decoration: none; }
     {
         final String tableId2 = "table-" + rating.getRowId();
         final String reviewTitle = rating.getTitle();
-        final String review = h(rating.getReview()).toString();
-        pageContext.setAttribute("review", review);
-        pageContext.setAttribute("reviewEscaped", review.replace("&#039;", "\\'"));
         final Integer ratingValue = rating.getRating();
         final String ratingVersion =  SkylineToolsStoreManager.get().getTool(rating.getToolId()).getVersion();
 
@@ -565,15 +581,14 @@ a { text-decoration: none; }
             <div class="reviewdate"><h4><%= h(formattedDate) %></h4></div>
         </div>
         <p>
-            ${review}
+            <%=h(rating.getReview())%>
 <% if (rating.getCreatedBy() == getUser().getUserId() || admin) { %>
             <br />
-            <button type="button" class="ratingbutton" style="margin-right:25px;" onclick="prepReviewPop('<%= h(reviewTitle) %>', <%= ratingValue %>, '${reviewEscaped}', <%= rating.getRowId() %>); $('#reviewPop').dialog('open')">
-                Edit Review
-            </button>
-            <button type="button" class="ratingbutton" onclick="$('#delRatingDlg').dialog('open').data('ratingId', <%= rating.getRowId() %>)">
-                Delete Review
-            </button>
+            <!-- prepReviewPop() function displays a form where the user can edit their review for the tool. The form has input fields for the review title and description.
+                 Input field for review title gets set via jQuery's val() method. Pass an escaped and quoted string -> q(reviewTitle)
+                 Input field for review description gets set with jQuery's html() method. Pass an HTML-escaped value that is JavaScript-escaped and quoted -> qh(rating.getReview) -->
+            <%=button("Edit Review").addClass("ratingbutton").onClick("prepReviewPop(" + q(reviewTitle) + ", " + ratingValue + ", " + qh(rating.getReview()) + ", " + rating.getRowId() + "); $('#reviewPop').dialog('open')")%>
+            <%=button("Delete Review").addClass("ratingbutton").onClick("$('#delRatingDlg').dialog('open').data('ratingId', " + rating.getRowId() + ")")%>
 <% } %>
        </p>
     </div>
@@ -582,17 +597,8 @@ a { text-decoration: none; }
 <%
     }
 %>
-<%--<% if (!getUser().isGuest() && isLatestVersion && !leftReview) { %>--%>
-    <%--<p style="text-align: center;">--%>
-        <%--<a onclick="$('#reviewPop').dialog('open')">Leave a review</a>--%>
-    <%--</p>--%>
-<%--<% } %>--%>
-</div>
 
-<link rel="stylesheet" type="text/css" href="<%= h(cssDir) %>jquery-ui.css">
-<script type="text/javascript" src="<%= h(jsDir) %>functions.js"></script>
-<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
+</div>
 
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
     $(function() {
@@ -706,7 +712,7 @@ a { text-decoration: none; }
     $("#delRatingDlg").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE, dialogClass:"noCloseDlg",
         buttons: {
             Ok: function() {
-                window.location = "<%=h(urlFor(SkylineToolsStoreController.DeleteRatingAction.class))%>id=" + $("#delRatingDlg").data("ratingId");
+                window.location = LABKEY.ActionURL.buildURL("skyts", "deleteRating.view", null, {id: $("#delRatingDlg").data("ratingId")});
             },
             Cancel: function() {$(this).dialog("close");}
         }

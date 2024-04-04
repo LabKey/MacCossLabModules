@@ -11,7 +11,21 @@
 <%@ page import="java.util.List" %>
 <%@ page import="org.labkey.testresults.SendTestResultsEmail" %>
 <%@ page import="org.labkey.testresults.model.BackgroundColor" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
+<%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("TestResults/css/style.css");
+    }
+%>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" nonce="<%=getScriptNonce()%>"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.min.css">
+
 <%
     /**
      * User: Yuval Boss, yuval(at)uw.edu
@@ -19,18 +33,12 @@
      */
     JspView<?> me = (JspView<?>) HttpView.currentView();
     TestsDataBean data = (TestsDataBean)me.getModelBean();
-    final String contextPath = AppProps.getInstance().getContextPath();
     User[] users = data.getUsers();
     RunDetail[] runs = data.getRuns();
     Container c = getViewContext().getContainer();
     List<User> noRunsForUser = new ArrayList<>();
 %>
-<script type="text/javascript" nonce="<%=getScriptNonce()%>">
-    LABKEY.requiresCss("/TestResults/css/style.css");
-</script>
-<link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
-<script src="//code.jquery.com/jquery-1.10.2.js"></script>
-<script src="//code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
+
 <div id="content">
     <%@include file="menu.jsp" %>
     <%
@@ -399,7 +407,7 @@
                         totalErrors += errorCount;
                         element.children("td:first").html(
                             '<a onclick="forceTrain($(this));" style="cursor: pointer;">' +
-                            '<img style="width: 16px; height: 16px;" src="<%=h(contextPath)%>/TestResults/img/reload.png">' +
+                            '<img style="width: 16px; height: 16px;" src="<%=getWebappURL("TestResults/img/reload.png")%>">' +
                             '</a>');
                     }
                 }

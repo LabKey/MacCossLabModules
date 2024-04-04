@@ -18,7 +18,17 @@
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.Set" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+    }
+%>
+
 <%
     JspView<User> me = (JspView<User>) HttpView.currentView();
     User data = me.getModelBean();
@@ -26,7 +36,6 @@
     Map<String, Object> m = new HashMap<>(); // Map of containers to available security groups in the container.
 %>
 
-<script src="//code.jquery.com/jquery-1.10.2.js"></script>
 <style type="text/css">
     table.gridtable {
         font-family: verdana,arial,sans-serif;
@@ -55,15 +64,17 @@
 <!--Creates drop down list of all containers-->
 <h4 style="padding:0px; margin: 0px;">Add new user group rule</h4>
 <form <%=formAction(AddPropertyAction.class, Method.Post)%>><labkey:csrf/>
-    <select id="folderId" name="folderId" onchange="loadGroups(this.value)">
+    <select id="folderId" name="folderId">
         <option disabled selected> -- select an option -- </option>
         <%for(Container c: list) {
         m.put(String.valueOf(c.getRowId()), SecurityManager.getGroups(c.getProject(), false));%> <!--Adds container and associated groups to map-->
         <option value="<%=c.getRowId()%>"><%=h(c.getPath())%></option>
     <%}%>
     </select>
+    <% addHandler("folderId", "change", "loadGroups(this.value)"); %>
     <!--Creates a drop down list of all groups in selected container (dynamic) no ajax-->
-    <select onchange="showAdd(this.value)" id="groupName" name="groupName"></select>
+    <select id="groupName" name="groupName"></select>
+    <% addHandler("groupName", "change", "showAdd(this.value)"); %>
     <labkey:button text="Add Rule" />
 </form>
 <br />
@@ -159,8 +170,8 @@ JSONObject json = new JSONObject(m);
                 for (var i = 0; i < value.length; i++) {
                     $('#groupName')
                             .append($("<option></option>")
-                                    .attr("value", value[i])
-                                    .text(value[i]));
+                                    .attr("value", value[i].name)
+                                    .text(value[i].name));
                 }
                 if (value.length == 0)
                     showAdd("");

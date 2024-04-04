@@ -19,7 +19,20 @@
 <%@ page import="java.util.Map" %>
 <%@ page import="org.labkey.api.util.SafeToRender" %>
 <%@ page import="java.util.Arrays" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("skylinetoolsstore/js/functions.js");
+    }
+%>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" nonce="<%=getScriptNonce()%>"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.min.css">
+
 <%
     JspView<?> me = (JspView<?>)HttpView.currentView();
     List<SkylineTool> tools = (List<SkylineTool>)me.getModelBean();
@@ -28,9 +41,7 @@
     final boolean loggedIn = !getUser().isGuest();
 
     final String contextPath = AppProps.getInstance().getContextPath();
-    final String cssDir = contextPath + "/skylinetoolsstore/css/";
     final String imgDir = contextPath + "/skylinetoolsstore/img/";
-    final String jsDir = contextPath + "/skylinetoolsstore/js/";
 
     HashMap<Integer, Integer> toolRatings = new HashMap();
     HashMap<Integer, Integer[]> toolRatingSplit = new HashMap();
@@ -153,7 +164,8 @@
 
 <% if (admin) { %>
 <div style="float: left;">
-    <button type="button" onclick="$('#uploadPopOwners').show(); $('#updatetarget').val(''); $('#uploadPop').dialog('open')" class="styled-button">Add New Tool</button>
+    <button type="button" id="add-new-tool-btn" class="styled-button">Add New Tool</button>
+    <% addHandler("add-new-tool-btn", "click", "$('#uploadPopOwners').show(); $('#updatetarget').val(''); $('#uploadPop').dialog('open')"); %>
 </div>
 <% } %>
 <!--Submit Rating Form-->
@@ -261,14 +273,14 @@
                 <div class="menuMouseArea sprocket" alt="<%= h(tool.getName()) %>">
                     <img src="<%= h(imgDir) %>gear.png" title="Settings" />
                     <ul class="dropMenu">
-                        <li><a onclick="$('#uploadPopOwners').hide(); $('#updatetarget').val(<%= h(tool.getRowId()) %>); $('#uploadPop').dialog('open')">Upload new version</a></li>
-                        <li><a onclick="$('#supptarget').val(<%= h(tool.getRowId()) %>); $('#uploadSuppPop').dialog('open')">Upload supplementary file</a></li>
+                        <li><%=link("Upload new version").clearClasses().onClick("$('#uploadPopOwners').hide(); $('#updatetarget').val(" + tool.getRowId() + "); $('#uploadPop').dialog('open')")%></li>
+                        <li><%=link("Upload supplementary file").clearClasses().onClick("$('#supptarget').val(" + tool.getRowId() + "); $('#uploadSuppPop').dialog('open')")%></li>
 <% if (multipleVersions) { %>
-                        <li><a onclick="delToolLatest($(this))">Delete latest version</a></li>
+                        <li><%=link("Delete latest version").clearClasses().onClick("delToolLatest($(this))")%></li>
 <% } %>
 <% if (admin) { %>
-                        <li><a onclick="delToolAll($(this))">Delete</a></li>
-                        <li><a onclick="popToolOwners(<%= h(tool.getRowId()) %>)">Manage tool owners</a></li>
+                        <li><%=link("Delete").clearClasses().onClick("delToolAll($(this))")%></li>
+                        <li><%=link("Manage tool owners").clearClasses().onClick("popToolOwners(" + tool.getRowId() + ")")%></li>
 <% } %>
                     </ul>
                 </div>
@@ -337,7 +349,7 @@
                             <p>
                                 <a href="<%= h(detailsUrl) %>">See all <%= totalReviews %> reviews</a>
 <% if (loggedIn && !leftReview) { %>
-                                / <a onclick="$('#ratingToolId').val(<%= h(tool.getRowId()) %>); $('#reviewPop').dialog('open')">Leave review</a>
+                                <%=link("Leave review").clearClasses().onClick("$('#ratingToolId').val(" + tool.getRowId() + "); $('#reviewPop').dialog('open')")%>
 <% } %>
                             </p>
                         </div>
@@ -348,7 +360,8 @@
 
                 <div class="toolButtons">
 
-                    <button type="button" onclick="window.location.href = '<%=h(urlFor(SkylineToolsStoreController.DownloadToolAction.class).addParameter("id", tool.getRowId()))%>'" class="styled-button">Download</button>
+                    <button type="button" id="download-tool-btn-<%=tool.getRowId()%>" class="styled-button">Download</button>
+                    <% addHandler("download-tool-btn-" + tool.getRowId(), "click", "window.location.href = " + q(urlFor(SkylineToolsStoreController.DownloadToolAction.class).addParameter("id", tool.getRowId()))); %>
 <% if ((ratingsCurVer == null || ratingsCurVer.length == 0) && loggedIn) { %>
                     <%--<button type="button" onclick="$('#ratingToolId').val(<%= h(tool.getRowId()) %>); $('#reviewPop').dialog('open')" class="styled-button">Leave the first Review!</button>--%>
 <%
@@ -377,12 +390,6 @@
 </table>
 <% } %>
 </div>
-
-<link rel="stylesheet" type="text/css" href="<%= h(cssDir) %>jquery-ui.css">
-<script type="text/javascript" src="<%= h(jsDir) %>functions.js"></script>
-<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
-<link rel="stylesheet" href="https://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
 
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
     var READ_MORE_TEXT = "Read more";

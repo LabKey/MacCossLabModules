@@ -27,19 +27,21 @@
         dependencies.add("TestResults/css/c3.min.css");
         dependencies.add("TestResults/js/d3.min.js");
         dependencies.add("TestResults/js/c3.min.js");
+        dependencies.add("TestResults/js/generateTrendCharts.js");
     }
 %>
 
 <%@include file="menu.jsp" %>
 <br />
 <form action="<%=h(new ActionURL(TestResultsController.LongTermAction.class, c))%>">
-    View Type: <select name="viewType" onchange="this.form.submit()">
+    View Type: <select id="view-type-combobox" name="viewType">
                     <option disabled selected> -- select an option -- </option>
                     <option id="<%=h(ViewType.WEEK)%>" value="<%=h(ViewType.WEEK)%>">Week</option>
                     <option id="<%=h(ViewType.MONTH)%>" value="<%=h(ViewType.MONTH)%>">Month</option>
                     <option id="<%=h(ViewType.YEAR)%>" value="<%=h(ViewType.YEAR)%>">Year</option>
                 </select>
 </form>
+<% addHandler("view-type-combobox", "change", "this.form.submit()"); %>
 
 <% if(data != null) {
     JSONObject trendsJson = data.getTrends();
@@ -56,7 +58,6 @@
 </div>
 
     <% if (trendsJson != null) { %>
-        <script src="<%=h(contextPath)%>/TestResults/js/generateTrendCharts.js"></script>
         <script type="text/javascript" nonce="<%=getScriptNonce()%>">
             var trendsJson = jQuery.parseJSON(<%= q(trendsJson.toString())%>);
             var failureJson = jQuery.parseJSON(<%= q(failureJson.toString())%>);

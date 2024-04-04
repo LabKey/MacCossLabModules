@@ -16,7 +16,32 @@
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="static org.labkey.testresults.TestResultsModule.ViewType" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
+<%@ page import="org.labkey.api.util.HtmlString" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("TestResults/js/d3.min.js");
+        dependencies.add("TestResults/js/c3.min.js");
+        dependencies.add("TestResults/css/c3.min.css");
+        dependencies.add("TestResults/css/style.css");
+        dependencies.add("TestResults/js/jquery.tablesorter.js");
+        dependencies.add("TestResults/js/generateTrendCharts.js");
+    }
+
+    public HtmlString getImageUrl(String img)
+    {
+        return getWebappURL("TestResults/img/" + img);
+    }
+%>
+
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" nonce="<%=getScriptNonce()%>"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.min.css">
+
 <%
     /*
       User: Yuval Boss, yuval(at)uw.edu
@@ -24,7 +49,6 @@
      */
     JspView<?> me = (JspView<?>)HttpView.currentView();
     RunDownBean data = (RunDownBean)me.getModelBean();
-    final String contextPath = AppProps.getInstance().getContextPath();
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
 
     String viewType = data.getViewType();
@@ -58,16 +82,7 @@
     Container c = getViewContext().getContainer();
     DateFormat dfMDHM = new SimpleDateFormat("MM/dd HH:mm:ss");
 %>
-<script type="text/javascript" nonce="<%=getScriptNonce()%>">
-    LABKEY.requiresCss("/TestResults/css/style.css");
-</script>
-<link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
-<link rel="stylesheet" href="<%=h(contextPath)%>/TestResults/css/c3.min.css">
-<script src="<%=h(contextPath)%>/TestResults/js/d3.min.js"></script>
-<script src="<%=h(contextPath)%>/TestResults/js/c3.min.js"></script>
-<script src="//code.jquery.com/jquery-1.10.2.js"></script>
-<script src="//code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
-<script src="<%=h(contextPath)%>/TestResults/js/jquery.tablesorter.js"></script>
+
 <style>
     .rundown-unknown { background: <%= h(BackgroundColor.unknown) %> !important; }
     .rundown-pass { background: <%= h(BackgroundColor.pass) %> !important; }
@@ -198,7 +213,7 @@
                             <td style="font-size: 11px;" data-sort-value="<%=run.getPostTime().getTime()%>"><%=h(dfMDHM.format(run.getPostTime()))%></td>
                             <td class="<% if (durationStatus > 0) { %>rundown-error<% } %>">
                                 <%=run.getDuration()%>
-                                <% if (run.getHang() != null) { %><img src='<%=h(contextPath)%>/TestResults/img/hangicon.png'><% } %>
+                                <% if (run.getHang() != null) { %><img src="<%=getImageUrl("hangicon.png")%>"><% } %>
                             <td title="<%=h(u.runBoundHtmlString(warningBoundary, errorBoundary))%>"
                                 class="rundown-user-passes <% if (passStatus == 1) { %>rundown-warn<% } else if (passStatus == 2) { %>rundown-error<% } %>">
                                 <%=passes%>
@@ -209,11 +224,11 @@
                             </td>
                             <td class="<% if (failStatus > 0) { %>rundown-error<% } %>">
                                 <%=failures%>
-                                <% if (failStatus > 0) { %><img src='<%=h(contextPath)%>/TestResults/img/fail.png'><% } %>
+                                <% if (failStatus > 0) { %><img src='<%=getImageUrl("fail.png")%>'><% } %>
                             </td>
                             <td class="<% if (leakStatus > 0) { %>rundown-error<% } %>">
                                 <%=testmemoryleaks%>
-                                <% if (leakStatus > 0) { %><img src='<%=h(contextPath)%>/TestResults/img/leak.png'><% } %>
+                                <% if (leakStatus > 0) { %><img src='<%=getImageUrl("leak.png")%>'><% } %>
                             </td>
                             <td>
                                 <%=h(run.getGitHash())%>
@@ -241,9 +256,9 @@
                         <thead style="display: block;">
                         <tr>
                             <td style="width: 200px; overflow: hidden; padding: 0;">
-                                Fail: <img src="<%=h(contextPath)%>/TestResults/img/fail.png">
-                                | Leak: <img src="<%=h(contextPath)%>/TestResults/img/leak.png">
-                                | Hang: <img src="<%=h(contextPath)%>/TestResults/img/hangicon.png">
+                                Fail: <img src="<%=getImageUrl("fail.png")%>">
+                                | Leak: <img src="<%=getImageUrl("leak.png")%>">
+                                | Hang: <img src="<%=getImageUrl("hangicon.png")%>">
                             </td>
                             <% for (RunDetail run : problemRuns) { %>
                             <td style="max-width: 60px; width: 60px; overflow: hidden; text-overflow: ellipsis; padding: 0;" title="<%=h(run.getUserName())%>">
@@ -262,7 +277,7 @@
                             </td>
                             <% for (RunDetail run : problemRuns) { %>
                             <td class="highlightrun highlighttd-<%=run.getId()%>" style="width: 60px; overflow: hidden; padding: 0;">
-                                <% if (problems.hasFailure(run, test)) { %><img src="<%=h(contextPath)%>/TestResults/img/fail.png"><% } %>
+                                <% if (problems.hasFailure(run, test)) { %><img src="<%=getImageUrl("fail.png")%>"><% } %>
                                 <%
                                     boolean leakMem = problems.hasMemoryLeak(run, test);
                                     boolean leakHandle = problems.hasHandleLeak(run, test);
@@ -272,9 +287,9 @@
                                     else if (leakHandle) leakCssClass = "matrix-leak-handle";
                                     if (!leakCssClass.isEmpty()) {
                                 %>
-                                <img src="<%=h(contextPath)%>/TestResults/img/leak.png" class="<%=h(leakCssClass)%>">
+                                <img src="<%=getImageUrl("leak.png")%>" class="<%=h(leakCssClass)%>">
                                 <% } %>
-                                <% if (problems.hasHang(run, test)) { %><img src="<%=h(contextPath)%>/TestResults/img/hangicon.png"><% } %>
+                                <% if (problems.hasHang(run, test)) { %><img src="<%=getImageUrl("hangicon.png")%>"><% } %>
                             </td>
                             <% } %>
                         </tr>
@@ -594,7 +609,6 @@ $(function() {
 </script>
 
 <% if (trendsJson != null) { %>
-    <script src="<%=h(contextPath)%>/TestResults/js/generateTrendCharts.js"></script>
     <script type="text/javascript" nonce="<%=getScriptNonce()%>">
         var trendsJson = <%=json(trendsJson, 0)%>;
         generateTrendCharts(trendsJson);

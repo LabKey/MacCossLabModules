@@ -10,7 +10,20 @@
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="java.util.Arrays" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("TestResults/js/d3.min.js");
+        dependencies.add("TestResults/js/c3.min.js");
+        dependencies.add("TestResults/css/c3.min.css");
+
+    }
+%>
 
 <%
     /*
@@ -43,12 +56,6 @@
             function(data) { popupData(data.xml); }, "json");
     };
 </script>
-<link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
-<link rel="stylesheet" href="<%=h(contextPath)%>/TestResults/css/c3.min.css">
-<script src="<%=h(contextPath)%>/TestResults/js/d3.min.js"></script>
-<script src="<%=h(contextPath)%>/TestResults/js/c3.min.js"></script>
-<script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
-<script src="//code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
 
 <!--Content to display if data is not null-->
 <% if (data != null) {
@@ -87,7 +94,7 @@
         Timestamp:  <%=h((run.getTimestamp() == null) ? "N/A" : run.getTimestamp())%><br>
         <a id="trainset" style="cursor: pointer;"><%=h((run.isTrainRun()) ? "Remove from training set" : "Add to training set")%></a>
     </p>
-    <button onclick="showLog();">View Log</button>
+    <%=button("View Log").onClick("showLog()")%>
 
     <!--Script to handle deleting of run-->
     <script type="text/javascript" nonce="<%=getScriptNonce()%>">
@@ -204,7 +211,7 @@ if (leaks.length > 0) { %>
     $('#trainset').click(function() {
         var csrf_header = {"X-LABKEY-CSRF": LABKEY.CSRF};
         $(this).off().text("Please wait...");
-        $.post('<%=h(new ActionURL(TestResultsController.TrainRunAction.class, c).addParameter("runId", run.getId()).addParameter("train", run.isTrainRun() ? "false" : "true"))%>', csrf_header, function(data){
+        $.post(<%=q(new ActionURL(TestResultsController.TrainRunAction.class, c).addParameter("runId", run.getId()).addParameter("train", run.isTrainRun() ? "false" : "true"))%>, csrf_header, function(data){
             if (data.Success) {
                 location.reload();
             } else {
