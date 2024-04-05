@@ -425,7 +425,7 @@ a { text-decoration: none; }
         </div>
 
         <button id="tool-support-board-btn" class="banner-button-small">Support Board</button>
-        <% addHandler("tool-support-board-btn", "click", "window.open(" + q(urlProvider(ProjectUrls.class).getBeginURL(getContainer().getChild("Support").getChild(tool.getName()))) + ", '_blank')"); %>
+        <% addHandler("tool-support-board-btn", "click", "window.open(" + q(urlProvider(ProjectUrls.class).getBeginURL(getContainer().getChild("Support").getChild(tool.getName()))) + ", '_blank', 'noopener,noreferrer')"); %>
     </div>
 <% if (toolEditor) { %>
     <div class="menuMouseArea sprocket">
@@ -492,7 +492,7 @@ a { text-decoration: none; }
         <span class="boldfont">Authors:</span>
         <span class="toolPropertyValue"><%= h(tool.getAuthors()) %></span>
 <% if (toolEditor) { %>
-        <%=link(editIconImgHtml).clearClasses().onClick("editTool($(this, 'author'))")%>
+        <%=link(editIconImgHtml).clearClasses().onClick("editTool($(this), 'author')")%>
 <% } %>
     </div>
 <% } %>
