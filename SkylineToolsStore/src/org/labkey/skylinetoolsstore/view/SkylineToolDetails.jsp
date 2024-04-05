@@ -268,7 +268,7 @@ a { text-decoration: none; }
 }
 .ratinginput
 {
-    width:380px;
+    width:400px;
     float:left;
     border:0 !important;
 }
@@ -527,7 +527,7 @@ a { text-decoration: none; }
     <input type="text" name="title" class="ratinginput">
     <input type="text" id="reviewValue" name="value" style="display:none;" value="5">
     <br><br>
-    <textarea name="review" rows="3" class="ratinginput"></textarea><br /><br />
+    <textarea name="review" rows="6" cols="40" class="ratinginput"></textarea><br /><br />
     <input type="hidden" name="toolId" value="<%= tool.getRowId() %>" />
     <input type="hidden" name="ratingId" value="" />
     <div id="ratingSlider" style="float:left; margin-top:15px; margin-left:10px;">
@@ -553,6 +553,9 @@ a { text-decoration: none; }
     {
         final String tableId2 = "table-" + rating.getRowId();
         final String reviewTitle = rating.getTitle();
+        final String review = h(rating.getReview()).toString();
+        pageContext.setAttribute("review", review);
+        pageContext.setAttribute("reviewEscaped", review.replace("&#039;", "\\'"));
         final Integer ratingValue = rating.getRating();
         final String ratingVersion =  SkylineToolsStoreManager.get().getTool(rating.getToolId()).getVersion();
 
@@ -581,14 +584,15 @@ a { text-decoration: none; }
             <div class="reviewdate"><h4><%= h(formattedDate) %></h4></div>
         </div>
         <p>
-            <%=h(rating.getReview())%>
+            ${review}
 <% if (rating.getCreatedBy() == getUser().getUserId() || admin) { %>
             <br />
-            <!-- prepReviewPop() function displays a form where the user can edit their review for the tool. The form has input fields for the review title and description.
-                 Input field for review title gets set via jQuery's val() method. Pass an escaped and quoted string -> q(reviewTitle)
-                 Input field for review description gets set with jQuery's html() method. Pass an HTML-escaped value that is JavaScript-escaped and quoted -> qh(rating.getReview) -->
-            <%=button("Edit Review").addClass("ratingbutton").onClick("prepReviewPop(" + q(reviewTitle) + ", " + ratingValue + ", " + qh(rating.getReview()) + ", " + rating.getRowId() + "); $('#reviewPop').dialog('open')")%>
-            <%=button("Delete Review").addClass("ratingbutton").onClick("$('#delRatingDlg').dialog('open').data('ratingId', " + rating.getRowId() + ")")%>
+            <button type="button" class="ratingbutton" style="margin-right:25px;" onclick="prepReviewPop('<%= h(reviewTitle) %>', <%= ratingValue %>, '${reviewEscaped}', <%= rating.getRowId() %>); $('#reviewPop').dialog('open')">
+                Edit Review
+            </button>
+            <button type="button" class="ratingbutton" onclick="$('#delRatingDlg').dialog('open').data('ratingId', <%= rating.getRowId() %>)">
+                Delete Review
+            </button>
 <% } %>
        </p>
     </div>
