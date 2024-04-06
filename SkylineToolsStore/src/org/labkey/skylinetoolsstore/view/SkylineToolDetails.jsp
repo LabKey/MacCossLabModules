@@ -40,7 +40,7 @@
         dependencies.add("skylinetoolsstore/js/functions.js");
     }
 
-    public final HtmlString editIconImgHtml = HtmlString.unsafe(IMG(DOM.at(src, getWebappURL("skylinetoolsstore/img/pencil.png")).at(alt, "Pencil")).renderToString());
+    public final HtmlString editIconImgHtml = DOM.createHtml(IMG(DOM.at(src, getWebappURL("skylinetoolsstore/img/pencil.png")).at(alt, "Pencil")));
 %>
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" nonce="<%=getScriptNonce()%>"></script>
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.min.css">

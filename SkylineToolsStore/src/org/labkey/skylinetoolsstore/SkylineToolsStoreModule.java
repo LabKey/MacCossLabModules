@@ -92,7 +92,7 @@ public class SkylineToolsStoreModule extends DefaultModule
     {
         // add a container listener so we'll know when our container is deleted:
         ContainerManager.addContainerListener(new SkylineToolsStoreContainerListener());
-        SecurityManager.registerAllowedConnectionSource("script-src", "https://code.jquery.com/ui/1.13.2/jquery-ui.min.js");
+        SecurityManager.registerAllowedConnectionSource("jquery-ui", "https://code.jquery.com/ui/1.13.2/jquery-ui.min.js");
     }
 
     @Override
