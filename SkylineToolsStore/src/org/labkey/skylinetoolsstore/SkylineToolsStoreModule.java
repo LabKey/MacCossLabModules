@@ -22,6 +22,7 @@ import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.module.DefaultModule;
 import org.labkey.api.module.ModuleContext;
+import org.labkey.api.security.SecurityManager;
 import org.labkey.api.view.BaseWebPartFactory;
 import org.labkey.api.view.Portal;
 import org.labkey.api.view.ViewContext;
@@ -91,6 +92,7 @@ public class SkylineToolsStoreModule extends DefaultModule
     {
         // add a container listener so we'll know when our container is deleted:
         ContainerManager.addContainerListener(new SkylineToolsStoreContainerListener());
+        SecurityManager.registerAllowedConnectionSource("jquery-ui", "https://code.jquery.com/ui/1.13.2/jquery-ui.min.js");
     }
 
     @Override

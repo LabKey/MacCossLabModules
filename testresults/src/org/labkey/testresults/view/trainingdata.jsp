@@ -11,7 +11,21 @@
 <%@ page import="java.util.List" %>
 <%@ page import="org.labkey.testresults.SendTestResultsEmail" %>
 <%@ page import="org.labkey.testresults.model.BackgroundColor" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
+<%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("TestResults/css/style.css");
+    }
+%>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" nonce="<%=getScriptNonce()%>"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.min.css">
+
 <%
     /**
      * User: Yuval Boss, yuval(at)uw.edu
@@ -19,18 +33,12 @@
      */
     JspView<?> me = (JspView<?>) HttpView.currentView();
     TestsDataBean data = (TestsDataBean)me.getModelBean();
-    final String contextPath = AppProps.getInstance().getContextPath();
     User[] users = data.getUsers();
     RunDetail[] runs = data.getRuns();
     Container c = getViewContext().getContainer();
     List<User> noRunsForUser = new ArrayList<>();
 %>
-<script type="text/javascript" nonce="<%=getScriptNonce()%>">
-    LABKEY.requiresCss("/TestResults/css/style.css");
-</script>
-<link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
-<script src="//code.jquery.com/jquery-1.10.2.js"></script>
-<script src="//code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
+
 <div id="content">
     <%@include file="menu.jsp" %>
     <%
@@ -301,115 +309,4 @@
         }
     }).trigger("change");
 
-    function forceTrain(el) {
-        var cell = el.closest("td");
-        var runId = el.closest(".stats-row").data("runid");
-        el.remove();
-        cell.text("working...");
-        let url = <%=jsURL(new ActionURL(TestResultsController.TrainRunAction.class, c).addParameter("train", "force"))%>;
-        url.searchParams.set('runId', runId);
-        $.post(url.toString(), csrf_header, function(data) {
-            cell.text(data.Success ? "done" : "error");
-        });
-    }
-
-    function integrity() {
-        var parseStat = function(el) {
-            var text = $(el).text();
-            var colon = text.indexOf(":");
-            if (colon >= 0)
-                text = text.substring(colon + 1);
-            var num = text.match(/\d+(\.\d+)/)[0];
-            return num ? parseFloat(num) : null;
-        };
-
-        var idxDate = null;
-        var idxTests = null;
-        var idxMem = null;
-        $("#trainingdata tr:first").children("td").each(function(index, element) {
-            if (element.id === "header-cell-date") {
-                idxDate = index;
-            } else if (element.id === "header-cell-tests") {
-                idxTests = index;
-            } else if (element.id === "header-cell-mem") {
-                idxMem = index;
-            }
-        });
-        if (idxDate == null || idxTests == null || idxMem == null)
-            return;
-        var dataRuns = [];
-        var dataMem = [];
-        var userErrors = 0;
-        var totalErrors = 0;
-        $("#trainingdata tr:not(:first-child)").each(function(index, element) {
-            element = $(element);
-            var cells = element.children("td");
-            if (!cells || !cells.length || !/[0-9]{4}-[0-9]{2}-[0-9]{2}/.test(cells.eq(idxDate).text())) {
-                if (element.hasClass("stats-row") && dataRuns.length) {
-                    var calcRunMean = 0;
-                    var calcMemMean = 0;
-                    for (var i = 0; i < dataRuns.length; i++) {
-                        calcRunMean += dataRuns[i];
-                        calcMemMean += dataMem[i];
-                    }
-                    calcRunMean /= dataRuns.length;
-                    calcMemMean /= dataMem.length;
-                    var calcRunStdDev = 0;
-                    var calcMemStdDev = 0;
-                    for (i = 0; i < dataRuns.length; i++) {
-                        calcRunStdDev += Math.pow(calcRunMean - dataRuns[i], 2);
-                        calcMemStdDev += Math.pow(calcMemMean - dataMem[i], 2);
-                    }
-                    calcRunStdDev = Math.sqrt(calcRunStdDev / dataRuns.length);
-                    calcMemStdDev = Math.sqrt(calcMemStdDev / dataMem.length);
-
-                    var elRunMean = element.find(".stats-row-run-mean");
-                    var elRunStdDev = element.find(".stats-row-run-stddev");
-                    var elMemMean = element.find(".stats-row-mem-mean");
-                    var elMemStdDev = element.find(".stats-row-mem-stddev");
-                    var runMean = parseStat(elRunMean);
-                    var runStdDev = parseStat(elRunStdDev);
-                    var memMean = parseStat(elMemMean);
-                    var memStdDev = parseStat(elMemStdDev);
-
-                    var errorCount = 0;
-                    var errorColor = "#c00";
-                    if (Math.abs(runMean - calcRunMean) >= 1) {
-                        errorCount++;
-                        elRunMean.css("color", errorColor)
-                            .attr("title", "Expected: " + +calcRunMean.toFixed(2)).tooltip();
-                    }
-                    if (Math.abs(runStdDev - calcRunStdDev) >= 1) {
-                        errorCount++;
-                        elRunStdDev.css("color", errorColor)
-                            .attr("title", "Expected: " + +calcRunStdDev.toFixed(2)).tooltip();
-                    }
-                    if (Math.abs(memMean - calcMemMean) >= 1) {
-                        errorCount++;
-                        elMemMean.css("color", errorColor)
-                            .attr("title", "Expected: " + +calcMemMean.toFixed(2)).tooltip();
-                    }
-                    if (Math.abs(memStdDev - calcMemStdDev) >= 1) {
-                        errorCount++;
-                        elMemStdDev.css("color", errorColor)
-                            .attr("title", "Expected: " + +calcMemStdDev.toFixed(2)).tooltip();
-                    }
-                    if (errorCount > 0) {
-                        userErrors++;
-                        totalErrors += errorCount;
-                        element.children("td:first").html(
-                            '<a onclick="forceTrain($(this));" style="cursor: pointer;">' +
-                            '<img style="width: 16px; height: 16px;" src="<%=h(contextPath)%>/TestResults/img/reload.png">' +
-                            '</a>');
-                    }
-                }
-                dataRuns = [];
-                dataMem = [];
-                return;
-            }
-            dataRuns.push(parseFloat(cells.eq(idxTests).text()));
-            dataMem.push(parseFloat(cells.eq(idxMem).text()));
-        });
-        console.log('Found ' + totalErrors + ' integrity issues across ' + userErrors + ' machines');
-    }
 </script>

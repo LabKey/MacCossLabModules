@@ -4,7 +4,20 @@
 <%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page import="org.labkey.api.util.SafeToRender" %>
 <%@ page import="org.labkey.api.util.HtmlString" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("skylinetoolsstore/js/functions.js");
+    }
+%>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" nonce="<%=getScriptNonce()%>"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.min.css">
+
 <%
     Object errorAttribute = request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "form");
     if (errorAttribute != null)
@@ -13,9 +26,7 @@
     }
 
     final String contextPath = AppProps.getInstance().getContextPath();
-    final String cssDir = contextPath + "/skylinetoolsstore/css/";
     final String imgDir = contextPath + "/skylinetoolsstore/img/";
-    final String jsDir = contextPath + "/skylinetoolsstore/js/";
 
     final String sender = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "sender");
     final String updateTarget = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "updatetarget");
@@ -46,11 +57,6 @@
 
 <br />
 <%= PageFlowUtil.generateBackButton() %>
-
-<link rel="stylesheet" type="text/css" href="<%= h(cssDir) %>jquery-ui.css">
-<script type="text/javascript" src="<%= h(jsDir) %>functions.js"></script>
-<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
 
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
     autocomplete($("#toolOwners"), <%=users%>);

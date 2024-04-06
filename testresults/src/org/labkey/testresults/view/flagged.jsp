@@ -5,7 +5,16 @@
 <%@ page import="org.labkey.testresults.view.TestsDataBean" %>
 <%@ page import="java.util.Arrays" %>
 <%@ page import="java.util.Collections" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("TestResults/css/style.css");
+    }
+%>
 
 <%
     /*
@@ -17,9 +26,7 @@
 %>
 
 <%@include file="menu.jsp" %>
-<script type="text/javascript" nonce="<%=getScriptNonce()%>">
-    LABKEY.requiresCss("/TestResults/css/style.css");
-</script>
+
 <p>Runs which are flagged will not show up in the Overview breakdown, Long Term, and Failure pages.  This includes graphs, charts, and any other sort of data visualization.</p>
 <%if(data.getRuns().length == 0){    %>
     <p>There are currently no flagged runs.</p>
