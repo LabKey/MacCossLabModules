@@ -6,7 +6,17 @@
 <%@ page import="org.labkey.testresults.TestResultsController" %>
 <%@ page import="java.io.File" %>
 <%@ page import="java.nio.file.Files" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("TestResults/css/style.css");
+    }
+%>
 
 <%
     /**
@@ -15,15 +25,11 @@
      */
     JspView<?> me = (JspView<?>) HttpView.currentView();
     File[] errorFiles = (File[])me.getModelBean();
-    final String contextPath = AppProps.getInstance().getContextPath();
     Container c = getContainer();
 %>
 
 <%@include file="menu.jsp" %>
-<script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
-<script type="text/javascript" nonce="<%=getScriptNonce()%>">
-    LABKEY.requiresCss("/TestResults/css/style.css");
-</script>
+
 <p>All the files listed below at one point or another failed to post.  When a run is successfully posted through this page it gets removed from the list.</p>
 <% if (errorFiles.length == 0) { %>
     <p>There are 0 failed xml files store.</p>
