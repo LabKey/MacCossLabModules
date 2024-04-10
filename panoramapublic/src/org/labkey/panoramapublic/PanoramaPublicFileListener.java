@@ -60,6 +60,6 @@ public class PanoramaPublicFileListener implements FileListener
     @Override
     public SQLFragment listFilesQuery()
     {
-        throw new UnsupportedOperationException("Not implemented");
+        return null;
     }
 }
