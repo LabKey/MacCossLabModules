@@ -45,9 +45,9 @@ import java.util.Set;
 public class LincsModule extends SpringModule
 {
     public static final String NAME = "LINCS";
+    public static final String PSP_JOB_NAME_SUFFIX = "PSP job name suffix";
     public final ModuleProperty PSP_JOB_NAME_SUFFIX_PROPERTY;
     public final ModuleProperty LINCS_ASSAY_TYPE_PROPERTY;
-    public static String PSP_JOB_NAME_SUFFIX = "PSP job name suffix";
 
     private static final String NO_SUFFIX = "";
 
