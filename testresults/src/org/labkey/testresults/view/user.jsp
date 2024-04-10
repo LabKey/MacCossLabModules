@@ -16,8 +16,26 @@
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.TreeMap" %>
 <%@ page import="java.util.TreeSet" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("TestResults/js/d3.min.js");
+        dependencies.add("TestResults/js/c3.min.js");
+        dependencies.add("TestResults/css/c3.min.css");
+        dependencies.add("TestResults/js/multiselect.datepicker.js");
+        dependencies.add("TestResults/js/generateTrendCharts.js");
+        dependencies.add("TestResults/css/style.css");
+    }
+%>
+
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" nonce="<%=getScriptNonce()%>"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.min.css">
 
 <%
     /**
@@ -64,16 +82,7 @@
         }
     }
 %>
-<script type="text/javascript" nonce="<%=getScriptNonce()%>">
-    LABKEY.requiresCss("/TestResults/css/style.css");
-</script>
-<link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
-<link rel="stylesheet" href="<%=h(contextPath)%>/TestResults/css/c3.min.css">
-<script src="<%=h(contextPath)%>/TestResults/js/d3.min.js"></script>
-<script src="<%=h(contextPath)%>/TestResults/js/c3.min.js"></script>
-<script src="<%=h(contextPath)%>/TestResults/js/multiselect.datepicker.js"></script>
-<script src="//code.jquery.com/jquery-1.10.2.js"></script>
-<script src="//code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
+
 <div id="content">
     <%@include file="menu.jsp" %>
 <%--    <form action="<%=h(new ActionURL(TestResultsController.PostAction.class, c))%>" method="post" enctype="multipart/form-data">--%>
@@ -265,7 +274,6 @@
 </script>
 <!--Javascript which uses c3 & d3js to paint charts with given trendJson data-->
 <% if (trendsJson != null) { %>
-<script src="<%= h(contextPath) %>/TestResults/js/generateTrendCharts.js"></script>
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
     function generateCharts() {
         var trendsJson = jQuery.parseJSON( <%= q(trendsJson.toString()) %> );

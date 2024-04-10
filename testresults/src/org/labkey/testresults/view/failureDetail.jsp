@@ -17,7 +17,23 @@
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.TreeMap" %>
 <%@ page import="java.util.stream.Collectors" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
+
+<%!
+    @Override
+    public void addClientDependencies(ClientDependencies dependencies)
+    {
+        dependencies.add("internal/jQuery");
+        dependencies.add("TestResults/js/d3.min.js");
+        dependencies.add("TestResults/js/c3.min.js");
+        dependencies.add("TestResults/css/c3.min.css");
+        dependencies.add("TestResults/css/style.css");
+        dependencies.add("TestResults/js/jquery.tablesorter.js");
+        dependencies.add("TestResults/css/tablesorter-default.css");
+    }
+%>
+
 <%
     /*
       User: Yuval Boss, yuval(at)uw.edu
@@ -173,15 +189,7 @@
 %>
 
 <%@include file="menu.jsp" %>
-<script type="text/javascript" nonce="<%=getScriptNonce()%>">
-    LABKEY.requiresCss("/TestResults/css/style.css");
-    LABKEY.requiresCss("/TestResults/css/tablesorter-default.css");
-</script>
-<link rel="stylesheet" href="<%=h(contextPath)%>/TestResults/css/c3.min.css">
-<script src="<%=h(contextPath)%>/TestResults/js/d3.min.js"></script>
-<script src="<%=h(contextPath)%>/TestResults/js/c3.min.js"></script>
-<script src="//code.jquery.com/jquery-1.10.2.js"></script>
-<script src="<%=h(contextPath)%>/TestResults/js/jquery.tablesorter.js"></script>
+
 <style>
     input:disabled+label { color: #aaa; }
     #failurestatstable td:not(:last-child) { width: 1px; white-space: nowrap; }
@@ -196,7 +204,7 @@
     }
 %>
 <form action="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>">
-    View Type: <select name="viewType" onchange="this.form.submit()">
+    View Type: <select id="view-type-combobox" name="viewType">
                     <option disabled value="firsttime"<%=selected(value.equals("firsttime"))%>> -- select an option -- </option>
                     <option id="posttime" value="posttime"<%=selected(value.equals("posttime"))%>>Day</option>
                     <option id="wk" value="wk"<%=selected(value.equals("wk"))%>>Week</option>
@@ -208,6 +216,8 @@
     </select>
     <input type="hidden" name="end" value="<%=h(dfEnd.format(data.getEndDate()))%>" />
 </form>
+<% addHandler("view-type-combobox", "change", "this.form.submit()"); %>
+
 <!-- main content of page -->
 <div style="display: flex; flex-direction: row;">
     <div>
