@@ -132,6 +132,8 @@ import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.*;
 import org.labkey.api.view.template.ClientDependency;
+import org.labkey.api.wiki.WikiRendererType;
+import org.labkey.api.wiki.WikiRenderingService;
 import org.labkey.panoramapublic.catalog.CatalogEntrySettings;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentParent;
 import org.labkey.panoramapublic.chromlib.ChromLibStateManager;
@@ -156,6 +158,7 @@ import org.labkey.panoramapublic.model.validation.PxStatus;
 import org.labkey.panoramapublic.model.validation.Status;
 import org.labkey.panoramapublic.pipeline.AssignSubmitterPermissionJob;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
+import org.labkey.panoramapublic.pipeline.PostSupportMessagePipelineJob;
 import org.labkey.panoramapublic.pipeline.PxDataValidationPipelineJob;
 import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ChemElement;
@@ -299,6 +302,7 @@ public class PanoramaPublicController extends SpringActionController
             view.addView(getDataCiteCredentialsLink());
             view.addView(getPanoramaPublicCatalogSettingsLink());
             view.addView(getAssignSubmitterPermissionsLink());
+            view.addView(getPostSupportMessageLink());
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Panorama Public Settings");
             return view;
@@ -330,6 +334,13 @@ public class PanoramaPublicController extends SpringActionController
             ActionURL url = new ActionURL(AssignSubmitterPermissionAction.class, getContainer());
             return new HtmlView(DIV(at(style, "margin-top:20px;"),
                     new Link.LinkBuilder("Assign PanoramaPublicSubmitterRole").href(url).build()));
+        }
+
+        private ModelAndView getPostSupportMessageLink()
+        {
+            ActionURL url = new ActionURL(PanoramaPublicMessageAction.class, JournalManager.getJournals().get(0).getProject());
+            return new HtmlView(DIV(at(style, "margin-top:20px;"),
+                    new Link.LinkBuilder("Post to Panorama Public Support Messages").href(url).build()));
         }
 
         @Override
@@ -9209,6 +9220,223 @@ public class PanoramaPublicController extends SpringActionController
             view.setShowInsertNewButton(false);
             view.disableContainerFilterSelection();
             return view;
+        }
+    }
+
+    @RequiresSiteAdmin
+    public class PanoramaPublicMessageAction extends SimpleViewAction<PanoramaPublicMessageForm>
+    {
+        @Override
+        public ModelAndView getView(PanoramaPublicMessageForm form, BindException errors) throws Exception
+        {
+            QuerySettings qSettings = new QuerySettings(getViewContext(), "ExperimentAnnotationsTable", "ExperimentAnnotations");
+            qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
+//            if (!reshow)
+//            {
+//                List<FieldKey> columns = new ArrayList<>();
+//                columns.add(FieldKey.fromParts("Share"));
+//                columns.add(FieldKey.fromParts("Title"));
+//                columns.add(FieldKey.fromParts("Public"));
+//                columns.add(FieldKey.fromParts("Submitter"));
+//                columns.add(FieldKey.fromParts("LabHead"));
+//                columns.add(FieldKey.fromParts("ShortUrl"));
+//                columns.add(FieldKey.fromParts("SupportMessage"));
+//                columns.add(FieldKey.fromParts("SupportMessage", "Modified"));
+//                qSettings.setFieldKeys(columns);
+//            }
+            QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, errors);
+            tableView.setTitle("Panorama Public Experiments");
+
+            String dataRegionSelectionKey = DataRegionSelection.getSelectionKey(PanoramaPublicSchema.SCHEMA_NAME,
+                    "ExperimentAnnotations", null, tableView.getDataRegionName());
+            // form.setDataRegionSelectionKey(DataRegionSelection.getSelectionKeyFromRequest(getViewContext()));
+            form.setDataRegionSelectionKey(dataRegionSelectionKey);
+            form.setDataRegionName(tableView.getDataRegionName());
+
+            JspView<PanoramaPublicMessageForm> jspView = new JspView<>("/org/labkey/panoramapublic/view/postMessageForm.jsp", form, errors);
+            return new VBox(jspView, tableView);
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Panorama Public Message to Submitter");
+        }
+    }
+
+    @RequiresSiteAdmin
+    public class PostPanoramaPublicMessageAction extends ConfirmAction<PanoramaPublicMessageForm>
+    {
+        @Override
+        public void validateCommand(PanoramaPublicMessageForm form, Errors errors)
+        {
+            // Set<Integer> selectedRowIds = DataRegionSelection.getSelectedIntegers(getViewContext(), form.getDataRegionSelectionKey(), false);
+            List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
+            if (selectedExperimentIds.isEmpty())
+            {
+                errors.reject(ERROR_MSG, "Please select at least one experiment");
+            }
+            if (StringUtils.isEmpty(form.getMessageTitle()))
+            {
+                errors.reject(ERROR_MSG, "Please enter a prefix for the message title");
+            }
+            if (StringUtils.isEmpty(form.getMessage()))
+            {
+                errors.reject(ERROR_MSG, "Please enter a message");
+            }
+            else
+            {
+                List<String> validationErrors = new ArrayList<>();
+                PageFlowUtil.validateHtml(form.getFormattedHtmlMessage().renderToString(), validationErrors,
+                        false); // set scriptAsErrors to false otherwise having a <script> element in the message does not return errors.
+                if (!validationErrors.isEmpty())
+                {
+                    errors.reject(ERROR_MSG, "Message could not be validated due to the following errors:");
+                    for (String err : validationErrors)
+                    {
+                        errors.reject(ERROR_MSG, err);
+                    }
+                }
+            }
+        }
+
+        @Override
+        public ModelAndView getConfirmView(PanoramaPublicMessageForm form, BindException errors)
+        {
+            // Set<Integer> selectedRowIds = DataRegionSelection.getSelectedIntegers(getViewContext(), form.getDataRegionSelectionKey(), false);
+            List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
+            List<ExperimentAnnotations> experiments = new ArrayList<>();
+            for (Integer selectedId: selectedExperimentIds)
+            {
+                experiments.add(ExperimentAnnotationsManager.get(selectedId));
+                // TODO: What happens when we add to errors here?
+            }
+            form.setExperiments(experiments);
+            JspView<PanoramaPublicMessageForm> jspView = new JspView<>("/org/labkey/panoramapublic/view/confirmPostMessage.jsp", form, errors);
+            return new VBox(jspView);
+        }
+
+        @Override
+        public boolean handlePost(PanoramaPublicMessageForm form, BindException errors) throws Exception
+        {
+//            Set<Integer> selectedIds = new HashSet<>();
+//            selectedIds.addAll(DataRegionSelection.getSelected(getViewContext(), form.getDataRegionSelectionKey(), false)
+//                    .stream().map(Integer::parseInt).collect(Collectors.toSet()));
+
+            // Set<Integer> selectedExperimentIds = DataRegionSelection.getSelectedIntegers(getViewContext(), form.getDataRegionSelectionKey(), false);
+            List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
+            if (errors.hasErrors())
+            {
+                return false;
+            }
+
+            PipelineJob job = new PostSupportMessagePipelineJob(getViewBackgroundInfo(), PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()),
+                    selectedExperimentIds, form.getMessage(), form.getMessageTitle(), form.getTestMode());
+            PipelineService.get().queueJob(job);
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(PanoramaPublicMessageForm form)
+        {
+            return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
+        }
+    }
+
+    public static class PanoramaPublicMessageForm implements DataRegionSelection.DataSelectionKeyForm
+    {
+        private String _messageTitle = null;
+        private String _message;
+        private boolean _testMode;
+        private String _selectedIds;
+        private String _dataRegionSelectionKey = null;
+        private String _dataRegionName = null;
+        private List<ExperimentAnnotations> _experiments = null;
+
+        public String getMessageTitle()
+        {
+            return _messageTitle;
+        }
+
+        public void setMessageTitle(String messageTitle)
+        {
+            _messageTitle = messageTitle;
+        }
+
+        public String getMessage()
+        {
+            return _message;
+        }
+
+        public void setMessage(String message)
+        {
+            _message = message;
+        }
+
+        public HtmlString getFormattedHtmlMessage()
+        {
+            return WikiRenderingService.get().getFormattedHtml(WikiRendererType.MARKDOWN, getMessage());
+        }
+
+        public boolean getTestMode()
+        {
+            return _testMode;
+        }
+
+        public void setTestMode(boolean testMode)
+        {
+            _testMode = testMode;
+        }
+
+        public String getSelectedIds()
+        {
+            return _selectedIds;
+        }
+
+        public List<Integer> getSelectedExperimentIds()
+        {
+            if (_selectedIds == null)
+            {
+                return Collections.emptyList();
+            }
+            return Arrays.stream(StringUtils.split(_selectedIds, ",")).map(Integer::parseInt).collect(Collectors.toList());
+        }
+
+        public void setSelectedIds(String selectedIds)
+        {
+            _selectedIds = selectedIds;
+        }
+
+        @Override
+        public String getDataRegionSelectionKey()
+        {
+            return _dataRegionSelectionKey;
+        }
+
+        @Override
+        public void setDataRegionSelectionKey(String key)
+        {
+            _dataRegionSelectionKey = key;
+        }
+
+        public String getDataRegionName()
+        {
+            return _dataRegionName;
+        }
+
+        public void setDataRegionName(String dataRegionName)
+        {
+            _dataRegionName = dataRegionName;
+        }
+
+        public List<ExperimentAnnotations> getExperiments()
+        {
+            return _experiments;
+        }
+
+        public void setExperiments(List<ExperimentAnnotations> experiments)
+        {
+            _experiments = experiments;
         }
     }
 

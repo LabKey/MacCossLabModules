@@ -23,6 +23,7 @@ import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.query.JournalManager;
@@ -263,6 +264,18 @@ public class PanoramaPublicNotification
             je.setAnnouncementId(announcement.getRowId());
             SubmissionManager.updateJournalExperiment(je, messagePoster);
         }
+    }
+
+    public static void postNotification(Journal journal, JournalSubmission js, String text, User messagePoster,
+                                        @NotNull String messageTitlePrefix, @NotNull StatusOption status)
+    {
+        StringBuilder messageBody = new StringBuilder();
+        User submitter = UserManager.getUser(js.getLatestSubmission().getCreatedBy());
+        messageBody.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
+        messageBody.append(text);
+        messageBody.append(NL2).append("Best regards,");
+        messageBody.append(NL).append(getUserName(messagePoster));
+        postNotification(journal, js.getJournalExperiment(), messageBody.toString(), messagePoster, messageTitlePrefix, status, null);
     }
 
     private static void appendSubmissionDetails(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, Submission submission,
