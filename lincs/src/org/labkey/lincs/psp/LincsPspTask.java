@@ -3,6 +3,7 @@ package org.labkey.lincs.psp;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
+import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
@@ -84,7 +85,8 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
                 pspJob.setPipelineJobId(pipelineJobId);
             }
 
-            String suffix = LincsModule.PSP_JOB_NAME_SUFFIX_PROPERTY.getEffectiveValue(container);
+            String suffix = ModuleLoader.getInstance().getModule(LincsModule.class).PSP_JOB_NAME_SUFFIX_PROPERTY
+                    .getEffectiveValue(container);
 
             pspJob.setPspJobName(LincsPspUtil.getJobName(run, endpoint, suffix, log));
             log.info("PSP job name: " + pspJob.getPspJobName());
