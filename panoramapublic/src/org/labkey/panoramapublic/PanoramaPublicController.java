@@ -156,7 +156,6 @@ import org.labkey.panoramapublic.model.speclib.SpectralLibrary;
 import org.labkey.panoramapublic.model.validation.DataValidation;
 import org.labkey.panoramapublic.model.validation.PxStatus;
 import org.labkey.panoramapublic.model.validation.Status;
-import org.labkey.panoramapublic.pipeline.AssignSubmitterPermissionJob;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
 import org.labkey.panoramapublic.pipeline.PostSupportMessagePipelineJob;
 import org.labkey.panoramapublic.pipeline.PxDataValidationPipelineJob;
@@ -241,7 +240,6 @@ import static org.labkey.api.util.DOM.Attribute.style;
 import static org.labkey.api.util.DOM.Attribute.type;
 import static org.labkey.api.util.DOM.Attribute.valign;
 import static org.labkey.api.util.DOM.Attribute.value;
-import static org.labkey.api.util.DOM.LK.CHECKBOX;
 import static org.labkey.api.util.DOM.LK.ERRORS;
 import static org.labkey.api.util.DOM.LK.FORM;
 import static org.labkey.panoramapublic.proteomexchange.NcbiUtils.PUBMED_ID;
@@ -301,7 +299,6 @@ public class PanoramaPublicController extends SpringActionController
             view.addView(getPXCredentialsLink());
             view.addView(getDataCiteCredentialsLink());
             view.addView(getPanoramaPublicCatalogSettingsLink());
-            view.addView(getAssignSubmitterPermissionsLink());
             view.addView(getPostSupportMessageLink());
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Panorama Public Settings");
@@ -327,13 +324,6 @@ public class PanoramaPublicController extends SpringActionController
             ActionURL url = new ActionURL(ManageCatalogEntrySettings.class, getContainer());
             return new HtmlView(DIV(at(style, "margin-top:20px;"),
                     new Link.LinkBuilder("Panorama Public Catalog Settings").href(url).build()));
-        }
-        
-        private ModelAndView getAssignSubmitterPermissionsLink()
-        {
-            ActionURL url = new ActionURL(AssignSubmitterPermissionAction.class, getContainer());
-            return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                    new Link.LinkBuilder("Assign PanoramaPublicSubmitterRole").href(url).build()));
         }
 
         private ModelAndView getPostSupportMessageLink()
@@ -9439,101 +9429,6 @@ public class PanoramaPublicController extends SpringActionController
             _experiments = experiments;
         }
     }
-
-    // ------------------------------------------------------------------------
-    // BEGIN Assign PanoramaPublicSubmitterRole to data submitters and lab heads
-    // ------------------------------------------------------------------------
-    @RequiresSiteAdmin
-    public class AssignSubmitterPermissionAction extends FormViewAction<AssignSubmitterPermissionForm>
-    {
-        @Override
-        public void validateCommand(AssignSubmitterPermissionForm target, Errors errors) {}
-
-        @Override
-        public ModelAndView getView(AssignSubmitterPermissionForm form, boolean reshow, BindException errors)
-        {
-            return new HtmlView("Assign PanoramaPublicSubmitterRole",
-                    DIV(LK.ERRORS(errors),
-                            "Assign PanoramaPublicSubmitterRole to data submitters and lab heads",
-                            FORM(
-                                    at(method, "POST"),
-                                    TABLE(
-                                    TR(TD(at(style, "padding-right:10px;"), LABEL("Dry Run: ")),
-                                            TD(CHECKBOX(at(name, "dryRun", checked, form.isDryRun())))),
-                                    TR(TD(at(style, "padding-right:10px;"), LABEL("Project: ")),
-                                            TD(INPUT(at(name, "project", value, form.getProject()))))
-                                    ),
-                                    DIV(at(style, "margin-top:10px"),
-                                        new Button.ButtonBuilder("Start").submit(true).style("margin-right:10px").build(),
-                                        new Button.ButtonBuilder("Cancel").href(new ActionURL(PanoramaPublicAdminViewAction.class, getContainer())).build()
-                                    )
-                            )
-                    ));
-        }
-
-        @Override
-        public boolean handlePost(AssignSubmitterPermissionForm form, BindException errors) throws Exception
-        {
-            if (StringUtils.isEmpty(form.getProject()))
-            {
-                errors.reject(ERROR_MSG, "Please enter the name of a project");
-                return false;
-            }
-            Container container = ContainerManager.getForPath(form.getProject());
-            if (container == null)
-            {
-                errors.reject(ERROR_MSG, "Cannot find project " + form.getProject());
-                return false;
-            }
-
-            PipelineJob job = new AssignSubmitterPermissionJob(getViewBackgroundInfo(), PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()),
-                    form.isDryRun(), container);
-            PipelineService.get().queueJob(job);
-            return true;
-        }
-
-        @Override
-        public URLHelper getSuccessURL(AssignSubmitterPermissionForm form)
-        {
-            return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
-        }
-
-        @Override
-        public void addNavTrail(NavTree root)
-        {
-            addPanoramaPublicAdminConsoleNav(root, getContainer());
-            root.addChild("Assign PanoramaPublicSubmitterRole");
-        }
-    }
-
-    private static class AssignSubmitterPermissionForm
-    {
-        private boolean _dryRun;
-        private String _project;
-
-        public boolean isDryRun()
-        {
-            return _dryRun;
-        }
-
-        public void setDryRun(boolean dryRun)
-        {
-            _dryRun = dryRun;
-        }
-
-        public String getProject()
-        {
-            return _project;
-        }
-
-        public void setProject(String project)
-        {
-            _project = project;
-        }
-    }
-    // ------------------------------------------------------------------------
-    // END Assign PanoramaPublicSubmitterRole to data submitters and lab heads
-    // ------------------------------------------------------------------------
 
     public static ActionURL getEditExperimentDetailsURL(Container c, int experimentAnnotationsId, URLHelper returnURL)
     {
