@@ -5,25 +5,31 @@
 <%@ page import="org.labkey.api.util.StringUtilsLabKey" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
-    JspView<PanoramaPublicController.PanoramaPublicMessageForm> view = (JspView<PanoramaPublicController.PanoramaPublicMessageForm>) HttpView.currentView();
-    var form = view.getModelBean();
-%>
+    JspView<PanoramaPublicController.MessageExampleBean> view = (JspView<PanoramaPublicController.MessageExampleBean>) HttpView.currentView();
+    var messageExample = view.getModelBean();
+    var form = messageExample.getForm();
 
+%>
+<labkey:errors/>
 <div>
-    This following message will be posted to the support message threads of the selected experiments:
+    This following message will be posted to the support message threads of the selected experiments.  The message below is an example.
 </div>
 <table class="lk-fields-table">
     <tr>
         <td class="labkey-form-label" style="text-align:center;">Test Mode:</td>
-        <td><%=h(form.getTestMode() ? "Yes" : "No")%></td>
+        <td><%=h(form.getTestMode() ? "Yes (message will NOT be posted)" : "No")%></td>
     </tr>
     <tr>
-        <td class="labkey-form-label" style="text-align:center;">Message Title (prefix):</td>
-        <td><%=h(form.getMessageTitle())%></td>
+        <td class="labkey-form-label" style="text-align:center;">Message Title:</td>
+        <td><%=h(messageExample.getTitle())%></td>
+    </tr>
+    <tr>
+        <td class="labkey-form-label" style="text-align:center;">Message (Markdown):</td>
+        <td><%=messageExample.getMarkdownMessage()%></td>
     </tr>
     <tr>
         <td class="labkey-form-label" style="text-align:center;">Message:</td>
-        <td><%=form.getFormattedHtmlMessage()%></td>
+        <td><%=h(messageExample.getMessage())%></td>
     </tr>
 </table>
 <div style="margin-top:20px;">

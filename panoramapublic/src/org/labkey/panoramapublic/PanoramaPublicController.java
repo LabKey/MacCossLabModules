@@ -38,6 +38,8 @@ import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleStreamAction;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.announcements.api.Announcement;
+import org.labkey.api.announcements.api.AnnouncementService;
 import org.labkey.api.attachments.Attachment;
 import org.labkey.api.attachments.AttachmentFile;
 import org.labkey.api.attachments.AttachmentForm;
@@ -157,7 +159,7 @@ import org.labkey.panoramapublic.model.validation.DataValidation;
 import org.labkey.panoramapublic.model.validation.PxStatus;
 import org.labkey.panoramapublic.model.validation.Status;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
-import org.labkey.panoramapublic.pipeline.PostSupportMessagePipelineJob;
+import org.labkey.panoramapublic.pipeline.PostPanoramaPublicMessageJob;
 import org.labkey.panoramapublic.pipeline.PxDataValidationPipelineJob;
 import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ChemElement;
@@ -328,9 +330,14 @@ public class PanoramaPublicController extends SpringActionController
 
         private ModelAndView getPostSupportMessageLink()
         {
-            ActionURL url = new ActionURL(PanoramaPublicMessageAction.class, JournalManager.getJournals().get(0).getProject());
-            return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                    new Link.LinkBuilder("Post to Panorama Public Support Messages").href(url).build()));
+            Journal panoramaPublic = JournalManager.getJournal(JournalManager.PANORAMA_PUBLIC);
+            if (panoramaPublic != null)
+            {
+                ActionURL url = new ActionURL(CreatePanoramaPublicMessageAction.class, panoramaPublic.getProject());
+                return new HtmlView(DIV(at(style, "margin-top:20px;"),
+                        new Link.LinkBuilder("Post to Panorama Public Support Messages").href(url).build()));
+            }
+            return null;
         }
 
         @Override
@@ -9214,26 +9221,13 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class PanoramaPublicMessageAction extends SimpleViewAction<PanoramaPublicMessageForm>
+    public class CreatePanoramaPublicMessageAction extends SimpleViewAction<PanoramaPublicMessageForm>
     {
         @Override
         public ModelAndView getView(PanoramaPublicMessageForm form, BindException errors) throws Exception
         {
             QuerySettings qSettings = new QuerySettings(getViewContext(), "ExperimentAnnotationsTable", "ExperimentAnnotations");
             qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
-//            if (!reshow)
-//            {
-//                List<FieldKey> columns = new ArrayList<>();
-//                columns.add(FieldKey.fromParts("Share"));
-//                columns.add(FieldKey.fromParts("Title"));
-//                columns.add(FieldKey.fromParts("Public"));
-//                columns.add(FieldKey.fromParts("Submitter"));
-//                columns.add(FieldKey.fromParts("LabHead"));
-//                columns.add(FieldKey.fromParts("ShortUrl"));
-//                columns.add(FieldKey.fromParts("SupportMessage"));
-//                columns.add(FieldKey.fromParts("SupportMessage", "Modified"));
-//                qSettings.setFieldKeys(columns);
-//            }
             QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, errors);
             tableView.setTitle("Panorama Public Experiments");
 
@@ -9243,14 +9237,14 @@ public class PanoramaPublicController extends SpringActionController
             form.setDataRegionSelectionKey(dataRegionSelectionKey);
             form.setDataRegionName(tableView.getDataRegionName());
 
-            JspView<PanoramaPublicMessageForm> jspView = new JspView<>("/org/labkey/panoramapublic/view/postMessageForm.jsp", form, errors);
+            JspView<PanoramaPublicMessageForm> jspView = new JspView<>("/org/labkey/panoramapublic/view/createMessageForm.jsp", form, errors);
             return new VBox(jspView, tableView);
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Panorama Public Message to Submitter");
+            root.addChild("Message for Panorama Public Submitters");
         }
     }
 
@@ -9277,8 +9271,9 @@ public class PanoramaPublicController extends SpringActionController
             else
             {
                 List<String> validationErrors = new ArrayList<>();
-                PageFlowUtil.validateHtml(form.getFormattedHtmlMessage().renderToString(), validationErrors,
-                        false); // set scriptAsErrors to false otherwise having a <script> element in the message does not return errors.
+
+                HtmlString formattedMessage = WikiRenderingService.get().getFormattedHtml(WikiRendererType.MARKDOWN, form.getMessage());
+                PageFlowUtil.validateHtml(formattedMessage.renderToString(), validationErrors, false);
                 if (!validationErrors.isEmpty())
                 {
                     errors.reject(ERROR_MSG, "Message could not be validated due to the following errors:");
@@ -9293,34 +9288,73 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getConfirmView(PanoramaPublicMessageForm form, BindException errors)
         {
-            // Set<Integer> selectedRowIds = DataRegionSelection.getSelectedIntegers(getViewContext(), form.getDataRegionSelectionKey(), false);
             List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
             List<ExperimentAnnotations> experiments = new ArrayList<>();
             for (Integer selectedId: selectedExperimentIds)
             {
                 experiments.add(ExperimentAnnotationsManager.get(selectedId));
-                // TODO: What happens when we add to errors here?
             }
             form.setExperiments(experiments);
-            JspView<PanoramaPublicMessageForm> jspView = new JspView<>("/org/labkey/panoramapublic/view/confirmPostMessage.jsp", form, errors);
+
+            MessageExampleBean exampleBean = createExampleMessage(selectedExperimentIds, form, errors);
+            if (exampleBean == null)
+            {
+                errors.reject(ERROR_MSG, "Could not create an example message from the selected experiment Ids");
+                return new SimpleErrorView(errors, true);
+            }
+
+            JspView<MessageExampleBean> jspView = new JspView<>("/org/labkey/panoramapublic/view/confirmPostMessage.jsp", exampleBean, errors);
             return new VBox(jspView);
+        }
+
+        private MessageExampleBean createExampleMessage(List<Integer> experimentIds, PanoramaPublicMessageForm form, BindException errors)
+        {
+            Journal journal = JournalManager.getJournal(JournalManager.PANORAMA_PUBLIC);
+            Container announcementsContainer = journal.getSupportContainer();
+            AnnouncementService announcementSvc = AnnouncementService.get();
+
+            for (Integer experimentId: experimentIds)
+            {
+                ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentId);
+                JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(expAnnotations);
+                if (submission == null || submission.getLatestSubmission() == null)
+                {
+                    continue;
+                }
+                Announcement announcement = announcementSvc.getAnnouncement(announcementsContainer, getUser(), submission.getAnnouncementId());
+                if (announcement == null)
+                {
+                    continue; // old data before we started posting submission requests to a message board
+                }
+
+                String title = !StringUtils.isBlank(form.getMessageTitle()) ? form.getMessageTitle() + " " + expAnnotations.getShortUrl().renderShortURL() : announcement.getTitle();
+                String message = PanoramaPublicNotification.replaceLinkPlaceholders(form.getMessage(), expAnnotations, announcement, announcementsContainer);
+                StringBuilder messageBody = PanoramaPublicNotification.getFullMessageBody(submission, message, getUser());
+                if (messageBody.toString().contains(PanoramaPublicNotification.PLACEHOLDER))
+                {
+                    errors.reject(ERROR_MSG, "Some placeholders were not substituted");
+                }
+                MessageExampleBean example = new MessageExampleBean();
+                example.setForm(form);
+                example.setExperimentAnnotations(expAnnotations);
+                example.setTitle(title);
+                example.setMessage(messageBody.toString());
+                example.setMarkdownMessage(WikiRenderingService.get().getFormattedHtml(WikiRendererType.MARKDOWN, messageBody.toString()));
+                return example;
+            }
+            return null;
         }
 
         @Override
         public boolean handlePost(PanoramaPublicMessageForm form, BindException errors) throws Exception
         {
-//            Set<Integer> selectedIds = new HashSet<>();
-//            selectedIds.addAll(DataRegionSelection.getSelected(getViewContext(), form.getDataRegionSelectionKey(), false)
-//                    .stream().map(Integer::parseInt).collect(Collectors.toSet()));
-
-            // Set<Integer> selectedExperimentIds = DataRegionSelection.getSelectedIntegers(getViewContext(), form.getDataRegionSelectionKey(), false);
             List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
             if (errors.hasErrors())
             {
                 return false;
             }
 
-            PipelineJob job = new PostSupportMessagePipelineJob(getViewBackgroundInfo(), PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()),
+            PipelineJob job = new PostPanoramaPublicMessageJob(getViewBackgroundInfo(), PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()),
                     selectedExperimentIds, form.getMessage(), form.getMessageTitle(), form.getTestMode());
             PipelineService.get().queueJob(job);
             return true;
@@ -9330,6 +9364,66 @@ public class PanoramaPublicController extends SpringActionController
         public URLHelper getSuccessURL(PanoramaPublicMessageForm form)
         {
             return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
+        }
+    }
+
+    public static class MessageExampleBean
+    {
+        private ExperimentAnnotations _experimentAnnotations;
+        private String _title;
+        private HtmlString _markdownMessage;
+        private String _message;
+
+        private PanoramaPublicMessageForm _form;
+
+        public ExperimentAnnotations getExperimentAnnotations()
+        {
+            return _experimentAnnotations;
+        }
+
+        public void setExperimentAnnotations(ExperimentAnnotations experimentAnnotations)
+        {
+            _experimentAnnotations = experimentAnnotations;
+        }
+
+        public String getTitle()
+        {
+            return _title;
+        }
+
+        public void setTitle(String title)
+        {
+            _title = title;
+        }
+
+        public HtmlString getMarkdownMessage()
+        {
+            return _markdownMessage;
+        }
+
+        public void setMarkdownMessage(HtmlString markdownMessage)
+        {
+            _markdownMessage = markdownMessage;
+        }
+
+        public String getMessage()
+        {
+            return _message;
+        }
+
+        public void setMessage(String message)
+        {
+            _message = message;
+        }
+
+        public PanoramaPublicMessageForm getForm()
+        {
+            return _form;
+        }
+
+        public void setForm(PanoramaPublicMessageForm form)
+        {
+            _form = form;
         }
     }
 
@@ -9361,11 +9455,6 @@ public class PanoramaPublicController extends SpringActionController
         public void setMessage(String message)
         {
             _message = message;
-        }
-
-        public HtmlString getFormattedHtmlMessage()
-        {
-            return WikiRenderingService.get().getFormattedHtml(WikiRendererType.MARKDOWN, getMessage());
         }
 
         public boolean getTestMode()

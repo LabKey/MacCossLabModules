@@ -1,7 +1,6 @@
 package org.labkey.panoramapublic.pipeline;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.poi.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.announcements.DiscussionService;
 import org.labkey.api.announcements.api.Announcement;
@@ -27,7 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class PostSupportMessagePipelineJob extends PipelineJob
+public class PostPanoramaPublicMessageJob extends PipelineJob
 {
     private String _titlePrefix;
     private String _message;
@@ -35,12 +34,12 @@ public class PostSupportMessagePipelineJob extends PipelineJob
     private boolean _test;
 
     // For serialization
-    protected PostSupportMessagePipelineJob()
+    protected PostPanoramaPublicMessageJob()
     {
     }
 
-    public PostSupportMessagePipelineJob(ViewBackgroundInfo info, @NotNull PipeRoot root, List<Integer> experimentAnnotationsIds, String message,
-                                         String titlePrefix, boolean test)
+    public PostPanoramaPublicMessageJob(ViewBackgroundInfo info, @NotNull PipeRoot root, List<Integer> experimentAnnotationsIds, String message,
+                                        String titlePrefix, boolean test)
     {
         super("Panorama Public", info, root);
         setLogFile(root.getRootNioPath().resolve(FileUtil.makeFileNameWithTimestamp("PanoramaPublic-post-to-message-thread", "log")));
@@ -77,7 +76,7 @@ public class PostSupportMessagePipelineJob extends PipelineJob
         int done = 0;
 
         AnnouncementService announcementSvc = AnnouncementService.get();
-        Journal journal = JournalManager.getJournal("Panorama Public");
+        Journal journal = JournalManager.getJournal(JournalManager.PANORAMA_PUBLIC);
         Container announcementsContainer = journal.getSupportContainer();
 
         List<Integer> experimentNotFound = new ArrayList<>();
@@ -104,7 +103,7 @@ public class PostSupportMessagePipelineJob extends PipelineJob
                     continue;
                 }
 
-                Announcement announcement = announcementSvc.getLatestPost(announcementsContainer, getUser(), submission.getAnnouncementId());
+                Announcement announcement = announcementSvc.getAnnouncement(announcementsContainer, getUser(), submission.getAnnouncementId());
                 if (announcement == null)
                 {
                     getLogger().error("Could not find message thread for experiment Id: " + experimentAnnotationsId
@@ -113,15 +112,17 @@ public class PostSupportMessagePipelineJob extends PipelineJob
                     continue;
                 }
 
-                String titlePrefix = !StringUtil.isBlank(_titlePrefix) ? _titlePrefix : announcement.getTitle();
+                String title = !StringUtils.isBlank(_titlePrefix) ? _titlePrefix + " " + expAnnotations.getShortUrl().renderShortURL() : announcement.getTitle();
                 if (!_test)
                 {
-                    PanoramaPublicNotification.postNotification(journal, submission, _message, getUser(),
-                            titlePrefix, DiscussionService.StatusOption.Closed);
+                    String substituted = PanoramaPublicNotification.replaceLinkPlaceholders(_message, expAnnotations, announcement, announcementsContainer);
+
+                    PanoramaPublicNotification.postNotification(journal, submission, substituted, getUser(),
+                            title, DiscussionService.StatusOption.Closed);
                 }
 
                 done++;
-                getLogger().info(String.format("Posted to message thread for experiment Id %d.  Done: %d", experimentAnnotationsId, done));
+                getLogger().info(String.format("%s to message thread for experiment Id %d.  Done: %d", _test ? "Would post" : "Posted", experimentAnnotationsId, done));
 
             }
             transaction.commit();

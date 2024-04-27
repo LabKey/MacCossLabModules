@@ -228,12 +228,11 @@ public class PanoramaPublicNotification
         postNotification(journal, je, messageBody.toString(), journalAdmin, messageTitlePrefix, status, getNotifyList(experimentAnnotations, user));
     }
 
-    private static void postNotification(Journal journal, JournalExperiment je, String messageBody, User messagePoster,
-                                        @NotNull String messageTitlePrefix, @NotNull StatusOption status, @Nullable List<User> notifyUsers)
+    private static void postNotificationFullTitle(Journal journal, JournalExperiment je, String messageBody, User messagePoster,
+                                         @NotNull String messageTitle, @NotNull StatusOption status, @Nullable List<User> notifyUsers)
     {
         AnnouncementService svc = AnnouncementService.get();
         Container supportContainer = journal.getSupportContainer();
-        String messageTitle = messageTitlePrefix +" - " + je.getShortAccessUrl().renderShortURL();
 
         Set<User> combinedNotifyUserIds = new HashSet<>();
         if (notifyUsers != null)
@@ -265,9 +264,22 @@ public class PanoramaPublicNotification
             SubmissionManager.updateJournalExperiment(je, messagePoster);
         }
     }
+    private static void postNotification(Journal journal, JournalExperiment je, String messageBody, User messagePoster,
+                                        @NotNull String messageTitlePrefix, @NotNull StatusOption status, @Nullable List<User> notifyUsers)
+    {
+        String messageTitle = messageTitlePrefix +" - " + je.getShortAccessUrl().renderShortURL();
+        postNotificationFullTitle(journal, je, messageBody, messagePoster, messageTitle, status, notifyUsers);
+    }
 
     public static void postNotification(Journal journal, JournalSubmission js, String text, User messagePoster,
-                                        @NotNull String messageTitlePrefix, @NotNull StatusOption status)
+                                        @NotNull String messageTitle, @NotNull StatusOption status)
+    {
+        StringBuilder messageBody = getFullMessageBody(js, text, messagePoster);
+        postNotificationFullTitle(journal, js.getJournalExperiment(), messageBody.toString(), messagePoster, messageTitle, status, null);
+    }
+
+    @NotNull
+    public static StringBuilder getFullMessageBody(JournalSubmission js, String text, User messagePoster)
     {
         StringBuilder messageBody = new StringBuilder();
         User submitter = UserManager.getUser(js.getLatestSubmission().getCreatedBy());
@@ -275,7 +287,43 @@ public class PanoramaPublicNotification
         messageBody.append(text);
         messageBody.append(NL2).append("Best regards,");
         messageBody.append(NL).append(getUserName(messagePoster));
-        postNotification(journal, js.getJournalExperiment(), messageBody.toString(), messagePoster, messageTitlePrefix, status, null);
+        return messageBody;
+    }
+
+    public static String PLACEHOLDER = "__PH__";
+    public static String PLACEHOLDER_MESSAGE_THREAD_URL = PLACEHOLDER + "MESSAGE__THREAD__URL__";
+    public static String PLACEHOLDER_RESPOND_TO_MESSAGE_URL = PLACEHOLDER + "RESPOND__TO__MESSAGE__URL__";
+    public static String PLACEHOLDER_MAKE_DATA_PUBLIC_URL = PLACEHOLDER + "MAKE__DATA__PUBLIC__URL__";
+    public static String PLACEHOLDER_SHORT_URL = PLACEHOLDER + "DATA__SHORT__URL__";
+    public static String replaceLinkPlaceholders(@NotNull String text, @NotNull ExperimentAnnotations expAnnotations,
+                                                 @NotNull Announcement announcement, @NotNull Container announcementContainer)
+    {
+        String toReturn = text;
+        if (toReturn.contains(PLACEHOLDER_SHORT_URL))
+        {
+            toReturn = toReturn.replaceAll(PLACEHOLDER_SHORT_URL, expAnnotations.getShortUrl().renderShortURL());
+        }
+        if (toReturn.contains(PLACEHOLDER_MESSAGE_THREAD_URL))
+        {
+            ActionURL viewMessageUrl = new ActionURL("announcements", "thread", announcementContainer)
+                    .addParameter("rowId", announcement.getRowId());
+            toReturn = toReturn.replaceAll(PLACEHOLDER_MESSAGE_THREAD_URL, viewMessageUrl.getLocalURIString());
+        }
+        if (toReturn.contains(PLACEHOLDER_RESPOND_TO_MESSAGE_URL))
+        {
+            ActionURL viewMessageUrl = new ActionURL("announcements", "thread", announcementContainer)
+                    .addParameter("rowId", announcement.getRowId());
+            ActionURL respondToMessageUrl = new ActionURL("announcements", "respond", announcementContainer)
+                    .addParameter("parentId", announcement.getEntityId())
+                    .addReturnURL(viewMessageUrl);
+            toReturn = toReturn.replaceAll(PLACEHOLDER_RESPOND_TO_MESSAGE_URL, respondToMessageUrl.getLocalURIString());
+        }
+        if (toReturn.contains(PLACEHOLDER_MAKE_DATA_PUBLIC_URL))
+        {
+            ActionURL makePublicUrl = expAnnotations != null ? PanoramaPublicController.getMakePublicUrl(expAnnotations.getId(), expAnnotations.getContainer()) : null;
+            toReturn = toReturn.replaceAll(PLACEHOLDER_MAKE_DATA_PUBLIC_URL, makePublicUrl.getLocalURIString());
+        }
+        return toReturn;
     }
 
     private static void appendSubmissionDetails(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, Submission submission,

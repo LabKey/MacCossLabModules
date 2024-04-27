@@ -21,6 +21,7 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.data.DataRegionSelection" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicNotification" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%!
     public void addClientDependencies(ClientDependencies dependencies)
@@ -35,12 +36,12 @@
         const form = document.getElementById("post-message-form");
         let dataRegion = LABKEY.DataRegions['ExperimentAnnotationsTable'];
         let selectedRowIds = dataRegion.getChecked();
-        console.log("Selection count: " + selectedRowIds.length);
+        // console.log("Selection count: " + selectedRowIds.length);
         let selected = "";
         let separator = "";
         for (let i = 0; i < selectedRowIds.length; i++)
         {
-            console.log(selectedRowIds[i]);
+            // console.log(selectedRowIds[i]);
             selected += separator + selectedRowIds[i];
             separator = ",";
         }
@@ -59,8 +60,8 @@
     <div style="margin:15px 0 15px 0;">
         Enter a message that will be posted to the support message threads of the selected experiments submitted to Panorama Public.
         Experiments can be selected in the "Panorama Public Experiments" grid below.
-        <br>
-        Markdown syntax (<a href="https://markdown-it.github.io/">https://markdown-it.github.io</a>) can be used for the message.
+        <br/>
+        Use Markdown syntax (<a href="https://markdown-it.github.io/">https://markdown-it.github.io</a>).
     </div>
     <labkey:form id="post-message-form" action="<%=urlFor(PanoramaPublicController.PostPanoramaPublicMessageAction.class)%>">
         <input type="hidden" name="<%= h(DataRegionSelection.DATA_REGION_SELECTION_KEY) %>" value="<%= h(form.getDataRegionSelectionKey()) %>" />
@@ -90,10 +91,18 @@
                 <td>
                     <textarea name="message" rows="8" cols="60"><%=h(form.getMessage())%></textarea>
                     <br>
-                    Markdown syntax can be used - <a href="https://markdown-it.github.io/">https://markdown-it.github.io</a>
+                    Use Markdown syntax - <a href="https://markdown-it.github.io/">https://markdown-it.github.io</a>
+                    <br/>
+                    <%=h(PanoramaPublicNotification.PLACEHOLDER_SHORT_URL)%> will be replaced with the Short URL for the data.
+                    <br/>
+                    <%=h(PanoramaPublicNotification.PLACEHOLDER_MESSAGE_THREAD_URL)%> will be replaced with a link to the message thread.
+                    <br/>
+                    <%=h(PanoramaPublicNotification.PLACEHOLDER_RESPOND_TO_MESSAGE_URL)%> will be replaced with a link to respond to the message thread.
+                    <br/>
+                    <%=h(PanoramaPublicNotification.PLACEHOLDER_MAKE_DATA_PUBLIC_URL)%> will be replaced with a link to make the data public.
                 </td>
             </tr>
-            <tr><td colspan=2"><%=button("Post Message").onClick("submitForm(); this.form.submit();")%></td></tr>
+            <tr><td colspan=2"><%=button("Post Message").onClick("submitForm();")%></td></tr>
         </table>
         <br>
     </labkey:form>
