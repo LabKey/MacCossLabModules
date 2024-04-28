@@ -9,6 +9,7 @@ import org.labkey.api.data.Container;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
+import org.labkey.api.security.User;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ViewBackgroundInfo;
@@ -82,6 +83,7 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
         List<Integer> experimentNotFound = new ArrayList<>();
         List<Integer> submissionNotFound = new ArrayList<>();
         List<Integer> announcementNotFound = new ArrayList<>();
+        List<Integer> submitterNotFound = new ArrayList<>();
 
         Set<Integer> exptIds = new HashSet<>(_experimentAnnotationsIds);
         try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
@@ -112,13 +114,27 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
                     continue;
                 }
 
+                User submitter = expAnnotations.getSubmitterUser();
+                if (submitter == null)
+                {
+                    getLogger().error("Could not find a submitter user for experiment Id: " + experimentAnnotationsId);
+                    submitterNotFound.add(experimentAnnotationsId);
+                    continue;
+                }
                 String title = !StringUtils.isBlank(_titlePrefix) ? _titlePrefix + " " + expAnnotations.getShortUrl().renderShortURL() : announcement.getTitle();
                 if (!_test)
                 {
                     String substituted = PanoramaPublicNotification.replaceLinkPlaceholders(_message, expAnnotations, announcement, announcementsContainer);
 
-                    PanoramaPublicNotification.postNotification(journal, submission, substituted, getUser(),
-                            title, DiscussionService.StatusOption.Closed);
+                    // Older message threads, pre March 2023, will not have the submitter or lab head on the notify list. Add them.
+                    List<User> notifyList = new ArrayList<>();
+                    notifyList.add(submitter);
+                    if (expAnnotations.getLabHeadUser() != null)
+                    {
+                        notifyList.add(expAnnotations.getLabHeadUser());
+                    }
+                    PanoramaPublicNotification.postNotification(journal, submission.getJournalExperiment(), substituted, submitter, getUser(),
+                            title, DiscussionService.StatusOption.Closed, notifyList);
                 }
 
                 done++;
@@ -139,6 +155,10 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
         if (announcementNotFound.size() > 0)
         {
             getLogger().error("Support message threads were not be found for the following experiment ids: " + StringUtils.join(announcementNotFound, ", "));
+        }
+        if (submitterNotFound.size() > 0)
+        {
+            getLogger().error("Submitter user was not found for the following experiment ids: " + StringUtils.join(submissionNotFound, ", "));
         }
 
         getLogger().info("Done");

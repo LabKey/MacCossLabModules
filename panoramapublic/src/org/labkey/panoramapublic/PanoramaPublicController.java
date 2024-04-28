@@ -6682,6 +6682,8 @@ public class PanoramaPublicController extends SpringActionController
         private final boolean _isPeerReviewed;
         private final DataLicense _license;
 
+        private final String _experimentTitle;
+
         public PublicationDetailsBean(PublicationDetailsForm form, ExperimentAnnotations copiedExperiment)
         {
             _form = form;
@@ -6689,6 +6691,7 @@ public class PanoramaPublicController extends SpringActionController
             _isPeerReviewed = copiedExperiment.isPeerReviewed();
             _accessUrl = copiedExperiment.getShortUrl().renderShortURL();
             _license = copiedExperiment.getDataLicense();
+            _experimentTitle = copiedExperiment.getTitle();
         }
 
         public PublicationDetailsForm getForm()
@@ -6714,6 +6717,11 @@ public class PanoramaPublicController extends SpringActionController
         public DataLicense getLicense()
         {
             return _license;
+        }
+
+        public String getExperimentTitle()
+        {
+            return _experimentTitle;
         }
     }
 
@@ -9233,8 +9241,6 @@ public class PanoramaPublicController extends SpringActionController
 
             String dataRegionSelectionKey = DataRegionSelection.getSelectionKey(PanoramaPublicSchema.SCHEMA_NAME,
                     "ExperimentAnnotations", null, tableView.getDataRegionName());
-            // form.setDataRegionSelectionKey(DataRegionSelection.getSelectionKeyFromRequest(getViewContext()));
-            form.setDataRegionSelectionKey(dataRegionSelectionKey);
             form.setDataRegionName(tableView.getDataRegionName());
 
             JspView<PanoramaPublicMessageForm> jspView = new JspView<>("/org/labkey/panoramapublic/view/createMessageForm.jsp", form, errors);
@@ -9254,7 +9260,6 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void validateCommand(PanoramaPublicMessageForm form, Errors errors)
         {
-            // Set<Integer> selectedRowIds = DataRegionSelection.getSelectedIntegers(getViewContext(), form.getDataRegionSelectionKey(), false);
             List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
             if (selectedExperimentIds.isEmpty())
             {
@@ -9303,8 +9308,7 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors, true);
             }
 
-            JspView<MessageExampleBean> jspView = new JspView<>("/org/labkey/panoramapublic/view/confirmPostMessage.jsp", exampleBean, errors);
-            return new VBox(jspView);
+            return new JspView<>("/org/labkey/panoramapublic/view/confirmPostMessage.jsp", exampleBean, errors);
         }
 
         private MessageExampleBean createExampleMessage(List<Integer> experimentIds, PanoramaPublicMessageForm form, BindException errors)
@@ -9329,7 +9333,7 @@ public class PanoramaPublicController extends SpringActionController
 
                 String title = !StringUtils.isBlank(form.getMessageTitle()) ? form.getMessageTitle() + " " + expAnnotations.getShortUrl().renderShortURL() : announcement.getTitle();
                 String message = PanoramaPublicNotification.replaceLinkPlaceholders(form.getMessage(), expAnnotations, announcement, announcementsContainer);
-                StringBuilder messageBody = PanoramaPublicNotification.getFullMessageBody(submission, message, getUser());
+                StringBuilder messageBody = PanoramaPublicNotification.getFullMessageBody(message, expAnnotations.getSubmitterUser(), getUser());
                 if (messageBody.toString().contains(PanoramaPublicNotification.PLACEHOLDER))
                 {
                     errors.reject(ERROR_MSG, "Some placeholders were not substituted");
@@ -9349,11 +9353,6 @@ public class PanoramaPublicController extends SpringActionController
         public boolean handlePost(PanoramaPublicMessageForm form, BindException errors) throws Exception
         {
             List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
-            if (errors.hasErrors())
-            {
-                return false;
-            }
-
             PipelineJob job = new PostPanoramaPublicMessageJob(getViewBackgroundInfo(), PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()),
                     selectedExperimentIds, form.getMessage(), form.getMessageTitle(), form.getTestMode());
             PipelineService.get().queueJob(job);
@@ -9427,13 +9426,12 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    public static class PanoramaPublicMessageForm implements DataRegionSelection.DataSelectionKeyForm
+    public static class PanoramaPublicMessageForm
     {
         private String _messageTitle = null;
         private String _message;
         private boolean _testMode;
         private String _selectedIds;
-        private String _dataRegionSelectionKey = null;
         private String _dataRegionName = null;
         private List<ExperimentAnnotations> _experiments = null;
 
@@ -9484,18 +9482,6 @@ public class PanoramaPublicController extends SpringActionController
         public void setSelectedIds(String selectedIds)
         {
             _selectedIds = selectedIds;
-        }
-
-        @Override
-        public String getDataRegionSelectionKey()
-        {
-            return _dataRegionSelectionKey;
-        }
-
-        @Override
-        public void setDataRegionSelectionKey(String key)
-        {
-            _dataRegionSelectionKey = key;
         }
 
         public String getDataRegionName()

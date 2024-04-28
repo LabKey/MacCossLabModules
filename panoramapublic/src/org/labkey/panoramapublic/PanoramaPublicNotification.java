@@ -271,19 +271,18 @@ public class PanoramaPublicNotification
         postNotificationFullTitle(journal, je, messageBody, messagePoster, messageTitle, status, notifyUsers);
     }
 
-    public static void postNotification(Journal journal, JournalSubmission js, String text, User messagePoster,
-                                        @NotNull String messageTitle, @NotNull StatusOption status)
+    public static void postNotification(Journal journal, JournalExperiment je, String text, User messageTo, User messagePoster,
+                                        @NotNull String messageTitle, @NotNull StatusOption status, @Nullable List<User> notifyUsers)
     {
-        StringBuilder messageBody = getFullMessageBody(js, text, messagePoster);
-        postNotificationFullTitle(journal, js.getJournalExperiment(), messageBody.toString(), messagePoster, messageTitle, status, null);
+        StringBuilder messageBody = getFullMessageBody(text, messageTo, messagePoster);
+        postNotificationFullTitle(journal, je, messageBody.toString(), messagePoster, messageTitle, status, notifyUsers);
     }
 
     @NotNull
-    public static StringBuilder getFullMessageBody(JournalSubmission js, String text, User messagePoster)
+    public static StringBuilder getFullMessageBody(String text, User messageTo, User messagePoster)
     {
         StringBuilder messageBody = new StringBuilder();
-        User submitter = UserManager.getUser(js.getLatestSubmission().getCreatedBy());
-        messageBody.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
+        messageBody.append("Dear ").append(getUserName(messageTo)).append(",").append(NL2);
         messageBody.append(text);
         messageBody.append(NL2).append("Best regards,");
         messageBody.append(NL).append(getUserName(messagePoster));

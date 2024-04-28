@@ -19,7 +19,6 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
-<%@ page import="org.labkey.api.data.DataRegionSelection" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicNotification" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
@@ -64,7 +63,6 @@
         Use Markdown syntax (<a href="https://markdown-it.github.io/">https://markdown-it.github.io</a>).
     </div>
     <labkey:form id="post-message-form" action="<%=urlFor(PanoramaPublicController.PostPanoramaPublicMessageAction.class)%>">
-        <input type="hidden" name="<%= h(DataRegionSelection.DATA_REGION_SELECTION_KEY) %>" value="<%= h(form.getDataRegionSelectionKey()) %>" />
         <input type="hidden" name="dataRegionName" value="<%= h(form.getDataRegionName()) %>" />
         <input type="hidden" name="selectedIds" id="selectedIdsInput"/>
         <table class="lk-fields-table">
