@@ -9239,8 +9239,6 @@ public class PanoramaPublicController extends SpringActionController
             QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, errors);
             tableView.setTitle("Panorama Public Experiments");
 
-            String dataRegionSelectionKey = DataRegionSelection.getSelectionKey(PanoramaPublicSchema.SCHEMA_NAME,
-                    "ExperimentAnnotations", null, tableView.getDataRegionName());
             form.setDataRegionName(tableView.getDataRegionName());
 
             JspView<PanoramaPublicMessageForm> jspView = new JspView<>("/org/labkey/panoramapublic/view/createMessageForm.jsp", form, errors);
@@ -9331,7 +9329,7 @@ public class PanoramaPublicController extends SpringActionController
                     continue; // old data before we started posting submission requests to a message board
                 }
 
-                String title = !StringUtils.isBlank(form.getMessageTitle()) ? form.getMessageTitle() + " " + expAnnotations.getShortUrl().renderShortURL() : announcement.getTitle();
+                String title = !StringUtils.isBlank(form.getMessageTitle()) ? StringUtils.trim(form.getMessageTitle()) + " " + expAnnotations.getShortUrl().renderShortURL() : announcement.getTitle();
                 String message = PanoramaPublicNotification.replaceLinkPlaceholders(form.getMessage(), expAnnotations, announcement, announcementsContainer);
                 StringBuilder messageBody = PanoramaPublicNotification.getFullMessageBody(message, expAnnotations.getSubmitterUser(), getUser());
                 if (messageBody.toString().contains(PanoramaPublicNotification.PLACEHOLDER))

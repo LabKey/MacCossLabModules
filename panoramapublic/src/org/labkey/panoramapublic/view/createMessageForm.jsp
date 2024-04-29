@@ -19,20 +19,14 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
-<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicNotification" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
-<%!
-    public void addClientDependencies(ClientDependencies dependencies)
-    {
-        dependencies.add("Ext4");
-    }
-%>
+
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
     function submitForm()
     {
-        const form = document.getElementById("post-message-form");
+        const form = document.getElementById("panorama-public-message-form");
         let dataRegion = LABKEY.DataRegions['ExperimentAnnotationsTable'];
         let selectedRowIds = dataRegion.getChecked();
         // console.log("Selection count: " + selectedRowIds.length);
@@ -59,10 +53,8 @@
     <div style="margin:15px 0 15px 0;">
         Enter a message that will be posted to the support message threads of the selected experiments submitted to Panorama Public.
         Experiments can be selected in the "Panorama Public Experiments" grid below.
-        <br/>
-        Use Markdown syntax (<a href="https://markdown-it.github.io/">https://markdown-it.github.io</a>).
     </div>
-    <labkey:form id="post-message-form" action="<%=urlFor(PanoramaPublicController.PostPanoramaPublicMessageAction.class)%>">
+    <labkey:form id="panorama-public-message-form" action="<%=urlFor(PanoramaPublicController.PostPanoramaPublicMessageAction.class)%>">
         <input type="hidden" name="dataRegionName" value="<%= h(form.getDataRegionName()) %>" />
         <input type="hidden" name="selectedIds" id="selectedIdsInput"/>
         <table class="lk-fields-table">
@@ -77,11 +69,11 @@
                 <td>
                     <input type="text" name="messageTitle" size="60" value="<%=h(form.getMessageTitle())%>" />
                     <br>
-                    e.g. "Reviewer Password".  The title of the posted message will be:
+                    e.g. "Change Reviewer Password -".  The title of the posted message will be:
                     <br>
-                    <b>Reviewer Password: https://panoramaweb.org/expt-short-url.url</b>
+                    <b>Change Reviewer Password - https://panoramaweb.org/expt-short-url.url</b>
                     <br>
-                    where "expt-short-url.url" is the short URL assigned to the experiment
+                    where "expt-short-url.url" is the short URL assigned to the experiment.
                 </td>
             </tr>
             <tr>
@@ -91,13 +83,13 @@
                     <br>
                     Use Markdown syntax - <a href="https://markdown-it.github.io/">https://markdown-it.github.io</a>
                     <br/>
-                    <%=h(PanoramaPublicNotification.PLACEHOLDER_SHORT_URL)%> will be replaced with the Short URL for the data.
-                    <br/>
-                    <%=h(PanoramaPublicNotification.PLACEHOLDER_MESSAGE_THREAD_URL)%> will be replaced with a link to the message thread.
-                    <br/>
-                    <%=h(PanoramaPublicNotification.PLACEHOLDER_RESPOND_TO_MESSAGE_URL)%> will be replaced with a link to respond to the message thread.
-                    <br/>
-                    <%=h(PanoramaPublicNotification.PLACEHOLDER_MAKE_DATA_PUBLIC_URL)%> will be replaced with a link to make the data public.
+                    The following link placeholders can be used:
+                    <ul>
+                        <li><%=h(PanoramaPublicNotification.PLACEHOLDER_SHORT_URL)%> will be replaced with the Short URL for the data.</li>
+                        <li><%=h(PanoramaPublicNotification.PLACEHOLDER_MESSAGE_THREAD_URL)%> will be replaced with a link to the message thread.</li>
+                        <li><%=h(PanoramaPublicNotification.PLACEHOLDER_RESPOND_TO_MESSAGE_URL)%> will be replaced with a link to respond to the message thread.</li>
+                        <li><%=h(PanoramaPublicNotification.PLACEHOLDER_MAKE_DATA_PUBLIC_URL)%> will be replaced with a link to make the data public.</li>
+                    </ul>
                 </td>
             </tr>
             <tr><td colspan=2"><%=button("Post Message").onClick("submitForm();")%></td></tr>

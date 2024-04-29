@@ -244,10 +244,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
         if (schema.getUser().hasSiteAdminPermission())
         {
-            // Add a column linking to the message thread for the Panorama Public submission request. This will contain
-            // a link to the message, and is useful only for site admins. We will show this column to site admins only,
-            // even though on PanoramaWeb it is a secure message board where only users on the notify list will be able
-            // to view the message.
+            // For site admins, add a column linking to the message thread for the Panorama Public submission request.
             addColumn(getAnnouncementIdCol());
         }
 
@@ -427,7 +424,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                         ContainerFilter.EVERYTHING) // Announcements are not in the same container. e.g. on PanoramaWeb they are in "/home/support/panorama public requests"
                 .schema("announcement")  // Cannot use CommSchemma.getSchemaName() which returns "comm". This only works if we use "announcement".
                                                     // AnnouncementSchema is not part of the LabKey API.
-                .to("Announcement", // Table name cannot be the plural, "Assignments", returned by CommSchema.getInstance().getTableInfoAnnouncements().getName()
+                .to("Announcement", // Table name cannot be the plural, "Announcements", returned by CommSchema.getInstance().getTableInfoAnnouncements().getName()
                         "RowId", null));
 
         announcementCol.setDisplayColumnFactory(new DisplayColumnFactory()

@@ -34,7 +34,6 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
     private List<Integer> _experimentAnnotationsIds;
     private boolean _test;
 
-    // For serialization
     protected PostPanoramaPublicMessageJob()
     {
     }
@@ -61,18 +60,17 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
         }
         if (_experimentAnnotationsIds == null || _experimentAnnotationsIds.isEmpty())
         {
-            getLogger().error("No experiment Ids were found. Exising...");
+            getLogger().error("No experiment Ids were found. Exiting...");
+            return;
         }
-        if (_experimentAnnotationsIds != null)
-        {
-            postMessage();
-            setStatus(PipelineJob.TaskStatus.complete);
-        }
+        postMessage();
+        setStatus(PipelineJob.TaskStatus.complete);
+
     }
 
     private void postMessage()
     {
-        getLogger().info(String.format("%sPosting to : %d message threads", _test ? "TEST MODE: " : "", _experimentAnnotationsIds.size()));
+        getLogger().info(String.format("%sPosting to: %d message threads", _test ? "TEST MODE: " : "", _experimentAnnotationsIds.size()));
 
         int done = 0;
 
@@ -108,7 +106,7 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
                 Announcement announcement = announcementSvc.getAnnouncement(announcementsContainer, getUser(), submission.getAnnouncementId());
                 if (announcement == null)
                 {
-                    getLogger().error("Could not find message thread for experiment Id: " + experimentAnnotationsId
+                    getLogger().error("Could not find the message thread for experiment Id: " + experimentAnnotationsId
                             + "; announcement Id: " + submission.getAnnouncementId() + " in the folder " + announcementsContainer.getPath());
                     announcementNotFound.add(experimentAnnotationsId);
                     continue;
@@ -121,10 +119,10 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
                     submitterNotFound.add(experimentAnnotationsId);
                     continue;
                 }
-                String title = !StringUtils.isBlank(_titlePrefix) ? _titlePrefix + " " + expAnnotations.getShortUrl().renderShortURL() : announcement.getTitle();
+                String title = !StringUtils.isBlank(_titlePrefix) ? StringUtils.trim(_titlePrefix) + " " + expAnnotations.getShortUrl().renderShortURL() : announcement.getTitle();
                 if (!_test)
                 {
-                    String substituted = PanoramaPublicNotification.replaceLinkPlaceholders(_message, expAnnotations, announcement, announcementsContainer);
+                    String placeholdersSubstituted = PanoramaPublicNotification.replaceLinkPlaceholders(_message, expAnnotations, announcement, announcementsContainer);
 
                     // Older message threads, pre March 2023, will not have the submitter or lab head on the notify list. Add them.
                     List<User> notifyList = new ArrayList<>();
@@ -133,35 +131,34 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
                     {
                         notifyList.add(expAnnotations.getLabHeadUser());
                     }
-                    PanoramaPublicNotification.postNotification(journal, submission.getJournalExperiment(), substituted, submitter, getUser(),
+                    PanoramaPublicNotification.postNotification(journal, submission.getJournalExperiment(), placeholdersSubstituted, submitter, getUser(),
                             title, DiscussionService.StatusOption.Closed, notifyList);
                 }
 
                 done++;
-                getLogger().info(String.format("%s to message thread for experiment Id %d.  Done: %d", _test ? "Would post" : "Posted", experimentAnnotationsId, done));
+                getLogger().info(String.format("%s to message thread for experiment Id %d, announcement Id %d. Done: %d",
+                        _test ? "Would post" : "Posted", experimentAnnotationsId, announcement.getRowId(), done));
 
             }
             transaction.commit();
         }
 
-        if (experimentNotFound.size() > 0)
+        if (!experimentNotFound.isEmpty())
         {
-            getLogger().error("Experiments with the following ids could not be found: " + StringUtils.join(experimentNotFound, ", "));
+            getLogger().error("Experiments with the following Ids could not be found: " + StringUtils.join(experimentNotFound, ", "));
         }
-        if (submissionNotFound.size() > 0)
+        if (!submissionNotFound.isEmpty())
         {
-            getLogger().error("Submission requests could not be found for the following experiment ids: " + StringUtils.join(submissionNotFound, ", "));
+            getLogger().error("Submission requests were not found for the following experiment Ids: " + StringUtils.join(submissionNotFound, ", "));
         }
-        if (announcementNotFound.size() > 0)
+        if (!announcementNotFound.isEmpty())
         {
-            getLogger().error("Support message threads were not be found for the following experiment ids: " + StringUtils.join(announcementNotFound, ", "));
+            getLogger().error("Support message threads were not found for the following experiment Ids: " + StringUtils.join(announcementNotFound, ", "));
         }
-        if (submitterNotFound.size() > 0)
+        if (!submitterNotFound.isEmpty())
         {
-            getLogger().error("Submitter user was not found for the following experiment ids: " + StringUtils.join(submissionNotFound, ", "));
+            getLogger().error("Submitter user was not found for the following experiment Ids: " + StringUtils.join(submissionNotFound, ", "));
         }
-
-        getLogger().info("Done");
     }
 
     @Override

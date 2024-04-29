@@ -23,7 +23,6 @@ import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
-import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.query.JournalManager;
@@ -289,6 +288,23 @@ public class PanoramaPublicNotification
         return messageBody;
     }
 
+    // The following link placeholders can be used in messages posted through the Panorama Public admin console (PostPanoramaPublicMessageAction).
+    // An example message (Markdown format):
+    /*
+    We have updated the password policy on PanoramaWeb. If you have not yet updated the password for the reviewer account assigned to
+    this data (available at __PH__DATA__SHORT__URL__), we ask that you do so as soon as possible.
+
+    **How to Change the Password**: Log in with the reviewer account's email and current password, and follow the prompt to set a new password.
+    For details on the reviewer account associated with your data, please refer to the message that was sent when this data was copied to
+    Panorama Public or view the full message thread at this link: [Message Thread](__PH__MESSAGE__THREAD__URL__)
+
+    **For Published Data**:
+    If your data is already published and you no longer need the reviewer account, we encourage you to make the  data public. This can be
+    easily done by clicking the "Make Public" button in your data folder or by clicking this link: [Make Data Public](__PH__MAKE__DATA__PUBLIC__URL__)
+
+    We apologize for any inconvenience this update may cause. We are here to assist you if you have any questions or need help updating your password.
+    Please respond to this message by [**clicking here**](__PH__RESPOND__TO__MESSAGE__URL__) for further clarification or support.
+     */
     public static String PLACEHOLDER = "__PH__";
     public static String PLACEHOLDER_MESSAGE_THREAD_URL = PLACEHOLDER + "MESSAGE__THREAD__URL__";
     public static String PLACEHOLDER_RESPOND_TO_MESSAGE_URL = PLACEHOLDER + "RESPOND__TO__MESSAGE__URL__";
@@ -319,7 +335,7 @@ public class PanoramaPublicNotification
         }
         if (toReturn.contains(PLACEHOLDER_MAKE_DATA_PUBLIC_URL))
         {
-            ActionURL makePublicUrl = expAnnotations != null ? PanoramaPublicController.getMakePublicUrl(expAnnotations.getId(), expAnnotations.getContainer()) : null;
+            ActionURL makePublicUrl = PanoramaPublicController.getMakePublicUrl(expAnnotations.getId(), expAnnotations.getContainer());
             toReturn = toReturn.replaceAll(PLACEHOLDER_MAKE_DATA_PUBLIC_URL, makePublicUrl.getLocalURIString());
         }
         return toReturn;
