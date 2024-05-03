@@ -38,6 +38,7 @@ import org.labkey.api.query.DetailsURL;
 import org.labkey.api.query.ExprColumn;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
+import org.labkey.api.query.QueryForeignKey;
 import org.labkey.api.query.UserIdQueryForeignKey;
 import org.labkey.api.query.UserIdRenderer;
 import org.labkey.api.query.UserSchema;
@@ -70,6 +71,7 @@ import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.view.publish.CatalogEntryWebPart;
 import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
@@ -240,6 +242,12 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         var isPublicCol = getIsPublicCol();
         addColumn(isPublicCol);
 
+        if (schema.getUser().hasSiteAdminPermission())
+        {
+            // For site admins, add a column linking to the message thread for the Panorama Public submission request.
+            addColumn(getAnnouncementIdCol());
+        }
+
         var licenseCol = wrapColumn("Data License", getRealTable().getColumn("Id"));
         licenseCol.setURLTargetWindow("_blank");
         licenseCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
@@ -397,6 +405,65 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
         ExprColumn isPublicCol = new ExprColumn(this, "Public", isPublicColSql, JdbcType.VARCHAR);
         return isPublicCol;
+    }
+
+    private ExprColumn getAnnouncementIdCol()
+    {
+        SQLFragment sqlFragment = new SQLFragment(" (SELECT CASE WHEN ").append(ExprColumn.STR_TABLE_ALIAS + ".sourceexperimentid IS NOT NULL")
+                .append(" THEN ( SELECT announcementId from ").append(PanoramaPublicManager.getTableInfoJournalExperiment(), "je")
+                .append(" INNER JOIN ").append(PanoramaPublicManager.getTableInfoSubmission(), "s")
+                .append(" ON je.Id = s.journalExperimentId WHERE s.copiedExperimentId = ").append(ExprColumn.STR_TABLE_ALIAS + ".Id )")
+                .append(" ELSE (SELECT announcementId FROM ").append(PanoramaPublicManager.getTableInfoJournalExperiment(), "je")
+                .append(" WHERE je.experimentAnnotationsId = ").append(ExprColumn.STR_TABLE_ALIAS + ".Id )")
+                .append(" END ) ");
+
+        var announcementCol = new ExprColumn(this, "SupportMessage", sqlFragment, JdbcType.INTEGER);
+
+        // Add a FK lookup so that we can access the "Modified" etc. columns on the "Announcement" table.
+        announcementCol.setFk(QueryForeignKey.from(getUserSchema(),
+                        ContainerFilter.EVERYTHING) // Announcements are not in the same container. e.g. on PanoramaWeb they are in "/home/support/panorama public requests"
+                .schema("announcement")  // Cannot use CommSchemma.getSchemaName() which returns "comm". This only works if we use "announcement".
+                                                    // AnnouncementSchema is not part of the LabKey API.
+                .to("Announcement", // Table name cannot be the plural, "Announcements", returned by CommSchema.getInstance().getTableInfoAnnouncements().getName()
+                        "RowId", null));
+
+        announcementCol.setDisplayColumnFactory(new DisplayColumnFactory()
+        {
+            @Override
+            public DisplayColumn createRenderer(ColumnInfo colInfo)
+            {
+                return new DataColumn(colInfo)
+                {
+                    @Override
+                    public String renderURL(RenderContext ctx)
+                    {
+                        Integer announcementId = ctx.get(colInfo.getFieldKey(), Integer.class);
+                        Integer experimentAnnotationsId = ctx.get(FieldKey.fromParts("Id"), Integer.class);
+                        if (announcementId != null && experimentAnnotationsId != null)
+                        {
+                            Integer submittedExperimentId = ctx.get(FieldKey.fromParts("SourceExperimentId"), Integer.class);
+                            List<Journal> journals = JournalManager.getJournalsForExperiment(submittedExperimentId != null ? submittedExperimentId : experimentAnnotationsId);
+                            if (!journals.isEmpty())
+                            {
+                                ActionURL url = new ActionURL("announcements", "thread", journals.get(0).getSupportContainer())
+                                            .addParameter("rowId", announcementId);
+                                return url.getEncodedLocalURIString();
+                            }
+                        }
+                        return super.renderURL(ctx);
+                    }
+
+                    @Override
+                    public void addQueryFieldKeys(Set<FieldKey> keys)
+                    {
+                        super.addQueryFieldKeys(keys);
+                        keys.add(FieldKey.fromParts("Id"));
+                        keys.add(FieldKey.fromParts("SourceExperimentId"));
+                    }
+                };
+            }
+        });
+        return announcementCol;
     }
 
     @Override
