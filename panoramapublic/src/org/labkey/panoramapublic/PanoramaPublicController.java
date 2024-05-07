@@ -38,6 +38,8 @@ import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleStreamAction;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.announcements.api.Announcement;
+import org.labkey.api.announcements.api.AnnouncementService;
 import org.labkey.api.attachments.Attachment;
 import org.labkey.api.attachments.AttachmentFile;
 import org.labkey.api.attachments.AttachmentForm;
@@ -133,6 +135,8 @@ import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.*;
 import org.labkey.api.view.template.ClientDependency;
+import org.labkey.api.wiki.WikiRendererType;
+import org.labkey.api.wiki.WikiRenderingService;
 import org.labkey.panoramapublic.catalog.CatalogEntrySettings;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentParent;
 import org.labkey.panoramapublic.chromlib.ChromLibStateManager;
@@ -155,8 +159,8 @@ import org.labkey.panoramapublic.model.speclib.SpectralLibrary;
 import org.labkey.panoramapublic.model.validation.DataValidation;
 import org.labkey.panoramapublic.model.validation.PxStatus;
 import org.labkey.panoramapublic.model.validation.Status;
-import org.labkey.panoramapublic.pipeline.AssignSubmitterPermissionJob;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
+import org.labkey.panoramapublic.pipeline.PostPanoramaPublicMessageJob;
 import org.labkey.panoramapublic.pipeline.PxDataValidationPipelineJob;
 import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ChemElement;
@@ -239,7 +243,6 @@ import static org.labkey.api.util.DOM.Attribute.style;
 import static org.labkey.api.util.DOM.Attribute.type;
 import static org.labkey.api.util.DOM.Attribute.valign;
 import static org.labkey.api.util.DOM.Attribute.value;
-import static org.labkey.api.util.DOM.LK.CHECKBOX;
 import static org.labkey.api.util.DOM.LK.ERRORS;
 import static org.labkey.api.util.DOM.LK.FORM;
 import static org.labkey.panoramapublic.proteomexchange.NcbiUtils.PUBMED_ID;
@@ -299,7 +302,7 @@ public class PanoramaPublicController extends SpringActionController
             view.addView(getPXCredentialsLink());
             view.addView(getDataCiteCredentialsLink());
             view.addView(getPanoramaPublicCatalogSettingsLink());
-            view.addView(getAssignSubmitterPermissionsLink());
+            view.addView(getPostSupportMessageLink());
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Panorama Public Settings");
             return view;
@@ -325,12 +328,17 @@ public class PanoramaPublicController extends SpringActionController
             return new HtmlView(DIV(at(style, "margin-top:20px;"),
                     new Link.LinkBuilder("Panorama Public Catalog Settings").href(url).build()));
         }
-        
-        private ModelAndView getAssignSubmitterPermissionsLink()
+
+        private ModelAndView getPostSupportMessageLink()
         {
-            ActionURL url = new ActionURL(AssignSubmitterPermissionAction.class, getContainer());
-            return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                    new Link.LinkBuilder("Assign PanoramaPublicSubmitterRole").href(url).build()));
+            Journal panoramaPublic = JournalManager.getJournal(JournalManager.PANORAMA_PUBLIC);
+            if (panoramaPublic != null)
+            {
+                ActionURL url = new ActionURL(CreatePanoramaPublicMessageAction.class, panoramaPublic.getProject());
+                return new HtmlView(DIV(at(style, "margin-top:20px;"),
+                        new Link.LinkBuilder("Post to Panorama Public Support Messages").href(url).build()));
+            }
+            return null;
         }
 
         @Override
@@ -6668,6 +6676,8 @@ public class PanoramaPublicController extends SpringActionController
         private final boolean _isPeerReviewed;
         private final DataLicense _license;
 
+        private final String _experimentTitle;
+
         public PublicationDetailsBean(PublicationDetailsForm form, ExperimentAnnotations copiedExperiment)
         {
             _form = form;
@@ -6675,6 +6685,7 @@ public class PanoramaPublicController extends SpringActionController
             _isPeerReviewed = copiedExperiment.isPeerReviewed();
             _accessUrl = copiedExperiment.getShortUrl().renderShortURL();
             _license = copiedExperiment.getDataLicense();
+            _experimentTitle = copiedExperiment.getTitle();
         }
 
         public PublicationDetailsForm getForm()
@@ -6700,6 +6711,11 @@ public class PanoramaPublicController extends SpringActionController
         public DataLicense getLicense()
         {
             return _license;
+        }
+
+        public String getExperimentTitle()
+        {
+            return _experimentTitle;
         }
     }
 
@@ -9206,100 +9222,280 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    // ------------------------------------------------------------------------
-    // BEGIN Assign PanoramaPublicSubmitterRole to data submitters and lab heads
-    // ------------------------------------------------------------------------
     @RequiresSiteAdmin
-    public class AssignSubmitterPermissionAction extends FormViewAction<AssignSubmitterPermissionForm>
+    public class CreatePanoramaPublicMessageAction extends SimpleViewAction<PanoramaPublicMessageForm>
     {
         @Override
-        public void validateCommand(AssignSubmitterPermissionForm target, Errors errors) {}
-
-        @Override
-        public ModelAndView getView(AssignSubmitterPermissionForm form, boolean reshow, BindException errors)
+        public ModelAndView getView(PanoramaPublicMessageForm form, BindException errors) throws Exception
         {
-            return new HtmlView("Assign PanoramaPublicSubmitterRole",
-                    DIV(LK.ERRORS(errors),
-                            "Assign PanoramaPublicSubmitterRole to data submitters and lab heads",
-                            FORM(
-                                    at(method, "POST"),
-                                    TABLE(
-                                    TR(TD(at(style, "padding-right:10px;"), LABEL("Dry Run: ")),
-                                            TD(CHECKBOX(at(name, "dryRun", checked, form.isDryRun())))),
-                                    TR(TD(at(style, "padding-right:10px;"), LABEL("Project: ")),
-                                            TD(INPUT(at(name, "project", value, form.getProject()))))
-                                    ),
-                                    DIV(at(style, "margin-top:10px"),
-                                        new Button.ButtonBuilder("Start").submit(true).style("margin-right:10px").build(),
-                                        new Button.ButtonBuilder("Cancel").href(new ActionURL(PanoramaPublicAdminViewAction.class, getContainer())).build()
-                                    )
-                            )
-                    ));
-        }
+            QuerySettings qSettings = new QuerySettings(getViewContext(), "ExperimentAnnotationsTable", "ExperimentAnnotations");
+            qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
+            QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, errors);
+            tableView.setTitle("Panorama Public Experiments");
 
-        @Override
-        public boolean handlePost(AssignSubmitterPermissionForm form, BindException errors) throws Exception
-        {
-            if (StringUtils.isEmpty(form.getProject()))
-            {
-                errors.reject(ERROR_MSG, "Please enter the name of a project");
-                return false;
-            }
-            Container container = ContainerManager.getForPath(form.getProject());
-            if (container == null)
-            {
-                errors.reject(ERROR_MSG, "Cannot find project " + form.getProject());
-                return false;
-            }
+            form.setDataRegionName(tableView.getDataRegionName());
 
-            PipelineJob job = new AssignSubmitterPermissionJob(getViewBackgroundInfo(), PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()),
-                    form.isDryRun(), container);
-            PipelineService.get().queueJob(job);
-            return true;
-        }
-
-        @Override
-        public URLHelper getSuccessURL(AssignSubmitterPermissionForm form)
-        {
-            return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
+            JspView<PanoramaPublicMessageForm> jspView = new JspView<>("/org/labkey/panoramapublic/view/createMessageForm.jsp", form, errors);
+            return new VBox(jspView, tableView);
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-            addPanoramaPublicAdminConsoleNav(root, getContainer());
-            root.addChild("Assign PanoramaPublicSubmitterRole");
+            root.addChild("Message for Panorama Public Submitters");
         }
     }
 
-    private static class AssignSubmitterPermissionForm
+    @RequiresSiteAdmin
+    public class PostPanoramaPublicMessageAction extends ConfirmAction<PanoramaPublicMessageForm>
     {
-        private boolean _dryRun;
-        private String _project;
-
-        public boolean isDryRun()
+        @Override
+        public void validateCommand(PanoramaPublicMessageForm form, Errors errors)
         {
-            return _dryRun;
+            List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
+            if (selectedExperimentIds.isEmpty())
+            {
+                errors.reject(ERROR_MSG, "Please select at least one experiment");
+            }
+            if (StringUtils.isEmpty(form.getMessageTitle()))
+            {
+                errors.reject(ERROR_MSG, "Please enter a prefix for the message title");
+            }
+            if (StringUtils.isEmpty(form.getMessage()))
+            {
+                errors.reject(ERROR_MSG, "Please enter a message");
+            }
+            else
+            {
+                List<String> validationErrors = new ArrayList<>();
+
+                HtmlString formattedMessage = WikiRenderingService.get().getFormattedHtml(WikiRendererType.MARKDOWN, form.getMessage());
+                PageFlowUtil.validateHtml(formattedMessage.renderToString(), validationErrors, false);
+                if (!validationErrors.isEmpty())
+                {
+                    errors.reject(ERROR_MSG, "Message could not be validated due to the following errors:");
+                    for (String err : validationErrors)
+                    {
+                        errors.reject(ERROR_MSG, err);
+                    }
+                }
+            }
         }
 
-        public void setDryRun(boolean dryRun)
+        @Override
+        public ModelAndView getConfirmView(PanoramaPublicMessageForm form, BindException errors)
         {
-            _dryRun = dryRun;
+            List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
+            List<ExperimentAnnotations> experiments = new ArrayList<>();
+            for (Integer selectedId: selectedExperimentIds)
+            {
+                experiments.add(ExperimentAnnotationsManager.get(selectedId));
+            }
+            form.setExperiments(experiments);
+
+            MessageExampleBean exampleBean = createExampleMessage(selectedExperimentIds, form, errors);
+            if (exampleBean == null)
+            {
+                errors.reject(ERROR_MSG, "Could not create an example message from the selected experiment Ids");
+                return new SimpleErrorView(errors, true);
+            }
+
+            return new JspView<>("/org/labkey/panoramapublic/view/confirmPostMessage.jsp", exampleBean, errors);
         }
 
-        public String getProject()
+        private MessageExampleBean createExampleMessage(List<Integer> experimentIds, PanoramaPublicMessageForm form, BindException errors)
         {
-            return _project;
+            Journal journal = JournalManager.getJournal(JournalManager.PANORAMA_PUBLIC);
+            Container announcementsContainer = journal.getSupportContainer();
+            AnnouncementService announcementSvc = AnnouncementService.get();
+
+            for (Integer experimentId: experimentIds)
+            {
+                ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentId);
+                JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(expAnnotations);
+                if (submission == null || submission.getLatestSubmission() == null)
+                {
+                    continue;
+                }
+                Announcement announcement = announcementSvc.getAnnouncement(announcementsContainer, getUser(), submission.getAnnouncementId());
+                if (announcement == null)
+                {
+                    continue; // old data before we started posting submission requests to a message board
+                }
+
+                String title = !StringUtils.isBlank(form.getMessageTitle()) ? StringUtils.trim(form.getMessageTitle()) + " " + expAnnotations.getShortUrl().renderShortURL() : announcement.getTitle();
+                String message = PanoramaPublicNotification.replaceLinkPlaceholders(form.getMessage(), expAnnotations, announcement, announcementsContainer);
+                StringBuilder messageBody = PanoramaPublicNotification.getFullMessageBody(message, expAnnotations.getSubmitterUser(), getUser());
+                if (messageBody.toString().contains(PanoramaPublicNotification.PLACEHOLDER))
+                {
+                    errors.reject(ERROR_MSG, "Some placeholders were not substituted");
+                }
+                MessageExampleBean example = new MessageExampleBean();
+                example.setForm(form);
+                example.setExperimentAnnotations(expAnnotations);
+                example.setTitle(title);
+                example.setMessage(messageBody.toString());
+                example.setMarkdownMessage(WikiRenderingService.get().getFormattedHtml(WikiRendererType.MARKDOWN, messageBody.toString()));
+                return example;
+            }
+            return null;
         }
 
-        public void setProject(String project)
+        @Override
+        public boolean handlePost(PanoramaPublicMessageForm form, BindException errors) throws Exception
         {
-            _project = project;
+            List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
+            PipelineJob job = new PostPanoramaPublicMessageJob(getViewBackgroundInfo(), PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()),
+                    selectedExperimentIds, form.getMessage(), form.getMessageTitle(), form.getTestMode());
+            PipelineService.get().queueJob(job);
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(PanoramaPublicMessageForm form)
+        {
+            return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
         }
     }
-    // ------------------------------------------------------------------------
-    // END Assign PanoramaPublicSubmitterRole to data submitters and lab heads
-    // ------------------------------------------------------------------------
+
+    public static class MessageExampleBean
+    {
+        private ExperimentAnnotations _experimentAnnotations;
+        private String _title;
+        private HtmlString _markdownMessage;
+        private String _message;
+
+        private PanoramaPublicMessageForm _form;
+
+        public ExperimentAnnotations getExperimentAnnotations()
+        {
+            return _experimentAnnotations;
+        }
+
+        public void setExperimentAnnotations(ExperimentAnnotations experimentAnnotations)
+        {
+            _experimentAnnotations = experimentAnnotations;
+        }
+
+        public String getTitle()
+        {
+            return _title;
+        }
+
+        public void setTitle(String title)
+        {
+            _title = title;
+        }
+
+        public HtmlString getMarkdownMessage()
+        {
+            return _markdownMessage;
+        }
+
+        public void setMarkdownMessage(HtmlString markdownMessage)
+        {
+            _markdownMessage = markdownMessage;
+        }
+
+        public String getMessage()
+        {
+            return _message;
+        }
+
+        public void setMessage(String message)
+        {
+            _message = message;
+        }
+
+        public PanoramaPublicMessageForm getForm()
+        {
+            return _form;
+        }
+
+        public void setForm(PanoramaPublicMessageForm form)
+        {
+            _form = form;
+        }
+    }
+
+    public static class PanoramaPublicMessageForm
+    {
+        private String _messageTitle = null;
+        private String _message;
+        private boolean _testMode;
+        private String _selectedIds;
+        private String _dataRegionName = null;
+        private List<ExperimentAnnotations> _experiments = null;
+
+        public String getMessageTitle()
+        {
+            return _messageTitle;
+        }
+
+        public void setMessageTitle(String messageTitle)
+        {
+            _messageTitle = messageTitle;
+        }
+
+        public String getMessage()
+        {
+            return _message;
+        }
+
+        public void setMessage(String message)
+        {
+            _message = message;
+        }
+
+        public boolean getTestMode()
+        {
+            return _testMode;
+        }
+
+        public void setTestMode(boolean testMode)
+        {
+            _testMode = testMode;
+        }
+
+        public String getSelectedIds()
+        {
+            return _selectedIds;
+        }
+
+        public List<Integer> getSelectedExperimentIds()
+        {
+            if (_selectedIds == null)
+            {
+                return Collections.emptyList();
+            }
+            return Arrays.stream(StringUtils.split(_selectedIds, ",")).map(Integer::parseInt).collect(Collectors.toList());
+        }
+
+        public void setSelectedIds(String selectedIds)
+        {
+            _selectedIds = selectedIds;
+        }
+
+        public String getDataRegionName()
+        {
+            return _dataRegionName;
+        }
+
+        public void setDataRegionName(String dataRegionName)
+        {
+            _dataRegionName = dataRegionName;
+        }
+
+        public List<ExperimentAnnotations> getExperiments()
+        {
+            return _experiments;
+        }
+
+        public void setExperiments(List<ExperimentAnnotations> experiments)
+        {
+            _experiments = experiments;
+        }
+    }
 
     public static ActionURL getEditExperimentDetailsURL(Container c, int experimentAnnotationsId, URLHelper returnURL)
     {

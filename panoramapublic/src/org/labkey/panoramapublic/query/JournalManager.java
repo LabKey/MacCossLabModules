@@ -66,6 +66,7 @@ import java.util.SortedSet;
  */
 public class JournalManager
 {
+    public static final String PANORAMA_PUBLIC = "Panorama Public";
     private static final String PUBLIC_DATA_USER = "Public Data User";
     private static final String USER_ID = "User Id";
     private static final String USER_PASSWORD = "User Password";
