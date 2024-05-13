@@ -322,7 +322,7 @@ public class PanoramaPublicNotification
         {
             ActionURL viewMessageUrl = new ActionURL("announcements", "thread", announcementContainer)
                     .addParameter("rowId", announcement.getRowId());
-            toReturn = toReturn.replaceAll(PLACEHOLDER_MESSAGE_THREAD_URL, viewMessageUrl.getLocalURIString());
+            toReturn = toReturn.replaceAll(PLACEHOLDER_MESSAGE_THREAD_URL, viewMessageUrl.getURIString());
         }
         if (toReturn.contains(PLACEHOLDER_RESPOND_TO_MESSAGE_URL))
         {
@@ -331,12 +331,12 @@ public class PanoramaPublicNotification
             ActionURL respondToMessageUrl = new ActionURL("announcements", "respond", announcementContainer)
                     .addParameter("parentId", announcement.getEntityId())
                     .addReturnURL(viewMessageUrl);
-            toReturn = toReturn.replaceAll(PLACEHOLDER_RESPOND_TO_MESSAGE_URL, respondToMessageUrl.getLocalURIString());
+            toReturn = toReturn.replaceAll(PLACEHOLDER_RESPOND_TO_MESSAGE_URL, respondToMessageUrl.getURIString());
         }
         if (toReturn.contains(PLACEHOLDER_MAKE_DATA_PUBLIC_URL))
         {
             ActionURL makePublicUrl = PanoramaPublicController.getMakePublicUrl(expAnnotations.getId(), expAnnotations.getContainer());
-            toReturn = toReturn.replaceAll(PLACEHOLDER_MAKE_DATA_PUBLIC_URL, makePublicUrl.getLocalURIString());
+            toReturn = toReturn.replaceAll(PLACEHOLDER_MAKE_DATA_PUBLIC_URL, makePublicUrl.getURIString());
         }
         return toReturn;
     }
