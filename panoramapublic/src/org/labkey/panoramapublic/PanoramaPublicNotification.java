@@ -227,12 +227,11 @@ public class PanoramaPublicNotification
         postNotification(journal, je, messageBody.toString(), journalAdmin, messageTitlePrefix, status, getNotifyList(experimentAnnotations, user));
     }
 
-    private static void postNotification(Journal journal, JournalExperiment je, String messageBody, User messagePoster,
-                                        @NotNull String messageTitlePrefix, @NotNull StatusOption status, @Nullable List<User> notifyUsers)
+    private static void postNotificationFullTitle(Journal journal, JournalExperiment je, String messageBody, User messagePoster,
+                                         @NotNull String messageTitle, @NotNull StatusOption status, @Nullable List<User> notifyUsers)
     {
         AnnouncementService svc = AnnouncementService.get();
         Container supportContainer = journal.getSupportContainer();
-        String messageTitle = messageTitlePrefix +" - " + je.getShortAccessUrl().renderShortURL();
 
         Set<User> combinedNotifyUserIds = new HashSet<>();
         if (notifyUsers != null)
@@ -263,6 +262,83 @@ public class PanoramaPublicNotification
             je.setAnnouncementId(announcement.getRowId());
             SubmissionManager.updateJournalExperiment(je, messagePoster);
         }
+    }
+    private static void postNotification(Journal journal, JournalExperiment je, String messageBody, User messagePoster,
+                                        @NotNull String messageTitlePrefix, @NotNull StatusOption status, @Nullable List<User> notifyUsers)
+    {
+        String messageTitle = messageTitlePrefix +" - " + je.getShortAccessUrl().renderShortURL();
+        postNotificationFullTitle(journal, je, messageBody, messagePoster, messageTitle, status, notifyUsers);
+    }
+
+    public static void postNotification(Journal journal, JournalExperiment je, String text, User messageTo, User messagePoster,
+                                        @NotNull String messageTitle, @NotNull StatusOption status, @Nullable List<User> notifyUsers)
+    {
+        StringBuilder messageBody = getFullMessageBody(text, messageTo, messagePoster);
+        postNotificationFullTitle(journal, je, messageBody.toString(), messagePoster, messageTitle, status, notifyUsers);
+    }
+
+    @NotNull
+    public static StringBuilder getFullMessageBody(String text, User messageTo, User messagePoster)
+    {
+        StringBuilder messageBody = new StringBuilder();
+        messageBody.append("Dear ").append(getUserName(messageTo)).append(",").append(NL2);
+        messageBody.append(text);
+        messageBody.append(NL2).append("Best regards,");
+        messageBody.append(NL).append(getUserName(messagePoster));
+        return messageBody;
+    }
+
+    // The following link placeholders can be used in messages posted through the Panorama Public admin console (PostPanoramaPublicMessageAction).
+    // An example message (Markdown format):
+    /*
+    We have updated the password policy on PanoramaWeb. If you have not yet updated the password for the reviewer account assigned to
+    this data (available at __PH__DATA__SHORT__URL__), we ask that you do so as soon as possible.
+
+    **How to Change the Password**: Log in with the reviewer account's email and current password, and follow the prompt to set a new password.
+    For details on the reviewer account associated with your data, please refer to the message that was sent when this data was copied to
+    Panorama Public or view the full message thread at this link: [Message Thread](__PH__MESSAGE__THREAD__URL__)
+
+    **For Published Data**:
+    If your data is already published and you no longer need the reviewer account, we encourage you to make the  data public. This can be
+    easily done by clicking the "Make Public" button in your data folder or by clicking this link: [Make Data Public](__PH__MAKE__DATA__PUBLIC__URL__)
+
+    We apologize for any inconvenience this update may cause. We are here to assist you if you have any questions or need help updating your password.
+    Please respond to this message by [**clicking here**](__PH__RESPOND__TO__MESSAGE__URL__) for further clarification or support.
+     */
+    public static String PLACEHOLDER = "__PH__";
+    public static String PLACEHOLDER_MESSAGE_THREAD_URL = PLACEHOLDER + "MESSAGE__THREAD__URL__";
+    public static String PLACEHOLDER_RESPOND_TO_MESSAGE_URL = PLACEHOLDER + "RESPOND__TO__MESSAGE__URL__";
+    public static String PLACEHOLDER_MAKE_DATA_PUBLIC_URL = PLACEHOLDER + "MAKE__DATA__PUBLIC__URL__";
+    public static String PLACEHOLDER_SHORT_URL = PLACEHOLDER + "DATA__SHORT__URL__";
+    public static String replaceLinkPlaceholders(@NotNull String text, @NotNull ExperimentAnnotations expAnnotations,
+                                                 @NotNull Announcement announcement, @NotNull Container announcementContainer)
+    {
+        String toReturn = text;
+        if (toReturn.contains(PLACEHOLDER_SHORT_URL))
+        {
+            toReturn = toReturn.replaceAll(PLACEHOLDER_SHORT_URL, expAnnotations.getShortUrl().renderShortURL());
+        }
+        if (toReturn.contains(PLACEHOLDER_MESSAGE_THREAD_URL))
+        {
+            ActionURL viewMessageUrl = new ActionURL("announcements", "thread", announcementContainer)
+                    .addParameter("rowId", announcement.getRowId());
+            toReturn = toReturn.replaceAll(PLACEHOLDER_MESSAGE_THREAD_URL, viewMessageUrl.getLocalURIString());
+        }
+        if (toReturn.contains(PLACEHOLDER_RESPOND_TO_MESSAGE_URL))
+        {
+            ActionURL viewMessageUrl = new ActionURL("announcements", "thread", announcementContainer)
+                    .addParameter("rowId", announcement.getRowId());
+            ActionURL respondToMessageUrl = new ActionURL("announcements", "respond", announcementContainer)
+                    .addParameter("parentId", announcement.getEntityId())
+                    .addReturnURL(viewMessageUrl);
+            toReturn = toReturn.replaceAll(PLACEHOLDER_RESPOND_TO_MESSAGE_URL, respondToMessageUrl.getLocalURIString());
+        }
+        if (toReturn.contains(PLACEHOLDER_MAKE_DATA_PUBLIC_URL))
+        {
+            ActionURL makePublicUrl = PanoramaPublicController.getMakePublicUrl(expAnnotations.getId(), expAnnotations.getContainer());
+            toReturn = toReturn.replaceAll(PLACEHOLDER_MAKE_DATA_PUBLIC_URL, makePublicUrl.getLocalURIString());
+        }
+        return toReturn;
     }
 
     private static void appendSubmissionDetails(ExperimentAnnotations expAnnotations, Journal journal, JournalExperiment je, Submission submission,

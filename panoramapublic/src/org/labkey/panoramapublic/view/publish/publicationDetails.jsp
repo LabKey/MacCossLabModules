@@ -22,6 +22,13 @@
     var form = bean.getForm();
 %>
 
+<!-- Display the title and permanent link of the data they are making public -->
+<div style="margin-bottom:20px;">
+    <table>
+        <tr><td class="labkey-form-label" style="width:150px;">Title: </td><td style="padding:3px;"><%=h(bean.getExperimentTitle())%></td></tr>
+        <tr><td class="labkey-form-label" style="width:150px;">Permanent Link: </td><td style="padding:3px;"><%=link(bean.getAccessUrl(), bean.getAccessUrl()).clearClasses().build()%></td></tr>
+    </table>
+</div>
 <div id="publishDataForm"></div>
 
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
