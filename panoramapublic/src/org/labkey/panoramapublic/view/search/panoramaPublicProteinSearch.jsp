@@ -17,13 +17,13 @@
 %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%@ page import="org.labkey.api.ms2.MS2Urls" %>
-<%@ page import="org.labkey.api.protein.ProteinService" %>
+<%@ page import="org.labkey.api.protein.ProteinSearchForm" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
-    JspView<ProteinService.ProteinSearchForm> me = (JspView<ProteinService.ProteinSearchForm>) HttpView.currentView();
-    ProteinService.ProteinSearchForm bean = me.getModelBean();
+    JspView<ProteinSearchForm> me = (JspView<ProteinSearchForm>) HttpView.currentView();
+    ProteinSearchForm bean = me.getModelBean();
 %>
 <labkey:form action="<%=urlProvider(MS2Urls.class).getProteinSearchUrl(getContainer())%>">
     <table class="lk-fields-table">

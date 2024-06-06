@@ -28,7 +28,8 @@ import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.ModuleContext;
 import org.labkey.api.module.SpringModule;
 import org.labkey.api.pipeline.PipelineService;
-import org.labkey.api.protein.ProteinService;
+import org.labkey.api.protein.PeptideSearchForm;
+import org.labkey.api.protein.ProteinSearchForm;
 import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.settings.AdminConsole;
@@ -287,9 +288,9 @@ public class PanoramaPublicModule extends SpringModule
         return webpartFactoryList;
     }
 
-    private ProteinService.ProteinSearchForm getDefaultProteinSearchForm()
+    private ProteinSearchForm getDefaultProteinSearchForm()
     {
-        return new ProteinService.ProteinSearchForm()
+        return new ProteinSearchForm()
         {
             @Override
             public int[] getSeqId()
@@ -316,9 +317,9 @@ public class PanoramaPublicModule extends SpringModule
         };
     }
 
-    private ProteinService.PeptideSearchForm getDefaultPeptideSearchForm()
+    private PeptideSearchForm getDefaultPeptideSearchForm()
     {
-        return  new ProteinService.PeptideSearchForm()
+        return  new PeptideSearchForm()
         {
             @Override
             public boolean isExact()
