@@ -17,7 +17,7 @@
 %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%@ page import="org.labkey.api.ms2.MS2Urls" %>
-<%@ page import="org.labkey.api.protein.ProteinSearchForm" %>
+<%@ page import="org.labkey.api.protein.search.ProteinSearchForm" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
