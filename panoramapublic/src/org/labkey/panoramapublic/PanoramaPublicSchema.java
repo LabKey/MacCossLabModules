@@ -332,7 +332,7 @@ public class PanoramaPublicSchema extends UserSchema
             }
 
             @Override
-            public SQLFragment getFromSQL(String alias)
+            public @NotNull SQLFragment getFromSQL(String alias)
             {
                 // This table does not have a Container column so we will join it to the JournalExperiment and ExperimentAnnotations
                 // tables to filter by the Container of the copied experiment.
