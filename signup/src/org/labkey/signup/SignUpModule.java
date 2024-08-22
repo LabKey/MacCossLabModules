@@ -23,6 +23,7 @@ import org.labkey.api.data.ContainerManager;
 import org.labkey.api.module.DefaultModule;
 import org.labkey.api.module.ModuleContext;
 import org.labkey.api.security.UserManager;
+import org.labkey.api.security.permissions.SiteAdminPermission;
 import org.labkey.api.settings.AdminConsole;
 import org.labkey.api.view.BaseWebPartFactory;
 import org.labkey.api.view.JspView;
@@ -97,7 +98,7 @@ public class SignUpModule extends DefaultModule
         UserManager.addUserListener(new SignUpListener());
 
         // Add a link in the admin console
-        AdminConsole.addLink(AdminConsole.SettingsLinkType.Configuration, "SignUp", SignUpController.getShowSignUpAdminUrl());
+        AdminConsole.addLink(AdminConsole.SettingsLinkType.Configuration, "SignUp", SignUpController.getShowSignUpAdminUrl(), SiteAdminPermission.class);
     }
 
     @Override

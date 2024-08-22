@@ -38,6 +38,7 @@ import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleStreamAction;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.admin.AdminUrls;
 import org.labkey.api.announcements.api.Announcement;
 import org.labkey.api.announcements.api.AnnouncementService;
 import org.labkey.api.attachments.Attachment;
@@ -344,7 +345,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Panorama Public Admin Console");
+            PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Panorama Public Admin Console", getClass(), getContainer());
         }
     }
 
