@@ -2,6 +2,7 @@ package org.labkey.testresults;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.TableSelector;
@@ -14,6 +15,7 @@ import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.MimeMap;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
+import org.labkey.api.util.UnexpectedException;
 import org.labkey.api.view.ActionURL;
 import org.labkey.testresults.model.BackgroundColor;
 import org.labkey.testresults.model.RunDetail;
@@ -335,15 +337,19 @@ public class SendTestResultsEmail implements org.quartz.Job
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException
     {
-        ValidEmail admin = null;
+        ValidEmail admin;
         try
         {
             admin = new ValidEmail(DEFAULT_EMAIL.ADMIN_EMAIL);
+            org.labkey.api.security.@Nullable User adminUser = UserManager.getUser(admin);
+            if (adminUser != null)
+            {
+                execute(MORNING_EMAIL, adminUser, DEFAULT_EMAIL.RECIPIENT);
+            }
         }
         catch (ValidEmail.InvalidEmailException e)
         {
-            e.printStackTrace();
+            throw UnexpectedException.wrap(e);
         }
-        execute(MORNING_EMAIL, UserManager.getUser(admin), DEFAULT_EMAIL.RECIPIENT);
     }
 }
