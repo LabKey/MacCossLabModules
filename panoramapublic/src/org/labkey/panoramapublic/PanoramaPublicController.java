@@ -9270,7 +9270,7 @@ public class PanoramaPublicController extends SpringActionController
             {
                 List<String> validationErrors = new ArrayList<>();
 
-                HtmlString formattedMessage = WikiRenderingService.get().getFormattedHtml(WikiRendererType.MARKDOWN, form.getMessage());
+                HtmlString formattedMessage = WikiRenderingService.get().getFormattedHtml(WikiRendererType.MARKDOWN, form.getMessage(), null);
                 PageFlowUtil.validateHtml(formattedMessage.renderToString(), validationErrors, false);
                 if (!validationErrors.isEmpty())
                 {
@@ -9336,7 +9336,7 @@ public class PanoramaPublicController extends SpringActionController
                 example.setExperimentAnnotations(expAnnotations);
                 example.setTitle(title);
                 example.setMessage(messageBody.toString());
-                example.setMarkdownMessage(WikiRenderingService.get().getFormattedHtml(WikiRendererType.MARKDOWN, messageBody.toString()));
+                example.setMarkdownMessage(WikiRenderingService.get().getFormattedHtml(WikiRendererType.MARKDOWN, messageBody.toString(), "Panorama experiment " + experimentId));
                 return example;
             }
             return null;
