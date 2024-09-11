@@ -38,7 +38,7 @@
                 method: 'POST',
                 params: data,
                 success: function(response) {
-                    alert('Configuration saved');
+                    window.location = LABKEY.ActionURL.buildURL('project', 'start');
                 },
                 failure: function(response) {
                     alert('Failed to save configuration');

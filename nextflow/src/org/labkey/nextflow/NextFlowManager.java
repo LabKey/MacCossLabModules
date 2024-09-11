@@ -53,7 +53,7 @@ public class NextFlowManager
 
     public void addConfiguration(NextFlowController.NextFlowConfiguration configuration, BindException errors)
     {
-        checkArgs(configuration.getAccountName(), configuration.getIdentity(), configuration.getCredential(), configuration.getS3BucketPath(), errors);
+        checkArgs(configuration.getNextFlowConfigFilePath(), configuration.getAccountName(), configuration.getIdentity(), configuration.getCredential(), configuration.getS3BucketPath(), errors);
 
         // Check the account exists in the list of accounts
         PropertyManager.PropertyMap accounts = _normalStore.getWritableProperties(CATEGORY, true);

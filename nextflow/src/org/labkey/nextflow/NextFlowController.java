@@ -3,17 +3,22 @@ package org.labkey.nextflow;
 import org.apache.logging.log4j.Logger;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleHtmlView;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.security.AdminConsoleAction;
 import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
+import org.labkey.api.security.permissions.SiteAdminPermission;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.NavTree;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class NextFlowController extends SpringActionController
 {
@@ -120,6 +125,66 @@ public class NextFlowController extends SpringActionController
         public void setCredential(String credential)
         {
             this.credential = credential;
+        }
+    }
+
+    @RequiresPermission(SiteAdminPermission.class)
+    public static class NextFlowEnableAction extends FormViewAction<NextFlowEnableForm>
+    {
+        @Override
+        public void validateCommand(NextFlowEnableForm target, Errors errors)
+        {
+
+        }
+
+        @Override
+        public ModelAndView getView(NextFlowEnableForm form, boolean reshow, BindException errors) throws Exception
+        {
+            return ModuleHtmlView.get(ModuleLoader.getInstance().getModule(NextFlowModule.class), "nextFlowEnable");
+        }
+
+        @Override
+        public boolean handlePost(NextFlowEnableForm form, BindException errors) throws Exception
+        {
+            Module module = ModuleLoader.getInstance().getModule("nextflow");
+            if (form.isEnable())
+            {
+                getContainer().setActiveModules(Set.of(module), getUser());
+            }
+            else
+            {
+                Set<Module> activeModules = new HashSet<>(getContainer().getActiveModules());
+                activeModules.remove(module);
+                getContainer().setActiveModules(activeModules, getUser());
+            }
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(NextFlowEnableForm form)
+        {
+            return null;
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+
+        }
+    }
+
+    public static class NextFlowEnableForm
+    {
+        private boolean enable;
+
+        public boolean isEnable()
+        {
+            return enable;
+        }
+
+        public void setEnable(boolean enable)
+        {
+            this.enable = enable;
         }
     }
 }

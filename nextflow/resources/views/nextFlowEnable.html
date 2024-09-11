@@ -1,0 +1,35 @@
+
+<html>
+<button id="enable-button">Enable NextFlow</button>
+<button id="cancel-button">Cancel</button>
+</html>
+<script type = "text/javascript">
+    let activeModules = LABKEY.container.activeModules;
+    let isNextFlowEnabled = activeModules.includes('nextflow');
+
+
+    // update text of enable button based on whether NextFlow is enabled
+    if (isNextFlowEnabled) {
+        $('#enable-button').text('Disable NextFlow');
+    }
+
+    $(document).ready(function() {
+        $('#enable-button').click(function() {
+            LABKEY.Ajax.request({
+                url: LABKEY.ActionURL.buildURL('nextflow', 'nextFlowEnable.api'),
+                method: 'POST',
+                params: { enable: !isNextFlowEnabled },
+                success: function(response) {
+                    window.location = LABKEY.ActionURL.buildURL('project', 'start');
+                },
+                failure: function(response) {
+                    alert('Failed to enable NextFlow - ' + response.exception);
+                }
+            });
+        });
+
+        $('#cancel-button').click(function() {
+            window.location = LABKEY.ActionURL.buildURL('project', 'start');
+        });
+    });
+</script>
