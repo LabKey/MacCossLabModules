@@ -6,19 +6,31 @@ import org.labkey.api.action.SpringActionController;
 import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleHtmlView;
 import org.labkey.api.module.ModuleLoader;
+import org.labkey.api.pipeline.PipeRoot;
+import org.labkey.api.pipeline.PipelineJob;
+import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.security.AdminConsoleAction;
 import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.security.permissions.SiteAdminPermission;
+import org.labkey.api.util.Button;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.logging.LogHelper;
+import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.NavTree;
+import org.labkey.api.view.ViewBackgroundInfo;
+import org.labkey.nextflow.pipeline.NextFlowPipelineJob;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.util.HashSet;
 import java.util.Set;
+
+import static org.labkey.api.util.DOM.Attribute.method;
+import static org.labkey.api.util.DOM.DIV;
+import static org.labkey.api.util.DOM.LK.FORM;
+import static org.labkey.api.util.DOM.at;
 
 public class NextFlowController extends SpringActionController
 {
@@ -185,6 +197,46 @@ public class NextFlowController extends SpringActionController
         public void setEnable(boolean enable)
         {
             this.enable = enable;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public class NextFlowRunAction extends FormViewAction
+    {
+        @Override
+        public void validateCommand(Object o, Errors errors)
+        {
+
+        }
+
+        @Override
+        public ModelAndView getView(Object o, boolean b, BindException errors) throws Exception
+        {
+            return new HtmlView("NextFlow Runner", DIV("Run NextFlow Pipeline",
+                    FORM(at(method, "POST"),
+                            new Button.ButtonBuilder("Start NextFlow").submit(true).build())));
+        }
+
+        @Override
+        public boolean handlePost(Object o, BindException errors) throws Exception
+        {
+            ViewBackgroundInfo info = getViewBackgroundInfo();
+            PipeRoot root = PipelineService.get().findPipelineRoot(info.getContainer());
+            PipelineJob job = new NextFlowPipelineJob(info, root);
+            PipelineService.get().queueJob(job);
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(Object o)
+        {
+            return null;
+        }
+
+        @Override
+        public void addNavTrail(NavTree navTree)
+        {
+
         }
     }
 }
