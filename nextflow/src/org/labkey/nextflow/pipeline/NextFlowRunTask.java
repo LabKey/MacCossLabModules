@@ -1,12 +1,15 @@
 package org.labkey.nextflow.pipeline;
 
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
+import org.labkey.api.pipeline.PipelineJobService;
 import org.labkey.api.pipeline.RecordedActionSet;
 import org.labkey.api.util.FileType;
+import org.labkey.api.util.FileUtil;
 
 import java.util.Collections;
 import java.util.List;
@@ -21,6 +24,12 @@ public class NextFlowRunTask extends PipelineJob.Task<NextFlowRunTask.Factory>
     @Override
     public @NotNull RecordedActionSet run() throws PipelineJobException
     {
+        // get pipeline config file from property store
+        Logger log = getJob().getLogger();
+        ProcessBuilder pb = new ProcessBuilder("wsl", "nextflow", "-v");
+        log.info("Job Started");
+        getJob().runSubProcess(pb, FileUtil.getTempDirectory());
+        log.info("Job Finished");
         return new RecordedActionSet();
     }
 
