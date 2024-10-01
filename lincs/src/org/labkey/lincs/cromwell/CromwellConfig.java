@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.data.PropertyManager.WritablePropertyMap;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -68,7 +69,7 @@ public class CromwellConfig
 
     public void save(@NotNull Container container)
     {
-        PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(container, PROPS_CROMWELL, true);
+        WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(container, PROPS_CROMWELL, true);
         map.put(PROP_CROMWELL_SERVER_URL, getCromwellServerUrl());
         map.put(PROP_CROMWELL_SERVER_PORT, String.valueOf(getCromwellServerPort()));
         map.save();

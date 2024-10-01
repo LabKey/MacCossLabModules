@@ -11,6 +11,7 @@ import org.labkey.api.attachments.AttachmentService;
 import org.labkey.api.data.CompareType;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.data.PropertyManager.WritablePropertyMap;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.Sort;
 import org.labkey.api.data.Table;
@@ -18,9 +19,9 @@ import org.labkey.api.data.TableSelector;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
 import org.labkey.api.view.ShortURLRecord;
+import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.catalog.CatalogEntrySettings;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentParent;
-import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
@@ -210,7 +211,7 @@ public class CatalogEntryManager
 
     public static CatalogEntrySettings getCatalogEntrySettings()
     {
-        PropertyManager.PropertyMap map = PropertyManager.getNormalStore().getWritableProperties(PANORAMA_PUBLIC_CATALOG, false);
+        WritablePropertyMap map = PropertyManager.getNormalStore().getWritableProperties(PANORAMA_PUBLIC_CATALOG, false);
         if (map != null)
         {
             if (Boolean.parseBoolean(map.get(CATALOG_ENTRY_ENABLED)))
@@ -231,7 +232,7 @@ public class CatalogEntryManager
                                                 @Nullable Integer imgHeight, @Nullable Integer maxTextChars,
                                                 @Nullable Integer maxEntries)
     {
-        PropertyManager.PropertyMap map = PropertyManager.getNormalStore().getWritableProperties(CatalogEntryManager.PANORAMA_PUBLIC_CATALOG, true);
+        WritablePropertyMap map = PropertyManager.getNormalStore().getWritableProperties(CatalogEntryManager.PANORAMA_PUBLIC_CATALOG, true);
         map.put(CatalogEntryManager.CATALOG_ENTRY_ENABLED, Boolean.toString(enabled));
         map.put(CatalogEntryManager.CATALOG_MAX_FILE_SIZE, maxFileSize != null ? String.valueOf(maxFileSize) : null);
         map.put(CatalogEntryManager.CATALOG_IMG_WIDTH, imgWidth !=null ? String.valueOf(imgWidth) : null);

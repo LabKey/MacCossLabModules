@@ -19,14 +19,14 @@ package org.labkey.lincs;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
-import org.labkey.api.action.MutatingApiAction;
-import org.labkey.api.action.ReadOnlyApiAction;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.ApiUsageException;
 import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabKeyError;
+import org.labkey.api.action.MutatingApiAction;
+import org.labkey.api.action.ReadOnlyApiAction;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
@@ -37,6 +37,7 @@ import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DataRegion;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.data.PropertyManager.WritablePropertyMap;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.SimpleDisplayColumn;
 import org.labkey.api.data.TableInfo;
@@ -1017,7 +1018,7 @@ public class LincsController extends SpringActionController
         @Override
         public boolean handlePost(ClueCredentialsForm form, BindException errors)
         {
-            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(getContainer(), LINCS_CLUE_CREDENTIALS, true);
+            WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(getContainer(), LINCS_CLUE_CREDENTIALS, true);
             map.put(CLUE_SERVER_URI, form.getServerUri());
             map.put(CLUE_API_KEY, form.getApiKey());
             map.save();
@@ -1045,8 +1046,8 @@ public class LincsController extends SpringActionController
         @Override
         public ModelAndView getView(ClueCredentialsForm form, boolean reshow, BindException errors)
         {
-            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(getContainer(), LINCS_CLUE_CREDENTIALS, false);
-            if(map != null)
+            WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(getContainer(), LINCS_CLUE_CREDENTIALS, false);
+            if (map != null)
             {
                 form.setServerUri(map.get(CLUE_SERVER_URI));
                 form.setApiKey(map.get(CLUE_API_KEY));

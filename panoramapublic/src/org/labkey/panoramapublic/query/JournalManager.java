@@ -21,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 import org.labkey.api.admin.FolderExportPermission;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.data.PropertyManager.WritablePropertyMap;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.SqlSelector;
@@ -367,7 +368,7 @@ public class JournalManager
 
     public static @Nullable PublicDataUser getPublicDataUser(@NotNull Journal journal)
     {
-        PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(journal.getProject(), PUBLIC_DATA_USER, false);
+        WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(journal.getProject(), PUBLIC_DATA_USER, false);
         if(map != null && map.get(USER_ID) != null)
         {
             User user = UserManager.getUser(Integer.parseInt(map.get(USER_ID)));
@@ -382,7 +383,7 @@ public class JournalManager
 
     public static void savePublicDataUser(@NotNull Journal journal, @NotNull User user, @NotNull String password)
     {
-        PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(journal.getProject(), PUBLIC_DATA_USER, true);
+        WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(journal.getProject(), PUBLIC_DATA_USER, true);
         map.put(USER_ID, String.valueOf(user.getUserId()));
         map.put(USER_PASSWORD, password);
         map.save();
