@@ -63,6 +63,7 @@ import org.labkey.api.data.DataRegionSelection;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.NormalContainerType;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.data.PropertyManager.WritablePropertyMap;
 import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.Sort;
@@ -127,7 +128,6 @@ import org.labkey.api.util.DOM;
 import org.labkey.api.util.ExceptionUtil;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
-import org.labkey.api.util.HtmlStringBuilder;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
@@ -204,7 +204,6 @@ import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentsWebPar
 import org.labkey.panoramapublic.view.publish.CatalogEntryWebPart;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
-import org.springframework.validation.ObjectError;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.io.ByteArrayOutputStream;
@@ -981,7 +980,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(DataCiteCredentialsForm form, BindException errors)
         {
-            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, true);
+            WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, true);
             map.put(DataCiteService.USER, form.getProdUser());
             map.put(DataCiteService.PASSWORD, form.getPassword());
             map.put(DataCiteService.PREFIX, form.getDoiPrefix());
@@ -1013,7 +1012,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             if(!reshow)
             {
-                PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, false);
+                WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, false);
                 if(map != null)
                 {
                     // Force the user to re-enter the passwords; do not set them in the form
@@ -1132,7 +1131,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(PXCredentialsForm form, BindException errors)
         {
-            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(ProteomeXchangeService.PX_CREDENTIALS, true);
+            WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(ProteomeXchangeService.PX_CREDENTIALS, true);
             map.put(ProteomeXchangeService.PX_USER, form.getUserName());
             map.put(ProteomeXchangeService.PX_PASSWORD, form.getPassword());
             map.save();
@@ -1160,7 +1159,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             if(!reshow)
             {
-                PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(ProteomeXchangeService.PX_CREDENTIALS, false);
+                WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(ProteomeXchangeService.PX_CREDENTIALS, false);
                 if(map != null)
                 {
                     String user = map.get(ProteomeXchangeService.PX_USER);
@@ -4277,7 +4276,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(PxActionsForm form, BindException errors) throws ProteomeXchangeServiceException, PxException
         {
-            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(ProteomeXchangeService.PX_CREDENTIALS, false);
+            WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(ProteomeXchangeService.PX_CREDENTIALS, false);
             String pxUser = null;
             String pxPassword = null;
             if(map != null)
