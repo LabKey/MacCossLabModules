@@ -1,0 +1,53 @@
+<table>
+    <tr>
+        <td class="labkey-form-label">NextFlow Config File Path</td>
+        <td><input type="text" name="nextFlowConfigFilePath" size=64></td>
+    </tr>
+    <tr>
+        <td class="labkey-form-label">AWS Account Name</td>
+        <td><input type="text" name="name" size=64></td>
+    </tr>
+    <tr>
+        <td class="labkey-form-label">AWS Identity</td>
+        <td><input type="text" name="identity" size=64></td>
+    </tr>
+    <tr>
+        <td class="labkey-form-label">AWS S3 Bucket Path</td>
+        <td><input type="text" name="s3BucketPath" size=64></td>
+    </tr>
+    <tr>
+        <td class="labkey-form-label">AWS Credential</td>
+        <td><input type="password" name="credential" size=64></td>
+    </tr>
+</table>
+<button id="submit-button">Submit</button>
+<button id="cancel-button">Cancel</button>
+
+<script type="text/javascript">
+    $(document).ready(function() {
+        $('#submit-button').click(function() {
+            let data = {
+                nextFlowConfigFilePath: $('input[name=nextFlowConfigFilePath]').val(),
+                accountName: $('input[name=name]').val(),
+                identity: $('input[name=identity]').val(),
+                s3BucketPath: $('input[name=s3BucketPath]').val(),
+                credential: $('input[name=credential]').val()
+            };
+            LABKEY.Ajax.request({
+                url: LABKEY.ActionURL.buildURL('nextflow', 'nextFlowConfiguration.api'),
+                method: 'POST',
+                params: data,
+                success: function(response) {
+                    window.location = LABKEY.ActionURL.buildURL('project', 'start');
+                },
+                failure: function(response) {
+                    alert('Failed to save configuration');
+                }
+            });
+        });
+
+        $('#cancel-button').click(function() {
+            window.location = LABKEY.ActionURL.buildURL('project', 'start');
+        });
+    });
+</script>
