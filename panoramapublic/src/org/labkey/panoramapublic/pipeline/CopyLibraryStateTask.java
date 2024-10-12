@@ -6,6 +6,7 @@ import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.data.PropertyManager.WritablePropertyMap;
 import org.labkey.api.exp.api.ExpExperiment;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.pipeline.AbstractTaskFactory;
@@ -120,7 +121,7 @@ public class CopyLibraryStateTask extends PipelineJob.Task<CopyLibraryStateTask.
         if (null != versionStr)
         {
             log.info(String.format("Setting the value of property '%s' to '%s'.", TargetedMSService.PROP_CHROM_LIB_REVISION, versionStr));
-            PropertyManager.PropertyMap targetPropMap = PropertyManager.getWritableProperties(container, TargetedMSService.MODULE_NAME, true);
+            WritablePropertyMap targetPropMap = PropertyManager.getWritableProperties(container, TargetedMSService.MODULE_NAME, true);
             targetPropMap.put(TargetedMSService.PROP_CHROM_LIB_REVISION, versionStr);
             targetPropMap.save();
 

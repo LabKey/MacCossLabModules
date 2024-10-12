@@ -3,11 +3,13 @@
 <%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.data.ContainerManager" %>
 <%@ page import="org.labkey.api.data.PropertyManager" %>
+<%@ page import="org.labkey.api.data.PropertyManager.WritablePropertyMap" %>
 <%@ page import="org.labkey.api.security.Group" %>
 <%@ page import="org.labkey.api.security.SecurityManager" %>
 <%@ page import="org.labkey.api.security.User" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.signup.SignUpController.AddGroupChangeProperty" %>
 <%@ page import="org.labkey.signup.SignUpController.AddPropertyAction" %>
 <%@ page import="org.labkey.signup.SignUpController.RemoveGroupChangeProperty" %>
@@ -18,7 +20,6 @@
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.Set" %>
-<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -135,7 +136,7 @@
         <th>Group B</th>
         <th>&nbsp;</th>
     </tr>
-    <%  PropertyManager.PropertyMap groupToGroup = PropertyManager.getWritableProperties(SignUpModule.SIGNUP_GROUP_TO_GROUP, true);
+    <%  WritablePropertyMap groupToGroup = PropertyManager.getWritableProperties(SignUpModule.SIGNUP_GROUP_TO_GROUP, true);
         Set<String> keySet = groupToGroup.keySet();
         for(String key: keySet) {
         List<String> rules = Arrays.asList(groupToGroup.get(key).split("\\s*,\\s*"));

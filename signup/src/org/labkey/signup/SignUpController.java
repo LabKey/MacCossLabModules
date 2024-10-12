@@ -36,6 +36,7 @@ import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.data.PropertyManager.WritablePropertyMap;
 import org.labkey.api.data.Table;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.AuthenticationManager.AuthenticationResult;
@@ -138,7 +139,7 @@ public class SignUpController extends SpringActionController
                errors.addError(new LabKeyError("No container found for rowId " + addPropertyForm.getFolderId()));
                return false;
            }
-           PropertyManager.PropertyMap m = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, true);
+           WritablePropertyMap m = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, true);
            Integer groupId = SecurityManager.getGroupId(c.getProject(), addPropertyForm.getGroupName());
            if(groupId == null)
            {
@@ -175,7 +176,7 @@ public class SignUpController extends SpringActionController
                 errors.addError(new LabKeyError("No container found for rowId " + containerIdForm.getFolderId()));
                 return false;
             }
-            PropertyManager.PropertyMap m = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, true);
+            WritablePropertyMap m = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, true);
             m.remove(SignUpModule.SIGNUP_GROUP_NAME);
             m.save();
 
@@ -204,7 +205,7 @@ public class SignUpController extends SpringActionController
             if((addGroupChangeForm.getOldgroup() == 0 || addGroupChangeForm.getNewgroup() == 0) || // if both groups have id=0
                     (addGroupChangeForm.getOldgroup() == addGroupChangeForm.getNewgroup())) // if both groups are the same
                 return false;
-            PropertyManager.PropertyMap m = PropertyManager.getWritableProperties(SignUpModule.SIGNUP_GROUP_TO_GROUP, true);
+            WritablePropertyMap m = PropertyManager.getWritableProperties(SignUpModule.SIGNUP_GROUP_TO_GROUP, true);
             String existingRules = m.get(String.valueOf(addGroupChangeForm.getOldgroup()));
             if(existingRules == null)
                 existingRules = "";
@@ -241,7 +242,7 @@ public class SignUpController extends SpringActionController
             int newgroup = addGroupChangeForm.getNewgroup();
             if(oldgroup == 0 || newgroup == 0)
                 return false;
-            PropertyManager.PropertyMap m = PropertyManager.getWritableProperties(SignUpModule.SIGNUP_GROUP_TO_GROUP, true);
+            WritablePropertyMap m = PropertyManager.getWritableProperties(SignUpModule.SIGNUP_GROUP_TO_GROUP, true);
             String existingRules = m.get(String.valueOf(oldgroup));
             ArrayList<String> rules = new ArrayList<>(Arrays.asList(existingRules.split(",")));
             if(!rules.contains(String.valueOf(newgroup)))
@@ -432,7 +433,7 @@ public class SignUpController extends SpringActionController
                 Table.update(null, SignUpManager.getTableInfoTempUsers(), _tempUser, _tempUser.getUserId());
 
                 Container c = _tempUser.getContainer();
-                PropertyManager.PropertyMap property = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, false);
+                WritablePropertyMap property = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, false);
                 if (property != null && property.get(SignUpModule.SIGNUP_GROUP_NAME) != null)
                 {
                     Integer groupId = SecurityManager.getGroupId(c.getProject(), property.get(SignUpModule.SIGNUP_GROUP_NAME));
@@ -736,7 +737,7 @@ public class SignUpController extends SpringActionController
                 response.put("status", "NO_PERMISSIONS");
                 return response;
             }
-            PropertyManager.PropertyMap m = PropertyManager.getWritableProperties(SignUpModule.SIGNUP_GROUP_TO_GROUP, true);
+            WritablePropertyMap m = PropertyManager.getWritableProperties(SignUpModule.SIGNUP_GROUP_TO_GROUP, true);
             String existingRules = m.get(String.valueOf(addGroupChangeForm.getOldgroup()));
             if(existingRules == null) {
                 response.put("status", "NO_PERMISSIONS");

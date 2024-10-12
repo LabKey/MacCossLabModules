@@ -8,6 +8,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.data.PropertyManager.WritablePropertyMap;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.security.User;
 import org.labkey.api.targetedms.ITargetedMSRun;
@@ -35,7 +36,7 @@ public class LincsPspUtil
         try
         {
             // Only run if the psp endpoint configuration has been saved in the container
-            PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(container, LincsController.LINCS_CLUE_CREDENTIALS, false);
+            WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(container, LincsController.LINCS_CLUE_CREDENTIALS, false);
             if(map != null)
             {
                 pspUrl = map.get(LincsController.CLUE_SERVER_URI);

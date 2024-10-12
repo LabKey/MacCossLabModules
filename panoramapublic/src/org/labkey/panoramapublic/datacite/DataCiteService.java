@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.data.PropertyManager.WritablePropertyMap;
 import org.labkey.api.util.Link;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
@@ -182,7 +183,7 @@ public class DataCiteService
      */
     private static DataCiteConfig getDataCiteConfig(boolean test) throws DataCiteException
     {
-        PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, false);
+        WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, false);
         return getConfig(map, null, test);
     }
 
@@ -195,7 +196,7 @@ public class DataCiteService
     @NotNull
     private static DataCiteConfig getDataCiteConfig(@NotNull String doi) throws DataCiteException
     {
-        PropertyManager.PropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, false);
+        WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(DataCiteService.CREDENTIALS, false);
         DataCiteConfig testConfig = getConfig(map, doi, true);
         DataCiteConfig config = getConfig(map, doi, false);
         if(testConfig.hasPrefix(doi))
@@ -209,7 +210,7 @@ public class DataCiteService
         throw new DataCiteException("Unrecognized prefix in DOI: " + doi);
     }
 
-    private static DataCiteConfig getConfig(PropertyManager.PropertyMap map, @Nullable String doi, boolean test) throws DataCiteException
+    private static DataCiteConfig getConfig(WritablePropertyMap map, @Nullable String doi, boolean test) throws DataCiteException
     {
         if(map == null)
         {
