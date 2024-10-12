@@ -3,19 +3,25 @@ package org.labkey.nextflow;
 import org.apache.logging.log4j.Logger;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.data.PropertyManager;
+import org.labkey.api.data.PropertyStore;
 import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleHtmlView;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineService;
+import org.labkey.api.pipeline.PipelineStatusUrls;
 import org.labkey.api.security.AdminConsoleAction;
 import org.labkey.api.security.RequiresPermission;
+import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.security.permissions.SiteAdminPermission;
 import org.labkey.api.util.Button;
+import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.logging.LogHelper;
+import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.ViewBackgroundInfo;
@@ -71,7 +77,7 @@ public class NextFlowController extends SpringActionController
         @Override
         public URLHelper getSuccessURL(NextFlowConfiguration nextFlowConfiguration)
         {
-            return null;
+            return getContainer().getStartURL(getUser());
         }
 
         @Override
@@ -141,41 +147,62 @@ public class NextFlowController extends SpringActionController
     }
 
     @RequiresPermission(SiteAdminPermission.class)
-    public static class NextFlowEnableAction extends FormViewAction<NextFlowEnableForm>
+    public static class NextFlowEnableAction extends FormViewAction
     {
+
         @Override
-        public void validateCommand(NextFlowEnableForm target, Errors errors)
+        public void validateCommand(Object target, Errors errors)
         {
 
         }
 
         @Override
-        public ModelAndView getView(NextFlowEnableForm form, boolean reshow, BindException errors) throws Exception
+        public ModelAndView getView(Object form, boolean reshow, BindException errors) throws Exception
         {
-            return ModuleHtmlView.get(ModuleLoader.getInstance().getModule(NextFlowModule.class), "nextFlowEnable");
-        }
-
-        @Override
-        public boolean handlePost(NextFlowEnableForm form, BindException errors) throws Exception
-        {
-            Module module = ModuleLoader.getInstance().getModule("nextflow");
-            if (form.isEnable())
+            PropertyStore store = PropertyManager.getNormalStore();
+            PropertyManager.PropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, true);
+            String btnTxt = "Enable NextFlow";
+            // check if nextflow is enabled
+            if (map != null)
             {
-                getContainer().setActiveModules(Set.of(module), getUser());
+                if ("true".equals(map.get("enabled")))
+                {
+                    btnTxt = "Disable NextFlow";
+                }
+                else
+                {
+                    btnTxt = "Enable NextFlow";
+                }
+            }
+
+            return new HtmlView("Enable/Disable Nextflow", DIV("Enable/Disable Nextflow",
+                    FORM(at(method, "POST"),
+                            new Button.ButtonBuilder(btnTxt).submit(true).build())));
+        }
+
+        @Override
+        public boolean handlePost(Object form, BindException errors) throws Exception
+        {
+            PropertyStore store = PropertyManager.getNormalStore();
+            PropertyManager.PropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, true);
+            if (map.isEmpty())
+            {
+                map.put("enabled", "true");
             }
             else
             {
-                Set<Module> activeModules = new HashSet<>(getContainer().getActiveModules());
-                activeModules.remove(module);
-                getContainer().setActiveModules(activeModules, getUser());
+                String enabled = map.get("enabled");
+                if ("true".equals(enabled))
+                {
+                    map.put("enabled", "false");
+                }
+                else
+                {
+                    map.put("enabled", "true");
+                }
             }
+            map.save();
             return true;
-        }
-
-        @Override
-        public URLHelper getSuccessURL(NextFlowEnableForm form)
-        {
-            return null;
         }
 
         @Override
@@ -183,30 +210,27 @@ public class NextFlowController extends SpringActionController
         {
 
         }
-    }
 
-    public static class NextFlowEnableForm
-    {
-        private boolean enable;
-
-        public boolean isEnable()
+        @Override
+        public URLHelper getSuccessURL(Object o)
         {
-            return enable;
-        }
-
-        public void setEnable(boolean enable)
-        {
-            this.enable = enable;
+            return getContainer().getStartURL(getUser());
         }
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
     public class NextFlowRunAction extends FormViewAction
     {
+        private ActionURL _successURL;
         @Override
         public void validateCommand(Object o, Errors errors)
         {
-
+            PropertyStore store = PropertyManager.getNormalStore();
+            PropertyManager.PropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, false);
+            if (map == null || !"true".equals(map.get("enabled")))
+            {
+                errors.reject(ERROR_MSG, "NextFlow is not enabled");
+            }
         }
 
         @Override
@@ -220,17 +244,31 @@ public class NextFlowController extends SpringActionController
         @Override
         public boolean handlePost(Object o, BindException errors) throws Exception
         {
+            // check if nextflow is enabled
+            PropertyStore store = PropertyManager.getNormalStore();
+            PropertyManager.PropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, false);
+            if (map == null || !"true".equals(map.get("enabled")))
+            {
+                errors.reject(ERROR_MSG, "NextFlow is not enabled");
+                return false;
+            }
+
+            try (SecurityManager.TransformSession session = SecurityManager.createTransformSession(getViewContext()))
+            {
+                // TODO: pass the apiKey to Nextflow job
+                String apiKey = session.getApiKey();
+            }
             ViewBackgroundInfo info = getViewBackgroundInfo();
             PipeRoot root = PipelineService.get().findPipelineRoot(info.getContainer());
             PipelineJob job = new NextFlowPipelineJob(info, root);
             PipelineService.get().queueJob(job);
-            return true;
+            return !errors.hasErrors();
         }
 
         @Override
         public URLHelper getSuccessURL(Object o)
         {
-            return null;
+            return PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlBegin(getContainer());
         }
 
         @Override

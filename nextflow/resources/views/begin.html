@@ -1,0 +1,17 @@
+<html>
+<button id="enable-button">Enable/Disable Nextflow</button>
+<button id="run-button">Nextflow Pipeline</button>
+</html>
+
+<script type = "text/javascript">
+
+    $(document).ready(function() {
+        $('#enable-button').click(function() {
+            window.location = LABKEY.ActionURL.buildURL('nextflow', 'nextFlowEnable.view');
+        });
+
+        $('#run-button').click(function() {
+            window.location = LABKEY.ActionURL.buildURL('nextflow', 'nextFlowRun.api');
+        });
+    })
+</script>

@@ -1,5 +1,0 @@
-<view xmlns="http://labkey.org/data/xml/view" title="Enable NextFlow">
-    <dependencies>
-        <dependency path="internal/jQuery"/>
-    </dependencies>
-</view>

@@ -15,7 +15,15 @@ import static org.labkey.api.action.SpringActionController.ERROR_MSG;
 
 public class NextFlowManager
 {
-    private static final String CATEGORY = "nextflow-config";
+    public static final String NEXTFLOW_CONFIG = "nextflow-config";
+    public static final String NEXTFLOW_ENABLE = "nextflow-enable";
+
+    private static final String NEXTFLOW_ACCOUNT_NAME = "accountName";
+    private static final String NEXTFLOW_CONFIG_FILE_PATH = "nextFlowConfigFilePath";
+    private static final String NEXTFLOW_IDENTIRY = "identity";
+    private static final String NEXTFLOW_CREDENTIAL = "credential";
+    private static final String NEXTFLOW_S3_BUCKET_PATH = "s3BucketPath";
+
     private static final NextFlowManager _instance = new NextFlowManager();
 
     // Normal store is used for enabled/disabled module
@@ -51,46 +59,54 @@ public class NextFlowManager
 
     }
 
+    public NextFlowController.NextFlowConfiguration getConfiguration()
+    {
+        PropertyManager.PropertyMap props = _encryptedStore.getWritableProperties(NEXTFLOW_CONFIG, false);
+        if (props != null)
+        {
+            NextFlowController.NextFlowConfiguration configuration = new NextFlowController.NextFlowConfiguration();
+            configuration.setAccountName(props.get(NEXTFLOW_ACCOUNT_NAME));
+            configuration.setNextFlowConfigFilePath(props.get(NEXTFLOW_CONFIG_FILE_PATH));
+            configuration.setIdentity(props.get(NEXTFLOW_IDENTIRY));
+            configuration.setCredential(props.get(NEXTFLOW_CREDENTIAL));
+            configuration.setS3BucketPath(props.get(NEXTFLOW_S3_BUCKET_PATH));
+            return configuration;
+        }
+
+        return null;
+    }
+
     public void addConfiguration(NextFlowController.NextFlowConfiguration configuration, BindException errors)
     {
         checkArgs(configuration.getNextFlowConfigFilePath(), configuration.getAccountName(), configuration.getIdentity(), configuration.getCredential(), configuration.getS3BucketPath(), errors);
 
-        // Check the account exists in the list of accounts
-        PropertyManager.PropertyMap accounts = _normalStore.getWritableProperties(CATEGORY, true);
-        if (accounts.containsKey(configuration.getAccountName()))
-            errors.rejectValue("name", ERROR_MSG, "account already exists");
+        // Check the config exists
+        PropertyManager.PropertyMap config = _encryptedStore.getWritableProperties(NEXTFLOW_CONFIG, true);
+        if (config.containsKey(configuration.getAccountName()))
+            errors.rejectValue("name", ERROR_MSG, "Config already exists");
 
         if (!errors.hasErrors())
-            saveConfiguration(accounts, configuration);
+            saveConfiguration(configuration);
     }
 
-    private void saveConfiguration(@NotNull PropertyManager.PropertyMap accounts, NextFlowController.NextFlowConfiguration configuration)
+    private void saveConfiguration( NextFlowController.NextFlowConfiguration configuration)
     {
         try (DbScope.Transaction tx = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
         {
-            String category = category(configuration.getAccountName());
-            accounts.put(configuration.getAccountName(), category);
-            accounts.save();
+            Map<String, String> properties = new HashMap<>();
+            properties.put(NEXTFLOW_CONFIG_FILE_PATH, configuration.getNextFlowConfigFilePath());
+            properties.put(NEXTFLOW_IDENTIRY, configuration.getIdentity());
+            properties.put(NEXTFLOW_CREDENTIAL, configuration.getCredential());
+            properties.put(NEXTFLOW_S3_BUCKET_PATH, configuration.getS3BucketPath());
+            properties.put(NEXTFLOW_ACCOUNT_NAME, configuration.getAccountName());
 
-            Map<String, Object> properties = new HashMap<>();
-            properties.put("nextFlowConfigFilePath", configuration.getNextFlowConfigFilePath());
-            properties.put("identity", configuration.getIdentity());
-            properties.put("credential", configuration.getCredential());
-            properties.put("s3BucketPath", configuration.getS3BucketPath());
-            properties.put("accountName", configuration.getAccountName());
-
-            PropertyManager.PropertyMap props = _encryptedStore.getWritableProperties(category, true);
+            PropertyManager.PropertyMap props = _encryptedStore.getWritableProperties(NEXTFLOW_CONFIG, true);
             props.clear();
-            props.putAll(props);
+            props.putAll(properties);
             props.save();
 
             tx.commit();
         }
-    }
-
-    private String category(@NotNull String name)
-    {
-        return CATEGORY + ":" + name;
     }
 
 }

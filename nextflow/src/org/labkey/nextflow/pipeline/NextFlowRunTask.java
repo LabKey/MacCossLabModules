@@ -10,7 +10,10 @@ import org.labkey.api.pipeline.PipelineJobService;
 import org.labkey.api.pipeline.RecordedActionSet;
 import org.labkey.api.util.FileType;
 import org.labkey.api.util.FileUtil;
+import org.labkey.nextflow.NextFlowController;
+import org.labkey.nextflow.NextFlowManager;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.List;
 
@@ -24,11 +27,15 @@ public class NextFlowRunTask extends PipelineJob.Task<NextFlowRunTask.Factory>
     @Override
     public @NotNull RecordedActionSet run() throws PipelineJobException
     {
-        // get pipeline config file from property store
         Logger log = getJob().getLogger();
-        ProcessBuilder pb = new ProcessBuilder("wsl", "nextflow", "-v");
+        NextFlowController.NextFlowConfiguration config = NextFlowManager.get().getConfiguration();
+        String nextFlowConfigFilePath = config.getNextFlowConfigFilePath();
+        String s3BucketPath = config.getS3BucketPath();
+        String s3Path = "s3://" + s3BucketPath;
+        ProcessBuilder pb = new ProcessBuilder( "nextflow" , "run", "-resume", "-r", "main", "-profile", "aws", "mriffle/nf-skyline-dia-ms", "-bucket-dir", s3Path, "-c", nextFlowConfigFilePath);
         log.info("Job Started");
-        getJob().runSubProcess(pb, FileUtil.getTempDirectory());
+        File dir = new File(nextFlowConfigFilePath);
+        getJob().runSubProcess(pb, dir);
         log.info("Job Finished");
         return new RecordedActionSet();
     }
