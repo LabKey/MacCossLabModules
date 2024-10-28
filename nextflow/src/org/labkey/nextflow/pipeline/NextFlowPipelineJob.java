@@ -25,7 +25,7 @@ public class NextFlowPipelineJob extends PipelineJob
         super(null, info, root);
         try
         {
-            setLogFile(FileUtil.createTempFile("NextFlowPipelineJob", ".txt"));
+            setLogFile(FileUtil.createTempFile("NextFlowPipelineJob", ".log"));
         }
         catch (IOException e)
         {

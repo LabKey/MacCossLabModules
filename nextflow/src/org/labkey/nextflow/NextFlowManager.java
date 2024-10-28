@@ -1,7 +1,6 @@
 package org.labkey.nextflow;
 
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
@@ -20,7 +19,7 @@ public class NextFlowManager
 
     private static final String NEXTFLOW_ACCOUNT_NAME = "accountName";
     private static final String NEXTFLOW_CONFIG_FILE_PATH = "nextFlowConfigFilePath";
-    private static final String NEXTFLOW_IDENTIRY = "identity";
+    private static final String NEXTFLOW_IDENTITY = "identity";
     private static final String NEXTFLOW_CREDENTIAL = "credential";
     private static final String NEXTFLOW_S3_BUCKET_PATH = "s3BucketPath";
 
@@ -67,7 +66,7 @@ public class NextFlowManager
             NextFlowController.NextFlowConfiguration configuration = new NextFlowController.NextFlowConfiguration();
             configuration.setAccountName(props.get(NEXTFLOW_ACCOUNT_NAME));
             configuration.setNextFlowConfigFilePath(props.get(NEXTFLOW_CONFIG_FILE_PATH));
-            configuration.setIdentity(props.get(NEXTFLOW_IDENTIRY));
+            configuration.setIdentity(props.get(NEXTFLOW_IDENTITY));
             configuration.setCredential(props.get(NEXTFLOW_CREDENTIAL));
             configuration.setS3BucketPath(props.get(NEXTFLOW_S3_BUCKET_PATH));
             return configuration;
@@ -95,7 +94,7 @@ public class NextFlowManager
         {
             Map<String, String> properties = new HashMap<>();
             properties.put(NEXTFLOW_CONFIG_FILE_PATH, configuration.getNextFlowConfigFilePath());
-            properties.put(NEXTFLOW_IDENTIRY, configuration.getIdentity());
+            properties.put(NEXTFLOW_IDENTITY, configuration.getIdentity());
             properties.put(NEXTFLOW_CREDENTIAL, configuration.getCredential());
             properties.put(NEXTFLOW_S3_BUCKET_PATH, configuration.getS3BucketPath());
             properties.put(NEXTFLOW_ACCOUNT_NAME, configuration.getAccountName());

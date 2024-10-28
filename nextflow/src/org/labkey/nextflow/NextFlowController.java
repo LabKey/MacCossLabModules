@@ -42,6 +42,7 @@ public class NextFlowController extends SpringActionController
 {
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(NextFlowController.class);
     public static final String NAME = "nextflow";
+    private static final String IS_NEXTFLOW_ENABLED = "enabled";
 
     private static final Logger LOG = LogHelper.getLogger(NextFlowController.class, NAME);
 
@@ -160,19 +161,16 @@ public class NextFlowController extends SpringActionController
         public ModelAndView getView(Object form, boolean reshow, BindException errors) throws Exception
         {
             PropertyStore store = PropertyManager.getNormalStore();
-            PropertyManager.PropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, true);
+            PropertyManager.PropertyMap map = store.getProperties(NextFlowManager.NEXTFLOW_ENABLE);
             String btnTxt = "Enable NextFlow";
             // check if nextflow is enabled
-            if (map != null)
+            if (Boolean.parseBoolean(map.get(IS_NEXTFLOW_ENABLED)))
             {
-                if ("true".equals(map.get("enabled")))
-                {
-                    btnTxt = "Disable NextFlow";
-                }
-                else
-                {
-                    btnTxt = "Enable NextFlow";
-                }
+                btnTxt = "Disable NextFlow";
+            }
+            else
+            {
+                btnTxt = "Enable NextFlow";
             }
 
             return new HtmlView("Enable/Disable Nextflow", DIV("Enable/Disable Nextflow",
@@ -187,18 +185,17 @@ public class NextFlowController extends SpringActionController
             PropertyManager.PropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, true);
             if (map.isEmpty())
             {
-                map.put("enabled", "true");
+                map.put(IS_NEXTFLOW_ENABLED, Boolean.TRUE.toString());
             }
             else
             {
-                String enabled = map.get("enabled");
-                if ("true".equals(enabled))
+                if (Boolean.parseBoolean(map.get(IS_NEXTFLOW_ENABLED)))
                 {
-                    map.put("enabled", "false");
+                    map.put(IS_NEXTFLOW_ENABLED, Boolean.FALSE.toString());
                 }
                 else
                 {
-                    map.put("enabled", "true");
+                    map.put(IS_NEXTFLOW_ENABLED, Boolean.TRUE.toString());
                 }
             }
             map.save();
@@ -246,8 +243,8 @@ public class NextFlowController extends SpringActionController
         {
             // check if nextflow is enabled
             PropertyStore store = PropertyManager.getNormalStore();
-            PropertyManager.PropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, false);
-            if (map == null || !"true".equals(map.get("enabled")))
+            PropertyManager.PropertyMap map = store.getProperties(NextFlowManager.NEXTFLOW_ENABLE);
+            if (map == null || !Boolean.parseBoolean(map.get(IS_NEXTFLOW_ENABLED)))
             {
                 errors.reject(ERROR_MSG, "NextFlow is not enabled");
                 return false;
