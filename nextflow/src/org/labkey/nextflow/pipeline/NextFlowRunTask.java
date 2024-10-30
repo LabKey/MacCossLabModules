@@ -2,6 +2,7 @@ package org.labkey.nextflow.pipeline;
 
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.labkey.api.files.FileContentService;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
@@ -32,9 +33,12 @@ public class NextFlowRunTask extends PipelineJob.Task<NextFlowRunTask.Factory>
         String nextFlowConfigFilePath = config.getNextFlowConfigFilePath();
         String s3BucketPath = config.getS3BucketPath();
         String s3Path = "s3://" + s3BucketPath;
-        ProcessBuilder pb = new ProcessBuilder( "nextflow" , "run", "-resume", "-r", "main", "-profile", "aws", "mriffle/nf-skyline-dia-ms", "-bucket-dir", s3Path, "-c", nextFlowConfigFilePath);
+        String apiKey = getJob().getApiKey();
+        ProcessBuilder pb = new ProcessBuilder( "nextflow" , "secrets", "set", "PANORAMA_API_KEY", apiKey);
         log.info("Job Started");
-        File dir = new File(nextFlowConfigFilePath);
+        File dir = FileContentService.get().getDefaultRootInfo(getJob().getContainer()).getPath().toFile();
+        getJob().runSubProcess(pb, dir);
+        pb.command("nextflow" , "run", "-resume", "-r", "main", "-profile", "aws", "mriffle/nf-skyline-dia-ms", "-bucket-dir", s3Path, "-c", nextFlowConfigFilePath);
         getJob().runSubProcess(pb, dir);
         log.info("Job Finished");
         return new RecordedActionSet();

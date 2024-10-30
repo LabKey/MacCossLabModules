@@ -16,13 +16,15 @@ import java.io.IOException;
 
 public class NextFlowPipelineJob extends PipelineJob
 {
+    private String _apiKey;
     // For serialization
     protected NextFlowPipelineJob()
     {}
 
-    public NextFlowPipelineJob(ViewBackgroundInfo info, @NotNull PipeRoot root)
+    public NextFlowPipelineJob(ViewBackgroundInfo info, @NotNull PipeRoot root, String apiKey)
     {
         super(null, info, root);
+        this._apiKey = apiKey;
         try
         {
             setLogFile(FileUtil.createTempFile("NextFlowPipelineJob", ".log"));
@@ -33,6 +35,10 @@ public class NextFlowPipelineJob extends PipelineJob
         }
     }
 
+    public String getApiKey()
+    {
+        return _apiKey;
+    }
 
     @Override
     public URLHelper getStatusHref()

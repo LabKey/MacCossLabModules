@@ -79,11 +79,6 @@ public class NextFlowManager
     {
         checkArgs(configuration.getNextFlowConfigFilePath(), configuration.getAccountName(), configuration.getIdentity(), configuration.getCredential(), configuration.getS3BucketPath(), errors);
 
-        // Check the config exists
-        PropertyManager.PropertyMap config = _encryptedStore.getWritableProperties(NEXTFLOW_CONFIG, true);
-        if (config.containsKey(configuration.getAccountName()))
-            errors.rejectValue("name", ERROR_MSG, "Config already exists");
-
         if (!errors.hasErrors())
             saveConfiguration(configuration);
     }
@@ -99,7 +94,7 @@ public class NextFlowManager
             properties.put(NEXTFLOW_S3_BUCKET_PATH, configuration.getS3BucketPath());
             properties.put(NEXTFLOW_ACCOUNT_NAME, configuration.getAccountName());
 
-            PropertyManager.PropertyMap props = _encryptedStore.getWritableProperties(NEXTFLOW_CONFIG, true);
+            PropertyManager.WritablePropertyMap props = _encryptedStore.getWritableProperties(NEXTFLOW_CONFIG, true);
             props.clear();
             props.putAll(properties);
             props.save();

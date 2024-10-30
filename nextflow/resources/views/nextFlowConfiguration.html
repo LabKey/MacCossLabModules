@@ -21,10 +21,32 @@
     </tr>
 </table>
 <button id="submit-button">Submit</button>
+<button id="delete-button">Delete</button>
 <button id="cancel-button">Cancel</button>
 
-<script type="text/javascript">
+<script type="text/javascript" nonce="<%=scriptNonce%>">
     $(document).ready(function() {
+        // load the current configuration on page load
+        LABKEY.Ajax.request({
+            url: LABKEY.ActionURL.buildURL('nextflow', 'GetNextFlowConfiguration.api'),
+            method: 'GET',
+            success: function(response) {
+                const parsed = JSON.parse(response.responseText);
+                if (parsed.config) {
+                    const response = parsed.config;
+                    $('input[name=nextFlowConfigFilePath]').val(response.nextFlowConfigFilePath);
+                    $('input[name=name]').val(response.accountName);
+                    $('input[name=identity]').val(response.identity);
+                    $('input[name=s3BucketPath]').val(response.s3BucketPath);
+                    $('input[name=credential]').val(response.credential);
+                }
+
+            },
+            failure: function(response) {
+                alert('Failed to load configuration');
+            }
+        });
+
         $('#submit-button').click(function() {
             let data = {
                 nextFlowConfigFilePath: $('input[name=nextFlowConfigFilePath]').val(),
@@ -42,6 +64,19 @@
                 },
                 failure: function(response) {
                     alert('Failed to save configuration');
+                }
+            });
+        });
+
+        $('#delete-button').click(function() {
+            LABKEY.Ajax.request({
+                url: LABKEY.ActionURL.buildURL('nextflow', 'DeleteNextFlowConfiguration.api'),
+                method: 'POST',
+                success: function(response) {
+                    window.location = LABKEY.ActionURL.buildURL('project', 'start');
+                },
+                failure: function(response) {
+                    alert('Failed to delete configuration');
                 }
             });
         });

@@ -1,7 +1,11 @@
 package org.labkey.nextflow;
 
 import org.apache.logging.log4j.Logger;
+import org.labkey.api.action.ApiResponse;
+import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.FormViewAction;
+import org.labkey.api.action.MutatingApiAction;
+import org.labkey.api.action.ReadOnlyApiAction;
 import org.labkey.api.action.SpringActionController;
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.data.PropertyStore;
@@ -16,6 +20,7 @@ import org.labkey.api.security.AdminConsoleAction;
 import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
+import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.SiteAdminPermission;
 import org.labkey.api.util.Button;
 import org.labkey.api.util.PageFlowUtil;
@@ -37,6 +42,7 @@ import static org.labkey.api.util.DOM.Attribute.method;
 import static org.labkey.api.util.DOM.DIV;
 import static org.labkey.api.util.DOM.LK.FORM;
 import static org.labkey.api.util.DOM.at;
+import static org.labkey.nextflow.NextFlowManager.NEXTFLOW_CONFIG;
 
 public class NextFlowController extends SpringActionController
 {
@@ -50,6 +56,29 @@ public class NextFlowController extends SpringActionController
     {
         setActionResolver(_actionResolver);
     }
+
+    @RequiresPermission(AdminPermission.class)
+    public class GetNextFlowConfigurationAction extends ReadOnlyApiAction<Object>
+    {
+        @Override
+        public ApiResponse execute(Object form, BindException errors) throws Exception
+        {
+            return new ApiSimpleResponse("config", PropertyManager.getEncryptedStore().getProperties(NEXTFLOW_CONFIG));
+        }
+    }
+
+    @RequiresPermission(AdminPermission.class)
+    public class DeleteNextFlowConfigurationAction extends MutatingApiAction<Object>
+    {
+        @Override
+        public ApiResponse execute(Object form, BindException errors) throws Exception
+        {
+            PropertyStore store = PropertyManager.getEncryptedStore();
+            store.deletePropertySet(NEXTFLOW_CONFIG);
+            return new ApiSimpleResponse("success", true);
+        }
+    }
+
 
     @AdminConsoleAction
     @RequiresPermission(AdminOperationsPermission.class)
@@ -182,7 +211,7 @@ public class NextFlowController extends SpringActionController
         public boolean handlePost(Object form, BindException errors) throws Exception
         {
             PropertyStore store = PropertyManager.getNormalStore();
-            PropertyManager.PropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, true);
+            PropertyManager.WritablePropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, true);
             if (map.isEmpty())
             {
                 map.put(IS_NEXTFLOW_ENABLED, Boolean.TRUE.toString());
@@ -254,11 +283,12 @@ public class NextFlowController extends SpringActionController
             {
                 // TODO: pass the apiKey to Nextflow job
                 String apiKey = session.getApiKey();
+                ViewBackgroundInfo info = getViewBackgroundInfo();
+                PipeRoot root = PipelineService.get().findPipelineRoot(info.getContainer());
+                PipelineJob job = new NextFlowPipelineJob(info, root, apiKey);
+                PipelineService.get().queueJob(job);
             }
-            ViewBackgroundInfo info = getViewBackgroundInfo();
-            PipeRoot root = PipelineService.get().findPipelineRoot(info.getContainer());
-            PipelineJob job = new NextFlowPipelineJob(info, root);
-            PipelineService.get().queueJob(job);
+
             return !errors.hasErrors();
         }
 
