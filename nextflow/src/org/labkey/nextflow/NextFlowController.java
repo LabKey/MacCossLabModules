@@ -41,6 +41,7 @@ import java.util.Set;
 import static org.labkey.api.util.DOM.Attribute.method;
 import static org.labkey.api.util.DOM.DIV;
 import static org.labkey.api.util.DOM.LK.FORM;
+import static org.labkey.api.util.DOM.P;
 import static org.labkey.api.util.DOM.at;
 import static org.labkey.nextflow.NextFlowManager.NEXTFLOW_CONFIG;
 
@@ -202,7 +203,7 @@ public class NextFlowController extends SpringActionController
                 btnTxt = "Enable NextFlow";
             }
 
-            return new HtmlView("Enable/Disable Nextflow", DIV("Enable/Disable Nextflow",
+            return new HtmlView("Enable/Disable Nextflow", DIV( P("NextFlow is currently " + (Boolean.parseBoolean(map.get(IS_NEXTFLOW_ENABLED)) ? "enabled" : "disabled")),
                     FORM(at(method, "POST"),
                             new Button.ButtonBuilder(btnTxt).submit(true).build())));
         }
@@ -252,8 +253,8 @@ public class NextFlowController extends SpringActionController
         public void validateCommand(Object o, Errors errors)
         {
             PropertyStore store = PropertyManager.getNormalStore();
-            PropertyManager.PropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, false);
-            if (map == null || !"true".equals(map.get("enabled")))
+            PropertyManager.PropertyMap map = store.getProperties(NextFlowManager.NEXTFLOW_ENABLE);
+            if (!Boolean.parseBoolean(map.get(IS_NEXTFLOW_ENABLED)))
             {
                 errors.reject(ERROR_MSG, "NextFlow is not enabled");
             }
@@ -301,7 +302,7 @@ public class NextFlowController extends SpringActionController
         @Override
         public void addNavTrail(NavTree navTree)
         {
-
+            navTree.addChild("NextFlow Runner");
         }
     }
 }

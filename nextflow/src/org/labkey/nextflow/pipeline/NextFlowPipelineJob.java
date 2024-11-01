@@ -12,6 +12,7 @@ import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.UnexpectedException;
 import org.labkey.api.view.ViewBackgroundInfo;
 
+import java.io.File;
 import java.io.IOException;
 
 public class NextFlowPipelineJob extends PipelineJob
@@ -25,14 +26,7 @@ public class NextFlowPipelineJob extends PipelineJob
     {
         super(null, info, root);
         this._apiKey = apiKey;
-        try
-        {
-            setLogFile(FileUtil.createTempFile("NextFlowPipelineJob", ".log"));
-        }
-        catch (IOException e)
-        {
-            throw new UnexpectedException(e);
-        }
+        setLogFile(new File(String.valueOf(root.getLogDirectory()), FileUtil.makeFileNameWithTimestamp("NextFlowPipelineJob", "log")).toPath());
     }
 
     public String getApiKey()
