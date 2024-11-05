@@ -212,7 +212,7 @@ public class NextFlowController extends SpringActionController
         public boolean handlePost(Object form, BindException errors) throws Exception
         {
             PropertyStore store = PropertyManager.getNormalStore();
-            PropertyManager.PropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, true);
+            PropertyManager.WritablePropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, true);
             if (map.isEmpty())
             {
                 map.put(IS_NEXTFLOW_ENABLED, Boolean.TRUE.toString());

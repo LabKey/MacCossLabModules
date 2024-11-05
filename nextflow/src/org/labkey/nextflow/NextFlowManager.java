@@ -94,7 +94,7 @@ public class NextFlowManager
             properties.put(NEXTFLOW_S3_BUCKET_PATH, configuration.getS3BucketPath());
             properties.put(NEXTFLOW_ACCOUNT_NAME, configuration.getAccountName());
 
-            PropertyManager.PropertyMap props = _encryptedStore.getWritableProperties(NEXTFLOW_CONFIG, true);
+            PropertyManager.WritablePropertyMap props = _encryptedStore.getWritableProperties(NEXTFLOW_CONFIG, true);
             props.clear();
             props.putAll(properties);
             props.save();
