@@ -42,6 +42,7 @@ import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.AuthenticationManager.AuthenticationResult;
 import org.labkey.api.security.DbLoginService;
 import org.labkey.api.security.Group;
+import org.labkey.api.security.LoginManager;
 import org.labkey.api.security.RequiresLogin;
 import org.labkey.api.security.RequiresNoPermission;
 import org.labkey.api.security.RequiresPermission;
@@ -422,7 +423,7 @@ public class SignUpController extends SpringActionController
                 newUser.setDescription(StringUtils.isBlank(_tempUser.getOrganization()) ? "" : "Organization: " + _tempUser.getOrganization()); // don't add anything if organization is empty
 
                 // Attempt to set this new user's password and log them in
-                AuthenticationResult result = DbLoginService.get().attemptSetPassword(getContainer(), getUser(), form.getPassword(), form.getPassword2(), getViewContext().getRequest(), _email, PageFlowUtil.urlProvider(ProjectUrls.class).getHomeURL(), "Verified and chose a password.", true, errors);
+                AuthenticationResult result = DbLoginService.get().attemptSetPassword(getContainer(), getUser(), form.getPassword(), form.getPassword2(), getViewContext().getRequest(), _email, PageFlowUtil.urlProvider(ProjectUrls.class).getHomeURL(), "Verified and chose a password.", true, false, errors);
 
                 if (errors.hasErrors())
                     return false;
@@ -839,7 +840,7 @@ public class SignUpController extends SpringActionController
             tempUser.setFirstName(signupForm.getFirstName());
             tempUser.setLastName(signupForm.getLastName());
             tempUser.setOrganization(signupForm.getOrganization());
-            tempUser.setKey(SecurityManager.createTempPassword());
+            tempUser.setKey(LoginManager.createTempPassword());
             tempUser.setContainer(getContainer());
 
             Table.insert(null, SignUpManager.getTableInfoTempUsers(), tempUser);

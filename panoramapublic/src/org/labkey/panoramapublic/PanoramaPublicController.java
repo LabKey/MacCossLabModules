@@ -97,6 +97,7 @@ import org.labkey.api.query.QueryView;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.AdminConsoleAction;
 import org.labkey.api.security.Group;
+import org.labkey.api.security.LoginManager;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.PrincipalType;
 import org.labkey.api.security.RequiresAnyOf;
@@ -889,7 +890,7 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, "User with given email address does not exist");
                 return false;
             }
-            if (!SecurityManager.matchPassword(form.getUserPassword(), SecurityManager.getPasswordHash(validEmail)))
+            if (!LoginManager.matchPassword(form.getUserPassword(), LoginManager.getPasswordHash(user)))
             {
                 errors.reject(ERROR_MSG, "Incorrect password for " + user.getEmail());
                 return false;

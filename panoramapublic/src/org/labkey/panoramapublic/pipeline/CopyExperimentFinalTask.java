@@ -36,6 +36,7 @@ import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.InvalidGroupMembershipException;
+import org.labkey.api.security.LoginManager;
 import org.labkey.api.security.MemberType;
 import org.labkey.api.security.MutableSecurityPolicy;
 import org.labkey.api.security.PasswordRule;
@@ -649,7 +650,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         log.info("Generating password.");
         String password = createPassword(newUser.getUser());
-        SecurityManager.setPassword(email, password);
+        LoginManager.setPassword(newUser.getUser(), password);
         log.info("Set reviewer password successfully.");
 
         return new ReviewerAndPassword(newUser.getUser(), password);
