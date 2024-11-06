@@ -423,7 +423,7 @@ public class SignUpController extends SpringActionController
                 newUser.setDescription(StringUtils.isBlank(_tempUser.getOrganization()) ? "" : "Organization: " + _tempUser.getOrganization()); // don't add anything if organization is empty
 
                 // Attempt to set this new user's password and log them in
-                AuthenticationResult result = DbLoginService.get().attemptSetPassword(getContainer(), getUser(), form.getPassword(), form.getPassword2(), getViewContext().getRequest(), _email, PageFlowUtil.urlProvider(ProjectUrls.class).getHomeURL(), "Verified and chose a password.", true, false, errors);
+                AuthenticationResult result = DbLoginService.get().attemptSetPassword(getContainer(), getUser(), form.getPassword(), form.getPassword2(), getViewContext().getRequest(), newUser, PageFlowUtil.urlProvider(ProjectUrls.class).getHomeURL(), "Verified and chose a password.", true, false, errors);
 
                 if (errors.hasErrors())
                     return false;
