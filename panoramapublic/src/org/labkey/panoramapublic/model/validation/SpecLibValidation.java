@@ -1,5 +1,6 @@
 package org.labkey.panoramapublic.model.validation;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
@@ -197,7 +198,7 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
         }
         if (isPrositLibrary())
         {
-            return "Prosit Library";
+            return "Prosit / Koina Library";
         }
         if (hasSpectrumFiles() && foundSpectrumFiles() && hasIdFiles() && foundIdFiles())
         {
@@ -301,12 +302,20 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
 
     public boolean isPrositLibrary()
     {
-        // For a library based on Prosit we expect only one row in the SpectrumSourceFiles table,
-        // We expect idFileName to be blank and the value in the fileName column to be "Prositintensity_prosit_publication_v1".
-        // The value in the fileName column may be different in Skyline 21.1. This code will be have to be updated then.
+        // For a library based on Prosit/Koina we expect only one row in the SpectrumSourceFiles table,
+        // We expect idFileName to be blank.
+        // The value in the fileName column is "Prositintensity_prosit_publication_v1" for versions of Skyline that built
+        // the library using the legacy Prosit server.
+        // Skyline switched from Prosit to the new Koina framework (https://github.com/ProteoWizard/pwiz/pull/2900).
+        // Skyline now prefixes "Koina-" to the model names in the SpectrumSourceFiles.fileName column.
+        // For example: Koina-Prosit_2020_intensity_HCD-Prosit_2019_irt where
+        // Prosit_2020_intensity_HCD is the intensity model and Prosit_2019_irt is the retention time model. Skyline
+        // supports multiple Koina models.
         if(isBibliospecLibrary() && getSpectrumFiles().size() == 1 && getIdFiles().size() == 0)
         {
-            return "Prositintensity_prosit_publication_v1".equals(getSpectrumFiles().get(0).getName());
+            String modelName = getSpectrumFiles().get(0).getName();
+            return "Prositintensity_prosit_publication_v1".equals(modelName)
+                    || StringUtils.startsWith(modelName, "Koina-");
         }
         return false;
     }
