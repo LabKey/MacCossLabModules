@@ -1,5 +1,0 @@
-<view xmlns="http://labkey.org/data/xml/view" title="NextFlow Configuration">
-    <dependencies>
-        <dependency path="internal/jQuery"/>
-    </dependencies>
-</view>

@@ -1,10 +1,10 @@
 package org.labkey.nextflow;
 
 import org.apache.commons.lang3.StringUtils;
+import org.labkey.api.data.Container;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
-import org.labkey.api.data.PropertyStore;
 import org.springframework.validation.BindException;
 
 import java.util.HashMap;
@@ -15,21 +15,18 @@ import static org.labkey.api.action.SpringActionController.ERROR_MSG;
 public class NextFlowManager
 {
     public static final String NEXTFLOW_CONFIG = "nextflow-config";
-    public static final String NEXTFLOW_ENABLE = "nextflow-enable";
+    private static final String NEXTFLOW_ENABLE_PROP_CATEGORY = "nextflow-enable";
 
     private static final String NEXTFLOW_ACCOUNT_NAME = "accountName";
     private static final String NEXTFLOW_CONFIG_FILE_PATH = "nextFlowConfigFilePath";
     private static final String NEXTFLOW_IDENTITY = "identity";
     private static final String NEXTFLOW_CREDENTIAL = "credential";
     private static final String NEXTFLOW_S3_BUCKET_PATH = "s3BucketPath";
+    private static final String NEXTFLOW_API_KEY = "apiKey";
+
+    private static final String IS_NEXTFLOW_ENABLED = "enabled";
 
     private static final NextFlowManager _instance = new NextFlowManager();
-
-    // Normal store is used for enabled/disabled module
-    private static final PropertyStore _normalStore = PropertyManager.getNormalStore();
-
-    // Encrypted store is used for aws settings & nextflow file configuration
-    private static final PropertyStore _encryptedStore = PropertyManager.getEncryptedStore();
 
     private NextFlowManager()
     {
@@ -42,48 +39,83 @@ public class NextFlowManager
     }
 
 
-    private void checkArgs(String nextFlowConfigFilePath, String name,  String identity, String credential,String s3BucketPath, BindException errors)
+    private void checkArgs(NextFlowConfiguration config, BindException errors)
     {
-        if (StringUtils.isEmpty(nextFlowConfigFilePath))
+        if (StringUtils.isEmpty(config.getNextFlowConfigFilePath()))
             errors.rejectValue("nextFlowConfigFilePath", ERROR_MSG, "NextFlow config file path is required");
 
-        if (StringUtils.isEmpty(name))
-            errors.rejectValue("name", ERROR_MSG, "AWS account name is required");
+        // Not yet used
+//        if (StringUtils.isEmpty(config.getAccountName()))
+//            errors.rejectValue("accountName", ERROR_MSG, "AWS account name is required");
+//        if (StringUtils.isEmpty(config.getIdentity()))
+//            errors.rejectValue("identity", ERROR_MSG, "AWS identity is required");
+//        if (StringUtils.isEmpty(config.getCredential()))
+//            errors.rejectValue("credential", ERROR_MSG, "AWS credential is required");
 
-        if (StringUtils.isEmpty(identity))
-            errors.rejectValue("identity", ERROR_MSG, "AWS identity is required");
-
-        if (StringUtils.isEmpty(credential))
-            errors.rejectValue("credential", ERROR_MSG, "AWS credential is required");
-
+        if (StringUtils.isEmpty(config.getS3BucketPath()))
+            errors.rejectValue("credential", ERROR_MSG, "S3 bucket path is required");
     }
 
-    public NextFlowController.NextFlowConfiguration getConfiguration()
+    public NextFlowConfiguration getConfiguration()
     {
-        PropertyManager.PropertyMap props = _encryptedStore.getWritableProperties(NEXTFLOW_CONFIG, false);
+        PropertyManager.PropertyMap props = PropertyManager.getEncryptedStore().getWritableProperties(NEXTFLOW_CONFIG, false);
         if (props != null)
         {
-            NextFlowController.NextFlowConfiguration configuration = new NextFlowController.NextFlowConfiguration();
+            NextFlowConfiguration configuration = new NextFlowConfiguration();
             configuration.setAccountName(props.get(NEXTFLOW_ACCOUNT_NAME));
             configuration.setNextFlowConfigFilePath(props.get(NEXTFLOW_CONFIG_FILE_PATH));
             configuration.setIdentity(props.get(NEXTFLOW_IDENTITY));
             configuration.setCredential(props.get(NEXTFLOW_CREDENTIAL));
             configuration.setS3BucketPath(props.get(NEXTFLOW_S3_BUCKET_PATH));
+            configuration.setApiKey(props.get(NEXTFLOW_API_KEY));
             return configuration;
         }
 
         return null;
     }
 
-    public void addConfiguration(NextFlowController.NextFlowConfiguration configuration, BindException errors)
+    /**
+     * Checks in the specified container and traverses up the container tree to determine if NextFlow integration
+     * is enabled directly or in a parent container.
+     */
+    public boolean isEnabled(Container c)
     {
-        checkArgs(configuration.getNextFlowConfigFilePath(), configuration.getAccountName(), configuration.getIdentity(), configuration.getCredential(), configuration.getS3BucketPath(), errors);
+        do
+        {
+            PropertyManager.PropertyMap map = PropertyManager.getProperties(c, NEXTFLOW_ENABLE_PROP_CATEGORY);
+            if (map.containsKey(IS_NEXTFLOW_ENABLED))
+            {
+                return Boolean.parseBoolean(map.get(IS_NEXTFLOW_ENABLED));
+            }
+            c = c.getParent();
+        }
+        while (c != null);
+
+        return false;
+    }
+
+    /**
+     * @return configured state for the container (or null if not configured there), for whether NextFlow is enabled
+     */
+    public Boolean getEnabledState(Container c)
+    {
+        PropertyManager.PropertyMap map = PropertyManager.getProperties(c, NEXTFLOW_ENABLE_PROP_CATEGORY);
+        if (map.containsKey(IS_NEXTFLOW_ENABLED))
+        {
+            return Boolean.parseBoolean(map.get(IS_NEXTFLOW_ENABLED));
+        }
+        return null;
+    }
+
+    public void saveConfig(NextFlowConfiguration configuration, BindException errors)
+    {
+        checkArgs(configuration, errors);
 
         if (!errors.hasErrors())
             saveConfiguration(configuration);
     }
 
-    private void saveConfiguration( NextFlowController.NextFlowConfiguration configuration)
+    private void saveConfiguration( NextFlowConfiguration configuration)
     {
         try (DbScope.Transaction tx = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
         {
@@ -93,8 +125,9 @@ public class NextFlowManager
             properties.put(NEXTFLOW_CREDENTIAL, configuration.getCredential());
             properties.put(NEXTFLOW_S3_BUCKET_PATH, configuration.getS3BucketPath());
             properties.put(NEXTFLOW_ACCOUNT_NAME, configuration.getAccountName());
+            properties.put(NEXTFLOW_API_KEY, configuration.getApiKey());
 
-            PropertyManager.WritablePropertyMap props = _encryptedStore.getWritableProperties(NEXTFLOW_CONFIG, true);
+            PropertyManager.WritablePropertyMap props = PropertyManager.getEncryptedStore().getWritableProperties(NEXTFLOW_CONFIG, true);
             props.clear();
             props.putAll(properties);
             props.save();
@@ -103,4 +136,17 @@ public class NextFlowManager
         }
     }
 
+    public void saveEnabledState(Container container, Boolean enabled)
+    {
+        PropertyManager.WritablePropertyMap map = PropertyManager.getWritableProperties(container, NEXTFLOW_ENABLE_PROP_CATEGORY, true);
+        if (enabled == null)
+        {
+            map.delete();
+        }
+        else
+        {
+            map.put(IS_NEXTFLOW_ENABLED, enabled.toString());
+            map.save();
+        }
+    }
 }

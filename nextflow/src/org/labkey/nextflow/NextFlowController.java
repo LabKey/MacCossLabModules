@@ -1,26 +1,25 @@
 package org.labkey.nextflow;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.MutatingApiAction;
-import org.labkey.api.action.ReadOnlyApiAction;
+import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.admin.AdminUrls;
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.data.PropertyStore;
-import org.labkey.api.module.Module;
-import org.labkey.api.module.ModuleHtmlView;
-import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.PipelineStatusUrls;
 import org.labkey.api.security.AdminConsoleAction;
 import org.labkey.api.security.RequiresPermission;
-import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
-import org.labkey.api.security.permissions.AdminPermission;
+import org.labkey.api.security.permissions.InsertPermission;
+import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.security.permissions.SiteAdminPermission;
 import org.labkey.api.util.Button;
 import org.labkey.api.util.PageFlowUtil;
@@ -28,20 +27,23 @@ import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
+import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
+import org.labkey.api.view.UnauthorizedException;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.nextflow.pipeline.NextFlowPipelineJob;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
 
-import java.util.HashSet;
-import java.util.Set;
-
+import static org.labkey.api.util.DOM.Attribute.checked;
 import static org.labkey.api.util.DOM.Attribute.method;
+import static org.labkey.api.util.DOM.Attribute.name;
+import static org.labkey.api.util.DOM.Attribute.type;
+import static org.labkey.api.util.DOM.Attribute.value;
 import static org.labkey.api.util.DOM.DIV;
+import static org.labkey.api.util.DOM.INPUT;
 import static org.labkey.api.util.DOM.LK.FORM;
-import static org.labkey.api.util.DOM.P;
 import static org.labkey.api.util.DOM.at;
 import static org.labkey.nextflow.NextFlowManager.NEXTFLOW_CONFIG;
 
@@ -49,7 +51,6 @@ public class NextFlowController extends SpringActionController
 {
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(NextFlowController.class);
     public static final String NAME = "nextflow";
-    private static final String IS_NEXTFLOW_ENABLED = "enabled";
 
     private static final Logger LOG = LogHelper.getLogger(NextFlowController.class, NAME);
 
@@ -58,22 +59,42 @@ public class NextFlowController extends SpringActionController
         setActionResolver(_actionResolver);
     }
 
-    @RequiresPermission(AdminPermission.class)
-    public class GetNextFlowConfigurationAction extends ReadOnlyApiAction<Object>
+    @RequiresPermission(ReadPermission.class)
+    public static class BeginAction extends SimpleViewAction<Object>
     {
         @Override
-        public ApiResponse execute(Object form, BindException errors) throws Exception
+        public ModelAndView getView(Object o, BindException errors)
         {
-            return new ApiSimpleResponse("config", PropertyManager.getEncryptedStore().getProperties(NEXTFLOW_CONFIG));
+            boolean enabled = NextFlowManager.get().isEnabled(getContainer());
+            return new HtmlView("NextFlow",
+                    DIV(
+                        DIV("NextFlow integration is " + (enabled ? "enabled" : "disabled") + " in this " + (getContainer().isProject() ? "project" : "folder") + "."),
+                        DIV(
+                                getContainer().hasPermission(getUser(), SiteAdminPermission.class) ?
+                                new Button.ButtonBuilder("Enable/Disable").href(new ActionURL(NextFlowEnableAction.class, getContainer())).build() : null,
+                            " ",
+                            enabled && getContainer().hasPermission(getUser(), InsertPermission.class) ?
+                                    new Button.ButtonBuilder("Run NextFlow Analysis").href(new ActionURL(NextFlowRunAction.class, getContainer())).build() : null)));
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("NextFlow");
         }
     }
 
-    @RequiresPermission(AdminPermission.class)
-    public class DeleteNextFlowConfigurationAction extends MutatingApiAction<Object>
+
+    @RequiresPermission(SiteAdminPermission.class)
+    public static class DeleteNextFlowConfigurationAction extends MutatingApiAction<Object>
     {
         @Override
-        public ApiResponse execute(Object form, BindException errors) throws Exception
+        public ApiResponse execute(Object form, BindException errors)
         {
+            if (!getContainer().isRoot())
+            {
+                throw new UnauthorizedException();
+            }
             PropertyStore store = PropertyManager.getEncryptedStore();
             store.deletePropertySet(NEXTFLOW_CONFIG);
             return new ApiSimpleResponse("success", true);
@@ -93,175 +114,151 @@ public class NextFlowController extends SpringActionController
         }
 
         @Override
-        public ModelAndView getView(NextFlowConfiguration nextFlowConfiguration, boolean reshow, BindException errors) throws Exception
+        public ModelAndView getView(NextFlowConfiguration newConfig, boolean reshow, BindException errors)
         {
-            return ModuleHtmlView.get(ModuleLoader.getInstance().getModule(NextFlowModule.class), "nextFlowConfiguration");
+            NextFlowConfiguration existingConfig = NextFlowManager.get().getConfiguration();
+            if (existingConfig != null)
+            {
+                if (StringUtils.isEmpty(newConfig.getNextFlowConfigFilePath()))
+                {
+                    newConfig.setNextFlowConfigFilePath(existingConfig.getNextFlowConfigFilePath());
+                }
+                if (StringUtils.isEmpty(newConfig.getAccountName()))
+                {
+                    newConfig.setAccountName(existingConfig.getAccountName());
+                }
+                if (StringUtils.isEmpty(newConfig.getIdentity()))
+                {
+                    newConfig.setIdentity(existingConfig.getIdentity());
+                }
+                if (StringUtils.isEmpty(newConfig.getCredential()))
+                {
+                    newConfig.setCredential(existingConfig.getCredential());
+                }
+                if (StringUtils.isEmpty(newConfig.getS3BucketPath()))
+                {
+                    newConfig.setS3BucketPath(existingConfig.getS3BucketPath());
+                }
+                if (StringUtils.isEmpty(newConfig.getApiKey()))
+                {
+                    newConfig.setApiKey(existingConfig.getApiKey());
+                }
+            }
+
+            return new JspView<>("/org/labkey/nextflow/nextFlowConfiguration.jsp", newConfig, errors);
         }
 
         @Override
-        public boolean handlePost(NextFlowConfiguration nextFlowConfiguration, BindException errors) throws Exception
+        public boolean handlePost(NextFlowConfiguration newConfig, BindException errors)
         {
-            NextFlowManager.get().addConfiguration(nextFlowConfiguration, errors);
+            NextFlowConfiguration existingConfig = NextFlowManager.get().getConfiguration();
+            if (existingConfig != null)
+            {
+                if (StringUtils.isEmpty(newConfig.getApiKey()))
+                {
+                    newConfig.setApiKey(existingConfig.getApiKey());
+                }
+                if (StringUtils.isEmpty(newConfig.getCredential()))
+                {
+                    newConfig.setCredential(existingConfig.getCredential());
+                }
+            }
+            NextFlowManager.get().saveConfig(newConfig, errors);
             return !errors.hasErrors();
         }
 
         @Override
         public URLHelper getSuccessURL(NextFlowConfiguration nextFlowConfiguration)
         {
-            return getContainer().getStartURL(getUser());
+            return PageFlowUtil.urlProvider(AdminUrls.class).getAdminConsoleURL();
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-
+            root.addChild("Admin Console", PageFlowUtil.urlProvider(AdminUrls.class).getAdminConsoleURL());
+            root.addChild("Configure NextFlow");
         }
     }
 
-    public static class NextFlowConfiguration
+    public static class EnabledForm
     {
-        private String nextFlowConfigFilePath;
-        private String accountName;
-        private String identity;
-        private String s3BucketPath;
-        private String credential;
+        Boolean _enabled;
 
-        public String getNextFlowConfigFilePath()
+        public Boolean getEnabled()
         {
-            return nextFlowConfigFilePath;
+            return _enabled;
         }
 
-        public void setNextFlowConfigFilePath(String nextFlowConfigFilePath)
+        public void setEnabled(Boolean enabled)
         {
-            this.nextFlowConfigFilePath = nextFlowConfigFilePath;
-        }
-
-        public String getAccountName()
-        {
-            return accountName;
-        }
-
-        public void setAccountName(String accountName)
-        {
-            this.accountName = accountName;
-        }
-
-        public String getIdentity()
-        {
-            return identity;
-        }
-
-        public void setIdentity(String identity)
-        {
-            this.identity = identity;
-        }
-
-        public String getS3BucketPath()
-        {
-            return s3BucketPath;
-        }
-
-        public void setS3BucketPath(String s3BucketPath)
-        {
-            this.s3BucketPath = s3BucketPath;
-        }
-
-        public String getCredential()
-        {
-            return credential;
-        }
-
-        public void setCredential(String credential)
-        {
-            this.credential = credential;
+            _enabled = enabled;
         }
     }
 
     @RequiresPermission(SiteAdminPermission.class)
-    public static class NextFlowEnableAction extends FormViewAction
+    public static class NextFlowEnableAction extends FormViewAction<EnabledForm>
     {
-
         @Override
-        public void validateCommand(Object target, Errors errors)
+        public void validateCommand(EnabledForm target, Errors errors)
         {
 
         }
 
         @Override
-        public ModelAndView getView(Object form, boolean reshow, BindException errors) throws Exception
+        public ModelAndView getView(EnabledForm form, boolean reshow, BindException errors)
         {
-            PropertyStore store = PropertyManager.getNormalStore();
-            PropertyManager.PropertyMap map = store.getProperties(NextFlowManager.NEXTFLOW_ENABLE);
-            String btnTxt = "Enable NextFlow";
-            // check if nextflow is enabled
-            if (Boolean.parseBoolean(map.get(IS_NEXTFLOW_ENABLED)))
-            {
-                btnTxt = "Disable NextFlow";
-            }
-            else
-            {
-                btnTxt = "Enable NextFlow";
-            }
+            Boolean status = NextFlowManager.get().getEnabledState(getContainer());
+            boolean inheritedStatus = NextFlowManager.get().isEnabled(getContainer().getParent());
 
-            return new HtmlView("Enable/Disable Nextflow", DIV( P("NextFlow is currently " + (Boolean.parseBoolean(map.get(IS_NEXTFLOW_ENABLED)) ? "enabled" : "disabled")),
+            return new HtmlView("Enable/Disable NextFlow",
                     FORM(at(method, "POST"),
-                            new Button.ButtonBuilder(btnTxt).submit(true).build())));
+                        DIV(INPUT(at(type, "radio", name, "enabled", value, Boolean.TRUE.toString(), (status == Boolean.TRUE ? checked : null), null)),
+                            "Enabled"),
+                        DIV(INPUT(at(type, "radio", name, "enabled", value, Boolean.FALSE.toString(), (status == Boolean.FALSE ? checked : null), null)),
+                            "Disabled"),
+                            DIV(INPUT(at(type, "radio", name, "enabled", value, "", (status == null ? checked : null), null)),
+                                    getContainer().isRoot() ?
+                                            "Unset" :
+                                            "Inherited from " + getContainer().getParent().getPath() + " (currently " + (inheritedStatus ? "enabled" : "disabled") + ")"),
+                        new Button.ButtonBuilder("Save").submit(true).build(), " ",
+                        new Button.ButtonBuilder("Cancel").href(getContainer().getStartURL(getUser())).build()));
         }
 
         @Override
-        public boolean handlePost(Object form, BindException errors) throws Exception
+        public boolean handlePost(EnabledForm form, BindException errors)
         {
-            PropertyStore store = PropertyManager.getNormalStore();
-            PropertyManager.WritablePropertyMap map = store.getWritableProperties(NextFlowManager.NEXTFLOW_ENABLE, true);
-            if (map.isEmpty())
-            {
-                map.put(IS_NEXTFLOW_ENABLED, Boolean.TRUE.toString());
-            }
-            else
-            {
-                if (Boolean.parseBoolean(map.get(IS_NEXTFLOW_ENABLED)))
-                {
-                    map.put(IS_NEXTFLOW_ENABLED, Boolean.FALSE.toString());
-                }
-                else
-                {
-                    map.put(IS_NEXTFLOW_ENABLED, Boolean.TRUE.toString());
-                }
-            }
-            map.save();
+            NextFlowManager.get().saveEnabledState(getContainer(), form.getEnabled());
             return true;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-
+            root.addChild("Enable/Disable NextFlow");
         }
 
         @Override
-        public URLHelper getSuccessURL(Object o)
+        public URLHelper getSuccessURL(EnabledForm o)
         {
             return getContainer().getStartURL(getUser());
         }
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
-    public class NextFlowRunAction extends FormViewAction
+    public class NextFlowRunAction extends FormViewAction<Object>
     {
-        private ActionURL _successURL;
         @Override
         public void validateCommand(Object o, Errors errors)
         {
-            PropertyStore store = PropertyManager.getNormalStore();
-            PropertyManager.PropertyMap map = store.getProperties(NextFlowManager.NEXTFLOW_ENABLE);
-            if (!Boolean.parseBoolean(map.get(IS_NEXTFLOW_ENABLED)))
+            if (!NextFlowManager.get().isEnabled(getContainer()))
             {
                 errors.reject(ERROR_MSG, "NextFlow is not enabled");
             }
         }
 
         @Override
-        public ModelAndView getView(Object o, boolean b, BindException errors) throws Exception
+        public ModelAndView getView(Object o, boolean b, BindException errors)
         {
             return new HtmlView("NextFlow Runner", DIV("Run NextFlow Pipeline",
                     FORM(at(method, "POST"),
@@ -271,24 +268,10 @@ public class NextFlowController extends SpringActionController
         @Override
         public boolean handlePost(Object o, BindException errors) throws Exception
         {
-            // check if nextflow is enabled
-            PropertyStore store = PropertyManager.getNormalStore();
-            PropertyManager.PropertyMap map = store.getProperties(NextFlowManager.NEXTFLOW_ENABLE);
-            if (map == null || !Boolean.parseBoolean(map.get(IS_NEXTFLOW_ENABLED)))
-            {
-                errors.reject(ERROR_MSG, "NextFlow is not enabled");
-                return false;
-            }
-
-            try (SecurityManager.TransformSession session = SecurityManager.createTransformSession(getViewContext()))
-            {
-                // TODO: pass the apiKey to Nextflow job
-                String apiKey = session.getApiKey();
-                ViewBackgroundInfo info = getViewBackgroundInfo();
-                PipeRoot root = PipelineService.get().findPipelineRoot(info.getContainer());
-                PipelineJob job = new NextFlowPipelineJob(info, root, apiKey);
-                PipelineService.get().queueJob(job);
-            }
+            ViewBackgroundInfo info = getViewBackgroundInfo();
+            PipeRoot root = PipelineService.get().findPipelineRoot(info.getContainer());
+            PipelineJob job = new NextFlowPipelineJob(info, root);
+            PipelineService.get().queueJob(job);
 
             return !errors.hasErrors();
         }
