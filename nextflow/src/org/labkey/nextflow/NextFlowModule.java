@@ -21,6 +21,8 @@ public class NextFlowModule extends SpringModule
     {
         ActionURL adminUrl = new ActionURL(NextFlowController.NextFlowConfigurationAction.class, ContainerManager.getRoot());
         AdminConsole.addLink(AdminConsole.SettingsLinkType.Configuration, "NextFlow Configuration", adminUrl, AdminPermission.class);
+
+        PipelineService.get().registerPipelineProvider(new NextFlowPipelineProvider(this));
     }
 
     @Override
