@@ -20,6 +20,13 @@ public class NextFlowPipelineProvider extends PipelineProvider
     }
 
     @Override
+    public boolean isShowActionsIfModuleInactive()
+    {
+        // We rely on a setting that folder admins can't control to determine if NextFlow is available
+        return true;
+    }
+
+    @Override
     public void updateFileProperties(ViewContext context, PipeRoot pr, PipelineDirectory directory, boolean includeAll)
     {
         if (!context.getContainer().hasPermission(context.getUser(), InsertPermission.class))

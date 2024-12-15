@@ -29,8 +29,6 @@ public class NextFlowModule extends SpringModule
     protected void init()
     {
         addController(NextFlowController.NAME, NextFlowController.class);
-
-        PipelineService.get().registerPipelineProvider(new NextFlowPipelineProvider(this));
     }
 
     @Override
