@@ -68,7 +68,7 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
             template = PageFlowUtil.getStreamContentsAsString(in);
         }
 
-        String webdavUrl = FileContentService.get().getWebDavUrl(parentDir, container, FileContentService.PathType.full);
+        String webdavUrl = FileContentService.get().getWebDavUrl(parentDir, container, FileContentService.PathType.full).toString();
         webdavUrl = StringUtils.stripEnd(webdavUrl, "/");
 
         String substitutedContent = template.replace("${quant_spectra_dir}", "quant_spectra_dir = '" + webdavUrl + "'");
