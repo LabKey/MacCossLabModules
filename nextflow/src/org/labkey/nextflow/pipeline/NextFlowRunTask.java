@@ -8,7 +8,6 @@ import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
 import org.labkey.api.pipeline.RecordedAction;
 import org.labkey.api.pipeline.RecordedActionSet;
-import org.labkey.api.pipeline.ToolExecutionException;
 import org.labkey.api.pipeline.WorkDirectoryTask;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.util.FileType;

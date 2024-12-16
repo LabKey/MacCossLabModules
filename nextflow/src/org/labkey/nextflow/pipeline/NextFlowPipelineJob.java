@@ -41,7 +41,7 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
         Path log = jobDir.resolve(jobName + ".log");
         FileUtil.createDirectory(jobDir);
 
-        Path config = createConfig(templateConfig, log.getParent(), jobDir, info.getContainer());
+        Path config = createConfig(templateConfig, parentDir, jobDir, info.getContainer());
 
         return new NextFlowPipelineJob(info, root, config, inputFiles, log);
     }

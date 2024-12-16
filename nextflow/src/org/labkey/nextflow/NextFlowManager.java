@@ -48,7 +48,7 @@ public class NextFlowManager
             errors.rejectValue("nextFlowConfigFilePath", ERROR_MSG, "NextFlow config file path is required");
 
         Path configPath = Paths.get(config.getNextFlowConfigFilePath());
-        if (Files.isDirectory(configPath))
+        if (!Files.isDirectory(configPath))
         {
             errors.rejectValue("nextFlowConfigFilePath", ERROR_MSG, "NextFlow config file path must be a directory");
         }
