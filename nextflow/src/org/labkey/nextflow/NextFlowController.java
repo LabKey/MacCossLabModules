@@ -1,12 +1,13 @@
 package org.labkey.nextflow;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.MutatingApiAction;
-import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
 import org.labkey.api.admin.AdminUrls;
 import org.labkey.api.data.PropertyManager;
@@ -15,17 +16,21 @@ import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.PipelineStatusUrls;
+import org.labkey.api.pipeline.browse.PipelinePathForm;
 import org.labkey.api.security.AdminConsoleAction;
 import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
-import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.security.permissions.SiteAdminPermission;
 import org.labkey.api.util.Button;
+import org.labkey.api.util.DOM;
+import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.Path;
 import org.labkey.api.util.URLHelper;
+import org.labkey.api.util.element.Select;
 import org.labkey.api.util.logging.LogHelper;
-import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
@@ -36,7 +41,12 @@ import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
 
+import java.io.File;
+import java.util.Arrays;
+import java.util.List;
+
 import static org.labkey.api.util.DOM.Attribute.checked;
+import static org.labkey.api.util.DOM.Attribute.hidden;
 import static org.labkey.api.util.DOM.Attribute.method;
 import static org.labkey.api.util.DOM.Attribute.name;
 import static org.labkey.api.util.DOM.Attribute.type;
@@ -44,6 +54,7 @@ import static org.labkey.api.util.DOM.Attribute.value;
 import static org.labkey.api.util.DOM.DIV;
 import static org.labkey.api.util.DOM.INPUT;
 import static org.labkey.api.util.DOM.LK.FORM;
+import static org.labkey.api.util.DOM.UL;
 import static org.labkey.api.util.DOM.at;
 import static org.labkey.nextflow.NextFlowManager.NEXTFLOW_CONFIG;
 
@@ -58,32 +69,6 @@ public class NextFlowController extends SpringActionController
     {
         setActionResolver(_actionResolver);
     }
-
-    @RequiresPermission(ReadPermission.class)
-    public static class BeginAction extends SimpleViewAction<Object>
-    {
-        @Override
-        public ModelAndView getView(Object o, BindException errors)
-        {
-            boolean enabled = NextFlowManager.get().isEnabled(getContainer());
-            return new HtmlView("NextFlow",
-                    DIV(
-                        DIV("NextFlow integration is " + (enabled ? "enabled" : "disabled") + " in this " + (getContainer().isProject() ? "project" : "folder") + "."),
-                        DIV(
-                                getContainer().hasPermission(getUser(), SiteAdminPermission.class) ?
-                                new Button.ButtonBuilder("Enable/Disable").href(new ActionURL(NextFlowEnableAction.class, getContainer())).build() : null,
-                            " ",
-                            enabled && getContainer().hasPermission(getUser(), InsertPermission.class) ?
-                                    new Button.ButtonBuilder("Run NextFlow Analysis").href(new ActionURL(NextFlowRunAction.class, getContainer())).build() : null)));
-        }
-
-        @Override
-        public void addNavTrail(NavTree root)
-        {
-            root.addChild("NextFlow");
-        }
-    }
-
 
     @RequiresPermission(SiteAdminPermission.class)
     public static class DeleteNextFlowConfigurationAction extends MutatingApiAction<Object>
@@ -196,8 +181,8 @@ public class NextFlowController extends SpringActionController
         }
     }
 
-    @RequiresPermission(SiteAdminPermission.class)
-    public static class NextFlowEnableAction extends FormViewAction<EnabledForm>
+    @RequiresPermission(ReadPermission.class)
+    public static class BeginAction extends FormViewAction<EnabledForm>
     {
         @Override
         public void validateCommand(EnabledForm target, Errors errors)
@@ -208,21 +193,30 @@ public class NextFlowController extends SpringActionController
         @Override
         public ModelAndView getView(EnabledForm form, boolean reshow, BindException errors)
         {
-            Boolean status = NextFlowManager.get().getEnabledState(getContainer());
-            boolean inheritedStatus = NextFlowManager.get().isEnabled(getContainer().getParent());
+            if (getUser().hasSiteAdminPermission())
+            {
+                Boolean status = NextFlowManager.get().getEnabledState(getContainer());
+                boolean inheritedStatus = NextFlowManager.get().isEnabled(getContainer().getParent());
 
-            return new HtmlView("Enable/Disable NextFlow",
-                    FORM(at(method, "POST"),
-                        DIV(INPUT(at(type, "radio", name, "enabled", value, Boolean.TRUE.toString(), (status == Boolean.TRUE ? checked : null), null)),
-                            "Enabled"),
-                        DIV(INPUT(at(type, "radio", name, "enabled", value, Boolean.FALSE.toString(), (status == Boolean.FALSE ? checked : null), null)),
-                            "Disabled"),
-                            DIV(INPUT(at(type, "radio", name, "enabled", value, "", (status == null ? checked : null), null)),
-                                    getContainer().isRoot() ?
-                                            "Unset" :
-                                            "Inherited from " + getContainer().getParent().getPath() + " (currently " + (inheritedStatus ? "enabled" : "disabled") + ")"),
-                        new Button.ButtonBuilder("Save").submit(true).build(), " ",
-                        new Button.ButtonBuilder("Cancel").href(getContainer().getStartURL(getUser())).build()));
+                return new HtmlView("Enable or Disable NextFlow",
+                        FORM(at(method, "POST"),
+                                DIV(INPUT(at(type, "radio", name, "enabled", value, Boolean.TRUE.toString(), (status == Boolean.TRUE ? checked : null), null)),
+                                        "Enabled"),
+                                DIV(INPUT(at(type, "radio", name, "enabled", value, Boolean.FALSE.toString(), (status == Boolean.FALSE ? checked : null), null)),
+                                        "Disabled"),
+                                DIV(INPUT(at(type, "radio", name, "enabled", value, "", (status == null ? checked : null), null)),
+                                        getContainer().isRoot() ?
+                                                "Unset" :
+                                                "Inherited from " + getContainer().getParent().getPath() + " (currently " + (inheritedStatus ? "enabled" : "disabled") + ")"),
+                                new Button.ButtonBuilder("Save").submit(true).build(), " ",
+                                new Button.ButtonBuilder("Cancel").href(getContainer().getStartURL(getUser())).build()));
+            }
+            else
+            {
+                return new HtmlView("NextFlow Integration Status",
+                    DIV("NextFlow integration is " + (NextFlowManager.get().isEnabled(getContainer()) ? "enabled" : "disabled") + " in this " + (getContainer().isProject() ? "project" : "folder") + ".")
+                );
+            }
         }
 
         @Override
@@ -235,7 +229,7 @@ public class NextFlowController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Enable/Disable NextFlow");
+            root.addChild("NextFlow Integration Status");
         }
 
         @Override
@@ -245,11 +239,18 @@ public class NextFlowController extends SpringActionController
         }
     }
 
+    @Getter @Setter
+    public static class AnalyzeForm extends PipelinePathForm
+    {
+        private boolean launch = false;
+        private String configFile;
+    }
+
     @RequiresPermission(AdminOperationsPermission.class)
-    public class NextFlowRunAction extends FormViewAction<Object>
+    public class NextFlowRunAction extends FormViewAction<AnalyzeForm>
     {
         @Override
-        public void validateCommand(Object o, Errors errors)
+        public void validateCommand(AnalyzeForm o, Errors errors)
         {
             if (!NextFlowManager.get().isEnabled(getContainer()))
             {
@@ -258,26 +259,69 @@ public class NextFlowController extends SpringActionController
         }
 
         @Override
-        public ModelAndView getView(Object o, boolean b, BindException errors)
+        public ModelAndView getView(AnalyzeForm o, boolean b, BindException errors)
         {
-            return new HtmlView("NextFlow Runner", DIV("Run NextFlow Pipeline",
-                    FORM(at(method, "POST"),
-                            new Button.ButtonBuilder("Start NextFlow").submit(true).build())));
+            NextFlowConfiguration config = NextFlowManager.get().getConfiguration();
+            if (config.getNextFlowConfigFilePath() != null)
+            {
+                File configDir = new File(config.getNextFlowConfigFilePath());
+                if (configDir.isDirectory())
+                {
+                    File[] files = configDir.listFiles();
+                    if (files != null && files.length > 0)
+                    {
+                        List<File> configFiles = Arrays.asList(files);
+                        return new HtmlView("NextFlow Runner", DIV(
+                                FORM(at(method, "POST"),
+                                        INPUT(at(hidden, true, name, "launch", value, true)),
+                                        Arrays.stream(o.getFile()).map(f -> INPUT(at(hidden, true, name, "file", value, f))).toList(),
+                                        "Files: ",
+                                        UL(Arrays.stream(o.getFile()).map(DOM::LI)),
+                                        "Config: ",
+                                        new Select.SelectBuilder().name("configFile").addOptions(configFiles.stream().filter(f -> f.isFile() && f.getName().toLowerCase().endsWith(".config")).map(File::getName).sorted(String.CASE_INSENSITIVE_ORDER).toList()).build(),
+                                        new Button.ButtonBuilder("Start NextFlow").submit(true).build())));
+                    }
+                }
+            }
+            return new HtmlView(HtmlString.of("Couldn't find NextFlow config file(s)"));
         }
 
         @Override
-        public boolean handlePost(Object o, BindException errors) throws Exception
+        public boolean handlePost(AnalyzeForm form, BindException errors) throws Exception
         {
-            ViewBackgroundInfo info = getViewBackgroundInfo();
-            PipeRoot root = PipelineService.get().findPipelineRoot(info.getContainer());
-            PipelineJob job = new NextFlowPipelineJob(info, root);
-            PipelineService.get().queueJob(job);
+            if (!form.isLaunch())
+            {
+                return false;
+            }
+
+            NextFlowConfiguration config = NextFlowManager.get().getConfiguration();
+            File configDir = new File(config.getNextFlowConfigFilePath());
+            File configFile = FileUtil.appendPath(configDir, Path.parse(form.getConfigFile()));
+            if (!configFile.exists())
+            {
+                errors.reject(ERROR_MSG, "Config file does not exist");
+            }
+            else
+            {
+                List<File> inputFiles = form.getValidatedFiles(getContainer());
+                if (inputFiles.isEmpty())
+                {
+                    errors.reject(ERROR_MSG, "No input files");
+                }
+                else
+                {
+                    ViewBackgroundInfo info = getViewBackgroundInfo();
+                    PipeRoot root = PipelineService.get().findPipelineRoot(info.getContainer());
+                    PipelineJob job = NextFlowPipelineJob.create(info, root, configFile.toPath(), inputFiles.stream().map(File::toPath).toList());
+                    PipelineService.get().queueJob(job);
+                }
+            }
 
             return !errors.hasErrors();
         }
 
         @Override
-        public URLHelper getSuccessURL(Object o)
+        public URLHelper getSuccessURL(AnalyzeForm o)
         {
             return PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlBegin(getContainer());
         }
