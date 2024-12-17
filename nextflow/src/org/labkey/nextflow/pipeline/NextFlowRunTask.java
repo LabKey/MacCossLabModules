@@ -80,6 +80,7 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
                 action.addInput(inputFile.toFile(), SPECTRA_INPUT_ROLE);
             }
             addOutputs(action, getJob().getLogFilePath().getParent().resolve("reports"));
+            addOutputs(action, getJob().getLogFilePath().getParent().resolve("results"));
             return new RecordedActionSet(action);
         }
         catch (IOException e)
