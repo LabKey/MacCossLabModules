@@ -70,8 +70,11 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
 
         String webdavUrl = FileContentService.get().getWebDavUrl(parentDir, container, FileContentService.PathType.full);
         webdavUrl = StringUtils.stripEnd(webdavUrl, "/");
-
         String substitutedContent = template.replace("${quant_spectra_dir}", "quant_spectra_dir = '" + webdavUrl + "'");
+
+        String uploadUrl = FileContentService.get().getWebDavUrl(jobDir, container, FileContentService.PathType.full);
+        uploadUrl = StringUtils.stripEnd(uploadUrl, "/");
+        substitutedContent = substitutedContent.replace("${panorama.upload_url}", "panorama.upload_url = '" + uploadUrl + "'");
 
         Path substitutedFile = jobDir.resolve(configTemplate.getFileName());
         try (BufferedWriter writer = Files.newBufferedWriter(substitutedFile))
@@ -116,5 +119,4 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
     {
         return null;
     }
-
 }

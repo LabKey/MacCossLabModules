@@ -16,7 +16,7 @@ import java.util.Map;
 public class NextFlowProtocol extends AbstractFileAnalysisProtocol<NextFlowPipelineJob>
 {
     public static final List<FileType> INPUT_TYPES = List.of(
-            new FileType(".RAW"),
+            new FileType(".raw"),
             new FileType(".mzML"));
 
     public NextFlowProtocol()
