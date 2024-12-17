@@ -7,6 +7,9 @@ import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
 import org.springframework.validation.BindException;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -43,6 +46,12 @@ public class NextFlowManager
     {
         if (StringUtils.isEmpty(config.getNextFlowConfigFilePath()))
             errors.rejectValue("nextFlowConfigFilePath", ERROR_MSG, "NextFlow config file path is required");
+
+        Path configPath = Paths.get(config.getNextFlowConfigFilePath());
+        if (!Files.isDirectory(configPath))
+        {
+            errors.rejectValue("nextFlowConfigFilePath", ERROR_MSG, "NextFlow config file path must be a directory");
+        }
 
         // Not yet used
 //        if (StringUtils.isEmpty(config.getAccountName()))

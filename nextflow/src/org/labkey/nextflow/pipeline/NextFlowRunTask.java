@@ -6,7 +6,9 @@ import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
+import org.labkey.api.pipeline.RecordedAction;
 import org.labkey.api.pipeline.RecordedActionSet;
+import org.labkey.api.pipeline.WorkDirectoryTask;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.util.FileType;
 import org.labkey.nextflow.NextFlowConfiguration;
@@ -14,21 +16,30 @@ import org.labkey.nextflow.NextFlowManager;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Stream;
 
-public class NextFlowRunTask extends PipelineJob.Task<NextFlowRunTask.Factory>
+public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
 {
+    public static final String SPECTRA_INPUT_ROLE = "Spectra";
+
+    public static final String ACTION_NAME = "NextFlow";
+
     public NextFlowRunTask(Factory factory, PipelineJob job)
     {
         super(factory, job);
     }
+
+
 
     @Override
     public @NotNull RecordedActionSet run() throws PipelineJobException
@@ -62,7 +73,18 @@ public class NextFlowRunTask extends PipelineJob.Task<NextFlowRunTask.Factory>
             ProcessBuilder executionPB = new ProcessBuilder(getArgs());
             getJob().runSubProcess(executionPB, dir);
             log.info("Job Finished");
-            return new RecordedActionSet();
+
+            RecordedAction action = new RecordedAction(ACTION_NAME);
+            for (Path inputFile : getJob().getInputFilePaths())
+            {
+                action.addInput(inputFile.toFile(), SPECTRA_INPUT_ROLE);
+            }
+            addOutputs(action, getJob().getLogFilePath().getParent().resolve("reports"));
+            return new RecordedActionSet(action);
+        }
+        catch (IOException e)
+        {
+            throw new PipelineJobException(e);
         }
         finally
         {
@@ -73,10 +95,28 @@ public class NextFlowRunTask extends PipelineJob.Task<NextFlowRunTask.Factory>
         }
     }
 
-    private boolean hasAwsSection(File configFile) throws PipelineJobException
+    private void addOutputs(RecordedAction action, Path path) throws IOException
     {
-        try (FileInputStream fIn = new FileInputStream(configFile);
-             InputStreamReader isReader = new InputStreamReader(fIn, StandardCharsets.UTF_8);
+        if (Files.isRegularFile(path))
+        {
+            action.addOutput(path.toFile(), "Output", false);
+        }
+        else if (Files.isDirectory(path))
+        {
+            try (Stream<Path> listing = Files.list(path))
+            {
+                for (Path child : listing.toList())
+                {
+                    addOutputs(action, child);
+                }
+            }
+        }
+    }
+
+    private boolean hasAwsSection(Path configFile) throws PipelineJobException
+    {
+        try (InputStream in = Files.newInputStream(configFile);
+             InputStreamReader isReader = new InputStreamReader(in, StandardCharsets.UTF_8);
              BufferedReader reader = new BufferedReader(isReader))
         {
             String line;
@@ -104,18 +144,7 @@ public class NextFlowRunTask extends PipelineJob.Task<NextFlowRunTask.Factory>
     private @NotNull List<String> getArgs() throws PipelineJobException
     {
         NextFlowConfiguration config = NextFlowManager.get().getConfiguration();
-        String nextFlowConfigFilePath = config.getNextFlowConfigFilePath();
-
-        if (nextFlowConfigFilePath == null)
-        {
-            throw new PipelineJobException("No NextFlow config file specified");
-        }
-
-        File configFile = new File(nextFlowConfigFilePath);
-        if (!configFile.isFile())
-        {
-            throw new PipelineJobException("NextFlow config file not found");
-        }
+        Path configFile = getJob().getConfig();
 
         boolean aws = hasAwsSection(configFile);
 
@@ -135,7 +164,7 @@ public class NextFlowRunTask extends PipelineJob.Task<NextFlowRunTask.Factory>
             args.add(s3Path);
         }
         args.add("-c");
-        args.add(nextFlowConfigFilePath);
+        args.add(configFile.toAbsolutePath().toString());
         return args;
     }
 
@@ -153,7 +182,7 @@ public class NextFlowRunTask extends PipelineJob.Task<NextFlowRunTask.Factory>
         }
 
         @Override
-        public PipelineJob.Task createTask(PipelineJob job)
+        public NextFlowRunTask createTask(PipelineJob job)
         {
             return new NextFlowRunTask(this, job);
         }
@@ -167,7 +196,7 @@ public class NextFlowRunTask extends PipelineJob.Task<NextFlowRunTask.Factory>
         @Override
         public List<String> getProtocolActionNames()
         {
-            return Collections.emptyList();
+            return List.of(ACTION_NAME);
         }
 
         @Override
