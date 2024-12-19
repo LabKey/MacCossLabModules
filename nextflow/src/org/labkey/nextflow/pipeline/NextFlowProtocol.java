@@ -7,8 +7,6 @@ import org.labkey.api.pipeline.file.AbstractFileAnalysisProtocolFactory;
 import org.labkey.api.util.FileType;
 import org.labkey.api.view.ViewBackgroundInfo;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +60,7 @@ public class NextFlowProtocol extends AbstractFileAnalysisProtocol<NextFlowPipel
     }
 
     @Override
-    public NextFlowPipelineJob createPipelineJob(ViewBackgroundInfo info, PipeRoot root, List<File> filesInput, File fileParameters, @Nullable Map<String, String> variableMap) throws IOException
+    public NextFlowPipelineJob createPipelineJob(ViewBackgroundInfo info, PipeRoot root, List<Path> filesInput, Path fileParameters, @Nullable Map<String, String> variableMap)
     {
         throw new UnsupportedOperationException();
     }
