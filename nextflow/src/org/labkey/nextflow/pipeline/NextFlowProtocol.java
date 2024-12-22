@@ -1,6 +1,7 @@
 package org.labkey.nextflow.pipeline;
 
 import org.jetbrains.annotations.Nullable;
+import org.labkey.api.data.Container;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.file.AbstractFileAnalysisProtocol;
 import org.labkey.api.pipeline.file.AbstractFileAnalysisProtocolFactory;
@@ -40,7 +41,7 @@ public class NextFlowProtocol extends AbstractFileAnalysisProtocol<NextFlowPipel
         return new AbstractFileAnalysisProtocolFactory<>()
         {
             @Override
-            public NextFlowProtocol createProtocolInstance(String name, String description, String xml)
+            public NextFlowProtocol createProtocolInstance(String name, String description, String xml, Container container)
             {
                 return new NextFlowProtocol();
             }
