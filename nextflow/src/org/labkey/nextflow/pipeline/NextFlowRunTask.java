@@ -2,14 +2,17 @@ package org.labkey.nextflow.pipeline;
 
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.labkey.api.exp.XarFormatException;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineJobException;
+import org.labkey.api.pipeline.PipelineValidationException;
 import org.labkey.api.pipeline.RecordedAction;
 import org.labkey.api.pipeline.RecordedActionSet;
 import org.labkey.api.pipeline.WorkDirectoryTask;
 import org.labkey.api.security.SecurityManager;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileType;
 import org.labkey.nextflow.NextFlowConfiguration;
 import org.labkey.nextflow.NextFlowManager;
@@ -79,8 +82,8 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
             {
                 action.addInput(inputFile.toFile(), SPECTRA_INPUT_ROLE);
             }
-            addOutputs(action, getJob().getLogFilePath().getParent().resolve("reports"));
-            addOutputs(action, getJob().getLogFilePath().getParent().resolve("results"));
+            addOutputs(action, getJob().getLogFilePath().getParent().resolve("reports"), log);
+            addOutputs(action, getJob().getLogFilePath().getParent().resolve("results"), log);
             return new RecordedActionSet(action);
         }
         catch (IOException e)
@@ -96,11 +99,24 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
         }
     }
 
-    private void addOutputs(RecordedAction action, Path path) throws IOException
+    private void addOutputs(RecordedAction action, Path path, Logger log) throws IOException
     {
         if (Files.isRegularFile(path))
         {
             action.addOutput(path.toFile(), "Output", false);
+            if (path.toString().toLowerCase().endsWith(".sky.zip"))
+            {
+                try
+                {
+                    log.info("Queueing import for {}", path);
+                    // Make sure that the TargetedMS runs get wrapped with their experiment run counterparts
+                    TargetedMSService.get().importSkylineDocument(getJob().getInfo(), path);
+                }
+                catch (XarFormatException | PipelineValidationException e)
+                {
+                    log.error("Error queuing import of Skyline document", e);
+                }
+            }
         }
         else if (Files.isDirectory(path))
         {
@@ -108,7 +124,7 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
             {
                 for (Path child : listing.toList())
                 {
-                    addOutputs(action, child);
+                    addOutputs(action, child, log);
                 }
             }
         }
