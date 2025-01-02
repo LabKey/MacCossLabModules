@@ -30,6 +30,8 @@
     <!-- Experiment derived tasks -->
     <bean id="xarGeneratorNextFlow" class="org.labkey.api.exp.pipeline.XarGeneratorFactorySettings">
         <constructor-arg value="xarGeneratorNextFlow"/>
+        <!-- Import in the same thread pool as other Skyline doc imports -->
+        <property name="location" value="webserver-high-priority" />
     </bean>
 
     <!-- Tasks registered in experiment module -->
