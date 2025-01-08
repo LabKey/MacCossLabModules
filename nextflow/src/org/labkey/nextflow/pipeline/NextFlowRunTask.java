@@ -42,14 +42,14 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
         super(factory, job);
     }
 
-
-
     @Override
     public @NotNull RecordedActionSet run() throws PipelineJobException
     {
         Logger log = getJob().getLogger();
+        NextFlowPipelineJob.LOG.info("Starting to execute NextFlow: {}", getJob().getJsonJobInfo());
 
         SecurityManager.TransformSession session = null;
+        boolean success = false;
 
         try
         {
@@ -69,13 +69,14 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
 
             // Need to pass to the main process directly in the future to allow concurrent execution for different users
             ProcessBuilder secretsPB = new ProcessBuilder("nextflow", "secrets", "set", "PANORAMA_API_KEY", apiKey);
-            log.info("Job Started");
+            log.info("Setting secrets");
             File dir = getJob().getLogFile().getParentFile();
             getJob().runSubProcess(secretsPB, dir);
 
             ProcessBuilder executionPB = new ProcessBuilder(getArgs());
             getJob().runSubProcess(executionPB, dir);
             log.info("Job Finished");
+            NextFlowPipelineJob.LOG.info("Finished executing NextFlow: {}", getJob().getJsonJobInfo());
 
             RecordedAction action = new RecordedAction(ACTION_NAME);
             for (Path inputFile : getJob().getInputFilePaths())
@@ -84,6 +85,7 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
             }
             addOutputs(action, getJob().getLogFilePath().getParent().resolve("reports"), log);
             addOutputs(action, getJob().getLogFilePath().getParent().resolve("results"), log);
+            success = true;
             return new RecordedActionSet(action);
         }
         catch (IOException e)
@@ -95,6 +97,10 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
             if (session != null)
             {
                 session.close();
+            }
+            if (!success)
+            {
+                NextFlowPipelineJob.LOG.info("Failed executing NextFlow: {}", getJob().getJsonJobInfo());
             }
         }
     }
@@ -182,6 +188,8 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
         }
         args.add("-c");
         args.add(configFile.toAbsolutePath().toString());
+        args.add("-name");
+        args.add(getJob().getNextFlowRunName());
         return args;
     }
 
