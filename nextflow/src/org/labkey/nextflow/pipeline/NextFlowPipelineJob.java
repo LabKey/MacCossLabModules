@@ -2,17 +2,23 @@ package org.labkey.nextflow.pipeline;
 
 import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
 import org.labkey.api.data.Container;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.pipeline.ParamParser;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJobService;
+import org.labkey.api.pipeline.PipelineService;
+import org.labkey.api.pipeline.PipelineStatusFile;
 import org.labkey.api.pipeline.TaskId;
 import org.labkey.api.pipeline.TaskPipeline;
 import org.labkey.api.pipeline.file.AbstractFileAnalysisJob;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.StringUtilsLabKey;
+import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.ViewBackgroundInfo;
 
 import java.io.BufferedWriter;
@@ -26,6 +32,8 @@ import java.util.List;
 @Getter
 public class NextFlowPipelineJob extends AbstractFileAnalysisJob
 {
+    protected static final Logger LOG = LogHelper.getLogger(NextFlowPipelineJob.class, "NextFlow jobs");
+
     private Path config;
 
     @SuppressWarnings("unused") // For serialization
@@ -51,6 +59,24 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
         super(new NextFlowProtocol(), NextFlowPipelineProvider.NAME, info, root, config.getFileName().toString(), config, inputFiles, false, false);
         this.config = config;
         setLogFile(log);
+        LOG.info("NextFlow job queued: {}", getJsonJobInfo());
+    }
+
+    protected JSONObject getJsonJobInfo()
+    {
+        JSONObject result = new JSONObject();
+        result.put("user", getUser().getEmail());
+        result.put("container", getContainer().getPath());
+        result.put("filePath", getLogFilePath().getParent().toString());
+        result.put("runName", getNextFlowRunName());
+        result.put("configFile", getConfig().getFileName().toString());
+        return result;
+    }
+
+    protected String getNextFlowRunName()
+    {
+        PipelineStatusFile file = PipelineService.get().getStatusFile(getJobGUID());
+        return file == null ? "Unknown" : ("LabKeyJob" + file.getRowId());
     }
 
     @Override
@@ -87,7 +113,7 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
     @Override
     public String getDescription()
     {
-        return "NextFlow analysis using " + config.getFileName() + " of " + getInputFilePaths().size() + " files";
+        return "NextFlow analysis of " + StringUtilsLabKey.pluralize(getInputFilePaths().size(), "file") + " using config: " + config.getFileName();
     }
 
     @Override
