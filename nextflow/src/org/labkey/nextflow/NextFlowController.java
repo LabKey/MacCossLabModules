@@ -20,6 +20,7 @@ import org.labkey.api.pipeline.browse.PipelinePathForm;
 import org.labkey.api.security.AdminConsoleAction;
 import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
+import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.security.permissions.SiteAdminPermission;
 import org.labkey.api.util.Button;
@@ -246,7 +247,7 @@ public class NextFlowController extends SpringActionController
         private String configFile;
     }
 
-    @RequiresPermission(AdminOperationsPermission.class)
+    @RequiresPermission(InsertPermission.class)
     public class NextFlowRunAction extends FormViewAction<AnalyzeForm>
     {
         @Override
