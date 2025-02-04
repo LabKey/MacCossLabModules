@@ -202,12 +202,25 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     {
         setupSubfolder(projectName, folderName, folderType); // Create the subfolder
 
+        updatePermissions(projectName, folderName, adminUsers);
+    }
+
+    private void updatePermissions(String projectName, String folderName, String[] adminUsers)
+    {
         ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
         _userHelper.ensureUsersExist(List.of(adminUsers));
         for(String user: adminUsers)
         {
             permissionsHelper.addMemberToRole(user, "Folder Administrator", PermissionsHelper.MemberType.user, projectName + "/" + folderName);
         }
+    }
+
+    void setupSubfolder(String projectName, String parentFolderName, String folderName, FolderType folderType, String ... adminUsers)
+    {
+        _containerHelper.createSubfolder(projectName, parentFolderName, folderName, "Panorama", null, false);
+        selectFolderType(folderType);
+
+        updatePermissions(projectName, parentFolderName + "/" + folderName, adminUsers);
     }
 
     void updateSubmitterAccountInfo(String lastName)
