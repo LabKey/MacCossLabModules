@@ -6,6 +6,7 @@ import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
+import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
 import org.labkey.test.pages.panoramapublic.DataValidationPage;
 import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.Ext4Helper;
@@ -41,6 +42,17 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
     private static final String AGILENT_DATA_2 = "File1 A1.d";
     private static final String AGILENT_DATA_2_ZIP = AGILENT_DATA_2 + ".zip";
     private static final String SKY_FILE_8 = "Study9S_Site52_v1_with_library.sky.zip";
+
+    // Raw files used to build the maxquant.blib library used with Olga_srm_course_heavy_light_w_maxquant_lib.sky.zip
+    private static final List<String> maxQuantLibRawSources = List.of("BBM_332_P110_C04_PRM_007.raw",
+            "BBM_332_P110_C04_PRM_006.raw",
+            "BBM_332_P110_C04_PRM_005.raw",
+            "BBM_332_P110_C04_PRM_004.raw",
+            "BBM_332_P110_C04_PRM_003.raw");
+    // Peptide Id files used to build the maxquant.blib library used with Olga_srm_course_heavy_light_w_maxquant_lib.sky.zip
+    private static final List<String> maxQuantLibPeptideIdSources = List.of("evidence.txt", "mqpar.xml", "msms.txt");
+
+    private static final String SKY_FILE_9 = "Telomerase_HCMV_PRM_Skyline-NO-RESULTS.sky.zip";
 
     @Override
     public String getSampleDataFolder()
@@ -175,6 +187,96 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Add information for the spectral library in the document so that the library validation is considered "complete"
         addSpecLibInfo("Source files unavailable", "Used only as supporting information", true);
         goToValidationDetails().verifyCompleteStatus();
+    }
+
+    @Test
+    public void testLibraryValidationWithSubfolders()
+    {
+        // Set up our source folder.
+        log("Creating experiment folder");
+        String projectName = getProjectName();
+        String folderName = "Experiment Folder";
+        setupSourceFolder(projectName, folderName, SUBMITTER);
+        log("Creating subfolder where Skyline documents will be uploaded");
+        String subfolderName = "Skyline Documents Folder";
+        setupSubfolder(projectName, folderName, subfolderName, FolderType.Experiment, SUBMITTER);
+
+        impersonate(SUBMITTER);
+        updateSubmitterAccountInfo("One");
+
+        String testFilesFolder = "LibraryTest-telomerasehcmvprm";
+        String testSkyZip = testFilesFolder + "/" + SKY_FILE_9;
+
+        // Upload document and raw data files
+        log("Uploading and importing Skyline document " + testSkyZip + " into folder " + folderName + "/" + subfolderName);
+        goToProjectFolder(projectName, folderName + "/" + subfolderName);
+        importData(testSkyZip, 1);
+
+        // Add the "Targeted MS Experiment" webpart
+        log("Creating TargetedMS Experiment in folder " + folderName);
+        goToProjectFolder(projectName, folderName);
+        String experimentTitle = "This is an experiment to test validation of Bibliospec library source files";
+        TargetedMsExperimentWebPart expWebPart = createExperimentCompleteMetadata(experimentTitle);
+        // Include subfolders
+        log("Including subfolders in experiment");
+        goToDashboard();
+        expWebPart.clickMoreDetails();
+        clickButton("Include Subfolders");
+
+        String libraryName = "test_library.blib";
+        List<String> rawSources = List.of("20210719_SIRT-PRM_non-SIRT4_unsched_01.raw",
+                "20210719_SIRT-PRM_non-SIRT4_unsched_02.raw",
+                "20210719_SIRT-PRM_non-SIRT4_unsched_03.raw",
+                "20210719_SIRT-PRM_non-SIRT4_unsched_04.raw",
+                "20210719_SIRT-PRM_non-SIRT4_unsched_05.raw",
+                "20210719_SIRT-PRM_SIRT4pep_unsched.raw");
+        List<String> peptideIdSources = List.of("20210719_SIRT-PRM_non-SIRT4_unsched_01.msf",
+                "20210719_SIRT-PRM_non-SIRT4_unsched_02.msf",
+                "20210719_SIRT-PRM_non-SIRT4_unsched_03.msf",
+                "20210719_SIRT-PRM_non-SIRT4_unsched_04.msf",
+                "20210719_SIRT-PRM_non-SIRT4_unsched_05.msf",
+                "20210719_SIRT-PRM_SIRT4pep_unsched.msf");
+
+        goToDashboard();
+        // Upload the source files used to build the maxquant.blib library to the parent experiment folder.
+        // Since spectral libraries can be used with multiple documents that may be uploaded across subfolders,
+        // we check all subfolders, as well as the parent experiment folder for library source files.
+        log("Uploading library source files to parent experiment folder - " + folderName);
+        uploadRawFiles(rawSources.stream()
+                .map(file -> testFilesFolder + "/" + file)
+                .toArray(String[]::new));
+        uploadRawFiles(peptideIdSources.stream()
+                .map(file -> testFilesFolder + "/" + file)
+                .toArray(String[]::new));
+
+        // Run validation job and verify the results
+        log("Running data validation job; expect COMPLETE status");
+        DataValidationPage validationPage = submitValidationJob();
+        validationPage.verifyCompleteStatus();
+        verifySpecLibSourceFiles(validationPage, libraryName, SKY_FILE_9, "100 KB", true, rawSources, peptideIdSources);
+
+        // Delete the "RawFiles" folder in the parent experiment folder
+        log("Deleting RawFiles directory from the parent experiment folder");
+        goToModule("FileContent");
+        _fileBrowserHelper.deleteFile("RawFiles");
+
+        log("Running data validation job; expect INCOMPLETE status");
+        validationPage = submitValidationJob();
+        validationPage.verifyIncompleteStatus();
+        verifySpecLibSourceFiles(validationPage, libraryName, SKY_FILE_9, "100 KB", false, rawSources, peptideIdSources);
+    }
+
+    private static void verifySpecLibSourceFiles(DataValidationPage validationPage, String libraryFileName, String skyZipName, String libraryFileSize,
+                                                 boolean allSourcesFound, List<String> rawFiles, List<String> peptideIdFiles)
+    {
+        String expectedStatus = allSourcesFound ? null : "Missing spectrum and peptide Id files";
+        validationPage.verifySpectralLibraryStatus(libraryFileName, libraryFileSize, expectedStatus,
+                List.of(skyZipName),
+                allSourcesFound ? rawFiles : Collections.emptyList(),
+                !allSourcesFound ? rawFiles : Collections.emptyList(),
+                allSourcesFound ? peptideIdFiles : Collections.emptyList(),
+                !allSourcesFound ? peptideIdFiles : Collections.emptyList()
+                );
     }
 
     private void clickExperimentDetailsLink()
@@ -352,12 +454,8 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
 
         // Verify library built with MaxQuant results. Expect to see evidence.xml, mqpar.xml in the Peptide ID files list
         // even though these files are not named in the .blib
-        validationPage.verifySpectralLibraryStatus("maxquant.blib", "104 KB", "Missing spectrum and peptide Id files",
-                List.of(SKY_FILE_2),
-                Collections.emptyList(),
-                List.of("BBM_332_P110_C04_PRM_007.raw", "BBM_332_P110_C04_PRM_006.raw", "BBM_332_P110_C04_PRM_005.raw", "BBM_332_P110_C04_PRM_004.raw", "BBM_332_P110_C04_PRM_003.raw"),
-                Collections.emptyList(),
-                List.of("evidence.txt", "mqpar.xml", "msms.txt"));
+        verifySpecLibSourceFiles(validationPage, "maxquant.blib", SKY_FILE_2,  "104 KB",
+                false, maxQuantLibRawSources, maxQuantLibPeptideIdSources);
 
         // .blib does not have any source files in the SpectrumSourceFiles table.
         validationPage.verifySpectralLibraryStatus("Qtrap_DP-PA_cons_P0836.blib", "61 KB",
@@ -383,12 +481,8 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
 
         // Verify library built with MaxQuant results. Expect to see evidence.xml, mqpar.xml in the Peptide ID files list
         // even though these files are not named in the .blib
-        validationPage.verifySpectralLibraryStatus("maxquant.blib", "104 KB", "Missing spectrum and peptide Id files",
-                List.of(SKY_FILE_2),
-                Collections.emptyList(),
-                List.of("BBM_332_P110_C04_PRM_007.raw", "BBM_332_P110_C04_PRM_006.raw", "BBM_332_P110_C04_PRM_005.raw", "BBM_332_P110_C04_PRM_004.raw", "BBM_332_P110_C04_PRM_003.raw"),
-                Collections.emptyList(),
-                List.of("evidence.txt", "mqpar.xml", "msms.txt"));
+        verifySpecLibSourceFiles(validationPage, "maxquant.blib", SKY_FILE_2, "104 KB",
+                false, maxQuantLibRawSources, maxQuantLibPeptideIdSources);
 
         // .blib does not have any source files in the SpectrumSourceFiles table.
         validationPage.verifySpectralLibraryStatus("Qtrap_DP-PA_cons_P0836.blib", "61 KB",
