@@ -238,8 +238,8 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
                 "20210719_SIRT-PRM_SIRT4pep_unsched.msf");
 
         goToDashboard();
-        // Upload the source files used to build the maxquant.blib library to the parent experiment folder.
-        // Since spectral libraries can be used with multiple documents that may be uploaded across subfolders,
+        // Upload the source files used to build test_library.blib to the parent experiment folder.
+        // Since spectral libraries can be used with multiple documents that may be uploaded to different subfolders,
         // we check all subfolders, as well as the parent experiment folder for library source files.
         log("Uploading library source files to parent experiment folder - " + folderName);
         uploadRawFiles(rawSources.stream()
