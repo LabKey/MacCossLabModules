@@ -15,7 +15,9 @@
  */
 package org.labkey.panoramapublic.proteomexchange;
 
-public class ProteomeXchangeServiceException extends Exception
+import org.labkey.api.util.SkipMothershipLogging;
+
+public class ProteomeXchangeServiceException extends Exception implements SkipMothershipLogging
 {
     public ProteomeXchangeServiceException(String message, Throwable cause)
     {
