@@ -24,8 +24,10 @@ import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.logging.LogHelper;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,6 +46,8 @@ public class ProteomeXchangeService
     private static final String PROTEOME_CENTRAL_URL = "https://proteomecentral.proteomexchange.org";
 
     private enum METHOD {submitDataset, validateXML, requestID}
+
+    private static final Logger LOG = LogHelper.getLogger(ProteomeXchangeService.class, "Handles requests to the ProteomeXchange server");
 
     public static String validatePxXml(File pxxmlFile, boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
     {
@@ -86,7 +90,7 @@ public class ProteomeXchangeService
         }
         catch (Exception e)
         {
-            throw new ProteomeXchangeServiceException("Error requesting a ID from ProteomeXchange.", e);
+            throw new ProteomeXchangeServiceException("Error requesting a ID from ProteomeXchange. " + e.getMessage(), e);
         }
 
         return responseMessage;
@@ -160,6 +164,7 @@ public class ProteomeXchangeService
                 int statusCode = response.getCode();
                 if (statusCode != 200)
                 {
+                    LOG.error("Unsuccessful request to ProteomeXchange.  Status code: " + statusCode + "; Response: " + responseMessage);
                     throw new ProteomeXchangeServiceException("Error " + statusCode + " from ProteomeXchange server: " + responseMessage);
                 }
                 return responseMessage;
