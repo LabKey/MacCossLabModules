@@ -122,8 +122,8 @@ public class PanoramaPublicMoveSkyDocTest extends PanoramaPublicBaseTest
     {
         String projectName = getProjectName();
         APIContainerHelper apiContainerHelper = new APIContainerHelper(this);
-        apiContainerHelper.deleteFolder(projectName, SOURCE_FOLDER);
-        apiContainerHelper.deleteFolder(projectName, TARGET_FOLDER);
+        apiContainerHelper.deleteContainer(projectName + "/" + SOURCE_FOLDER, afterTest, WAIT_FOR_PAGE);
+        apiContainerHelper.deleteContainer(projectName + "/" + TARGET_FOLDER, afterTest, WAIT_FOR_PAGE);
 
         super.doCleanup(afterTest);
     }
