@@ -215,11 +215,11 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
         Set<Path> rawFilesDirPaths = new HashSet<>();
         for (Container container: containers)
         {
-            var rawFiesDirPath = DataValidator.getRawFilesDirPath(container, fcs);
+            var rawFilesDirPath = DataValidator.getRawFilesDirPath(container, fcs);
             // We will look in the "RawFiles" directory only if it exists.
-            if (Files.exists(rawFiesDirPath))
+            if (Files.exists(rawFilesDirPath))
             {
-                rawFilesDirPaths.add(rawFiesDirPath);
+                rawFilesDirPaths.add(rawFilesDirPath);
             }
         }
 
