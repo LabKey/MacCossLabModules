@@ -6,9 +6,11 @@ import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
+import org.labkey.test.TestTimeoutException;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.CustomizeView;
+import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.DataRegionTable;
 
 import static org.junit.Assert.fail;
@@ -22,42 +24,42 @@ public class PanoramaPublicMoveSkyDocTest extends PanoramaPublicBaseTest
     private static final String SKY_FILE_2 = "MRMer_renamed_protein.zip";
     private static final String SKY_FILE_3 = "SmMolLibA.sky.zip";
 
+    private static final String SOURCE_FOLDER = "SourceFolder";
+    private static final String TARGET_FOLDER = "TargetFolder";
     @Test
     public void testExperimentCopy()
     {
         String projectName = getProjectName();
-        String sourceFolder = "SourceFolder";
         String sourceSubfolder = "SourceSubFolder";
-        String targetFolder = "TargetFolder";
 
-        log("Creating source folder " + sourceFolder);
-        setupSourceFolder(projectName, sourceFolder, SUBMITTER);
-        log("Creating subfolder, " + sourceSubfolder + " in folder " + sourceFolder);
-        setupSubfolder(projectName, sourceFolder, sourceSubfolder, FolderType.Experiment, SUBMITTER);
+        log("Creating source folder " + SOURCE_FOLDER);
+        setupSourceFolder(projectName, SOURCE_FOLDER, SUBMITTER);
+        log("Creating subfolder, " + sourceSubfolder + " in folder " + SOURCE_FOLDER);
+        setupSubfolder(projectName, SOURCE_FOLDER, sourceSubfolder, FolderType.Experiment, SUBMITTER);
 
         goToProjectHome();
-        log("Creating target folder " + targetFolder);
-        setupSourceFolder(projectName, targetFolder, SUBMITTER);
+        log("Creating target folder " + TARGET_FOLDER);
+        setupSourceFolder(projectName, TARGET_FOLDER, SUBMITTER);
 
         impersonate(SUBMITTER);
         updateSubmitterAccountInfo("One");
 
-        goToProjectFolder(projectName, sourceFolder);
-        log("Importing " + SKY_FILE_1 + " in folder " + sourceFolder);
+        goToProjectFolder(projectName, SOURCE_FOLDER);
+        log("Importing " + SKY_FILE_1 + " in folder " + SOURCE_FOLDER);
         importData(SKY_FILE_1, 1);
         goToDashboard();
-        log("Moving " + SKY_FILE_1 + " FROM " + sourceFolder + " TO " + targetFolder);
-        moveDocument(SKY_FILE_1, targetFolder, 1);
+        log("Moving " + SKY_FILE_1 + " FROM " + SOURCE_FOLDER + " TO " + TARGET_FOLDER);
+        moveDocument(SKY_FILE_1, TARGET_FOLDER, 1);
 
-        var skyDocSourceFolder = sourceFolder + "/" + sourceSubfolder;
+        var skyDocSourceFolder = SOURCE_FOLDER + "/" + sourceSubfolder;
         goToProjectFolder(projectName, skyDocSourceFolder);
         log("Importing " + SKY_FILE_2 + " in folder " + skyDocSourceFolder);
         importData(SKY_FILE_2, 1);
         goToDashboard();
-        log("Moving " + SKY_FILE_2 + " FROM " + skyDocSourceFolder + "TO " + targetFolder);
-        moveDocument(SKY_FILE_2, targetFolder, 2);
+        log("Moving " + SKY_FILE_2 + " FROM " + skyDocSourceFolder + "TO " + TARGET_FOLDER);
+        moveDocument(SKY_FILE_2, TARGET_FOLDER, 2);
 
-        goToProjectFolder(projectName, targetFolder);
+        goToProjectFolder(projectName, TARGET_FOLDER);
         log("Importing " + SKY_FILE_3 + " in folder " + skyDocSourceFolder);
         importData(SKY_FILE_3, 3);
 
@@ -68,9 +70,9 @@ public class PanoramaPublicMoveSkyDocTest extends PanoramaPublicBaseTest
         String shortAccessLink = submitWithoutPXId();
 
         // Copy the experiment to the Panorama Public project
-        var panoramaCopyFolder = "Copy of " + targetFolder;
+        var panoramaCopyFolder = "Copy of " + TARGET_FOLDER;
         log("Copying experiment to folder " + panoramaCopyFolder +" in the Panorama Public project");
-        copyExperimentAndVerify(projectName, targetFolder, experimentTitle, panoramaCopyFolder, shortAccessLink);
+        copyExperimentAndVerify(projectName, TARGET_FOLDER, experimentTitle, panoramaCopyFolder, shortAccessLink);
         goToProjectFolder(PANORAMA_PUBLIC, panoramaCopyFolder);
         verifyRunFilePathRoot(SKY_FILE_1, PANORAMA_PUBLIC, panoramaCopyFolder);
         verifyRunFilePathRoot(SKY_FILE_2, PANORAMA_PUBLIC, panoramaCopyFolder);
@@ -113,5 +115,16 @@ public class PanoramaPublicMoveSkyDocTest extends PanoramaPublicBaseTest
         var filePathRoot = queryGrid.getDataAsText(rowIndex, "FilePathRoot");
 
         Assert.assertEquals("Unexpected FilePathRoot ",expectedFileRoot, filePathRoot);
+    }
+
+    @Override
+    protected void doCleanup(boolean afterTest) throws TestTimeoutException
+    {
+        String projectName = getProjectName();
+        APIContainerHelper apiContainerHelper = new APIContainerHelper(this);
+        apiContainerHelper.deleteFolder(projectName, SOURCE_FOLDER);
+        apiContainerHelper.deleteFolder(projectName, TARGET_FOLDER);
+
+        super.doCleanup(afterTest);
     }
 }
