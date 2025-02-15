@@ -1,5 +1,10 @@
 package org.labkey.panoramapublic.model.validation;
 
+import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
+import org.labkey.api.data.Container;
+import org.labkey.panoramapublic.speclib.LibSourceFile;
+
 import java.util.Objects;
 
 // For table panoramapublic.speclibsourcefile
@@ -77,5 +82,17 @@ public class SpecLibSourceFile extends DataFile
     public int hashCode()
     {
         return Objects.hash(getSourceType(), getName());
+    }
+
+    @NotNull
+    public JSONObject toJSON(Container container)
+    {
+        JSONObject jsonObject = super.toJSON(container);
+        if (isIdFile() && LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER.endsWith(getName()) && !found())
+        {
+            jsonObject.put("statusDetails", "The DIA-NN TSV report must be in the same directory as the " +
+                    ".speclib, and share some leading characters in the file name");
+        }
+        return jsonObject;
     }
 }

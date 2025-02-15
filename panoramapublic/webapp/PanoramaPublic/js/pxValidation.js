@@ -79,7 +79,11 @@ renderFileStatus: function renderFileStatus(values, isSampleFile, link) {
     if (values.found === true) status = "FOUND";
     else if (values.ambiguous === true) status = "AMBIGUOUS"
     else status = "MISSING";
-    return '<td><span class="' + cls + '">' + htmlEncode(status) + (link ? '<span style="margin-left: 5px;">' + link + '</span>' : "") + '</span></td>';
+    return '<td><span class="' + cls + '">' + htmlEncode(status)
+            + (link ? '<span style="margin-left: 5px;">' + link + '</span>' : "") + '</span>'
+            + (values.statusDetails ? '<div class="' +cls + '" style="font-size:smaller; font-weight: normal;"> ('
+                    + htmlEncode(values.statusDetails) + ')</div>' : "")
+            + '</td>';
 }
 
 expandGridNodes = function(store, expander) {

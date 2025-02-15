@@ -171,17 +171,39 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
         {
             throw UnexpectedException.wrap(e, "Error reading source files from library file " + libFilePath.toString());
         }
-        if (sourceFiles != null && sourceFiles.stream().anyMatch(LibSourceFile::isMaxQuantSearch))
+        if (sourceFiles != null)
         {
-            // For libraries built with MaxQuant search results we need to add additional files that are required for library building
-            Set<String> idFileNames = sourceFiles.stream().filter(LibSourceFile::hasIdFile).map(LibSourceFile::getIdFile).collect(Collectors.toSet());
-            for (String file: LibSourceFile.MAX_QUANT_ID_FILES)
+            if (sourceFiles.stream().anyMatch(LibSourceFile::isMaxQuantSearch))
             {
-                if (!idFileNames.contains(file))
+                // For libraries built with MaxQuant search results we need to add additional files that are required for library building
+                Set<String> idFileNames = sourceFiles.stream().filter(LibSourceFile::hasIdFile).map(LibSourceFile::getIdFile).collect(Collectors.toSet());
+                for (String file : LibSourceFile.MAX_QUANT_ID_FILES)
                 {
-                    sourceFiles.add(new LibSourceFile(null, file, null));
+                    if (!idFileNames.contains(file))
+                    {
+                        sourceFiles.add(new LibSourceFile(null, file, null));
+                    }
                 }
             }
+            else if (sourceFiles.stream().anyMatch(LibSourceFile::isDiannSearch))
+            {
+                // Building a library with DIA-NN results in Skyline requires a .speclib file and a report TSV file.
+                // The .blib file includes the name of .speclib but not the name of the report TSV file, unfortunately.
+                // We only know that: "the TSV report is required to read speclib files and must be in the
+                // same directory as the speclib and share some leading characters
+                // (e.g. somedata-tsv.speclib and somedata-report.tsv)"
+
+                // At some point Skyline may start including the names of all source files in the .blib SQLite file,
+                // so first check if any TSV files are listed as sources in the .blib
+                boolean hasTsvFiles = sourceFiles.stream()
+                        .anyMatch(file -> file.hasIdFile() && file.getIdFile().toLowerCase().endsWith(".tsv"));
+                if (!hasTsvFiles)
+                {
+                    // If there is no TSV source listed in the .blib, then add a placeholder for the DIA-NN report file.
+                    sourceFiles.add(new LibSourceFile(null, LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER, null));
+                }
+            }
+
         }
         return sourceFiles;
     }
@@ -241,12 +263,29 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             String idFile = source.getIdFile();
             if (source.hasIdFile() && !checkedFiles.contains(idFile))
             {
+                if (LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER.equals(idFile)) continue; // We will look for this when we come to the .speclib file
+
                 checkedFiles.add(idFile);
                 Path path = getPath(idFile, rawFilesDirPaths, false, fcs);
                 SpecLibSourceFile sourceFile = new SpecLibSourceFile(idFile, PEPTIDE_ID);
                 sourceFile.setSpecLibValidationId(getId());
                 sourceFile.setPath(path != null ? path.toString() : DataFile.NOT_FOUND);
                 idFiles.add(sourceFile);
+
+                if (source.isDiannSearch())
+                {
+                    // If this is a DIA-NN .speclib file, check for the required report TSV file.
+                    // We are doing this because the .blib does not include the name of the report TSV file.
+                    // We only know that: "the TSV report is required to read speclib files and must be in the
+                    // same directory as the speclib and share some leading characters
+                    // (e.g. somedata-tsv.speclib and somedata-report.tsv)"
+                    Path reportFilePath = sourceFile.found() ? getDiannReportFilePath(path, fcs) : null;
+                    SpecLibSourceFile diannReportSourceFile = new SpecLibSourceFile(LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER, PEPTIDE_ID);
+                    diannReportSourceFile.setSpecLibValidationId(getId());
+                    diannReportSourceFile.setPath(reportFilePath != null ? reportFilePath.toString() : DataFile.NOT_FOUND);
+                    idFiles.add(diannReportSourceFile);
+                    checkedFiles.add(idFile);
+                }
             }
         }
         setSpectrumFiles(spectrumFiles);
@@ -255,6 +294,7 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
 
     private Path getPath(String name, Set<Path> rawFilesDirPaths, boolean isMaxquant, FileContentService fcs)
     {
+        // TODO: Prefer root experiment RawFiles directory?
         for (Path rawFilesDir: rawFilesDirPaths)
         {
             Path path = findInDirectoryTree(rawFilesDir, name, isMaxquant);
@@ -264,6 +304,67 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             }
         }
         return null;
+    }
+
+    private Path getDiannReportFilePath(Path speclibFilePath, FileContentService fcs)
+    {
+        Path specLibFileDir = speclibFilePath.getParent();
+        String specLibFileName = speclibFilePath.getFileName().toString();
+
+        Map<Path, Integer> prefixLengthMap = new HashMap<>();
+
+        try (Stream<Path> files = Files.list(specLibFileDir))
+        {
+            files.filter(Files::isRegularFile)
+                    .filter(file -> file.getFileName().toString().toLowerCase().endsWith(".tsv")) // Ensure it's a TSV file
+                    .forEach(file -> {
+                        // Get the longest common prefix length
+                        int commonPrefixLength = longestCommonPrefixLength(specLibFileName, file.getFileName().toString());
+
+                        if (commonPrefixLength > 0)
+                        {
+                            prefixLengthMap.put(file, commonPrefixLength);
+                        }
+                    });
+
+            // Find the TSV file with the longest common prefix that has the expected column headers in the first line
+            return prefixLengthMap.entrySet().stream()
+                    .sorted((entry1, entry2) -> Integer.compare(entry2.getValue(), entry1.getValue())) // Sort descending by matching prefix length
+                    .map(Map.Entry::getKey)  // File paths
+                    .filter(file -> hasRequiredHeaders(file)) // First line should have expected header columns
+                    .findFirst() // Get the first file that meets the conditions
+                    .orElse(null);
+        }
+        catch (IOException e)
+        {
+            throw UnexpectedException.wrap(e, "Error looking for DIA-NN report TSV file in " + specLibFileDir);
+        }
+    }
+
+    private int longestCommonPrefixLength(String s1, String s2)
+    {
+        int maxLength = Math.min(s1.length(), s2.length());
+        int index = 0;
+        while (index < maxLength && s1.charAt(index) == s2.charAt(index))
+        {
+            index++;
+        }
+        return index;
+    }
+
+    private boolean hasRequiredHeaders(Path diannReportTsv)
+    {
+        try
+        {
+            // Read the first line of the file
+            String firstLine = Files.lines(diannReportTsv).findFirst().orElse("");
+            // Check if the first line has the expected header columns names
+            return List.of(firstLine.trim().split("\t")).containsAll(LibSourceFile.DIANN_REPORT_EXPECTED_HEADERS);
+        }
+        catch (IOException e)
+        {
+            throw UnexpectedException.wrap(e, "Error reading the first line of TSV file " + diannReportTsv);
+        }
     }
 
     private Path findInDirectoryTree(java.nio.file.Path rawFilesDirPath, String fileName, boolean allowBaseName)
