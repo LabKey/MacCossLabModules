@@ -308,7 +308,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         clickAndWait(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
     }
 
-    void copyExperimentAndVerify(String projectName, String folderName, String experimentTitle, String destinationFolder, String shortAccessUrl)
+    void copyExperimentAndVerify(String projectName, @Nullable String folderName, String experimentTitle, String destinationFolder, String shortAccessUrl)
     {
         copyExperimentAndVerify(projectName, folderName, null, experimentTitle, null, false, true, destinationFolder, shortAccessUrl);
     }
@@ -327,7 +327,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         makeCopy(shortAccessUrl, experimentTitle, recopy, deleteOldCopy, destinationFolder, true);
     }
 
-    void copyExperimentAndVerify(String projectName, String folderName, @Nullable List<String> subfolders, String experimentTitle,
+    void copyExperimentAndVerify(String projectName, @Nullable String folderName, @Nullable List<String> subfolders, String experimentTitle,
                                  @Nullable Integer version, boolean recopy, boolean deleteOldCopy, String destinationFolder,
                                  String shortAccessUrl)
     {
@@ -335,7 +335,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
                 destinationFolder, shortAccessUrl, true);
     }
 
-    void copyExperimentAndVerify(String projectName, String folderName, @Nullable List<String> subfolders, String experimentTitle,
+    void copyExperimentAndVerify(String projectName, @Nullable String folderName, @Nullable List<String> subfolders, String experimentTitle,
                                  @Nullable Integer version, boolean recopy, boolean deleteOldCopy, String destinationFolder,
                                  String shortAccessUrl, boolean symlinks)
     {
@@ -408,7 +408,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         }
     }
 
-    private void verifyCopy(String shortAccessUrl, String experimentTitle, @Nullable Integer version, String projectName, String folderName, List<String> subfolders, boolean recopy)
+    private void verifyCopy(String shortAccessUrl, String experimentTitle, @Nullable Integer version, String projectName, @Nullable String folderName, List<String> subfolders, boolean recopy)
     {
         // Verify the copy
         goToProjectHome(PANORAMA_PUBLIC);
@@ -456,7 +456,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
             text += "\nEmail: " + REVIEWER_PREFIX;
         }
         String messageText = new BodyWebPart(getDriver(), "View Message").getComponentElement().getText();
-        var srcFolderTxt = "Source folder: " + "/" + projectName + "/" + folderName;
+        var srcFolderTxt = "Source folder: " + "/" + projectName + (folderName == null ? "" : "/" + folderName);
         assertTextPresent(new TextSearcher(messageText), text, srcFolderTxt);
 
         // Unescaped special Markdown characters in the message may cause the password to render incorrectly.
