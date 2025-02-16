@@ -391,7 +391,7 @@ public class PxXmlWriter extends PxWriter
          */
         Element mod_list = new Element("ModificationList");
         var mods = validationStatus.getModifications();
-        if(mods.size() == 0)
+        if(mods.size() == 0 || mods.stream().noneMatch(Modification::isValid))
         {
             mod_list.addChild(new CvParamElement("MS", "MS:1002864", "No PTMs are included in the dataset"));
         }

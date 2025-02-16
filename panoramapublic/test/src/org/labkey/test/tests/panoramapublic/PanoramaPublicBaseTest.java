@@ -217,9 +217,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
     void setupSubfolder(String projectName, String parentFolderName, String folderName, FolderType folderType, String ... adminUsers)
     {
-        _containerHelper.createSubfolder(projectName, parentFolderName, folderName, "Panorama", null, false);
-        selectFolderType(folderType);
-
+        super.setupSubfolder(projectName, parentFolderName, folderName, folderType);
         updatePermissions(projectName, parentFolderName + "/" + folderName, adminUsers);
     }
 
