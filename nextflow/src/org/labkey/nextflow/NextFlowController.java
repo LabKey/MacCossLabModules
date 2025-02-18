@@ -3,7 +3,6 @@ package org.labkey.nextflow;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.Logger;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.FormViewAction;
@@ -14,6 +13,7 @@ import org.labkey.api.data.PropertyManager;
 import org.labkey.api.data.PropertyStore;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
+import org.labkey.api.pipeline.PipelineProvider;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.PipelineStatusUrls;
 import org.labkey.api.pipeline.browse.PipelinePathForm;
@@ -31,13 +31,13 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Path;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.element.Select;
-import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.UnauthorizedException;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.nextflow.pipeline.NextFlowPipelineJob;
+import org.labkey.nextflow.pipeline.NextFlowProtocol;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
@@ -63,8 +63,6 @@ public class NextFlowController extends SpringActionController
 {
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(NextFlowController.class);
     public static final String NAME = "nextflow";
-
-    private static final Logger LOG = LogHelper.getLogger(NextFlowController.class, NAME);
 
     public NextFlowController()
     {
@@ -262,24 +260,39 @@ public class NextFlowController extends SpringActionController
         @Override
         public ModelAndView getView(AnalyzeForm o, boolean b, BindException errors)
         {
+            List<File> selectedFiles = o.getValidatedFiles(getContainer(), false);
+            if (selectedFiles.isEmpty())
+            {
+                return new HtmlView(HtmlString.of("Couldn't find input file(s)"));
+            }
+            // NextFlow operates on the full directory so show the list to the user, regardless of what they selected
+            // from the file listing
+            File inputDir = selectedFiles.get(0).getParentFile();
+
+            File[] inputFiles = inputDir.listFiles(new PipelineProvider.FileTypesEntryFilter(NextFlowProtocol.INPUT_TYPES));
+            if (inputFiles == null || inputFiles.length == 0)
+            {
+                return new HtmlView(HtmlString.of("Couldn't find input file(s)"));
+            }
+
             NextFlowConfiguration config = NextFlowManager.get().getConfiguration();
             if (config.getNextFlowConfigFilePath() != null)
             {
                 File configDir = new File(config.getNextFlowConfigFilePath());
                 if (configDir.isDirectory())
                 {
-                    File[] files = configDir.listFiles();
-                    if (files != null && files.length > 0)
+                    File[] configFiles = configDir.listFiles();
+                    if (configFiles != null && configFiles.length > 0)
                     {
-                        List<File> configFiles = Arrays.asList(files);
                         return new HtmlView("NextFlow Runner", DIV(
                                 FORM(at(method, "POST"),
                                         INPUT(at(hidden, true, name, "launch", value, true)),
                                         Arrays.stream(o.getFile()).map(f -> INPUT(at(hidden, true, name, "file", value, f))).toList(),
                                         "Files: ",
-                                        UL(Arrays.stream(o.getFile()).map(DOM::LI)),
+                                        UL(Arrays.stream(inputFiles).map(File::getName).map(DOM::LI)),
                                         "Config: ",
-                                        new Select.SelectBuilder().name("configFile").addOptions(configFiles.stream().filter(f -> f.isFile() && f.getName().toLowerCase().endsWith(".config")).map(File::getName).sorted(String.CASE_INSENSITIVE_ORDER).toList()).build(),
+                                        new Select.SelectBuilder().name("configFile").addOptions(Arrays.stream(configFiles).filter(f -> f.isFile() && f.getName().toLowerCase().endsWith(".config")).map(File::getName).sorted(String.CASE_INSENSITIVE_ORDER).toList()).build(),
+                                        DOM.BR(),
                                         new Button.ButtonBuilder("Start NextFlow").submit(true).build())));
                     }
                 }
