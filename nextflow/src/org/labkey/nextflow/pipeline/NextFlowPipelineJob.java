@@ -59,24 +59,26 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
         super(new NextFlowProtocol(), NextFlowPipelineProvider.NAME, info, root, config.getFileName().toString(), config, inputFiles, false, false);
         this.config = config;
         setLogFile(log);
-        LOG.info("NextFlow job queued: {}", getJsonJobInfo());
+        LOG.info("NextFlow job queued: {}", getJsonJobInfo(null));
     }
 
-    protected JSONObject getJsonJobInfo()
+    protected JSONObject getJsonJobInfo(Long invocationCount)
     {
         JSONObject result = new JSONObject();
         result.put("user", getUser().getEmail());
         result.put("container", getContainer().getPath());
         result.put("filePath", getLogFilePath().getParent().toString());
-        result.put("runName", getNextFlowRunName());
+        result.put("runName", getNextFlowRunName(invocationCount));
         result.put("configFile", getConfig().getFileName().toString());
         return result;
     }
 
-    protected String getNextFlowRunName()
+    protected String getNextFlowRunName(Long invocationCount)
     {
         PipelineStatusFile file = PipelineService.get().getStatusFile(getJobGUID());
-        return file == null ? "Unknown" : ("LabKeyJob" + file.getRowId());
+        String result = file == null ? "Unknown" : ("LabKeyJob" + file.getRowId());
+        result += invocationCount == null ? "" : ("_" + invocationCount);
+        return result;
     }
 
     @Override
