@@ -167,11 +167,11 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         expandLibraryRow(panel, libraryFile, fileSize);
         verifySpecLibStatus(libraryFile, fileSize,
                 (spectrumFiles.size() == 0 || idFiles.size() == 0
-                        || spectrumFilesMissing.size() > 0 || idFilesMissing.size() > 0) ? "INCOMPLETE" : "CPMPLETE");
+                        || spectrumFilesMissing.size() > 0 || idFilesMissing.size() > 0) ? "INCOMPLETE" : "COMPLETE");
 
         var panelText = panel.getText();
         List<String> expectedTexts = new ArrayList<>(skylineDocNames);
-        expectedTexts.add(statusText);
+        if (statusText != null) expectedTexts.add(statusText);
         assertTextPresent(new TextSearcher(panelText), expectedTexts.toArray(new String[]{}));
 
         verifyLibrarySourceFiles(libraryFile, spectrumFiles, spectrumFilesMissing, panel, "lib-spectrum-files-status");
