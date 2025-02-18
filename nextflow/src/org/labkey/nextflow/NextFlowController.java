@@ -3,7 +3,6 @@ package org.labkey.nextflow;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.Logger;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.FormViewAction;
@@ -32,7 +31,6 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Path;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.element.Select;
-import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
@@ -45,7 +43,6 @@ import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.io.File;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 
@@ -66,8 +63,6 @@ public class NextFlowController extends SpringActionController
 {
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(NextFlowController.class);
     public static final String NAME = "nextflow";
-
-    private static final Logger LOG = LogHelper.getLogger(NextFlowController.class, NAME);
 
     public NextFlowController()
     {
