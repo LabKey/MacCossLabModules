@@ -279,7 +279,7 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
                     // We only know that: "the TSV report is required to read speclib files and must be in the
                     // same directory as the speclib and share some leading characters
                     // (e.g. somedata-tsv.speclib and somedata-report.tsv)"
-                    Path reportFilePath = sourceFile.found() ? getDiannReportFilePath(path, fcs) : null;
+                    Path reportFilePath = sourceFile.found() ? getDiannReportFilePath(path) : null;
                     SpecLibSourceFile diannReportSourceFile = new SpecLibSourceFile(LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER, PEPTIDE_ID);
                     diannReportSourceFile.setSpecLibValidationId(getId());
                     diannReportSourceFile.setPath(reportFilePath != null ? reportFilePath.toString() : DataFile.NOT_FOUND);
@@ -306,34 +306,13 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
         return null;
     }
 
-    private Path getDiannReportFilePath(Path speclibFilePath, FileContentService fcs)
+    private static Path getDiannReportFilePath(Path speclibFilePath)
     {
         Path specLibFileDir = speclibFilePath.getParent();
-        String specLibFileName = speclibFilePath.getFileName().toString();
-
-        Map<Path, Integer> prefixLengthMap = new HashMap<>();
-
-        try (Stream<Path> files = Files.list(specLibFileDir))
+        try (Stream<Path> paths = Files.list(specLibFileDir))
         {
-            files.filter(Files::isRegularFile)
-                    .filter(file -> file.getFileName().toString().toLowerCase().endsWith(".tsv")) // Ensure it's a TSV file
-                    .forEach(file -> {
-                        // Get the longest common prefix length
-                        int commonPrefixLength = longestCommonPrefixLength(specLibFileName, file.getFileName().toString());
-
-                        if (commonPrefixLength > 0)
-                        {
-                            prefixLengthMap.put(file, commonPrefixLength);
-                        }
-                    });
-
-            // Find the TSV file with the longest common prefix that has the expected column headers in the first line
-            return prefixLengthMap.entrySet().stream()
-                    .sorted((entry1, entry2) -> Integer.compare(entry2.getValue(), entry1.getValue())) // Sort descending by matching prefix length
-                    .map(Map.Entry::getKey)  // File paths
-                    .filter(file -> hasRequiredHeaders(file)) // First line should have expected header columns
-                    .findFirst() // Get the first file that meets the conditions
-                    .orElse(null);
+            List<Path> files = paths.filter(path -> Files.isRegularFile(path)).collect(Collectors.toList());
+            return getDiannReportFilePath(speclibFilePath.getFileName().toString(), files);
         }
         catch (IOException e)
         {
@@ -341,7 +320,38 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
         }
     }
 
-    private int longestCommonPrefixLength(String s1, String s2)
+    private static Path getDiannReportFilePath(String specLibFileName, List<Path> candidateFiles)
+    {
+        Map<Path, Integer> prefixLengthMap = getCommonPrefixLengths(candidateFiles, specLibFileName);
+
+        // Find the TSV file with the longest common prefix that has the expected column headers in the first line
+        return prefixLengthMap.entrySet().stream()
+                .sorted((entry1, entry2) -> Integer.compare(entry2.getValue(), entry1.getValue())) // Sort descending by matching prefix length
+                .map(Map.Entry::getKey)  // File paths
+                .filter(file -> hasRequiredHeaders(file)) // First line should have expected header columns
+                .findFirst() // Get the first file that meets the conditions
+                .orElse(null);
+    }
+
+    private static Map<Path, Integer> getCommonPrefixLengths(List<Path> files, String specLibFileName)
+    {
+        String specLibFileBaseName = FileUtil.getBaseName(specLibFileName); // Remove file extension
+        Map<Path, Integer> prefixLengthMap = new HashMap<>();
+        files.stream()
+                .filter(file -> file.getFileName().toString().toLowerCase().endsWith(".tsv")) // Ensure it's a TSV file
+                .forEach(file -> {
+                    // Get the longest common prefix length
+                    int commonPrefixLength = commonPrefixLength(specLibFileBaseName, FileUtil.getBaseName(file.getFileName().toString()));
+
+                    if (commonPrefixLength > 0)
+                    {
+                        prefixLengthMap.put(file, commonPrefixLength);
+                    }
+                });
+        return prefixLengthMap;
+    }
+
+    private static int commonPrefixLength(String s1, String s2)
     {
         int maxLength = Math.min(s1.length(), s2.length());
         int index = 0;
@@ -352,7 +362,7 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
         return index;
     }
 
-    private boolean hasRequiredHeaders(Path diannReportTsv)
+    private static boolean hasRequiredHeaders(Path diannReportTsv)
     {
         try
         {
@@ -558,6 +568,176 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             // Accept 170428_DBS_cal_7a.d OR 170428_DBS_cal_7a.d.zip
             assertTrue(accept("170428_DBS_cal_7a.d", "170428_DBS_cal_7a.d"));
             assertTrue(accept("170428_DBS_cal_7a.d", "170428_DBS_cal_7a.d.zip"));
+        }
+
+        @Test
+        public void testCommonPrefixLength() throws IOException
+        {
+            Path testDataDir = getDiannTestFilesPath();
+
+            // The spec lib file name to compare against
+            String specLibFileName = "report-lib.parquet.skyline-for-test.speclib";
+
+            Path tsvFile1 = testDataDir.resolve("report-lib.tsv");
+            Path tsvFile2 = testDataDir.resolve("report-lib-for-test.tsv");
+            Path tsvFile3 = testDataDir.resolve("report-lib.parquet.tsv");
+            Path tsvFile4 = testDataDir.resolve("report-lib.parquet-test.tsv");
+            Path tsvFile5 = testDataDir.resolve("no-prefix-match-report.tsv");
+            Path nonTsvFile1 = testDataDir.resolve("report-lib.parquet.skyline-for-test.txt");
+            Path nonTsvFile2 = testDataDir.resolve("report.txt");
+
+            List<Path> files = List.of(tsvFile1, tsvFile2, tsvFile3, tsvFile4, tsvFile5, nonTsvFile1, nonTsvFile2);
+
+            Map<Path, Integer> prefixLengthMap = SpecLibValidator.getCommonPrefixLengths(files, specLibFileName);
+            // Expect 4 TSV files in the list; files witout a prefix match, and non-TSV files should be ignored.
+            assertEquals("Unexpected size of prefixLengthMap", 4, prefixLengthMap.size());
+
+            // File report-lib.tsv should have a common prefix "report-lib"
+            assertTrue(prefixLengthMap.containsKey(tsvFile1));
+            assertEquals("report-lib".length(), prefixLengthMap.get(tsvFile1).intValue());
+
+            // File report-lib-test.tsv should have a common prefix "report-lib"
+            assertTrue(prefixLengthMap.containsKey(tsvFile2));
+            assertEquals("report-lib".length(), prefixLengthMap.get(tsvFile2).intValue());
+
+            // File report-lib.parquet.tsv should have a common prefix "report-lib.parquet"
+            assertTrue(prefixLengthMap.containsKey(tsvFile3));
+            assertEquals("report-lib.parquet".length(), prefixLengthMap.get(tsvFile3).intValue());
+
+            // File report-lib.parquet-test.tsv should have a common prefix "report-lib.parquet"
+            assertTrue(prefixLengthMap.containsKey(tsvFile4));
+            assertEquals("report-lib.parquet".length(), prefixLengthMap.get(tsvFile4).intValue());
+
+            // File no-prefix-match-report.tsv should not have a common prefix
+            assertFalse(tsvFile5 + " does not share a prefix with " + specLibFileName, prefixLengthMap.containsKey(tsvFile5));
+
+            assertFalse(prefixLengthMap.containsKey(nonTsvFile1));
+            assertFalse(prefixLengthMap.containsKey(nonTsvFile2));
+
+            // List of files that do not share a common prefix with the speclib file
+            files = List.of(testDataDir.resolve("absc.tsv"), testDataDir.resolve("1234.tsv"), testDataDir.resolve("lib.parquet.skyline.tsv"));
+            prefixLengthMap = SpecLibValidator.getCommonPrefixLengths(files, specLibFileName);
+            assertEquals(0, prefixLengthMap.size());
+
+            prefixLengthMap = SpecLibValidator.getCommonPrefixLengths(files, specLibFileName);
+            assertEquals(0, prefixLengthMap.size());
+        }
+
+        @Test
+        public void testGetDiannReportFilePath() throws IOException
+        {
+            Path testDataDir = getDiannTestFilesPath();
+            String specLibFileName = "report-lib.parquet.skyline-for-test.speclib";
+
+            Path reportTsvFile = SpecLibValidator.getDiannReportFilePath(specLibFileName, Collections.emptyList());
+            assertNull("Unexpected report TSV file path returned. Input file list is empty.", reportTsvFile);
+
+            // Files in the test directory:
+            // 1. report.tsv
+            // 2. report-lib-test.tsv
+            // 3. no-prefix-match-report-for-test.tsv
+            // 4. report-lib.parquet-missing-headers.tsv
+            Path tsvFile1 = testDataDir.resolve("report.tsv");
+            Path tsvFile2 = testDataDir.resolve("report-lib-for-test.tsv");
+            Path tsvFile3 = testDataDir.resolve("no-prefix-match-report-for-test.tsv");
+            Path tsvFile4 = testDataDir.resolve("report-lib.parquet-missing-headers.txt");
+            Path nonTsvFile1 = testDataDir.resolve("report.txt");
+            Path nonTsvFile2 = testDataDir.resolve("report-lib.parquet.skyline-for-test.txt");
+            Path nonTsvFile3 = testDataDir.resolve(specLibFileName);
+            Path nonTsvFile4 = testDataDir.resolve("test_diann_library.blib");
+
+            List<Path> candidateFiles = new ArrayList<>();
+            candidateFiles.add(nonTsvFile1);
+            candidateFiles.add(nonTsvFile2);
+            candidateFiles.add(nonTsvFile3);
+            candidateFiles.add(nonTsvFile4);
+
+            assertNull("Unexpected report TSV file path returned. Input list does not have any TSV files",
+                    SpecLibValidator.getDiannReportFilePath(specLibFileName, candidateFiles));
+
+            candidateFiles.add(tsvFile3); // TSV file does not share a prefix with the speclib file
+            assertNull("Unexpected report TSV file path returned. Input list does not have any TSV files that share a prefix with the speclib file",
+                    SpecLibValidator.getDiannReportFilePath(specLibFileName, candidateFiles));
+
+            candidateFiles.add(tsvFile4); // TSV file does not have the required column headers
+            assertNull("Unexpected report TSV file path returned. Input list does not have any TSV files that share a prefix with the speclib file" +
+                            " and have the required column headers",
+                    SpecLibValidator.getDiannReportFilePath(specLibFileName, candidateFiles));
+
+            candidateFiles.add(tsvFile1); // Shares a prefix and has the required column headers
+            reportTsvFile = SpecLibValidator.getDiannReportFilePath(specLibFileName, candidateFiles);
+            assertNotNull(reportTsvFile);
+            assertEquals(tsvFile1, reportTsvFile);
+
+            candidateFiles.add(tsvFile2); // Shares a longer prefix with the speclib file
+            reportTsvFile = SpecLibValidator.getDiannReportFilePath(specLibFileName, candidateFiles);
+            assertNotNull(reportTsvFile);
+            assertEquals(tsvFile2, reportTsvFile);
+        }
+
+        @Test
+        public void testGetDiannLibrarySources() throws IOException
+        {
+            Path testDataDir = getDiannTestFilesPath();
+            Path libPath = testDataDir.resolve("test_diann_library.blib");
+            ISpectrumLibrary isl = createLibrary(libPath);
+            SpecLibReader libReader = SpecLibReader.getReader(isl);
+            assertNotNull(libReader);
+            List<LibSourceFile> libSources = getLibSources(libReader, isl, libPath, "no_name_document");
+            assertNotNull(libSources);
+
+            // Files read from the .blib's SpectrumSourceFiles table
+            List<String> spectrumSources = List.of(
+                    "D0_rep1_DIA.mzML",
+                    "D0_rep2_DIA.mzML",
+                    "D2_rep2_DIA.mzML",
+                    "D4_rep2_DIA.mzML",
+                    "D6_rep1_DIA.mzML",
+                    "D8_rep1_DIA.mzML",
+                    "D8_rep2_DIA.mzML",
+                    "D10_rep2_DIA.mzML",
+                    "D11_rep2_DIA.mzML",
+                    "D2_rep1_DIA.mzML",
+                    "D6_rep2_DIA.mzML",
+                    "D10_rep1_DIA.mzML",
+                    "D11_rep1_DIA.mzML",
+                    "D12_rep1_DIA.mzML",
+                    "D4_rep1_DIA.mzML",
+                    "D12_rep2_DIA.mzML",
+                    "D14_rep1_DIA.mzML",
+                    "D14_rep2_DIA.mzML"
+            );
+
+            assertEquals(spectrumSources.size() + 1, libSources.size()); // Add one for the report TSV placeholder
+
+            String idFile = "report-lib.parquet.skyline-for-test.speclib";
+            for (int i = 0; i < spectrumSources.size(); i++)
+            {
+                LibSourceFile libSource = libSources.get(i);
+                assertTrue(libSource.hasSpectrumSourceFile());
+                assertEquals(spectrumSources.get(i), libSource.getSpectrumSourceFile());
+                assertTrue(libSource.hasIdFile());
+                assertEquals(idFile, libSource.getIdFile());
+            }
+
+            // Placeholder for the DIA-NN report file
+            LibSourceFile libSource = libSources.get(spectrumSources.size());
+            assertFalse(libSource.hasSpectrumSourceFile());
+            assertTrue(libSource.hasIdFile());
+            assertTrue(LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER.equals(libSource.getIdFile()));
+
+            Set<String> idFilesInSources = libSources.stream().map(LibSourceFile::getIdFile).collect(Collectors.toSet());
+            assertEquals(Set.of(idFile, LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER), idFilesInSources);
+
+            Path expectedReportFilePath = testDataDir.resolve("report-lib-for-test.tsv"); // Files with the longest matching prefix and expected column headers
+            Path reportFilePath = new SpecLibValidator().getDiannReportFilePath(testDataDir.resolve("report-lib.parquet.skyline-for-test.speclib"));
+            assertEquals("Unexpected DIA-NN TSV report file path", expectedReportFilePath, reportFilePath);
+        }
+
+        private static Path getDiannTestFilesPath() throws IOException
+        {
+            return JunitUtil.getSampleData(ModuleLoader.getInstance().getModule(PanoramaPublicModule.class),
+                    "TargetedMS/panoramapublic/LibraryTest-DiaNN").toPath();
         }
 
         private ISpectrumLibrary createLibrary(Path path)
