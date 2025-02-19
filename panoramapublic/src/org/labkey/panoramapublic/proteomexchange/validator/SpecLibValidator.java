@@ -31,8 +31,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -210,6 +212,16 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
         // folder as well as any subfolders containing documents that have the library
         Set<Container> containers = getDocsWithLibrary().stream().map(dl -> dl.getRun().getContainer()).collect(Collectors.toSet());
         containers.add(expAnnotations.getContainer());
+        Set<Path> rawFilesDirPaths = new HashSet<>();
+        for (Container container: containers)
+        {
+            var rawFilesDirPath = DataValidator.getRawFilesDirPath(container, fcs);
+            // We will look in the "RawFiles" directory only if it exists.
+            if (Files.exists(rawFilesDirPath))
+            {
+                rawFilesDirPaths.add(rawFilesDirPath);
+            }
+        }
 
         List<SpecLibSourceFile> spectrumFiles = new ArrayList<>();
         List<SpecLibSourceFile> idFiles = new ArrayList<>();
@@ -220,7 +232,7 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             if (source.hasSpectrumSourceFile() && !checkedFiles.contains(ssf))
             {
                 checkedFiles.add(ssf);
-                Path path = getPath(ssf, containers, source.isMaxQuantSearch(), fcs);
+                Path path = getPath(ssf, rawFilesDirPaths, source.isMaxQuantSearch(), fcs);
                 SpecLibSourceFile sourceFile = new SpecLibSourceFile(ssf, SPECTRUM);
                 sourceFile.setSpecLibValidationId(getId());
                 sourceFile.setPath(path != null ? path.toString() : DataFile.NOT_FOUND);
@@ -230,7 +242,7 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             if (source.hasIdFile() && !checkedFiles.contains(idFile))
             {
                 checkedFiles.add(idFile);
-                Path path = getPath(idFile, containers, false, fcs);
+                Path path = getPath(idFile, rawFilesDirPaths, false, fcs);
                 SpecLibSourceFile sourceFile = new SpecLibSourceFile(idFile, PEPTIDE_ID);
                 sourceFile.setSpecLibValidationId(getId());
                 sourceFile.setPath(path != null ? path.toString() : DataFile.NOT_FOUND);
@@ -241,11 +253,10 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
         setIdFiles(idFiles);
     }
 
-    private Path getPath(String name, Set<Container> containers, boolean isMaxquant, FileContentService fcs)
+    private Path getPath(String name, Set<Path> rawFilesDirPaths, boolean isMaxquant, FileContentService fcs)
     {
-        for (Container container: containers)
+        for (Path rawFilesDir: rawFilesDirPaths)
         {
-            java.nio.file.Path rawFilesDir = DataValidator.getRawFilesDirPath(container, fcs);
             Path path = findInDirectoryTree(rawFilesDir, name, isMaxquant);
             if (path != null)
             {
