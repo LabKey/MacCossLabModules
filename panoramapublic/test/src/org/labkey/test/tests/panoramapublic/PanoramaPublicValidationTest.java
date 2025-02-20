@@ -196,7 +196,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Set up our source folder.
         log("Creating experiment folder");
         String projectName = getProjectName();
-        String folderName = "Experiment Folder";
+        String folderName = "Library Validation With Subfolders";
         setupSourceFolder(projectName, folderName, SUBMITTER);
         log("Creating subfolder where Skyline documents will be uploaded");
         String subfolderName = "Skyline Documents Folder";
@@ -273,7 +273,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Set up our source folder.
         log("Creating experiment folder");
         String projectName = getProjectName();
-        String folderName = "Experiment Folder";
+        String folderName = "Test DIA-NN Library Source Validation";
         setupSourceFolder(projectName, folderName, SUBMITTER);
 
 
@@ -365,6 +365,8 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
                 Collections.emptyList(), rawSources,
                 List.of(peptideIdSources.get(0)), List.of(peptideIdSources.get(1)));
+        String statusDetails = "(The DIA-NN TSV report must be in the same directory as the .speclib, and share some leading characters in the file name)";
+        validationPage.verifyLibrarySourceFileStatusDetails(peptideIdSources.get(1), libraryName, librarySize, true, statusDetails);
 
         // Move the TSV file to the same subdirectory as the .speclib file
         goToRawDataTab();

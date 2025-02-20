@@ -157,7 +157,7 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
                         .child(Locator.tag("span").withClass(invalid ? "pxv-invalid" : "pxv-valid").withText(statusString)));
     }
 
-    private void verifyLibrarySourceFileStatus(String file, String libraryFileName, String librarySize, boolean missing, String statusDetails)
+    public void verifyLibrarySourceFileStatusDetails(String file, String libraryFileName, String librarySize, boolean missing, String statusDetails)
     {
         var panel = elementCache().specLibsPanel;
         scrollIntoView(panel);
@@ -171,7 +171,7 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
                         .child(Locator.tag("td").withText(file))
                         .followingSibling("td")
                         .child(Locator.tag("span").withClass(cls).withText(statusString))
-                        .child(Locator.tag("div").withClass(cls).withText(statusDetails))
+                        .followingSibling("div").withClass(cls).withText(statusDetails)
         );
     }
 
