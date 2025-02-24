@@ -88,7 +88,7 @@ public class SpecLibSourceFile extends DataFile
     public JSONObject toJSON(Container container)
     {
         JSONObject jsonObject = super.toJSON(container);
-        if (isIdFile() && LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER.endsWith(getName()) && !found())
+        if (isIdFile() && LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER.equals(getName()) && !found())
         {
             jsonObject.put("statusDetails", "The DIA-NN TSV report must be in the same directory as the " +
                     ".speclib, and share some leading characters in the file name");
