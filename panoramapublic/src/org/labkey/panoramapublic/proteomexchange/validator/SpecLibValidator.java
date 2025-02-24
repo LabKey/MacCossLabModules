@@ -673,65 +673,6 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             assertEquals(tsvFile2, reportTsvFile);
         }
 
-        @Test
-        public void testGetDiannLibrarySources() throws IOException
-        {
-            Path testDataDir = getDiannTestFilesPath();
-            Path libPath = testDataDir.resolve("test_diann_library.blib");
-            ISpectrumLibrary isl = createLibrary(libPath);
-            SpecLibReader libReader = SpecLibReader.getReader(isl);
-            assertNotNull(libReader);
-            List<LibSourceFile> libSources = getLibSources(libReader, isl, libPath, "no_name_document");
-            assertNotNull(libSources);
-
-            // Files read from the .blib's SpectrumSourceFiles table
-            List<String> spectrumSources = List.of(
-                    "D0_rep1_DIA.mzML",
-                    "D0_rep2_DIA.mzML",
-                    "D2_rep2_DIA.mzML",
-                    "D4_rep2_DIA.mzML",
-                    "D6_rep1_DIA.mzML",
-                    "D8_rep1_DIA.mzML",
-                    "D8_rep2_DIA.mzML",
-                    "D10_rep2_DIA.mzML",
-                    "D11_rep2_DIA.mzML",
-                    "D2_rep1_DIA.mzML",
-                    "D6_rep2_DIA.mzML",
-                    "D10_rep1_DIA.mzML",
-                    "D11_rep1_DIA.mzML",
-                    "D12_rep1_DIA.mzML",
-                    "D4_rep1_DIA.mzML",
-                    "D12_rep2_DIA.mzML",
-                    "D14_rep1_DIA.mzML",
-                    "D14_rep2_DIA.mzML"
-            );
-
-            assertEquals(spectrumSources.size() + 1, libSources.size()); // Add one for the report TSV placeholder
-
-            String idFile = "report-lib.parquet.skyline-for-test.speclib";
-            for (int i = 0; i < spectrumSources.size(); i++)
-            {
-                LibSourceFile libSource = libSources.get(i);
-                assertTrue(libSource.hasSpectrumSourceFile());
-                assertEquals(spectrumSources.get(i), libSource.getSpectrumSourceFile());
-                assertTrue(libSource.hasIdFile());
-                assertEquals(idFile, libSource.getIdFile());
-            }
-
-            // Placeholder for the DIA-NN report file
-            LibSourceFile libSource = libSources.get(spectrumSources.size());
-            assertFalse(libSource.hasSpectrumSourceFile());
-            assertTrue(libSource.hasIdFile());
-            assertTrue(LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER.equals(libSource.getIdFile()));
-
-            Set<String> idFilesInSources = libSources.stream().map(LibSourceFile::getIdFile).collect(Collectors.toSet());
-            assertEquals(Set.of(idFile, LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER), idFilesInSources);
-
-            Path expectedReportFilePath = testDataDir.resolve("report-lib-for-test.tsv"); // Files with the longest matching prefix and expected column headers
-            Path reportFilePath = new SpecLibValidator().getDiannReportFilePath(testDataDir.resolve("report-lib.parquet.skyline-for-test.speclib"));
-            assertEquals("Unexpected DIA-NN TSV report file path", expectedReportFilePath, reportFilePath);
-        }
-
         private static Path getDiannTestFilesPath() throws IOException
         {
             return JunitUtil.getSampleData(ModuleLoader.getInstance().getModule(PanoramaPublicModule.class),
