@@ -89,6 +89,6 @@ public class LibSourceFile
 
     public boolean isDiannSearch()
     {
-        return (hasIdFile() && getIdFile().endsWith(".speclib"));
+        return (hasIdFile() && getIdFile().toLowerCase().endsWith(".speclib"));
     }
 }
