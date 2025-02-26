@@ -332,7 +332,6 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Upload the .speclib file.
         log("Uploading file " + peptideIdSources.get(0) + " to folder - " + folderName);
         uploadToRawFiles(testFilesFolder + "/" + peptideIdSources.get(0));
-        log("Running data validation job. " + peptideIdSources.get(0) + " shoul");
         log("Running data validation job; " + peptideIdSources.get(0) + " uploaded");
         validationPage = submitValidationJob();
         verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
