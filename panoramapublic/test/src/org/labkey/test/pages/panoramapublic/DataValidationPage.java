@@ -157,6 +157,24 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
                         .child(Locator.tag("span").withClass(invalid ? "pxv-invalid" : "pxv-valid").withText(statusString)));
     }
 
+    public void verifyLibrarySourceFileStatusDetails(String file, String libraryFileName, String librarySize, boolean missing, String statusDetails)
+    {
+        var panel = elementCache().specLibsPanel;
+        scrollIntoView(panel);
+        expandLibraryRow(panel, libraryFileName, librarySize);
+
+        var filesTable = panel.findElement(getFilesTableLocator(libraryFileName, "lib-id-files-status"));
+        var statusString = missing ? "MISSING" : "FOUND";
+        var cls = missing ? "pxv-invalid" : "pxv-valid";
+        filesTable.findElement(
+                Locator.XPathLocator.tag("tbody").child("tr")
+                        .child(Locator.tag("td").withText(file))
+                        .followingSibling("td")
+                        .child(Locator.tag("span").withClass(cls).withText(statusString))
+                        .followingSibling("div").withClass(cls).withText(statusDetails)
+        );
+    }
+
     public void verifySpectralLibraryStatus(String libraryFile, String fileSize, String statusText,
                                             List<String> skylineDocNames,
                                             List<String> spectrumFiles, List<String> spectrumFilesMissing,
