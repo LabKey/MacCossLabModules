@@ -113,7 +113,7 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
         sql.append(super.getFromSQL("X"));
         sql.append(" ");
 
-        if (getContainerFilter() != ContainerFilter.EVERYTHING)
+        if (getContainerFilter() != ContainerFilter.EVERYTHING_UNSAFE)
         {
             SQLFragment joinSql = new SQLFragment("INNER JOIN ");
             joinSql.append(PanoramaPublicManager.getTableInfoJournalExperiment(), "je")
