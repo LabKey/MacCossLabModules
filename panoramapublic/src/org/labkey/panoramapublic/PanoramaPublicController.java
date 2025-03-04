@@ -2210,7 +2210,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             ActionURL includeSubfoldersUrl = new ActionURL(IncludeSubFoldersInExperimentAction.class, _experimentAnnotations.getContainer())
                     .addParameter("id", expAnnotations.getId())
-                    .addReturnURL(skipSubfolderCheckUrl);
+                    .addReturnUrl(skipSubfolderCheckUrl);
             HtmlView confirmView = new HtmlView(DIV("Would you like to include data from the following subfolders in the experiment?",
                     getSubfolderListHtml(expAnnotations.getContainer(), allSubfolders),
                     new Button.ButtonBuilder("Include Subfolders and Continue").href(includeSubfoldersUrl).usePost().build(),
@@ -5381,7 +5381,7 @@ public class PanoramaPublicController extends SpringActionController
                 return getViewExperimentDetailsURL(_expAnnot.getId(), getContainer());
             }
             else
-                return form.getReturnURLHelper();
+                return form.getReturnUrlHelper();
         }
 
         @Override
@@ -5600,7 +5600,7 @@ public class PanoramaPublicController extends SpringActionController
                 vBox.addView(submissionList);
 
                 ActionURL url = PanoramaPublicController.getDataValidationCheckUrl(exptAnnotations.getId(), exptAnnotations.getContainer(), true);
-                url.addReturnURL(getViewExperimentDetailsURL(exptAnnotations.getId(), exptAnnotations.getContainer()));
+                url.addReturnUrl(getViewExperimentDetailsURL(exptAnnotations.getId(), exptAnnotations.getContainer()));
                 vBox.addView(new HtmlView(DIV(new Link.LinkBuilder("Validate for ProteomeXchange").href(url).build())));
 
                 result.addView(vBox);
@@ -7926,7 +7926,7 @@ public class PanoramaPublicController extends SpringActionController
                     .addParameter("modificationId", form.getModificationId());
             if (form.getReturnActionURL() != null)
             {
-                findMatchUrl.addReturnURL(form.getReturnActionURL());
+                findMatchUrl.addReturnUrl(form.getReturnActionURL());
             }
             if (form.getCancelActionURL() != null)
             {
@@ -7938,7 +7938,7 @@ public class PanoramaPublicController extends SpringActionController
                     .addParameter("modificationId", form.getModificationId());
             if (form.getReturnActionURL() != null)
             {
-                comboModUrl.addReturnURL(form.getReturnActionURL());
+                comboModUrl.addReturnUrl(form.getReturnActionURL());
             }
             if (form.getCancelActionURL() != null)
             {
@@ -9498,45 +9498,45 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    public static ActionURL getEditExperimentDetailsURL(Container c, int experimentAnnotationsId, URLHelper returnURL)
+    public static ActionURL getEditExperimentDetailsURL(Container c, int experimentAnnotationsId, URLHelper returnUrl)
     {
         ActionURL url = new ActionURL(ShowUpdateExperimentAnnotationsAction.class, c);
         url.addParameter("id", experimentAnnotationsId);  // The name of the parameter is important. This is used to populate the TableViewForm (refreshFromDb())
-        if(returnURL != null)
+        if(returnUrl != null)
         {
-            url.addReturnURL(returnURL);
+            url.addReturnUrl(returnUrl);
         }
         return url;
     }
 
-    public static ActionURL getDeleteExperimentURL(Container c, int experimentAnnotationsId, URLHelper returnURL)
+    public static ActionURL getDeleteExperimentURL(Container c, int experimentAnnotationsId, URLHelper returnUrl)
     {
         ActionURL url = new ActionURL(DeleteExperimentAnnotationsAction.class, c);
         url.addParameter("id", experimentAnnotationsId);
-        if(returnURL != null)
+        if(returnUrl != null)
         {
-            url.addReturnURL(returnURL);
+            url.addReturnUrl(returnUrl);
         }
         return url;
     }
 
-    public static ActionURL getIncludeSubfoldersInExperimentURL(int experimentAnnotationsId, Container container, URLHelper returnURL)
+    public static ActionURL getIncludeSubfoldersInExperimentURL(int experimentAnnotationsId, Container container, URLHelper returnUrl)
     {
         ActionURL result = new ActionURL(IncludeSubFoldersInExperimentAction.class, container);
-        if (returnURL != null)
+        if (returnUrl != null)
         {
-            result.addReturnURL(returnURL);
+            result.addReturnUrl(returnUrl);
         }
         result.addParameter("id", experimentAnnotationsId);
         return result;
     }
 
-    public static ActionURL getExcludeSubfoldersInExperimentURL(int experimentAnnotationsId, Container container, URLHelper returnURL)
+    public static ActionURL getExcludeSubfoldersInExperimentURL(int experimentAnnotationsId, Container container, URLHelper returnUrl)
     {
         ActionURL result = new ActionURL(ExcludeSubFoldersInExperimentAction.class, container);
-        if (returnURL != null)
+        if (returnUrl != null)
         {
-            result.addReturnURL(returnURL);
+            result.addReturnUrl(returnUrl);
         }
         result.addParameter("id", experimentAnnotationsId);
         return result;

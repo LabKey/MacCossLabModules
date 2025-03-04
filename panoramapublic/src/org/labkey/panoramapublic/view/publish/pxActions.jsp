@@ -186,7 +186,7 @@
                     fieldLabel: "Update PX ID And Submission Type",
                     autoEl: {tag: 'a',
                         href: <%=q(urlFor(UpdatePxDetailsAction.class).addParameter("id", expAnnot.getId())
-                                 .addReturnURL(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnot.getContainer())))%>,
+                                 .addReturnUrl(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnot.getContainer())))%>,
                         html: 'Update PX ID And Submission Type',
                         style: 'font-weight: bold'}
                 }

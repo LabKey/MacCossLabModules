@@ -51,8 +51,8 @@ public class PanoramaPublicRunListView extends ExperimentRunListView
         {
             String buttonText = _expAnnotations.isIncludeSubfolders() ? "Exclude Subfolders" : "Include Subfolders";
             ActionURL url = _expAnnotations.isIncludeSubfolders() ?
-                    PanoramaPublicController.getExcludeSubfoldersInExperimentURL(_expAnnotations.getId(), getViewContext().getContainer(), getReturnURL()) :
-                    PanoramaPublicController.getIncludeSubfoldersInExperimentURL(_expAnnotations.getId(), getViewContext().getContainer(), getReturnURL());
+                    PanoramaPublicController.getExcludeSubfoldersInExperimentURL(_expAnnotations.getId(), getViewContext().getContainer(), getReturnUrl()) :
+                    PanoramaPublicController.getIncludeSubfoldersInExperimentURL(_expAnnotations.getId(), getViewContext().getContainer(), getReturnUrl());
 
             ActionButton includeSubfoldersBtn = new ActionButton(buttonText, url);
             includeSubfoldersBtn.setDisplayPermission(InsertPermission.class);

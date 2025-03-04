@@ -20,7 +20,7 @@
     var bean = view.getModelBean();
     var form = bean.getForm();
     var library = bean.getLibrary();
-    var returnUrl = form.getReturnURLHelper(getContainer().getStartURL(getUser()));
+    var returnUrl = form.getReturnUrlHelper(getContainer().getStartURL(getUser()));
 %>
 
 <div style="margin-bottom:10px;">

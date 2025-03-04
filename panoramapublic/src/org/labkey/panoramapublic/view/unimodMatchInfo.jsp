@@ -21,12 +21,12 @@
     var form = bean.getForm();
     var modification = bean.getModification();
     var unimodMatches = bean.getUnimodMatches();
-    var returnUrl = form.getReturnURLHelper();
+    var returnUrl = form.getReturnUrlHelper();
 
     var defineCombinationModUrl = new ActionURL(PanoramaPublicController.DefineCombinationModificationAction.class, getContainer())
             .addParameter("id", form.getId())
             .addParameter("modificationId", form.getModificationId())
-            .addReturnURL(form.getReturnActionURL(new ActionURL(PanoramaPublicController.ViewExperimentModifications.class, getContainer()).addParameter("id", form.getId())));
+            .addReturnUrl(form.getReturnActionURL(new ActionURL(PanoramaPublicController.ViewExperimentModifications.class, getContainer()).addParameter("id", form.getId())));
 %>
 <labkey:errors/>
 

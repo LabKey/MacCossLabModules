@@ -822,8 +822,8 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                                                     : AppProps.getInstance().getContextPath() + "/PanoramaPublic/images/slideshow-icon.png";
                     String imageTitle = entry != null ? "View catalog entry" : "Add catalog entry";
                     ActionURL returnUrl = ctx.getViewContext().getActionURL().clone();
-                    ActionURL catalogEntryLink = entry != null ? PanoramaPublicController.getViewCatalogEntryUrl(expAnnot, entry).addReturnURL(returnUrl)
-                                                               : PanoramaPublicController.getAddCatalogEntryUrl(expAnnot).addReturnURL(returnUrl);
+                    ActionURL catalogEntryLink = entry != null ? PanoramaPublicController.getViewCatalogEntryUrl(expAnnot, entry).addReturnUrl(returnUrl)
+                                                               : PanoramaPublicController.getAddCatalogEntryUrl(expAnnot).addReturnUrl(returnUrl);
                     DOM.A(at(href, catalogEntryLink.getLocalURIString(), title, PageFlowUtil.filter(imageTitle)),
                             DOM.IMG(at(src, imageUrl, height, 22, width, 22)))
                             .appendTo(out);

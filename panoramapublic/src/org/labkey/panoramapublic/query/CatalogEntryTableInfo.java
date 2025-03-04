@@ -68,7 +68,7 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
                 Object viewCatalogEntryUrl = getValue(ctx);
                 if (viewCatalogEntryUrl instanceof ActionURL url)
                 {
-                    url.addReturnURL(ctx.getViewContext().getActionURL());
+                    url.addReturnUrl(ctx.getViewContext().getActionURL());
                     var viewButton = new Button.ButtonBuilder("View").href(url).build();
                     viewButton.appendTo(out);
                     return;
