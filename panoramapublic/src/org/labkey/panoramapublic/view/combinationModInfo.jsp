@@ -24,7 +24,7 @@
     var modification = bean.getModification();
     var modFormula = bean.getModFormula();
     var unimodMods = bean.getUnimodModificationList();
-    var returnUrl = form.getReturnURLHelper();
+    var returnUrl = form.getReturnUrlHelper();
     var cancelUrl = form.getCancelActionURL(PanoramaPublicController.getViewExperimentModificationsURL(form.getId(), getContainer()));
 %>
 <labkey:errors/>

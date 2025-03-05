@@ -330,7 +330,7 @@ public class PanoramaPublicNotification
                     .addParameter("rowId", announcement.getRowId());
             ActionURL respondToMessageUrl = new ActionURL("announcements", "respond", announcementContainer)
                     .addParameter("parentId", announcement.getEntityId())
-                    .addReturnURL(viewMessageUrl);
+                    .addReturnUrl(viewMessageUrl);
             toReturn = toReturn.replaceAll(PLACEHOLDER_RESPOND_TO_MESSAGE_URL, respondToMessageUrl.getURIString());
         }
         if (toReturn.contains(PLACEHOLDER_MAKE_DATA_PUBLIC_URL))

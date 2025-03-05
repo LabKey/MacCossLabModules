@@ -55,7 +55,7 @@ public class CatalogEntryWebPart extends VBox
                             "Click the button below to add an entry.",
                     BR(),
                     new Button.ButtonBuilder("Add Catalog Entry").href(PanoramaPublicController.getAddCatalogEntryUrl(expAnnotations)
-                            .addReturnURL(getViewContext().getActionURL()))
+                            .addReturnUrl(getViewContext().getActionURL()))
             )));
         }
         else
@@ -68,17 +68,17 @@ public class CatalogEntryWebPart extends VBox
                         .build();
             }
 
-            URLHelper ctxReturnUrl = getViewContext().getActionURL().getReturnURL();
+            URLHelper ctxReturnUrl = getViewContext().getActionURL().getReturnUrl();
             ActionURL deleteUrl = new ActionURL(PanoramaPublicController.DeleteCatalogEntryAction.class, container)
                     .addParameter("id", expAnnotations.getId());
             if (ctxReturnUrl != null)
             {
-                deleteUrl.addReturnURL(ctxReturnUrl);
+                deleteUrl.addReturnUrl(ctxReturnUrl);
             }
 
             ActionURL editUrl = new ActionURL(PanoramaPublicController.EditCatalogEntryAction.class, container)
                     .addParameter("id", expAnnotations.getId())
-                    .addReturnURL(ctxReturnUrl != null ? ctxReturnUrl : getContextURLHelper());
+                    .addReturnUrl(ctxReturnUrl != null ? ctxReturnUrl : getContextURLHelper());
 
             CatalogEntrySettings settings = CatalogEntryManager.getCatalogEntrySettings();
             addView(new HtmlView(
@@ -130,7 +130,7 @@ public class CatalogEntryWebPart extends VBox
                                 .addParameter("id", expAnnotationsId)
                                 .addParameter("catalogEntryId", catalogEntryId)
                                 .addParameter("approve", approve)
-                                .addReturnURL(getContextURLHelper()))
+                                .addReturnUrl(getContextURLHelper()))
                 .usePost("Are you sure you want to " + btnTxt.toLowerCase() + " this catalog entry?");
     }
 }

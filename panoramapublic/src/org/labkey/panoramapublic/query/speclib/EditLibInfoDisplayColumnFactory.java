@@ -51,18 +51,18 @@ public class EditLibInfoDisplayColumnFactory implements DisplayColumnFactory
                         }
                         if (experimentAnnotationsId != null)
                         {
-                            URLHelper returnUrl = ctx.getViewContext().getActionURL().getReturnURL();
+                            URLHelper returnUrl = ctx.getViewContext().getActionURL().getReturnUrl();
                             if (returnUrl == null)
                             {
                                 returnUrl = ctx.getViewContext().getActionURL();
                             }
                             ActionURL editUrl = PanoramaPublicController.getEditSpecLibInfoURL(experimentAnnotationsId, specLibId, specLibInfoId, ctx.getContainer());
-                            editUrl.addReturnURL(returnUrl);
+                            editUrl.addReturnUrl(returnUrl);
                             out.write(PageFlowUtil.link(specLibInfoId != null ? "Edit" : "Add").href(editUrl).toString());
                             if (specLibInfoId != null)
                             {
                                 ActionURL deleteUrl = PanoramaPublicController.getDeleteSpecLibInfoURL(experimentAnnotationsId, specLibInfoId, ctx.getContainer());
-                                deleteUrl.addReturnURL(returnUrl);
+                                deleteUrl.addReturnUrl(returnUrl);
                                 out.write(PageFlowUtil.link("Delete").href(deleteUrl).usePost("Are you sure you want to delete the spectral library information?").toString());
                             }
                             return;
