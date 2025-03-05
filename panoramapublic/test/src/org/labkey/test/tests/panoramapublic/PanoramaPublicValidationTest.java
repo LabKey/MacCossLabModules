@@ -14,6 +14,7 @@ import org.labkey.test.util.TextSearcher;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.StringJoiner;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -121,7 +122,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         createExperimentCompleteMetadata(experimentTitle);
 
         // Upload raw data
-        uploadRawFiles(AGILENT_DATA_1_ZIP, AGILENT_DATA_2_ZIP);
+        uploadToRawFiles(AGILENT_DATA_1_ZIP, AGILENT_DATA_2_ZIP);
 
         // Run validation job and verify the results
         DataValidationPage validationPage = submitValidationJob();
@@ -195,7 +196,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Set up our source folder.
         log("Creating experiment folder");
         String projectName = getProjectName();
-        String folderName = "Experiment Folder";
+        String folderName = "Library Validation With Subfolders";
         setupSourceFolder(projectName, folderName, SUBMITTER);
         log("Creating subfolder where Skyline documents will be uploaded");
         String subfolderName = "Skyline Documents Folder";
@@ -242,10 +243,10 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Since spectral libraries can be used with multiple documents that may be uploaded to different subfolders,
         // we check all subfolders, as well as the parent experiment folder for library source files.
         log("Uploading library source files to parent experiment folder - " + folderName);
-        uploadRawFiles(rawSources.stream()
+        uploadToRawFiles(rawSources.stream()
                 .map(file -> testFilesFolder + "/" + file)
                 .toArray(String[]::new));
-        uploadRawFiles(peptideIdSources.stream()
+        uploadToRawFiles(peptideIdSources.stream()
                 .map(file -> testFilesFolder + "/" + file)
                 .toArray(String[]::new));
 
@@ -266,6 +267,116 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         verifySpecLibSourceFiles(validationPage, libraryName, SKY_FILE_9, "100 KB", false, rawSources, peptideIdSources);
     }
 
+    @Test
+    public void testDiannLibrarySources()
+    {
+        // Set up our source folder.
+        log("Creating experiment folder");
+        String projectName = getProjectName();
+        String folderName = "Test DIA-NN Library Source Validation";
+        setupSourceFolder(projectName, folderName, SUBMITTER);
+
+
+        impersonate(SUBMITTER);
+        updateSubmitterAccountInfo("One");
+
+        String skylineDoc = "DiaNNLibrary.sky.zip";
+        String testFilesFolder = "LibraryTest-DiaNN";
+        String testSkyZip = testFilesFolder + "/" + skylineDoc;
+
+        // Upload document and raw data files
+        log("Uploading and importing Skyline document " + testSkyZip + " into folder " + folderName);
+        goToProjectFolder(projectName, folderName);
+        importData(testSkyZip, 1);
+
+        // Add the "Targeted MS Experiment" webpart
+        log("Creating TargetedMS Experiment in folder " + folderName);
+        goToProjectFolder(projectName, folderName);
+        String experimentTitle = "This is an experiment to test validation of peptide Id source files for spectral library built with DIA-NN results";
+        createExperimentCompleteMetadata(experimentTitle);
+
+        String libraryName = "test_diann_library.blib";
+        String librarySize = "132 KB";
+        List<String> rawSources = List.of(
+                "D0_rep1_DIA.mzML",
+                "D0_rep2_DIA.mzML",
+                "D2_rep2_DIA.mzML",
+                "D4_rep2_DIA.mzML",
+                "D6_rep1_DIA.mzML",
+                "D8_rep1_DIA.mzML",
+                "D8_rep2_DIA.mzML",
+                "D10_rep2_DIA.mzML",
+                "D11_rep2_DIA.mzML",
+                "D2_rep1_DIA.mzML",
+                "D6_rep2_DIA.mzML",
+                "D10_rep1_DIA.mzML",
+                "D11_rep1_DIA.mzML",
+                "D12_rep1_DIA.mzML",
+                "D4_rep1_DIA.mzML",
+                "D12_rep2_DIA.mzML",
+                "D14_rep1_DIA.mzML",
+                "D14_rep2_DIA.mzML"
+        );
+        List<String> peptideIdSources = List.of("report-lib.parquet.skyline-for-test.speclib",
+                "DIA-NN report file" // We don't know the name of report TSV.  This is a placeholder
+        );
+
+        goToDashboard();
+        log("Running data validation job. All library sources should be \"Missing\" since source files have not been uploaded");
+        DataValidationPage validationPage = submitValidationJob();
+        validationPage.verifyInvalidStatus();
+        verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
+                Collections.emptyList(), rawSources,
+                Collections.emptyList(), peptideIdSources);
+
+        // Upload the .speclib file.
+        log("Uploading file " + peptideIdSources.get(0) + " to folder - " + folderName);
+        uploadToRawFiles(testFilesFolder + "/" + peptideIdSources.get(0));
+        log("Running data validation job; " + peptideIdSources.get(0) + " uploaded");
+        validationPage = submitValidationJob();
+        verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
+                Collections.emptyList(), rawSources,
+                List.of(peptideIdSources.get(0)), List.of(peptideIdSources.get(1)));
+
+        // Upload the TSV files
+        log("Uploading TSV files");
+        List<String> tsvFiles = List.of(
+                "no-prefix-match-report-for-test.tsv",
+                "report.tsv",
+                "report-lib-for-test.tsv",
+                "report-lib.parquet-missing-headers.tsv"
+                );
+        uploadToRawFiles(tsvFiles.stream().map(file -> testFilesFolder + "/" + file).toArray(String[]::new));
+        log("Running data validation job; TSV files uploaded");
+        validationPage = submitValidationJob();
+        verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
+                Collections.emptyList(), rawSources,
+                peptideIdSources, Collections.emptyList());
+
+        // Move the .speclib file to a subdirectory
+        log("Creating subdirectory and moving speclib file");
+        String subdir = "DIA-NN Results";
+        goToRawDataTab();
+        _fileBrowserHelper.createFolder(subdir);
+        _fileBrowserHelper.moveFile(peptideIdSources.get(0), subdir);
+        log("Running data validation job; Speclib file moved to subdirectory");
+        validationPage = submitValidationJob();
+        verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
+                Collections.emptyList(), rawSources,
+                List.of(peptideIdSources.get(0)), List.of(peptideIdSources.get(1)));
+        String statusDetails = "(The DIA-NN TSV report must be in the same directory as the .speclib, and share some leading characters in the file name)";
+        validationPage.verifyLibrarySourceFileStatusDetails(peptideIdSources.get(1), libraryName, librarySize, true, statusDetails);
+
+        // Move the TSV file to the same subdirectory as the .speclib file
+        goToRawDataTab();
+        _fileBrowserHelper.moveFile("report-lib-for-test.tsv", subdir);
+        log("Running data validation job; Moved report TSV to subdirectory");
+        validationPage = submitValidationJob();
+        verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
+                Collections.emptyList(), rawSources,
+                peptideIdSources, Collections.emptyList());
+    }
+
     private static void verifySpecLibSourceFiles(DataValidationPage validationPage, String libraryFileName, String skyZipName, String libraryFileSize,
                                                  boolean allSourcesFound, List<String> rawFiles, List<String> peptideIdFiles)
     {
@@ -277,6 +388,26 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
                 allSourcesFound ? peptideIdFiles : Collections.emptyList(),
                 !allSourcesFound ? peptideIdFiles : Collections.emptyList()
                 );
+    }
+
+    private static void verifySpecLibSourceFiles(DataValidationPage validationPage, String libraryFileName, String skyZipName, String libraryFileSize,
+                                                 List<String> rawFilesFound, List<String> rawFilesMissing,
+                                                 List<String> peptideIdFilesFound, List<String> peptideIdFilesMissing)
+    {
+        StringJoiner statusJoiner = new StringJoiner(" and ");
+        if (!rawFilesMissing.isEmpty()) {
+            statusJoiner.add("spectrum");
+        }
+        if (!peptideIdFilesMissing.isEmpty()) {
+            statusJoiner.add("peptide Id");
+        }
+        String expectedStatus = statusJoiner.length() > 0 ? "Missing " + statusJoiner + " files" : null;
+
+        validationPage.verifySpectralLibraryStatus(libraryFileName, libraryFileSize, expectedStatus,
+                List.of(skyZipName),
+                rawFilesFound, rawFilesMissing,
+                peptideIdFilesFound, peptideIdFilesMissing
+        );
     }
 
     private void clickExperimentDetailsLink()
@@ -380,7 +511,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
     private int uploadRawFilesVerifyInCompleteStatus(int jobCount, String skylineDoc)
     {
         // Upload the missing raw files
-        uploadRawFiles(WIFF_1, WIFF_SCAN_1);
+        uploadToRawFiles(WIFF_1, WIFF_SCAN_1);
         // Run validation job and verify the results
         DataValidationPage validationPage = submitValidationJob();
         jobCount++;
@@ -444,7 +575,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
     private int verifyIncompleteStatus(int jobCount)
     {
         importData(SKY_FILE_2, ++jobCount);
-        uploadRawFiles(WIFF_2, WIFF_SCAN_2, WIFF_3, WIFF_SCAN_3);
+        uploadToRawFiles(WIFF_2, WIFF_SCAN_2, WIFF_3, WIFF_SCAN_3);
         // Run validation job and verify the results
         DataValidationPage validationPage = submitValidationJob();
         jobCount++;
@@ -510,13 +641,18 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         return jobCount;
     }
 
-    private void uploadRawFiles(String... files)
+    private void uploadToRawFiles(String... files)
     {
-        portalHelper.click(Locator.folderTab("Raw Data"));
+        goToRawDataTab();
         for (String file: files)
         {
             _fileBrowserHelper.uploadFile(getSampleDataPath(file));
             _fileBrowserHelper.fileIsPresent(file);
         }
+    }
+
+    private void goToRawDataTab()
+    {
+        portalHelper.click(Locator.folderTab("Raw Data"));
     }
 }
