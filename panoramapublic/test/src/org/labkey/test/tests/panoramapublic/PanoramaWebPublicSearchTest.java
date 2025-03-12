@@ -118,7 +118,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         }
         catch (StaleElementReferenceException e)
         {
-            shortWait().until(ExpectedConditions.stalenessOf(Locator.tagWithAttribute("form", "lk-region-form", "Targeted MS Experiment List").findElement(getDriver())));
+            shortWait().until(ExpectedConditions.stalenessOf(Locator.tagWithAttribute("form", "data-region-form", "Targeted MS Experiment List").findElement(getDriver())));
         }
         checker().verifyEquals("Incorrect search results", 3, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Test experiment for search improvements", " Experiment for small molecule search", " Submitter Experiment"),
@@ -135,7 +135,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         }
         catch (StaleElementReferenceException e)
         {
-            shortWait().until(ExpectedConditions.stalenessOf(Locator.tagWithAttribute("form", "lk-region-form", "Targeted MS Experiment List").findElement(getDriver())));
+            shortWait().until(ExpectedConditions.stalenessOf(Locator.tagWithAttribute("form", "data-region-form", "Targeted MS Experiment List").findElement(getDriver())));
         }
         checker().verifyEquals("Incorrect search results", 1, table.getDataRowCount());
         checker().verifyEquals("Incorrect values for experiment title", Arrays.asList(" Submitter Experiment"),

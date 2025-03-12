@@ -286,12 +286,12 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                 return license != null ? license.getUrl() : null;
             }
             @Override
-            public Class getValueClass()
+            public Class<String> getValueClass()
             {
                 return String.class;
             }
             @Override
-            public Class getDisplayValueClass()
+            public Class<String> getDisplayValueClass()
             {
                 return String.class;
             }
@@ -314,7 +314,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         getMutableColumn("ModifiedBy").setFk(new UserIdQueryForeignKey(schema));
 
         ExprColumn catalogEntryCol = getCatalogEntryCol();
-        catalogEntryCol.setDisplayColumnFactory(colInfo -> new CatalogEntryIconColumn(colInfo));
+        catalogEntryCol.setDisplayColumnFactory(CatalogEntryIconColumn::new);
         addColumn(catalogEntryCol);
 
         List<FieldKey> visibleColumns = new ArrayList<>();
