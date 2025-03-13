@@ -34,6 +34,7 @@ import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.writer.HtmlWriter;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -151,7 +152,7 @@ public class ProjectAdminsTable extends ContainerTable
         }
 
         @Override
-        public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+        public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
         {
             String entityId = ctx.get(getColumnInfo().getFieldKey(), String.class);
             Container container = ContainerManager.getForId(entityId);
@@ -164,7 +165,7 @@ public class ProjectAdminsTable extends ContainerTable
 
                 String space = "";
 
-                if (allAdmins.size() > 0)
+                if (!allAdmins.isEmpty())
                 {
                     for(UserPrincipal user: allAdmins)
                     {
@@ -174,13 +175,12 @@ public class ProjectAdminsTable extends ContainerTable
 
                     }
 
-                    out.write(display.toString());
-                    return;
+                    oldWriter.write(display.toString());
                 }
             }
             else
             {
-                out.write("");
+                oldWriter.write("");
             }
         }
 

@@ -147,22 +147,25 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                     }
 
                     @Override
-                    public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                    public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
                     {
                         Integer id = ctx.get(_idKey, Integer.class);
                         Container container = ctx.get(_containerKey, Container.class);
-                        if(id != null && container != null)
+                        if (id != null && container != null)
                         {
                             ActionURL detailsPage = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container); // experiment container
                             PageConfig pageConfig = HttpView.currentPageConfig();
                             String spanId = pageConfig.makeId("expt_details_");
-                            DOM.SPAN(at(DOM.Attribute.id, spanId)
-                                            .data("active", "false") // will be rendered as "data-active" attribute
-                                            .data("loaded", "false"), // will be rendered as "data-loaded" attribute
-                                    IMG(at(DOM.Attribute.id, "expandcontract-" + id)
-                                            .at(src, PageFlowUtil.staticResourceUrl("_images/plus.gif"))),
-                                    HtmlString.NBSP)
-                                    .appendTo(out);
+                            DOM.SPAN(
+                                at(DOM.Attribute.id, spanId)
+                                .data("active", "false") // will be rendered as "data-active" attribute
+                                .data("loaded", "false"), // will be rendered as "data-loaded" attribute
+                                IMG(
+                                    at(DOM.Attribute.id, "expandcontract-" + id)
+                                    .at(src, PageFlowUtil.staticResourceUrl("_images/plus.gif"))
+                                ),
+                                HtmlString.NBSP
+                            ).appendTo(out);
                             pageConfig.addHandler(spanId, "click", "viewExperimentDetails(this,'" + container.getPath() + "', '" + id + "','" + detailsPage + "')");
                         }
                         super.renderGridCellContents(ctx, out);
@@ -198,7 +201,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             }
 
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
             {
                 // Get the ExperimentAnnotations record
                 Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
@@ -208,7 +211,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
                 if(accessUrl == null)
                 {
-                    out.write("");
+                    oldWriter.write("");
                 }
                 else
                 {
@@ -216,7 +219,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                             .clearClasses().addClass("button-small button-small-green")
                             .style("margin:0px 5px 0px 2px;")
                             .onClick("showShareLink(this, " + PageFlowUtil.jsString(accessUrl) + ");return false;");
-                    DIV(link.build()).appendTo(out);
+                    DIV(link.build()).appendTo(oldWriter);
 
                 }
             }
@@ -741,19 +744,18 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
     private static class OrganismColumn extends AutoCompleteColumn
     {
-
         public OrganismColumn(ColumnInfo col, ActionURL autocompletionUrl, boolean prefetch, String placeHolderText)
         {
             super(col, autocompletionUrl, prefetch, placeHolderText);
         }
 
         @Override
-        public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+        public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
         {
             String organismsStr = ctx.get(getColumnInfo().getFieldKey(), String.class);
             if(!StringUtils.isBlank(organismsStr))
             {
-                out.write(PageFlowUtil.filter(ExperimentAnnotations.getOrganismsNoTaxId(organismsStr)));
+                out.write(ExperimentAnnotations.getOrganismsNoTaxId(organismsStr));
             }
             else
             {
@@ -770,6 +772,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         }
 
         @Override
+        @NotNull
         String getRenderId()
         {
             return "input-picker-div-organism";
@@ -800,12 +803,12 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         }
 
         @Override
-        public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+        public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
         {
             User user = ctx.getViewContext().getUser();
             if (user == null || user.isGuest())
             {
-                HtmlString.NBSP.appendTo(out);
+                HtmlString.NBSP.appendTo(oldWriter);
                 return;
             }
             Integer catalogEntryId = ctx.get(getColumnInfo().getFieldKey(), Integer.class);
@@ -827,11 +830,11 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                                                                : PanoramaPublicController.getAddCatalogEntryUrl(expAnnot).addReturnUrl(returnUrl);
                     DOM.A(at(href, catalogEntryLink.getLocalURIString(), title, PageFlowUtil.filter(imageTitle)),
                             DOM.IMG(at(src, imageUrl, height, 22, width, 22)))
-                            .appendTo(out);
+                            .appendTo(oldWriter);
                     return;
                 }
             }
-            HtmlString.NBSP.appendTo(out);
+            HtmlString.NBSP.appendTo(oldWriter);
         }
     }
 }

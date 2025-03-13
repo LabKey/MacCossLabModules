@@ -5,6 +5,7 @@ import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
+import org.labkey.api.writer.HtmlWriter;
 import org.labkey.panoramapublic.proteomexchange.UnimodModification;
 
 import java.io.Writer;
@@ -21,12 +22,12 @@ public class UnimodIdDisplayColumnFactory implements DisplayColumnFactory
         return new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out)
+            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out)
             {
                 Integer unimodId = ctx.get(colInfo.getFieldKey(), Integer.class);
                 if (unimodId != null)
                 {
-                    UnimodModification.getLink(unimodId).appendTo(out);
+                    UnimodModification.getLink(unimodId).appendTo(oldWriter);
                 }
             }
         };

@@ -40,6 +40,7 @@ import org.labkey.api.security.Group;
 import org.labkey.api.security.User;
 import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.writer.HtmlWriter;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -91,19 +92,19 @@ public class SignUpSchema extends UserSchema
                 oldgroup.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
                 {
                     @Override
-                    public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                    public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
                     {
                         Group old = org.labkey.api.security.SecurityManager.getGroup(Integer.parseInt(String.valueOf(ctx.get(FieldKey.fromParts("oldgroup")))));
-                        out.write(old.getName());
+                        oldWriter.write(old.getName());
                     }
                 });
                 newgroup.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
                 {
                     @Override
-                    public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                    public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
                     {
                         Group old = org.labkey.api.security.SecurityManager.getGroup(Integer.parseInt(String.valueOf(ctx.get(FieldKey.fromParts("newgroup")))));
-                        out.write(old.getName());
+                        oldWriter.write(old.getName());
                     }
                 });
             }
@@ -120,7 +121,7 @@ public class SignUpSchema extends UserSchema
                         return new DataColumn(colInfo)
                         {
                             @Override
-                            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
                             {
                                 Container container = ContainerManager.getForId(String.valueOf(ctx.get(FieldKey.fromParts("Container"))));
                                 String email = String.valueOf(ctx.get(FieldKey.fromParts("email")));
@@ -129,7 +130,7 @@ public class SignUpSchema extends UserSchema
                                 ActionURL url = new ActionURL(SignUpController.ConfirmAction.class, container);
                                 url.addParameter("email", email);
                                 url.addParameter("key", key);
-                                out.write(url.getLocalURIString());
+                                oldWriter.write(url.getLocalURIString());
                                 // out.write("<a href=\"" + url + "\">Confirmation URL</a>");
                             }
 

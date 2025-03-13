@@ -33,6 +33,7 @@ import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.writer.HtmlWriter;
 import org.labkey.lincs.psp.LincsPspJob;
 
 import java.io.IOException;
@@ -72,17 +73,17 @@ public class LincsDataTable extends FilteredTable
         addColumn(level1Col);
         level1Col.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo){
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
             {
                 ActionURL downloadUrl = new ActionURL("targetedms", "DownloadDocument", getContainer());
                 Integer runId = ctx.get(FieldKey.fromParts("Id"), Integer.class);
                 downloadUrl.addParameter("id", runId);
-                out.write("<nobr>");
-                out.write(new Link.LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl).toString());
+                oldWriter.write("<nobr>");
+                oldWriter.write(new Link.LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl).toString());
                 ActionURL docDetailsUrl = new ActionURL("targetedms", "ShowPrecursorList", getContainer());
                 docDetailsUrl.addParameter("id", runId);
-                out.write("&nbsp;" + new Link.LinkBuilder("Skyline").href(docDetailsUrl).clearClasses().toString());
-                out.write("</nobr>");
+                oldWriter.write("&nbsp;" + new Link.LinkBuilder("Skyline").href(docDetailsUrl).clearClasses().toString());
+                oldWriter.write("</nobr>");
             }
 
             @Override
@@ -133,24 +134,24 @@ public class LincsDataTable extends FilteredTable
         pspJobCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
             {
                 Integer runId = ctx.get(FieldKey.fromParts("Id"), Integer.class);
                 if(runId == null)
                 {
-                    out.write("NO_RUN_ID");
+                    oldWriter.write("NO_RUN_ID");
                     return;
                 }
                 LincsPspJob pspJob = LincsManager.get().getLincsPspJobForRun(runId);
                 if(pspJob == null)
                 {
-                    out.write("PSP job not found for runId: " + runId);
+                    oldWriter.write("PSP job not found for runId: " + runId);
                     if(userSchema.getUser().hasSiteAdminPermission())
                     {
                         ActionURL url = new ActionURL(LincsController.SubmitPspJobAction.class, getContainer());
                         url.addParameter("runId", runId);
 
-                        out.write(new Link.LinkBuilder(" [Submit Job]").href(url).usePost().toString());
+                        oldWriter.write(new Link.LinkBuilder(" [Submit Job]").href(url).usePost().toString());
                     }
                     return;
                 }
@@ -168,7 +169,7 @@ public class LincsDataTable extends FilteredTable
                 }
                 ActionURL url = new ActionURL(LincsController.LincsPspJobDetailsAction.class, getContainer());
                 url.addParameter("runId", pspJob.getRunId());
-                out.write(PageFlowUtil.link(text).href(url).toString());
+                oldWriter.write(PageFlowUtil.link(text).href(url).toString());
             }
 
             @Override
@@ -323,24 +324,24 @@ public class LincsDataTable extends FilteredTable
         }
 
         @Override
-        public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+        public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
         {
             if(getAssayType() == null)
             {
-                out.write("Unknown assay type");
+                oldWriter.write("Unknown assay type");
                 return;
             }
             String fileName = ctx.get(getDisplayColumn().getFieldKey(), String.class);
             if(fileName == null)
             {
-                out.write("&nbsp");
+                oldWriter.write("&nbsp");
                 return;
             }
 
             Integer runId = ctx.get(FieldKey.fromParts("Id"), Integer.class);
             if(runId == null)
             {
-                out.write("<NO_RUN_ID>");
+                oldWriter.write("<NO_RUN_ID>");
                 return;
             }
 
@@ -349,7 +350,7 @@ public class LincsDataTable extends FilteredTable
             downloadFileName = downloadFileName + extension;
             if(!fileAvailable(runId, downloadFileName))
             {
-                out.write("NOT AVAILABLE");
+                oldWriter.write("NOT AVAILABLE");
                 return;
             }
 
@@ -357,7 +358,7 @@ public class LincsDataTable extends FilteredTable
             String analyticsScript = getAnalyticsScript(actionName, downloadFileName, true);
             String morpheusUrl = externalHeatmapViewerLink(downloadFileName, getAssayType(), getLevel());
             String downloadText = (getLevel() == LincsModule.LincsLevel.Config) ? "CFG" : "GCT";
-            renderGridCell(out, analyticsScript, getGctDavUrlUnencoded(downloadFileName), getGctDavUrl(downloadFileName), downloadText, morpheusUrl);
+            renderGridCell(oldWriter, analyticsScript, getGctDavUrlUnencoded(downloadFileName), getGctDavUrl(downloadFileName), downloadText, morpheusUrl);
         }
 
         private void renderGridCell(Writer out, String analyticsScript, String downloadUrl, String downloadUrlEncoded, String downloadText, String morpheusUrl) throws IOException

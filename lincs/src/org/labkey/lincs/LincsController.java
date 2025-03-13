@@ -1281,17 +1281,17 @@ public class LincsController extends SpringActionController
         SimpleDisplayColumn jsonCol = new SimpleDisplayColumn(){
 
             @Override
-            public void renderDetailsCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderDetailsCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
             {
                 String json = ctx.get(FieldKey.fromParts("Json"), String.class);
                 if(!StringUtils.isBlank(json))
                 {
                     JSONObject jsonObj = new JSONObject(json);
-                    out.write("<pre>" + PageFlowUtil.filter(jsonObj.toString(2)) + "</pre>");
+                    oldWriter.write("<pre>" + PageFlowUtil.filter(jsonObj.toString(2)) + "</pre>");
                 }
                 else
                 {
-                    super.renderDetailsCellContents(ctx, HtmlWriter.of(out));
+                    super.renderDetailsCellContents(ctx, HtmlWriter.of(oldWriter));
                 }
             }
         };

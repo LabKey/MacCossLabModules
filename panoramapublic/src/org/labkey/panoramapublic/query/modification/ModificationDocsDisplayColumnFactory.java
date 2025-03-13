@@ -18,6 +18,7 @@ import org.labkey.api.util.DOM;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.writer.HtmlWriter;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 
 import java.io.IOException;
@@ -54,7 +55,7 @@ public abstract class ModificationDocsDisplayColumnFactory implements DisplayCol
         return new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
             {
                 String runIds = ctx.get(colInfo.getFieldKey(), String.class);
                 if (!StringUtils.isBlank(runIds))
@@ -77,11 +78,11 @@ public abstract class ModificationDocsDisplayColumnFactory implements DisplayCol
                                     modId != null ? TD(at(style, "padding:2px; vertical-align:top;"), peptidesLink(run, modId)) : HtmlString.EMPTY_STRING)
                             );
                         }
-                        DOM.TABLE(runPeptideLinks).appendTo(out);
+                        DOM.TABLE(runPeptideLinks).appendTo(oldWriter);
                     }
                     else
                     {
-                        out.write("No runs found for Ids: " + PageFlowUtil.filter(runIds));
+                        oldWriter.write("No runs found for Ids: " + PageFlowUtil.filter(runIds));
                     }
                 }
             }

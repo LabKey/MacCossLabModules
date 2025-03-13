@@ -11,6 +11,7 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.writer.HtmlWriter;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -37,7 +38,7 @@ public class PeptideMatchesDisplayColumnFactory implements DisplayColumnFactory
             }
 
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
             {
                 String proteinLabel = ctx.get(PEPTIDE_SEQUENCE, String.class);
                 String exactMatch = ctx.get(EXACT_MATCH, String.class);
@@ -48,8 +49,8 @@ public class PeptideMatchesDisplayColumnFactory implements DisplayColumnFactory
                 searchUrl.addParameter("peptideSequence", proteinLabel);
                 searchUrl.addParameter("exactMatch", exactMatch);
 
-                out.write(new Link.LinkBuilder(String.valueOf(matches)).href(searchUrl).toString());
-                out.write(PageFlowUtil.button("View").href(searchUrl).toString());
+                oldWriter.write(new Link.LinkBuilder(String.valueOf(matches)).href(searchUrl).toString());
+                oldWriter.write(PageFlowUtil.button("View").href(searchUrl).toString());
             }
         };
     }

@@ -14,6 +14,7 @@ import org.labkey.api.util.DOM;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.writer.HtmlWriter;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.proteomexchange.UnimodModification;
@@ -48,7 +49,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
         return new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out)
+            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out)
             {
                 Integer unimodId = ctx.get(colInfo.getFieldKey(), Integer.class);
 
@@ -58,7 +59,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                     if (modInfoId == null)
                     {
                         // This is the Unimod Id from the Skyline document
-                        UnimodModification.getLink(unimodId).appendTo(out);
+                        UnimodModification.getLink(unimodId).appendTo(oldWriter);
                     }
                     else
                     {
@@ -74,7 +75,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                                         .href(deleteUrl)
                                         .usePost(String.format("Are you sure you want to delete the saved Unimod information for modification '%s'?",
                                                 dbMod != null ? dbMod.getName() : ""))
-                                        .build())).appendTo(out);
+                                        .build())).appendTo(oldWriter);
                     }
                 }
                 else
@@ -93,7 +94,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                         url.addCancelURL(ctx.getViewContext().getActionURL());
                         var findMatchLink = new Link.LinkBuilder("Find Match").href(url);
                         DIV(SPAN(at(style, "color: #d70101; font-weight: bold; margin-right:5px;"), "MISSING"),
-                                findMatchLink).appendTo(out);
+                                findMatchLink).appendTo(oldWriter);
                     }
                 }
             }

@@ -11,6 +11,7 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.writer.HtmlWriter;
 import org.labkey.panoramapublic.model.speclib.SpectralLibrary;
 import org.labkey.panoramapublic.query.SpecLibInfoManager;
 
@@ -40,7 +41,7 @@ public class LibraryDocsDisplayColumnFactory implements DisplayColumnFactory
         return new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
             {
                 String specLibIds = ctx.get(colInfo.getFieldKey(), String.class);
                 if (!StringUtils.isBlank(specLibIds))
@@ -65,11 +66,11 @@ public class LibraryDocsDisplayColumnFactory implements DisplayColumnFactory
                                                       "specLibInfoId", String.valueOf(specLibInfoId)))))
                               );
                         }
-                        DOM.TABLE(runLibraryLinks).appendTo(out);
+                        DOM.TABLE(runLibraryLinks).appendTo(oldWriter);
                     }
                     else
                     {
-                        out.write("No libraries found for Ids: " + PageFlowUtil.filter(specLibIds));
+                        oldWriter.write("No libraries found for Ids: " + PageFlowUtil.filter(specLibIds));
                     }
                 }
             }

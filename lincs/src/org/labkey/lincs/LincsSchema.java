@@ -48,6 +48,7 @@ import org.labkey.api.security.User;
 import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.security.permissions.Permission;
 import org.labkey.api.view.ViewContext;
+import org.labkey.api.writer.HtmlWriter;
 import org.springframework.validation.BindException;
 
 import java.io.IOException;
@@ -109,11 +110,11 @@ public class LincsSchema extends UserSchema
                 {
                     return new DataColumn(colInfo){
                         @Override
-                        public void renderDetailsCellContents(RenderContext ctx, Writer out) throws IOException
+                        public void renderDetailsCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
                         {
                             String json = ctx.get(colInfo.getFieldKey(), String.class);
                             JSONObject jsonObj = new JSONObject(json);
-                            out.write("<pre>" + jsonObj.toString(2) + "</pre>");
+                            oldWriter.write("<pre>" + jsonObj.toString(2) + "</pre>");
                         }
                     };
                 }
