@@ -96,7 +96,6 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -115,6 +114,7 @@ import java.util.stream.Stream;
 
 import static org.labkey.api.util.DOM.BR;
 import static org.labkey.api.util.DOM.DIV;
+import static org.labkey.api.util.DOM.PRE;
 
 public class LincsController extends SpringActionController
 {
@@ -162,11 +162,11 @@ public class LincsController extends SpringActionController
         // Copy both to the GCT folder
         for(File file: reportDirFiles)
         {
-            if(file.getName().toLowerCase().equals("lincs.gct"))
+            if(file.getName().equalsIgnoreCase("lincs.gct"))
             {
                 Files.copy(file.toPath(), gct, StandardCopyOption.REPLACE_EXISTING);
             }
-            else if(file.getName().toLowerCase().equals("console.txt"))
+            else if(file.getName().equalsIgnoreCase("console.txt"))
             {
                 Files.copy(file.toPath(), gctDir.resolve(outputFileBaseName + ".console.txt" ), StandardCopyOption.REPLACE_EXISTING);
             }
@@ -1281,17 +1281,19 @@ public class LincsController extends SpringActionController
         SimpleDisplayColumn jsonCol = new SimpleDisplayColumn(){
 
             @Override
-            public void renderDetailsCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
+            public void renderDetailsCellContents(RenderContext ctx, HtmlWriter out)
             {
                 String json = ctx.get(FieldKey.fromParts("Json"), String.class);
-                if(!StringUtils.isBlank(json))
+                if (!StringUtils.isBlank(json))
                 {
                     JSONObject jsonObj = new JSONObject(json);
-                    oldWriter.write("<pre>" + PageFlowUtil.filter(jsonObj.toString(2)) + "</pre>");
+                    PRE(
+                        jsonObj.toString(2)
+                    ).appendTo(out);
                 }
                 else
                 {
-                    super.renderDetailsCellContents(ctx, HtmlWriter.of(oldWriter));
+                    super.renderDetailsCellContents(ctx, out);
                 }
             }
         };
@@ -1380,7 +1382,7 @@ public class LincsController extends SpringActionController
                         DOM.P("Status for job: " + pspJob.getId() +", PSP job Id: " + pspJob.getPspJobId() + ", Run Id: " + pspJob.getRunId()),
                         "JSON Output:",
                         DOM.BR(),
-                        DOM.P(DOM.PRE(jsonStatus)))));
+                        DOM.P(PRE(jsonStatus)))));
             view.setTitle("PSP job status");
             view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
