@@ -67,6 +67,7 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HttpView;
 import org.labkey.api.view.template.ClientDependency;
 import org.labkey.api.view.template.PageConfig;
+import org.labkey.api.writer.HtmlWriter;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
@@ -700,7 +701,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         }
 
         @Override
-        public void renderInputHtml(RenderContext ctx, Writer out, Object value) throws IOException
+        public void renderInputHtml(RenderContext ctx, Writer oldWriter, HtmlWriter out, Object value) throws IOException
         {
             String name = getFormFieldName(ctx);
             String valueString = getStringValue(value, isDisabledInput(ctx));
@@ -723,7 +724,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             sb.append("</div>");
             sb.append("<div style=\"font-size:11px\">").append(PageFlowUtil.filter(getHelpText(), true, false)).append("</div>");
 
-            out.write(sb.toString());
+            oldWriter.write(sb.toString());
         }
 
         @NotNull

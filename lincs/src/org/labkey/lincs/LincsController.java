@@ -78,6 +78,7 @@ import org.labkey.api.view.VBox;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartView;
+import org.labkey.api.writer.HtmlWriter;
 import org.labkey.lincs.cromwell.CromwellConfig;
 import org.labkey.lincs.cromwell.CromwellException;
 import org.labkey.lincs.psp.LincsPspException;
@@ -1290,7 +1291,7 @@ public class LincsController extends SpringActionController
                 }
                 else
                 {
-                    super.renderDetailsCellContents(ctx, out);
+                    super.renderDetailsCellContents(ctx, HtmlWriter.of(out));
                 }
             }
         };
