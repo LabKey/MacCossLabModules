@@ -16,6 +16,7 @@ import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.security.User;
+import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.writer.VirtualFile;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
 
@@ -25,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * This importer does a file move instead of copy to the temp directory and creates a symlink in place of the original
@@ -90,6 +92,7 @@ public class PanoramaPublicFileImporter implements FolderImporter
             PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(expJob, ctx.getContainer(), sourceFiles, targetFiles, log);
 
             alignDataFileUrls(expJob.getUser(), ctx.getContainer(), log);
+            updateSkydDataIds(expJob.getUser(), ctx.getContainer(), log);
         }
     }
 
@@ -151,6 +154,71 @@ public class PanoramaPublicFileImporter implements FolderImporter
         if (errors)
         {
             throw new ImportException("Data files urls could not be aligned.");
+        }
+    }
+
+    /**
+     * Fixes incorrect skydDataId references in TargetedMSRun rows when the relative locations of the sky.zip
+     * and .skyd file are non-standard.
+     *
+     * When a sky.zip file or its exploded folder are moved, post-import, to non-default location so that the relative
+     * locations of sky.zip and its corresponding .skyd file are non-standard, two ExpData rows can be created for the
+     * .skyd file in the folder import process. This causes:
+     *   1. The skydDataId reference an ExpData not linked to the ExpRun
+     *   2. FK violations during cleanup (CopyExperimentFinalTask.cleanupExportDirectory()) prevent deletion of orphaned ExpData
+     *   3. Chromatogram data becomes unavailable when the referenced file is deleted (when "export" folder is deleted)
+     *
+     * This method finds a match and updates skydDataId in the case where the skyDataId is not linked to the ExpRun.
+     */
+    private void updateSkydDataIds(User user, Container targetContainer, Logger log) throws BatchValidationException, ImportException
+    {
+        log.info("Updating skydDataIds in folder: " + targetContainer.getPath());
+
+        boolean errors = false;
+        ExperimentService expService = ExperimentService.get();
+        List<? extends ExpRun> runs = expService.getExpRuns(targetContainer, null, null);
+
+        TargetedMSService tmsService = TargetedMSService.get();
+        for (ExpRun run : runs)
+        {
+            var targetedmsRun = tmsService.getRunByLsid(run.getLSID(), targetContainer);
+            if (targetedmsRun == null) continue;
+
+            var skydDataId = targetedmsRun.getSkydDataId();
+            if (skydDataId == null) continue;
+
+            var skydData = expService.getExpData(skydDataId);
+            if (skydData == null)
+            {
+                log.error("Could not find a row for skydDataId " + skydDataId + " for run " + targetedmsRun.getFileName());
+                errors = true;
+            }
+            else if (skydData.getRun() == null)
+            {
+                // skydData is not associated with an ExpRun. Find an ExpData associated with the ExpRun that matches
+                // the skydName and update the skydDataId on the run.
+                String skydName = skydData.getName();
+                Optional<? extends ExpData> matchingData = run.getAllDataUsedByRun().stream()
+                        .filter(data -> Objects.equals(skydName, data.getName()))
+                        .findFirst();
+
+                if (matchingData.isPresent())
+                {
+                    ExpData data = matchingData.get();
+                    log.debug("Updating skydDataId for run " + targetedmsRun.getFileName() + " to " + data.getRowId());
+                    tmsService.updateSkydDataId(targetedmsRun, data, user);
+                }
+                else
+                {
+                    log.error("Could not find matching skyData for run " + targetedmsRun.getFileName());
+                    errors = true;
+                }
+            }
+        }
+
+        if (errors)
+        {
+            throw new ImportException("Could not update skydDataIds.");
         }
     }
 
