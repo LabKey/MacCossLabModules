@@ -21,7 +21,6 @@ import org.labkey.panoramapublic.proteomexchange.UnimodModification;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.ModificationInfoManager;
 
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -49,7 +48,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
         return new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out)
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 Integer unimodId = ctx.get(colInfo.getFieldKey(), Integer.class);
 
@@ -59,7 +58,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                     if (modInfoId == null)
                     {
                         // This is the Unimod Id from the Skyline document
-                        UnimodModification.getLink(unimodId).appendTo(oldWriter);
+                        UnimodModification.getLink(unimodId).appendTo(out);
                     }
                     else
                     {
@@ -75,7 +74,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                                         .href(deleteUrl)
                                         .usePost(String.format("Are you sure you want to delete the saved Unimod information for modification '%s'?",
                                                 dbMod != null ? dbMod.getName() : ""))
-                                        .build())).appendTo(oldWriter);
+                                        .build())).appendTo(out);
                     }
                 }
                 else
@@ -94,7 +93,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                         url.addCancelURL(ctx.getViewContext().getActionURL());
                         var findMatchLink = new Link.LinkBuilder("Find Match").href(url);
                         DIV(SPAN(at(style, "color: #d70101; font-weight: bold; margin-right:5px;"), "MISSING"),
-                                findMatchLink).appendTo(oldWriter);
+                                findMatchLink).appendTo(out);
                     }
                 }
             }

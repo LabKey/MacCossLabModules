@@ -20,7 +20,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
 import org.labkey.api.collections.CaseInsensitiveHashSet;
-import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerForeignKey;
@@ -28,7 +27,6 @@ import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.DbSchemaType;
 import org.labkey.api.data.DisplayColumn;
-import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.dialect.SqlDialect;
@@ -51,10 +49,10 @@ import org.labkey.api.view.ViewContext;
 import org.labkey.api.writer.HtmlWriter;
 import org.springframework.validation.BindException;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.util.List;
 import java.util.Set;
+
+import static org.labkey.api.util.DOM.PRE;
 
 public class LincsSchema extends UserSchema
 {
@@ -103,20 +101,16 @@ public class LincsSchema extends UserSchema
             ContainerForeignKey.initColumn(containerCol, this);
 
             var jsonCol = result.getMutableColumn(FieldKey.fromParts("Json"));
-            jsonCol.setDisplayColumnFactory(new DisplayColumnFactory()
-            {
+            jsonCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo){
                 @Override
-                public DisplayColumn createRenderer(ColumnInfo colInfo)
+                public void renderDetailsCellContents(RenderContext ctx, HtmlWriter out)
                 {
-                    return new DataColumn(colInfo){
-                        @Override
-                        public void renderDetailsCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
-                        {
-                            String json = ctx.get(colInfo.getFieldKey(), String.class);
-                            JSONObject jsonObj = new JSONObject(json);
-                            oldWriter.write("<pre>" + jsonObj.toString(2) + "</pre>");
-                        }
-                    };
+                    String json = ctx.get(colInfo.getFieldKey(), String.class);
+                    JSONObject jsonObj = new JSONObject(json);
+
+                    PRE(
+                        jsonObj.toString(2)
+                    ).appendTo(out);
                 }
             });
             return result;

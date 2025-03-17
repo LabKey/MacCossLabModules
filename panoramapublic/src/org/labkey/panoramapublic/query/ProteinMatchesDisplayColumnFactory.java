@@ -13,13 +13,10 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.writer.HtmlWriter;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.util.Set;
 
 public class ProteinMatchesDisplayColumnFactory implements DisplayColumnFactory
 {
-
     private static final FieldKey PROTEIN_LABEL = FieldKey.fromParts("proteinLabel");
     private static final FieldKey EXACT_MATCH = FieldKey.fromParts("exactMatch");
     private static final FieldKey CONTAINER = FieldKey.fromParts("container");
@@ -39,7 +36,7 @@ public class ProteinMatchesDisplayColumnFactory implements DisplayColumnFactory
             }
 
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 Integer matches = ctx.get(FieldKey.fromParts("Matches"), Integer.class);
                 String proteinLabel = ctx.get(PROTEIN_LABEL, String.class);
@@ -50,8 +47,8 @@ public class ProteinMatchesDisplayColumnFactory implements DisplayColumnFactory
                 searchUrl.addParameter("proteinLabel", proteinLabel);
                 searchUrl.addParameter("exactMatch", exactMatch);
 
-                oldWriter.write(new Link.LinkBuilder(String.valueOf(matches)).href(searchUrl).toString());
-                oldWriter.write(PageFlowUtil.button("View").href(searchUrl).toString());
+                out.write(new Link.LinkBuilder(String.valueOf(matches)).href(searchUrl));
+                out.write(PageFlowUtil.button("View").href(searchUrl));
             }
         };
     }

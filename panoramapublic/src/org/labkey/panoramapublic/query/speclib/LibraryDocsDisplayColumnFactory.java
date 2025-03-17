@@ -10,13 +10,10 @@ import org.labkey.api.data.RenderContext;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
 import org.labkey.api.util.DOM;
-import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.writer.HtmlWriter;
 import org.labkey.panoramapublic.model.speclib.SpectralLibrary;
 import org.labkey.panoramapublic.query.SpecLibInfoManager;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -41,7 +38,7 @@ public class LibraryDocsDisplayColumnFactory implements DisplayColumnFactory
         return new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 String specLibIds = ctx.get(colInfo.getFieldKey(), String.class);
                 if (!StringUtils.isBlank(specLibIds))
@@ -52,7 +49,7 @@ public class LibraryDocsDisplayColumnFactory implements DisplayColumnFactory
                             .filter(l -> l != 0)
                             .collect(Collectors.toSet());
                     List<SpectralLibrary> libraries = SpecLibInfoManager.getLibraries(ids, user);
-                    if (libraries.size() > 0)
+                    if (!libraries.isEmpty())
                     {
                         Integer specLibInfoId = ctx.get(SPECLIB_INFO_ID, Integer.class);
                         List<DOM.Renderable> runLibraryLinks = new ArrayList<>();
@@ -66,11 +63,11 @@ public class LibraryDocsDisplayColumnFactory implements DisplayColumnFactory
                                                       "specLibInfoId", String.valueOf(specLibInfoId)))))
                               );
                         }
-                        DOM.TABLE(runLibraryLinks).appendTo(oldWriter);
+                        DOM.TABLE(runLibraryLinks).appendTo(out);
                     }
                     else
                     {
-                        oldWriter.write("No libraries found for Ids: " + PageFlowUtil.filter(specLibIds));
+                        out.write("No libraries found for Ids: " + specLibIds);
                     }
                 }
             }

@@ -31,13 +31,12 @@ import org.labkey.api.security.roles.Role;
 import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.security.roles.SiteAdminRole;
 import org.labkey.api.util.HtmlString;
+import org.labkey.api.util.HtmlStringBuilder;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.writer.HtmlWriter;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -136,7 +135,7 @@ public class ProjectAdminsTable extends ContainerTable
 
             String space = "";
 
-            if (allAdmins.size() > 0)
+            if (!allAdmins.isEmpty())
             {
                 for(UserPrincipal user: allAdmins)
                 {
@@ -151,8 +150,10 @@ public class ProjectAdminsTable extends ContainerTable
             return null;
         }
 
+        private static final HtmlString COMMA_SPACE = HtmlStringBuilder.of(",").append(HtmlString.NBSP).getHtmlString();
+
         @Override
-        public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
+        public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
         {
             String entityId = ctx.get(getColumnInfo().getFieldKey(), String.class);
             Container container = ContainerManager.getForId(entityId);
@@ -161,26 +162,17 @@ public class ProjectAdminsTable extends ContainerTable
             {
                 List<UserPrincipal> allAdmins = getAdmins(container);
 
-                StringBuilder display = new StringBuilder();
-
-                String space = "";
+                HtmlString space = HtmlString.EMPTY_STRING;
 
                 if (!allAdmins.isEmpty())
                 {
                     for(UserPrincipal user: allAdmins)
                     {
-                        display.append(space);
-                        display.append(getUserDetails(container, user));
-                        space = ",&nbsp;";
-
+                        out.write(space);
+                        out.write(getUserDetails(container, user));
+                        space = COMMA_SPACE;
                     }
-
-                    oldWriter.write(display.toString());
                 }
-            }
-            else
-            {
-                oldWriter.write("");
             }
         }
 

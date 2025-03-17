@@ -22,7 +22,6 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.view.publish.CatalogEntryWebPart;
 import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -158,7 +157,7 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
         reviewCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out)
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 Integer catalogEntryId = ctx.get(getColumnInfo().getFieldKey(), Integer.class);
                 if (catalogEntryId != null && ctx.getViewContext().getUser().hasSiteAdminPermission())
@@ -167,9 +166,9 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
                     ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.getExperimentForShortUrl(entry.getShortUrl());
                     if (expAnnotations != null)
                     {
-                        DIV(CatalogEntryWebPart.changeStatusButtonBuilder(entry.getApproved(), expAnnotations.getId(), catalogEntryId, expAnnotations.getContainer())
-                                .build())
-                                .appendTo(oldWriter);
+                        DIV(
+                            CatalogEntryWebPart.changeStatusButtonBuilder(entry.getApproved(), expAnnotations.getId(), catalogEntryId, expAnnotations.getContainer())
+                        ).appendTo(out);
                     }
                 }
             }

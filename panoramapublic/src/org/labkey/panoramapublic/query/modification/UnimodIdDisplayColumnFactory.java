@@ -8,8 +8,6 @@ import org.labkey.api.data.RenderContext;
 import org.labkey.api.writer.HtmlWriter;
 import org.labkey.panoramapublic.proteomexchange.UnimodModification;
 
-import java.io.Writer;
-
 /**
  * Displays a link to the Unimod page for a modification with the given Unimod Id.
  * Example: https://www.unimod.org/modifications_view.php?editid1=4
@@ -22,12 +20,12 @@ public class UnimodIdDisplayColumnFactory implements DisplayColumnFactory
         return new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out)
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 Integer unimodId = ctx.get(colInfo.getFieldKey(), Integer.class);
                 if (unimodId != null)
                 {
-                    UnimodModification.getLink(unimodId).appendTo(oldWriter);
+                    UnimodModification.getLink(unimodId).appendTo(out);
                 }
             }
         };

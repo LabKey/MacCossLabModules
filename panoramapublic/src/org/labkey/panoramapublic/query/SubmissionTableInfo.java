@@ -23,8 +23,6 @@ import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -158,7 +156,7 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
             return new DataColumn(colInfo)
             {
                 @Override
-                public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
+                public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
                 {
                     Integer id = ctx.get(colInfo.getFieldKey(), Integer.class);
                     Submission s = SubmissionManager.getSubmission(id, ctx.getContainer());
@@ -166,7 +164,7 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
                     {
                         // Show the delete link only if the experiment has not yet been copied
                         _url.replaceParameter("id", id);
-                        oldWriter.write(PageFlowUtil.link("Delete").href(_url).toString());
+                        out.write(PageFlowUtil.link("Delete").href(_url));
                     }
                 }
             };
@@ -188,7 +186,7 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
             return new DataColumn(colInfo)
             {
                 @Override
-                public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
+                public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
                 {
                     Integer id = ctx.get(colInfo.getFieldKey(), Integer.class);
                     Submission s = SubmissionManager.getSubmission(id, ctx.getContainer());
@@ -206,13 +204,13 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
                                 {
                                     ActionURL resubmitUrl = PanoramaPublicController.getResubmitExperimentURL(js.getExperimentAnnotationsId(), js.getJournalId(), _container, s.isKeepPrivate(),
                                             true /*check if data is valid for PXD. Always do this check on a resubmit.*/);
-                                    oldWriter.write(PageFlowUtil.link("Resubmit").href(resubmitUrl).toString());
+                                    out.write(PageFlowUtil.link("Resubmit").href(resubmitUrl));
                                 }
                             }
                             else
                             {
                                 ActionURL ediUrl = PanoramaPublicController.getUpdateSubmissionURL(js.getExperimentAnnotationsId(), js.getJournalId(), _container, s.isKeepPrivate(), true);
-                                oldWriter.write(PageFlowUtil.link("Edit").href(ediUrl).toString());
+                                out.write(PageFlowUtil.link("Edit").href(ediUrl));
                             }
                         }
                     }

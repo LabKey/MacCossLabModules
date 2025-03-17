@@ -15,8 +15,6 @@ import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.util.Set;
 
 public class EditLibInfoDisplayColumnFactory implements DisplayColumnFactory
@@ -32,7 +30,7 @@ public class EditLibInfoDisplayColumnFactory implements DisplayColumnFactory
         return new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer oldWriter, HtmlWriter out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 if (ctx.getContainer().hasPermission(ctx.getViewContext().getUser(), UpdatePermission.class))
                 {
@@ -59,18 +57,16 @@ public class EditLibInfoDisplayColumnFactory implements DisplayColumnFactory
                             }
                             ActionURL editUrl = PanoramaPublicController.getEditSpecLibInfoURL(experimentAnnotationsId, specLibId, specLibInfoId, ctx.getContainer());
                             editUrl.addReturnUrl(returnUrl);
-                            oldWriter.write(PageFlowUtil.link(specLibInfoId != null ? "Edit" : "Add").href(editUrl).toString());
+                            out.write(PageFlowUtil.link(specLibInfoId != null ? "Edit" : "Add").href(editUrl));
                             if (specLibInfoId != null)
                             {
                                 ActionURL deleteUrl = PanoramaPublicController.getDeleteSpecLibInfoURL(experimentAnnotationsId, specLibInfoId, ctx.getContainer());
                                 deleteUrl.addReturnUrl(returnUrl);
-                                oldWriter.write(PageFlowUtil.link("Delete").href(deleteUrl).usePost("Are you sure you want to delete the spectral library information?").toString());
+                                out.write(PageFlowUtil.link("Delete").href(deleteUrl).usePost("Are you sure you want to delete the spectral library information?"));
                             }
-                            return;
                         }
                     }
                 }
-                oldWriter.write("");
             }
 
             @Override
