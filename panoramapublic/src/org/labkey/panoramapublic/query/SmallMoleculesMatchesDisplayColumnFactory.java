@@ -11,9 +11,8 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.writer.HtmlWriter;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.util.Set;
 
 public class SmallMoleculesMatchesDisplayColumnFactory implements DisplayColumnFactory
@@ -37,7 +36,7 @@ public class SmallMoleculesMatchesDisplayColumnFactory implements DisplayColumnF
             }
 
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 String smallMol= ctx.get(SMALL_MOLECULE, String.class);
                 String exactMatch = ctx.get(EXACT_MATCH, String.class);
@@ -48,8 +47,8 @@ public class SmallMoleculesMatchesDisplayColumnFactory implements DisplayColumnF
                 searchUrl.addParameter("smallMolecule", smallMol);
                 searchUrl.addParameter("exactMatch", exactMatch);
 
-                out.write(new Link.LinkBuilder(String.valueOf(matches)).href(searchUrl).toString());
-                out.write(PageFlowUtil.button("View").href(searchUrl).toString());
+                out.write(new Link.LinkBuilder(String.valueOf(matches)).href(searchUrl));
+                out.write(PageFlowUtil.button("View").href(searchUrl));
             }
         };
     }

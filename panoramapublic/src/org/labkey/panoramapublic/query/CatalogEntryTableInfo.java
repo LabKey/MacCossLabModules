@@ -13,6 +13,7 @@ import org.labkey.api.util.Button;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.ShortURLRecord;
+import org.labkey.api.writer.HtmlWriter;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
@@ -21,8 +22,6 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.view.publish.CatalogEntryWebPart;
 import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -63,7 +62,7 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
             }
 
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 Object viewCatalogEntryUrl = getValue(ctx);
                 if (viewCatalogEntryUrl instanceof ActionURL url)
@@ -108,7 +107,7 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
             }
 
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 String fileName = (String) getValue(ctx);
                 ShortURLRecord shortUrl = ctx.get(_shortUrlFieldKey, ShortURLRecord.class);
@@ -116,10 +115,11 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
                 if (fileName != null && expAnnotations != null)
                 {
                     ActionURL downloadLink = PanoramaPublicController.getCatalogImageDownloadUrl(expAnnotations, fileName);
-                    SPAN(at(style, "white-space: nowrap;"),
-                            fileName,
-                            PageFlowUtil.iconLink("fa fa-download", null).href(downloadLink).style("margin-left:10px;").build())
-                            .appendTo(out);
+                    SPAN(
+                        at(style, "white-space: nowrap;"),
+                        fileName,
+                        PageFlowUtil.iconLink("fa fa-download", null).href(downloadLink).style("margin-left:10px;").build()
+                    ).appendTo(out);
                     return;
                 }
                 super.renderGridCellContents(ctx, out);
@@ -157,7 +157,7 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
         reviewCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out)
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 Integer catalogEntryId = ctx.get(getColumnInfo().getFieldKey(), Integer.class);
                 if (catalogEntryId != null && ctx.getViewContext().getUser().hasSiteAdminPermission())
@@ -166,9 +166,9 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
                     ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.getExperimentForShortUrl(entry.getShortUrl());
                     if (expAnnotations != null)
                     {
-                        DIV(CatalogEntryWebPart.changeStatusButtonBuilder(entry.getApproved(), expAnnotations.getId(), catalogEntryId, expAnnotations.getContainer())
-                                .build())
-                                .appendTo(out);
+                        DIV(
+                            CatalogEntryWebPart.changeStatusButtonBuilder(entry.getApproved(), expAnnotations.getId(), catalogEntryId, expAnnotations.getContainer())
+                        ).appendTo(out);
                     }
                 }
             }

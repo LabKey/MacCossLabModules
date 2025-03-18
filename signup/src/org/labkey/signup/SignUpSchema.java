@@ -40,9 +40,8 @@ import org.labkey.api.security.Group;
 import org.labkey.api.security.User;
 import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.writer.HtmlWriter;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.util.Set;
 
 public class SignUpSchema extends UserSchema
@@ -91,7 +90,7 @@ public class SignUpSchema extends UserSchema
                 oldgroup.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
                 {
                     @Override
-                    public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                    public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
                     {
                         Group old = org.labkey.api.security.SecurityManager.getGroup(Integer.parseInt(String.valueOf(ctx.get(FieldKey.fromParts("oldgroup")))));
                         out.write(old.getName());
@@ -100,7 +99,7 @@ public class SignUpSchema extends UserSchema
                 newgroup.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
                 {
                     @Override
-                    public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                    public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
                     {
                         Group old = org.labkey.api.security.SecurityManager.getGroup(Integer.parseInt(String.valueOf(ctx.get(FieldKey.fromParts("newgroup")))));
                         out.write(old.getName());
@@ -120,7 +119,7 @@ public class SignUpSchema extends UserSchema
                         return new DataColumn(colInfo)
                         {
                             @Override
-                            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
                             {
                                 Container container = ContainerManager.getForId(String.valueOf(ctx.get(FieldKey.fromParts("Container"))));
                                 String email = String.valueOf(ctx.get(FieldKey.fromParts("email")));

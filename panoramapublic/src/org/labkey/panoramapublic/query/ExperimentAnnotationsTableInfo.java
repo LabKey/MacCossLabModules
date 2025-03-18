@@ -58,15 +58,18 @@ import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.HtmlString;
+import org.labkey.api.util.JavaScriptFragment;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.SimpleNamedObject;
 import org.labkey.api.util.StringExpressionFactory;
 import org.labkey.api.util.UniqueID;
+import org.labkey.api.util.element.Input.InputBuilder;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HttpView;
 import org.labkey.api.view.template.ClientDependency;
 import org.labkey.api.view.template.PageConfig;
+import org.labkey.api.writer.HtmlWriter;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
@@ -77,8 +80,6 @@ import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.view.publish.CatalogEntryWebPart;
 import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -86,10 +87,12 @@ import java.util.Set;
 import static org.labkey.api.util.DOM.Attribute.height;
 import static org.labkey.api.util.DOM.Attribute.href;
 import static org.labkey.api.util.DOM.Attribute.src;
+import static org.labkey.api.util.DOM.Attribute.style;
 import static org.labkey.api.util.DOM.Attribute.title;
 import static org.labkey.api.util.DOM.Attribute.width;
 import static org.labkey.api.util.DOM.DIV;
 import static org.labkey.api.util.DOM.IMG;
+import static org.labkey.api.util.DOM.SCRIPT;
 import static org.labkey.api.util.DOM.at;
 
 /**
@@ -132,8 +135,8 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             {
                 return new DataColumn(colInfo, true)
                 {
-                    private FieldKey _containerKey = new FieldKey(getColumnInfo().getFieldKey().getParent(), "container");
-                    private FieldKey _idKey = new FieldKey(getColumnInfo().getFieldKey().getParent(), "id");
+                    private final FieldKey _containerKey = new FieldKey(getColumnInfo().getFieldKey().getParent(), "container");
+                    private final FieldKey _idKey = new FieldKey(getColumnInfo().getFieldKey().getParent(), "id");
 
                     @Override
                     public @NotNull Set<ClientDependency> getClientDependencies()
@@ -146,22 +149,25 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                     }
 
                     @Override
-                    public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+                    public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
                     {
                         Integer id = ctx.get(_idKey, Integer.class);
                         Container container = ctx.get(_containerKey, Container.class);
-                        if(id != null && container != null)
+                        if (id != null && container != null)
                         {
                             ActionURL detailsPage = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container); // experiment container
                             PageConfig pageConfig = HttpView.currentPageConfig();
                             String spanId = pageConfig.makeId("expt_details_");
-                            DOM.SPAN(at(DOM.Attribute.id, spanId)
-                                            .data("active", "false") // will be rendered as "data-active" attribute
-                                            .data("loaded", "false"), // will be rendered as "data-loaded" attribute
-                                    IMG(at(DOM.Attribute.id, "expandcontract-" + id)
-                                            .at(src, PageFlowUtil.staticResourceUrl("_images/plus.gif"))),
-                                    HtmlString.NBSP)
-                                    .appendTo(out);
+                            DOM.SPAN(
+                                at(DOM.Attribute.id, spanId)
+                                .data("active", "false") // will be rendered as "data-active" attribute
+                                .data("loaded", "false"), // will be rendered as "data-loaded" attribute
+                                IMG(
+                                    at(DOM.Attribute.id, "expandcontract-" + id)
+                                    .at(src, PageFlowUtil.staticResourceUrl("_images/plus.gif"))
+                                ),
+                                HtmlString.NBSP
+                            ).appendTo(out);
                             pageConfig.addHandler(spanId, "click", "viewExperimentDetails(this,'" + container.getPath() + "', '" + id + "','" + detailsPage + "')");
                         }
                         super.renderGridCellContents(ctx, out);
@@ -188,16 +194,16 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             public @NotNull Set<ClientDependency> getClientDependencies()
             {
                 return PageFlowUtil.set(
-                        ClientDependency.fromPath("PanoramaPublic/css/ExperimentAnnotations.css"),
-                        ClientDependency.fromPath("hopscotch/css/hopscotch.min.css"),
-                        ClientDependency.fromPath("PanoramaPublic/js/ExperimentAnnotations.js"),
-                        ClientDependency.fromPath("PanoramaPublic/js/clipboard.min.js"),
-                        ClientDependency.fromPath("hopscotch/js/hopscotch.min.js")
-                        );
+                    ClientDependency.fromPath("PanoramaPublic/css/ExperimentAnnotations.css"),
+                    ClientDependency.fromPath("hopscotch/css/hopscotch.min.css"),
+                    ClientDependency.fromPath("PanoramaPublic/js/ExperimentAnnotations.js"),
+                    ClientDependency.fromPath("PanoramaPublic/js/clipboard.min.js"),
+                    ClientDependency.fromPath("hopscotch/js/hopscotch.min.js")
+                );
             }
 
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 // Get the ExperimentAnnotations record
                 Integer experimentAnnotationsId = ctx.get(colInfo.getFieldKey(), Integer.class);
@@ -205,18 +211,14 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
                 String accessUrl = ExperimentAnnotationsManager.getExperimentShortUrl(expAnnotations);
 
-                if(accessUrl == null)
-                {
-                    out.write("");
-                }
-                else
+                if (accessUrl != null)
                 {
                     var link = new Link.LinkBuilder("Share")
-                            .clearClasses().addClass("button-small button-small-green")
-                            .style("margin:0px 5px 0px 2px;")
-                            .onClick("showShareLink(this, " + PageFlowUtil.jsString(accessUrl) + ");return false;");
-                    DIV(link.build()).appendTo(out);
+                        .clearClasses().addClass("button-small button-small-green")
+                        .style("margin:0px 5px 0px 2px;")
+                        .onClick("showShareLink(this, " + PageFlowUtil.jsString(accessUrl) + ");return false;");
 
+                    DIV(link).appendTo(out);
                 }
             }
         });
@@ -286,12 +288,12 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                 return license != null ? license.getUrl() : null;
             }
             @Override
-            public Class getValueClass()
+            public Class<String> getValueClass()
             {
                 return String.class;
             }
             @Override
-            public Class getDisplayValueClass()
+            public Class<String> getDisplayValueClass()
             {
                 return String.class;
             }
@@ -314,7 +316,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         getMutableColumn("ModifiedBy").setFk(new UserIdQueryForeignKey(schema));
 
         ExprColumn catalogEntryCol = getCatalogEntryCol();
-        catalogEntryCol.setDisplayColumnFactory(colInfo -> new CatalogEntryIconColumn(colInfo));
+        catalogEntryCol.setDisplayColumnFactory(CatalogEntryIconColumn::new);
         addColumn(catalogEntryCol);
 
         List<FieldKey> visibleColumns = new ArrayList<>();
@@ -700,7 +702,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         }
 
         @Override
-        public void renderInputHtml(RenderContext ctx, Writer out, Object value) throws IOException
+        public void renderInputHtml(RenderContext ctx, HtmlWriter out, Object value)
         {
             String name = getFormFieldName(ctx);
             String valueString = getStringValue(value, isDisabledInput(ctx));
@@ -710,20 +712,31 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             }
 
             String renderId = getRenderId();
-            StringBuilder sb = new StringBuilder();
 
-            sb.append("<script type=\"text/javascript\" nonce=\"").append(HttpView.currentPageConfig().getScriptNonce()).append("\">");
-            sb.append("LABKEY.requiresScript([\"/PanoramaPublic/js/ExpAnnotAutoComplete.js\"], function() {\n");
-            sb.append("Ext4.onReady(function(){\n");
-            sb.append("    initAutoComplete(").append(_autoCompletionUrl).append(", '").append(renderId).append("', ").append(_prefetch ? "true": "false").append(");\n");
-            sb.append("});});\n");
-            sb.append("</script>\n");
-            sb.append("<div style=\"margin-top:5px;\" id=\"").append(renderId).append("\" class=\"scrollable-dropdown-menu\">");
-            sb.append("<input type=\"text\" class=\"tags\" placeholder=\"").append(_placeholderText).append("\" name=\"").append(name).append("\" value=\"").append(valueString).append("\">");
-            sb.append("</div>");
-            sb.append("<div style=\"font-size:11px\">").append(PageFlowUtil.filter(getHelpText(), true, false)).append("</div>");
+            SCRIPT(
+                JavaScriptFragment.unsafe(
+                    "LABKEY.requiresScript([\"/PanoramaPublic/js/ExpAnnotAutoComplete.js\"], function() {\n" +
+                    "    Ext4.onReady(function(){\n" +
+                    "        initAutoComplete(" + _autoCompletionUrl + ", " + PageFlowUtil.jsString(renderId) + ", " + (_prefetch ? "true" : "false") + ");\n" +
+                    "    });" +
+                    "});\n"
+                )
+            ).appendTo(out);
 
-            out.write(sb.toString());
+            DIV(
+                at(style, "margin-top:5px;").id(renderId).cl("scrollable-dropdown-menu"),
+                new InputBuilder<>()
+                    .type("text")
+                    .className("tags")
+                    .placeholder(_placeholderText)
+                    .name(name)
+                    .value(valueString)
+            ).appendTo(out);
+
+            DIV(
+                at(style, "font-size:11px"),
+                HtmlString.unsafe(PageFlowUtil.filter(getHelpText(), true, false))
+            ).appendTo(out);
         }
 
         @NotNull
@@ -740,19 +753,18 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
     private static class OrganismColumn extends AutoCompleteColumn
     {
-
         public OrganismColumn(ColumnInfo col, ActionURL autocompletionUrl, boolean prefetch, String placeHolderText)
         {
             super(col, autocompletionUrl, prefetch, placeHolderText);
         }
 
         @Override
-        public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+        public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
         {
             String organismsStr = ctx.get(getColumnInfo().getFieldKey(), String.class);
             if(!StringUtils.isBlank(organismsStr))
             {
-                out.write(PageFlowUtil.filter(ExperimentAnnotations.getOrganismsNoTaxId(organismsStr)));
+                out.write(ExperimentAnnotations.getOrganismsNoTaxId(organismsStr));
             }
             else
             {
@@ -769,6 +781,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         }
 
         @Override
+        @NotNull
         String getRenderId()
         {
             return "input-picker-div-organism";
@@ -777,13 +790,13 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
     private static class InstrumentColumn extends AutoCompleteColumn
     {
-
         public InstrumentColumn(ColumnInfo col, ActionURL autocompletionUrl, boolean prefetch, String placeHolderText)
         {
             super(col, autocompletionUrl, prefetch, placeHolderText);
         }
 
         @Override
+        @NotNull
         String getRenderId()
         {
             return "input-picker-div-instrument";
@@ -799,12 +812,12 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         }
 
         @Override
-        public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+        public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
         {
             User user = ctx.getViewContext().getUser();
             if (user == null || user.isGuest())
             {
-                HtmlString.NBSP.appendTo(out);
+                out.write(HtmlString.NBSP);
                 return;
             }
             Integer catalogEntryId = ctx.get(getColumnInfo().getFieldKey(), Integer.class);
@@ -824,13 +837,16 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                     ActionURL returnUrl = ctx.getViewContext().getActionURL().clone();
                     ActionURL catalogEntryLink = entry != null ? PanoramaPublicController.getViewCatalogEntryUrl(expAnnot, entry).addReturnUrl(returnUrl)
                                                                : PanoramaPublicController.getAddCatalogEntryUrl(expAnnot).addReturnUrl(returnUrl);
-                    DOM.A(at(href, catalogEntryLink.getLocalURIString(), title, PageFlowUtil.filter(imageTitle)),
-                            DOM.IMG(at(src, imageUrl, height, 22, width, 22)))
-                            .appendTo(out);
+                    DOM.A(
+                        at(href, catalogEntryLink.getLocalURIString(), title, PageFlowUtil.filter(imageTitle)),
+                        DOM.IMG(
+                            at(src, imageUrl, height, 22, width, 22)
+                        )
+                    ).appendTo(out);
                     return;
                 }
             }
-            HtmlString.NBSP.appendTo(out);
+            out.write(HtmlString.NBSP);
         }
     }
 }

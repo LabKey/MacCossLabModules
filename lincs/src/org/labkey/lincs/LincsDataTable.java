@@ -17,6 +17,7 @@ package org.labkey.lincs;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.analytics.AnalyticsService;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.DataColumn;
@@ -33,10 +34,9 @@ import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.writer.HtmlWriter;
 import org.labkey.lincs.psp.LincsPspJob;
 
-import java.io.IOException;
-import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -44,6 +44,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static org.labkey.api.util.DOM.Attribute.style;
+import static org.labkey.api.util.DOM.SPAN;
+import static org.labkey.api.util.DOM.at;
 
 /**
  * Created by vsharma on 8/21/2017.
@@ -72,17 +76,21 @@ public class LincsDataTable extends FilteredTable
         addColumn(level1Col);
         level1Col.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo){
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 ActionURL downloadUrl = new ActionURL("targetedms", "DownloadDocument", getContainer());
                 Integer runId = ctx.get(FieldKey.fromParts("Id"), Integer.class);
                 downloadUrl.addParameter("id", runId);
-                out.write("<nobr>");
-                out.write(new Link.LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl).toString());
                 ActionURL docDetailsUrl = new ActionURL("targetedms", "ShowPrecursorList", getContainer());
                 docDetailsUrl.addParameter("id", runId);
-                out.write("&nbsp;" + new Link.LinkBuilder("Skyline").href(docDetailsUrl).clearClasses().toString());
-                out.write("</nobr>");
+
+                // <span style="white-space: nowrap;"> is recommended instead of deprecated <nobr></nobr>
+                SPAN(
+                    at(style, "white-space: nowrap;"),
+                    new Link.LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl),
+                    HtmlString.NBSP,
+                    new Link.LinkBuilder("Skyline").href(docDetailsUrl).clearClasses()
+                ).appendTo(out);
             }
 
             @Override
@@ -133,7 +141,7 @@ public class LincsDataTable extends FilteredTable
         pspJobCol.setDisplayColumnFactory(colInfo -> new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 Integer runId = ctx.get(FieldKey.fromParts("Id"), Integer.class);
                 if(runId == null)
@@ -150,7 +158,7 @@ public class LincsDataTable extends FilteredTable
                         ActionURL url = new ActionURL(LincsController.SubmitPspJobAction.class, getContainer());
                         url.addParameter("runId", runId);
 
-                        out.write(new Link.LinkBuilder(" [Submit Job]").href(url).usePost().toString());
+                        out.write(new Link.LinkBuilder(" [Submit Job]").href(url).usePost());
                     }
                     return;
                 }
@@ -168,7 +176,7 @@ public class LincsDataTable extends FilteredTable
                 }
                 ActionURL url = new ActionURL(LincsController.LincsPspJobDetailsAction.class, getContainer());
                 url.addParameter("runId", pspJob.getRunId());
-                out.write(PageFlowUtil.link(text).href(url).toString());
+                out.write(PageFlowUtil.link(text).href(url));
             }
 
             @Override
@@ -290,7 +298,7 @@ public class LincsDataTable extends FilteredTable
             return null;
         }
 
-        private String externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType)
+        private HtmlString externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType)
         {
             String gctFileUrl = davUrl + "GCT/" + PageFlowUtil.encodePath(fileName);
             String morpheusUrl = getMorpheusUrl(gctFileUrl, assayType);
@@ -299,7 +307,9 @@ public class LincsDataTable extends FilteredTable
             String onclickEvt = StringUtils.isBlank(analyticsScript) ? "" : "onclick=\"" + analyticsScript + "\"";
 
             String imgUrl = AppProps.getInstance().getContextPath() + "/lincs/GENE-E_icon.png";
-            return "[&nbsp;<a target=\"_blank\" " + onclickEvt +  " href=\"" + morpheusUrl + "\">View in Morpheus</a> <img src=" + imgUrl + " width=\"13\", height=\"13\"/>&nbsp;]";
+
+            // TODO: Should use a LinkBuilder, etc.
+            return HtmlString.unsafe("[&nbsp;<a target=\"_blank\" " + onclickEvt +  " href=\"" + morpheusUrl + "\">View in Morpheus</a> <img src=" + imgUrl + " width=\"13\", height=\"13\"/>&nbsp;]");
         }
 
         private String getMorpheusUrl(String gctFileUrl, LincsModule.LincsAssay assayType)
@@ -323,7 +333,7 @@ public class LincsDataTable extends FilteredTable
         }
 
         @Override
-        public void renderGridCellContents(RenderContext ctx, Writer out) throws IOException
+        public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
         {
             if(getAssayType() == null)
             {
@@ -333,7 +343,7 @@ public class LincsDataTable extends FilteredTable
             String fileName = ctx.get(getDisplayColumn().getFieldKey(), String.class);
             if(fileName == null)
             {
-                out.write("&nbsp");
+                out.write(HtmlString.NBSP);
                 return;
             }
 
@@ -355,23 +365,25 @@ public class LincsDataTable extends FilteredTable
 
             String actionName = (getLevel() == LincsModule.LincsLevel.Config) ? "DownloadConfig" : "DownloadGCT";
             String analyticsScript = getAnalyticsScript(actionName, downloadFileName, true);
-            String morpheusUrl = externalHeatmapViewerLink(downloadFileName, getAssayType(), getLevel());
+            HtmlString morpheusUrl = externalHeatmapViewerLink(downloadFileName, getAssayType(), getLevel());
             String downloadText = (getLevel() == LincsModule.LincsLevel.Config) ? "CFG" : "GCT";
-            renderGridCell(out, analyticsScript, getGctDavUrlUnencoded(downloadFileName), getGctDavUrl(downloadFileName), downloadText, morpheusUrl);
+            renderGridCell(out, analyticsScript, getGctDavUrlUnencoded(downloadFileName), downloadText, morpheusUrl);
         }
 
-        private void renderGridCell(Writer out, String analyticsScript, String downloadUrl, String downloadUrlEncoded, String downloadText, String morpheusUrl) throws IOException
+        private void renderGridCell(HtmlWriter out, String analyticsScript, String downloadUrl, String downloadText, HtmlString morpheusUrl)
         {
-            out.write("<nobr>&nbsp;");
-            out.write(new Link.LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl).onClick(analyticsScript).toString());
-            out.write("&nbsp;");
-            out.write(new Link.LinkBuilder(downloadText).href(downloadUrl).onClick(analyticsScript).clearClasses().toString());
-            out.write("&nbsp;");
-            if(morpheusUrl != null)
-            {
-                out.write("&nbsp;" + morpheusUrl + "&nbsp;");
-            }
-            out.write("</nobr>");
+            // <span style="white-space: nowrap;"> is recommended instead of deprecated <nobr></nobr>
+            SPAN(
+                at(style, "white-space: nowrap;"),
+                HtmlString.NBSP,
+                new Link.LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl).onClick(analyticsScript),
+                HtmlString.NBSP,
+                new Link.LinkBuilder(downloadText).href(downloadUrl).onClick(analyticsScript).clearClasses(),
+                HtmlString.NBSP,
+                morpheusUrl != null ? HtmlString.NBSP : null,
+                morpheusUrl,
+                morpheusUrl != null ? HtmlString.NBSP : null
+            ).appendTo(out);
         }
 
         private boolean fileAvailable(Integer runId, String downloadFileName)
@@ -396,7 +408,7 @@ public class LincsDataTable extends FilteredTable
             }
         }
 
-        String externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType, LincsModule.LincsLevel level)
+        @Nullable HtmlString externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType, LincsModule.LincsLevel level)
         {
             if(level == LincsModule.LincsLevel.Config)
             {

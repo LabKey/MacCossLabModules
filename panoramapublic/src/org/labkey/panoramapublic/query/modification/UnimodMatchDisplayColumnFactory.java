@@ -14,13 +14,13 @@ import org.labkey.api.util.DOM;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
 import org.labkey.api.view.ActionURL;
+import org.labkey.api.writer.HtmlWriter;
 import org.labkey.panoramapublic.PanoramaPublicController;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.proteomexchange.UnimodModification;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.ModificationInfoManager;
 
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -48,7 +48,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
         return new DataColumn(colInfo)
         {
             @Override
-            public void renderGridCellContents(RenderContext ctx, Writer out)
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
             {
                 Integer unimodId = ctx.get(colInfo.getFieldKey(), Integer.class);
 
