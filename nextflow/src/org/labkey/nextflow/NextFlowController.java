@@ -3,6 +3,7 @@ package org.labkey.nextflow;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.Logger;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.FormViewAction;
@@ -12,7 +13,6 @@ import org.labkey.api.admin.AdminUrls;
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.data.PropertyStore;
 import org.labkey.api.pipeline.PipeRoot;
-import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineProvider;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.pipeline.PipelineStatusUrls;
@@ -31,6 +31,7 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Path;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.element.Select;
+import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
@@ -63,6 +64,8 @@ public class NextFlowController extends SpringActionController
 {
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(NextFlowController.class);
     public static final String NAME = "nextflow";
+
+    protected static final Logger LOG = LogHelper.getLogger(NextFlowPipelineJob.class, "LabKey UI and API for NextFlow usage");
 
     public NextFlowController()
     {
@@ -326,8 +329,9 @@ public class NextFlowController extends SpringActionController
                 {
                     ViewBackgroundInfo info = getViewBackgroundInfo();
                     PipeRoot root = PipelineService.get().findPipelineRoot(info.getContainer());
-                    PipelineJob job = NextFlowPipelineJob.create(info, root, configFile.toPath(), inputFiles.stream().map(File::toPath).toList());
+                    NextFlowPipelineJob job = NextFlowPipelineJob.create(info, root, configFile.toPath(), inputFiles.stream().map(File::toPath).toList());
                     PipelineService.get().queueJob(job);
+                    LOG.info("NextFlow job queued: {}", job.getJsonJobInfo(false));
                 }
             }
 
