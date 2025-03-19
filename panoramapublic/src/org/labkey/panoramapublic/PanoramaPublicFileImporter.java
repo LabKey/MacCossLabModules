@@ -158,17 +158,24 @@ public class PanoramaPublicFileImporter implements FolderImporter
     }
 
     /**
-     * Fixes incorrect skydDataId references in TargetedMSRun rows when the relative locations of the sky.zip
-     * and .skyd file are non-standard.
+     * Fixes incorrect skydDataId reference in TargetedMSRun. This happens when the relative locations of the sky.zip
+     * and .skyd file are non-standard in the folder being copied.
      *
      * When a sky.zip file or its exploded folder are moved, post-import, to non-default location so that the relative
-     * locations of sky.zip and its corresponding .skyd file are non-standard, two ExpData rows can be created for the
-     * .skyd file in the folder import process. This causes:
-     *   1. The skydDataId reference an ExpData not linked to the ExpRun
-     *   2. FK violations during cleanup (CopyExperimentFinalTask.cleanupExportDirectory()) prevent deletion of orphaned ExpData
-     *   3. Chromatogram data becomes unavailable when the referenced file is deleted (when "export" folder is deleted)
+     * locations of sky.zip and its corresponding .skyd file are non-standard, two ExpData rows are created for the
+     * .skyd file in the folder import process.
+     * The first ExpData (linked to the ExpRun) is created during XAR import.
+     * The second ExpData (not linked to the ExpRun) is created in the SkylineDocumentParser.parseChromatograms() method.
+     * Normally SkylineDocumentParser.parseChromatograms() does not have to create a new ExpData, since an ExpData with
+     * the expected path already exists.
+     * Having 2 ExpDatas causes:
+     *   1. The skydDataId in TargetedMSRun references an ExpData not linked to the ExpRun.
+     *   2. FK violations during cleanup (CopyExperimentFinalTask.cleanupExportDirectory()) prevents deletion of ExpData
+     *      in the 'export' directory.
+     *   3. Chromatogram data becomes unavailable when the referenced skyd file (in the 'export' directory) is deleted.
      *
-     * This method finds a match and updates skydDataId in the case where the skyDataId is not linked to the ExpRun.
+     * This method finds a match and updates skydDataId reference in TargetedMSRun in the case where the skyDataId is not
+     * linked to the ExpRun.
      */
     private void updateSkydDataIds(User user, Container targetContainer, Logger log) throws BatchValidationException, ImportException
     {
@@ -218,7 +225,7 @@ public class PanoramaPublicFileImporter implements FolderImporter
 
         if (errors)
         {
-            throw new ImportException("Could not update skydDataIds.");
+            throw new ImportException("Could not update skydDataIds");
         }
     }
 

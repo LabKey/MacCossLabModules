@@ -58,13 +58,14 @@ public class PanoramaPublicMoveSkyDocTest extends PanoramaPublicBaseTest
         moveDocument(SKY_FILE_2, targetFolder, 2);
 
         goToProjectFolder(projectName, targetFolder);
-        log("Importing " + SKY_FILE_3 + " in folder " + skyDocSourceFolder);
+        log("Importing " + SKY_FILE_3 + " in folder " + targetFolder);
         importData(SKY_FILE_3, 3);
 
         // Test moving the sky.zip to a subdirectory in the file root, while the .skyd remains in the original location.
         //
         // If the sky.zip file and the .skyd file are not in their typical relative locations, the skydDataId in
-        // TargetedMSRun has to be updated in the folder copy on Panorama. Without the update the copy pipeline job fails.
+        // TargetedMSRun has to be updated after the folder is copied to Panorama Public. Without the update the
+        // copy pipeline job fails.
         // Example:
         // -------------------------
         // BEFORE MOVE:
@@ -81,8 +82,8 @@ public class PanoramaPublicMoveSkyDocTest extends PanoramaPublicBaseTest
         //   - SmallMolLibA.skyd
         // This results in:
         // Two ExpData rows created for the .skyd file in folder copy on Panorama Public.
-        // 1. export/SkylineFiles/SmallMolLibA/SmallMolLibA.skyd
-        // 2. SmallMolLibA/SmallMolLibA.skyd
+        // 1. @files/export/.../Run<id>/SkylineFiles/SmallMolLibA/SmallMolLibA.skyd
+        // 2. @files/SmallMolLibA/SmallMolLibA.skyd
         // #1 is set as the skydDataId in TargetedMSRuns, but it is not linked to the ExpRun (runId is null)
         // #2 is linked to the ExpRun.  This is the ExpData that skydDataId in TargetedMSRun *should* refer to.
         // This situation causes two problems
@@ -90,6 +91,7 @@ public class PanoramaPublicMoveSkyDocTest extends PanoramaPublicBaseTest
         //    to view since the .skyd file that skydDataId points to no longer exists.
         // 2. ExpData cleanup in CopyExperimentFinalTask fails due to FK violation - cannot delete ExpData #1 since
         //    skydDataId in TargetedMSRun points to it.
+        // PanoramaPublicFileImporter.updateSkydDataId() fixes the skydDataId, if required.
         log("Moving " + SKY_FILE_3 + " TO TargetSubDir in the Files browser");
         // Move the .sky.zip file to a subdirectory
         moveSkyZipToSubDir(SKY_FILE_3, "SkylineFiles");
