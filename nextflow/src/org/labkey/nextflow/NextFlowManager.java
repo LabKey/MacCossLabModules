@@ -3,8 +3,16 @@ package org.labkey.nextflow;
 import org.apache.commons.lang3.StringUtils;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.CoreSchema;
+import org.labkey.api.data.DbSchema;
+import org.labkey.api.data.DbSchemaType;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.data.SQLFragment;
+import org.labkey.api.data.SqlExecutor;
+import org.labkey.api.data.SqlSelector;
+import org.labkey.api.pipeline.PipelineService;
+import org.labkey.api.pipeline.PipelineStatusFile;
+import org.labkey.nextflow.pipeline.NextFlowPipelineJob;
 import org.springframework.validation.BindException;
 
 import java.nio.file.Files;
@@ -26,6 +34,8 @@ public class NextFlowManager
     private static final String NEXTFLOW_CREDENTIAL = "credential";
     private static final String NEXTFLOW_S3_BUCKET_PATH = "s3BucketPath";
     private static final String NEXTFLOW_API_KEY = "apiKey";
+
+    public static final String SCHEMA_NAME = "nextflow";
 
     private static final String IS_NEXTFLOW_ENABLED = "enabled";
 
@@ -157,5 +167,43 @@ public class NextFlowManager
             map.put(IS_NEXTFLOW_ENABLED, enabled.toString());
             map.save();
         }
+    }
+
+    private DbSchema getDbSchema()
+    {
+        return DbSchema.get(SCHEMA_NAME, DbSchemaType.Module);
+    }
+
+    private Integer getJobId(NextFlowPipelineJob job)
+    {
+        PipelineStatusFile file = PipelineService.get().getStatusFile(job.getJobGUID());
+        return file == null ? null : file.getRowId();
+    }
+
+    public int getInvocationCount(NextFlowPipelineJob job)
+    {
+        return getInvocationCount(getJobId(job));
+    }
+
+    private int getInvocationCount(int jobId)
+    {
+        Integer result = new SqlSelector(getDbSchema(), new SQLFragment("SELECT InvocationCount FROM nextflow.Job WHERE JobId = ?", jobId)).getObject(Integer.class);
+        return result != null ? result.intValue() : 0;
+    }
+
+    public int incrementInvocationCount(NextFlowPipelineJob job)
+    {
+        int jobId = getJobId(job);
+        int current = getInvocationCount(jobId);
+        current++;
+        if (current == 1)
+        {
+            new SqlExecutor(getDbSchema()).execute(new SQLFragment("INSERT INTO nextflow.Job (JobId, InvocationCount) VALUES (?, ?)", jobId, current));
+        }
+        else
+        {
+            new SqlExecutor(getDbSchema()).execute(new SQLFragment("UPDATE nextflow.Job SET InvocationCount = ? WHERE JobId = ?", current, jobId));
+        }
+        return current;
     }
 }

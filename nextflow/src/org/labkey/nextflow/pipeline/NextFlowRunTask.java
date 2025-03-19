@@ -2,9 +2,6 @@ package org.labkey.nextflow.pipeline;
 
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
-import org.labkey.api.data.ContainerManager;
-import org.labkey.api.data.DbSequence;
-import org.labkey.api.data.DbSequenceManager;
 import org.labkey.api.exp.XarFormatException;
 import org.labkey.api.pipeline.AbstractTaskFactory;
 import org.labkey.api.pipeline.AbstractTaskFactorySettings;
@@ -40,8 +37,6 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
 
     public static final String ACTION_NAME = "NextFlow";
 
-    private static final DbSequence INVOCATION_SEQUENCE = DbSequenceManager.get(ContainerManager.getRoot(), NextFlowRunTask.class.getName());
-
     public NextFlowRunTask(Factory factory, PipelineJob job)
     {
         super(factory, job);
@@ -54,9 +49,9 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
 
         // NextFlow requires a unique job name for every execution. Increment a counter to append as a suffix to
         // ensure uniqueness
-        long invocationCount = INVOCATION_SEQUENCE.next();
-        INVOCATION_SEQUENCE.sync();
-        NextFlowPipelineJob.LOG.info("Starting to execute NextFlow: {}", getJob().getJsonJobInfo(invocationCount));
+        NextFlowManager.get().incrementInvocationCount(getJob());
+
+        NextFlowPipelineJob.LOG.info("Starting to execute NextFlow: {}", getJob().getJsonJobInfo(true));
 
         SecurityManager.TransformSession session = null;
         boolean success = false;
@@ -83,10 +78,10 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
             File dir = getJob().getLogFile().getParentFile();
             getJob().runSubProcess(secretsPB, dir);
 
-            ProcessBuilder executionPB = new ProcessBuilder(getArgs(invocationCount));
+            ProcessBuilder executionPB = new ProcessBuilder(getArgs());
             getJob().runSubProcess(executionPB, dir);
             log.info("Job Finished");
-            NextFlowPipelineJob.LOG.info("Finished executing NextFlow: {}", getJob().getJsonJobInfo(invocationCount));
+            NextFlowPipelineJob.LOG.info("Finished executing NextFlow: {}", getJob().getJsonJobInfo(true));
 
             RecordedAction action = new RecordedAction(ACTION_NAME);
             for (Path inputFile : getJob().getInputFilePaths())
@@ -110,7 +105,7 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
             }
             if (!success)
             {
-                NextFlowPipelineJob.LOG.info("Failed executing NextFlow: {}", getJob().getJsonJobInfo(invocationCount));
+                NextFlowPipelineJob.LOG.info("Failed executing NextFlow: {}", getJob().getJsonJobInfo(true));
             }
         }
     }
@@ -176,7 +171,7 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
     }
 
 
-    private @NotNull List<String> getArgs(long invocationCount) throws PipelineJobException
+    private @NotNull List<String> getArgs() throws PipelineJobException
     {
         NextFlowConfiguration config = NextFlowManager.get().getConfiguration();
         Path configFile = getJob().getConfig();
@@ -201,7 +196,7 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
         args.add("-c");
         args.add(configFile.toAbsolutePath().toString());
         args.add("-name");
-        args.add(getJob().getNextFlowRunName(invocationCount));
+        args.add(getJob().getNextFlowRunName(true));
         return args;
     }
 
