@@ -87,14 +87,16 @@ public class PanoramaPublicMoveSkyDocTest extends PanoramaPublicBaseTest
         // #1 is set as the skydDataId in TargetedMSRuns, but it is not linked to the ExpRun (runId is null)
         // #2 is linked to the ExpRun.  This is the ExpData that skydDataId in TargetedMSRun *should* refer to.
         // This situation causes two problems
-        // 1. Since the "export" directory gets deleted after folder import, chromatogram data in no longer available
-        //    to view since the .skyd file that skydDataId points to no longer exists.
-        // 2. ExpData cleanup in CopyExperimentFinalTask fails due to FK violation - cannot delete ExpData #1 since
+        // 1. ExpData cleanup in CopyExperimentFinalTask fails due to FK violation - cannot delete ExpData #1 since
         //    skydDataId in TargetedMSRun points to it.
+        // 2. Even if we were not cleaning up ExpData referring to files in the 'export' directory, chromatogram data
+        //    would become unavailable since the "export" directory gets deleted after folder import.
+        //
         // PanoramaPublicFileImporter.updateSkydDataId() fixes the skydDataId, if required.
-        log("Moving " + SKY_FILE_3 + " TO TargetSubDir in the Files browser");
+        String subDir = "SkylineFiles";
+        log("Moving " + SKY_FILE_3 + " to sub directory " + subDir + " in the Files browser");
         // Move the .sky.zip file to a subdirectory
-        moveSkyZipToSubDir(SKY_FILE_3, "SkylineFiles");
+        moveSkyZipToSubDir(SKY_FILE_3, subDir);
 
         log("Creating and submitting an experiment");
         String experimentTitle = "Experiment to test moving Skyline documents from other folders";
