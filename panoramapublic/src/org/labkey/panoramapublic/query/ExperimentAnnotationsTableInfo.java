@@ -164,7 +164,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                                     .appendTo(out);
                             pageConfig.addHandler(spanId, "click", "viewExperimentDetails(this,"
                                     + PageFlowUtil.jsString(container.getPath())
-                                    + ", '" + id + "', "
+                                    + ", " + id + ", "
                                     + PageFlowUtil.jsString(detailsPage) + ")");
                         }
                         super.renderGridCellContents(ctx, out);
