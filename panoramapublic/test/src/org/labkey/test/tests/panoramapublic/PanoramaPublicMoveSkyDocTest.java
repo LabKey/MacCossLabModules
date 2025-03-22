@@ -58,8 +58,45 @@ public class PanoramaPublicMoveSkyDocTest extends PanoramaPublicBaseTest
         moveDocument(SKY_FILE_2, targetFolder, 2);
 
         goToProjectFolder(projectName, targetFolder);
-        log("Importing " + SKY_FILE_3 + " in folder " + skyDocSourceFolder);
+        log("Importing " + SKY_FILE_3 + " in folder " + targetFolder);
         importData(SKY_FILE_3, 3);
+
+        // Test moving the sky.zip to a subdirectory in the file root, while the .skyd remains in the original location.
+        //
+        // If the sky.zip file and the .skyd file are not in their typical relative locations, the skydDataId in
+        // TargetedMSRun has to be updated after the folder is copied to Panorama Public. Without the update the
+        // copy pipeline job fails.
+        // Example:
+        // -------------------------
+        // BEFORE MOVE:
+        // SmallMolLibA.sky.zip
+        // SmallMolLibA
+        //   - SmallMolLibA.sky
+        //   - SmallMolLibA.skyd
+        // -------------------------
+        // AFTER MOVE:
+        // - SkylineFiles
+        //   - SmallMolLibA.sky.zip (new location after move)
+        // SmallMolLibA
+        //   - SmallMolLibA.sky
+        //   - SmallMolLibA.skyd
+        // This results in:
+        // Two ExpData rows created for the .skyd file in folder copy on Panorama Public.
+        // 1. @files/export/.../Run<id>/SkylineFiles/SmallMolLibA/SmallMolLibA.skyd
+        // 2. @files/SmallMolLibA/SmallMolLibA.skyd
+        // #1 is set as the skydDataId in TargetedMSRuns, but it is not linked to the ExpRun (runId is null)
+        // #2 is linked to the ExpRun.  This is the ExpData that skydDataId in TargetedMSRun *should* refer to.
+        // This situation causes two problems
+        // 1. ExpData cleanup in CopyExperimentFinalTask fails due to FK violation - cannot delete ExpData #1 since
+        //    skydDataId in TargetedMSRun points to it.
+        // 2. Even if we were not cleaning up ExpData referring to files in the 'export' directory, chromatogram data
+        //    would become unavailable since the "export" directory gets deleted after folder import.
+        //
+        // PanoramaPublicFileImporter.updateSkydDataId() fixes the skydDataId, if required.
+        String subDir = "SkylineFiles";
+        log("Moving " + SKY_FILE_3 + " to sub directory " + subDir + " in the Files browser");
+        // Move the .sky.zip file to a subdirectory
+        moveSkyZipToSubDir(SKY_FILE_3, subDir);
 
         log("Creating and submitting an experiment");
         String experimentTitle = "Experiment to test moving Skyline documents from other folders";
@@ -75,6 +112,15 @@ public class PanoramaPublicMoveSkyDocTest extends PanoramaPublicBaseTest
         verifyRunFilePathRoot(SKY_FILE_1, PANORAMA_PUBLIC, panoramaCopyFolder);
         verifyRunFilePathRoot(SKY_FILE_2, PANORAMA_PUBLIC, panoramaCopyFolder);
         verifyRunFilePathRoot(SKY_FILE_3, PANORAMA_PUBLIC, panoramaCopyFolder);
+
+        // Verify that we can view chromatograms for the Skyline document that was moved to a subdirectory.
+        goToDashboard();
+        clickAndWait(Locator.linkContainingText(SKY_FILE_3));
+        clickAndWait(Locator.linkContainingText("2 replicates"));
+        clickAndWait(Locator.linkContainingText("FU2_2017_0915_RJ_05_1ab_30").index(0));
+        assertTextPresent("Sample File Summary");
+        assertTextPresent("Total Ion Chromatogram");
+        assertTextNotPresent("Unable to load chromatogram");
     }
 
     private void moveDocument(String skylineDocName, String targetFolder, int jobCount)
@@ -95,6 +141,18 @@ public class PanoramaPublicMoveSkyDocTest extends PanoramaPublicBaseTest
 
         verifyRunFilePathRoot(skylineDocName, getProjectName(), targetFolder);
     }
+
+    private void moveSkyZipToSubDir(String documentName, String subDir)
+    {
+        portalHelper.goToModule("FileContent");
+        waitForText(documentName);
+        if (!_fileBrowserHelper.fileIsPresent(subDir))
+        {
+            _fileBrowserHelper.createFolder(subDir);
+        }
+        _fileBrowserHelper.moveFile(documentName, subDir);
+    }
+
 
     private void verifyRunFilePathRoot(String skylineDocName, String projectName, String targetFolder)
     {
