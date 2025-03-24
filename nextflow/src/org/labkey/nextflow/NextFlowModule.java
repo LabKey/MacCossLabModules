@@ -1,6 +1,7 @@
 package org.labkey.nextflow;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.module.ModuleContext;
 import org.labkey.api.module.SpringModule;
@@ -40,13 +41,18 @@ public class NextFlowModule extends SpringModule
     @Override
     public boolean hasScripts()
     {
-        return false;
+        return true;
+    }
+
+    @Override
+    public @Nullable Double getSchemaVersion()
+    {
+        return 25.000;
     }
 
     @Override
     public @NotNull Collection<String> getSchemaNames()
     {
-        return List.of();
+        return List.of(NextFlowManager.SCHEMA_NAME);
     }
-
 }

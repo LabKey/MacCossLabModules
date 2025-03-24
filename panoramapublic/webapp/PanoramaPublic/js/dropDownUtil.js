@@ -66,12 +66,13 @@ viewExperimentDetails = function (obj, experimentContainer, id, detailsPageURL)
         var results;
         if(object.rows[rowNum][type] != null)
         {
-            if(object.rows[rowNum][type].length > 500)
+            let description = object.rows[rowNum][type];
+            if(description.length > 500)
             {
-                results = object.rows[rowNum][type].substring(0,500)+"<a href='"+detailsPageURL+"'>...more.</a>";
+                results =  LABKEY.Utils.encodeHtml(description.substring(0,500)) +"<a href=\""+ LABKEY.Utils.encodeHtml(detailsPageURL) +"\">...more.</a>";
             }
             else {
-                results =object.rows[rowNum][type];
+                results =  LABKEY.Utils.encodeHtml(description);
             }
         }
         else {results = null;}

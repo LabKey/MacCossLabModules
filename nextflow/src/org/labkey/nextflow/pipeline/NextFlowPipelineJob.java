@@ -20,6 +20,7 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.ViewBackgroundInfo;
+import org.labkey.nextflow.NextFlowManager;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -59,25 +60,24 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
         super(new NextFlowProtocol(), NextFlowPipelineProvider.NAME, info, root, config.getFileName().toString(), config, inputFiles, false, false);
         this.config = config;
         setLogFile(log);
-        LOG.info("NextFlow job queued: {}", getJsonJobInfo(null));
     }
 
-    protected JSONObject getJsonJobInfo(Long invocationCount)
+    public JSONObject getJsonJobInfo(boolean includeInvocationCount)
     {
         JSONObject result = new JSONObject();
         result.put("user", getUser().getEmail());
         result.put("container", getContainer().getPath());
         result.put("filePath", getLogFilePath().getParent().toString());
-        result.put("runName", getNextFlowRunName(invocationCount));
+        result.put("runName", getNextFlowRunName(includeInvocationCount));
         result.put("configFile", getConfig().getFileName().toString());
         return result;
     }
 
-    protected String getNextFlowRunName(Long invocationCount)
+    protected String getNextFlowRunName(boolean includeInvocationCount)
     {
         PipelineStatusFile file = PipelineService.get().getStatusFile(getJobGUID());
         String result = file == null ? "Unknown" : ("LabKeyJob" + file.getRowId());
-        result += invocationCount == null ? "" : ("_" + invocationCount);
+        result += includeInvocationCount ? ("_" + NextFlowManager.get().getInvocationCount(this)) : "";
         return result;
     }
 
