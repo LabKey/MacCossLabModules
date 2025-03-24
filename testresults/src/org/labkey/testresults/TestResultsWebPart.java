@@ -1,5 +1,6 @@
 package org.labkey.testresults;
 
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.view.BaseWebPartFactory;
 import org.labkey.api.view.JspView;
@@ -21,7 +22,7 @@ public class TestResultsWebPart extends BaseWebPartFactory
     }
 
     @Override
-    public WebPartView getWebPartView(ViewContext portalCtx, Portal.WebPart webPart) throws WebPartConfigurationException
+    public WebPartView getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart) throws WebPartConfigurationException
     {
         Container c =portalCtx.getContainer();
         TestsDataBean bean = null;

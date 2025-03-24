@@ -73,7 +73,7 @@ public class SkylineToolsStoreModule extends DefaultModule
                             addLegacyNames("Skyline Tools Store");
                         }
                         @Override
-                        public WebPartView getWebPartView(ViewContext portalCtx, Portal.WebPart webPart) throws WebPartConfigurationException
+                        public WebPartView getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart) throws WebPartConfigurationException
                         {
                             return new SkylineToolsStoreWebPart();
                         }
