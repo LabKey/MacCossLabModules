@@ -274,7 +274,7 @@ public class PanoramaPublicSymlinkManager
     private void addFileAuditEvent(Path link, Container container, User user, String comment)
     {
         FileSystemAuditProvider.FileSystemAuditEvent event =  new FileSystemAuditProvider.FileSystemAuditEvent(
-                container != null ? container.getId() : null, comment);
+                container != null ? container : null, comment);
         event.setFile(link.getFileName().toString());
         event.setDirectory(link.getParent().toString());
         AuditLogService.get().addEvent(user, event);

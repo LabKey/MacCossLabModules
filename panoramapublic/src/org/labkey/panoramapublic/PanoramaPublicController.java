@@ -441,8 +441,7 @@ public class PanoramaPublicController extends SpringActionController
                 Portal.saveParts(container, Portal.DEFAULT_PORTAL_PAGE_ID, newWebParts); // this will remove the TARGETED_MS_SETUP
 
                 // Add the permissions group
-                Group group = SecurityManager.createGroup(container, form.getGroupName());
-                writeToAuditLog(group);
+                Group group = SecurityManager.createGroup(container, form.getGroupName(), getUser());
 
                 // Assign project admin role to the group.
                 MutableSecurityPolicy policy = new MutableSecurityPolicy(SecurityPolicyManager.getPolicy(container));
@@ -460,13 +459,6 @@ public class PanoramaPublicController extends SpringActionController
             }
 
             return true;
-        }
-
-        private void writeToAuditLog(Group newGroup)
-        {
-            GroupAuditProvider.GroupAuditEvent event = new GroupAuditProvider.GroupAuditEvent(getContainer().getId(), "A new security group named " + newGroup.getName() + " was created by the " + PanoramaPublicModule.NAME + " module.");
-            event.setGroup(newGroup.getUserId());
-            AuditLogService.get().addEvent(getUser(), event);
         }
 
         @Override
@@ -564,7 +556,7 @@ public class PanoramaPublicController extends SpringActionController
                 JournalManager.delete(journal, getUser());
 
                 // Delete the permissions group created for this journal.
-                SecurityManager.deleteGroup(SecurityManager.getGroup(journal.getLabkeyGroupId()));
+                SecurityManager.deleteGroup(SecurityManager.getGroup(journal.getLabkeyGroupId()), getUser());
 
                 // Delete the project created for this journal.
                 ContainerManager.delete(journal.getProject(), getUser());
