@@ -168,7 +168,10 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                                 ),
                                 HtmlString.NBSP
                             ).appendTo(out);
-                            pageConfig.addHandler(spanId, "click", "viewExperimentDetails(this,'" + container.getPath() + "', '" + id + "','" + detailsPage + "')");
+                            pageConfig.addHandler(spanId, "click", "viewExperimentDetails(this,"
+                                    + PageFlowUtil.jsString(container.getPath())
+                                    + ", " + id + ", "
+                                    + PageFlowUtil.jsString(detailsPage) + ")");
                         }
                         super.renderGridCellContents(ctx, out);
                     }
