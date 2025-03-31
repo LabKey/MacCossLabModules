@@ -340,7 +340,7 @@ public class PanoramaPublicSchema extends UserSchema
                 sql.append(super.getFromSQL("X"));
                 sql.append(" ");
 
-                if (getContainerFilter() != ContainerFilter.EVERYTHING_UNSAFE)
+                if (getContainerFilter() != ContainerFilter.getUnsafeEverythingFilter())
                 {
                     SQLFragment joinToExpAnnotSql = new SQLFragment("INNER JOIN ");
                     joinToExpAnnotSql.append(PanoramaPublicManager.getTableInfoSubmission(), "s");
