@@ -198,7 +198,6 @@ public class NextFlowController extends SpringActionController
             if (getUser().hasSiteAdminPermission())
             {
                 Boolean status = NextFlowManager.get().getEnabledState(getContainer());
-                boolean inheritedStatus = NextFlowManager.get().isEnabled(getContainer().getParent());
 
                 return new HtmlView("Enable or Disable NextFlow",
                         FORM(at(method, "POST"),
@@ -209,7 +208,7 @@ public class NextFlowController extends SpringActionController
                                 DIV(INPUT(at(type, "radio", name, "enabled", value, "", (status == null ? checked : null), null)),
                                         getContainer().isRoot() ?
                                                 "Unset" :
-                                                "Inherited from " + getContainer().getParent().getPath() + " (currently " + (inheritedStatus ? "enabled" : "disabled") + ")"),
+                                                "Inherited from " + getContainer().getParent().getPath() + " (currently " + (NextFlowManager.get().isEnabled(getContainer().getParent()) ? "enabled" : "disabled") + ")"),
                                 new Button.ButtonBuilder("Save").submit(true).build(), " ",
                                 new Button.ButtonBuilder("Cancel").href(getContainer().getStartURL(getUser())).build()));
             }
