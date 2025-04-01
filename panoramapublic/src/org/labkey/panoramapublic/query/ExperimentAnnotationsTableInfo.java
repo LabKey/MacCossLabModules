@@ -432,7 +432,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
         // Add a FK lookup so that we can access the "Modified" etc. columns on the "Announcement" table.
         announcementCol.setFk(QueryForeignKey.from(getUserSchema(),
-                        ContainerFilter.EVERYTHING_UNSAFE) // Announcements are not in the same container. e.g. on PanoramaWeb they are in "/home/support/panorama public requests"
+                        ContainerFilter.getUnsafeEverythingFilter()) // Announcements are not in the same container. e.g. on PanoramaWeb they are in "/home/support/panorama public requests"
                 .schema("announcement")  // Cannot use CommSchemma.getSchemaName() which returns "comm". This only works if we use "announcement".
                                                     // AnnouncementSchema is not part of the LabKey API.
                 .to("Announcement", // Table name cannot be the plural, "Announcements", returned by CommSchema.getInstance().getTableInfoAnnouncements().getName()

@@ -57,7 +57,7 @@ public class PanoramaPublicTable extends FilteredTable<PanoramaPublicSchema>
         sql.append(super.getFromSQL(TABLE_ALIAS));
         sql.append(" ");
 
-        if (getContainerFilter() != ContainerFilter.EVERYTHING_UNSAFE)
+        if (getContainerFilter() != ContainerFilter.getUnsafeEverythingFilter())
         {
             sql.append(_joinSql.getSQL());
             sql.append(" WHERE ");

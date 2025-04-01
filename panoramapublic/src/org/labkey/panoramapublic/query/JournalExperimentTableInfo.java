@@ -76,7 +76,7 @@ public class JournalExperimentTableInfo extends FilteredTable<PanoramaPublicSche
         sql.append(super.getFromSQL("X"));
         sql.append(" ");
 
-        if (getContainerFilter() != ContainerFilter.EVERYTHING_UNSAFE)
+        if (getContainerFilter() != ContainerFilter.getUnsafeEverythingFilter())
         {
             // Filter on the Container column of the associated ExperimentAnnotations row
             SQLFragment joinToExpAnnotSql = new SQLFragment("INNER JOIN ");
