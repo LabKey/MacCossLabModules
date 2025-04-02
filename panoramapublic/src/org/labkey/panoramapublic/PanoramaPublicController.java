@@ -139,6 +139,8 @@ import org.labkey.api.view.*;
 import org.labkey.api.view.template.ClientDependency;
 import org.labkey.api.wiki.WikiRendererType;
 import org.labkey.api.wiki.WikiRenderingService;
+import org.labkey.panoramapublic.bluesky.BlueskyException;
+import org.labkey.panoramapublic.bluesky.BlueskyService;
 import org.labkey.panoramapublic.catalog.CatalogEntrySettings;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentParent;
 import org.labkey.panoramapublic.chromlib.ChromLibStateManager;
@@ -302,6 +304,7 @@ public class PanoramaPublicController extends SpringActionController
             view.addView(qView);
             view.addView(getPXCredentialsLink());
             view.addView(getDataCiteCredentialsLink());
+            view.addView(getBlueskyCredentialsLink());
             view.addView(getPanoramaPublicCatalogSettingsLink());
             view.addView(getPostSupportMessageLink());
             view.setFrame(WebPartView.FrameType.PORTAL);
@@ -321,6 +324,13 @@ public class PanoramaPublicController extends SpringActionController
             ActionURL url = new ActionURL(ManageDataCiteCredentials.class, getContainer());
             return new HtmlView(DIV(at(style, "margin-top:20px;"),
                     new Link.LinkBuilder("Set DataCite Credentials").href(url).build()));
+        }
+
+        private ModelAndView getBlueskyCredentialsLink()
+        {
+            ActionURL url = new ActionURL(ManageBlueskyCredentials.class, getContainer());
+            return new HtmlView(DIV(at(style, "margin-top:20px;"),
+                    new Link.LinkBuilder("Set Bluesky Credentials").href(url).build()));
         }
 
         private ModelAndView getPanoramaPublicCatalogSettingsLink()
@@ -1201,6 +1211,111 @@ public class PanoramaPublicController extends SpringActionController
         public String getPassword()
         {
             return _password != null ? _password : "";
+        }
+
+        public void setPassword(String password)
+        {
+            _password = password;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class ManageBlueskyCredentials extends FormViewAction<BlueskyCredentialsForm>
+    {
+        @Override
+        public void validateCommand(BlueskyCredentialsForm form, Errors errors)
+        {
+            String user = form.getUserName();
+            String password = form.getPassword();
+
+            if (StringUtils.isBlank(user))
+            {
+                errors.reject(ERROR_MSG, "User name cannot be blank");
+            }
+            if (StringUtils.isBlank(password))
+            {
+                errors.reject(ERROR_MSG, "Password cannot be blank");
+            }
+        }
+
+        @Override
+        public boolean handlePost(BlueskyCredentialsForm form, BindException errors)
+        {
+            try
+            {
+                new BlueskyService().login(form.getUserName(), form.getPassword());
+            }
+            catch (BlueskyException e)
+            {
+                errors.reject(ERROR_MSG, "Bluesky login failed with the provided credentials. " + e.getMessage());
+                return false;
+            }
+            WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.CREDENTIALS, true);
+            map.put(BlueskyService.USER, form.getUserName());
+            map.put(BlueskyService.PASSWORD, form.getPassword());
+            map.save();
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(BlueskyCredentialsForm form)
+        {
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(BlueskyCredentialsForm form)
+        {
+            ActionURL adminUrl = new ActionURL(PanoramaPublicAdminViewAction.class, getContainer());
+            return new HtmlView(
+                    DIV("Bluesky credentials saved!",
+                            BR(),
+                            new Link.LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
+        }
+
+        @Override
+        public ModelAndView getView(BlueskyCredentialsForm form, boolean reshow, BindException errors)
+        {
+            if(!reshow)
+            {
+                WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.CREDENTIALS, false);
+                if(map != null)
+                {
+                    form.setUserName(map.get(BlueskyService.USER));
+                }
+            }
+            JspView view = new JspView<>("/org/labkey/panoramapublic/view/manageBlueskyCredentials.jsp", form, errors);
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            view.setTitle("Bluesky Credentials");
+            return view;
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
+            root.addChild("Set Bluesky Credentials");
+        }
+    }
+
+    public static class BlueskyCredentialsForm
+    {
+        private String _userName;
+        private String _password;
+
+        public String getUserName()
+        {
+            return _userName;
+        }
+
+        public void setUserName(String userName)
+        {
+            _userName = userName;
+        }
+
+        public String getPassword()
+        {
+            return _password;
         }
 
         public void setPassword(String password)
@@ -5213,6 +5328,180 @@ public class PanoramaPublicController extends SpringActionController
     // ------------------------------------------------------------------------
     // END Actions for DataCite DOI assignment
     // ------------------------------------------------------------------------
+
+    // ------------------------------------------------------------------------
+    // BEGIN Actions for posting to Bluesky
+    // ------------------------------------------------------------------------
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class BlueskyAction extends ConfirmAction<ExperimentIdForm>
+    {
+        private ExperimentAnnotations _expAnnot;
+        private BlueskyException _exception;
+        private String _blueSkyPostUrl;
+
+        @Override
+        public void validateCommand(ExperimentIdForm form, Errors errors)
+        {
+            _expAnnot = form.lookupExperiment();
+            if(_expAnnot == null)
+            {
+                errors.reject(ERROR_MSG, "Cannot find experiment with ID " + form.getId());
+                return;
+            }
+            ensureCorrectContainer(getContainer(), _expAnnot.getContainer(), getViewContext());
+            if(!_expAnnot.isJournalCopy())
+            {
+                errors.reject(ERROR_MSG, "Posting to Bluesky is only allowed on experiments in the Panorama Public project");
+                return;
+            }
+
+            if (_expAnnot.getShortUrl() == null)
+            {
+                errors.reject(ERROR_MSG, "Experiment id " + _expAnnot.getId() + " does not have a short URL. It cannot be posted to Bluesky.");
+                return;
+            }
+
+            JournalSubmission js = SubmissionManager.getSubmissionForJournalCopy(_expAnnot);
+            if (js == null)
+            {
+                errors.reject(ERROR_MSG, "Cannot find a submission request for copied experiement Id " + _expAnnot.getId());
+                return;
+            }
+            if (!js.isLatestExperimentCopy(_expAnnot.getId()))
+            {
+                errors.reject(ERROR_MSG, "Experiment id " + _expAnnot.getId() + " is not the last copied submission. "
+                        + getActionName(this.getClass()) + " is only allowed in the last copy of the submitted data");
+            }
+        }
+
+        @Override
+        public boolean handlePost(ExperimentIdForm form, BindException errors)
+        {
+            WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.CREDENTIALS, false);
+            String user = null;
+            String password = null;
+            if(map != null)
+            {
+                user = map.get(BlueskyService.USER);
+                password = map.get(BlueskyService.PASSWORD);
+            }
+            if(StringUtils.isBlank(user))
+            {
+                errors.reject(ERROR_MSG, "Cannot find Bluesky username.");
+            }
+            if(StringUtils.isBlank(password))
+            {
+                errors.reject(ERROR_MSG, "Cannot find Bluesky password.");
+            }
+            if(errors.getErrorCount() > 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                // Post to Bluesky
+                BlueskyService svc = new BlueskyService();
+                svc.login(user, password);
+                _blueSkyPostUrl = svc.createBlueskyPost(_expAnnot);
+
+                if (_blueSkyPostUrl != null)
+                {
+                    WritablePropertyMap propertyMap = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.BLUESKY_LINK, true);
+                    propertyMap.put(_expAnnot.getShortUrl().renderShortURL(), _blueSkyPostUrl);
+                    propertyMap.save();
+                }
+                else
+                {
+                    throw new BlueskyException("The post URL was not included in the response from Bluesky");
+                }
+            }
+            catch (BlueskyException e)
+            {
+                _exception = e;
+                LOG.error(e);
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public @NotNull URLHelper getSuccessURL(ExperimentIdForm form)
+        {
+            return null;
+        }
+
+        @Override
+        public ModelAndView getConfirmView(ExperimentIdForm form, BindException errors)
+        {
+            WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.BLUESKY_LINK, false);
+
+            Renderable announcementDiv = DIV(cl("bluebox").at(style, "padding:25px;"),
+                    DIV(BlueskyService.ANNOUNCEMENT_TEXT),
+                    DIV(at(style, "font-weight:bold;"), _expAnnot.getTitle()),
+                    DIV(new Link.LinkBuilder(_expAnnot.getShortUrl().renderShortURL())
+                            .href(_expAnnot.getShortUrl().renderShortURL())
+                            .clearClasses()
+                            .build())
+            );
+            String blueskyPostUrl = map != null ? map.get(_expAnnot.getShortUrl().renderShortURL()) : null;
+            if (blueskyPostUrl != null)
+            {
+                Link blueskyLink = new Link.LinkBuilder((blueskyPostUrl))
+                        .href(BlueskyService.convertToClickableUrl(blueskyPostUrl))
+                        .clearClasses()
+                        .build();
+                return new HtmlView(
+                        DIV("This data has already been announced on Bluesky at ",
+                                        blueskyLink,
+                                        ". Would you like to post the following message again? ",
+                                BR(),
+                                announcementDiv
+                                ));
+            }
+            else
+            {
+                return new HtmlView(
+                        DIV("The following message will be posted to Bluesky: ",
+                                BR(),
+                                announcementDiv,
+                                BR(),
+                                DIV("Are you sure you want to continue?")));
+            }
+        }
+        @Override
+        public ModelAndView getSuccessView(ExperimentIdForm form)
+        {
+            Link blueskyLink = new Link.LinkBuilder((_blueSkyPostUrl))
+                    .href(BlueskyService.convertToClickableUrl(_blueSkyPostUrl))
+                    .clearClasses()
+                    .build();
+
+            return new HtmlView(
+                    DIV("Posted to Bluesky!",
+                            blueskyLink,
+                            BR(),
+                            DIV(new Link.LinkBuilder("Back to folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
+        }
+
+        @Override
+        public ModelAndView getFailView(ExperimentIdForm form, BindException errors)
+        {
+            if(_exception != null)
+            {
+                return new HtmlView(_exception.getHtmlString());
+            }
+            else
+            {
+                return super.getFailView(form, errors);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // END Actions for posting to Bluesky
+    // ------------------------------------------------------------------------
+
 
     // ------------------------------------------------------------------------
     // BEGIN Experiment annotation actions

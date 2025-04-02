@@ -84,6 +84,7 @@ public class TargetedMSExperimentWebPart extends VBox
                 navTree.addChild("Data Validation", new ActionURL(PanoramaPublicController.ViewPxValidationsAction.class, container).addParameter("id", expAnnotations.getId()));
                 navTree.addChild("DOI", new ActionURL(PanoramaPublicController.DoiOptionsAction.class, container).addParameter("id", expAnnotations.getId()));
                 navTree.addChild("Make Data Public", new ActionURL(PanoramaPublicController.MakePublicAction.class, container).addParameter("id", expAnnotations.getId()));
+                navTree.addChild("Post to Bluesky", new ActionURL(PanoramaPublicController.BlueskyAction.class, container).addParameter("id", expAnnotations.getId()));
 
                 JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(expAnnotations);
                 if (submission != null)
