@@ -1,6 +1,7 @@
 <%@ page import="org.json.JSONObject" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.testresults.TestResultsController.ShowRunAction" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.User" %>
@@ -16,7 +17,6 @@
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.TreeMap" %>
 <%@ page import="java.util.TreeSet" %>
-<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -42,7 +42,7 @@
      * User: Yuval Boss, yuval(at)uw.edu
      * Date: 1/14/2015
      */
-    JspView<?> me = (JspView<?>) HttpView.currentView();
+    JspView<?> me = HttpView.currentView();
     TestsDataBean data = (TestsDataBean)me.getModelBean();
     final String contextPath = AppProps.getInstance().getContextPath();
 

@@ -1,12 +1,15 @@
 <%@ page import="org.apache.commons.lang3.StringUtils" %>
+<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page import="org.labkey.api.security.permissions.DeletePermission" %>
 <%@ page import="org.labkey.api.security.permissions.InsertPermission" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
+<%@ page import="org.labkey.api.util.DOM" %>
 <%@ page import="org.labkey.api.util.HtmlString" %>
 <%@ page import="org.labkey.api.util.SafeToRender" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.skylinetoolsstore.RatingManager" %>
 <%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreController" %>
 <%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreManager" %>
@@ -17,19 +20,14 @@
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="java.util.ArrayList" %>
+<%@ page import="java.util.Arrays" %>
 <%@ page import="java.util.HashMap" %>
 <%@ page import="java.util.Iterator" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
-<%@ page import="java.util.Arrays" %>
-<%@ page import="org.labkey.api.portal.ProjectUrls" %>
-<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.api.util.DOM" %>
 <%@ page import="static org.labkey.api.util.DOM.IMG" %>
 <%@ page import="static org.labkey.api.util.DOM.Attribute.src" %>
 <%@ page import="static org.labkey.api.util.DOM.Attribute.alt" %>
-<%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -46,7 +44,7 @@
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.min.css">
 
 <%
-    JspView<?> me = (JspView<?>) HttpView.currentView();
+    JspView<?> me = HttpView.currentView();
     final SkylineTool tool = (SkylineTool)me.getModelBean();
     final boolean admin = getUser().hasSiteAdminPermission();
 

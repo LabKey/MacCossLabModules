@@ -1,12 +1,8 @@
-<%@ page import="org.labkey.api.data.Container" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.testresults.TestResultsController" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="java.io.File" %>
 <%@ page import="java.nio.file.Files" %>
-<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -23,7 +19,7 @@
      * User: Yuval Boss, yuval(at)uw.edu
      * Date: 10/05/2015
      */
-    JspView<?> me = (JspView<?>) HttpView.currentView();
+    JspView<?> me = HttpView.currentView();
     File[] errorFiles = (File[])me.getModelBean();
     Container c = getContainer();
 %>

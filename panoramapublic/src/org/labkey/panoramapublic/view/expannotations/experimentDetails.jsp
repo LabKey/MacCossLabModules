@@ -16,6 +16,10 @@
  */
 %>
 <%@ page import="org.apache.commons.lang3.StringUtils" %>
+<%@ page import="org.labkey.api.security.permissions.AdminPermission" %>
+<%@ page import="org.labkey.api.settings.AppProps" %>
+<%@ page import="org.labkey.api.util.DOM" %>
+<%@ page import="org.labkey.api.util.HtmlString" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
@@ -24,29 +28,25 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.ExperimentAnnotationsDetails" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.ShowExperimentAnnotationsAction" %>
+<%@ page import="org.labkey.panoramapublic.datacite.DataCiteService" %>
+<%@ page import="org.labkey.panoramapublic.model.CatalogEntry" %>
 <%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
-<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
-<%@ page import="java.text.SimpleDateFormat" %>
-<%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
-<%@ page import="org.labkey.api.security.permissions.AdminPermission" %>
-<%@ page import="org.labkey.panoramapublic.query.DataValidationManager" %>
+<%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page import="org.labkey.panoramapublic.model.validation.DataValidation" %>
-<%@ page import="org.labkey.panoramapublic.model.validation.PxStatus" %>
-<%@ page import="org.labkey.api.util.HtmlString" %>
 <%@ page import="static org.labkey.api.util.DOM.SPAN" %>
 <%@ page import="static org.labkey.api.util.DOM.Attribute.style" %>
-<%@ page import="org.labkey.api.util.DOM" %>
+<%@ page import="org.labkey.panoramapublic.model.validation.PxStatus" %>
 <%@ page import="static org.labkey.api.util.DOM.Attribute.title" %>
 <%@ page import="static org.labkey.api.util.DOM.Attribute.href" %>
-<%@ page import="org.labkey.panoramapublic.query.CatalogEntryManager" %>
-<%@ page import="org.labkey.panoramapublic.view.publish.CatalogEntryWebPart" %>
-<%@ page import="org.labkey.panoramapublic.model.CatalogEntry" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page import="org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService" %>
-<%@ page import="org.labkey.panoramapublic.datacite.DataCiteService" %>
+<%@ page import="org.labkey.panoramapublic.query.CatalogEntryManager" %>
+<%@ page import="org.labkey.panoramapublic.query.DataValidationManager" %>
+<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
+<%@ page import="org.labkey.panoramapublic.view.publish.CatalogEntryWebPart" %>
+<%@ page import="java.text.SimpleDateFormat" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -65,7 +65,7 @@
 %>
 
 <%
-    JspView<ExperimentAnnotationsDetails> me = (JspView<ExperimentAnnotationsDetails>) HttpView.currentView();
+    JspView<ExperimentAnnotationsDetails> me = HttpView.currentView();
     ExperimentAnnotationsDetails annotDetails = me.getModelBean();
     ExperimentAnnotations annot = annotDetails.getExperimentAnnotations();
     ActionURL editUrl = PanoramaPublicController.getEditExperimentDetailsURL(getContainer(), annot.getId(),

@@ -29,12 +29,12 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PublishExperimentForm" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PublishExperimentFormBean" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.ResubmitExperimentAction" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.UpdateSubmissionAction" %>
 <%@ page import="org.labkey.panoramapublic.model.DataLicense" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
 <%@ page import="java.util.Set" %>
-<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.UpdateSubmissionAction" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -48,7 +48,7 @@
 
 <labkey:errors/>
 <%
-    JspView<PublishExperimentFormBean> me = (JspView<PublishExperimentFormBean>) HttpView.currentView();
+    JspView<PublishExperimentFormBean> me = HttpView.currentView();
     PublishExperimentFormBean bean = me.getModelBean();
     PublishExperimentForm form = bean.getForm();
 

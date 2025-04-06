@@ -11,7 +11,7 @@
      * User: Yuval Boss, yuval(at)uw.edu
      * Date: 1/14/2015
      */
-    JspView<?> me = (JspView<?>) HttpView.currentView();
+    JspView<?> me = HttpView.currentView();
     LongTermBean data = (LongTermBean)me.getModelBean();
     final String contextPath = AppProps.getInstance().getContextPath();
     String viewType = data.getViewType();

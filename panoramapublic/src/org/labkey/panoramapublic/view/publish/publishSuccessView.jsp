@@ -1,4 +1,7 @@
+<%@ page import="org.labkey.api.data.ContainerManager" %>
 <%@ page import="org.labkey.api.portal.ProjectUrls" %>
+<%@ page import="org.labkey.api.settings.AppProps" %>
+<%@ page import="org.labkey.api.settings.LookAndFeelProperties" %>
 <%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
@@ -6,9 +9,6 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.query.CatalogEntryManager" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.api.settings.LookAndFeelProperties" %>
-<%@ page import="org.labkey.api.data.ContainerManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -23,7 +23,7 @@
 %>
 
 <%
-    JspView<PanoramaPublicController.PublishSuccessViewBean> me = (JspView<PanoramaPublicController.PublishSuccessViewBean>) HttpView.currentView();
+    JspView<PanoramaPublicController.PublishSuccessViewBean> me = HttpView.currentView();
     var bean = me.getModelBean();
     ExperimentAnnotations copiedExperiment = bean.getCopiedExperiment();
     boolean canAddCatalogEntry = CatalogEntryManager.getCatalogEntrySettings().isEnabled() && CatalogEntryManager.getEntryForExperiment(copiedExperiment) == null;

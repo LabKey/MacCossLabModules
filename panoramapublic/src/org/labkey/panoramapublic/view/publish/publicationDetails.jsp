@@ -1,9 +1,9 @@
+<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
-<%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 
@@ -17,7 +17,7 @@
 
 <labkey:errors/>
 <%
-    JspView<PanoramaPublicController.PublicationDetailsBean> me = (JspView<PanoramaPublicController.PublicationDetailsBean>) HttpView.currentView();
+    JspView<PanoramaPublicController.PublicationDetailsBean> me = HttpView.currentView();
     var bean = me.getModelBean();
     var form = bean.getForm();
 %>

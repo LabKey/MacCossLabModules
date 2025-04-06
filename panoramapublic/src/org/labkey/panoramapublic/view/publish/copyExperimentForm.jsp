@@ -30,9 +30,9 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.GetPxActionsAction" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
-<%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
-<%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
+<%@ page import="org.labkey.panoramapublic.model.Submission" %>
+<%@ page import="org.labkey.panoramapublic.query.ExperimentAnnotationsManager" %>
 <%@ page import="static org.labkey.panoramapublic.PanoramaPublicController.*" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
@@ -47,7 +47,7 @@
 %>
 
 <%
-    JspView<CopyExperimentBean> me = (JspView<CopyExperimentBean>) HttpView.currentView();
+    JspView<CopyExperimentBean> me = HttpView.currentView();
     var bean = me.getModelBean();
     CopyExperimentForm form = bean.getForm();
     ExperimentAnnotations expAnnot = form.lookupExperiment();

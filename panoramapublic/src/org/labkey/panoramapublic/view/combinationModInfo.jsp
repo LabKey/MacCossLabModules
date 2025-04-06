@@ -1,11 +1,11 @@
+<%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
-<%@ page import="org.labkey.panoramapublic.proteomexchange.UnimodModification" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.proteomexchange.ChemElement" %>
 <%@ page import="org.labkey.panoramapublic.proteomexchange.Formula" %>
+<%@ page import="org.labkey.panoramapublic.proteomexchange.UnimodModification" %>
 <%@ page import="java.util.Map" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
@@ -18,7 +18,7 @@
     }
 %>
 <%
-    JspView<PanoramaPublicController.CombinationModificationBean> view = (JspView<PanoramaPublicController.CombinationModificationBean>) HttpView.currentView();
+    JspView<PanoramaPublicController.CombinationModificationBean> view = HttpView.currentView();
     var bean = view.getModelBean();
     var form = bean.getForm();
     var modification = bean.getModification();

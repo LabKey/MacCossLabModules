@@ -22,7 +22,7 @@
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
-    JspView<ProteinSearchForm> me = (JspView<ProteinSearchForm>) HttpView.currentView();
+    JspView<ProteinSearchForm> me = HttpView.currentView();
     ProteinSearchForm bean = me.getModelBean();
 %>
 <labkey:form action="<%=ProteinService.get().getProteinSearchUrl(getContainer())%>">

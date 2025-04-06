@@ -16,7 +16,7 @@
     }
 %>
 <%
-    JspView<PanoramaPublicController.SpecLibInfoBean> view = (JspView<PanoramaPublicController.SpecLibInfoBean>) HttpView.currentView();
+    JspView<PanoramaPublicController.SpecLibInfoBean> view = HttpView.currentView();
     var bean = view.getModelBean();
     var form = bean.getForm();
     var library = bean.getLibrary();

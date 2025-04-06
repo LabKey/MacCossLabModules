@@ -2,6 +2,7 @@
 <%@ page import="org.json.JSONObject" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.RunProblems" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
@@ -17,7 +18,6 @@
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.TreeMap" %>
 <%@ page import="java.util.stream.Collectors" %>
-<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -39,7 +39,7 @@
       User: Yuval Boss, yuval(at)uw.edu
       Date: 10/05/2015
      */
-    JspView<?> me = (JspView<?>) HttpView.currentView();
+    JspView<?> me = HttpView.currentView();
     TestsDataBean data = (TestsDataBean)me.getModelBean();
     final String contextPath = AppProps.getInstance().getContextPath();
     String failedTest = getViewContext().getRequest().getParameter("failedTest");
