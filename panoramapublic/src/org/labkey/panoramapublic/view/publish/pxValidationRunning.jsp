@@ -3,8 +3,10 @@
 <%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
+<%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PxValidationStatusBean" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%!
@@ -16,7 +18,7 @@
 %>
 <labkey:errors/>
 <%
-    var view = HttpView.currentView();
+    JspView<PxValidationStatusBean> view = HttpView.currentView();
     var bean = view.getModelBean();
     int jobId = bean.getDataValidation().getJobId();
     var jobStatus = bean.getPipelineJobStatus();
