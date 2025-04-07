@@ -1,6 +1,8 @@
 <%@ page import="org.json.JSONObject" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
+<%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PxValidationStatusBean" %>
 <%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.model.validation.Status" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
@@ -17,7 +19,7 @@
 <labkey:errors/>
 
 <%
-    var view = HttpView.currentView();
+    JspView<PxValidationStatusBean> view = HttpView.currentView();
     var bean = view.getModelBean();
     ExperimentAnnotations experimentAnnotations = bean.getExpAnnotations();
     int experimentAnnotationsId = experimentAnnotations.getId();
