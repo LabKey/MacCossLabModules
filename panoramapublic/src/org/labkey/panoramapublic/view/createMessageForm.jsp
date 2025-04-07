@@ -16,9 +16,10 @@
      */
 %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
-<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
-<%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
+<%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PanoramaPublicMessageForm" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicNotification" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
@@ -43,7 +44,7 @@
     }
 </script>
 <%
-    JspView<PanoramaPublicController.PanoramaPublicMessageForm> view = (JspView<PanoramaPublicController.PanoramaPublicMessageForm>) HttpView.currentView();
+    JspView<PanoramaPublicMessageForm> view = HttpView.currentView();
     var form = view.getModelBean();
 %>
 

@@ -1,16 +1,16 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.testresults.model.RunDetail" %>
 <%@ page import="org.labkey.testresults.model.TestFailDetail" %>
-<%@ page import="org.labkey.testresults.model.TestLeakDetail" %>
 <%@ page import="org.labkey.testresults.model.TestHandleLeakDetail" %>
+<%@ page import="org.labkey.testresults.model.TestLeakDetail" %>
 <%@ page import="org.labkey.testresults.model.TestMemoryLeakDetail" %>
 <%@ page import="org.labkey.testresults.model.TestPassDetail" %>
 <%@ page import="org.labkey.testresults.view.TestsDataBean" %>
 <%@ page import="java.text.DateFormat" %>
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@ page import="java.util.Arrays" %>
-<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -30,7 +30,7 @@
       User: Yuval Boss, yuval(at)uw.edu
       Date: 1/14/2015
      */
-    JspView<?> me = (JspView<?>) HttpView.currentView();
+    JspView<?> me = HttpView.currentView();
     TestsDataBean data = (TestsDataBean)me.getModelBean();
     Container c = getContainer();
     final String contextPath = AppProps.getInstance().getContextPath();

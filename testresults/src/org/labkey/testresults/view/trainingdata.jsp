@@ -1,18 +1,13 @@
-<%@ page import="org.labkey.api.data.Container" %>
-<%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.testresults.view.TestsDataBean" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.testresults.model.User" %>
-<%@ page import="org.labkey.testresults.model.RunDetail" %>
-<%@ page import="org.labkey.testresults.TestResultsController" %>
-<%@ page import="org.labkey.api.view.ActionURL" %>
-<%@ page import="java.util.ArrayList" %>
-<%@ page import="java.util.List" %>
+<%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.testresults.SendTestResultsEmail" %>
 <%@ page import="org.labkey.testresults.model.BackgroundColor" %>
-<%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.api.util.PageFlowUtil" %>
+<%@ page import="org.labkey.testresults.model.RunDetail" %>
+<%@ page import="org.labkey.testresults.model.User" %>
+<%@ page import="org.labkey.testresults.view.TestsDataBean" %>
+<%@ page import="java.util.ArrayList" %>
+<%@ page import="java.util.List" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -31,7 +26,7 @@
      * User: Yuval Boss, yuval(at)uw.edu
      * Date: 1/14/2015
      */
-    JspView<?> me = (JspView<?>) HttpView.currentView();
+    JspView<?> me = HttpView.currentView();
     TestsDataBean data = (TestsDataBean)me.getModelBean();
     User[] users = data.getUsers();
     RunDetail[] runs = data.getRuns();

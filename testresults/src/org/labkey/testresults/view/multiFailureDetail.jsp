@@ -22,7 +22,7 @@
      * User: Yuval Boss, yuval(at)uw.edu
      * Date: 10/05/2015
      */
-    JspView<?> me = (JspView<?>) HttpView.currentView();
+    JspView<?> me = HttpView.currentView();
     TestsDataBean data = (TestsDataBean)me.getModelBean();
     final String contextPath = AppProps.getInstance().getContextPath();
     String viewType = data.getViewType();

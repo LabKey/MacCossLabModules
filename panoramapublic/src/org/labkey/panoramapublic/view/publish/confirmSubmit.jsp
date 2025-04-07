@@ -39,7 +39,7 @@
 
 <labkey:errors/>
 <%
-    JspView<PanoramaPublicController.PanoramaPublicRequest> me = (JspView<PanoramaPublicController.PanoramaPublicRequest>) HttpView.currentView();
+    JspView<PanoramaPublicController.PanoramaPublicRequest> me = HttpView.currentView();
     PanoramaPublicController.PanoramaPublicRequest bean = me.getModelBean();
     PanoramaPublicController.PublishExperimentForm form = bean.getForm();
 

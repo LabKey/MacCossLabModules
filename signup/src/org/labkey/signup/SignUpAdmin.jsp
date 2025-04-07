@@ -31,7 +31,7 @@
 %>
 
 <%
-    JspView<User> me = (JspView<User>) HttpView.currentView();
+    JspView<User> me = HttpView.currentView();
     User data = me.getModelBean();
     List<Container> list = ContainerManager.getAllChildren(ContainerManager.getRoot(),data);
     Map<String, Object> m = new HashMap<>(); // Map of containers to available security groups in the container.

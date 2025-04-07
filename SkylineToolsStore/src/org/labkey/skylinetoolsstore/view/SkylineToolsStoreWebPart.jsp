@@ -34,7 +34,7 @@
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.min.css">
 
 <%
-    JspView<?> me = (JspView<?>)HttpView.currentView();
+    JspView<?> me = HttpView.currentView();
     List<SkylineTool> tools = (List<SkylineTool>)me.getModelBean();
 
     final boolean admin = getUser().hasSiteAdminPermission();

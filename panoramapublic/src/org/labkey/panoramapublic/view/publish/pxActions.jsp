@@ -39,7 +39,7 @@
 %>
 
 <%
-    JspView<PanoramaPublicController.PxActionsForm> me = (JspView<PanoramaPublicController.PxActionsForm>) HttpView.currentView();
+    JspView<PanoramaPublicController.PxActionsForm> me = HttpView.currentView();
     PanoramaPublicController.PxActionsForm bean = me.getModelBean();
     ExperimentAnnotations expAnnot = bean.lookupExperiment();
 %>

@@ -19,8 +19,8 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
+<%@ page import="org.labkey.panoramapublic.model.ExperimentAnnotations" %>
 <%@ page import="org.labkey.panoramapublic.query.DataValidationManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
@@ -34,7 +34,7 @@
 
 <labkey:errors/>
 <%
-    JspView<PanoramaPublicController.MissingMetadataBean> me = (JspView<PanoramaPublicController.MissingMetadataBean>) HttpView.currentView();
+    JspView<PanoramaPublicController.MissingMetadataBean> me = HttpView.currentView();
     PanoramaPublicController.MissingMetadataBean bean = me.getModelBean();
     DataValidationManager.MissingMetadata missingMetadata = bean.getMissingMetadata();
 

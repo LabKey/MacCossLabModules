@@ -19,6 +19,7 @@
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.lincs.LincsController" %>
+<%@ page import="org.labkey.lincs.LincsController.CustomGCTBean" %>
 <%@ page import="java.util.List" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
@@ -32,8 +33,8 @@
     }
 %>
 <%
-    JspView<LincsController.CustomGCTBean> jspView = (JspView<LincsController.CustomGCTBean>) HttpView.currentView();
-    LincsController.CustomGCTBean bean = jspView.getModelBean();
+    JspView<CustomGCTBean> jspView = HttpView.currentView();
+    CustomGCTBean bean = jspView.getModelBean();
     LincsController.CustomGCTForm form = bean.getForm();
     List<LincsController.SelectedAnnotation> annotations = bean.getAnnotations();
 %>

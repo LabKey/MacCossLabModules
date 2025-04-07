@@ -1,16 +1,15 @@
-<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
+<%@ page import="org.labkey.api.files.FileContentService" %>
+<%@ page import="org.labkey.api.settings.AppProps" %>
+<%@ page import="org.labkey.api.targetedms.TargetedMSService" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.api.util.PageFlowUtil" %>
-<%@ page import="org.labkey.api.settings.AppProps" %>
-<%@ page import="org.labkey.api.files.FileContentService" %>
-<%@ page import="org.labkey.api.targetedms.TargetedMSService" %>
 <%@ page import="org.labkey.api.webdav.WebdavService" %>
+<%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
 <%
-    JspView<JournalManager.PublicDataUser> me = (JspView<JournalManager.PublicDataUser>) HttpView.currentView();
+    JspView<JournalManager.PublicDataUser> me = HttpView.currentView();
     var publicDataUser = me.getModelBean();
     // NOTE: This is a link to the data download documentation page on PanoramaWeb.  It will not work on any other server.
     var downloadDataDocHref = "/home/wiki-page.view?name=download_public_data";

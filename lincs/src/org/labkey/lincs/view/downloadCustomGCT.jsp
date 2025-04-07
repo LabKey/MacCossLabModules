@@ -38,7 +38,7 @@
     }
 %>
 <%
-    JspView<CustomGCTForm> jspView = (JspView<CustomGCTForm>) HttpView.currentView();
+    JspView<CustomGCTForm> jspView = HttpView.currentView();
     CustomGCTForm form = jspView.getModelBean();
     List<SelectedAnnotation> annotations = form.getSelectedAnnotationValues();
     GctBean gctBean = form.getCustomGctBean();

@@ -16,13 +16,13 @@
  */
 %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
-<%@ page import="org.labkey.api.protein.search.PeptideSearchForm" %>
 <%@ page import="org.labkey.api.protein.ProteinService" %>
+<%@ page import="org.labkey.api.protein.search.PeptideSearchForm" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
-    JspView<PeptideSearchForm> me = (JspView<PeptideSearchForm>) HttpView.currentView();
+    JspView<PeptideSearchForm> me = HttpView.currentView();
     PeptideSearchForm model = me.getModelBean();
 %>
 
