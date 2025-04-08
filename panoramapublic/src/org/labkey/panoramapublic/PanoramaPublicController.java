@@ -246,6 +246,7 @@ import static org.labkey.api.util.DOM.Attribute.style;
 import static org.labkey.api.util.DOM.Attribute.type;
 import static org.labkey.api.util.DOM.Attribute.valign;
 import static org.labkey.api.util.DOM.Attribute.value;
+import static org.labkey.api.util.DOM.LK.CHECKBOX;
 import static org.labkey.api.util.DOM.LK.ERRORS;
 import static org.labkey.api.util.DOM.LK.FORM;
 import static org.labkey.panoramapublic.proteomexchange.NcbiUtils.PUBMED_ID;
@@ -1225,16 +1226,21 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void validateCommand(BlueskyCredentialsForm form, Errors errors)
         {
-            String user = form.getUserName();
-            String password = form.getPassword();
-
-            if (StringUtils.isBlank(user))
+            if (StringUtils.isBlank(form.getUserName()))
             {
                 errors.reject(ERROR_MSG, "User name cannot be blank");
             }
-            if (StringUtils.isBlank(password))
+            if (StringUtils.isBlank(form.getPassword()))
             {
                 errors.reject(ERROR_MSG, "Password cannot be blank");
+            }
+            if (StringUtils.isBlank(form.getTestAccountUser()))
+            {
+                errors.reject(ERROR_MSG, "User name for test account cannot be blank");
+            }
+            if (StringUtils.isBlank(form.getTestAccountPassword()))
+            {
+                errors.reject(ERROR_MSG, "Password for test account cannot be blank");
             }
         }
 
@@ -1247,12 +1253,25 @@ public class PanoramaPublicController extends SpringActionController
             }
             catch (BlueskyException e)
             {
-                errors.reject(ERROR_MSG, "Bluesky login failed with the provided credentials. " + e.getMessage());
+                errors.reject(ERROR_MSG, "Bluesky login failed for the user account " + form.getUserName() + ". " + e.getMessage());
                 return false;
             }
+
+            try
+            {
+                new BlueskyService().login(form.getTestAccountUser(), form.getTestAccountPassword());
+            }
+            catch (BlueskyException e)
+            {
+                errors.reject(ERROR_MSG, "Bluesky login failed for the test user account " + form.getTestAccountUser() + ". " + e.getMessage());
+                return false;
+            }
+
             WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.CREDENTIALS, true);
             map.put(BlueskyService.USER, form.getUserName());
             map.put(BlueskyService.PASSWORD, form.getPassword());
+            map.put(BlueskyService.TEST_USER, form.getUserName());
+            map.put(BlueskyService.TEST_PASSWORD, form.getPassword());
             map.save();
             return true;
         }
@@ -1282,6 +1301,7 @@ public class PanoramaPublicController extends SpringActionController
                 if(map != null)
                 {
                     form.setUserName(map.get(BlueskyService.USER));
+                    form.setTestAccountUser(map.get(BlueskyService.TEST_USER));
                 }
             }
             JspView view = new JspView<>("/org/labkey/panoramapublic/view/manageBlueskyCredentials.jsp", form, errors);
@@ -1303,6 +1323,9 @@ public class PanoramaPublicController extends SpringActionController
         private String _userName;
         private String _password;
 
+        private String _testAccountUser;
+        private String _testAccountPassword;
+
         public String getUserName()
         {
             return _userName;
@@ -1321,6 +1344,26 @@ public class PanoramaPublicController extends SpringActionController
         public void setPassword(String password)
         {
             _password = password;
+        }
+
+        public String getTestAccountUser()
+        {
+            return _testAccountUser;
+        }
+
+        public void setTestAccountUser(String testAccountUser)
+        {
+            _testAccountUser = testAccountUser;
+        }
+
+        public String getTestAccountPassword()
+        {
+            return _testAccountPassword;
+        }
+
+        public void setTestAccountPassword(String testAccountPassword)
+        {
+            _testAccountPassword = testAccountPassword;
         }
     }
 
@@ -5333,14 +5376,14 @@ public class PanoramaPublicController extends SpringActionController
     // BEGIN Actions for posting to Bluesky
     // ------------------------------------------------------------------------
     @RequiresPermission(AdminOperationsPermission.class)
-    public static class BlueskyAction extends ConfirmAction<ExperimentIdForm>
+    public static class BlueskyAction extends ConfirmAction<BlueskyForm>
     {
         private ExperimentAnnotations _expAnnot;
         private BlueskyException _exception;
         private String _blueSkyPostUrl;
 
         @Override
-        public void validateCommand(ExperimentIdForm form, Errors errors)
+        public void validateCommand(BlueskyForm form, Errors errors)
         {
             _expAnnot = form.lookupExperiment();
             if(_expAnnot == null)
@@ -5375,23 +5418,23 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public boolean handlePost(ExperimentIdForm form, BindException errors)
+        public boolean handlePost(BlueskyForm form, BindException errors)
         {
             WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.CREDENTIALS, false);
             String user = null;
             String password = null;
             if(map != null)
             {
-                user = map.get(BlueskyService.USER);
-                password = map.get(BlueskyService.PASSWORD);
+                user = form.isTestAccount() ? map.get(BlueskyService.TEST_USER) : map.get(BlueskyService.USER);
+                password = form.isTestAccount() ? map.get(BlueskyService.TEST_PASSWORD) : map.get(BlueskyService.PASSWORD);
             }
             if(StringUtils.isBlank(user))
             {
-                errors.reject(ERROR_MSG, "Cannot find Bluesky username.");
+                errors.reject(ERROR_MSG, String.format("Cannot find username for Bluesky %saccount.", form.isTestAccount() ? "test " : ""));
             }
             if(StringUtils.isBlank(password))
             {
-                errors.reject(ERROR_MSG, "Cannot find Bluesky password.");
+                errors.reject(ERROR_MSG, String.format("Cannot find password for Bluesky %saccount.", form.isTestAccount() ? "test " : ""));
             }
             if(errors.getErrorCount() > 0)
             {
@@ -5403,7 +5446,7 @@ public class PanoramaPublicController extends SpringActionController
                 // Post to Bluesky
                 BlueskyService svc = new BlueskyService();
                 svc.login(user, password);
-                _blueSkyPostUrl = svc.createBlueskyPost(_expAnnot);
+                _blueSkyPostUrl = svc.createBlueskyPost(_expAnnot, form.isTestAccount());
 
                 if (_blueSkyPostUrl != null)
                 {
@@ -5426,13 +5469,13 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public @NotNull URLHelper getSuccessURL(ExperimentIdForm form)
+        public @NotNull URLHelper getSuccessURL(BlueskyForm form)
         {
             return null;
         }
 
         @Override
-        public ModelAndView getConfirmView(ExperimentIdForm form, BindException errors)
+        public ModelAndView getConfirmView(BlueskyForm form, BindException errors)
         {
             WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.BLUESKY_LINK, false);
 
@@ -5444,6 +5487,7 @@ public class PanoramaPublicController extends SpringActionController
                             .clearClasses()
                             .build())
             );
+            Renderable testPostCb = DIV(at(style, "margin-top:20px;"),CHECKBOX(at(name,"testAccount")), "Post to test account");
             String blueskyPostUrl = map != null ? map.get(_expAnnot.getShortUrl().renderShortURL()) : null;
             if (blueskyPostUrl != null)
             {
@@ -5455,22 +5499,21 @@ public class PanoramaPublicController extends SpringActionController
                         DIV("This data has already been announced on Bluesky at ",
                                         blueskyLink,
                                         ". Would you like to post the following message again? ",
-                                BR(),
-                                announcementDiv
+                                announcementDiv,
+                                testPostCb
                                 ));
             }
             else
             {
                 return new HtmlView(
                         DIV("The following message will be posted to Bluesky: ",
-                                BR(),
                                 announcementDiv,
-                                BR(),
+                                testPostCb,
                                 DIV("Are you sure you want to continue?")));
             }
         }
         @Override
-        public ModelAndView getSuccessView(ExperimentIdForm form)
+        public ModelAndView getSuccessView(BlueskyForm form)
         {
             Link blueskyLink = new Link.LinkBuilder((_blueSkyPostUrl))
                     .href(BlueskyService.convertToClickableUrl(_blueSkyPostUrl))
@@ -5485,7 +5528,7 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public ModelAndView getFailView(ExperimentIdForm form, BindException errors)
+        public ModelAndView getFailView(BlueskyForm form, BindException errors)
         {
             if(_exception != null)
             {
@@ -5498,6 +5541,20 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
+    public static class BlueskyForm extends ExperimentIdForm
+    {
+        private boolean _testAccount;
+
+        public boolean isTestAccount()
+        {
+            return _testAccount;
+        }
+
+        public void setTestAccount(boolean testAccount)
+        {
+            _testAccount = testAccount;
+        }
+    }
     // ------------------------------------------------------------------------
     // END Actions for posting to Bluesky
     // ------------------------------------------------------------------------

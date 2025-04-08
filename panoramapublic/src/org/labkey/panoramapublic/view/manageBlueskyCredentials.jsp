@@ -23,6 +23,15 @@
         </tr>
 
         <tr>
+            <td  class='labkey-form-label'>User (test account):</td>
+            <td><input size="50" type="text" name="testAccountUser" value="<%=h(form.getTestAccountUser())%>"></td>
+        </tr>
+        <tr>
+            <td  class='labkey-form-label'>Password (test account):</td>
+            <td><input size="50" type="text" name="testAccountPassword" value="<%=h(form.getTestAccountPassword())%>"></td>
+        </tr>
+
+        <tr>
             <td style="padding-top: 10px; padding-right: 5px;"><%=button("Save Credentials").submit(true)%></td>
             <td style="padding-top: 10px; padding-left: 5px;"><%=button("Cancel").href(panoramaPublicAdminUrl)%></td>
         </tr>
