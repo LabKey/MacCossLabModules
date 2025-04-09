@@ -130,6 +130,8 @@ import org.labkey.api.util.ExceptionUtil;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
+import org.labkey.api.util.MimeMap;
+import org.labkey.api.util.MimeMap.MimeType;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
 import org.labkey.api.util.TestContext;
@@ -141,6 +143,8 @@ import org.labkey.api.wiki.WikiRendererType;
 import org.labkey.api.wiki.WikiRenderingService;
 import org.labkey.panoramapublic.bluesky.BlueskyException;
 import org.labkey.panoramapublic.bluesky.BlueskyService;
+import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoAttachmentParent;
+import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoManager;
 import org.labkey.panoramapublic.catalog.CatalogEntrySettings;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentParent;
 import org.labkey.panoramapublic.chromlib.ChromLibStateManager;
@@ -305,7 +309,7 @@ public class PanoramaPublicController extends SpringActionController
             view.addView(qView);
             view.addView(getPXCredentialsLink());
             view.addView(getDataCiteCredentialsLink());
-            view.addView(getBlueskyCredentialsLink());
+            view.addView(getBlueskySettingsLink());
             view.addView(getPanoramaPublicCatalogSettingsLink());
             view.addView(getPostSupportMessageLink());
             view.setFrame(WebPartView.FrameType.PORTAL);
@@ -327,11 +331,11 @@ public class PanoramaPublicController extends SpringActionController
                     new Link.LinkBuilder("Set DataCite Credentials").href(url).build()));
         }
 
-        private ModelAndView getBlueskyCredentialsLink()
+        private ModelAndView getBlueskySettingsLink()
         {
-            ActionURL url = new ActionURL(ManageBlueskyCredentials.class, getContainer());
+            ActionURL url = new ActionURL(ManageBlueskySettings.class, getContainer());
             return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                    new Link.LinkBuilder("Set Bluesky Credentials").href(url).build()));
+                    new Link.LinkBuilder("Bluesky Settings").href(url).build()));
         }
 
         private ModelAndView getPanoramaPublicCatalogSettingsLink()
@@ -1221,10 +1225,10 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
-    public static class ManageBlueskyCredentials extends FormViewAction<BlueskyCredentialsForm>
+    public static class ManageBlueskySettings extends FormViewAction<BlueskySettingsForm>
     {
         @Override
-        public void validateCommand(BlueskyCredentialsForm form, Errors errors)
+        public void validateCommand(BlueskySettingsForm form, Errors errors)
         {
             if (StringUtils.isBlank(form.getUserName()))
             {
@@ -1245,7 +1249,7 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public boolean handlePost(BlueskyCredentialsForm form, BindException errors)
+        public boolean handlePost(BlueskySettingsForm form, BindException errors)
         {
             try
             {
@@ -1273,27 +1277,48 @@ public class PanoramaPublicController extends SpringActionController
             map.put(BlueskyService.TEST_USER, form.getUserName());
             map.put(BlueskyService.TEST_PASSWORD, form.getPassword());
             map.save();
+
+            List<AttachmentFile> files = getAttachmentFileList();
+            AttachmentFile panoramaLogoFile = files.stream().findFirst().orElse(null);
+            if (panoramaLogoFile != null)
+            {
+                MimeType mimeType = new MimeType(panoramaLogoFile.getContentType());
+                if (!mimeType.isImage())
+                {
+                    errors.reject(ERROR_MSG, "Logo is not an image file");
+                    return false;
+                }
+                try
+                {
+                    PanoramaPublicLogoManager.saveNewDataLogo(panoramaLogoFile, getUser());
+                }
+                catch (IOException e)
+                {
+                    errors.reject(ERROR_MSG, "Unable to save logo file. " + e.getMessage());
+                    return false;
+                }
+            }
             return true;
         }
 
         @Override
-        public URLHelper getSuccessURL(BlueskyCredentialsForm form)
+        public URLHelper getSuccessURL(BlueskySettingsForm form)
         {
             return null;
         }
 
         @Override
-        public ModelAndView getSuccessView(BlueskyCredentialsForm form)
+        public ModelAndView getSuccessView(BlueskySettingsForm form)
         {
             ActionURL adminUrl = new ActionURL(PanoramaPublicAdminViewAction.class, getContainer());
             return new HtmlView(
-                    DIV("Bluesky credentials saved!",
+                    DIV("Bluesky settings saved!",
                             BR(),
                             new Link.LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
         }
 
         @Override
-        public ModelAndView getView(BlueskyCredentialsForm form, boolean reshow, BindException errors)
+        public ModelAndView getView(BlueskySettingsForm form, boolean reshow, BindException errors)
         {
             if(!reshow)
             {
@@ -1302,11 +1327,16 @@ public class PanoramaPublicController extends SpringActionController
                 {
                     form.setUserName(map.get(BlueskyService.USER));
                     form.setTestAccountUser(map.get(BlueskyService.TEST_USER));
+                    Attachment logoAttachment = PanoramaPublicLogoManager.getNewDataLogo();
+                    if (logoAttachment != null)
+                    {
+                        form.setImageFileName(logoAttachment.getName());
+                    }
                 }
             }
             JspView view = new JspView<>("/org/labkey/panoramapublic/view/manageBlueskyCredentials.jsp", form, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
-            view.setTitle("Bluesky Credentials");
+            view.setTitle("Bluesky Settings");
             return view;
         }
 
@@ -1318,13 +1348,15 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    public static class BlueskyCredentialsForm
+    public static class BlueskySettingsForm
     {
         private String _userName;
         private String _password;
 
         private String _testAccountUser;
         private String _testAccountPassword;
+
+        private String _imageFileName;
 
         public String getUserName()
         {
@@ -1364,6 +1396,56 @@ public class PanoramaPublicController extends SpringActionController
         public void setTestAccountPassword(String testAccountPassword)
         {
             _testAccountPassword = testAccountPassword;
+        }
+
+        public String getImageFileName()
+        {
+            return _imageFileName;
+        }
+
+        public void setImageFileName(String imageFileName)
+        {
+            _imageFileName = imageFileName;
+        }
+    }
+
+    @RequiresPermission(ReadPermission.class)
+    public class DownloadLogoForBlueskyAction extends BaseDownloadAction<AttachmentForm>
+    {
+        @Nullable
+        @Override
+        public Pair<AttachmentParent, String> getAttachment(AttachmentForm form)
+        {
+            AttachmentParent ap = PanoramaPublicLogoAttachmentParent.get();
+            if (ap == null) return null;
+            Attachment attachment = PanoramaPublicLogoManager.getNewDataLogo();
+            if (attachment != null)
+            {
+                return new Pair<>(ap, attachment.getName());
+            }
+            return null;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public class DeleteLogoForBlueskyAction extends FormHandlerAction
+    {
+        @Override
+        public void validateCommand(Object target, Errors errors)
+        {
+        }
+
+        @Override
+        public boolean handlePost(Object o, BindException errors)
+        {
+            PanoramaPublicLogoManager.deleteExistingNewDataLogo(getUser());
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(Object o)
+        {
+            return new ActionURL(ManageBlueskySettings.class, getContainer());
         }
     }
 
