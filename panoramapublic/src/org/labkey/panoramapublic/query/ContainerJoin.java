@@ -1,5 +1,6 @@
 package org.labkey.panoramapublic.query;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
@@ -155,33 +156,45 @@ public class ContainerJoin
 
     public static class TestCase extends Assert
     {
+        void assertSQLEquals(Object Oexpected, Object Oactual)
+        {
+            String expected = Oexpected instanceof SQLFragment s ? s.getRawSQL() : String.valueOf(Oexpected);
+            String actual = Oactual instanceof SQLFragment s ? s.getRawSQL() : String.valueOf(Oactual);
+
+            // strip "'s to make this less sensitive to SQL generation changes
+            expected = StringUtils.replace(expected, "\"", "").trim();
+            actual = StringUtils.replace(actual, "\"", "").trim();
+            assertEquals(expected, actual);
+        }
+
+
         @Test
         public void testContainerJoin()
         {
             ContainerJoin cj = new ContainerJoin("ExperimentAnnotationsId", PanoramaPublicManager.getTableInfoExperimentAnnotations());
-            assertEquals("INNER JOIN panoramapublic.experimentannotations J1 ON J1.id = " + PanoramaPublicTable.TABLE_ALIAS + ".ExperimentAnnotationsId", cj.getJoinSql().getSQL().trim());
-            assertEquals("J1.Container", cj.getContainerSql().getRawSQL().trim());
+            assertSQLEquals("INNER JOIN panoramapublic.experimentannotations J1 ON J1.id = " + PanoramaPublicTable.TABLE_ALIAS + ".ExperimentAnnotationsId", cj.getJoinSql());
+            assertSQLEquals("J1.Container", cj.getContainerSql());
             assertEquals(FieldKey.fromParts("ExperimentAnnotationsId", "Container"), cj.getContainerFieldKey());
 
             cj = cj.addJoin("DataValidationId", PanoramaPublicManager.getTableInfoDataValidation());
-            assertEquals(
+            assertSQLEquals(
                     "INNER JOIN panoramapublic.datavalidation J1 ON J1.id = " + PanoramaPublicTable.TABLE_ALIAS + ".DataValidationId " +
-                    " INNER JOIN panoramapublic.experimentannotations J2 ON J2.id = J1.ExperimentAnnotationsId", cj.getJoinSql().getSQL().trim());
-            assertEquals("J2.Container", cj.getContainerSql().getRawSQL().trim());
+                    " INNER JOIN panoramapublic.experimentannotations J2 ON J2.id = J1.ExperimentAnnotationsId", cj.getJoinSql());
+            assertSQLEquals("J2.Container", cj.getContainerSql());
             assertEquals(FieldKey.fromParts("DataValidationId", "ExperimentAnnotationsId", "Container"), cj.getContainerFieldKey());
 
             cj = cj.addJoin("SkylineDocValidationId", PanoramaPublicManager.getTableInfoSkylineDocValidation());
-            assertEquals(
+            assertSQLEquals(
                     "INNER JOIN panoramapublic.skylinedocvalidation J1 ON J1.id = " + PanoramaPublicTable.TABLE_ALIAS + ".SkylineDocValidationId " +
                     " INNER JOIN panoramapublic.datavalidation J2 ON J2.id = J1.DataValidationId " +
-                            " INNER JOIN panoramapublic.experimentannotations J3 ON J3.id = J2.ExperimentAnnotationsId", cj.getJoinSql().getSQL().trim());
-            assertEquals("J3.Container", cj.getContainerSql().getRawSQL().trim());
+                            " INNER JOIN panoramapublic.experimentannotations J3 ON J3.id = J2.ExperimentAnnotationsId", cj.getJoinSql());
+            assertSQLEquals("J3.Container", cj.getContainerSql());
             assertEquals(FieldKey.fromParts("SkylineDocValidationId", "DataValidationId", "ExperimentAnnotationsId", "Container"), cj.getContainerFieldKey());
 
             cj = new ContainerJoin("ShortUrl", PanoramaPublicManager.getTableInfoExperimentAnnotations(), "ShortUrl");
-            assertEquals(
-                    "INNER JOIN panoramapublic.experimentannotations J1 ON J1.ShortUrl = " + PanoramaPublicTable.TABLE_ALIAS + ".ShortUrl", cj.getJoinSql().getSQL().trim());
-            assertEquals("J1.Container", cj.getContainerSql().getRawSQL().trim());
+            assertSQLEquals(
+                    "INNER JOIN panoramapublic.experimentannotations J1 ON J1.ShortUrl = " + PanoramaPublicTable.TABLE_ALIAS + ".ShortUrl", cj.getJoinSql());
+            assertSQLEquals("J1.Container", cj.getContainerSql());
             assertEquals(FieldKey.fromParts("ShortUrl", "Container"), cj.getContainerFieldKey());
         }
     }
