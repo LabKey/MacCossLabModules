@@ -1333,7 +1333,7 @@ public class PanoramaPublicController extends SpringActionController
                     }
                 }
             }
-            JspView view = new JspView<>("/org/labkey/panoramapublic/view/manageBlueskyCredentials.jsp", form, errors);
+            JspView view = new JspView<>("/org/labkey/panoramapublic/view/manageBlueskySettings.jsp", form, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Bluesky Settings");
             return view;
@@ -1343,7 +1343,7 @@ public class PanoramaPublicController extends SpringActionController
         public void addNavTrail(NavTree root)
         {
             addPanoramaPublicAdminConsoleNav(root, getContainer());
-            root.addChild("Set Bluesky Credentials");
+            root.addChild("Manage Bluesky Settings");
         }
     }
 

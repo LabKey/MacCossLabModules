@@ -8,7 +8,8 @@
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
 <%
-    BlueskySettingsForm form = ((JspView<BlueskySettingsForm>) HttpView.currentView()).getModelBean();
+    JspView<BlueskySettingsForm> currentView = HttpView.currentView();
+    BlueskySettingsForm form = currentView.getModelBean();
     ActionURL panoramaPublicAdminUrl = urlFor(PanoramaPublicAdminViewAction.class);
 %>
 <p>

@@ -30,7 +30,6 @@ public class PanoramaPublicLogoResourceType implements AttachmentType
         sql.append(parentColumn).append(" IN (SELECT EntityId FROM ")
                 .append(CoreSchema.getInstance().getTableInfoContainers(), "c").append(")")
                 .append(" AND (")
-                .append(documentNameColumn)
-                .append(" LIKE '" + PanoramaPublicLogoManager.LOGO_FILE_PREFIX + "%' )");
+                .append(documentNameColumn).append(" LIKE '").append(PanoramaPublicLogoManager.LOGO_FILE_PREFIX).append("%' )");
     }
 }

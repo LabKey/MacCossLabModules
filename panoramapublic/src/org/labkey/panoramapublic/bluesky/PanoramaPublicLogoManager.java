@@ -1,6 +1,5 @@
 package org.labkey.panoramapublic.bluesky;
 
-import jakarta.servlet.ServletException;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.attachments.Attachment;
 import org.labkey.api.attachments.AttachmentFile;
