@@ -1,35 +1,36 @@
 package org.labkey.panoramapublic.bluesky;
 
-import org.apache.commons.io.IOUtils;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
+import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.labkey.api.attachments.Attachment;
 import org.labkey.api.attachments.AttachmentParent;
 import org.labkey.api.attachments.AttachmentService;
-import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.logging.LogHelper;
-import org.labkey.api.view.ActionURL;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentParent;
 import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.query.CatalogEntryManager;
 
-import java.io.DataOutputStream;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
@@ -45,111 +46,125 @@ public class BlueskyService
     public static final String BLUESKY_LINK = "Bluesky link";
 
     public static String ANNOUNCEMENT_TEXT = "New data available on Panorama Public!";
-    // public static String[] HASHTAGS = {"proteomics", "proteomicssky", "massspec", "massspecsky"};
+    public static String[] HASHTAGS = {"proteomics", "proteomicssky", "massspec", "massspecsky"};
     public static String[] TEST_HASHTAGS = {"panoramapublictest", "panoramawebtest"};
 
+    // API endpoints
     //  Endpoint for authentication and creating a session with Bluesky
     private static final String AUTH_URL = "https://bsky.social/xrpc/com.atproto.server.createSession";
     // Endpoint for creating any type of record in Bluesky, including posts
     private static final String POST_URL = "https://bsky.social/xrpc/com.atproto.repo.createRecord";
-
-
-    private String _accessJwt;
-    private String _did; // decentralized Identifier
+    private static final String BLOB_UPLOAD_URL = "https://bsky.social/xrpc/com.atproto.repo.uploadBlob";
 
     protected static final Logger logger = LogHelper.getLogger(BlueskyService.class, "BlueskyService logger");
 
     /**
-     * Get the DID (Decentralized Identifier) of the logged-in user
-     * @return DID string
-     */
-    public String getDid()
-    {
-        return _did;
-    }
-
-    /**
      * Login to Bluesky and obtain auth tokens
      */
-    public void login(String identifier, String password) throws BlueskyException
+    @NotNull
+    public LoginInfo login(@NotNull String identifier, @NotNull String password) throws BlueskyException
     {
         JSONObject requestBody = new JSONObject();
         requestBody.put("identifier", identifier);
         requestBody.put("password", password);
 
-        HttpURLConnection connection = null;
-        try
+        HttpPost httpPost = new HttpPost(AUTH_URL);
+        httpPost.setHeader("Content-Type", "application/json");
+        httpPost.setEntity(new StringEntity(requestBody.toString(), ContentType.APPLICATION_JSON));
+
+        BlueskyResponse response;
+        try (CloseableHttpClient httpClient = HttpClients.createDefault())
         {
-            URL url = new URL(AUTH_URL);
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setDoOutput(true);
-            connection.setConnectTimeout(10000); // 10 seconds
-            connection.setReadTimeout(10000); // 10 seconds
-
-            // Write request body
-            try (DataOutputStream wr = new DataOutputStream(connection.getOutputStream()))
-            {
-                wr.write(requestBody.toString().getBytes(StandardCharsets.UTF_8));
-                wr.flush();
-            }
-
-            int responseCode = connection.getResponseCode();
-            String response;
-            try (InputStream in = connection.getInputStream())
-            {
-                response = IOUtils.toString(in, StandardCharsets.UTF_8);
-            }
-            catch (IOException e)
-            {
-                try (InputStream in = connection.getErrorStream())
-                {
-                    response = IOUtils.toString(in, StandardCharsets.UTF_8);
-                }
-            }
-            if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_CREATED)
-            {
-                JSONObject responseJson = new JSONObject(response);
-                _accessJwt = responseJson.getString("accessJwt");
-                _did = responseJson.getString("did");
-            }
-            else
-            {
-                throw new BlueskyException("Bluesky login failed", new BlueskyResponse(responseCode, connection.getResponseMessage(), response));
-            }
+            response = getResponse(httpClient, httpPost, "Bluesky login failed");
+            JSONObject responseJson = response.getJsonObject();
+            String accessJwt = responseJson.getString("accessJwt");
+            String did = responseJson.getString("did");
+            return new LoginInfo(accessJwt, did);
         }
-        catch (IOException e)
+        catch (IOException | JSONException e)
         {
             throw new BlueskyException("Bluesky login failed", e);
         }
-        finally
+    }
+
+    public static class LoginInfo
+    {
+        private final String _accessJwt;
+        private final String _did; // DID (Decentralized Identifier) of the logged-in user
+
+        public LoginInfo(String accessJwt, String did)
         {
-            if (connection != null)
-            {
-                connection.disconnect();
-            }
+            _accessJwt = accessJwt;
+            _did = did;
+        }
+
+        public String getAccessJwt()
+        {
+            return _accessJwt;
+        }
+
+        public String getDid()
+        {
+            return _did;
         }
     }
 
-    public String createBlueskyPost(ExperimentAnnotations exptAnnotations, boolean testPost) throws BlueskyException
+    /**
+     * Create a post on Bluesky announcing the data
+     */
+    @NotNull
+    public String createBlueskyPost(@NotNull ExperimentAnnotations exptAnnotations, boolean testPost, String identifier, String password) throws BlueskyException
     {
-        if (_accessJwt == null || _did == null)
-        {
-            throw new BlueskyException("Not logged in. Call login() first.");
-        }
+        LoginInfo loginInfo = login(identifier, password);
+        return createBlueskyPost(exptAnnotations, testPost, loginInfo);
+    }
 
+    @NotNull
+    public String createBlueskyPost(@NotNull ExperimentAnnotations exptAnnotations, boolean testPost, @NotNull LoginInfo loginInfo) throws BlueskyException
+    {
+        JSONObject requestBody = createRequestBody(exptAnnotations, testPost, loginInfo);
+
+        HttpPost httpPost = new HttpPost(POST_URL);
+        httpPost.setHeader("Content-Type", "application/json");
+        httpPost.setHeader("Authorization", "Bearer " + loginInfo.getAccessJwt());
+        httpPost.setEntity(new StringEntity(requestBody.toString(), ContentType.APPLICATION_JSON));
+
+        BlueskyResponse response;
+        try (CloseableHttpClient httpClient = HttpClients.createDefault())
+        {
+            response = getResponse(httpClient, httpPost, "Post creation failed");
+            JSONObject responseJson = response.getJsonObject();
+            if (responseJson.has("uri"))
+            {
+                return responseJson.getString("uri");
+            }
+            else
+            {
+                throw new BlueskyException("Post creation failed - Missing URI in response.", response);
+            }
+
+
+        }
+        catch (IOException | JSONException e)
+        {
+            throw new BlueskyException("Post creation failed.", e);
+        }
+    }
+
+    @NotNull
+    private JSONObject createRequestBody(ExperimentAnnotations exptAnnotations, boolean testPost, LoginInfo loginInfo) throws BlueskyException
+    {
         String title = exptAnnotations.getTitle();
         String panoramaPublicLink = exptAnnotations.getShortUrl().renderShortURL();
-        // "https://panoramaweb.org/KsL1do.url" // https://panoramaweb.org/zobellia_sulfatases.url";
 
-        String[] hashtags = TEST_HASHTAGS; // testPost ? TEST_HASHTAGS : HASHTAGS;
+        String[] hashtags = testPost ? TEST_HASHTAGS : HASHTAGS;
         String postText = getPostText(hashtags);
+
         // Create the post record
         JSONObject record = new JSONObject();
         record.put("$type", "app.bsky.feed.post");
         record.put("text", postText);
-        record.put("createdAt", java.time.Instant.now().toString());
+        record.put("createdAt", Instant.now().toString());
 
         addHashTags(record, postText, hashtags);
 
@@ -162,53 +177,40 @@ public class BlueskyService
         external.put("title", title);
         external.put("description", panoramaPublicLink);
 
-        JSONObject blobResponse = null;
-        try
+
+        AttachmentParent attachmentParent;
+        // First check if the user has provided a catalog entry for the data.
+        Attachment attachment = getCatalogEntryAttachment(exptAnnotations);
+        if (attachment != null)
         {
-            CatalogEntry catalogEntry = CatalogEntryManager.getEntryForExperiment(exptAnnotations);
-            if (catalogEntry != null && catalogEntry.getApproved())
-            {
-                // Add the catalog entry image provided by the submitter
-                Attachment attachment = catalogEntry.getAttachment();
-//                ActionURL downloadLink = PanoramaPublicController.getCatalogImageDownloadUrl(exptAnnotations, catalogEntry.getImageFileName());
-//                blobResponse= uploadCatalogImage(downloadLink);
-                blobResponse = attachment != null ? uploadImage(catalogEntry.getAttachment(),
-                        new CatalogImageAttachmentParent(exptAnnotations.getShortUrl(), exptAnnotations.getContainer())) : null;
-            }
-            else
-            {
-                // If a catalog entry was not provided, use the Panorama Public logo
-                Attachment logoAttachment = PanoramaPublicLogoManager.getNewDataLogo();
-                blobResponse = uploadImage(logoAttachment, PanoramaPublicLogoAttachmentParent.get());
-//                if (logoAttachment != null)
-//                {
-//                    File file = logoAttachment.getFile();
-//                    Path imageFilePath = (file != null && file.exists()) ? file.toPath() : null;
-//                   if (imageFilePath != null && Files.exists(imageFilePath))
-//                    {
-//                        blobResponse = uploadImage(imageFilePath);
-//                    }
-//                    else
-//                    {
-//                        logger.warn("Unable to find image file. " + imageFilePath != null ? imageFilePath.toString() : "");
-//                    }
-//                }
-            }
-            // Get the blob reference from the response
-            JSONObject blob = blobResponse != null ? blobResponse.getJSONObject("blob") : null;
-            if (blob != null)
-            {
-                external.put("thumb", blob);
-            }
-            else
-            {
-                logger.warn("Blob reference not found in Bluesky response");
-            }
+            attachmentParent = new CatalogImageAttachmentParent(exptAnnotations.getShortUrl(), exptAnnotations.getContainer());
         }
-        catch (BlueskyException | JSONException e)
+        else
         {
-            // We will log the error, but submit the post without an image.
-            logger.error(e.getMessage());
+            // If the data does not have a catalog entry, or we were unable to get it, use the Panorama Public logo
+            attachmentParent = PanoramaPublicLogoAttachmentParent.get();
+            if (attachmentParent == null)
+            {
+                throw new BlueskyException("Unable to initialize PanoramaPublicLogoAttachmentParent. Perhaps a Panorama Public project does not exist on the server.");
+            }
+            attachment = PanoramaPublicLogoManager.getNewDataLogo();
+        }
+
+        if (attachment == null)
+        {
+            throw new BlueskyException("Unable to find an image file to include in the post.");
+        }
+
+        JSONObject blobResponse = uploadImage(attachment, attachmentParent, loginInfo);
+        // Get the blob reference from the response
+        if (blobResponse.has("blob"))
+        {
+            JSONObject blob = blobResponse.getJSONObject("blob");
+            external.put("thumb", blob);
+        }
+        else
+        {
+            throw new BlueskyException("Blob reference not found in Bluesky response after uploading the image file.");
         }
 
         embed.put("external", external);
@@ -216,233 +218,203 @@ public class BlueskyService
 
         // Create the request body
         JSONObject requestBody = new JSONObject();
-        requestBody.put("repo", _did);
+        requestBody.put("repo", loginInfo.getDid());
         requestBody.put("collection", "app.bsky.feed.post");
         requestBody.put("record", record);
-
-        HttpURLConnection connection = null;
-        try
-        {
-            URL url = new URL(POST_URL);
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("Authorization", "Bearer " + _accessJwt);
-            connection.setDoOutput(true);
-            connection.setConnectTimeout(10000); // 10 seconds
-            connection.setReadTimeout(10000); // 10 seconds
-
-            // Write request body
-            try (OutputStream os = connection.getOutputStream())
-            {
-                byte[] input = requestBody.toString().getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
-            }
-
-            int responseCode = connection.getResponseCode();
-            String response;
-            try (InputStream in = connection.getInputStream())
-            {
-                response = IOUtils.toString(in, StandardCharsets.UTF_8);
-            }
-            catch (IOException e)
-            {
-                try (InputStream in = connection.getErrorStream())
-                {
-                    response = IOUtils.toString(in, StandardCharsets.UTF_8);
-                }
-            }
-
-            if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_CREATED)
-            {
-                JSONObject responseJson = new JSONObject(response);
-                if (responseJson.has("uri"))
-                {
-                    return responseJson.getString("uri");
-                }
-                else
-                {
-                    throw new BlueskyException("Post creation failed - Missing URI in response",
-                            new BlueskyResponse(responseCode, connection.getResponseMessage(), response));
-                }
-            }
-            else
-            {
-                throw new BlueskyException("Post creation failed.", new BlueskyResponse(responseCode, connection.getResponseMessage(), response));
-            }
-        }
-        catch (IOException e)
-        {
-            throw new BlueskyException("Post creation failed.", e);
-        }
-        finally
-        {
-            if (connection != null)
-            {
-                connection.disconnect();
-            }
-        }
+        return requestBody;
     }
 
+    private Attachment getCatalogEntryAttachment(ExperimentAnnotations exptAnnotations)
+    {
+        CatalogEntry catalogEntry = CatalogEntryManager.getEntryForExperiment(exptAnnotations);
+        return (catalogEntry != null && catalogEntry.getApproved()) ? catalogEntry.getAttachment() : null;
+//        {
+//            // Use the catalog entry image provided by the submitter
+//            attachment = catalogEntry.getAttachment();
+//            attachmentParent = new CatalogImageAttachmentParent(exptAnnotations.getShortUrl(), exptAnnotations.getContainer());
+//        }
+    }
+
+    /**
+     * Generate post text with hashtags
+     */
     private String getPostText(String[] hashtags)
     {
-        return ANNOUNCEMENT_TEXT + " " + Arrays.stream(hashtags).map(tag -> "#" + tag).collect(Collectors.joining(", "));
+        return ANNOUNCEMENT_TEXT + " " + formatHashtags(hashtags);
     }
 
+    /**
+     * Convert an array of hashtag strings to a comma-separated string with '#' prefix
+     */
+    private String formatHashtags(String[] hashtags)
+    {
+        return Arrays.stream(hashtags)
+                .map(tag -> "#" + tag)
+                .collect(Collectors.joining(", "));
+    }
+
+    /**
+     * Add hashtag facets to the record for Bluesky's rich text formatting
+     */
     private void addHashTags(JSONObject record, String postText, String[] hashtags)
     {
-        // Create facets for the hashtags
-        JSONArray facets = new JSONArray();
-
-        for (String tag : hashtags) {
-            // Find the tag in the text (including the # character)
-            String hashtagInText = "#" + tag;
-            int tagStart = postText.indexOf(hashtagInText);
-
-            if (tagStart != -1) {
-                // Convert to byte position for UTF-8
-                byte[] beforeTagBytes = postText.substring(0, tagStart).getBytes(StandardCharsets.UTF_8);
-                int byteStart = beforeTagBytes.length;
-
-                byte[] tagBytes = hashtagInText.getBytes(StandardCharsets.UTF_8);
-                int byteEnd = byteStart + tagBytes.length;
-
-                // Create the tag facet
-                JSONObject tagFacet = new JSONObject();
-
-                // Create index object
-                JSONObject indices = new JSONObject();
-                indices.put("byteStart", byteStart);
-                indices.put("byteEnd", byteEnd);
-                tagFacet.put("index", indices);
-
-                // Create features array
-                JSONArray features = new JSONArray();
-                JSONObject tagFeature = new JSONObject();
-                tagFeature.put("$type", "app.bsky.richtext.facet#tag");
-                tagFeature.put("tag", tag); // Tag without the # character
-                features.put(tagFeature);
-                tagFacet.put("features", features);
-
-                facets.put(tagFacet);
-            }
-        }
+        JSONArray facets = createHashtagFacets(postText, hashtags);
 
         // Add facets to the record if we have any
-        if (facets.length() > 0)
+        if (!facets.isEmpty())
         {
             record.put("facets", facets);
         }
     }
 
-//    @Nullable
-//    private JSONObject uploadImage(Path imageFilePath) throws BlueskyException
-//    {
-//        if (imageFilePath == null || !Files.exists(imageFilePath))
-//        {
-//            return null;
-//        }
-//
-//        try
-//        {
-//            // Get image bytes
-//            byte[] imageBytes = Files.readAllBytes(imageFilePath);
-//            String mimeType = PageFlowUtil.getContentTypeFor(imageFilePath.getFileName().toString());
-//            return uploadToBluesky(imageBytes, mimeType);
-//        }
-//        catch (IOException e)
-//        {
-//            throw new BlueskyException("Failed to upload image to Bluesky", e);
-//        }
-//    }
-
-    @NotNull
-    private JSONObject uploadToBluesky(byte[] imageBytes, String mimeType) throws IOException, BlueskyException
+    /**
+     * Create hashtag facets for Bluesky's rich text formatting
+     */
+    private JSONArray createHashtagFacets(String postText, String[] hashtags)
     {
-        // Upload to Bluesky
-        String BLOB_UPLOAD_URL = "https://bsky.social/xrpc/com.atproto.repo.uploadBlob";
-        URL uploadUrl = new URL(BLOB_UPLOAD_URL);
-        HttpURLConnection uploadConnection = (HttpURLConnection) uploadUrl.openConnection();
-        uploadConnection.setRequestMethod("POST");
-        uploadConnection.setRequestProperty("Content-Type", mimeType);
-        uploadConnection.setRequestProperty("Authorization", "Bearer " + _accessJwt);
-        uploadConnection.setDoOutput(true);
+        JSONArray facets = new JSONArray();
 
-        // Write image bytes
-        try (OutputStream os = uploadConnection.getOutputStream())
-        {
-            os.write(imageBytes);
-        }
-
-        // Process response
-        int responseCode = uploadConnection.getResponseCode();
-        String response;
-        try (InputStream in = uploadConnection.getInputStream())
-        {
-            response = IOUtils.toString(in, StandardCharsets.UTF_8);
-        }
-        catch (IOException e)
-        {
-            try (InputStream in = uploadConnection.getErrorStream())
-            {
-                response = IOUtils.toString(in, StandardCharsets.UTF_8);
+        for (String tag : hashtags) {
+            JSONObject tagFacet = createSingleHashtagFacet(postText, tag);
+            if (tagFacet != null) {
+                facets.put(tagFacet);
             }
-            throw new BlueskyException("Failed to upload image to Bluesky",
-                    new BlueskyResponse(responseCode, uploadConnection.getResponseMessage(), response));
         }
-        return new JSONObject(response);
+
+        return facets;
     }
 
-    private JSONObject uploadImage(@NotNull Attachment attachment, @NotNull AttachmentParent parent) throws BlueskyException
+    /**
+     * Create a single hashtag facet for Bluesky's rich text formatting
+    */
+    private JSONObject createSingleHashtagFacet(String postText, String tag)
+    {
+        // Find the tag in the text (including the # character)
+        String hashtagInText = "#" + tag;
+        int tagStart = postText.indexOf(hashtagInText);
+
+        if (tagStart == -1) {
+            return null;
+        }
+
+        // Convert to byte position for UTF-8
+        byte[] beforeTagBytes = postText.substring(0, tagStart).getBytes(StandardCharsets.UTF_8);
+        int byteStart = beforeTagBytes.length;
+
+        byte[] tagBytes = hashtagInText.getBytes(StandardCharsets.UTF_8);
+        int byteEnd = byteStart + tagBytes.length;
+
+        // Create the tag facet
+        JSONObject tagFacet = new JSONObject();
+
+        // Create index object
+        JSONObject indices = new JSONObject();
+        indices.put("byteStart", byteStart);
+        indices.put("byteEnd", byteEnd);
+        tagFacet.put("index", indices);
+
+        // Create features array
+        JSONArray features = new JSONArray();
+        JSONObject tagFeature = new JSONObject();
+        tagFeature.put("$type", "app.bsky.richtext.facet#tag");
+        tagFeature.put("tag", tag); // Tag without the # character
+        features.put(tagFeature);
+        tagFacet.put("features", features);
+
+        return tagFacet;
+    }
+
+    /**
+     * Upload image bytes to Bluesky
+     */
+    @NotNull
+    private JSONObject uploadToBluesky(byte[] imageBytes, String mimeType, LoginInfo loginInfo) throws BlueskyException
+    {
+        HttpPost httpPost = new HttpPost(BLOB_UPLOAD_URL);
+        httpPost.setHeader("Content-Type", mimeType);
+        httpPost.setHeader("Authorization", "Bearer " + loginInfo.getAccessJwt());
+        httpPost.setEntity(new ByteArrayEntity(imageBytes, ContentType.create(mimeType)));
+
+        try (CloseableHttpClient httpClient = HttpClients.createDefault())
+        {
+            BlueskyResponse response = getResponse(httpClient, httpPost, "Failed to upload image to Bluesky");
+            return response.getJsonObject();
+        }
+        catch (IOException | JSONException e)
+        {
+            throw new BlueskyException("Failed to upload image to Bluesky", e);
+        }
+    }
+
+    @NotNull
+    private static BlueskyResponse getResponse(CloseableHttpClient httpClient, HttpPost httpPost, String failureMessage) throws IOException, BlueskyException
+    {
+        BlueskyResponse response = httpClient.execute(httpPost, new BlueskyResponseHandler());
+        String responseContent = response.getResponseBody() != null ? response.getResponseBody() : "";
+
+        if (!response.success())
+        {
+            throw new BlueskyException(failureMessage, response);
+        }
+
+        if (responseContent.isEmpty())
+        {
+            throw new BlueskyException("Received empty response from Bluesky", response);
+        }
+
+        return response;
+    }
+
+    /**
+     * Upload an image attachment to Bluesky
+     */
+    @NotNull
+    private JSONObject uploadImage(@NotNull Attachment attachment, @NotNull AttachmentParent parent, LoginInfo loginInfo) throws BlueskyException
     {
         try (InputStream is = AttachmentService.get().getInputStream(parent, attachment.getName()))
         {
             byte[] imageBytes = is.readAllBytes();
             String mimeType = PageFlowUtil.getContentTypeFor(attachment.getName());
-            return uploadToBluesky(imageBytes, mimeType);
+            return uploadToBluesky(imageBytes, mimeType, loginInfo);
         }
         catch (FileNotFoundException e)
         {
-            logger.error("Image attachment file not found " + attachment.getName(), e);
+            logger.error("Image attachment file not found: " + attachment.getName(), e);
+            throw new BlueskyException("Image attachment file not found", e);
         }
         catch (IOException e)
         {
-            logger.error("Error reading image file " + attachment.getName(), e);
+            logger.error("Error reading image file: " + attachment.getName(), e);
+            throw new BlueskyException("Error reading image file", e);
         }
-        return null;
     }
-    public JSONObject uploadCatalogImage(ActionURL catalogEntryUrl) throws BlueskyException
+
+    /**
+     * Custom response handler to handle HTTP responses from Bluesky
+     */
+    private static class BlueskyResponseHandler implements HttpClientResponseHandler<BlueskyResponse>
     {
-        try {
-            // Download the image first
-            URL url = new URL(catalogEntryUrl.getURIString());
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-
-            // Get image bytes
-            byte[] imageBytes;
-            try (InputStream in = connection.getInputStream())
-            {
-                imageBytes = IOUtils.toByteArray(in);
-            }
-
-            // Determine MIME type
-            String mimeType = connection.getContentType();
-            if (mimeType == null || mimeType.isEmpty())
-            {
-                mimeType = "image/png"; // Default to PNG if unknown
-            }
-
-            return uploadToBluesky(imageBytes, mimeType);
-        }
-        catch (IOException e)
+        @Override
+        public BlueskyResponse handleResponse(ClassicHttpResponse response) throws IOException
         {
-            throw new BlueskyException("Failed to upload image", e);
+            try
+            {
+                HttpEntity entity = response.getEntity();
+                String content = entity != null ? EntityUtils.toString(entity) : null;
+                return new BlueskyResponse(response.getCode(), response.getReasonPhrase(), content);
+            }
+            catch (ParseException e)
+            {
+                throw new IOException("Failed to parse response content", e);
+            }
         }
     }
 
-
-
+    /**
+     * Convert a Bluesky post URI to a clickable URL
+     * Example: at://<did></did>/app.bsky.feed.post/<post_id>
+     * Convert to: https://bsky.app/profile/<did>/post/<post_id>
+     */
     public static String convertToClickableUrl(String postUri)
     {
         // Handle URIs with or without leading slashes
@@ -452,16 +424,19 @@ public class BlueskyService
         String did = "";
         String postId = "";
 
-        if (cleanUri.startsWith("at://")) {
+        if (cleanUri.startsWith("at://"))
+        {
             cleanUri = cleanUri.substring(5); // Remove "at://"
         }
 
         String[] parts = cleanUri.split("/");
-        if (parts.length >= 1) {
+        if (parts.length >= 1)
+        {
             did = parts[0];
         }
 
-        if (parts.length >= 3) {
+        if (parts.length >= 3)
+        {
             postId = parts[parts.length - 1];
         }
 

@@ -130,7 +130,6 @@ import org.labkey.api.util.ExceptionUtil;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
-import org.labkey.api.util.MimeMap;
 import org.labkey.api.util.MimeMap.MimeType;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
@@ -5526,20 +5525,11 @@ public class PanoramaPublicController extends SpringActionController
             try
             {
                 // Post to Bluesky
-                BlueskyService svc = new BlueskyService();
-                svc.login(user, password);
-                _blueSkyPostUrl = svc.createBlueskyPost(_expAnnot, form.isTestAccount());
+                _blueSkyPostUrl = new BlueskyService().createBlueskyPost(_expAnnot, form.isTestAccount(), user, password);
 
-                if (_blueSkyPostUrl != null)
-                {
-                    WritablePropertyMap propertyMap = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.BLUESKY_LINK, true);
-                    propertyMap.put(_expAnnot.getShortUrl().renderShortURL(), _blueSkyPostUrl);
-                    propertyMap.save();
-                }
-                else
-                {
-                    throw new BlueskyException("The post URL was not included in the response from Bluesky");
-                }
+                WritablePropertyMap propertyMap = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.BLUESKY_LINK, true);
+                propertyMap.put(_expAnnot.getShortUrl().renderShortURL(), _blueSkyPostUrl);
+                propertyMap.save();
             }
             catch (BlueskyException e)
             {
