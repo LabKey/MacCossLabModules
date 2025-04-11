@@ -12,7 +12,7 @@ import org.labkey.api.targetedms.IModification;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.HtmlString;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.writer.HtmlWriter;
 import org.labkey.panoramapublic.PanoramaPublicController;
@@ -70,7 +70,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
 
                         String deleteLinkText = "Delete Match" + (modInfo.getUnimodInfos().size() > 1 ? "es" : "");
                         DIV(getAssignedUnimodDetails(modInfo),
-                                SPAN(at(style, "margin-left:8px;"), new Link.LinkBuilder(deleteLinkText)
+                                SPAN(at(style, "margin-left:8px;"), new LinkBuilder(deleteLinkText)
                                         .href(deleteUrl)
                                         .usePost(String.format("Are you sure you want to delete the saved Unimod information for modification '%s'?",
                                                 dbMod != null ? dbMod.getName() : ""))
@@ -91,7 +91,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                     {
                         var url = getMatchToUnimodAction(ctx).addParameter("id", exptId).addParameter("modificationId", modId);
                         url.addCancelURL(ctx.getViewContext().getActionURL());
-                        var findMatchLink = new Link.LinkBuilder("Find Match").href(url);
+                        var findMatchLink = new LinkBuilder("Find Match").href(url);
                         DIV(SPAN(at(style, "color: #d70101; font-weight: bold; margin-right:5px;"), "MISSING"),
                                 findMatchLink).appendTo(out);
                     }

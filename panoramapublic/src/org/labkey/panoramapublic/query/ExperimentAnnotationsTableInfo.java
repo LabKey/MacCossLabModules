@@ -59,12 +59,12 @@ import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.JavaScriptFragment;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.SimpleNamedObject;
 import org.labkey.api.util.StringExpressionFactory;
 import org.labkey.api.util.UniqueID;
-import org.labkey.api.util.element.Input.InputBuilder;
+import org.labkey.api.util.InputBuilder;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HttpView;
 import org.labkey.api.view.template.ClientDependency;
@@ -216,7 +216,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
                 if (accessUrl != null)
                 {
-                    var link = new Link.LinkBuilder("Share")
+                    var link = new LinkBuilder("Share")
                         .clearClasses().addClass("button-small button-small-green")
                         .style("margin:0px 5px 0px 2px;")
                         .onClick("showShareLink(this, " + PageFlowUtil.jsString(accessUrl) + ");return false;");
@@ -728,8 +728,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
             DIV(
                 at(style, "margin-top:5px;").id(renderId).cl("scrollable-dropdown-menu"),
-                new InputBuilder<>()
-                    .type("text")
+                InputBuilder.text()
                     .className("tags")
                     .placeholder(_placeholderText)
                     .name(name)

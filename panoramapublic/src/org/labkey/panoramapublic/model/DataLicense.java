@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.JdbcType;
 import org.labkey.api.data.Parameter;
 import org.labkey.api.util.HtmlString;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 
 public enum DataLicense implements Parameter.JdbcParameterValue
 {
@@ -31,9 +31,9 @@ public enum DataLicense implements Parameter.JdbcParameterValue
         return _url;
     }
 
-    public Link getDisplayLink()
+    public LinkBuilder.Link getDisplayLink()
     {
-        return new Link.LinkBuilder(getDisplayName()).href(getUrl()).target("_blank").clearClasses().build();
+        return new LinkBuilder(getDisplayName()).href(getUrl()).target("_blank").clearClasses().build();
     }
 
     public HtmlString getDisplayLinkHtml()

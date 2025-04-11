@@ -18,7 +18,7 @@ package org.labkey.panoramapublic.proteomexchange;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 import org.w3c.dom.NodeList;
 
 import java.util.Collections;
@@ -305,19 +305,19 @@ public class UnimodModification
         return terminus;
     }
 
-    public Link getLink()
+    public LinkBuilder.Link getLink()
     {
        return getLink(_id);
     }
 
-    public static Link getLink(int unimodId)
+    public static LinkBuilder.Link getLink(int unimodId)
     {
         return getLink(unimodId, false);
     }
 
-    public static Link getLink(int unimodId, boolean clearMargin)
+    public static LinkBuilder.Link getLink(int unimodId, boolean clearMargin)
     {
-        var link = new Link.LinkBuilder("UNIMOD:" + unimodId)
+        var link = new LinkBuilder("UNIMOD:" + unimodId)
                 .href("https://www.unimod.org/modifications_view.php?editid1=" + unimodId)
                 .target("_blank")
                 .rel("noopener noreferrer");
