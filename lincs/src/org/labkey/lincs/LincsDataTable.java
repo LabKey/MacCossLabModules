@@ -89,7 +89,7 @@ public class LincsDataTable extends FilteredTable
                     at(style, "white-space: nowrap;"),
                     new LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl),
                     HtmlString.NBSP,
-                    new LinkBuilder("Skyline").href(docDetailsUrl).clearClasses()
+                    LinkBuilder.simpleLink("Skyline", docDetailsUrl)
                 ).appendTo(out);
             }
 
