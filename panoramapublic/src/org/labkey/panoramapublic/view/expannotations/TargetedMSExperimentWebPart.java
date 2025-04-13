@@ -18,7 +18,7 @@ package org.labkey.panoramapublic.view.expannotations;
 import org.labkey.api.data.Container;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.permissions.AdminOperationsPermission;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
@@ -64,7 +64,7 @@ public class TargetedMSExperimentWebPart extends VBox
             HtmlView view = new HtmlView(DIV(
                     DIV("This folder does not contain an experiment."),
                     DIV(at(style, "margin-top:20px;"),
-                            new Link.LinkBuilder("Create New Experiment")
+                            new LinkBuilder("Create New Experiment")
                                     .href(new ActionURL(PanoramaPublicController.ShowNewExperimentAnnotationFormAction.class, container))
                                     .build())));
             addView(view);
@@ -118,7 +118,7 @@ public class TargetedMSExperimentWebPart extends VBox
             HtmlView view = new HtmlView(DIV(
                     DIV("A parent folder contains an experiment that includes data in this folder."),
                     DIV(at(style, "margin-top: 20px;"),
-                            new Link.LinkBuilder("View Experiment Details")
+                            new LinkBuilder("View Experiment Details")
                                     .href(PanoramaPublicController.getViewExperimentDetailsURL(expAnnotations.getId(), container))
                                     .build() )
             ));

@@ -66,7 +66,7 @@ import org.labkey.api.targetedms.SkylineAnnotation;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.FileUtil;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
@@ -1039,7 +1039,7 @@ public class LincsController extends SpringActionController
             return new HtmlView(
                     DIV("Clue/PSP details saved!",
                             BR(),
-                            new Link.LinkBuilder("Back to Project").href(projectUrl).build()
+                            new LinkBuilder("Back to Project").href(projectUrl).build()
                     )
             );
         }
@@ -1125,7 +1125,7 @@ public class LincsController extends SpringActionController
             return new HtmlView(
                     DIV("Cromwell details saved!",
                             BR(),
-                            new Link.LinkBuilder("Back to Project").href(projectUrl).build()
+                            new LinkBuilder("Back to Project").href(projectUrl).build()
                     )
             );
         }

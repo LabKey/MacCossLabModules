@@ -16,7 +16,7 @@ import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.targetedms.TargetedMSUrls;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.HtmlString;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.writer.HtmlWriter;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
@@ -105,7 +105,7 @@ public abstract class ModificationDocsDisplayColumnFactory implements DisplayCol
     private @NotNull DOM.Renderable runLink(@NotNull ITargetedMSRun run)
     {
         var runUrl = PageFlowUtil.urlProvider(TargetedMSUrls.class).getShowRunUrl(run.getContainer(), run.getId());
-        return new Link.LinkBuilder(run.getFileName()).href(runUrl).clearClasses().build();
+        return new LinkBuilder(run.getFileName()).href(runUrl).clearClasses().build();
     }
 
     private @NotNull DOM.Renderable peptidesLink(ITargetedMSRun run, Long modId)
@@ -114,7 +114,7 @@ public abstract class ModificationDocsDisplayColumnFactory implements DisplayCol
         var peptidesLink = PageFlowUtil.urlProvider(QueryUrls.class).urlExecuteQuery(run.getContainer(), PanoramaPublicSchema.SCHEMA_NAME, query);
         peptidesLink.addParameter(getRunIdQueryParam(), run.getId());
         peptidesLink.addParameter(getModIdQueryParam(), modId);
-        return new Link.LinkBuilder("[PEPTIDES]").href(peptidesLink).build();
+        return new LinkBuilder("[PEPTIDES]").href(peptidesLink).build();
     }
 
     public static class StructuralModDocsColumn extends ModificationDocsDisplayColumnFactory

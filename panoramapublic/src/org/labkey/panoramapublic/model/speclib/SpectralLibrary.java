@@ -14,7 +14,7 @@ import org.labkey.api.targetedms.TargetedMSUrls;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.webdav.WebdavService;
@@ -170,7 +170,7 @@ public class SpectralLibrary implements ISpectrumLibrary
             return SPAN(cl("labkey-error"), "Run not found");
         }
         var runUrl = PageFlowUtil.urlProvider(TargetedMSUrls.class).getShowRunUrl(_run.getContainer(), _run.getId());
-        return new Link.LinkBuilder(_run.getFileName()).href(runUrl).clearClasses().build();
+        return new LinkBuilder(_run.getFileName()).href(runUrl).clearClasses().build();
     }
 
     public @NotNull DOM.Renderable getViewLibInfoAndDownloadLink(@NotNull User user, @NotNull Map<String, String> viewSpecLibParams)
@@ -184,7 +184,7 @@ public class SpectralLibrary implements ISpectrumLibrary
         var viewSpecLibAction = new ActionURL(PanoramaPublicController.ViewSpecLibAction.class, _run.getContainer());
         viewSpecLibAction.addParameter("specLibId", getId());
         viewSpecLibParams.forEach(viewSpecLibAction::replaceParameter);
-        return new Link.LinkBuilder("Library").href(viewSpecLibAction).tooltip("View library details").build();
+        return new LinkBuilder("Library").href(viewSpecLibAction).tooltip("View library details").build();
     }
 
     @NotNull
@@ -201,9 +201,9 @@ public class SpectralLibrary implements ISpectrumLibrary
                 {
                     var displaySize = FileUtils.byteCountToDisplaySize(_fileSize);
                     return SPAN(
-                            new Link.LinkBuilder().href(webdavUrl).iconCls("fa fa-download").build(),
+                            new LinkBuilder().href(webdavUrl).iconCls("fa fa-download").build(),
                             HtmlString.NBSP,
-                            new Link.LinkBuilder(displaySize)
+                            new LinkBuilder(displaySize)
                                     .href(webdavUrl)
                                     .tooltip("Download library file included in the Skyline document")
                                     .clearClasses().build()

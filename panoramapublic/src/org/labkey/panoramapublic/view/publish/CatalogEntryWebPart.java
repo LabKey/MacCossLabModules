@@ -4,7 +4,7 @@ import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.security.User;
 import org.labkey.api.security.permissions.AdminPermission;
-import org.labkey.api.util.Button;
+import org.labkey.api.util.ButtonBuilder;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
@@ -54,13 +54,13 @@ public class CatalogEntryWebPart extends VBox
             addView(new HtmlView(DIV("This dataset does not have an entry in the Panorama Public data catalog. " +
                             "Click the button below to add an entry.",
                     BR(),
-                    new Button.ButtonBuilder("Add Catalog Entry").href(PanoramaPublicController.getAddCatalogEntryUrl(expAnnotations)
+                    new ButtonBuilder("Add Catalog Entry").href(PanoramaPublicController.getAddCatalogEntryUrl(expAnnotations)
                             .addReturnUrl(getViewContext().getActionURL()))
             )));
         }
         else
         {
-            Button changeStatusBtn = null;
+            ButtonBuilder.Button changeStatusBtn = null;
             if (user.hasSiteAdminPermission())
             {
                 changeStatusBtn = changeStatusButtonBuilder(entry.getApproved(), expAnnotations.getId(), entry.getId(), container)
@@ -102,11 +102,11 @@ public class CatalogEntryWebPart extends VBox
                     DIV(IMG(at(src, PanoramaPublicController.getCatalogImageDownloadUrl(expAnnotations, entry.getImageFileName()))
                             .at(width, settings.getImgWidth()).at(height, settings.getImgHeight())
                             .at(style, "margin:10px 0 15px 0;border: 1px solid lightgrey;"))),
-                    new Button.ButtonBuilder("Edit").href(editUrl),
+                    new ButtonBuilder("Edit").href(editUrl),
                     HtmlString.NBSP,
-                    new Button.ButtonBuilder("Delete").href(deleteUrl)
+                    new ButtonBuilder("Delete").href(deleteUrl)
                             .usePost("Are you sure you want to delete the Panorama Public catalog entry for this experiment?"),
-                    returnUrl != null ? DIV(at(style, "margin-top:25px;"), new Button.ButtonBuilder("Back").href(returnUrl))
+                    returnUrl != null ? DIV(at(style, "margin-top:25px;"), new ButtonBuilder("Back").href(returnUrl))
                                       : HtmlString.EMPTY_STRING
             )));
         }
@@ -121,11 +121,11 @@ public class CatalogEntryWebPart extends VBox
                 && ExperimentAnnotationsManager.isCurrentVersion(expAnnotations);
     }
 
-    public static Button.ButtonBuilder changeStatusButtonBuilder(Boolean status, int expAnnotationsId, int catalogEntryId, Container container)
+    public static ButtonBuilder changeStatusButtonBuilder(Boolean status, int expAnnotationsId, int catalogEntryId, Container container)
     {
         boolean approve = status == null || !status;
         String btnTxt = approve ? "Approve" : "Reject";
-        return new Button.ButtonBuilder(btnTxt).href(
+        return new ButtonBuilder(btnTxt).href(
                         new ActionURL(PanoramaPublicController.ChangeCatalogEntryStateAction.class, container)
                                 .addParameter("id", expAnnotationsId)
                                 .addParameter("catalogEntryId", catalogEntryId)
