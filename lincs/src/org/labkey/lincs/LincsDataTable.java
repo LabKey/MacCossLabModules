@@ -87,7 +87,7 @@ public class LincsDataTable extends FilteredTable
                 // <span style="white-space: nowrap;"> is recommended instead of deprecated <nobr></nobr>
                 SPAN(
                     at(style, "white-space: nowrap;"),
-                    new LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl),
+                    LinkBuilder.labkeyLink("Download", downloadUrl).iconCls("fa fa-download"),
                     HtmlString.NBSP,
                     LinkBuilder.simpleLink("Skyline", docDetailsUrl)
                 ).appendTo(out);
@@ -158,7 +158,7 @@ public class LincsDataTable extends FilteredTable
                         ActionURL url = new ActionURL(LincsController.SubmitPspJobAction.class, getContainer());
                         url.addParameter("runId", runId);
 
-                        out.write(new LinkBuilder(" [Submit Job]").href(url).usePost());
+                        out.write(LinkBuilder.labkeyLink(" [Submit Job]", url).usePost());
                     }
                     return;
                 }
@@ -176,7 +176,7 @@ public class LincsDataTable extends FilteredTable
                 }
                 ActionURL url = new ActionURL(LincsController.LincsPspJobDetailsAction.class, getContainer());
                 url.addParameter("runId", pspJob.getRunId());
-                out.write(PageFlowUtil.link(text).href(url));
+                out.write(LinkBuilder.labkeyLink(text, url));
             }
 
             @Override
@@ -376,9 +376,9 @@ public class LincsDataTable extends FilteredTable
             SPAN(
                 at(style, "white-space: nowrap;"),
                 HtmlString.NBSP,
-                new LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl).onClick(analyticsScript),
+                LinkBuilder.labkeyLink("Download", downloadUrl).iconCls("fa fa-download").onClick(analyticsScript),
                 HtmlString.NBSP,
-                new LinkBuilder(downloadText).href(downloadUrl).onClick(analyticsScript).clearClasses(),
+                LinkBuilder.simpleLink(downloadText, downloadUrl).onClick(analyticsScript),
                 HtmlString.NBSP,
                 morpheusUrl != null ? HtmlString.NBSP : null,
                 morpheusUrl,

@@ -105,7 +105,7 @@ public abstract class ModificationDocsDisplayColumnFactory implements DisplayCol
     private @NotNull DOM.Renderable runLink(@NotNull ITargetedMSRun run)
     {
         var runUrl = PageFlowUtil.urlProvider(TargetedMSUrls.class).getShowRunUrl(run.getContainer(), run.getId());
-        return new LinkBuilder(run.getFileName()).href(runUrl).clearClasses().build();
+        return LinkBuilder.simpleLink(run.getFileName(), runUrl).build();
     }
 
     private @NotNull DOM.Renderable peptidesLink(ITargetedMSRun run, Long modId)
@@ -114,7 +114,7 @@ public abstract class ModificationDocsDisplayColumnFactory implements DisplayCol
         var peptidesLink = PageFlowUtil.urlProvider(QueryUrls.class).urlExecuteQuery(run.getContainer(), PanoramaPublicSchema.SCHEMA_NAME, query);
         peptidesLink.addParameter(getRunIdQueryParam(), run.getId());
         peptidesLink.addParameter(getModIdQueryParam(), modId);
-        return new LinkBuilder("[PEPTIDES]").href(peptidesLink).build();
+        return LinkBuilder.labkeyLink("[PEPTIDES]", peptidesLink).build();
     }
 
     public static class StructuralModDocsColumn extends ModificationDocsDisplayColumnFactory

@@ -317,10 +317,9 @@ public class UnimodModification
 
     public static LinkBuilder.Link getLink(int unimodId, boolean clearMargin)
     {
-        var link = new LinkBuilder("UNIMOD:" + unimodId)
-                .href("https://www.unimod.org/modifications_view.php?editid1=" + unimodId)
-                .target("_blank")
-                .rel("noopener noreferrer");
+        var link = LinkBuilder.labkeyLink("UNIMOD:" + unimodId, "https://www.unimod.org/modifications_view.php?editid1=" + unimodId)
+            .target("_blank")
+            .rel("noopener noreferrer");
         if (clearMargin)
         {
             link = link.style("margin-right:0px;");

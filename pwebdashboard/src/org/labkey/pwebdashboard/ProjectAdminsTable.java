@@ -218,7 +218,7 @@ public class ProjectAdminsTable extends ContainerTable
         private HtmlString getUserDetails(Container container, UserPrincipal member)
         {
             ActionURL url = PageFlowUtil.urlProvider(UserUrls.class).getUserDetailsURL(container, member.getUserId(), null);
-            return new LinkBuilder(member.getName()).href(url).clearClasses().build().getHtmlString();
+            return LinkBuilder.simpleLink(member.getName(), url).build().getHtmlString();
         }
 
         @Override

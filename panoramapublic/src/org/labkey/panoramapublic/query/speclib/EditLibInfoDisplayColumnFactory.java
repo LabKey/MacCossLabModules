@@ -7,6 +7,7 @@ import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.permissions.UpdatePermission;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
@@ -57,12 +58,12 @@ public class EditLibInfoDisplayColumnFactory implements DisplayColumnFactory
                             }
                             ActionURL editUrl = PanoramaPublicController.getEditSpecLibInfoURL(experimentAnnotationsId, specLibId, specLibInfoId, ctx.getContainer());
                             editUrl.addReturnUrl(returnUrl);
-                            out.write(PageFlowUtil.link(specLibInfoId != null ? "Edit" : "Add").href(editUrl));
+                            out.write(LinkBuilder.labkeyLink(specLibInfoId != null ? "Edit" : "Add", editUrl));
                             if (specLibInfoId != null)
                             {
                                 ActionURL deleteUrl = PanoramaPublicController.getDeleteSpecLibInfoURL(experimentAnnotationsId, specLibInfoId, ctx.getContainer());
                                 deleteUrl.addReturnUrl(returnUrl);
-                                out.write(PageFlowUtil.link("Delete").href(deleteUrl).usePost("Are you sure you want to delete the spectral library information?"));
+                                out.write(LinkBuilder.labkeyLink("Delete", deleteUrl).usePost("Are you sure you want to delete the spectral library information?"));
                             }
                         }
                     }

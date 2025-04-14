@@ -47,6 +47,7 @@
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page import="org.labkey.panoramapublic.view.publish.CatalogEntryWebPart" %>
 <%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="org.labkey.api.util.LinkBuilder" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -264,13 +265,13 @@
 <div>
     <%if(canPublish && !journalCopyPending){%>
         <span style="float:left; margin:0px 5px 0px 2px;">
-            <%=link(publishButtonText, publishUrl).clearClasses().addClass("button-small").addClass("button-small-red")%>
+            <%=simpleLink(publishButtonText, publishUrl).addClass("button-small").addClass("button-small-red")%>
         </span>
     <%}%>
     <% if (annotDetails.canAddPublishLink(getUser())) { %>
-        <%=link(annotDetails.getPublishButtonText(), new ActionURL(PanoramaPublicController.MakePublicAction.class,getContainer())
+        <%=simpleLink(annotDetails.getPublishButtonText(), new ActionURL(PanoramaPublicController.MakePublicAction.class,getContainer())
                 .addParameter("id", annot.getId()))
-                .clearClasses().addClass("button-small button-small-red")
+                .addClass("button-small button-small-red")
                 .style("margin:0px 5px 0px 2px;")%>
     <% } %>
     <%if(canEdit){%>
@@ -292,7 +293,7 @@
     <div class="link">
        <strong><%=h(linkText)%>: </strong>
        <span id="accessUrl" style="margin-top:5px;"><a href="<%=h(accessUrl)%>"><%=h(accessUrl)%></a></span>
-        <%=link("Share").clearClasses().addClass("button-small button-small-green")
+        <%=simpleLink("Share").addClass("button-small button-small-green")
                 .style("margin:0px 5px 0px 2px")
                 .onClick("showShareLink(this, " + q(accessUrl) + "); return false;")%>
         <% if (annotDetails.hasVersion()) {%>
@@ -320,13 +321,13 @@
     <%if(annot.getPxid() != null){%>
     <%if(addSep) {%> <span style="margin-right:10px;margin-left:10px;">|</span> <%}%>
     <span class="link">
-        <strong>ProteomeXchange: </strong><%= link(annot.getPxid()).href(ProteomeXchangeService.toUrl(annot.getPxid())).target("_blank").rel("noopener noreferrer").clearClasses() %>
+        <strong>ProteomeXchange: </strong><%= simpleLink(annot.getPxid(), ProteomeXchangeService.toUrl(annot.getPxid())).target("_blank").rel("noopener noreferrer") %>
     </span>
     <% addSep = true; }%>
     <%if(annot.hasDoi()){%>
     <%if(addSep) {%> <span style="margin-right:10px;margin-left:10px;">|</span> <%}%>
     <span class="link">
-        <strong>doi: </strong><%= DataCiteService.toLink(annot.getDoi()).target("_blank").clearClasses() %>
+        <strong>doi: </strong><%= DataCiteService.toLink(annot.getDoi()).target("_blank") %>
     </span>
     <%}%>
 </div>

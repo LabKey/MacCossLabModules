@@ -251,7 +251,7 @@ public class DataCiteService
     {
         // Display the complete link: https://support.datacite.org/docs/datacite-doi-display-guidelines
         String url = toUrl(doi);
-        return new LinkBuilder(url).href(url).rel("noopener noreferrer");
+        return LinkBuilder.simpleLink(url, url).rel("noopener noreferrer");
     }
 
     /**

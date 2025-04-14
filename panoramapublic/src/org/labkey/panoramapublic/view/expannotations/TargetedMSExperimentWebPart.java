@@ -64,9 +64,10 @@ public class TargetedMSExperimentWebPart extends VBox
             HtmlView view = new HtmlView(DIV(
                     DIV("This folder does not contain an experiment."),
                     DIV(at(style, "margin-top:20px;"),
-                            new LinkBuilder("Create New Experiment")
-                                    .href(new ActionURL(PanoramaPublicController.ShowNewExperimentAnnotationFormAction.class, container))
-                                    .build())));
+                        LinkBuilder.labkeyLink("Create New Experiment", new ActionURL(PanoramaPublicController.ShowNewExperimentAnnotationFormAction.class, container))
+                            .build()
+                    )
+            ));
             addView(view);
         }
         else if(expAnnotations.getContainer().equals(container))
@@ -116,11 +117,11 @@ public class TargetedMSExperimentWebPart extends VBox
         {
             // There is an experiment defined in a parent container that is configured to include subfolders.
             HtmlView view = new HtmlView(DIV(
-                    DIV("A parent folder contains an experiment that includes data in this folder."),
-                    DIV(at(style, "margin-top: 20px;"),
-                            new LinkBuilder("View Experiment Details")
-                                    .href(PanoramaPublicController.getViewExperimentDetailsURL(expAnnotations.getId(), container))
-                                    .build() )
+                DIV("A parent folder contains an experiment that includes data in this folder."),
+                DIV(at(style, "margin-top: 20px;"),
+                    LinkBuilder.labkeyLink("View Experiment Details", PanoramaPublicController.getViewExperimentDetailsURL(expAnnotations.getId(), container))
+                        .build()
+                )
             ));
             addView(view);
         }

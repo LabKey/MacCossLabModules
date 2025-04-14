@@ -12,6 +12,7 @@ import org.labkey.api.data.SQLFragment;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
 import org.labkey.api.util.HtmlString;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.writer.HtmlWriter;
@@ -164,7 +165,7 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
                     {
                         // Show the delete link only if the experiment has not yet been copied
                         _url.replaceParameter("id", id);
-                        out.write(PageFlowUtil.link("Delete").href(_url));
+                        out.write(LinkBuilder.labkeyLink("Delete", _url));
                     }
                 }
             };
@@ -204,13 +205,13 @@ public class SubmissionTableInfo extends FilteredTable<PanoramaPublicSchema>
                                 {
                                     ActionURL resubmitUrl = PanoramaPublicController.getResubmitExperimentURL(js.getExperimentAnnotationsId(), js.getJournalId(), _container, s.isKeepPrivate(),
                                             true /*check if data is valid for PXD. Always do this check on a resubmit.*/);
-                                    out.write(PageFlowUtil.link("Resubmit").href(resubmitUrl));
+                                    out.write(LinkBuilder.labkeyLink("Resubmit", resubmitUrl));
                                 }
                             }
                             else
                             {
                                 ActionURL ediUrl = PanoramaPublicController.getUpdateSubmissionURL(js.getExperimentAnnotationsId(), js.getJournalId(), _container, s.isKeepPrivate(), true);
-                                out.write(PageFlowUtil.link("Edit").href(ediUrl));
+                                out.write(LinkBuilder.labkeyLink("Edit", ediUrl));
                             }
                         }
                     }

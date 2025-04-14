@@ -294,7 +294,7 @@ public class PanoramaPublicController extends SpringActionController
                             LI("Creates a new security group for project administrators"),
                             LI("Creates an entry in the Journal table of the panoramapublic schema")
                     ),
-                    DIV(new LinkBuilder("Create a new journal group").href(new ActionURL(CreateJournalGroupAction.class, getContainer())))
+                    DIV(LinkBuilder.labkeyLink("Create a new journal group", new ActionURL(CreateJournalGroupAction.class, getContainer())))
             )));
 
             view.addView(qView);
@@ -310,22 +310,28 @@ public class PanoramaPublicController extends SpringActionController
         private ModelAndView getPXCredentialsLink()
         {
             ActionURL url = new ActionURL(ManageProteomeXchangeCredentials.class, getContainer());
-            return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                    new LinkBuilder("Set ProteomeXchange Credentials").href(url).build()));
+            return new HtmlView(DIV(
+                at(style, "margin-top:20px;"),
+                LinkBuilder.labkeyLink("Set ProteomeXchange Credentials", url)
+            ));
         }
 
         private ModelAndView getDataCiteCredentialsLink()
         {
             ActionURL url = new ActionURL(ManageDataCiteCredentials.class, getContainer());
-            return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                    new LinkBuilder("Set DataCite Credentials").href(url).build()));
+            return new HtmlView(DIV(
+                at(style, "margin-top:20px;"),
+                LinkBuilder.labkeyLink("Set DataCite Credentials", url)
+            ));
         }
 
         private ModelAndView getPanoramaPublicCatalogSettingsLink()
         {
             ActionURL url = new ActionURL(ManageCatalogEntrySettings.class, getContainer());
-            return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                    new LinkBuilder("Panorama Public Catalog Settings").href(url).build()));
+            return new HtmlView(DIV(
+                at(style, "margin-top:20px;"),
+                LinkBuilder.labkeyLink("Panorama Public Catalog Settings", url)
+            ));
         }
 
         private ModelAndView getPostSupportMessageLink()
@@ -334,8 +340,10 @@ public class PanoramaPublicController extends SpringActionController
             if (panoramaPublic != null)
             {
                 ActionURL url = new ActionURL(CreatePanoramaPublicMessageAction.class, panoramaPublic.getProject());
-                return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                        new LinkBuilder("Post to Panorama Public Support Messages").href(url).build()));
+                return new HtmlView(DIV(
+                    at(style, "margin-top:20px;"),
+                    LinkBuilder.labkeyLink("Post to Panorama Public Support Messages", url)
+                ));
             }
             return null;
         }
@@ -993,9 +1001,12 @@ public class PanoramaPublicController extends SpringActionController
         {
             ActionURL adminUrl = new ActionURL(PanoramaPublicAdminViewAction.class, getContainer());
             return new HtmlView(
-                    DIV("DataCite credentials saved!",
+                DIV(
+                    "DataCite credentials saved!",
                     BR(),
-                    new LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
+                    LinkBuilder.labkeyLink("Back to Panorama Public Admin Console", adminUrl)
+                )
+            );
         }
 
         @Override
@@ -1140,9 +1151,12 @@ public class PanoramaPublicController extends SpringActionController
         {
             ActionURL adminUrl = new ActionURL(PanoramaPublicAdminViewAction.class, getContainer());
             return new HtmlView(
-                    DIV("ProteomeXchange credentials saved!",
+                DIV(
+                    "ProteomeXchange credentials saved!",
                     BR(),
-                    new LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
+                    LinkBuilder.labkeyLink("Back to Panorama Public Admin Console", adminUrl)
+                )
+            );
         }
 
         @Override
@@ -1312,9 +1326,11 @@ public class PanoramaPublicController extends SpringActionController
         {
             ActionURL adminUrl = new ActionURL(PanoramaPublicAdminViewAction.class, getContainer());
             return new HtmlView(
-                    DIV("Panorama Public catalog entry settings were saved.",
-                            BR(),
-                            new LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
+                DIV("Panorama Public catalog entry settings were saved.",
+                    BR(),
+                    LinkBuilder.labkeyLink("Back to Panorama Public Admin Console", adminUrl)
+                )
+            );
         }
 
         @Override
@@ -2550,7 +2566,8 @@ public class PanoramaPublicController extends SpringActionController
                     DIV(dataPrivate),
                     DIV(pxdAssigned),
                     BR(), BR(),
-                    new LinkBuilder("Back to Experiment Details").href(returnUrl).build()));
+                    LinkBuilder.labkeyLink("Back to Experiment Details", returnUrl)
+            ));
 
             view.setTitle(getSuccessViewTitle());
             return view;
@@ -2629,8 +2646,10 @@ public class PanoramaPublicController extends SpringActionController
         if (forSubmit && submitUrl != null)
         {
             ActionURL noPxSubmissionUrl = submitUrl.clone().replaceParameter("getPxid", "false");
-            componentList.add(DIV(at(style, "margin-bottom:10px;"), "If you do not want a ProteomeXchange ID click the link to ",
-                    new LinkBuilder("Submit without a ProteomeXchange ID").href(noPxSubmissionUrl).build()));
+            componentList.add(DIV(
+                at(style, "margin-bottom:10px;"), "If you do not want a ProteomeXchange ID click the link to ",
+                LinkBuilder.labkeyLink("Submit without a ProteomeXchange ID", noPxSubmissionUrl)
+            ));
         }
         componentList.add(DIV(at(style, "top-bottom:10px;"), new ButtonBuilder("Back to Experiment Details")
                 .href(getViewExperimentDetailsURL(experimentAnnotations.getId(), container)).build()));
@@ -2697,7 +2716,7 @@ public class PanoramaPublicController extends SpringActionController
                     "Data validation with Id " + dataValidation.getId() + " is incomplete.",
                     pipelineJobStatus != null ?
                             SPAN("The status of the pipeline job (Id: " + dataValidation.getJobId() + ") is ",
-                                    new LinkBuilder(pipelineJobStatus.getStatus()).href(jobDetailsUrl).build())
+                                LinkBuilder.labkeyLink(pipelineJobStatus.getStatus(), jobDetailsUrl))
                             : " The pipeline job (Id: " + dataValidation.getJobId() + ") may have been deleted."),
                     forSubmit, experimentAnnotations, container, null);
         }
@@ -2718,11 +2737,13 @@ public class PanoramaPublicController extends SpringActionController
 
     private static DOM.Renderable getSubfolderListHtml(Container parent, List<Container> children)
     {
-        return UL(children.stream()
+        return UL(
+            children.stream()
                 .filter(child -> !child.equals(parent))
-                .map(child -> LI(new LinkBuilder(parent.getParsedPath().relativize(child.getParsedPath()).toString())
-                        .href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(child))
-                        .clearClasses())));
+                .map(child -> LI(
+                    LinkBuilder.simpleLink(parent.getParsedPath().relativize(child.getParsedPath()).toString(), PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(child))
+                ))
+        );
     }
 
     private static ButtonBuilder getExcludeSubfoldersButton(ExperimentAnnotations exptAnnotations)
@@ -3471,19 +3492,16 @@ public class PanoramaPublicController extends SpringActionController
         User createdByUser = UserManager.getUser(validation.getCreatedBy());
         ActionURL validationDetailsUrl = getPxValidationStatusUrl(exptAnnotations.getId(), validation.getId(), container);
         return new HtmlView(TABLE(cl("lk-fields-table"),
-                displayExperimentTitle ? row("Experiment: ", DIV(exptAnnotations.getTitle(), HtmlString.NBSP, new LinkBuilder("View Details")
-                        .href(getViewExperimentDetailsURL(exptAnnotations.getId(), container)).build())) : HtmlString.EMPTY_STRING,
+                displayExperimentTitle ? row("Experiment: ", DIV(exptAnnotations.getTitle(), HtmlString.NBSP, LinkBuilder.labkeyLink("View Details", getViewExperimentDetailsURL(exptAnnotations.getId(), container)).build())) : HtmlString.EMPTY_STRING,
                 row("Last Validation Date: ", validation.getFormattedDate()),
                 createdByUser != null ?
-                        row("Created By: ", new LinkBuilder(createdByUser.getDisplayName(user))
-                                .href(PageFlowUtil.urlProvider(UserUrls.class).getUserDetailsURL(container, createdByUser.getUserId(), null))
-                                .clearClasses().build()) :
+                        row("Created By: ", LinkBuilder.simpleLink(createdByUser.getDisplayName(user), PageFlowUtil.urlProvider(UserUrls.class).getUserDetailsURL(container, createdByUser.getUserId(), null))) :
                         row("Created By: ", "Unknown User " + validation.getCreatedBy()),
                 row("ProteomeXchange Status:", SPAN(getValidationStatusForSummary(validation, statusFile, exptAnnotations, user),
-                        HtmlString.NBSP, new LinkBuilder("[Details]").href(validationDetailsUrl).build())),
+                        HtmlString.NBSP, LinkBuilder.labkeyLink("[Details]", validationDetailsUrl))),
                 row("Validation Log:", statusFile != null ?
-                        new LinkBuilder("View log").href(PageFlowUtil.urlProvider(PipelineStatusUrls.class)
-                                .urlDetails(container, validation.getJobId())).build()
+                        LinkBuilder.labkeyLink("View log", PageFlowUtil.urlProvider(PipelineStatusUrls.class)
+                                .urlDetails(container, validation.getJobId()))
                         : SPAN("Log file not found for job Id " + validation.getJobId()))
         ));
     }
@@ -4327,7 +4345,7 @@ public class PanoramaPublicController extends SpringActionController
                         SPAN("Response from PX server: "), BR(),
                         DIV(at(style, "white-space: pre-wrap;margin:10px 0px 10px 0px;"),
                             _pxResponse),
-                    DIV(new LinkBuilder("Back to folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
+                    DIV(LinkBuilder.labkeyLink("Back to folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
         }
 
         private PxXml createPxXml(ExperimentAnnotations expAnnot, JournalExperiment je, Submission submission, Status validationStatus, String pxChanageLog, boolean submittingToPx) throws PxException
@@ -4837,21 +4855,28 @@ public class PanoramaPublicController extends SpringActionController
             if(_expAnnot.hasDoi())
             {
                 return new HtmlView(
-                        DIV(DIV(at(style, "margin-bottom:10px;"), "DOI assigned to the data is " + _expAnnot.getDoi()),
-                                DIV(
-                                new LinkBuilder("Publish DOI").clearClasses().addClass("btn btn-default").href(new ActionURL(PublishDoiAction.class, getContainer()).addParameter("id", _expAnnot.getId())),
-                                SPAN(at(style, "margin:5px;")),
-                                new LinkBuilder("Delete DOI").clearClasses().addClass("btn btn-default").href(new ActionURL(DeleteDoiAction.class, getContainer()).addParameter("id", _expAnnot.getId()))),
-                                updateDoiForm));
-
+                    DIV(DIV(
+                        at(style, "margin-bottom:10px;"), "DOI assigned to the data is " + _expAnnot.getDoi()),
+                        DIV(
+                            LinkBuilder.simpleLink("Publish DOI", new ActionURL(PublishDoiAction.class, getContainer()).addParameter("id", _expAnnot.getId())).addClass("btn btn-default"),
+                            SPAN(at(style, "margin:5px;")),
+                            LinkBuilder.simpleLink("Delete DOI", new ActionURL(DeleteDoiAction.class, getContainer()).addParameter("id", _expAnnot.getId())).addClass("btn btn-default")
+                        ),
+                        updateDoiForm
+                    ));
             }
             else
             {
-               return new HtmlView(
-                       DIV(DIV(new LinkBuilder("Assign New DOI").clearClasses().addClass("btn btn-default").href(getAssignDoiUrl(_expAnnot, getContainer(), false)),
-                       SPAN(at(style, "margin:5px;")),
-                       new LinkBuilder("Assign New Test DOI").clearClasses().addClass("btn btn-default").href(getAssignDoiUrl(_expAnnot, getContainer(), true))),
-                       updateDoiForm));
+                return new HtmlView(
+                    DIV(
+                        DIV(
+                            LinkBuilder.simpleLink("Assign New DOI", getAssignDoiUrl(_expAnnot, getContainer(), false)).addClass("btn btn-default"),
+                            SPAN(at(style, "margin:5px;")),
+                            LinkBuilder.simpleLink("Assign New Test DOI", getAssignDoiUrl(_expAnnot, getContainer(), true)).addClass("btn btn-default")
+                        ),
+                        updateDoiForm
+                    )
+                );
             }
         }
 
@@ -4941,9 +4966,14 @@ public class PanoramaPublicController extends SpringActionController
         public ModelAndView getSuccessView(DoiForm form)
         {
             return new HtmlView(
-                    DIV(getSuccessMessage(),
-                            BR(),
-                            DIV(new LinkBuilder("Back to folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
+                DIV(
+                    getSuccessMessage(),
+                    BR(),
+                    DIV(
+                        LinkBuilder.labkeyLink("Back to folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer()))
+                    )
+                )
+            );
         }
 
         protected abstract DOM.Renderable getSuccessMessage();
@@ -5483,7 +5513,7 @@ public class PanoramaPublicController extends SpringActionController
                 if (getViewContext().hasPermission(AdminOperationsPermission.class) && DataValidationManager.getValidationJobCount(exptAnnotations.getId()) > 1)
                 {
                     ActionURL url = new ActionURL(ViewPxValidationsAction.class, getContainer()).addParameter("id", exptAnnotations.getId());
-                    viewAllLink = new LinkBuilder("View All Validation Jobs").href(url).build();
+                    viewAllLink = LinkBuilder.labkeyLink("View All Validation Jobs", url).build();
                 }
                 view.addView(new HtmlView(DIV(at(style, "margin-top:15px;"),
                         getRerunDataValidationButton(exptAnnotations, getContainer()),
@@ -5591,7 +5621,9 @@ public class PanoramaPublicController extends SpringActionController
 
                 ActionURL url = PanoramaPublicController.getDataValidationCheckUrl(exptAnnotations.getId(), exptAnnotations.getContainer(), true);
                 url.addReturnUrl(getViewExperimentDetailsURL(exptAnnotations.getId(), exptAnnotations.getContainer()));
-                vBox.addView(new HtmlView(DIV(new LinkBuilder("Validate for ProteomeXchange").href(url).build())));
+                vBox.addView(new HtmlView(DIV(
+                    LinkBuilder.labkeyLink("Validate for ProteomeXchange", url)
+                )));
 
                 result.addView(vBox);
             }
@@ -7363,9 +7395,9 @@ public class PanoramaPublicController extends SpringActionController
             rows.add(getSummaryRow("Name:", library.getName()));
             rows.add(getSummaryRow("File Name: ", SPAN(library.getFileNameHint(),
                     SPAN(at(style, "margin-left:5px; white-space: nowrap;"), library.getDownloadLink(getUser())))));
-            rows.add(getSummaryRow("Skyline Document: ",  new LinkBuilder(run.getFileName())
-                    .href(PageFlowUtil.urlProvider(TargetedMSUrls.class).getShowRunUrl(run.getContainer(), run.getId()))
-                    .clearClasses().build()));
+            rows.add(
+                getSummaryRow("Skyline Document: ", LinkBuilder.simpleLink(run.getFileName(), PageFlowUtil.urlProvider(TargetedMSUrls.class).getShowRunUrl(run.getContainer(), run.getId())))
+            );
 
             if (specLibInfo != null)
             {
@@ -8213,14 +8245,19 @@ public class PanoramaPublicController extends SpringActionController
     private static HtmlView getModInfoChangedSuccessView(String modificationName, String modificationType, String action, ExperimentAnnotations expAnnotations)
     {
         ActionURL exptModsUrl = new ActionURL(ViewExperimentModifications.class, expAnnotations.getContainer()).addParameter("id", expAnnotations.getId());
-        HtmlView hView = new HtmlView(DIV(DIV(SPAN("Unimod information for " + (modificationType != null ? modificationType : "") + " modification "),
+        HtmlView hView = new HtmlView(DIV(
+            DIV(
+                SPAN("Unimod information for " + (modificationType != null ? modificationType : "") + " modification "),
                 SPAN(at(style, "font-weight:bold;"), modificationName),
-                SPAN(" was successfully " + action + ".")),
-                BR(),
-                DIV("View all the structural and isotope modifications in the experiment: ",
-                        new ButtonBuilder("View Experiment Modifications").href(exptModsUrl).build()),
-                DIV(new LinkBuilder("[View Experiment Details]").href(getViewExperimentDetailsURL(expAnnotations.getId(), expAnnotations.getContainer())).build()
-                )));
+                SPAN(" was successfully " + action + ".")
+            ),
+            BR(),
+            DIV("View all the structural and isotope modifications in the experiment: ",
+                new ButtonBuilder("View Experiment Modifications").href(exptModsUrl).build()),
+            DIV(
+                LinkBuilder.labkeyLink("[View Experiment Details]", getViewExperimentDetailsURL(expAnnotations.getId(), expAnnotations.getContainer()))
+            )
+        ));
         return hView;
     }
 
