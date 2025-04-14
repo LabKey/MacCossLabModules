@@ -216,8 +216,8 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
                 if (accessUrl != null)
                 {
-                    var link = new LinkBuilder("Share")
-                        .clearClasses().addClass("button-small button-small-green")
+                    var link = LinkBuilder.simpleLink("Share")
+                        .addClass("button-small button-small-green")
                         .style("margin:0px 5px 0px 2px;")
                         .onClick("showShareLink(this, " + PageFlowUtil.jsString(accessUrl) + ");return false;");
 

@@ -33,7 +33,7 @@ public enum DataLicense implements Parameter.JdbcParameterValue
 
     public LinkBuilder.Link getDisplayLink()
     {
-        return new LinkBuilder(getDisplayName()).href(getUrl()).target("_blank").clearClasses().build();
+        return LinkBuilder.simpleLink(getDisplayName(), getUrl()).target("_blank").build();
     }
 
     public HtmlString getDisplayLinkHtml()

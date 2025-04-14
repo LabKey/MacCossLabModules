@@ -47,7 +47,7 @@ public class PeptideMatchesDisplayColumnFactory implements DisplayColumnFactory
                 searchUrl.addParameter("peptideSequence", proteinLabel);
                 searchUrl.addParameter("exactMatch", exactMatch);
 
-                out.write(new LinkBuilder(String.valueOf(matches)).href(searchUrl));
+                out.write(LinkBuilder.labkeyLink(String.valueOf(matches), searchUrl));
                 out.write(PageFlowUtil.button("View").href(searchUrl));
             }
         };

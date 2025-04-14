@@ -70,11 +70,12 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
 
                         String deleteLinkText = "Delete Match" + (modInfo.getUnimodInfos().size() > 1 ? "es" : "");
                         DIV(getAssignedUnimodDetails(modInfo),
-                                SPAN(at(style, "margin-left:8px;"), new LinkBuilder(deleteLinkText)
-                                        .href(deleteUrl)
-                                        .usePost(String.format("Are you sure you want to delete the saved Unimod information for modification '%s'?",
-                                                dbMod != null ? dbMod.getName() : ""))
-                                        .build())).appendTo(out);
+                            SPAN(at(style, "margin-left:8px;"), LinkBuilder.labkeyLink(deleteLinkText, deleteUrl)
+                                .usePost(String.format("Are you sure you want to delete the saved Unimod information for modification '%s'?",
+                                    dbMod != null ? dbMod.getName() : ""))
+                                .build()
+                            )
+                        ).appendTo(out);
                     }
                 }
                 else
@@ -91,7 +92,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
                     {
                         var url = getMatchToUnimodAction(ctx).addParameter("id", exptId).addParameter("modificationId", modId);
                         url.addCancelURL(ctx.getViewContext().getActionURL());
-                        var findMatchLink = new LinkBuilder("Find Match").href(url);
+                        var findMatchLink = LinkBuilder.labkeyLink("Find Match", url);
                         DIV(SPAN(at(style, "color: #d70101; font-weight: bold; margin-right:5px;"), "MISSING"),
                                 findMatchLink).appendTo(out);
                     }

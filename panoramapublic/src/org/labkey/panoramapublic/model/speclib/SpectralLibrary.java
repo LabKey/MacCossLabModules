@@ -170,7 +170,7 @@ public class SpectralLibrary implements ISpectrumLibrary
             return SPAN(cl("labkey-error"), "Run not found");
         }
         var runUrl = PageFlowUtil.urlProvider(TargetedMSUrls.class).getShowRunUrl(_run.getContainer(), _run.getId());
-        return new LinkBuilder(_run.getFileName()).href(runUrl).clearClasses().build();
+        return LinkBuilder.simpleLink(_run.getFileName(), runUrl).build();
     }
 
     public @NotNull DOM.Renderable getViewLibInfoAndDownloadLink(@NotNull User user, @NotNull Map<String, String> viewSpecLibParams)
@@ -184,7 +184,7 @@ public class SpectralLibrary implements ISpectrumLibrary
         var viewSpecLibAction = new ActionURL(PanoramaPublicController.ViewSpecLibAction.class, _run.getContainer());
         viewSpecLibAction.addParameter("specLibId", getId());
         viewSpecLibParams.forEach(viewSpecLibAction::replaceParameter);
-        return new LinkBuilder("Library").href(viewSpecLibAction).tooltip("View library details").build();
+        return LinkBuilder.labkeyLink("Library", viewSpecLibAction).tooltip("View library details").build();
     }
 
     @NotNull
@@ -203,10 +203,9 @@ public class SpectralLibrary implements ISpectrumLibrary
                     return SPAN(
                             new LinkBuilder().href(webdavUrl).iconCls("fa fa-download").build(),
                             HtmlString.NBSP,
-                            new LinkBuilder(displaySize)
-                                    .href(webdavUrl)
-                                    .tooltip("Download library file included in the Skyline document")
-                                    .clearClasses().build()
+                            LinkBuilder.simpleLink(displaySize, webdavUrl)
+                                .tooltip("Download library file included in the Skyline document")
+                                .build()
                     );
                 }
                 else

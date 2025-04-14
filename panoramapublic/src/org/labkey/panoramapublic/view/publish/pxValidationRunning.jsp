@@ -118,8 +118,8 @@
 
                         if (jobStatusLc === "error") {
                             onPageLoadMsgDiv.innerHTML = "There were errors while running the validation job. Please " +
-                                    '<%=link("view the validation log", jobLogHref)
-                                .clearClasses().addClass("alert-link")%>' + " for details.";
+                                    '<%=simpleLink("view the validation log", jobLogHref)
+                                .addClass("alert-link")%>' + " for details.";
                             onPageLoadMsgDiv.classList.add('alert', 'alert-warning', 'labkey-error');
                         }
                     }

@@ -402,14 +402,14 @@ a { text-decoration: none; }
     <div style="float:left; width:351px;">
         <img id="toolIcon" src="<%= h(tool.getIconUrl()) %>" class="logoWrap" alt="<%= h(tool.getName()) %>">
 <% if (toolEditor) { %>
-        <%=link(editIconImgHtml).clearClasses().addClass("toolProperty").id("editIcon").title("Icon").onClick("editTool($(this), 'Icon')")%>
+        <%=simpleLink(editIconImgHtml).addClass("toolProperty").id("editIcon").title("Icon").onClick("editTool($(this), 'Icon')")%>
 <% } %>
         <div class="block">
             <h2><%= h(tool.getName()) %></h2>
             <p>
                 Version <%= h(tool.getVersion()) %>
 <% if (allVersions.length > 1) { %>
-                [<%=link("View All").clearClasses().onClick("$('#allVersionsPop').dialog('open')")%>]
+                [<%=simpleLink("View All").onClick("$('#allVersionsPop').dialog('open')")%>]
             </p>
 <% } %>
             </p>
@@ -429,14 +429,14 @@ a { text-decoration: none; }
     <div class="menuMouseArea sprocket">
         <img src="<%= h(imgDir) %>gear.png" title="Settings" alt="Sprocket" />
         <ul class="dropMenu">
-            <li><%=link("Upload new version").clearClasses().onClick("$('#uploadPop').dialog('open')")%></li>
-            <li><%=link("Upload supplementary file").clearClasses().onClick("$('#uploadSuppPop').dialog('open')")%></li>
+            <li><%=simpleLink("Upload new version").onClick("$('#uploadPop').dialog('open')")%></li>
+            <li><%=simpleLink("Upload supplementary file").onClick("$('#uploadSuppPop').dialog('open')")%></li>
 <% if (multipleVersions) { %>
-            <li><%=link("Delete latest version").clearClasses().onClick("$('#delToolLatestDlg').dialog('open')")%></li>
+            <li><%=simpleLink("Delete latest version").onClick("$('#delToolLatestDlg').dialog('open')")%></li>
 <% } %>
 <% if (admin) { %>
-            <li><%=link("Delete").clearClasses().onClick("$('#delToolAllDlg').dialog('open')")%></li>
-            <li><%=link("Manage tool owners").clearClasses().onClick("popToolOwners()")%></li>
+            <li><%=simpleLink("Delete").onClick("$('#delToolAllDlg').dialog('open')")%></li>
+            <li><%=simpleLink("Manage tool owners").onClick("popToolOwners()")%></li>
 <% } %>
         </ul>
     </div>
@@ -445,7 +445,7 @@ a { text-decoration: none; }
     <p id="toolDescription" class="toolProperty" title="Description">
         <span class="toolPropertyValue"><%= h(tool.getDescription(), true) %></span>
 <% if (toolEditor) { %>
-        <%=link(editIconImgHtml).clearClasses().onClick("editTool($(this))")%>
+        <%=simpleLink(editIconImgHtml).onClick("editTool($(this))")%>
 <% } %>
     </p>
     <div id="downloadArea">
@@ -480,7 +480,7 @@ a { text-decoration: none; }
         <span class="boldfont">Organization:</span>
         <span class="toolPropertyValue"><%= h(tool.getOrganization()) %></span>
 <% if (toolEditor) { %>
-       <%=link(editIconImgHtml).clearClasses().onClick("editTool($(this))")%>
+       <%=simpleLink(editIconImgHtml).onClick("editTool($(this))")%>
 <% } %>
     </div>
 <% } %>
@@ -490,7 +490,7 @@ a { text-decoration: none; }
         <span class="boldfont">Authors:</span>
         <span class="toolPropertyValue"><%= h(tool.getAuthors()) %></span>
 <% if (toolEditor) { %>
-        <%=link(editIconImgHtml).clearClasses().onClick("editTool($(this), 'author')")%>
+        <%=simpleLink(editIconImgHtml).onClick("editTool($(this), 'author')")%>
 <% } %>
     </div>
 <% } %>
@@ -500,7 +500,7 @@ a { text-decoration: none; }
         <span class="boldfont">Languages:</span>
         <span class="toolPropertyValue"><%= h(tool.getLanguages()) %></span>
 <% if (toolEditor) { %>
-        <%=link(editIconImgHtml).clearClasses().onClick("editTool($(this))")%>
+        <%=simpleLink(editIconImgHtml).onClick("editTool($(this))")%>
 <% } %>
     </div>
 <% } %>
@@ -510,7 +510,7 @@ a { text-decoration: none; }
         <span class="boldfont">More Information:</span>
         <a href="<%= h(tool.getProvider()) %>" target="_blank" rel="noopener noreferrer"><span class="toolPropertyValue"><%= h(tool.getProvider()) %></span></a>
 <% if (toolEditor) { %>
-        <%=link(editIconImgHtml).clearClasses().onClick("editTool($(this), 'provider')")%>
+        <%=simpleLink(editIconImgHtml).onClick("editTool($(this), 'provider')")%>
 <% } %>
     </div>
 

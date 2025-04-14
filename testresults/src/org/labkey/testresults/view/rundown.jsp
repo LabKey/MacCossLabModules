@@ -273,7 +273,7 @@
                         <% for (String test : problems.getTestNames()) { %>
                         <tr>
                             <td style="width: 200px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; padding: 0;">
-                                <%=link(test).href(new ActionURL(TestResultsController.ShowFailures.class, c).addParameter("end", df.format(selectedDate)).addParameter("failedTest", test)).target("_blank").clearClasses()%>
+                                <%=simpleLink(test, new ActionURL(TestResultsController.ShowFailures.class, c).addParameter("end", df.format(selectedDate)).addParameter("failedTest", test)).target("_blank")%>
                             </td>
                             <% for (RunDetail run : problemRuns) { %>
                             <td class="highlightrun highlighttd-<%=run.getId()%>" style="width: 60px; overflow: hidden; padding: 0;">
@@ -397,12 +397,12 @@
                 <tr>
                     <td>
                         <%=
-                            link(entry.getKey()).href(new ActionURL(TestResultsController.ShowFailures.class, c)
+                            simpleLink(entry.getKey(), new ActionURL(TestResultsController.ShowFailures.class, c)
                                     .addParameter("viewType", viewType)
                                     .addParameter("end", df.format(selectedDate))
                                     .addParameter("failedTest", entry.getKey())
                                     .addParameter("problemType", "leaks")
-                                ).target("_blank").clearClasses()
+                                ).target("_blank")
                         %>
                     </td>
                     <td><%=entry.getValue().size()%></td>
