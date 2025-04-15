@@ -410,11 +410,12 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         List<String> peptideIdV2Sources = List.of("V2_report-lib.parquet.skyline.speclib",
                 "DIA-NN report file" // We don't know the name of report file.  This is a placeholder
         );
+        log("Running data validation.  All source files should be marked as missing.");
         verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
                 Collections.emptyList(), rawV2Sources,
                 Collections.emptyList(), peptideIdV2Sources);
 
-        log("Uploading Parquet files");
+        log("Uploading speclib, Parquet, and raw files");
         List<String> allLibraryFiles = List.of(
                 "V2_report.parquet",
                 "V2_report-lib.parquet.skyline.speclib",
