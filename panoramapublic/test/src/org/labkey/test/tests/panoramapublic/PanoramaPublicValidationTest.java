@@ -12,6 +12,7 @@ import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.TextSearcher;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
@@ -318,7 +319,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
                 "D14_rep2_DIA.mzML"
         );
         List<String> peptideIdSources = List.of("report-lib.parquet.skyline-for-test.speclib",
-                "DIA-NN report file" // We don't know the name of report TSV.  This is a placeholder
+                "DIA-NN report file" // We don't know the name of report file.  This is a placeholder
         );
 
         goToDashboard();
@@ -338,6 +339,14 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
                 Collections.emptyList(), rawSources,
                 List.of(peptideIdSources.get(0)), List.of(peptideIdSources.get(1)));
 
+        // Upload the Parquet files
+        log("Uploading Parquet files");
+        List<String> parquetFiles = List.of(
+                "report.parquet",
+                "report-lib-for-test.parquet"
+        );
+        uploadToRawFiles(parquetFiles.stream().map(file -> testFilesFolder + "/" + file).toArray(String[]::new));
+
         // Upload the TSV files
         log("Uploading TSV files");
         List<String> tsvFiles = List.of(
@@ -347,11 +356,16 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
                 "report-lib.parquet-missing-headers.tsv"
                 );
         uploadToRawFiles(tsvFiles.stream().map(file -> testFilesFolder + "/" + file).toArray(String[]::new));
-        log("Running data validation job; TSV files uploaded");
+
+        log("Running data validation job; Parquet and TSV files uploaded");
         validationPage = submitValidationJob();
         verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
                 Collections.emptyList(), rawSources,
                 peptideIdSources, Collections.emptyList());
+        // The validator will look for Parquet files first. Expect to see report-lib-for-test.parquet as the value in the "Path" column
+        validationPage.verifyPeptideIdFilePath(peptideIdSources.get(1),
+                "RawFiles" + File.separator + "report-lib-for-test.parquet",
+                libraryName,librarySize);
 
         // Move the .speclib file to a subdirectory
         log("Creating subdirectory and moving speclib file");
@@ -364,7 +378,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
                 Collections.emptyList(), rawSources,
                 List.of(peptideIdSources.get(0)), List.of(peptideIdSources.get(1)));
-        String statusDetails = "(The DIA-NN TSV report must be in the same directory as the .speclib, and share some leading characters in the file name)";
+        String statusDetails = "The DIA-NN report file (.parquet or .tsv) must be in the same directory as the .speclib, and share some leading characters in the file name";
         validationPage.verifyLibrarySourceFileStatusDetails(peptideIdSources.get(1), libraryName, librarySize, true, statusDetails);
 
         // Move the TSV file to the same subdirectory as the .speclib file
@@ -375,6 +389,47 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
                 Collections.emptyList(), rawSources,
                 peptideIdSources, Collections.emptyList());
+
+        validationPage.verifyPeptideIdFilePath(peptideIdSources.get(1),
+                "RawFiles" + File.separator + "DIA-NN Results" + File.separator + "report-lib-for-test.tsv",
+                libraryName,librarySize);
+
+
+        // Test the second library.
+        // - This library is build with DIA-NN 2.0 results.
+        // - The report file is a Parquet file (V2_report.parquet)
+        // - The raw file names in SpectrumSourceFiles table of the .blib do not have an extension.
+        //   since the DIA-NN 2.0 output only includes the base file names of the raw files.
+        //   The validator will look for any valid mass spec file that matches the given base file name.
+        libraryName = "test_diann_V2_library.blib";
+        librarySize = "1 MB";
+        List<String> rawV2Sources = List.of(
+                "B_240207_IO5x75_HeLa_400ng_5min_synchro_6x40_100ms_Slot2-1_1_7489",
+                "B_240207_IO5x75_HeLa_400ng_5min_synchro_6x40_100ms_Slot2-1_1_7491"
+        );
+        List<String> peptideIdV2Sources = List.of("V2_report-lib.parquet.skyline.speclib",
+                "DIA-NN report file" // We don't know the name of report file.  This is a placeholder
+        );
+        verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
+                Collections.emptyList(), rawV2Sources,
+                Collections.emptyList(), peptideIdV2Sources);
+
+        log("Uploading Parquet files");
+        List<String> allLibraryFiles = List.of(
+                "V2_report.parquet",
+                "V2_report-lib.parquet.skyline.speclib",
+                "B_240207_IO5x75_HeLa_400ng_5min_synchro_6x40_100ms_Slot2-1_1_7491.raw",
+                "B_240207_IO5x75_HeLa_400ng_5min_synchro_6x40_100ms_Slot2-1_1_7489.raw"
+        );
+        uploadToRawFiles(allLibraryFiles.stream().map(file -> testFilesFolder + "/" + file).toArray(String[]::new));
+        log("Running data validation job; Parquet and raw file have been uploaded.");
+        validationPage = submitValidationJob();
+        verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
+                rawV2Sources, Collections.emptyList(),
+                peptideIdV2Sources, Collections.emptyList());
+        validationPage.verifyPeptideIdFilePath(peptideIdSources.get(1),
+                "RawFiles" + File.separator + "V2_report.parquet",
+                libraryName,librarySize);
     }
 
     private static void verifySpecLibSourceFiles(DataValidationPage validationPage, String libraryFileName, String skyZipName, String libraryFileSize,
