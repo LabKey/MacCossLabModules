@@ -45,6 +45,10 @@ import static org.labkey.panoramapublic.model.validation.SpecLibSourceFile.Libra
 
 public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecLib>
 {
+    private static final List<String> RAW_FILE_TYPES = List.of("raw", "wiff", "lcd", "d", "mzxml", "mzml");
+    private static final String TSV = "tsv";
+    private static final String PARQUET = "parquet";
+
     private List<ValidatorSkylineDocSpecLib> _docsWithLibrary;
     private SpecLibKeyWithSize _key;
     private SpecLibInfo _specLibInfo;
@@ -198,8 +202,8 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             // so first check if any Parquet or TSV files were listed as sources in the .blib
             boolean hasReportFiles = sourceFiles.stream()
                     .anyMatch(file -> file.hasIdFile()
-                            && (file.getIdFile().toLowerCase().endsWith(".tsv")
-                                || file.getIdFile().toLowerCase().endsWith(".parquet") ));
+                            && (TSV.equals(FileUtil.getExtension(file.getIdFile().toLowerCase()))
+                                || PARQUET.equals(FileUtil.getExtension(file.getIdFile().toLowerCase()))));
             if (!hasReportFiles)
             {
                 // If there is no Parquet or TSV source listed in the .blib, then add a placeholder for the DIA-NN report file.
@@ -337,7 +341,7 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
         if (parquetFile != null) return parquetFile;
 
 
-        // Look for a matching .tsv file if we did not find a .parquet file
+        // Look for a matching TSV file if we did not find a Parquet file
         prefixLengthMap = getCommonPrefixLengthsForTsvFiles(candidateFiles, specLibFileName);
 
         // Find the TSV file with the longest common prefix that also has the expected column headers in the first line
@@ -369,12 +373,12 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
 
     private static Map<Path, Integer> getCommonPrefixLengthsForTsvFiles(List<Path> files, String specLibFileName)
     {
-        return getCommonPrefixLengths(files, specLibFileName, "tsv");
+        return getCommonPrefixLengths(files, specLibFileName, TSV);
     }
 
     private static Map<Path, Integer> getCommonPrefixLengthsForParquetFiles(List<Path> files, String specLibFileName)
     {
-        return getCommonPrefixLengths(files, specLibFileName, "parquet");
+        return getCommonPrefixLengths(files, specLibFileName, PARQUET);
     }
 
     private static int commonPrefixLength(String s1, String s2)
@@ -445,7 +449,7 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             return filePath;
         }
 
-        // Look for zip files
+        // Look for zip files, of raw files with matching base names if we are allowing basename matching.
         try (Stream<Path> list = Files.list(rawFilesDirPath).filter(p -> FileUtil.getFileName(p).startsWith(fileName)))
         {
             for (Path path : list.collect(Collectors.toList()))
@@ -469,14 +473,14 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
     {
         // Accept QC_10.9.17.raw OR for QC_10.9.17.raw.zip
         // 170428_DBS_cal_7a.d OR 170428_DBS_cal_7a.d.zip
+        // If allowBaseName is set to true, accept
+        // B_240207_IO5x75_HeLa_400ng.raw (or another valid raw file extension) for B_240207_IO5x75_HeLa_400ng
         String ext = FileUtil.getExtension(uploadedFileName);
         ext = ext != null ? ext.toLowerCase() : "";
         return fileName.equals(uploadedFileName)
                 || ext.equals("zip") && fileName.equals(FileUtil.getBaseName(uploadedFileName))
                 || (allowBaseName && fileName.equals(getUploadedRawFileBaseName(uploadedFileName)));
     }
-
-    private static final List<String> RAW_FILE_TYPES = List.of("raw", "wiff", "lcd", "d", "mzxml", "mzml");
 
     private static String getUploadedRawFileBaseName(String uploadedFileName)
     {

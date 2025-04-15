@@ -398,8 +398,8 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         // Test the second library.
         // - This library is build with DIA-NN 2.0 results.
         // - The report file is a Parquet file (V2_report.parquet)
-        // - The raw file names in SpectrumSourceFiles table of the .blib do not have an extension.
-        //   since the DIA-NN 2.0 output only includes the base file names of the raw files.
+        // - The raw file names in SpectrumSourceFiles table of the .blib do not have extensions.
+        //   Since the DIA-NN 2.0 output only includes the base file names of the raw files.
         //   The validator will look for any valid mass spec file that matches the given base file name.
         libraryName = "test_diann_V2_library.blib";
         librarySize = "1 MB";
