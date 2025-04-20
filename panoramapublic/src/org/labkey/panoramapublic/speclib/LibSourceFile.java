@@ -82,7 +82,7 @@ public class LibSourceFile
         return (hasIdFile() && getIdFile().endsWith("msms.txt")) || containsScoreType("MAXQUANT SCORE");
     }
 
-    public static String DIANN_REPORT_TSV_PLACEHOLDER = "DIA-NN report file";
+    public static String DIANN_REPORT_PLACEHOLDER = "DIA-NN report file";
 
     // These are some of the column headers that we expect to see in a DIA-NN report TSV file
     public static List<String> DIANN_REPORT_EXPECTED_HEADERS = List.of("File.Name", "Run", "Protein.Group", "Protein.Ids", "Protein.Names");

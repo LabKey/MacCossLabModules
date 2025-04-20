@@ -45,6 +45,10 @@ import static org.labkey.panoramapublic.model.validation.SpecLibSourceFile.Libra
 
 public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecLib>
 {
+    private static final List<String> RAW_FILE_TYPES = List.of("raw", "wiff", "lcd", "d", "mzxml", "mzml");
+    private static final String TSV = "tsv";
+    private static final String PARQUET = "parquet";
+
     private List<ValidatorSkylineDocSpecLib> _docsWithLibrary;
     private SpecLibKeyWithSize _key;
     private SpecLibInfo _specLibInfo;
@@ -188,20 +192,22 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
         }
         else if (sourceFiles.stream().anyMatch(LibSourceFile::isDiannSearch))
         {
-            // Building a library with DIA-NN results in Skyline requires a .speclib file and a report TSV file.
-            // The .blib file includes the name of .speclib but not the name of the report TSV file.
-            // Building a library without the TSV gives this error message in Skyline:
-            // "...the TSV report is required to read speclib files and must be in the same directory as the speclib
-            // and share some leading characters (e.g. somedata-tsv.speclib and somedata-report.tsv)..."
+            // Building a library with DIA-NN results in Skyline requires a .speclib file and a report file (.parquet or .tsv).
+            // The .blib file includes the name of .speclib but not the name of the report file.
+            // Building a library without the report file gives this error message in Skyline:
+            // "...the Parquet or TSV report is required to read speclib files and must be in the same directory as the speclib
+            // and share some leading characters (e.g. somedata-tsv.speclib and somedata-report.parquet)..."
 
             // At some point Skyline may start including the names of all source files in the .blib SQLite file,
-            // so first check if any TSV files were listed as sources in the .blib
-            boolean hasTsvFiles = sourceFiles.stream()
-                    .anyMatch(file -> file.hasIdFile() && file.getIdFile().toLowerCase().endsWith(".tsv"));
-            if (!hasTsvFiles)
+            // so first check if any Parquet or TSV files were listed as sources in the .blib
+            boolean hasReportFiles = sourceFiles.stream()
+                    .anyMatch(file -> file.hasIdFile()
+                            && (TSV.equals(FileUtil.getExtension(file.getIdFile().toLowerCase()))
+                                || PARQUET.equals(FileUtil.getExtension(file.getIdFile().toLowerCase()))));
+            if (!hasReportFiles)
             {
-                // If there is no TSV source listed in the .blib, then add a placeholder for the DIA-NN report file.
-                sourceFiles.add(new LibSourceFile(null, LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER, null));
+                // If there is no Parquet or TSV source listed in the .blib, then add a placeholder for the DIA-NN report file.
+                sourceFiles.add(new LibSourceFile(null, LibSourceFile.DIANN_REPORT_PLACEHOLDER, null));
             }
         }
 
@@ -254,7 +260,10 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             if (source.hasSpectrumSourceFile() && !checkedFiles.contains(ssf))
             {
                 checkedFiles.add(ssf);
-                Path path = getPath(ssf, rawFilesDirPaths, source.isMaxQuantSearch(), fcs);
+                // Libraries built with MaxQuant or DIA-NN v2.0 results may only have the base raw file names (without extension)
+                // stored in the BLIB. If the library source is either MaxQuant or DIA-NN we will compare with base file names of valid raw files.
+                boolean allowBaseName = source.isMaxQuantSearch() || source.isDiannSearch();
+                Path path = getPath(ssf, rawFilesDirPaths, allowBaseName);
                 SpecLibSourceFile sourceFile = new SpecLibSourceFile(ssf, SPECTRUM);
                 sourceFile.setSpecLibValidationId(getId());
                 sourceFile.setPath(path != null ? path.toString() : DataFile.NOT_FOUND);
@@ -263,10 +272,10 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             String idFile = source.getIdFile();
             if (source.hasIdFile() && !checkedFiles.contains(idFile))
             {
-                if (LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER.equals(idFile)) continue; // We will look for this when we come to the .speclib file
+                if (LibSourceFile.DIANN_REPORT_PLACEHOLDER.equals(idFile)) continue; // We will look for this when we come to the .speclib file
 
                 checkedFiles.add(idFile);
-                Path path = getPath(idFile, rawFilesDirPaths, false, fcs);
+                Path path = getPath(idFile, rawFilesDirPaths, false);
                 SpecLibSourceFile sourceFile = new SpecLibSourceFile(idFile, PEPTIDE_ID);
                 sourceFile.setSpecLibValidationId(getId());
                 sourceFile.setPath(path != null ? path.toString() : DataFile.NOT_FOUND);
@@ -274,13 +283,13 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
 
                 if (source.isDiannSearch())
                 {
-                    // If this is a DIA-NN .speclib file, check for the required report TSV file.
-                    // We are doing this because the .blib does not include the name of the report TSV file.
-                    // We only know that: "the TSV report is required to read speclib files and must be in the
+                    // If this is a DIA-NN .speclib file, check for the required report file (Parquet or TSV).
+                    // We are doing this because the .blib does not include the name of the report file.
+                    // We only know that: "the Parquet or TSV report  is required to read speclib files and must be in the
                     // same directory as the speclib and share some leading characters
-                    // (e.g. somedata-tsv.speclib and somedata-report.tsv)"
+                    // (e.g. somedata-tsv.speclib and somedata-report.parquet)"
                     Path reportFilePath = sourceFile.found() ? getDiannReportFilePath(path) : null;
-                    SpecLibSourceFile diannReportSourceFile = new SpecLibSourceFile(LibSourceFile.DIANN_REPORT_TSV_PLACEHOLDER, PEPTIDE_ID);
+                    SpecLibSourceFile diannReportSourceFile = new SpecLibSourceFile(LibSourceFile.DIANN_REPORT_PLACEHOLDER, PEPTIDE_ID);
                     diannReportSourceFile.setSpecLibValidationId(getId());
                     diannReportSourceFile.setPath(reportFilePath != null ? reportFilePath.toString() : DataFile.NOT_FOUND);
                     idFiles.add(diannReportSourceFile);
@@ -292,11 +301,11 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
         setIdFiles(idFiles);
     }
 
-    private Path getPath(String name, Set<Path> rawFilesDirPaths, boolean isMaxquant, FileContentService fcs)
+    private Path getPath(String name, Set<Path> rawFilesDirPaths, boolean allowBaseName)
     {
         for (Path rawFilesDir: rawFilesDirPaths)
         {
-            Path path = findInDirectoryTree(rawFilesDir, name, isMaxquant);
+            Path path = findInDirectoryTree(rawFilesDir, name, allowBaseName);
             if (path != null)
             {
                 return path;
@@ -321,7 +330,19 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
 
     private static Path getDiannReportFilePath(String specLibFileName, List<Path> candidateFiles)
     {
-        Map<Path, Integer> prefixLengthMap = getCommonPrefixLengthsForTsvFiles(candidateFiles, specLibFileName);
+        // First look for a matching Parquet file
+        Map<Path, Integer> prefixLengthMap = getCommonPrefixLengthsForParquetFiles(candidateFiles, specLibFileName);
+        // Find the Parquet file with the longest common prefix
+        Path parquetFile = prefixLengthMap.entrySet().stream()
+                .sorted((entry1, entry2) -> Integer.compare(entry2.getValue(), entry1.getValue())) // Sort descending by matching prefix length
+                .map(Map.Entry::getKey)  // File paths
+                .findFirst() // Get the first file that meets the conditions
+                .orElse(null);
+        if (parquetFile != null) return parquetFile;
+
+
+        // Look for a matching TSV file if we did not find a Parquet file
+        prefixLengthMap = getCommonPrefixLengthsForTsvFiles(candidateFiles, specLibFileName);
 
         // Find the TSV file with the longest common prefix that also has the expected column headers in the first line
         return prefixLengthMap.entrySet().stream()
@@ -332,12 +353,12 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
                 .orElse(null);
     }
 
-    private static Map<Path, Integer> getCommonPrefixLengthsForTsvFiles(List<Path> files, String specLibFileName)
+    private static Map<Path, Integer> getCommonPrefixLengths(List<Path> files, String specLibFileName, String fileExtension)
     {
         String specLibFileBaseName = FileUtil.getBaseName(specLibFileName); // Remove file extension
         Map<Path, Integer> prefixLengthMap = new HashMap<>();
         files.stream()
-                .filter(file -> file.getFileName().toString().toLowerCase().endsWith(".tsv")) // Ensure it's a TSV file
+                .filter(file -> fileExtension.equals(FileUtil.getExtension(file.getFileName().toString().toLowerCase())))
                 .forEach(file -> {
                     // Get the longest common prefix length
                     int commonPrefixLength = commonPrefixLength(specLibFileBaseName, FileUtil.getBaseName(file.getFileName().toString()));
@@ -348,6 +369,16 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
                     }
                 });
         return prefixLengthMap;
+    }
+
+    private static Map<Path, Integer> getCommonPrefixLengthsForTsvFiles(List<Path> files, String specLibFileName)
+    {
+        return getCommonPrefixLengths(files, specLibFileName, TSV);
+    }
+
+    private static Map<Path, Integer> getCommonPrefixLengthsForParquetFiles(List<Path> files, String specLibFileName)
+    {
+        return getCommonPrefixLengths(files, specLibFileName, PARQUET);
     }
 
     private static int commonPrefixLength(String s1, String s2)
@@ -418,7 +449,7 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             return filePath;
         }
 
-        // Look for zip files
+        // Look for zip files, of raw files with matching base names if we are allowing basename matching.
         try (Stream<Path> list = Files.list(rawFilesDirPath).filter(p -> FileUtil.getFileName(p).startsWith(fileName)))
         {
             for (Path path : list.collect(Collectors.toList()))
@@ -438,14 +469,27 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
         return accept(fileName, uploadedFileName, false);
     }
 
-    private static boolean accept(String fileName, String uploadedFileName, boolean allowBasenameOnly)
+    private static boolean accept(String fileName, String uploadedFileName, boolean allowBaseName)
     {
         // Accept QC_10.9.17.raw OR for QC_10.9.17.raw.zip
         // 170428_DBS_cal_7a.d OR 170428_DBS_cal_7a.d.zip
-        String ext = FileUtil.getExtension(uploadedFileName).toLowerCase();
+        // If allowBaseName is set to true, accept
+        // B_240207_IO5x75_HeLa_400ng.raw (or another valid raw file extension) for B_240207_IO5x75_HeLa_400ng
+        String ext = FileUtil.getExtension(uploadedFileName);
+        ext = ext != null ? ext.toLowerCase() : "";
         return fileName.equals(uploadedFileName)
                 || ext.equals("zip") && fileName.equals(FileUtil.getBaseName(uploadedFileName))
-                || (allowBasenameOnly && fileName.equals(FileUtil.getBaseName(uploadedFileName)));
+                || (allowBaseName && fileName.equals(getUploadedRawFileBaseName(uploadedFileName)));
+    }
+
+    private static String getUploadedRawFileBaseName(String uploadedFileName)
+    {
+        String ext = FileUtil.getExtension(uploadedFileName.toLowerCase());
+        if (!RAW_FILE_TYPES.stream().anyMatch(type -> type.equals(ext)))
+        {
+            return null;
+        }
+        return FileUtil.getBaseName(uploadedFileName);
     }
 
     public static class SpecLibKeyWithSize
@@ -567,6 +611,10 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
             // Accept 170428_DBS_cal_7a.d OR 170428_DBS_cal_7a.d.zip
             assertTrue(accept("170428_DBS_cal_7a.d", "170428_DBS_cal_7a.d"));
             assertTrue(accept("170428_DBS_cal_7a.d", "170428_DBS_cal_7a.d.zip"));
+
+            assertFalse(accept("B_240207_IO5x75_HeLa_400ng", "B_240207_IO5x75_HeLa_400ng.raw"));
+            assertTrue(accept("B_240207_IO5x75_HeLa_400ng", "B_240207_IO5x75_HeLa_400ng.raw", true));
+            assertFalse(accept("B_240207_IO5x75_HeLa_400ng", "B_240207_IO5x75_HeLa_400ng.txt", true));
         }
 
         @Test
