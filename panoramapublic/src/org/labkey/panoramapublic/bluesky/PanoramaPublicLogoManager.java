@@ -1,5 +1,6 @@
 package org.labkey.panoramapublic.bluesky;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.attachments.Attachment;
 import org.labkey.api.attachments.AttachmentFile;
@@ -16,18 +17,18 @@ public class PanoramaPublicLogoManager
 {
     public static String LOGO_FILE_PREFIX = "PanoramaPublicLogo-NewData";
     @Nullable
-    public static Attachment getNewDataLogo()
+    public static Attachment getNewDataLogo(@NotNull String filename)
     {
         AttachmentParent ap = PanoramaPublicLogoAttachmentParent.get();
         if (ap == null) return null;
 
         return AttachmentService.get().getAttachments(ap).stream()
-                .filter(a -> a.getName() != null && LOGO_FILE_PREFIX.equals(FileUtil.getBaseName(a.getName())))
+                .filter(a -> a.getName() != null && filename.equals(a.getName()))
                 .findFirst()
                 .orElse(null);
     }
 
-    public static void saveNewDataLogo(AttachmentFile file, User user) throws IOException
+    public static String saveNewDataLogo(AttachmentFile file, User user) throws IOException
     {
         String logoFileName = getLogoFileName(file.getFilename(), LOGO_FILE_PREFIX);
         AttachmentFile attachmentFile = new InputStreamAttachmentFile(file.openInputStream(), logoFileName);
@@ -35,6 +36,7 @@ public class PanoramaPublicLogoManager
         AttachmentService svc = AttachmentService.get();
         deleteExistingNewDataLogo(svc, user);
         AttachmentService.get().addAttachments(ap, Collections.singletonList(attachmentFile), user);
+        return logoFileName;
     }
 
     private static String getLogoFileName(String name, String fileNamePrefix)

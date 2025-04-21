@@ -116,6 +116,12 @@ public class CatalogEntryManager
         return getEntryForShortUrl(expAnnotations.getShortUrl());
     }
 
+    public static @Nullable CatalogEntry getApprovedEntryForExperiment(@NotNull ExperimentAnnotations expAnnotations)
+    {
+        CatalogEntry entry = getEntryForShortUrl(expAnnotations.getShortUrl());
+        return (entry != null && entry.getApproved()) ? entry : null;
+    }
+
     public static void deleteEntryForExperiment(CatalogEntry entry, @NotNull ExperimentAnnotations expAnnotations, User user)
     {
         if (entry != null)

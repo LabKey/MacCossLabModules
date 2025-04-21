@@ -130,6 +130,7 @@ import org.labkey.api.util.ExceptionUtil;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.Link;
+import org.labkey.api.util.Link.LinkBuilder;
 import org.labkey.api.util.MimeMap.MimeType;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
@@ -140,8 +141,10 @@ import org.labkey.api.view.*;
 import org.labkey.api.view.template.ClientDependency;
 import org.labkey.api.wiki.WikiRendererType;
 import org.labkey.api.wiki.WikiRenderingService;
+import org.labkey.panoramapublic.bluesky.BlueskyApiClient;
 import org.labkey.panoramapublic.bluesky.BlueskyException;
-import org.labkey.panoramapublic.bluesky.BlueskyService;
+import org.labkey.panoramapublic.bluesky.BlueskySettings;
+import org.labkey.panoramapublic.bluesky.BlueskySettingsManager;
 import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoAttachmentParent;
 import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoManager;
 import org.labkey.panoramapublic.catalog.CatalogEntrySettings;
@@ -242,13 +245,16 @@ import static org.labkey.api.util.DOM.Attribute.action;
 import static org.labkey.api.util.DOM.Attribute.border;
 import static org.labkey.api.util.DOM.Attribute.checked;
 import static org.labkey.api.util.DOM.Attribute.colspan;
+import static org.labkey.api.util.DOM.Attribute.height;
 import static org.labkey.api.util.DOM.Attribute.href;
 import static org.labkey.api.util.DOM.Attribute.method;
 import static org.labkey.api.util.DOM.Attribute.name;
+import static org.labkey.api.util.DOM.Attribute.src;
 import static org.labkey.api.util.DOM.Attribute.style;
 import static org.labkey.api.util.DOM.Attribute.type;
 import static org.labkey.api.util.DOM.Attribute.valign;
 import static org.labkey.api.util.DOM.Attribute.value;
+import static org.labkey.api.util.DOM.Attribute.width;
 import static org.labkey.api.util.DOM.LK.CHECKBOX;
 import static org.labkey.api.util.DOM.LK.ERRORS;
 import static org.labkey.api.util.DOM.LK.FORM;
@@ -302,7 +308,7 @@ public class PanoramaPublicController extends SpringActionController
                             LI("Creates a new security group for project administrators"),
                             LI("Creates an entry in the Journal table of the panoramapublic schema")
                     ),
-                    DIV(new Link.LinkBuilder("Create a new journal group").href(new ActionURL(CreateJournalGroupAction.class, getContainer())))
+                    DIV(new LinkBuilder("Create a new journal group").href(new ActionURL(CreateJournalGroupAction.class, getContainer())))
             )));
 
             view.addView(qView);
@@ -320,28 +326,28 @@ public class PanoramaPublicController extends SpringActionController
         {
             ActionURL url = new ActionURL(ManageProteomeXchangeCredentials.class, getContainer());
             return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                    new Link.LinkBuilder("Set ProteomeXchange Credentials").href(url).build()));
+                    new LinkBuilder("Set ProteomeXchange Credentials").href(url).build()));
         }
 
         private ModelAndView getDataCiteCredentialsLink()
         {
             ActionURL url = new ActionURL(ManageDataCiteCredentials.class, getContainer());
             return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                    new Link.LinkBuilder("Set DataCite Credentials").href(url).build()));
+                    new LinkBuilder("Set DataCite Credentials").href(url).build()));
         }
 
         private ModelAndView getBlueskySettingsLink()
         {
             ActionURL url = new ActionURL(ManageBlueskySettings.class, getContainer());
             return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                    new Link.LinkBuilder("Bluesky Settings").href(url).build()));
+                    new LinkBuilder("Bluesky Settings").href(url).build()));
         }
 
         private ModelAndView getPanoramaPublicCatalogSettingsLink()
         {
             ActionURL url = new ActionURL(ManageCatalogEntrySettings.class, getContainer());
             return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                    new Link.LinkBuilder("Panorama Public Catalog Settings").href(url).build()));
+                    new LinkBuilder("Panorama Public Catalog Settings").href(url).build()));
         }
 
         private ModelAndView getPostSupportMessageLink()
@@ -351,7 +357,7 @@ public class PanoramaPublicController extends SpringActionController
             {
                 ActionURL url = new ActionURL(CreatePanoramaPublicMessageAction.class, panoramaPublic.getProject());
                 return new HtmlView(DIV(at(style, "margin-top:20px;"),
-                        new Link.LinkBuilder("Post to Panorama Public Support Messages").href(url).build()));
+                        new LinkBuilder("Post to Panorama Public Support Messages").href(url).build()));
             }
             return null;
         }
@@ -1019,7 +1025,7 @@ public class PanoramaPublicController extends SpringActionController
             return new HtmlView(
                     DIV("DataCite credentials saved!",
                     BR(),
-                    new Link.LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
+                    new LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
         }
 
         @Override
@@ -1166,7 +1172,7 @@ public class PanoramaPublicController extends SpringActionController
             return new HtmlView(
                     DIV("ProteomeXchange credentials saved!",
                     BR(),
-                    new Link.LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
+                    new LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
         }
 
         @Override
@@ -1224,59 +1230,68 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
-    public static class ManageBlueskySettings extends FormViewAction<BlueskySettingsForm>
+    public static class ManageBlueskySettings extends FormViewAction<BlueskySettings>
     {
         @Override
-        public void validateCommand(BlueskySettingsForm form, Errors errors)
+        public void validateCommand(BlueskySettings form, Errors errors)
         {
-            if (StringUtils.isBlank(form.getUserName()))
+            if (StringUtils.isBlank(form.getAccount()))
             {
-                errors.reject(ERROR_MSG, "User name cannot be blank");
+                errors.reject(ERROR_MSG, "Account cannot be blank");
             }
             if (StringUtils.isBlank(form.getPassword()))
             {
                 errors.reject(ERROR_MSG, "Password cannot be blank");
             }
-            if (StringUtils.isBlank(form.getTestAccountUser()))
+            if (StringUtils.isBlank(form.getTestAccount()))
             {
-                errors.reject(ERROR_MSG, "User name for test account cannot be blank");
+                errors.reject(ERROR_MSG, "Test account cannot be blank");
             }
             if (StringUtils.isBlank(form.getTestAccountPassword()))
             {
                 errors.reject(ERROR_MSG, "Password for test account cannot be blank");
             }
+            if (StringUtils.isBlank(form.getAuthEndpoint()))
+            {
+                errors.reject(ERROR_MSG, "Auth URL cannot be blank");
+            }
+            if (StringUtils.isBlank(form.getPostEndpoint()))
+            {
+                errors.reject(ERROR_MSG, "Post URL cannot be blank");
+            }
+            if (StringUtils.isBlank(form.getBlobUploadEndpoint()))
+            {
+                errors.reject(ERROR_MSG, "Image upload URL cannot be blank");
+            }
         }
 
         @Override
-        public boolean handlePost(BlueskySettingsForm form, BindException errors)
+        public boolean handlePost(BlueskySettings form, BindException errors)
         {
+            BlueskyApiClient client = BlueskyApiClient.getInstance();
             try
             {
-                new BlueskyService().login(form.getUserName(), form.getPassword());
+                client.login(form, false);
             }
             catch (BlueskyException e)
             {
-                errors.reject(ERROR_MSG, "Bluesky login failed for the user account " + form.getUserName() + ". " + e.getMessage());
+                errors.reject(ERROR_MSG, String.format("Bluesky login failed for the account '%s' using auth endpoint '%s'. Error was %s",
+                        form.getAccount(), form.getAuthEndpoint(), e.getMessage()));
                 return false;
             }
 
             try
             {
-                new BlueskyService().login(form.getTestAccountUser(), form.getTestAccountPassword());
+                client.login(form, true);
             }
             catch (BlueskyException e)
             {
-                errors.reject(ERROR_MSG, "Bluesky login failed for the test user account " + form.getTestAccountUser() + ". " + e.getMessage());
+                errors.reject(ERROR_MSG, String.format("Bluesky login failed for the test account '%s' using auth endpoint '%s'. Error was %s",
+                        form.getTestAccount(), form.getAuthEndpoint(), e.getMessage()));
                 return false;
             }
 
-            WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.CREDENTIALS, true);
-            map.put(BlueskyService.USER, form.getUserName());
-            map.put(BlueskyService.PASSWORD, form.getPassword());
-            map.put(BlueskyService.TEST_USER, form.getUserName());
-            map.put(BlueskyService.TEST_PASSWORD, form.getPassword());
-            map.save();
-
+            String logoFileName;
             List<AttachmentFile> files = getAttachmentFileList();
             AttachmentFile panoramaLogoFile = files.stream().findFirst().orElse(null);
             if (panoramaLogoFile != null)
@@ -1289,49 +1304,59 @@ public class PanoramaPublicController extends SpringActionController
                 }
                 try
                 {
-                    PanoramaPublicLogoManager.saveNewDataLogo(panoramaLogoFile, getUser());
+                    logoFileName = PanoramaPublicLogoManager.saveNewDataLogo(panoramaLogoFile, getUser());
                 }
                 catch (IOException e)
                 {
                     errors.reject(ERROR_MSG, "Unable to save logo file. " + e.getMessage());
                     return false;
                 }
+                form.setImageFileName(logoFileName);
             }
+            else if (form.getImageFileName() == null)
+            {
+                errors.reject(ERROR_MSG, "Logo image file was not uploaded");
+                return false;
+            }
+
+            if (!StringUtils.isBlank(form.getHashtags()))
+            {
+                form.setHashtags(StringUtils.join(form.getHashtagArray(), ", "));
+            }
+            if (!StringUtils.isBlank(form.getTestHashtags()))
+            {
+                form.setTestHashtags(StringUtils.join(form.getTestHashtagArray(), ", "));
+            }
+
+            BlueskySettingsManager.saveSettings(form);
             return true;
         }
 
         @Override
-        public URLHelper getSuccessURL(BlueskySettingsForm form)
+        public URLHelper getSuccessURL(BlueskySettings form)
         {
             return null;
         }
 
         @Override
-        public ModelAndView getSuccessView(BlueskySettingsForm form)
+        public ModelAndView getSuccessView(BlueskySettings form)
         {
             ActionURL adminUrl = new ActionURL(PanoramaPublicAdminViewAction.class, getContainer());
             return new HtmlView(
                     DIV("Bluesky settings saved!",
                             BR(),
-                            new Link.LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
+                            new LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
         }
 
         @Override
-        public ModelAndView getView(BlueskySettingsForm form, boolean reshow, BindException errors)
+        public ModelAndView getView(BlueskySettings form, boolean reshow, BindException errors)
         {
             if(!reshow)
             {
-                WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.CREDENTIALS, false);
-                if(map != null)
-                {
-                    form.setUserName(map.get(BlueskyService.USER));
-                    form.setTestAccountUser(map.get(BlueskyService.TEST_USER));
-                    Attachment logoAttachment = PanoramaPublicLogoManager.getNewDataLogo();
-                    if (logoAttachment != null)
-                    {
-                        form.setImageFileName(logoAttachment.getName());
-                    }
-                }
+                form = BlueskySettingsManager.getSettings();
+                // Passwords should not be displayed in the form. Make the user re-enter them.
+                form.setPassword(null);
+                form.setTestAccountPassword(null);
             }
             JspView view = new JspView<>("/org/labkey/panoramapublic/view/manageBlueskySettings.jsp", form, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
@@ -1347,67 +1372,6 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    public static class BlueskySettingsForm
-    {
-        private String _userName;
-        private String _password;
-
-        private String _testAccountUser;
-        private String _testAccountPassword;
-
-        private String _imageFileName;
-
-        public String getUserName()
-        {
-            return _userName;
-        }
-
-        public void setUserName(String userName)
-        {
-            _userName = userName;
-        }
-
-        public String getPassword()
-        {
-            return _password;
-        }
-
-        public void setPassword(String password)
-        {
-            _password = password;
-        }
-
-        public String getTestAccountUser()
-        {
-            return _testAccountUser;
-        }
-
-        public void setTestAccountUser(String testAccountUser)
-        {
-            _testAccountUser = testAccountUser;
-        }
-
-        public String getTestAccountPassword()
-        {
-            return _testAccountPassword;
-        }
-
-        public void setTestAccountPassword(String testAccountPassword)
-        {
-            _testAccountPassword = testAccountPassword;
-        }
-
-        public String getImageFileName()
-        {
-            return _imageFileName;
-        }
-
-        public void setImageFileName(String imageFileName)
-        {
-            _imageFileName = imageFileName;
-        }
-    }
-
     @RequiresPermission(ReadPermission.class)
     public class DownloadLogoForBlueskyAction extends BaseDownloadAction<AttachmentForm>
     {
@@ -1417,7 +1381,13 @@ public class PanoramaPublicController extends SpringActionController
         {
             AttachmentParent ap = PanoramaPublicLogoAttachmentParent.get();
             if (ap == null) return null;
-            Attachment attachment = PanoramaPublicLogoManager.getNewDataLogo();
+
+            BlueskySettings settings = BlueskySettingsManager.getSettings();
+            if (StringUtils.isBlank(settings.getImageFileName()))
+            {
+                return null;
+            }
+            Attachment attachment = PanoramaPublicLogoManager.getNewDataLogo(settings.getImageFileName());
             if (attachment != null)
             {
                 return new Pair<>(ap, attachment.getName());
@@ -1438,6 +1408,7 @@ public class PanoramaPublicController extends SpringActionController
         public boolean handlePost(Object o, BindException errors)
         {
             PanoramaPublicLogoManager.deleteExistingNewDataLogo(getUser());
+            BlueskySettingsManager.removeLogoFileName();
             return true;
         }
 
@@ -1563,7 +1534,7 @@ public class PanoramaPublicController extends SpringActionController
             return new HtmlView(
                     DIV("Panorama Public catalog entry settings were saved.",
                             BR(),
-                            new Link.LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
+                            new LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
         }
 
         @Override
@@ -2799,7 +2770,7 @@ public class PanoramaPublicController extends SpringActionController
                     DIV(dataPrivate),
                     DIV(pxdAssigned),
                     BR(), BR(),
-                    new Link.LinkBuilder("Back to Experiment Details").href(returnUrl).build()));
+                    new LinkBuilder("Back to Experiment Details").href(returnUrl).build()));
 
             view.setTitle(getSuccessViewTitle());
             return view;
@@ -2879,7 +2850,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             ActionURL noPxSubmissionUrl = submitUrl.clone().replaceParameter("getPxid", "false");
             componentList.add(DIV(at(style, "margin-bottom:10px;"), "If you do not want a ProteomeXchange ID click the link to ",
-                    new Link.LinkBuilder("Submit without a ProteomeXchange ID").href(noPxSubmissionUrl).build()));
+                    new LinkBuilder("Submit without a ProteomeXchange ID").href(noPxSubmissionUrl).build()));
         }
         componentList.add(DIV(at(style, "top-bottom:10px;"), new Button.ButtonBuilder("Back to Experiment Details")
                 .href(getViewExperimentDetailsURL(experimentAnnotations.getId(), container)).build()));
@@ -2946,7 +2917,7 @@ public class PanoramaPublicController extends SpringActionController
                     "Data validation with Id " + dataValidation.getId() + " is incomplete.",
                     pipelineJobStatus != null ?
                             SPAN("The status of the pipeline job (Id: " + dataValidation.getJobId() + ") is ",
-                                    new Link.LinkBuilder(pipelineJobStatus.getStatus()).href(jobDetailsUrl).build())
+                                    new LinkBuilder(pipelineJobStatus.getStatus()).href(jobDetailsUrl).build())
                             : " The pipeline job (Id: " + dataValidation.getJobId() + ") may have been deleted."),
                     forSubmit, experimentAnnotations, container, null);
         }
@@ -2969,7 +2940,7 @@ public class PanoramaPublicController extends SpringActionController
     {
         return UL(children.stream()
                 .filter(child -> !child.equals(parent))
-                .map(child -> LI(new Link.LinkBuilder(parent.getParsedPath().relativize(child.getParsedPath()).toString())
+                .map(child -> LI(new LinkBuilder(parent.getParsedPath().relativize(child.getParsedPath()).toString())
                         .href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(child))
                         .clearClasses())));
     }
@@ -3720,18 +3691,18 @@ public class PanoramaPublicController extends SpringActionController
         User createdByUser = UserManager.getUser(validation.getCreatedBy());
         ActionURL validationDetailsUrl = getPxValidationStatusUrl(exptAnnotations.getId(), validation.getId(), container);
         return new HtmlView(TABLE(cl("lk-fields-table"),
-                displayExperimentTitle ? row("Experiment: ", DIV(exptAnnotations.getTitle(), HtmlString.NBSP, new Link.LinkBuilder("View Details")
+                displayExperimentTitle ? row("Experiment: ", DIV(exptAnnotations.getTitle(), HtmlString.NBSP, new LinkBuilder("View Details")
                         .href(getViewExperimentDetailsURL(exptAnnotations.getId(), container)).build())) : HtmlString.EMPTY_STRING,
                 row("Last Validation Date: ", validation.getFormattedDate()),
                 createdByUser != null ?
-                        row("Created By: ", new Link.LinkBuilder(createdByUser.getDisplayName(user))
+                        row("Created By: ", new LinkBuilder(createdByUser.getDisplayName(user))
                                 .href(PageFlowUtil.urlProvider(UserUrls.class).getUserDetailsURL(container, createdByUser.getUserId(), null))
                                 .clearClasses().build()) :
                         row("Created By: ", "Unknown User " + validation.getCreatedBy()),
                 row("ProteomeXchange Status:", SPAN(getValidationStatusForSummary(validation, statusFile, exptAnnotations, user),
-                        HtmlString.NBSP, new Link.LinkBuilder("[Details]").href(validationDetailsUrl).build())),
+                        HtmlString.NBSP, new LinkBuilder("[Details]").href(validationDetailsUrl).build())),
                 row("Validation Log:", statusFile != null ?
-                        new Link.LinkBuilder("View log").href(PageFlowUtil.urlProvider(PipelineStatusUrls.class)
+                        new LinkBuilder("View log").href(PageFlowUtil.urlProvider(PipelineStatusUrls.class)
                                 .urlDetails(container, validation.getJobId())).build()
                         : SPAN("Log file not found for job Id " + validation.getJobId()))
         ));
@@ -4576,7 +4547,7 @@ public class PanoramaPublicController extends SpringActionController
                         SPAN("Response from PX server: "), BR(),
                         DIV(at(style, "white-space: pre-wrap;margin:10px 0px 10px 0px;"),
                             _pxResponse),
-                    DIV(new Link.LinkBuilder("Back to folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
+                    DIV(new LinkBuilder("Back to folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
         }
 
         private PxXml createPxXml(ExperimentAnnotations expAnnot, JournalExperiment je, Submission submission, Status validationStatus, String pxChanageLog, boolean submittingToPx) throws PxException
@@ -5088,18 +5059,18 @@ public class PanoramaPublicController extends SpringActionController
                 return new HtmlView(
                         DIV(DIV(at(style, "margin-bottom:10px;"), "DOI assigned to the data is " + _expAnnot.getDoi()),
                                 DIV(
-                                new Link.LinkBuilder("Publish DOI").clearClasses().addClass("btn btn-default").href(new ActionURL(PublishDoiAction.class, getContainer()).addParameter("id", _expAnnot.getId())),
+                                new LinkBuilder("Publish DOI").clearClasses().addClass("btn btn-default").href(new ActionURL(PublishDoiAction.class, getContainer()).addParameter("id", _expAnnot.getId())),
                                 SPAN(at(style, "margin:5px;")),
-                                new Link.LinkBuilder("Delete DOI").clearClasses().addClass("btn btn-default").href(new ActionURL(DeleteDoiAction.class, getContainer()).addParameter("id", _expAnnot.getId()))),
+                                new LinkBuilder("Delete DOI").clearClasses().addClass("btn btn-default").href(new ActionURL(DeleteDoiAction.class, getContainer()).addParameter("id", _expAnnot.getId()))),
                                 updateDoiForm));
 
             }
             else
             {
                return new HtmlView(
-                       DIV(DIV(new Link.LinkBuilder("Assign New DOI").clearClasses().addClass("btn btn-default").href(getAssignDoiUrl(_expAnnot, getContainer(), false)),
+                       DIV(DIV(new LinkBuilder("Assign New DOI").clearClasses().addClass("btn btn-default").href(getAssignDoiUrl(_expAnnot, getContainer(), false)),
                        SPAN(at(style, "margin:5px;")),
-                       new Link.LinkBuilder("Assign New Test DOI").clearClasses().addClass("btn btn-default").href(getAssignDoiUrl(_expAnnot, getContainer(), true))),
+                       new LinkBuilder("Assign New Test DOI").clearClasses().addClass("btn btn-default").href(getAssignDoiUrl(_expAnnot, getContainer(), true))),
                        updateDoiForm));
             }
         }
@@ -5192,7 +5163,7 @@ public class PanoramaPublicController extends SpringActionController
             return new HtmlView(
                     DIV(getSuccessMessage(),
                             BR(),
-                            DIV(new Link.LinkBuilder("Back to folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
+                            DIV(new LinkBuilder("Back to folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
         }
 
         protected abstract DOM.Renderable getSuccessMessage();
@@ -5501,35 +5472,11 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(BlueskyForm form, BindException errors)
         {
-            WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.CREDENTIALS, false);
-            String user = null;
-            String password = null;
-            if(map != null)
-            {
-                user = form.isTestAccount() ? map.get(BlueskyService.TEST_USER) : map.get(BlueskyService.USER);
-                password = form.isTestAccount() ? map.get(BlueskyService.TEST_PASSWORD) : map.get(BlueskyService.PASSWORD);
-            }
-            if(StringUtils.isBlank(user))
-            {
-                errors.reject(ERROR_MSG, String.format("Cannot find username for Bluesky %saccount.", form.isTestAccount() ? "test " : ""));
-            }
-            if(StringUtils.isBlank(password))
-            {
-                errors.reject(ERROR_MSG, String.format("Cannot find password for Bluesky %saccount.", form.isTestAccount() ? "test " : ""));
-            }
-            if(errors.getErrorCount() > 0)
-            {
-                return false;
-            }
-
+            BlueskySettings settings = BlueskySettingsManager.getSettings();
             try
             {
                 // Post to Bluesky
-                _blueSkyPostUrl = new BlueskyService().createBlueskyPost(_expAnnot, form.isTestAccount(), user, password);
-
-                WritablePropertyMap propertyMap = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.BLUESKY_LINK, true);
-                propertyMap.put(_expAnnot.getShortUrl().renderShortURL(), _blueSkyPostUrl);
-                propertyMap.save();
+                _blueSkyPostUrl = BlueskyApiClient.getInstance().createPost(_expAnnot, settings, form.isTestAccount());
             }
             catch (BlueskyException e)
             {
@@ -5549,30 +5496,40 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getConfirmView(BlueskyForm form, BindException errors)
         {
-            WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(BlueskyService.BLUESKY_LINK, false);
+            CatalogEntry entry = CatalogEntryManager.getApprovedEntryForExperiment(_expAnnot);
+            ActionURL imageUrl = entry != null
+                    ? PanoramaPublicController.getCatalogImageDownloadUrl(_expAnnot, entry.getImageFileName())
+                    : new ActionURL(DownloadLogoForBlueskyAction.class, getContainer());
 
             Renderable announcementDiv = DIV(cl("bluebox").at(style, "padding:25px;"),
-                    DIV(BlueskyService.ANNOUNCEMENT_TEXT),
+                    DIV(BlueskyApiClient.ANNOUNCEMENT_TEXT),
+                    DIV(IMG(at(src, imageUrl)
+                            .at(width, 320).at(height, 180))),
                     DIV(at(style, "font-weight:bold;"), _expAnnot.getTitle()),
-                    DIV(new Link.LinkBuilder(_expAnnot.getShortUrl().renderShortURL())
+                    DIV(new LinkBuilder(_expAnnot.getShortUrl().renderShortURL())
                             .href(_expAnnot.getShortUrl().renderShortURL())
                             .clearClasses()
                             .build())
             );
             Renderable testPostCb = DIV(at(style, "margin-top:20px;"),CHECKBOX(at(name,"testAccount")), "Post to test account");
-            String blueskyPostUrl = map != null ? map.get(_expAnnot.getShortUrl().renderShortURL()) : null;
+            String blueskyPostUrl = BlueskySettingsManager.getPostUrlForExperiment(_expAnnot);
             if (blueskyPostUrl != null)
             {
-                Link blueskyLink = new Link.LinkBuilder((blueskyPostUrl))
-                        .href(BlueskyService.convertToClickableUrl(blueskyPostUrl))
-                        .clearClasses()
-                        .build();
+                String webUrl = BlueskyApiClient.tryFormatBlueskyUrl(blueskyPostUrl);
                 return new HtmlView(
                         DIV("This data has already been announced on Bluesky at ",
-                                        blueskyLink,
+                                        webUrl == null
+                                                ? blueskyPostUrl
+                                                : new LinkBuilder((blueskyPostUrl)).href(webUrl)
+                                                .clearClasses()
+                                                .build(),
                                         ". Would you like to post the following message again? ",
                                 announcementDiv,
-                                testPostCb
+                                testPostCb,
+                                DIV(new LinkBuilder("Clear saved post URL")
+                                        .usePost()
+                                        .href(new ActionURL(ClearSavedBlueskyPostUrlAction.class, getContainer()).addParameter("id", _expAnnot.getId()))
+                                        .build())
                                 ));
             }
             else
@@ -5587,16 +5544,16 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getSuccessView(BlueskyForm form)
         {
-            Link blueskyLink = new Link.LinkBuilder((_blueSkyPostUrl))
-                    .href(BlueskyService.convertToClickableUrl(_blueSkyPostUrl))
-                    .clearClasses()
-                    .build();
+            String webUrl = BlueskyApiClient.tryFormatBlueskyUrl(_blueSkyPostUrl);
 
             return new HtmlView(
                     DIV("Posted to Bluesky!",
-                            blueskyLink,
+                            webUrl == null
+                                    ? _blueSkyPostUrl
+                                    : new LinkBuilder((_blueSkyPostUrl)).href(webUrl).clearClasses()
+                                    .build(),
                             BR(),
-                            DIV(new Link.LinkBuilder("Back to folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
+                            DIV(new LinkBuilder("Back to folder").href(PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_expAnnot.getContainer())))));
         }
 
         @Override
@@ -5626,6 +5583,40 @@ public class PanoramaPublicController extends SpringActionController
         {
             _testAccount = testAccount;
         }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class ClearSavedBlueskyPostUrlAction extends FormHandlerAction<ExperimentIdForm>
+    {
+        @Override
+        public void validateCommand(ExperimentIdForm form, Errors errors)
+        {
+            ExperimentAnnotations expAnnot = form.lookupExperiment();
+            if(expAnnot == null)
+            {
+                errors.reject(ERROR_MSG, "Cannot find experiment with ID " + form.getId());
+            }
+            ensureCorrectContainer(getContainer(), expAnnot.getContainer(), getViewContext());
+            if (expAnnot.getShortUrl() == null)
+            {
+                errors.reject(ERROR_MSG, "Experiment Id " + expAnnot.getId() + " does not have a short access URL");
+            }
+        }
+
+        @Override
+        public boolean handlePost(ExperimentIdForm form, BindException errors)
+        {
+            BlueskySettingsManager.clearPostUrlForExperiment(form.lookupExperiment());
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(ExperimentIdForm experimentIdForm)
+        {
+            return PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer());
+        }
+
+
     }
     // ------------------------------------------------------------------------
     // END Actions for posting to Bluesky
@@ -5911,7 +5902,7 @@ public class PanoramaPublicController extends SpringActionController
                 if (getViewContext().hasPermission(AdminOperationsPermission.class) && DataValidationManager.getValidationJobCount(exptAnnotations.getId()) > 1)
                 {
                     ActionURL url = new ActionURL(ViewPxValidationsAction.class, getContainer()).addParameter("id", exptAnnotations.getId());
-                    viewAllLink = new Link.LinkBuilder("View All Validation Jobs").href(url).build();
+                    viewAllLink = new LinkBuilder("View All Validation Jobs").href(url).build();
                 }
                 view.addView(new HtmlView(DIV(at(style, "margin-top:15px;"),
                         getRerunDataValidationButton(exptAnnotations, getContainer()),
@@ -6019,7 +6010,7 @@ public class PanoramaPublicController extends SpringActionController
 
                 ActionURL url = PanoramaPublicController.getDataValidationCheckUrl(exptAnnotations.getId(), exptAnnotations.getContainer(), true);
                 url.addReturnURL(getViewExperimentDetailsURL(exptAnnotations.getId(), exptAnnotations.getContainer()));
-                vBox.addView(new HtmlView(DIV(new Link.LinkBuilder("Validate for ProteomeXchange").href(url).build())));
+                vBox.addView(new HtmlView(DIV(new LinkBuilder("Validate for ProteomeXchange").href(url).build())));
 
                 result.addView(vBox);
             }
@@ -6761,6 +6752,7 @@ public class PanoramaPublicController extends SpringActionController
         private Journal _journal;
         private JournalSubmission _journalSubmission;
         private DataCiteException _doiError;
+        private String _blueskyPostUrl;
         private boolean _madePublic;
         private boolean _addedPublication;
 
@@ -6984,6 +6976,9 @@ public class PanoramaPublicController extends SpringActionController
                 // Publish the DOI, if one was assigned
                 publishDoi();
 
+                // Post to Bluesky
+                postToBluesky();
+
                 _madePublic = true;
             }
 
@@ -7007,7 +7002,7 @@ public class PanoramaPublicController extends SpringActionController
 
             // Post to the message thread associated with this submission
             PanoramaPublicNotification.notifyDataPublished(_expAnnot, _copiedExperiment, _journal, _journalSubmission.getJournalExperiment(),
-                    _doiError, _madePublic, _addedPublication, getUser());
+                    _doiError, _madePublic, _addedPublication, BlueskyApiClient.tryFormatBlueskyUrl(_blueskyPostUrl), getUser());
 
             return true;
         }
@@ -7053,6 +7048,24 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
+        private void postToBluesky()
+        {
+            BlueskySettings settings = BlueskySettingsManager.getSettings();
+            if (!settings.isAutopost())
+            {
+                logger.info("Auto-post to Bluesky is disabled.");
+                return;
+            }
+            try
+            {
+                _blueskyPostUrl = BlueskyApiClient.getInstance().createPostIfNotExists(_expAnnot, settings, false);
+            }
+            catch (BlueskyException e)
+            {
+                logger.error("Unable to post to Bluesky.", e);
+            }
+        }
+
         @Override
         public ModelAndView getSuccessView(PublicationDetailsForm form)
         {
@@ -7061,17 +7074,6 @@ public class PanoramaPublicController extends SpringActionController
             view.setTitle("Data Published");
             view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
-        }
-
-        private boolean canAddCatalogEntry(ExperimentAnnotations expAnnot)
-        {
-            return CatalogEntryManager.getCatalogEntrySettings().isEnabled() && CatalogEntryManager.getEntryForExperiment(expAnnot) == null;
-        }
-
-        private Button getAddCatalogEntryButton(ExperimentAnnotations expAnnot)
-        {
-            return new Button.ButtonBuilder("Add Catalog Entry")
-                    .href(getAddCatalogEntryUrl(expAnnot)).style("margin-left: 10px").build();
         }
 
         @Override
@@ -7791,7 +7793,7 @@ public class PanoramaPublicController extends SpringActionController
             rows.add(getSummaryRow("Name:", library.getName()));
             rows.add(getSummaryRow("File Name: ", SPAN(library.getFileNameHint(),
                     SPAN(at(style, "margin-left:5px; white-space: nowrap;"), library.getDownloadLink(getUser())))));
-            rows.add(getSummaryRow("Skyline Document: ",  new Link.LinkBuilder(run.getFileName())
+            rows.add(getSummaryRow("Skyline Document: ",  new LinkBuilder(run.getFileName())
                     .href(PageFlowUtil.urlProvider(TargetedMSUrls.class).getShowRunUrl(run.getContainer(), run.getId()))
                     .clearClasses().build()));
 
@@ -8647,7 +8649,7 @@ public class PanoramaPublicController extends SpringActionController
                 BR(),
                 DIV("View all the structural and isotope modifications in the experiment: ",
                         new Button.ButtonBuilder("View Experiment Modifications").href(exptModsUrl).build()),
-                DIV(new Link.LinkBuilder("[View Experiment Details]").href(getViewExperimentDetailsURL(expAnnotations.getId(), expAnnotations.getContainer())).build()
+                DIV(new LinkBuilder("[View Experiment Details]").href(getViewExperimentDetailsURL(expAnnotations.getId(), expAnnotations.getContainer())).build()
                 )));
         return hView;
     }
