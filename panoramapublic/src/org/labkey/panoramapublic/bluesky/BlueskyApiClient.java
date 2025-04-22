@@ -40,9 +40,7 @@ import java.util.stream.Collectors;
 
 public class BlueskyApiClient
 {
-    public static String ANNOUNCEMENT_TEXT = "New data available on Panorama Public!";
-
-    protected static final Logger logger = LogHelper.getLogger(BlueskyApiClient.class, "BlueskyService logger");
+    protected static final Logger logger = LogHelper.getLogger(BlueskyApiClient.class, "BlueskyApiClient logger");
 
     private static final BlueskyApiClient INSTANCE = new BlueskyApiClient();
 
@@ -99,6 +97,16 @@ public class BlueskyApiClient
         }
     }
 
+    public LoginInfo login(@NotNull BlueskySettings settings) throws BlueskyException
+    {
+        return login(settings, false); // Login to the primary account
+    }
+
+    public LoginInfo loginTestAccount(@NotNull BlueskySettings settings) throws BlueskyException
+    {
+        return login(settings, true); // Login to the test account
+    }
+
     public static class LoginInfo
     {
         private final String _accessJwt;
@@ -136,7 +144,7 @@ public class BlueskyApiClient
     @Nullable
     public String createPostIfNotExists(@NotNull ExperimentAnnotations exptAnnotations, BlueskySettings settings, boolean testPost) throws BlueskyException
     {
-        if (BlueskySettingsManager.getPostUrlForExperiment(exptAnnotations) != null)
+        if (BlueskyIntegrationManager.getBlueskyUriForExperiment(exptAnnotations) != null)
         {
             // There is already a post on Bluesky related to this data
             return null;
@@ -177,20 +185,20 @@ public class BlueskyApiClient
                 settings.getPostEndpoint(), exptAnnotations.getShortUrl().renderShortURL()));
 
         BlueskyResponse response;
-        String blueskyPostUrl;
+        String blueskyAtUri;
         try (CloseableHttpClient httpClient = HttpClients.createDefault())
         {
             response = getResponse(httpClient, httpPost, "Post creation failed");
             JSONObject responseJson = response.getJsonObject();
             if (responseJson.has("uri"))
             {
-                blueskyPostUrl = responseJson.getString("uri");
+                blueskyAtUri = responseJson.getString("uri");
             }
             else
             {
                 throw new BlueskyException("Post creation failed - Missing URI in response.", response);
             }
-            if (StringUtils.isBlank(blueskyPostUrl))
+            if (StringUtils.isBlank(blueskyAtUri))
             {
                 throw new BlueskyException("Post URI in response is blank.", response);
             }
@@ -200,9 +208,12 @@ public class BlueskyApiClient
             throw new BlueskyException("Post creation failed.", e);
         }
 
-        BlueskySettingsManager.savePostUrlForExperiment(exptAnnotations, blueskyPostUrl);
+        if (!testPost)
+        {
+            BlueskyIntegrationManager.saveBlueskyUriForExperiment(exptAnnotations, blueskyAtUri);
+        }
 
-        return blueskyPostUrl;
+        return blueskyAtUri;
     }
 
     @NotNull
@@ -221,8 +232,7 @@ public class BlueskyApiClient
     private JSONObject buildRecord(@NotNull ExperimentAnnotations exptAnnotations, boolean testPost,
                                    @NotNull BlueskySettings settings, @NotNull LoginInfo loginInfo) throws BlueskyException
     {
-        String[] hashtags = testPost ? settings.getTestHashtagArray() : settings.getHashtagArray();
-        String text = getPostText(hashtags);
+        String text = getPostText(settings, testPost);
 
         JSONObject record = new JSONObject()
                 .put("$type", "app.bsky.feed.post")
@@ -230,6 +240,7 @@ public class BlueskyApiClient
                 .put("createdAt", Instant.now().toString());
 
         // Add hashtag facets if any
+        String[] hashtags = testPost ? settings.getTestHashtagArray() : settings.getHashtagArray();
         JSONArray facets = buildHashtagFacets(text, hashtags);
         if (!facets.isEmpty())
         {
@@ -244,9 +255,10 @@ public class BlueskyApiClient
     /**
      * Generate post text with hashtags
      */
-    private static String getPostText(@NotNull String[] hashtags)
+    public static String getPostText(@NotNull BlueskySettings settings, boolean testPost)
     {
-        return ANNOUNCEMENT_TEXT + " " + formatHashtags(hashtags);
+        String[] hashtags = testPost ? settings.getTestHashtagArray() : settings.getHashtagArray();
+        return String.format("%s%s%s", settings.getAnnouncementText(), hashtags.length > 0 ? " " : "", formatHashtags(hashtags));
     }
 
     /**
@@ -459,7 +471,7 @@ public class BlueskyApiClient
         }
     }
 
-    private static final Pattern AT_URI = Pattern.compile(
+    private static final Pattern AT_PROTOCOL_URI = Pattern.compile(
             "^at://([^/]+)/app\\.bsky\\.feed\\.post/([^/]+)$"
     );
 
@@ -470,14 +482,14 @@ public class BlueskyApiClient
      * Example: at://</did>/app.bsky.feed.post/<post_id>
      * Convert to: https://bsky.app/profile/<did>/post/<post_id>
      */
-    public static String tryFormatBlueskyUrl(String postUri)
+    public static String tryConvertToWebUrl(String atProtocolUri)
     {
-        if (StringUtils.isBlank(postUri))
+        if (StringUtils.isBlank(atProtocolUri))
         {
             return null;
         }
 
-        Matcher m = AT_URI.matcher(postUri.trim());
+        Matcher m = AT_PROTOCOL_URI.matcher(atProtocolUri.trim());
         return m.matches()
                 ? "https://bsky.app/profile/" + m.group(1) + "/post/" + m.group(2)
                 : null;

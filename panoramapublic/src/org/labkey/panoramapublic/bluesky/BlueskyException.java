@@ -21,7 +21,7 @@ public class BlueskyException extends Exception
 
     public BlueskyException(@NotNull String message, @NotNull BlueskyResponse response)
     {
-        super("Request failed - " + message + ". Code: " + response.getResponseCode() + "; Message " + response.getMessage() + "; Body: " + response.getResponseBody());
+        super("Request failed - " + message + ". Code: " + response.getStatusCode() + "; Message " + response.getMessage() + "; Body: " + response.getResponseBody());
         _response = response;
     }
 
@@ -30,7 +30,7 @@ public class BlueskyException extends Exception
         if(_response != null)
         {
            return HtmlStringBuilder.of(HtmlString.unsafe("<div>"))
-                    .append("Response code: ").append(_response.getResponseCode())
+                    .append("Response status code: ").append(_response.getStatusCode())
                     .append(HtmlString.BR)
                     .append("Message: ").append(_response.getMessage())
                     .append(HtmlString.BR)

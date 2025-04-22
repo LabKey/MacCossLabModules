@@ -7,20 +7,20 @@ import org.json.JSONObject;
 
 public class BlueskyResponse
 {
-    private final int _responseCode;
+    private final int _statusCode;
     private final String _message;
     private final String _responseBody;
 
-    public BlueskyResponse(int responseCode, String message, String responseBody)
+    public BlueskyResponse(int statusCode, String message, String responseBody)
     {
-        _responseCode = responseCode;
+        _statusCode = statusCode;
         _message = message;
         _responseBody = responseBody;
     }
 
-    public int getResponseCode()
+    public int getStatusCode()
     {
-        return _responseCode;
+        return _statusCode;
     }
 
     public String getMessage()
@@ -35,7 +35,7 @@ public class BlueskyResponse
 
     public boolean success()
     {
-        return _responseCode == HttpStatus.SC_OK || _responseCode == HttpStatus.SC_CREATED;
+        return _statusCode == HttpStatus.SC_OK || _statusCode == HttpStatus.SC_CREATED;
     }
 
     public JSONObject getJsonObject() throws BlueskyException

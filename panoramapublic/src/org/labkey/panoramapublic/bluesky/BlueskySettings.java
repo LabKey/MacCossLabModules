@@ -22,6 +22,8 @@ public class BlueskySettings
     private String _postEndpoint;
     private String _blobUploadEndpoint;
 
+    private String _announcementText;
+
     public String getAccount()
     {
         return _account;
@@ -158,5 +160,20 @@ public class BlueskySettings
     public void setBlobUploadEndpoint(String blobUploadEndpoint)
     {
         _blobUploadEndpoint = blobUploadEndpoint;
+    }
+
+    public String getAnnouncementText()
+    {
+        return _announcementText;
+    }
+
+    public void setAnnouncementText(String announcementText)
+    {
+        _announcementText = announcementText;
+    }
+
+    public String getAccount (boolean test)
+    {
+        return test ? getTestAccount() : getAccount();
     }
 }

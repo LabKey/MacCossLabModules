@@ -4,6 +4,7 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PanoramaPublicAdminViewAction" %>
 <%@ page import="org.labkey.panoramapublic.bluesky.BlueskySettings" %>
+<%@ page import="org.labkey.panoramapublic.bluesky.BlueskyIntegrationManager" %>
 <%@ page extends="org.labkey.api.jsp.FormPage" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -37,7 +38,7 @@
             <td  class='labkey-form-label'>Auth URL:</td>
             <td>
                 <input size="50" type="text" name="authEndpoint" value="<%=h(form.getAuthEndpoint())%>">
-                <div style="font-size: 0.8em;">e.g. https://bsky.social/xrpc/com.atproto.server.createSession</div>
+                <div style="font-size: 0.8em;">e.g. <%=h(BlueskyIntegrationManager.DEFAULT_AUTH_URL)%></div>
             </td>
         </tr>
 
@@ -45,7 +46,7 @@
             <td  class='labkey-form-label'>Post URL:</td>
             <td>
                 <input size="50" type="text" name="postEndpoint" value="<%=h(form.getPostEndpoint())%>">
-                <div style="font-size: 0.8em;">e.g. https://bsky.social/xrpc/com.atproto.repo.createRecord</div>
+                <div style="font-size: 0.8em;">e.g. <%=h(BlueskyIntegrationManager.DEFAULT_POST_URL)%></div>
             </td>
         </tr>
 
@@ -53,7 +54,14 @@
             <td  class='labkey-form-label'>Image upload URL:</td>
             <td>
                 <input size="50" type="text" name="blobUploadEndpoint" value="<%=h(form.getBlobUploadEndpoint())%>">
-                <div style="font-size: 0.8em;">e.g. https://bsky.social/xrpc/com.atproto.repo.uploadBlob</div>
+                <div style="font-size: 0.8em;">e.g. <%=h(BlueskyIntegrationManager.DEFAULT_IMAGE_UPLOAD_URL)%></div>
+            </td>
+        </tr>
+
+        <tr>
+            <td  class='labkey-form-label'>Announcement text:</td>
+            <td>
+                <input size="50" type="text" name="announcementText" value="<%=h(form.getAnnouncementText())%>">
             </td>
         </tr>
 
@@ -84,14 +92,14 @@
             <td class="labkey-form-label" style="text-align:center;">Panorama Public Logo:</td>
             <td>
                 <% if (form.getImageFileName() != null) { %>
-                    <%=link("View Logo",  urlFor(PanoramaPublicController.DownloadLogoForBlueskyAction.class))%>
-                    <%=link("Delete Logo", urlFor(PanoramaPublicController.DeleteLogoForBlueskyAction.class)).usePost()%>
+                    <%=link("View Logo",  urlFor(PanoramaPublicController.DownloadPanoramaLogoForBlueskyAction.class))%>
+                    <%=link("Delete Logo", urlFor(PanoramaPublicController.DeletePanoramaLogoForBlueskyAction.class)).usePost()%>
                 <% } %>
                 <input id="imageFileInput" type="file" size="50" style="border: none; background-color: transparent;" accept="image/png,image/jpeg" name="imageFileInput" />
                 <input id="imageFileName" name="imageFileName" type="hidden" value="<%=h(form.getImageFileName())%>"/>
 
                 <div style="margin-top:5px;" class="greyText">
-                    PNG or JPG/JPEG file in 16x9 ascpect ratio that will be included in the Bluesky post
+                    PNG or JPG/JPEG file in 16x9 aspect ratio that will be included in the Bluesky post
                 </div>
             </td>
         </tr>

@@ -4,16 +4,20 @@ import org.labkey.api.data.PropertyManager;
 import org.labkey.api.data.PropertyManager.WritablePropertyMap;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
-public class BlueskySettingsManager
+public class BlueskyIntegrationManager
 {
+    // Category name for propertysets
     private static final String CREDENTIALS = "Bluesky credentials";
+    // Property names for properties that belog to the "Bluesky credenditals" category
     private static final String ACCOUNT = "Bluesky account";
     private static final String PASSWORD = "Bluesky password";
 
     private static final String TEST_ACCOUNT = "Bluesky test account";
     private static final String TEST_ACCOUNT_PASSWORD = "Bluesky test password";
 
+    // Category name for propertysets
     private static final String SETTINGS = "Bluesky settings";
+    // Property names for properties that belog to the "Bluesky settings" category
     private static final String AUTH_URL = "Bluesky auth endpoint";
     private static final String POST_URL = "Bluesky post endpoint";
     private static final String BLOB_UPLOAD_URL = "Image blob upload endpoint";
@@ -22,9 +26,17 @@ public class BlueskySettingsManager
     private static final String TEST_HASHTAGS = "Hashtags for test account";
     private static final String PANORAMA_LOGO_FILENAME = "Panorama logo file name";
     private static final String AUTOPOST = "Auto‑post to Bluesky on publish";
+    private static final String ANNOUNCEMENT_TEXT = "Announcement text";
 
 
-    public static final String BLUESKY_LINKS = "Bluesky post links";
+    // Category name for propertysets. Properties belonging to this category will have the data short URL as the name
+    // and the Bluesky post URI (AT protocol) as the value.
+    public static final String BLUESKY_URIS = "Bluesky AT protocol URIs";
+
+    // Default values for the endpoints
+    public static final String DEFAULT_AUTH_URL = "https://bsky.social/xrpc/com.atproto.server.createSession";
+    public static final String DEFAULT_POST_URL = "https://bsky.social/xrpc/com.atproto.repo.createRecord";
+    public static final String DEFAULT_IMAGE_UPLOAD_URL = "https://bsky.social/xrpc/com.atproto.repo.uploadBlob";
 
     public static BlueskySettings getSettings()
     {
@@ -43,6 +55,7 @@ public class BlueskySettingsManager
             settings.setAuthEndpoint(settingsMap.get(AUTH_URL));
             settings.setPostEndpoint(settingsMap.get(POST_URL));
             settings.setBlobUploadEndpoint(settingsMap.get(BLOB_UPLOAD_URL));
+            settings.setAnnouncementText(settingsMap.get(ANNOUNCEMENT_TEXT));
             settings.setHashtags(settingsMap.get(HASHTAGS));
             settings.setTestHashtags(settingsMap.get(TEST_HASHTAGS));
             settings.setAutopost(Boolean.valueOf(settingsMap.get(AUTOPOST)));
@@ -66,6 +79,7 @@ public class BlueskySettingsManager
         settingsMap.put(AUTH_URL, settings.getAuthEndpoint());
         settingsMap.put(POST_URL, settings.getPostEndpoint());
         settingsMap.put(BLOB_UPLOAD_URL, settings.getBlobUploadEndpoint());
+        settingsMap.put(ANNOUNCEMENT_TEXT, settings.getAnnouncementText());
         settingsMap.put(HASHTAGS, settings.getHashtags());
         settingsMap.put(TEST_HASHTAGS, settings.getTestHashtags());
         settingsMap.save();
@@ -78,7 +92,7 @@ public class BlueskySettingsManager
         saveSettings(settings);
     }
 
-    public static String getPostUrlForExperiment(ExperimentAnnotations experimentAnnotations)
+    public static String getBlueskyUriForExperiment(ExperimentAnnotations experimentAnnotations)
     {
         if (experimentAnnotations == null || experimentAnnotations.getShortUrl() == null)
         {
@@ -86,32 +100,32 @@ public class BlueskySettingsManager
         }
 
         WritablePropertyMap map = PropertyManager.getNormalStore()
-                .getWritableProperties(BlueskySettingsManager.BLUESKY_LINKS, false);
+                .getWritableProperties(BlueskyIntegrationManager.BLUESKY_URIS, false);
         return map != null ? map.get(experimentAnnotations.getShortUrl().renderShortURL()) : null;
     }
 
-    public static void savePostUrlForExperiment(ExperimentAnnotations experimentAnnotations, String blueskyPostUrl)
+    public static void saveBlueskyUriForExperiment(ExperimentAnnotations experimentAnnotations, String atProtocolUri)
     {
         if (experimentAnnotations == null || experimentAnnotations.getShortUrl() == null)
         {
             return;
         }
         WritablePropertyMap propertyMap = PropertyManager.getNormalStore()
-                .getWritableProperties(BlueskySettingsManager.BLUESKY_LINKS, true);
-        propertyMap.put(experimentAnnotations.getShortUrl().renderShortURL(), blueskyPostUrl);
+                .getWritableProperties(BlueskyIntegrationManager.BLUESKY_URIS, true);
+        propertyMap.put(experimentAnnotations.getShortUrl().renderShortURL(), atProtocolUri);
         propertyMap.save();
     }
 
-    public static void clearPostUrlForExperiment(ExperimentAnnotations experimentAnnotations)
+    public static void clearBlueskyUriForExperiment(ExperimentAnnotations experimentAnnotations)
     {
         if (experimentAnnotations == null || experimentAnnotations.getShortUrl() == null)
         {
             return;
         }
-        if (getPostUrlForExperiment(experimentAnnotations) != null)
+        if (getBlueskyUriForExperiment(experimentAnnotations) != null)
         {
             WritablePropertyMap propertyMap = PropertyManager.getNormalStore()
-                    .getWritableProperties(BlueskySettingsManager.BLUESKY_LINKS, true);
+                    .getWritableProperties(BlueskyIntegrationManager.BLUESKY_URIS, true);
             propertyMap.remove(experimentAnnotations.getShortUrl().renderShortURL());
             propertyMap.save();
         }
