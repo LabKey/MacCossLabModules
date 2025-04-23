@@ -114,7 +114,7 @@ public class BlueskySettings
         _testHashtags = testHashtags;
     }
 
-    private static String[] convertToArray(String hashtags)
+    public static String[] convertToArray(String hashtags)
     {
         if (StringUtils.isBlank(hashtags))
         {

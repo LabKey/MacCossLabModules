@@ -18,6 +18,8 @@ import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.Assert;
+import org.junit.Test;
 import org.labkey.api.attachments.Attachment;
 import org.labkey.api.attachments.AttachmentParent;
 import org.labkey.api.attachments.AttachmentService;
@@ -59,18 +61,9 @@ public class BlueskyApiClient
         String account = testAccount ? settings.getTestAccount() : settings.getAccount();
         String password = testAccount ? settings.getTestAccountPassword() : settings.getPassword();
 
-        if(StringUtils.isBlank(account))
-        {
-            throw new BlueskyException(String.format("Cannot find Bluesky %saccount.", testAccount ? "test " : ""));
-        }
-        if(StringUtils.isBlank(password))
-        {
-            throw new BlueskyException(String.format("Cannot find password for Bluesky %saccount.", testAccount ? "test " : ""));
-        }
-        if(StringUtils.isBlank(settings.getAuthEndpoint()))
-        {
-            throw new BlueskyException("Bluesky auth endpoint not configured");
-        }
+        validateNotBlank(account, String.format("Cannot find Bluesky %saccount.", testAccount ? "test " : ""));
+        validateNotBlank(password, String.format("Cannot find password for Bluesky %saccount.", testAccount ? "test " : ""));
+        validateNotBlank(settings.getAuthEndpoint(), "Bluesky auth endpoint not configured");
 
         JSONObject requestBody = new JSONObject();
         requestBody.put("identifier", account);
@@ -94,6 +87,14 @@ public class BlueskyApiClient
         catch (IOException | JSONException e)
         {
             throw new BlueskyException("Bluesky login failed", e);
+        }
+    }
+
+    private static void validateNotBlank(String value, String error) throws BlueskyException
+    {
+        if(StringUtils.isBlank(value))
+        {
+            throw new BlueskyException(error);
         }
     }
 
@@ -157,18 +158,10 @@ public class BlueskyApiClient
     public String createPost(@NotNull ExperimentAnnotations exptAnnotations, @NotNull BlueskySettings settings,
                               @NotNull LoginInfo loginInfo, boolean testPost) throws BlueskyException
     {
-        if(StringUtils.isBlank(settings.getAuthEndpoint()))
-        {
-            throw new BlueskyException("Bluesky auth endpoint not configured");
-        }
-        if(StringUtils.isBlank(settings.getPostEndpoint()))
-        {
-            throw new BlueskyException("Bluesky post endpoint not configured");
-        }
-        if(StringUtils.isBlank(settings.getBlobUploadEndpoint()))
-        {
-            throw new BlueskyException("Bluesky image upload endpoint not configured");
-        }
+        validateNotBlank(settings.getAuthEndpoint(), "Bluesky auth endpoint not configured");
+        validateNotBlank(settings.getPostEndpoint(), "Bluesky post endpoint not configured");
+        validateNotBlank(settings.getBlobUploadEndpoint(), ("Bluesky image upload endpoint not configured"));
+
         if (exptAnnotations.getShortUrl() == null)
         {
             throw new BlueskyException(String.format("Experiment with Id %d does not have a short access URL", exptAnnotations.getId()));
@@ -268,7 +261,7 @@ public class BlueskyApiClient
     {
         return Arrays.stream(hashtags)
                 .map(tag -> "#" + tag)
-                .collect(Collectors.joining(", "));
+                .collect(Collectors.joining(" "));
     }
 
     /**
@@ -493,5 +486,135 @@ public class BlueskyApiClient
         return m.matches()
                 ? "https://bsky.app/profile/" + m.group(1) + "/post/" + m.group(2)
                 : null;
+    }
+
+    public static class TestCase extends Assert
+    {
+        @Test
+        public void testConvertToArray()
+        {
+            String input = "proteomics, proteomicssky, massspec, massspecsky";
+            String[] expected = {"proteomics", "proteomicssky", "massspec", "massspecsky"};
+            Arrays.sort(expected);
+            compareSorted(expected, input);
+
+            // Test for null string
+            assertArrayEquals(new String[0], BlueskySettings.convertToArray(null));
+
+            // Test for empty string
+            assertArrayEquals(new String[0], BlueskySettings.convertToArray(""));
+
+            // Test for input with leading, trailing and internal spaces
+            input = " proteomics, proteomics sky, massspec , massspecsky ";
+            compareSorted(expected, input);
+
+            // Test for input with duplicates
+            input = " proteomics, massspec, proteomics sky, massspec , massspecsky, proteomics ";
+            compareSorted(expected, input);
+
+            // Test for input with '#' characters
+            input = " #proteomics, proteomics sky,  # massspec , massspecsky, #massspec ";
+            compareSorted(expected, input);
+
+            // Test for single tag TODO: remove
+            assertArrayEquals(new String[]{"proteomics"}, BlueskySettings.convertToArray("#proteomics"));
+            input = "proteomics,proteomics sky,#massspec, massspecsky,proteomics";
+            compareSorted(expected, input);
+        }
+
+        private void compareSorted(String[] expected, String input)
+        {
+            String[] actual = BlueskySettings.convertToArray(input);
+            Arrays.sort(actual);
+            assertArrayEquals(expected, actual);
+        }
+
+        @Test
+        public void testHashtagGettersAndSetters()
+        {
+            BlueskySettings settings = new BlueskySettings();
+
+            // Test primary account hashtags
+            settings.setHashtags(" #proteomics, proteomics sky,  # massspec , massspecsky, #massspec ");
+            String[] expectedMainTags = {"proteomics", "proteomicssky", "massspec", "massspecsky"};
+            // Set test account hashtags
+            settings.setTestHashtags(" #panoramapublictest, panoramaweb test ");
+            String[] expectedTestTags = {"panoramapublictest", "panoramawebtest"};
+
+            assertArrayEquals(expectedMainTags, settings.getHashtagArray());
+            assertArrayEquals(expectedTestTags, settings.getTestHashtagArray());
+        }
+
+        @Test
+        public void testAccountGetters()
+        {
+            BlueskySettings settings = new BlueskySettings();
+
+            settings.setAccount("main-account");
+            settings.setTestAccount("test-account");
+
+            // Test account getter with parameter
+            Assert.assertEquals("main-account", settings.getAccount(false));
+            Assert.assertEquals("test-account", settings.getAccount(true));
+        }
+
+        @Test
+        public void testGetPostText()
+        {
+            String announcementText = "New data available on Panorama Public!";
+            // Test with null hashtags
+            BlueskySettings settings = new BlueskySettings();
+            settings.setAnnouncementText(announcementText);
+            settings.setHashtags(null);
+            settings.setTestHashtags(null);
+
+            // Primary account, no hashtags
+            String text = BlueskyApiClient.getPostText(settings, false);
+            Assert.assertEquals(announcementText, text);
+            // Test account, no hashtags
+            String testText = BlueskyApiClient.getPostText(settings, true);
+            Assert.assertEquals(announcementText, testText);
+
+            // Test with empty hashtags
+            settings = new BlueskySettings();
+            settings.setAnnouncementText(announcementText);
+            settings.setHashtags("");
+            settings.setTestHashtags("");
+
+            // Primary account, no hashtags
+            text = BlueskyApiClient.getPostText(settings, false);
+            Assert.assertEquals(announcementText, text);
+            // Test account, no hashtags
+            testText = BlueskyApiClient.getPostText(settings, true);
+            Assert.assertEquals(announcementText, testText);
+
+            // Test with single hashtag
+            settings = new BlueskySettings();
+            announcementText = "Check out this new data on Panorama Public!";
+            settings.setAnnouncementText(announcementText);
+            settings.setHashtags("skyline");
+            settings.setTestHashtags("panoramapublic");
+
+            // Primary account, single hashtag
+            text = BlueskyApiClient.getPostText(settings, false);
+            Assert.assertEquals(announcementText + " #skyline", text);
+            // Test account, single hashtag
+            testText = BlueskyApiClient.getPostText(settings, true);
+            Assert.assertEquals(announcementText + " #panoramapublic", testText);
+
+            // Test with multiple hashtags
+            settings = new BlueskySettings();
+            announcementText = "New Panorama Public data available.";
+            settings.setAnnouncementText(announcementText);
+            settings.setHashtags("proteomics, proteomicssky, massspec, massspecsky");
+            settings.setTestHashtags("panoramapublictest, panoramawebtest");
+
+            // Primary account, multiple hashtags
+            text = BlueskyApiClient.getPostText(settings, false);
+            Assert.assertEquals(announcementText + " #proteomics #proteomicssky #massspec #massspecsky", text);
+            // Test account, multiple hashtags
+            testText = BlueskyApiClient.getPostText(settings, true);
+            Assert.assertEquals(announcementText + " #panoramapublictest #panoramawebtest", testText);
+        }
     }
 }
