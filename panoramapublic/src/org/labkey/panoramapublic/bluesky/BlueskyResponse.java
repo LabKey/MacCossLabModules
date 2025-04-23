@@ -10,12 +10,16 @@ public class BlueskyResponse
     private final int _statusCode;
     private final String _message;
     private final String _responseBody;
+    private final String _account;
+    private final String _endpoint;
 
-    public BlueskyResponse(int statusCode, String message, String responseBody)
+    public BlueskyResponse(int statusCode, String message, String responseBody, String blueskyAccount, String endpoint)
     {
         _statusCode = statusCode;
         _message = message;
         _responseBody = responseBody;
+        _account = blueskyAccount;
+        _endpoint = endpoint;
     }
 
     public int getStatusCode()
@@ -31,6 +35,16 @@ public class BlueskyResponse
     public String getResponseBody()
     {
         return _responseBody;
+    }
+
+    public String getAccount()
+    {
+        return _account;
+    }
+
+    public String getEndpoint()
+    {
+        return _endpoint;
     }
 
     public boolean success()

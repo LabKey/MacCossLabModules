@@ -1360,7 +1360,7 @@ public class PanoramaPublicController extends SpringActionController
 
                 if (form.getAuthEndpoint() == null) form.setAuthEndpoint(BlueskyIntegrationManager.DEFAULT_AUTH_URL);
                 if (form.getPostEndpoint() == null) form.setPostEndpoint(BlueskyIntegrationManager.DEFAULT_POST_URL);
-                if (form.getImageFileName() == null) form.setBlobUploadEndpoint(BlueskyIntegrationManager.DEFAULT_IMAGE_UPLOAD_URL);
+                if (form.getBlobUploadEndpoint() == null) form.setBlobUploadEndpoint(BlueskyIntegrationManager.DEFAULT_IMAGE_UPLOAD_URL);
                 if (form.getAnnouncementText() == null) form.setAnnouncementText("New data available on Panorama Public!");
 
                 // Passwords should not be displayed in the form. Make the user re-enter them.
@@ -5508,7 +5508,7 @@ public class PanoramaPublicController extends SpringActionController
 
             if (!_expAnnot.isPublic())
             {
-                errors.reject(ERROR_MSG, "Cannot create a post on Bluesky for an experiment that is not public. (Experiment id: " + _expAnnot.getId() + ").");
+                errors.reject(ERROR_MSG, "Cannot create a post on Bluesky for an experiment that is not public.");
             }
         }
 
@@ -5547,7 +5547,7 @@ public class PanoramaPublicController extends SpringActionController
                     : new ActionURL(DownloadPanoramaLogoForBlueskyAction.class, getContainer());
 
             Renderable announcementDiv = DIV(cl("bluebox").at(style, "padding:25px;"),
-                    DIV(BlueskyApiClient.getPostText(settings, form.isTestAccount())),
+                    DIV(BlueskyApiClient.getAnnouncement(settings, form.isTestAccount())),
                     DIV(IMG(at(src, imageUrl).at(width, 320).at(height, 180))),
                     DIV(at(style, "font-weight:bold;"), _expAnnot.getTitle()),
                     DIV(new LinkBuilder(_expAnnot.getShortUrl().renderShortURL())

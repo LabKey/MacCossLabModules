@@ -58,27 +58,26 @@ public class BlueskyApiClient
      */
     public LoginInfo login(@NotNull BlueskySettings settings, boolean testAccount) throws BlueskyException
     {
-        String account = testAccount ? settings.getTestAccount() : settings.getAccount();
-        String password = testAccount ? settings.getTestAccountPassword() : settings.getPassword();
+        ClientConfig config = new ClientConfig(settings, testAccount);
 
-        validateNotBlank(account, String.format("Cannot find Bluesky %saccount.", testAccount ? "test " : ""));
-        validateNotBlank(password, String.format("Cannot find password for Bluesky %saccount.", testAccount ? "test " : ""));
-        validateNotBlank(settings.getAuthEndpoint(), "Bluesky auth endpoint not configured");
+        validateNotBlank(config.getAccount(), String.format("Cannot find Bluesky %saccount.", testAccount ? "test " : ""));
+        validateNotBlank(config.getPassword(), String.format("Cannot find password for Bluesky %saccount.", testAccount ? "test " : ""));
+        validateNotBlank(config.getAuthEndpoint(), "Bluesky auth endpoint not configured");
 
         JSONObject requestBody = new JSONObject();
-        requestBody.put("identifier", account);
-        requestBody.put("password", password);
+        requestBody.put("identifier", config.getAccount());
+        requestBody.put("password", config.getPassword());
 
-        HttpPost httpPost = new HttpPost(settings.getAuthEndpoint());
+        HttpPost httpPost = new HttpPost(config.getAuthEndpoint());
         httpPost.setHeader("Content-Type", "application/json");
         httpPost.setEntity(new StringEntity(requestBody.toString(), ContentType.APPLICATION_JSON));
 
-        logger.debug(String.format("Logging into Bluesky as '%s' at endpoint '%s'", account, settings.getAuthEndpoint()));
+        logger.debug(String.format("Logging into Bluesky as '%s' at endpoint '%s'", config.getAccount(), config.getAuthEndpoint()));
 
         BlueskyResponse response;
         try (CloseableHttpClient httpClient = HttpClients.createDefault())
         {
-            response = getResponse(httpClient, httpPost, "Bluesky login failed");
+            response = getResponse(httpClient, httpPost, config, "Bluesky login failed");
             JSONObject responseJson = response.getJsonObject();
             String accessJwt = responseJson.getString("accessJwt");
             String did = responseJson.getString("did");
@@ -86,7 +85,7 @@ public class BlueskyApiClient
         }
         catch (IOException | JSONException e)
         {
-            throw new BlueskyException("Bluesky login failed", e);
+            throw new BlueskyException("Bluesky login failed", config.getAccount(), config.getAuthEndpoint(), e);
         }
     }
 
@@ -134,16 +133,16 @@ public class BlueskyApiClient
      * Create a post on Bluesky announcing the data
      */
     @NotNull
-    public String createPost(@NotNull ExperimentAnnotations exptAnnotations, BlueskySettings settings, boolean testPost) throws BlueskyException
+    public String createPost(@NotNull ExperimentAnnotations exptAnnotations, BlueskySettings settings, boolean useTestAccount) throws BlueskyException
     {
-        return createPost(exptAnnotations, settings, login(settings, testPost), testPost);
+        return createPost(exptAnnotations, settings, login(settings, useTestAccount), useTestAccount);
     }
 
     /**
      * Create a post on Bluesky announcing the data.  The post is created only if a post wasn't already created.
      */
     @Nullable
-    public String createPostIfNotExists(@NotNull ExperimentAnnotations exptAnnotations, BlueskySettings settings, boolean testPost) throws BlueskyException
+    public String createPostIfNotExists(@NotNull ExperimentAnnotations exptAnnotations, BlueskySettings settings, boolean useTestAccount) throws BlueskyException
     {
         if (BlueskyIntegrationManager.getBlueskyUriForExperiment(exptAnnotations) != null)
         {
@@ -151,37 +150,38 @@ public class BlueskyApiClient
             return null;
         }
 
-        return createPost(exptAnnotations, settings, testPost);
+        return createPost(exptAnnotations, settings, useTestAccount);
     }
 
     @NotNull
     public String createPost(@NotNull ExperimentAnnotations exptAnnotations, @NotNull BlueskySettings settings,
-                              @NotNull LoginInfo loginInfo, boolean testPost) throws BlueskyException
+                              @NotNull LoginInfo loginInfo, boolean useTestAccount) throws BlueskyException
     {
-        validateNotBlank(settings.getAuthEndpoint(), "Bluesky auth endpoint not configured");
-        validateNotBlank(settings.getPostEndpoint(), "Bluesky post endpoint not configured");
-        validateNotBlank(settings.getBlobUploadEndpoint(), ("Bluesky image upload endpoint not configured"));
+        ClientConfig config = new ClientConfig(settings, useTestAccount);
+        validateNotBlank(config.getAuthEndpoint(), "Bluesky auth endpoint not configured");
+        validateNotBlank(config.getPostEndpoint(), "Bluesky post endpoint not configured");
+        validateNotBlank(config.getBlobUploadEndpoint(), "Bluesky image upload endpoint not configured");
 
         if (exptAnnotations.getShortUrl() == null)
         {
             throw new BlueskyException(String.format("Experiment with Id %d does not have a short access URL", exptAnnotations.getId()));
         }
 
-        JSONObject requestBody = createRequestBody(exptAnnotations, testPost, settings, loginInfo);
+        JSONObject requestBody = createRequestBody(exptAnnotations, config, loginInfo);
 
-        HttpPost httpPost = new HttpPost(settings.getPostEndpoint());
+        HttpPost httpPost = new HttpPost(config.getPostEndpoint());
         httpPost.setHeader("Content-Type", "application/json");
         httpPost.setHeader("Authorization", "Bearer " + loginInfo.getAccessJwt());
         httpPost.setEntity(new StringEntity(requestBody.toString(), ContentType.APPLICATION_JSON));
 
-        logger.debug(String.format("Posting into Bluesky at endpoint '%s' for Panorama Public data at '%s'",
-                settings.getPostEndpoint(), exptAnnotations.getShortUrl().renderShortURL()));
+        logger.debug(String.format("Posting to Bluesky account %s at endpoint '%s' for Panorama Public data at '%s'",
+                config.getAccount(), config.getPostEndpoint(), exptAnnotations.getShortUrl().renderShortURL()));
 
         BlueskyResponse response;
         String blueskyAtUri;
         try (CloseableHttpClient httpClient = HttpClients.createDefault())
         {
-            response = getResponse(httpClient, httpPost, "Post creation failed");
+            response = getResponse(httpClient, httpPost, config, "Post creation failed");
             JSONObject responseJson = response.getJsonObject();
             if (responseJson.has("uri"))
             {
@@ -198,10 +198,10 @@ public class BlueskyApiClient
         }
         catch (IOException | JSONException e)
         {
-            throw new BlueskyException("Post creation failed.", e);
+            throw new BlueskyException("Post creation failed.", config.getAccount(), config.getPostEndpoint(), e);
         }
 
-        if (!testPost)
+        if (!useTestAccount)
         {
             BlueskyIntegrationManager.saveBlueskyUriForExperiment(exptAnnotations, blueskyAtUri);
         }
@@ -210,10 +210,10 @@ public class BlueskyApiClient
     }
 
     @NotNull
-    private JSONObject createRequestBody(@NotNull ExperimentAnnotations exptAnnotations, boolean testPost,
-                                         @NotNull BlueskySettings settings, @NotNull LoginInfo loginInfo) throws BlueskyException
+    private JSONObject createRequestBody(@NotNull ExperimentAnnotations exptAnnotations,
+                                         @NotNull ClientConfig config, @NotNull LoginInfo loginInfo) throws BlueskyException
     {
-        JSONObject record = buildRecord(exptAnnotations, testPost, settings, loginInfo);
+        JSONObject record = buildRecord(exptAnnotations, config, loginInfo);
 
         return new JSONObject()
                 .put("repo", loginInfo.getDid())
@@ -222,10 +222,10 @@ public class BlueskyApiClient
     }
 
     @NotNull
-    private JSONObject buildRecord(@NotNull ExperimentAnnotations exptAnnotations, boolean testPost,
-                                   @NotNull BlueskySettings settings, @NotNull LoginInfo loginInfo) throws BlueskyException
+    private JSONObject buildRecord(@NotNull ExperimentAnnotations exptAnnotations,
+                                   @NotNull ClientConfig config, @NotNull LoginInfo loginInfo) throws BlueskyException
     {
-        String text = getPostText(settings, testPost);
+        String text = getAnnouncement(config);
 
         JSONObject record = new JSONObject()
                 .put("$type", "app.bsky.feed.post")
@@ -233,25 +233,29 @@ public class BlueskyApiClient
                 .put("createdAt", Instant.now().toString());
 
         // Add hashtag facets if any
-        String[] hashtags = testPost ? settings.getTestHashtagArray() : settings.getHashtagArray();
-        JSONArray facets = buildHashtagFacets(text, hashtags);
+        JSONArray facets = buildHashtagFacets(text, config.getHashtags());
         if (!facets.isEmpty())
         {
             record.put("facets", facets);
         }
 
         // Build and attach the embed object
-        record.put("embed", buildEmbed(exptAnnotations, settings, loginInfo));
+        record.put("embed", buildEmbed(exptAnnotations, config, loginInfo));
         return record;
     }
 
     /**
      * Generate post text with hashtags
      */
-    public static String getPostText(@NotNull BlueskySettings settings, boolean testPost)
+    private static String getAnnouncement(@NotNull ClientConfig config)
     {
-        String[] hashtags = testPost ? settings.getTestHashtagArray() : settings.getHashtagArray();
-        return String.format("%s%s%s", settings.getAnnouncementText(), hashtags.length > 0 ? " " : "", formatHashtags(hashtags));
+        String[] hashtags = config.getHashtags();
+        return String.format("%s%s%s", config.getAnnouncementText(), hashtags.length > 0 ? " " : "", formatHashtags(hashtags));
+    }
+
+    public static String getAnnouncement(@NotNull BlueskySettings settings, boolean isTestAccount)
+    {
+        return getAnnouncement(new ClientConfig(settings, isTestAccount));
     }
 
     /**
@@ -314,7 +318,7 @@ public class BlueskyApiClient
     }
 
     @NotNull
-    private JSONObject buildEmbed(@NotNull ExperimentAnnotations exptAnnotations, @NotNull BlueskySettings settings, @NotNull LoginInfo loginInfo) throws BlueskyException
+    private JSONObject buildEmbed(@NotNull ExperimentAnnotations exptAnnotations, @NotNull ClientConfig config, @NotNull LoginInfo loginInfo) throws BlueskyException
     {
         // Create the embed object for a web card
         JSONObject embed = new JSONObject()
@@ -328,13 +332,13 @@ public class BlueskyApiClient
                 .put("description", panoramaLink);
 
         // Upload and grab the blob reference for the logo image
-        external.put("thumb", getImageBlobReference(exptAnnotations, settings, loginInfo));
+        external.put("thumb", getImageBlobReference(exptAnnotations, config, loginInfo));
 
         embed.put("external", external);
         return embed;
     }
 
-    private JSONObject getImageBlobReference(ExperimentAnnotations exptAnnotations, BlueskySettings settings, LoginInfo loginInfo) throws BlueskyException
+    private JSONObject getImageBlobReference(ExperimentAnnotations exptAnnotations, ClientConfig config, LoginInfo loginInfo) throws BlueskyException
     {
         AttachmentParent attachmentParent = null;
         // First check if the data submitter provided a catalog entry for the data.
@@ -343,7 +347,7 @@ public class BlueskyApiClient
         {
             attachmentParent = new CatalogImageAttachmentParent(exptAnnotations.getShortUrl(), exptAnnotations.getContainer());
         }
-        else if (!StringUtils.isBlank(settings.getImageFileName()))
+        else if (!StringUtils.isBlank(config.getImageFileName()))
         {
             // If the data does not have a catalog entry, or we were unable to get it, use the Panorama Public logo
             attachmentParent = PanoramaPublicLogoAttachmentParent.get();
@@ -351,7 +355,7 @@ public class BlueskyApiClient
             {
                 throw new BlueskyException("Unable to initialize PanoramaPublicLogoAttachmentParent. Perhaps a Panorama Public project does not exist on the server.");
             }
-            attachment = PanoramaPublicLogoManager.getNewDataLogo(settings.getImageFileName());
+            attachment = PanoramaPublicLogoManager.getNewDataLogo(config.getImageFileName());
         }
 
         if (attachment == null)
@@ -359,7 +363,7 @@ public class BlueskyApiClient
             throw new BlueskyException("Unable to find an image file to include in the post.");
         }
 
-        JSONObject blobResponse = uploadImage(attachment, attachmentParent, settings, loginInfo);
+        JSONObject blobResponse = uploadImage(attachment, attachmentParent, config, loginInfo);
         // Get the blob reference from the response
         if (blobResponse.has("blob"))
         {
@@ -381,28 +385,29 @@ public class BlueskyApiClient
      * Upload image bytes to Bluesky
      */
     @NotNull
-    private JSONObject uploadToBluesky(byte[] imageBytes, String mimeType, BlueskySettings settings, LoginInfo loginInfo) throws BlueskyException
+    private JSONObject uploadToBluesky(byte[] imageBytes, String mimeType, ClientConfig config, LoginInfo loginInfo) throws BlueskyException
     {
-        HttpPost httpPost = new HttpPost(settings.getBlobUploadEndpoint());
+        String endpoint = config.getBlobUploadEndpoint();
+        HttpPost httpPost = new HttpPost(endpoint);
         httpPost.setHeader("Content-Type", mimeType);
         httpPost.setHeader("Authorization", "Bearer " + loginInfo.getAccessJwt());
         httpPost.setEntity(new ByteArrayEntity(imageBytes, ContentType.create(mimeType)));
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault())
         {
-            BlueskyResponse response = getResponse(httpClient, httpPost, "Failed to upload image to Bluesky");
+            BlueskyResponse response = getResponse(httpClient, httpPost, config, "Failed to upload image to Bluesky");
             return response.getJsonObject();
         }
         catch (IOException | JSONException e)
         {
-            throw new BlueskyException("Failed to upload image to Bluesky", e);
+            throw new BlueskyException("Failed to upload image to Bluesky", config.getAccount(), endpoint, e);
         }
     }
 
     @NotNull
-    private BlueskyResponse getResponse(CloseableHttpClient httpClient, HttpPost httpPost, String failureMessage) throws IOException, BlueskyException
+    private BlueskyResponse getResponse(CloseableHttpClient httpClient, HttpPost httpPost, ClientConfig config, String failureMessage) throws IOException, BlueskyException
     {
-        BlueskyResponse response = httpClient.execute(httpPost, new BlueskyResponseHandler());
+        BlueskyResponse response = httpClient.execute(httpPost, new BlueskyResponseHandler(config, httpPost.getRequestUri()));
         String responseContent = response.getResponseBody() != null ? response.getResponseBody() : "";
 
         if (!response.success())
@@ -423,13 +428,13 @@ public class BlueskyApiClient
      */
     @NotNull
     private JSONObject uploadImage(@NotNull Attachment attachment, @NotNull AttachmentParent parent,
-                                   BlueskySettings settings, LoginInfo loginInfo) throws BlueskyException
+                                   ClientConfig config, LoginInfo loginInfo) throws BlueskyException
     {
         try (InputStream is = AttachmentService.get().getInputStream(parent, attachment.getName()))
         {
             byte[] imageBytes = is.readAllBytes();
             String mimeType = PageFlowUtil.getContentTypeFor(attachment.getName());
-            return uploadToBluesky(imageBytes, mimeType, settings, loginInfo);
+            return uploadToBluesky(imageBytes, mimeType, config, loginInfo);
         }
         catch (FileNotFoundException e)
         {
@@ -448,6 +453,15 @@ public class BlueskyApiClient
      */
     private static class BlueskyResponseHandler implements HttpClientResponseHandler<BlueskyResponse>
     {
+        private final String _account;
+        private final String _apiEndpoint;
+
+        public BlueskyResponseHandler(ClientConfig config, String apiEndpoint)
+        {
+            _account = config.getAccount();
+            _apiEndpoint = apiEndpoint;
+        }
+
         @Override
         public BlueskyResponse handleResponse(ClassicHttpResponse response) throws IOException
         {
@@ -455,7 +469,7 @@ public class BlueskyApiClient
             {
                 HttpEntity entity = response.getEntity();
                 String content = entity != null ? EntityUtils.toString(entity) : null;
-                return new BlueskyResponse(response.getCode(), response.getReasonPhrase(), content);
+                return new BlueskyResponse(response.getCode(), response.getReasonPhrase(), content, _account, _apiEndpoint);
             }
             catch (ParseException e)
             {
@@ -486,6 +500,71 @@ public class BlueskyApiClient
         return m.matches()
                 ? "https://bsky.app/profile/" + m.group(1) + "/post/" + m.group(2)
                 : null;
+    }
+
+    private static class ClientConfig
+    {
+        private final String _account;
+        private final String _password;
+        private final String _imageFileName;
+        private final String[] _hashtags;
+
+        private final String _announcementText;
+        private final String _authEndpoint;
+        private final String _postEndpoint;
+        private final String _blobUploadEndpoint;
+
+        public ClientConfig(BlueskySettings settings, boolean test)
+        {
+            _account = settings.getAccount(test); // Get either test or primary account
+            _password = settings.getPassword(test); // Get either test or primary password
+            _imageFileName = settings.getImageFileName();
+            _hashtags = test ? settings.getTestHashtagArray() : settings.getHashtagArray(); // Get the appropriate hashtags
+            _announcementText = settings.getAnnouncementText();
+            _authEndpoint = settings.getAuthEndpoint();
+            _postEndpoint = settings.getPostEndpoint();
+            _blobUploadEndpoint = settings.getBlobUploadEndpoint();
+        }
+
+        public String getAccount()
+        {
+            return _account;
+        }
+
+        public String getPassword()
+        {
+            return _password;
+        }
+
+        public String getImageFileName()
+        {
+            return _imageFileName;
+        }
+
+        public String[] getHashtags()
+        {
+            return _hashtags;
+        }
+
+        public String getAnnouncementText()
+        {
+            return _announcementText;
+        }
+
+        public String getAuthEndpoint()
+        {
+            return _authEndpoint;
+        }
+
+        public String getPostEndpoint()
+        {
+            return _postEndpoint;
+        }
+
+        public String getBlobUploadEndpoint()
+        {
+            return _blobUploadEndpoint;
+        }
     }
 
     public static class TestCase extends Assert
@@ -530,7 +609,7 @@ public class BlueskyApiClient
         }
 
         @Test
-        public void testHashtagGettersAndSetters()
+        public void testHashtagGetters()
         {
             BlueskySettings settings = new BlueskySettings();
 
@@ -543,23 +622,39 @@ public class BlueskyApiClient
 
             assertArrayEquals(expectedMainTags, settings.getHashtagArray());
             assertArrayEquals(expectedTestTags, settings.getTestHashtagArray());
+
+            ClientConfig config = new ClientConfig(settings, false);
+            assertArrayEquals(expectedMainTags, config.getHashtags());
+            config = new ClientConfig(settings, true);
+            assertArrayEquals(expectedTestTags, config.getHashtags());
         }
 
         @Test
-        public void testAccountGetters()
+        public void testCredentialsGetters()
         {
             BlueskySettings settings = new BlueskySettings();
 
             settings.setAccount("main-account");
+            settings.setPassword("main-account-password");
             settings.setTestAccount("test-account");
+            settings.setTestAccountPassword("test-account-password");
 
             // Test account getter with parameter
             Assert.assertEquals("main-account", settings.getAccount(false));
             Assert.assertEquals("test-account", settings.getAccount(true));
+            Assert.assertEquals("main-account-password", settings.getPassword(false));
+            Assert.assertEquals("test-account-password", settings.getPassword(true));
+
+            ClientConfig config = new ClientConfig(settings, false);
+            Assert.assertEquals("main-account", config.getAccount());
+            Assert.assertEquals("main-account-password", config.getPassword());
+            config = new ClientConfig(settings, true);
+            Assert.assertEquals("test-account", config.getAccount());
+            Assert.assertEquals("test-account-password", config.getPassword());
         }
 
         @Test
-        public void testGetPostText()
+        public void testGetAnnouncementText()
         {
             String announcementText = "New data available on Panorama Public!";
             // Test with null hashtags
@@ -569,10 +664,10 @@ public class BlueskyApiClient
             settings.setTestHashtags(null);
 
             // Primary account, no hashtags
-            String text = BlueskyApiClient.getPostText(settings, false);
+            String text = BlueskyApiClient.getAnnouncement(new ClientConfig(settings, false));
             Assert.assertEquals(announcementText, text);
             // Test account, no hashtags
-            String testText = BlueskyApiClient.getPostText(settings, true);
+            String testText = BlueskyApiClient.getAnnouncement(new ClientConfig(settings, true));
             Assert.assertEquals(announcementText, testText);
 
             // Test with empty hashtags
@@ -582,10 +677,10 @@ public class BlueskyApiClient
             settings.setTestHashtags("");
 
             // Primary account, no hashtags
-            text = BlueskyApiClient.getPostText(settings, false);
+            text = BlueskyApiClient.getAnnouncement(new ClientConfig(settings, false));
             Assert.assertEquals(announcementText, text);
             // Test account, no hashtags
-            testText = BlueskyApiClient.getPostText(settings, true);
+            testText = BlueskyApiClient.getAnnouncement(new ClientConfig(settings, true));
             Assert.assertEquals(announcementText, testText);
 
             // Test with single hashtag
@@ -596,10 +691,10 @@ public class BlueskyApiClient
             settings.setTestHashtags("panoramapublic");
 
             // Primary account, single hashtag
-            text = BlueskyApiClient.getPostText(settings, false);
+            text = BlueskyApiClient.getAnnouncement(new ClientConfig(settings, false));
             Assert.assertEquals(announcementText + " #skyline", text);
             // Test account, single hashtag
-            testText = BlueskyApiClient.getPostText(settings, true);
+            testText = BlueskyApiClient.getAnnouncement(new ClientConfig(settings, true));
             Assert.assertEquals(announcementText + " #panoramapublic", testText);
 
             // Test with multiple hashtags
@@ -610,10 +705,10 @@ public class BlueskyApiClient
             settings.setTestHashtags("panoramapublictest, panoramawebtest");
 
             // Primary account, multiple hashtags
-            text = BlueskyApiClient.getPostText(settings, false);
+            text = BlueskyApiClient.getAnnouncement(new ClientConfig(settings, false));
             Assert.assertEquals(announcementText + " #proteomics #proteomicssky #massspec #massspecsky", text);
             // Test account, multiple hashtags
-            testText = BlueskyApiClient.getPostText(settings, true);
+            testText = BlueskyApiClient.getAnnouncement(new ClientConfig(settings, true));
             Assert.assertEquals(announcementText + " #panoramapublictest #panoramawebtest", testText);
         }
     }

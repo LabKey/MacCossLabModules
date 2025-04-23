@@ -176,4 +176,9 @@ public class BlueskySettings
     {
         return test ? getTestAccount() : getAccount();
     }
+
+    public String getPassword (boolean test)
+    {
+        return test ? getTestAccountPassword() : getPassword();
+    }
 }

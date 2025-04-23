@@ -38,7 +38,7 @@
             <td  class='labkey-form-label'>Auth URL:</td>
             <td>
                 <input size="50" type="text" name="authEndpoint" value="<%=h(form.getAuthEndpoint())%>">
-                <div style="font-size: 0.8em;">e.g. <%=h(BlueskyIntegrationManager.DEFAULT_AUTH_URL)%></div>
+                <div style="font-size: 0.8em; color:gray">e.g. <%=h(BlueskyIntegrationManager.DEFAULT_AUTH_URL)%></div>
             </td>
         </tr>
 
@@ -46,7 +46,7 @@
             <td  class='labkey-form-label'>Post URL:</td>
             <td>
                 <input size="50" type="text" name="postEndpoint" value="<%=h(form.getPostEndpoint())%>">
-                <div style="font-size: 0.8em;">e.g. <%=h(BlueskyIntegrationManager.DEFAULT_POST_URL)%></div>
+                <div style="font-size: 0.8em; color:gray">e.g. <%=h(BlueskyIntegrationManager.DEFAULT_POST_URL)%></div>
             </td>
         </tr>
 
@@ -54,7 +54,7 @@
             <td  class='labkey-form-label'>Image upload URL:</td>
             <td>
                 <input size="50" type="text" name="blobUploadEndpoint" value="<%=h(form.getBlobUploadEndpoint())%>">
-                <div style="font-size: 0.8em;">e.g. <%=h(BlueskyIntegrationManager.DEFAULT_IMAGE_UPLOAD_URL)%></div>
+                <div style="font-size: 0.8em; color:gray">e.g. <%=h(BlueskyIntegrationManager.DEFAULT_IMAGE_UPLOAD_URL)%></div>
             </td>
         </tr>
 
@@ -69,7 +69,7 @@
             <td  class='labkey-form-label'>Hashtags:</td>
             <td>
                 <input size="50" type="text" name="hashtags" value="<%=h(form.getHashtags())%>">
-                <div style="font-size: 0.8em;">Hashtags associated with the post, comma-separated (e.g proteomics, proteomicssky, massspec, massspecsky)</div>
+                <div style="font-size: 0.8em; color:gray">Hashtags associated with the post, comma-separated (e.g proteomics, proteomicssky, massspec, massspecsky)</div>
             </td>
         </tr>
 
@@ -77,7 +77,7 @@
             <td  class='labkey-form-label'>Hashtags (test account):</td>
             <td>
                 <input size="50" type="text" name="testHashtags" value="<%=h(form.getTestHashtags())%>">
-                <div style="font-size: 0.8em;">Hashtags associated with the post to the test account, comma-separated.</div>
+                <div style="font-size: 0.8em; color:gray">Hashtags associated with the post to the test account, comma-separated.</div>
             </td>
         </tr>
 
@@ -98,7 +98,7 @@
                 <input id="imageFileInput" type="file" size="50" style="border: none; background-color: transparent;" accept="image/png,image/jpeg" name="imageFileInput" />
                 <input id="imageFileName" name="imageFileName" type="hidden" value="<%=h(form.getImageFileName())%>"/>
 
-                <div style="margin-top:5px;" class="greyText">
+                <div style="margin-top:5px; color:gray" class="greyText">
                     PNG or JPG/JPEG file in 16x9 aspect ratio that will be included in the Bluesky post
                 </div>
             </td>
