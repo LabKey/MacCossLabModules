@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.data.PropertyManager.WritablePropertyMap;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.io.DataOutputStream;
@@ -247,11 +247,11 @@ public class DataCiteService
         return "https://doi.org/" + doi;
     }
 
-    public static Link.LinkBuilder toLink(@NotNull String doi)
+    public static LinkBuilder toLink(@NotNull String doi)
     {
         // Display the complete link: https://support.datacite.org/docs/datacite-doi-display-guidelines
         String url = toUrl(doi);
-        return new Link.LinkBuilder(url).href(url).rel("noopener noreferrer");
+        return LinkBuilder.simpleLink(url, url).rel("noopener noreferrer");
     }
 
     /**

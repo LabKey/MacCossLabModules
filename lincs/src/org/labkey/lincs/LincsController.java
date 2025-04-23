@@ -66,7 +66,7 @@ import org.labkey.api.targetedms.SkylineAnnotation;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.FileUtil;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
@@ -1039,7 +1039,7 @@ public class LincsController extends SpringActionController
             return new HtmlView(
                     DIV("Clue/PSP details saved!",
                             BR(),
-                            new Link.LinkBuilder("Back to Project").href(projectUrl).build()
+                            LinkBuilder.labkeyLink("Back to Project", projectUrl).build()
                     )
             );
         }
@@ -1124,8 +1124,8 @@ public class LincsController extends SpringActionController
             ActionURL projectUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(getContainer());
             return new HtmlView(
                     DIV("Cromwell details saved!",
-                            BR(),
-                            new Link.LinkBuilder("Back to Project").href(projectUrl).build()
+                        BR(),
+                        LinkBuilder.labkeyLink("Back to Project", projectUrl).build()
                     )
             );
         }
@@ -1237,7 +1237,7 @@ public class LincsController extends SpringActionController
             if(pspJob.getPipelineJobId() != null && getUser().hasSiteAdminPermission())
             {
                 ActionURL pipelineJobUrl = PageFlowUtil.urlProvider(PipelineStatusUrls.class).urlDetails(getContainer(), pspJob.getPipelineJobId());
-                view.addView(new HtmlView(PageFlowUtil.link("View Pipeline Job. Status: " + PipelineService.get().getStatusFile(pspJob.getPipelineJobId()).getStatus()).href(pipelineJobUrl)));
+                view.addView(new HtmlView(LinkBuilder.labkeyLink("View Pipeline Job. Status: " + PipelineService.get().getStatusFile(pspJob.getPipelineJobId()).getStatus(), pipelineJobUrl)));
             }
 
             view.setTitle("PSP Job Details");

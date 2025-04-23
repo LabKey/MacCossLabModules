@@ -175,6 +175,23 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         );
     }
 
+    // Verifies the path at which the file corresponding to a Peptide Id library source was found.
+    public void verifyPeptideIdFilePath(String peptideIdFile, String pathFound, String libraryFileName, String librarySize)
+    {
+        var panel = elementCache().specLibsPanel;
+        scrollIntoView(panel);
+        expandLibraryRow(panel, libraryFileName, librarySize);
+
+        var filesTable = panel.findElement(getFilesTableLocator(libraryFileName, "lib-id-files-status"));
+        filesTable.findElement(
+                Locator.XPathLocator.tag("tbody").child("tr")
+                        .child(Locator.tag("td").withText(peptideIdFile))
+                        .followingSibling("td")
+                        .child(Locator.tag("span").withClass("pxv-valid").withText("FOUND"))
+                        .parent().followingSibling("td").withText(pathFound)
+        );
+    }
+
     public void verifySpectralLibraryStatus(String libraryFile, String fileSize, String statusText,
                                             List<String> skylineDocNames,
                                             List<String> spectrumFiles, List<String> spectrumFilesMissing,

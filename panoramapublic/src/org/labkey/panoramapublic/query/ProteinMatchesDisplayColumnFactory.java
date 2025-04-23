@@ -8,7 +8,7 @@ import org.labkey.api.data.DisplayColumn;
 import org.labkey.api.data.DisplayColumnFactory;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.query.FieldKey;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.writer.HtmlWriter;
@@ -47,7 +47,7 @@ public class ProteinMatchesDisplayColumnFactory implements DisplayColumnFactory
                 searchUrl.addParameter("proteinLabel", proteinLabel);
                 searchUrl.addParameter("exactMatch", exactMatch);
 
-                out.write(new Link.LinkBuilder(String.valueOf(matches)).href(searchUrl));
+                out.write(LinkBuilder.labkeyLink(String.valueOf(matches), searchUrl));
                 out.write(PageFlowUtil.button("View").href(searchUrl));
             }
         };

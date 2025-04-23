@@ -32,7 +32,7 @@ import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.security.roles.SiteAdminRole;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.HtmlStringBuilder;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.writer.HtmlWriter;
@@ -218,7 +218,7 @@ public class ProjectAdminsTable extends ContainerTable
         private HtmlString getUserDetails(Container container, UserPrincipal member)
         {
             ActionURL url = PageFlowUtil.urlProvider(UserUrls.class).getUserDetailsURL(container, member.getUserId(), null);
-            return new Link.LinkBuilder(member.getName()).href(url).clearClasses().build().getHtmlString();
+            return LinkBuilder.simpleLink(member.getName(), url).build().getHtmlString();
         }
 
         @Override

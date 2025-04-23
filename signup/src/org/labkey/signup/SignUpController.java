@@ -53,11 +53,11 @@ import org.labkey.api.security.UserManager;
 import org.labkey.api.security.ValidEmail;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.settings.LookAndFeelProperties;
-import org.labkey.api.util.Button;
+import org.labkey.api.util.ButtonBuilder;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
-import org.labkey.api.util.element.CsrfInput;
+import org.labkey.api.util.CsrfInput;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.HttpView;
@@ -361,8 +361,8 @@ public class SignUpController extends SpringActionController
                            TD(INPUT(at(type, "password", name, "password2", value, form.getPassword2()))))
                     ),
                     DIV(at(style, "margin-top:10px"),
-                            new Button.ButtonBuilder("Submit").submit(true).style("margin-right:10px").build(),
-                            new Button.ButtonBuilder("Cancel").href(PageFlowUtil.urlProvider(ProjectUrls.class).getHomeURL()).build()
+                            new ButtonBuilder("Submit").submit(true).style("margin-right:10px").build(),
+                            new ButtonBuilder("Cancel").href(PageFlowUtil.urlProvider(ProjectUrls.class).getHomeURL()).build()
                     )
                 )
             ));

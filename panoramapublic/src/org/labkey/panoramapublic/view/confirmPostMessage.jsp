@@ -15,7 +15,7 @@
 <labkey:errors/>
 <div>
     This following message will be posted to the support message threads of the selected experiments.
-    The message below is an example for experiment Id <%=exampleExpAnnot.getId()%> (<%=link(exampleShortUrl, exampleShortUrl).clearClasses()%>).
+    The message below is an example for experiment Id <%=exampleExpAnnot.getId()%> (<%=simpleLink(exampleShortUrl, exampleShortUrl)%>).
 </div>
 <table class="lk-fields-table">
     <tr>

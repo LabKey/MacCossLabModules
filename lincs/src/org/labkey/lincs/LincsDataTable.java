@@ -31,7 +31,7 @@ import org.labkey.api.query.UserSchema;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
-import org.labkey.api.util.Link;
+import org.labkey.api.util.LinkBuilder;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.writer.HtmlWriter;
@@ -87,9 +87,9 @@ public class LincsDataTable extends FilteredTable
                 // <span style="white-space: nowrap;"> is recommended instead of deprecated <nobr></nobr>
                 SPAN(
                     at(style, "white-space: nowrap;"),
-                    new Link.LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl),
+                    LinkBuilder.labkeyLink("Download", downloadUrl).iconCls("fa fa-download"),
                     HtmlString.NBSP,
-                    new Link.LinkBuilder("Skyline").href(docDetailsUrl).clearClasses()
+                    LinkBuilder.simpleLink("Skyline", docDetailsUrl)
                 ).appendTo(out);
             }
 
@@ -158,7 +158,7 @@ public class LincsDataTable extends FilteredTable
                         ActionURL url = new ActionURL(LincsController.SubmitPspJobAction.class, getContainer());
                         url.addParameter("runId", runId);
 
-                        out.write(new Link.LinkBuilder(" [Submit Job]").href(url).usePost());
+                        out.write(LinkBuilder.labkeyLink(" [Submit Job]", url).usePost());
                     }
                     return;
                 }
@@ -176,7 +176,7 @@ public class LincsDataTable extends FilteredTable
                 }
                 ActionURL url = new ActionURL(LincsController.LincsPspJobDetailsAction.class, getContainer());
                 url.addParameter("runId", pspJob.getRunId());
-                out.write(PageFlowUtil.link(text).href(url));
+                out.write(LinkBuilder.labkeyLink(text, url));
             }
 
             @Override
@@ -376,9 +376,9 @@ public class LincsDataTable extends FilteredTable
             SPAN(
                 at(style, "white-space: nowrap;"),
                 HtmlString.NBSP,
-                new Link.LinkBuilder("Download").iconCls("fa fa-download").href(downloadUrl).onClick(analyticsScript),
+                LinkBuilder.labkeyLink("Download", downloadUrl).iconCls("fa fa-download").onClick(analyticsScript),
                 HtmlString.NBSP,
-                new Link.LinkBuilder(downloadText).href(downloadUrl).onClick(analyticsScript).clearClasses(),
+                LinkBuilder.simpleLink(downloadText, downloadUrl).onClick(analyticsScript),
                 HtmlString.NBSP,
                 morpheusUrl != null ? HtmlString.NBSP : null,
                 morpheusUrl,

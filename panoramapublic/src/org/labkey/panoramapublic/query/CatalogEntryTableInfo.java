@@ -9,7 +9,7 @@ import org.labkey.api.data.SQLFragment;
 import org.labkey.api.query.ExprColumn;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.QueryForeignKey;
-import org.labkey.api.util.Button;
+import org.labkey.api.util.ButtonBuilder;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.ShortURLRecord;
@@ -68,7 +68,7 @@ public class CatalogEntryTableInfo extends PanoramaPublicTable
                 if (viewCatalogEntryUrl instanceof ActionURL url)
                 {
                     url.addReturnUrl(ctx.getViewContext().getActionURL());
-                    var viewButton = new Button.ButtonBuilder("View").href(url).build();
+                    var viewButton = new ButtonBuilder("View").href(url).build();
                     viewButton.appendTo(out);
                     return;
                 }

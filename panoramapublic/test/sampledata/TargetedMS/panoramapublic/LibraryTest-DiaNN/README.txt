@@ -1,1 +1,3 @@
-Files downloaded from https://panoramaweb.org/QuickProt_datasets.url (Ranish lab)
+- Files used to build the library test_diann_library.blib were downloaded from https://panoramaweb.org/QuickProt_datasets.url (Ranish lab).
+- test_diann_V2_library.blib was built with test Skyline files downloaded from https://github.com/ProteoWizard/pwiz/tree/master/pwiz_tools/BiblioSpec/tests/inputs/diann2-synchro-pasef.
+  Raw files used for testing validation of test_diann_V2_library.blib are dummy files.

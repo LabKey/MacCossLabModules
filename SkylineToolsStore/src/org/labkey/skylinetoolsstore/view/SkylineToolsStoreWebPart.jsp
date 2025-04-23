@@ -273,14 +273,14 @@
                 <div class="menuMouseArea sprocket" alt="<%= h(tool.getName()) %>">
                     <img src="<%= h(imgDir) %>gear.png" title="Settings" />
                     <ul class="dropMenu">
-                        <li><%=link("Upload new version").clearClasses().onClick("$('#uploadPopOwners').hide(); $('#updatetarget').val(" + tool.getRowId() + "); $('#uploadPop').dialog('open')")%></li>
-                        <li><%=link("Upload supplementary file").clearClasses().onClick("$('#supptarget').val(" + tool.getRowId() + "); $('#uploadSuppPop').dialog('open')")%></li>
+                        <li><%=simpleLink("Upload new version").onClick("$('#uploadPopOwners').hide(); $('#updatetarget').val(" + tool.getRowId() + "); $('#uploadPop').dialog('open')")%></li>
+                        <li><%=simpleLink("Upload supplementary file").onClick("$('#supptarget').val(" + tool.getRowId() + "); $('#uploadSuppPop').dialog('open')")%></li>
 <% if (multipleVersions) { %>
-                        <li><%=link("Delete latest version").clearClasses().onClick("delToolLatest($(this))")%></li>
+                        <li><%=simpleLink("Delete latest version").onClick("delToolLatest($(this))")%></li>
 <% } %>
 <% if (admin) { %>
-                        <li><%=link("Delete").clearClasses().onClick("delToolAll($(this))")%></li>
-                        <li><%=link("Manage tool owners").clearClasses().onClick("popToolOwners(" + tool.getRowId() + ")")%></li>
+                        <li><%=simpleLink("Delete").onClick("delToolAll($(this))")%></li>
+                        <li><%=simpleLink("Manage tool owners").onClick("popToolOwners(" + tool.getRowId() + ")")%></li>
 <% } %>
                     </ul>
                 </div>
@@ -349,7 +349,7 @@
                             <p>
                                 <a href="<%= h(detailsUrl) %>">See all <%= totalReviews %> reviews</a>
 <% if (loggedIn && !leftReview) { %>
-                                <%=link("Leave review").clearClasses().onClick("$('#ratingToolId').val(" + tool.getRowId() + "); $('#reviewPop').dialog('open')")%>
+                                <%=simpleLink("Leave review").onClick("$('#ratingToolId').val(" + tool.getRowId() + "); $('#reviewPop').dialog('open')")%>
 <% } %>
                             </p>
                         </div>

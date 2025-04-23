@@ -23,14 +23,14 @@ import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.security.permissions.SiteAdminPermission;
-import org.labkey.api.util.Button;
+import org.labkey.api.util.ButtonBuilder;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Path;
 import org.labkey.api.util.URLHelper;
-import org.labkey.api.util.element.Select;
+import org.labkey.api.util.SelectBuilder;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
@@ -209,8 +209,8 @@ public class NextFlowController extends SpringActionController
                                         getContainer().isRoot() ?
                                                 "Unset" :
                                                 "Inherited from " + getContainer().getParent().getPath() + " (currently " + (NextFlowManager.get().isEnabled(getContainer().getParent()) ? "enabled" : "disabled") + ")"),
-                                new Button.ButtonBuilder("Save").submit(true).build(), " ",
-                                new Button.ButtonBuilder("Cancel").href(getContainer().getStartURL(getUser())).build()));
+                                new ButtonBuilder("Save").submit(true).build(), " ",
+                                new ButtonBuilder("Cancel").href(getContainer().getStartURL(getUser())).build()));
             }
             else
             {
@@ -293,9 +293,9 @@ public class NextFlowController extends SpringActionController
                                         "Files: ",
                                         UL(Arrays.stream(inputFiles).map(File::getName).map(DOM::LI)),
                                         "Config: ",
-                                        new Select.SelectBuilder().name("configFile").addOptions(Arrays.stream(configFiles).filter(f -> f.isFile() && f.getName().toLowerCase().endsWith(".config")).map(File::getName).sorted(String.CASE_INSENSITIVE_ORDER).toList()).build(),
+                                        new SelectBuilder().name("configFile").addOptions(Arrays.stream(configFiles).filter(f -> f.isFile() && f.getName().toLowerCase().endsWith(".config")).map(File::getName).sorted(String.CASE_INSENSITIVE_ORDER).toList()).build(),
                                         DOM.BR(),
-                                        new Button.ButtonBuilder("Start NextFlow").submit(true).build())));
+                                        new ButtonBuilder("Start NextFlow").submit(true).build())));
                     }
                 }
             }

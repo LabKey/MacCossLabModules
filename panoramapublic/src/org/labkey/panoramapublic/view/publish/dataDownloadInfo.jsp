@@ -24,10 +24,10 @@
 <p>
     Select one or more files or folders in the browser above and click the download icon ( <span class="fa fa-download"></span> ).
     Data can also be downloaded by mapping this folder as a network drive in Windows Explorer, or by using a
-    <%=link("WebDAV").href("https://en.wikipedia.org/wiki/WebDAV").clearClasses()%>
-    client such as <span class="nobr"><%=link("CyberDuck").href("https://cyberduck.io").clearClasses()%></span>
-    or <span class="nobr"><%=link("WinSCP").href("https://winscp.net/eng/docs/introduction").clearClasses()%></span>.
-    For details look at <%=link("Download data from Panorama Public").href(downloadDataDocHref).clearClasses()%>.
+    <%=simpleLink("WebDAV", "https://en.wikipedia.org/wiki/WebDAV")%>
+    client such as <span class="nobr"><%=simpleLink("CyberDuck", "https://cyberduck.io")%></span>
+    or <span class="nobr"><%=simpleLink("WinSCP", "https://winscp.net/eng/docs/introduction")%></span>.
+    For details look at <%=simpleLink("Download data from Panorama Public", downloadDataDocHref)%>.
     Use the following URL, login email and password to connect to this folder:
     <br/>
     <br/>
