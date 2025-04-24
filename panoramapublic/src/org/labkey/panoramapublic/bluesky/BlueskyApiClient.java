@@ -267,7 +267,7 @@ public class BlueskyApiClient
     }
 
     /**
-     * Convert an array of hashtag strings to a comma-separated string with '#' prefix
+     * Convert an array of hashtag strings to a space-separated string with '#' prefix
      */
     private static String formatHashtags(@NotNull String[] hashtags)
     {
@@ -524,10 +524,10 @@ public class BlueskyApiClient
 
         public ClientConfig(BlueskySettings settings, boolean test)
         {
-            _account = settings.getAccount(test); // Get either test or primary account
-            _password = settings.getPassword(test); // Get either test or primary password
+            _account = settings.getAccount(test);
+            _password = settings.getPassword(test);
             _imageFileName = settings.getImageFileName();
-            _hashtags = test ? settings.getTestHashtagArray() : settings.getHashtagArray(); // Get the appropriate hashtags
+            _hashtags = test ? settings.getTestHashtagArray() : settings.getHashtagArray();
             _announcementText = settings.getAnnouncementText();
             _authEndpoint = settings.getAuthEndpoint();
             _postEndpoint = settings.getPostEndpoint();
@@ -601,11 +601,6 @@ public class BlueskyApiClient
 
             // Test for input with '#' characters
             input = " #proteomics, proteomics sky,  # massspec , massspecsky, #massspec ";
-            compareSorted(expected, input);
-
-            // Test for single tag TODO: remove
-            assertArrayEquals(new String[]{"proteomics"}, BlueskySettings.convertToArray("#proteomics"));
-            input = "proteomics,proteomics sky,#massspec, massspecsky,proteomics";
             compareSorted(expected, input);
         }
 

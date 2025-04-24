@@ -5,8 +5,8 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 public class BlueskyLinksManager
 {
-    // Category name for propertysets. Properties belonging to this category will have the short URL as the key
-    // and the Bluesky post URI (AT protocol) as the value.
+    // Category name for propertysets. Properties that belong to this category will have the short URL as the key
+    // and the Bluesky post (AT protocol) URI as the value.
     public static final String BLUESKY_URIS = "Bluesky AT protocol URIs";
 
     public static String getBlueskyUriForExperiment(ExperimentAnnotations experimentAnnotations)

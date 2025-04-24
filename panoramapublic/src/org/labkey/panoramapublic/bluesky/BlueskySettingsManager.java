@@ -7,7 +7,7 @@ public class BlueskySettingsManager
 {
     // Category name for propertysets
     private static final String CREDENTIALS = "Bluesky credentials";
-    // Property names for properties that belog to the "Bluesky credenditals" category
+    // Property names for properties that belong to the "Bluesky credentials" category
     private static final String ACCOUNT = "Bluesky account";
     private static final String PASSWORD = "Bluesky password";
 
@@ -16,7 +16,7 @@ public class BlueskySettingsManager
 
     // Category name for propertysets
     private static final String SETTINGS = "Bluesky settings";
-    // Property names for properties that belog to the "Bluesky settings" category
+    // Property names for properties that belong to the "Bluesky settings" category
     private static final String AUTH_URL = "Bluesky auth endpoint";
     private static final String POST_URL = "Bluesky post endpoint";
     private static final String BLOB_UPLOAD_URL = "Image blob upload endpoint";
