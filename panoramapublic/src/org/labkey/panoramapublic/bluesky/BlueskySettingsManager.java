@@ -2,9 +2,8 @@ package org.labkey.panoramapublic.bluesky;
 
 import org.labkey.api.data.PropertyManager;
 import org.labkey.api.data.PropertyManager.WritablePropertyMap;
-import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
-public class BlueskyIntegrationManager
+public class BlueskySettingsManager
 {
     // Category name for propertysets
     private static final String CREDENTIALS = "Bluesky credentials";
@@ -28,10 +27,6 @@ public class BlueskyIntegrationManager
     private static final String AUTOPOST = "Auto‑post to Bluesky on publish";
     private static final String ANNOUNCEMENT_TEXT = "Announcement text";
 
-
-    // Category name for propertysets. Properties belonging to this category will have the data short URL as the name
-    // and the Bluesky post URI (AT protocol) as the value.
-    public static final String BLUESKY_URIS = "Bluesky AT protocol URIs";
 
     // Default values for the endpoints
     public static final String DEFAULT_AUTH_URL = "https://bsky.social/xrpc/com.atproto.server.createSession";
@@ -90,44 +85,5 @@ public class BlueskyIntegrationManager
         BlueskySettings settings = getSettings();
         settings.setImageFileName(null);
         saveSettings(settings);
-    }
-
-    public static String getBlueskyUriForExperiment(ExperimentAnnotations experimentAnnotations)
-    {
-        if (experimentAnnotations == null || experimentAnnotations.getShortUrl() == null)
-        {
-            return null;
-        }
-
-        WritablePropertyMap map = PropertyManager.getNormalStore()
-                .getWritableProperties(BlueskyIntegrationManager.BLUESKY_URIS, false);
-        return map != null ? map.get(experimentAnnotations.getShortUrl().renderShortURL()) : null;
-    }
-
-    public static void saveBlueskyUriForExperiment(ExperimentAnnotations experimentAnnotations, String atProtocolUri)
-    {
-        if (experimentAnnotations == null || experimentAnnotations.getShortUrl() == null)
-        {
-            return;
-        }
-        WritablePropertyMap propertyMap = PropertyManager.getNormalStore()
-                .getWritableProperties(BlueskyIntegrationManager.BLUESKY_URIS, true);
-        propertyMap.put(experimentAnnotations.getShortUrl().renderShortURL(), atProtocolUri);
-        propertyMap.save();
-    }
-
-    public static void clearBlueskyUriForExperiment(ExperimentAnnotations experimentAnnotations)
-    {
-        if (experimentAnnotations == null || experimentAnnotations.getShortUrl() == null)
-        {
-            return;
-        }
-        if (getBlueskyUriForExperiment(experimentAnnotations) != null)
-        {
-            WritablePropertyMap propertyMap = PropertyManager.getNormalStore()
-                    .getWritableProperties(BlueskyIntegrationManager.BLUESKY_URIS, true);
-            propertyMap.remove(experimentAnnotations.getShortUrl().renderShortURL());
-            propertyMap.save();
-        }
     }
 }

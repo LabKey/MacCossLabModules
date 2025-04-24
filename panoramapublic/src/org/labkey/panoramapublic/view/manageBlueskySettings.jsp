@@ -4,7 +4,7 @@
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PanoramaPublicAdminViewAction" %>
 <%@ page import="org.labkey.panoramapublic.bluesky.BlueskySettings" %>
-<%@ page import="org.labkey.panoramapublic.bluesky.BlueskyIntegrationManager" %>
+<%@ page import="org.labkey.panoramapublic.bluesky.BlueskySettingsManager" %>
 <%@ page extends="org.labkey.api.jsp.FormPage" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -38,7 +38,7 @@
             <td  class='labkey-form-label'>Auth URL:</td>
             <td>
                 <input size="50" type="text" name="authEndpoint" value="<%=h(form.getAuthEndpoint())%>">
-                <div style="font-size: 0.8em; color:gray">e.g. <%=h(BlueskyIntegrationManager.DEFAULT_AUTH_URL)%></div>
+                <div style="font-size: 0.8em; color:gray">e.g. <%=h(BlueskySettingsManager.DEFAULT_AUTH_URL)%></div>
             </td>
         </tr>
 
@@ -46,7 +46,7 @@
             <td  class='labkey-form-label'>Post URL:</td>
             <td>
                 <input size="50" type="text" name="postEndpoint" value="<%=h(form.getPostEndpoint())%>">
-                <div style="font-size: 0.8em; color:gray">e.g. <%=h(BlueskyIntegrationManager.DEFAULT_POST_URL)%></div>
+                <div style="font-size: 0.8em; color:gray">e.g. <%=h(BlueskySettingsManager.DEFAULT_POST_URL)%></div>
             </td>
         </tr>
 
@@ -54,7 +54,7 @@
             <td  class='labkey-form-label'>Image upload URL:</td>
             <td>
                 <input size="50" type="text" name="blobUploadEndpoint" value="<%=h(form.getBlobUploadEndpoint())%>">
-                <div style="font-size: 0.8em; color:gray">e.g. <%=h(BlueskyIntegrationManager.DEFAULT_IMAGE_UPLOAD_URL)%></div>
+                <div style="font-size: 0.8em; color:gray">e.g. <%=h(BlueskySettingsManager.DEFAULT_IMAGE_UPLOAD_URL)%></div>
             </td>
         </tr>
 

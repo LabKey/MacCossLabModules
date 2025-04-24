@@ -79,7 +79,15 @@ public class BlueskyApiClient
         {
             response = getResponse(httpClient, httpPost, config, "Bluesky login failed");
             JSONObject responseJson = response.getJsonObject();
+            if (!responseJson.has("accessJwt"))
+            {
+                throw new BlueskyException("'accessJwt' not found in the login response", response);
+            }
             String accessJwt = responseJson.getString("accessJwt");
+            if (!responseJson.has("did"))
+            {
+                throw new BlueskyException("'did' not found in the login response", response);
+            }
             String did = responseJson.getString("did");
             return new LoginInfo(accessJwt, did);
         }
@@ -144,7 +152,7 @@ public class BlueskyApiClient
     @Nullable
     public String createPostIfNotExists(@NotNull ExperimentAnnotations exptAnnotations, BlueskySettings settings, boolean useTestAccount) throws BlueskyException
     {
-        if (BlueskyIntegrationManager.getBlueskyUriForExperiment(exptAnnotations) != null)
+        if (BlueskyLinksManager.getBlueskyUriForExperiment(exptAnnotations) != null)
         {
             // There is already a post on Bluesky related to this data
             return null;
@@ -203,7 +211,7 @@ public class BlueskyApiClient
 
         if (!useTestAccount)
         {
-            BlueskyIntegrationManager.saveBlueskyUriForExperiment(exptAnnotations, blueskyAtUri);
+            BlueskyLinksManager.saveBlueskyUriForExperiment(exptAnnotations, blueskyAtUri);
         }
 
         return blueskyAtUri;

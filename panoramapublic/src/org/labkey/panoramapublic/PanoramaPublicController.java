@@ -143,7 +143,8 @@ import org.labkey.api.wiki.WikiRendererType;
 import org.labkey.api.wiki.WikiRenderingService;
 import org.labkey.panoramapublic.bluesky.BlueskyApiClient;
 import org.labkey.panoramapublic.bluesky.BlueskyException;
-import org.labkey.panoramapublic.bluesky.BlueskyIntegrationManager;
+import org.labkey.panoramapublic.bluesky.BlueskySettingsManager;
+import org.labkey.panoramapublic.bluesky.BlueskyLinksManager;
 import org.labkey.panoramapublic.bluesky.BlueskySettings;
 import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoAttachmentParent;
 import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoManager;
@@ -1278,8 +1279,8 @@ public class PanoramaPublicController extends SpringActionController
             }
             catch (BlueskyException e)
             {
-                errors.reject(ERROR_MSG, String.format("Bluesky login failed for the account '%s' using auth endpoint '%s'. Error was %s",
-                        form.getAccount(), form.getAuthEndpoint(), e.getMessage()));
+                errors.reject(ERROR_MSG, String.format("Bluesky login failed for the account '%s'. Error was %s",
+                        form.getAccount(), e.getMessage()));
                 return false;
             }
 
@@ -1289,9 +1290,18 @@ public class PanoramaPublicController extends SpringActionController
             }
             catch (BlueskyException e)
             {
-                errors.reject(ERROR_MSG, String.format("Bluesky login failed for the test account '%s' using auth endpoint '%s'. Error was %s",
-                        form.getTestAccount(), form.getAuthEndpoint(), e.getMessage()));
+                errors.reject(ERROR_MSG, String.format("Bluesky login failed for the test account '%s'. Error was %s",
+                        form.getTestAccount(), e.getMessage()));
                 return false;
+            }
+
+            if (!StringUtils.isBlank(form.getHashtags()))
+            {
+                form.setHashtags(StringUtils.join(form.getHashtagArray(), ", "));
+            }
+            if (!StringUtils.isBlank(form.getTestHashtags()))
+            {
+                form.setTestHashtags(StringUtils.join(form.getTestHashtagArray(), ", "));
             }
 
             String logoFileName;
@@ -1322,16 +1332,7 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
-            if (!StringUtils.isBlank(form.getHashtags()))
-            {
-                form.setHashtags(StringUtils.join(form.getHashtagArray(), ", "));
-            }
-            if (!StringUtils.isBlank(form.getTestHashtags()))
-            {
-                form.setTestHashtags(StringUtils.join(form.getTestHashtagArray(), ", "));
-            }
-
-            BlueskyIntegrationManager.saveSettings(form);
+            BlueskySettingsManager.saveSettings(form);
             return true;
         }
 
@@ -1356,11 +1357,11 @@ public class PanoramaPublicController extends SpringActionController
         {
             if(!reshow)
             {
-                form = BlueskyIntegrationManager.getSettings();
+                form = BlueskySettingsManager.getSettings();
 
-                if (form.getAuthEndpoint() == null) form.setAuthEndpoint(BlueskyIntegrationManager.DEFAULT_AUTH_URL);
-                if (form.getPostEndpoint() == null) form.setPostEndpoint(BlueskyIntegrationManager.DEFAULT_POST_URL);
-                if (form.getBlobUploadEndpoint() == null) form.setBlobUploadEndpoint(BlueskyIntegrationManager.DEFAULT_IMAGE_UPLOAD_URL);
+                if (form.getAuthEndpoint() == null) form.setAuthEndpoint(BlueskySettingsManager.DEFAULT_AUTH_URL);
+                if (form.getPostEndpoint() == null) form.setPostEndpoint(BlueskySettingsManager.DEFAULT_POST_URL);
+                if (form.getBlobUploadEndpoint() == null) form.setBlobUploadEndpoint(BlueskySettingsManager.DEFAULT_IMAGE_UPLOAD_URL);
                 if (form.getAnnouncementText() == null) form.setAnnouncementText("New data available on Panorama Public!");
 
                 // Passwords should not be displayed in the form. Make the user re-enter them.
@@ -1391,7 +1392,7 @@ public class PanoramaPublicController extends SpringActionController
             AttachmentParent ap = PanoramaPublicLogoAttachmentParent.get();
             if (ap == null) return null;
 
-            BlueskySettings settings = BlueskyIntegrationManager.getSettings();
+            BlueskySettings settings = BlueskySettingsManager.getSettings();
             if (StringUtils.isBlank(settings.getImageFileName()))
             {
                 return null;
@@ -1417,7 +1418,7 @@ public class PanoramaPublicController extends SpringActionController
         public boolean handlePost(Object o, BindException errors)
         {
             PanoramaPublicLogoManager.deleteExistingNewDataLogo(getUser());
-            BlueskyIntegrationManager.removeLogoFileName();
+            BlueskySettingsManager.removeLogoFileName();
             return true;
         }
 
@@ -5515,7 +5516,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(BlueskyForm form, BindException errors)
         {
-            BlueskySettings settings = BlueskyIntegrationManager.getSettings();
+            BlueskySettings settings = BlueskySettingsManager.getSettings();
             try
             {
                 // Post to Bluesky
@@ -5539,7 +5540,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getConfirmView(BlueskyForm form, BindException errors)
         {
-            BlueskySettings settings = BlueskyIntegrationManager.getSettings();
+            BlueskySettings settings = BlueskySettingsManager.getSettings();
 
             CatalogEntry entry = CatalogEntryManager.getApprovedEntryForExperiment(_expAnnot);
             ActionURL imageUrl = entry != null
@@ -5556,7 +5557,7 @@ public class PanoramaPublicController extends SpringActionController
                             .build())
             );
 
-            String blueskyAtUri = BlueskyIntegrationManager.getBlueskyUriForExperiment(_expAnnot);
+            String blueskyAtUri = BlueskyLinksManager.getBlueskyUriForExperiment(_expAnnot);
             String account = settings.getAccount(form.isTestAccount());
             if (blueskyAtUri != null)
             {
@@ -5581,7 +5582,7 @@ public class PanoramaPublicController extends SpringActionController
                 return new HtmlView(
                         DIV(String.format("The following message will be posted to the Bluesky %saccount %s", form.isTestAccount() ? "test " : "", account),
                                 BR(),
-                                String.format("Post URL: %s", settings.getPostEndpoint()),
+                                String.format("URL: %s", settings.getPostEndpoint()),
                                 announcementDiv,
                                 DIV("Are you sure you want to continue?")));
             }
@@ -5592,7 +5593,7 @@ public class PanoramaPublicController extends SpringActionController
             String webUrl = BlueskyApiClient.tryConvertToWebUrl(_blueskyAtUri);
 
             return new HtmlView(
-                    DIV("Posted to Bluesky!",
+                    DIV("Posted to Bluesky! ",
                             webUrl == null
                                     ? _blueskyAtUri
                                     : new LinkBuilder((_blueskyAtUri)).href(webUrl).clearClasses()
@@ -5651,7 +5652,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(ExperimentIdForm form, BindException errors)
         {
-            BlueskyIntegrationManager.clearBlueskyUriForExperiment(form.lookupExperiment());
+            BlueskyLinksManager.clearBlueskyUriForExperiment(form.lookupExperiment());
             return true;
         }
 
@@ -7095,7 +7096,7 @@ public class PanoramaPublicController extends SpringActionController
 
         private void postToBluesky()
         {
-            BlueskySettings settings = BlueskyIntegrationManager.getSettings();
+            BlueskySettings settings = BlueskySettingsManager.getSettings();
             if (!settings.isAutopost())
             {
                 logger.info("Auto-post to Bluesky is disabled. Unable to create a post for experiment Id " + _expAnnot.getId());
