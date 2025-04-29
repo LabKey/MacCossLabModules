@@ -132,7 +132,7 @@ public class PanoramaPublicNotification
     }
 
     public static void notifyDataPublished(ExperimentAnnotations srcExperiment, ExperimentAnnotations journalCopy, Journal journal,
-                                           JournalExperiment je, DataCiteException doiError, boolean madePublic, boolean addedPublication, User user)
+                                           JournalExperiment je, DataCiteException doiError, boolean madePublic, boolean addedPublication, String blueskyPostUrl, User user)
     {
         StringBuilder messageBody = new StringBuilder();
         messageBody.append("Dear ").append(getUserName(user)).append(",").append(NL2);
@@ -160,6 +160,10 @@ public class PanoramaPublicNotification
         if (madePublic && journalCopy.getDataLicense() != null)
         {
             messageBody.append(NL2).append("The data will be available under the ").append(journalCopy.getDataLicense().getDisplayName()).append(" license.");
+        }
+        if (madePublic && !StringUtils.isBlank(blueskyPostUrl))
+        {
+            messageBody.append(NL2).append("We have announced your data on Bluesky - take a look here: ").append(bold(link("Bluesky Post", blueskyPostUrl))).append(".");
         }
         if (journalCopy.hasPxid())
         {
