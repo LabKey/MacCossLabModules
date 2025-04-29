@@ -5525,7 +5525,7 @@ public class PanoramaPublicController extends SpringActionController
             catch (BlueskyException e)
             {
                 _exception = e;
-                LOG.error(e);
+                LOG.error(e.getMessage(), e);
                 return false;
             }
             return true;

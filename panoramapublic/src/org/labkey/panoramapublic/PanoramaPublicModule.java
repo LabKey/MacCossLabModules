@@ -44,6 +44,7 @@ import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartFactory;
 import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.bluesky.BlueskyApiClient;
+import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoResourceType;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentType;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
@@ -105,6 +106,7 @@ public class PanoramaPublicModule extends SpringModule
         addController(PanoramaPublicController.NAME, PanoramaPublicController.class);
         PanoramaPublicSchema.register(this);
         AttachmentService.get().registerAttachmentType(CatalogImageAttachmentType.get());
+        AttachmentService.get().registerAttachmentType(PanoramaPublicLogoResourceType.get());
     }
 
     @Override
