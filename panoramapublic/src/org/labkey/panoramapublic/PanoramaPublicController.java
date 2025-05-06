@@ -2962,7 +2962,7 @@ public class PanoramaPublicController extends SpringActionController
             children.stream()
                 .filter(child -> !child.equals(parent))
                 .map(child -> LI(
-                    LinkBuilder.simpleLink(parent.getParsedPath().relativize(child.getParsedPath()).toString(), PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(child)).clearClasses()
+                    LinkBuilder.simpleLink(parent.getParsedPath().relativize(child.getParsedPath()).toString(), PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(child))
                 ))
         );
     }
@@ -5466,12 +5466,12 @@ public class PanoramaPublicController extends SpringActionController
         {
             return new HtmlView(
                     DIV(
-                            new Button.ButtonBuilder("Post to Primary Account")
+                            new ButtonBuilder("Post to Primary Account")
                                     .href(new ActionURL(PostToBlueskyAction.class, getContainer())
                                             .addParameter("id", form.getId()))
                                     .build(),
                             HtmlString.NBSP,
-                            new Button.ButtonBuilder("Post to Test Account")
+                            new ButtonBuilder("Post to Test Account")
                                     .href(new ActionURL(PostToBlueskyAction.class, getContainer())
                                             .addParameter("id", form.getId())
                                             .addParameter("testAccount", Boolean.TRUE))
