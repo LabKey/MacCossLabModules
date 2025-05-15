@@ -1,0 +1,1 @@
+ALTER TABLE panoramapublic.experimentannotations ALTER COLUMN LabHeadAffiliation TYPE VARCHAR(300);
