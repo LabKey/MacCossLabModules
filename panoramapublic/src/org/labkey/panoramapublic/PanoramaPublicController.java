@@ -7969,18 +7969,28 @@ public class PanoramaPublicController extends SpringActionController
                             List<String> spectrumFileNames = getSourceFiles(libSourceFiles, LibSourceFile::getSpectrumSourceFile);
                             List<String> idFileNames = getSourceFiles(libSourceFiles, LibSourceFile::getIdFile);
                             view.addView(new HtmlView(DIV(
-                                    TABLE(TR(
-                                            TD(at(valign, "top", style, "padding:5px;"),
-                                                    createTable("Spectrum Files", spectrumFileNames)),
-                                            TD(at(valign, "top", style, "padding:5px;"),
-                                                    createTable("Search Results Files", idFileNames)))
-                                    ))));
+                                TABLE(TR(
+                                    TD(
+                                        at(valign, "top", style, "padding:5px;"),
+                                        createTable("Spectrum Files", spectrumFileNames)
+                                    ),
+                                    TD(
+                                        at(valign, "top", style, "padding:5px;"),
+                                        createTable("Search Results Files", idFileNames)
+                                    )
+                                ))
+                            )));
                         }
                     }
                     catch (SpecLibReaderException e)
                     {
-                        view.addView(new HtmlView(DIV(DIV(cl("labkey-error"), "Error reading library source files."),
-                                DIV(ExceptionUtil.renderException(e)))));
+                        view.addView(new HtmlView(
+                            DIV(DIV(
+                                cl("labkey-error"),
+                                "Error reading library source files."),
+                                DIV(ExceptionUtil.renderException(e))
+                            ))
+                        );
                     }
                 }
             }
