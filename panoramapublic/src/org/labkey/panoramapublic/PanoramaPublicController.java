@@ -6058,11 +6058,11 @@ public class PanoramaPublicController extends SpringActionController
 
             // If this experiment has been submitted show the submission requests
             List<JournalSubmission> jsList = SubmissionManager.getAllJournalSubmissions(exptAnnotations);
-            if (jsList.size() > 0 && getContainer().hasPermission(getUser(), AdminPermission.class))
+            if (!jsList.isEmpty() && getContainer().hasPermission(getUser(), AdminPermission.class))
             {
                 QuerySettings qSettings = new QuerySettings(getViewContext(), "Submission", "Submission");
                 qSettings.setBaseFilter(new SimpleFilter(new SimpleFilter.InClause(FieldKey.fromParts("JournalExperimentId"),
-                        jsList.stream().map(js -> js.getJournalExperimentId()).collect(Collectors.toList()))));
+                        jsList.stream().map(JournalSubmission::getJournalExperimentId).collect(Collectors.toList()))));
                 QueryView submissionList = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, errors);
                 submissionList.setShowRecordSelectors(false);
                 submissionList.setButtonBarPosition(DataRegion.ButtonBarPosition.TOP);
@@ -6102,7 +6102,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class ExperimentAnnotationsDetails
     {
         private final ExperimentAnnotations _experimentAnnotations;
-        private JournalSubmission _lastSubmittedRecord;
+        private final JournalSubmission _lastSubmittedRecord;
         private final boolean _fullDetails;
         private boolean _canPublish;
         private String _version;
@@ -6590,7 +6590,7 @@ public class PanoramaPublicController extends SpringActionController
             {
                 errors.reject(ERROR_MSG, "Could not find an experiment with ID "  + _experimentAnnotationsId);
             }
-            if(_expAnnotations.isJournalCopy() && _expAnnotations.isFinal())
+            else if(_expAnnotations.isJournalCopy() && _expAnnotations.isFinal())
             {
                 errors.reject(ERROR_MSG, "Experiment cannot be deleted.  It is public and is associated with a publication.");
             }
