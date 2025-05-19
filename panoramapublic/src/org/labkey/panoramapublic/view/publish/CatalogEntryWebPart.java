@@ -82,32 +82,39 @@ public class CatalogEntryWebPart extends VBox
 
             CatalogEntrySettings settings = CatalogEntryManager.getCatalogEntrySettings();
             addView(new HtmlView(
-                    DIV(
-                    TABLE(
-                        TR(
-                            TD(at(style, "padding:0 10px 15px 0; vertical-align:top;"), U("Status:")),
-                            TD(at(style, "vertical-align:top;"),
-                                    CatalogEntry.getStatusText(entry.getApproved()),
-                                    changeStatusBtn == null ? "" : changeStatusBtn)
+                DIV(
+                TABLE(
+                    TR(
+                        TD(
+                            at(style, "padding:0 10px 15px 0; vertical-align:top;"),
+                            U("Status:")
                         ),
-                        TR(
-                            TD(at(style, "padding:0 10px 15px 0; vertical-align:top;"), U("Title:")),
-                            TD(at(style, "vertical-align:top;"), expAnnotations.getTitle())
-                        ),
-                        TR(
-                            TD(at(style, "padding:0 10px 15px 0; vertical-align:top;"), U("Description:")),
-                            TD(at(style, "vertical-align:top;"), entry.getDescription())
+                        TD(
+                            at(style, "vertical-align:top;"),
+                            CatalogEntry.getStatusText(entry.getApproved()),
+                            changeStatusBtn == null ? "" : changeStatusBtn
                         )
                     ),
-                    DIV(IMG(at(src, PanoramaPublicController.getCatalogImageDownloadUrl(expAnnotations, entry.getImageFileName()))
-                            .at(width, settings.getImgWidth()).at(height, settings.getImgHeight())
-                            .at(style, "margin:10px 0 15px 0;border: 1px solid lightgrey;"))),
-                    new ButtonBuilder("Edit").href(editUrl),
-                    HtmlString.NBSP,
-                    new ButtonBuilder("Delete").href(deleteUrl)
-                            .usePost("Are you sure you want to delete the Panorama Public catalog entry for this experiment?"),
-                    returnUrl != null ? DIV(at(style, "margin-top:25px;"), new ButtonBuilder("Back").href(returnUrl))
-                                      : HtmlString.EMPTY_STRING
+                    TR(
+                        TD(at(style, "padding:0 10px 15px 0; vertical-align:top;"), U("Title:")),
+                        TD(at(style, "vertical-align:top;"), expAnnotations.getTitle())
+                    ),
+                    TR(
+                        TD(at(style, "padding:0 10px 15px 0; vertical-align:top;"), U("Description:")),
+                        TD(at(style, "vertical-align:top;"), entry.getDescription())
+                    )
+                ),
+                DIV(IMG(
+                    at(src, PanoramaPublicController.getCatalogImageDownloadUrl(expAnnotations, entry.getImageFileName()))
+                    .at(width, settings.getImgWidth()).at(height, settings.getImgHeight())
+                    .at(style, "margin:10px 0 15px 0;border: 1px solid lightgrey;")
+                )),
+                new ButtonBuilder("Edit").href(editUrl),
+                HtmlString.NBSP,
+                new ButtonBuilder("Delete").href(deleteUrl)
+                    .usePost("Are you sure you want to delete the Panorama Public catalog entry for this experiment?"),
+                returnUrl != null ? DIV(at(style, "margin-top:25px;"), new ButtonBuilder("Back").href(returnUrl))
+                                  : HtmlString.EMPTY_STRING
             )));
         }
     }
