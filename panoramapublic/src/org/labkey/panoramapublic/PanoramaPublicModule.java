@@ -46,6 +46,7 @@ import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.bluesky.BlueskyApiClient;
 import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoResourceType;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentType;
+import org.labkey.panoramapublic.message.PrivateDataMessageScheduler;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
@@ -354,6 +355,12 @@ public class PanoramaPublicModule extends SpringModule
     public Set<String> getSchemaNames()
     {
         return Collections.singleton(PanoramaPublicSchema.SCHEMA_NAME);
+    }
+
+    @Override
+    public void startBackgroundThreads()
+    {
+        PrivateDataMessageScheduler.getInstance().initializeTimer();
     }
 
     @NotNull

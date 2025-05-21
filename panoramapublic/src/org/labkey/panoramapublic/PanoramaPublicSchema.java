@@ -52,6 +52,7 @@ import org.labkey.panoramapublic.model.validation.SpecLibSourceFile.LibrarySourc
 import org.labkey.panoramapublic.query.CatalogEntryTableInfo;
 import org.labkey.panoramapublic.query.ContainerJoin;
 import org.labkey.panoramapublic.query.DataValidationTableInfo;
+import org.labkey.panoramapublic.query.DatasetStatusTableInfo;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsTableInfo;
 import org.labkey.panoramapublic.query.JournalExperimentTableInfo;
 import org.labkey.panoramapublic.query.MyDataTableInfo;
@@ -95,6 +96,7 @@ public class PanoramaPublicSchema extends UserSchema
     public static final String TABLE_LIB_SOURCE_TYPE = "SpecLibSourceType";
 
     public static final String TABLE_CATALOG_ENTRY = "CatalogEntry";
+    public static final String TABLE_DATASET_STATUS = "DatasetStatus";
 
     public PanoramaPublicSchema(User user, Container container)
     {
@@ -317,6 +319,11 @@ public class PanoramaPublicSchema extends UserSchema
             return new CatalogEntryTableInfo(this, cf);
         }
 
+        if (TABLE_DATASET_STATUS.equalsIgnoreCase(name))
+        {
+            return new DatasetStatusTableInfo(this, cf);
+        }
+
         return null;
     }
 
@@ -440,6 +447,7 @@ public class PanoramaPublicSchema extends UserSchema
         hs.add(TABLE_EXPT_STRUCTURAL_MOD_INFO);
         hs.add(TABLE_EXPT_ISOTOPE_MOD_INFO);
         hs.add(TABLE_CATALOG_ENTRY);
+        hs.add(TABLE_DATASET_STATUS);
         return hs;
     }
 }
