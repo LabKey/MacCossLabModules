@@ -1,10 +1,8 @@
 package org.labkey.test.tests.panoramapublic;
 
-import org.apache.commons.collections4.MultiValuedMap;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.labkey.api.view.Portal;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestTimeoutException;
@@ -19,9 +17,7 @@ import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
@@ -43,7 +39,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
     @BeforeClass
     public static void initialSetUp()
     {
-        PanoramaWebPublicSearchTest init = (PanoramaWebPublicSearchTest) getCurrentTest();
+        PanoramaWebPublicSearchTest init = getCurrentTest();
         init.initialSetupHelper();
     }
 

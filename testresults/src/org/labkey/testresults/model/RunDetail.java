@@ -288,7 +288,7 @@ public class RunDetail implements Comparable<RunDetail>
         List<Double> values = new ArrayList<>();
         try (
             ByteArrayInputStream bais = new ByteArrayInputStream(pointsummary);
-            DataInputStream in = new DataInputStream(bais);
+            DataInputStream in = new DataInputStream(bais)
         ) {
             StringBuilder str = new StringBuilder();
             while (in.available() > 0)

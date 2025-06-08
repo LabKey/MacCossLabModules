@@ -76,9 +76,8 @@ public class Rating extends Entity
 
     public boolean equals(Object obj)
     {
-        if (!(obj instanceof Rating))
+        if (!(obj instanceof Rating p))
             return false;
-        Rating p = (Rating)obj;
 
         return Objects.equals(_rating, p.getRating()) &&
                Objects.equals(_toolId, p.getToolId()) &&

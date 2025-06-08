@@ -104,7 +104,7 @@ public class SignUpController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class ShowSignUpAdminAction extends SimpleViewAction
+    public static class ShowSignUpAdminAction extends SimpleViewAction<Object>
     {
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
@@ -123,7 +123,7 @@ public class SignUpController extends SpringActionController
     }
 
    @RequiresSiteAdmin
-   public class AddPropertyAction extends FormHandlerAction<AddPropertyForm>
+   public static class AddPropertyAction extends FormHandlerAction<AddPropertyForm>
    {
        @Override
        public URLHelper getSuccessURL(AddPropertyForm addPropertyForm)
@@ -160,7 +160,7 @@ public class SignUpController extends SpringActionController
    }
 
     @RequiresSiteAdmin
-    public class RemovePropertyAction extends FormHandlerAction<ContainerIdForm>
+    public static class RemovePropertyAction extends FormHandlerAction<ContainerIdForm>
     {
         @Override
         public URLHelper getSuccessURL(ContainerIdForm containerIdForm)
@@ -192,7 +192,7 @@ public class SignUpController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class AddGroupChangeProperty extends FormHandlerAction<AddGroupChangeForm>
+    public static class AddGroupChangeProperty extends FormHandlerAction<AddGroupChangeForm>
     {
         @Override
         public URLHelper getSuccessURL(AddGroupChangeForm containerIdForm)
@@ -228,7 +228,7 @@ public class SignUpController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class RemoveGroupChangeProperty extends FormHandlerAction<AddGroupChangeForm>
+    public static class RemoveGroupChangeProperty extends FormHandlerAction<AddGroupChangeForm>
     {
         @Override
         public URLHelper getSuccessURL(AddGroupChangeForm containerIdForm)
@@ -251,7 +251,7 @@ public class SignUpController extends SpringActionController
             rules.remove(String.valueOf(newgroup));
             String newProperties = StringUtils.join(rules, ',');
             m.put(String.valueOf(oldgroup), newProperties);
-            if(rules.size() == 0 || (rules.size() == 1 && rules.contains("")))
+            if(rules.isEmpty() || (rules.size() == 1 && rules.contains("")))
                 m.remove(oldgroup);
 
             m.save();
@@ -336,7 +336,7 @@ public class SignUpController extends SpringActionController
     // Class ConfirmAction handles a user trying to confirm an account creation.  If the email and confirmation code match
     // that in our database they will be added to the LabKey user base
     @RequiresNoPermission
-    public class ConfirmAction extends FormViewAction<SignupConfirmForm>
+    public static class ConfirmAction extends FormViewAction<SignupConfirmForm>
     {
         protected URLHelper _successUrl = null;
         private TempUser _tempUser = null;
@@ -722,7 +722,7 @@ public class SignUpController extends SpringActionController
     }
 
     @RequiresLogin
-    public class ChangeGroupsApiAction extends MutatingApiAction<AddGroupChangeForm>
+    public static class ChangeGroupsApiAction extends MutatingApiAction<AddGroupChangeForm>
     {
         @Override
         public ApiResponse execute(AddGroupChangeForm addGroupChangeForm, BindException errors) throws Exception

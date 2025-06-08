@@ -130,12 +130,12 @@ public class LincsController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public class BeginAction extends SimpleViewAction
+    public static class BeginAction extends SimpleViewAction<Object>
     {
         @Override
         public ModelAndView getView(Object o, BindException errors)
         {
-            return new JspView("/org/labkey/lincs/view/hello.jsp");
+            return new JspView<>("/org/labkey/lincs/view/hello.jsp");
         }
 
         @Override
@@ -216,7 +216,7 @@ public class LincsController extends SpringActionController
                 throw new ApiUsageException("Could not find report with name " + form.getReportName());
             }
 
-            if (!(report instanceof RReport))
+            if (!(report instanceof RReport rreport))
             {
                 throw new ApiUsageException("The specified report is not based upon an R script and therefore cannot be executed.");
             }
@@ -299,7 +299,6 @@ public class LincsController extends SpringActionController
                 propertyValues.addPropertyValue("param.isotope", "medium");
             }
             ctx.setBindPropertyValues(propertyValues);
-            RReport rreport = (RReport)report;
             try
             {
                 // Execute the script
@@ -388,7 +387,7 @@ public class LincsController extends SpringActionController
         {
             if(customGCTForm.getCustomGctBean() != null)
             {
-                JspView view = new JspView("/org/labkey/lincs/view/downloadCustomGCT.jsp", customGCTForm, errors);
+                JspView view = new JspView<>("/org/labkey/lincs/view/downloadCustomGCT.jsp", customGCTForm, errors);
                 view.setFrame(WebPartView.FrameType.PORTAL);
                 view.setTitle("Download Custom GCT");
                 return view;
@@ -405,7 +404,7 @@ public class LincsController extends SpringActionController
                 bean.setAnnotations(getReplicateAnnotationNameValues(getUser(), getContainer()));
 
 
-                JspView view = new JspView("/org/labkey/lincs/view/customGCTForm.jsp", bean, errors);
+                JspView view = new JspView<>("/org/labkey/lincs/view/customGCTForm.jsp", bean, errors);
                 view.setFrame(WebPartView.FrameType.PORTAL);
                 view.setTitle("Create Custom GCT");
                 return view;
@@ -424,7 +423,7 @@ public class LincsController extends SpringActionController
             {
                 return false;
             }
-            if(files.size() == 0)
+            if(files.isEmpty())
             {
                 errors.reject(ERROR_MSG, "No GCT files found in the folder for experiment type " + customGCTForm.getExperimentType());
                 return false;
@@ -712,7 +711,7 @@ public class LincsController extends SpringActionController
         }
     }
     @RequiresPermission(ReadPermission.class)
-    public class DownloadCustomGCTReportAction extends SimpleViewAction<DownloadCustomGCTReportForm>
+    public static class DownloadCustomGCTReportAction extends SimpleViewAction<DownloadCustomGCTReportForm>
     {
         @Override
         public ModelAndView getView(DownloadCustomGCTReportForm form, BindException errors) throws Exception
@@ -762,7 +761,7 @@ public class LincsController extends SpringActionController
             _fileName = fileName;
         }
     }
-    public class CustomGCTBean
+    public static class CustomGCTBean
     {
         private List<SelectedAnnotation> _annotations;
         private CustomGCTForm _form;
@@ -836,8 +835,8 @@ public class LincsController extends SpringActionController
 
     public static class SelectedAnnotation
     {
-        private LincsAnnotation _lincsAnnotation;
-        private Set<String> _values;
+        private final LincsAnnotation _lincsAnnotation;
+        private final Set<String> _values;
 
         private SelectedAnnotation(LincsAnnotation lincsAnnotation)
         {
@@ -891,7 +890,7 @@ public class LincsController extends SpringActionController
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
 
     @RequiresPermission(ReadPermission.class)
-    public class GetLincsStatusAction extends ReadOnlyApiAction
+    public static class GetLincsStatusAction extends ReadOnlyApiAction<Object>
     {
         @Override
         public Object execute(Object o, BindException errors)
@@ -1011,7 +1010,7 @@ public class LincsController extends SpringActionController
 
     @RequiresPermission(AdminPermission.class)
     @ActionNames("pspConfig")
-    public class ManageLincsClueCredentials extends FormViewAction<ClueCredentialsForm>
+    public static class ManageLincsClueCredentials extends FormViewAction<ClueCredentialsForm>
     {
         @Override
         public void validateCommand(ClueCredentialsForm target, Errors errors) {}
@@ -1090,7 +1089,7 @@ public class LincsController extends SpringActionController
     }
 
     @RequiresPermission(AdminPermission.class)
-    public class CromwellConfigAction extends FormViewAction<CromwellConfigForm>
+    public static class CromwellConfigAction extends FormViewAction<CromwellConfigForm>
     {
         @Override
         public void validateCommand(CromwellConfigForm target, Errors errors) {}
@@ -1307,7 +1306,7 @@ public class LincsController extends SpringActionController
                 Integer progress = ctx.get(FieldKey.fromParts("Progress"), Integer.class);
                 if(progress != null)
                 {
-                    String str = "";
+                    String str;
                     int i = progress.intValue();
                     str = (i&1) == 1 ? "L2 done " : "";
                     str += (i&2) == 2 ? "L3 done " : "";
@@ -1329,7 +1328,7 @@ public class LincsController extends SpringActionController
     }
 
     @RequiresPermission(AdminPermission.class)
-    public class LincsPspJobStatusAction extends SimpleViewAction<LincsPspJobForm>
+    public static class LincsPspJobStatusAction extends SimpleViewAction<LincsPspJobForm>
     {
         @Override
         public ModelAndView getView(LincsPspJobForm form, BindException errors)
@@ -1491,7 +1490,7 @@ public class LincsController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class SubmitPspJobAction extends FormHandlerAction<LincsPspJobForm>
+    public static class SubmitPspJobAction extends FormHandlerAction<LincsPspJobForm>
     {
         @Override
         public void validateCommand(LincsPspJobForm target, Errors errors)

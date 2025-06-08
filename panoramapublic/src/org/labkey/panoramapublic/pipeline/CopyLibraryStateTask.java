@@ -63,7 +63,7 @@ public class CopyLibraryStateTask extends PipelineJob.Task<CopyLibraryStateTask.
         var container = job.getContainer();
         User user = job.getUser();
         List<? extends ExpExperiment> experiments = ExperimentService.get().getExperiments(container, user, false, false);
-        if (experiments.size() == 0)
+        if (experiments.isEmpty())
         {
             throw new PipelineJobException(String.format("No experiments found in the container '%s'.", container.getPath()));
         }

@@ -59,7 +59,7 @@ public class Formula
                 negative.append(formulaPart);
             }
         }
-        String separator = positive.length() > 0 && negative.length() > 0 ? " - " : (negative.length() > 0 ? "-" : "");
+        String separator = !positive.isEmpty() && !negative.isEmpty() ? " - " : (!negative.isEmpty() ? "-" : "");
         return positive + separator + negative;
     }
 
@@ -168,7 +168,7 @@ public class Formula
         // from the total mass.  Only one negative part is allowed. We will parse the positive and negative parts separately.
         input = input.trim();
 
-        while (input.length() > 0)
+        while (!input.isEmpty())
         {
             if (input.startsWith("-"))
             {

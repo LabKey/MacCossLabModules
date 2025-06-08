@@ -139,7 +139,7 @@
     String publishButtonText = "Submit";
     if (js != null && !annot.isJournalCopy())
     {
-        journal = JournalManager.getJournal(js.getJournalId());
+        JournalManager.getJournal(js.getJournalId());
         Submission submission = js.getLatestSubmission();
         if (submission != null)
         {

@@ -102,7 +102,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     @BeforeClass
     public static void initProject()
     {
-        PanoramaPublicBaseTest init = (PanoramaPublicBaseTest)getCurrentTest();
+        PanoramaPublicBaseTest init = getCurrentTest();
         init.createPanoramaPublicJournalProject();
 
         // Create the test project

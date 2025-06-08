@@ -19,7 +19,6 @@ import org.labkey.lincs.LincsController;
 import org.labkey.lincs.LincsModule;
 import org.labkey.lincs.psp.LincsPspJobSupport;
 
-import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;

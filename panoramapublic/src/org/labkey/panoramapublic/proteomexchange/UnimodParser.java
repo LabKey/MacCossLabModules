@@ -215,13 +215,13 @@ public class UnimodParser
                 elements.remove(element);
             }
         }
-        return elements.size() == 0;
+        return elements.isEmpty();
     }
 
     private UnimodModification parseModification(Element modEl) throws PxException
     {
         String title = modEl.getAttribute("title");
-        Integer id = Integer.parseInt(modEl.getAttribute("record_id"));
+        int id = Integer.parseInt(modEl.getAttribute("record_id"));
 
         NodeList deltaEl = modEl.getElementsByTagNameNS(NAMESPACE, "delta");
         UnimodModification uMod = new UnimodModification(id, title, getFormula(deltaEl));
@@ -302,7 +302,7 @@ public class UnimodParser
                 {
                     throw new PxException("Unrecognized element in formula: " + symbol);
                 }
-                Integer number = Integer.parseInt(el.getAttribute("number"));
+                int number = Integer.parseInt(el.getAttribute("number"));
                 formula.addElement(chemElement, number);
             }
         }

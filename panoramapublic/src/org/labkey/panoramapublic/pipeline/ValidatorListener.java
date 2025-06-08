@@ -64,7 +64,7 @@ public class ValidatorListener implements DataValidatorListener
     public void modificationsValidated(ValidatorStatus status)
     {
         _log.info("Modifications validation:");
-        if (status.getModifications().size() == 0)
+        if (status.getModifications().isEmpty())
         {
             _log.info("No modifications were found in the submitted Skyline documents.");
         }
@@ -132,7 +132,7 @@ public class ValidatorListener implements DataValidatorListener
     @Override
     public void spectralLibrariesValidated(ValidatorStatus status)
     {
-        if (status.getSpectralLibraries().size() == 0)
+        if (status.getSpectralLibraries().isEmpty())
         {
             _log.info("Skyline documents in the experiment do not contain any spectral libraries.");
         }

@@ -106,7 +106,7 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         scrollIntoView(panel);
         expandSkyDocRow(panel, skylineDocName);
 
-        verifySkyDocStatus(skylineDocName, missing.size() == 0 ? "COMPLETE" : "INCOMPLETE");
+        verifySkyDocStatus(skylineDocName, missing.isEmpty() ? "COMPLETE" : "INCOMPLETE");
 
         var sampleFilesTable = panel.findElement(getFilesTableLocator(skylineDocName, "pxv-tpl-table"));
         for (var file: missing)
@@ -201,8 +201,8 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         scrollIntoView(panel);
         expandLibraryRow(panel, libraryFile, fileSize);
         verifySpecLibStatus(libraryFile, fileSize,
-                (spectrumFiles.size() == 0 || idFiles.size() == 0
-                        || spectrumFilesMissing.size() > 0 || idFilesMissing.size() > 0) ? "INCOMPLETE" : "COMPLETE");
+                (spectrumFiles.isEmpty() || idFiles.isEmpty()
+                        || !spectrumFilesMissing.isEmpty() || !idFilesMissing.isEmpty()) ? "INCOMPLETE" : "COMPLETE");
 
         var panelText = panel.getText();
         List<String> expectedTexts = new ArrayList<>(skylineDocNames);
@@ -279,7 +279,7 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         cells.forEach(cell -> cellValues.add(cell.getText()));
         assertTrue(modName + " was not found in modification row " + rowIdx, cells.get(MOD_COL_NAME).getText().contains(modName));
 
-        if (unimodMatches == null || unimodMatches.size() == 0)
+        if (unimodMatches == null || unimodMatches.isEmpty())
         {
             assertTrue(cells.get(MOD_COL_UNIMOD_NAME).getText().startsWith("MISSING"));
         }
@@ -300,7 +300,7 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
 
     private void verifyLibrarySourceFiles(String libraryName, List<String> files, List<String> filesMissing, WebElement specLibsPanel, String tblCls)
     {
-        if (files.size() > 0 || filesMissing.size() > 0)
+        if (!files.isEmpty() || !filesMissing.isEmpty())
         {
             var filesTable = specLibsPanel.findElement(getFilesTableLocator(libraryName, tblCls));
             for (var file : filesMissing)

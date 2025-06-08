@@ -44,7 +44,7 @@ public class SendTestResultsEmail implements org.quartz.Job
     public static final String TEST_GET_HTML_EMAIL = "gethtml";
     public static final String MORNING_EMAIL = "morningemail";
 
-    private Date _date;
+    private final Date _date;
 
     public interface DEFAULT_EMAIL {
         String RECIPIENT = "skyline-dev@proteinms.net";
@@ -119,7 +119,7 @@ public class SendTestResultsEmail implements org.quartz.Job
             ActionURL containerUrl = PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(container).addParameter("end", mdyFormatter.format(end));
             String testResultsUrl = AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + containerUrl.getEncodedLocalURIString();
             message.append("<div style='margin:auto; text-align:center;'>")
-                .append("<h1>").append(PageFlowUtil.filter(container.getName())).append("<br><span style='font-size:11px;'>starting: ").append(start.toString()).append("</span></h1>")
+                .append("<h1>").append(PageFlowUtil.filter(container.getName())).append("<br><span style='font-size:11px;'>starting: ").append(start).append("</span></h1>")
                 .append("<h5 style='margin:0; padding:0;'><a href=\"" + testResultsUrl + "\">View Full TestResults</a></h5>")
                 .append("</div>");
 

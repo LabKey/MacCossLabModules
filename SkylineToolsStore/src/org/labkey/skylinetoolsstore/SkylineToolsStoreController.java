@@ -129,7 +129,7 @@ public class SkylineToolsStoreController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public class BeginAction extends SimpleViewAction
+    public static class BeginAction extends SimpleViewAction<Object>
     {
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
@@ -460,7 +460,7 @@ public class SkylineToolsStoreController extends SpringActionController
                 ArrayList<User> toolOwnersUsers = parsedOwners.first;
                 ArrayList<String> toolOwnersInvalid = parsedOwners.second;
 
-                if (toolOwnersInvalid.size() > 0)
+                if (!toolOwnersInvalid.isEmpty())
                 {
                     getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
                         UNKNOWN_USERS + StringUtils.join(toolOwnersInvalid, ", "));
@@ -607,7 +607,7 @@ public class SkylineToolsStoreController extends SpringActionController
             getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "sender", sender);
             getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "updatetarget", updateTargetString);
             getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "toolowners", toolOwners);
-            return new JspView("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", null);
+            return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", null);
         }
 
         @Override
@@ -667,9 +667,9 @@ public class SkylineToolsStoreController extends SpringActionController
             final String ratingIdString = httpServletRequest.getParameter("ratingId");
             int ratingId;
             try {
-                ratingId = (ratingIdString != null && !ratingIdString.isEmpty()) ? Integer.parseInt(ratingIdString) : -1;;
+                ratingId = (ratingIdString != null && !ratingIdString.isEmpty()) ? Integer.parseInt(ratingIdString) : -1;
             } catch(Exception e) {
-                return new JspView("/org/labkey/skylinetoolsstore/view/SkylineRating.jsp", null);
+                return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineRating.jsp", null);
             }
             Rating rating = (ratingId < 0) ? null : RatingManager.get().getRatingById(ratingId);
             final SkylineTool tool = SkylineToolsStoreManager.get().getTool((toolId >= 0) ? toolId : rating.getToolId());
@@ -679,7 +679,7 @@ public class SkylineToolsStoreController extends SpringActionController
             try {
                 ratingValue = Integer.parseInt(ratingValueString);
             } catch(Exception e) {
-                return new JspView("/org/labkey/skylinetoolsstore/view/SkylineRating.jsp", null);
+                return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineRating.jsp", null);
             }
             final String ratingTitle = httpServletRequest.getParameter("title");
             final String review = httpServletRequest.getParameter("review");
@@ -701,7 +701,7 @@ public class SkylineToolsStoreController extends SpringActionController
                 getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
                     NO_RATING);
             }
-            else if (review == null || review.length() == 0)
+            else if (review == null || review.isEmpty())
             {
                 getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
                     NO_REVIEW);
@@ -748,7 +748,7 @@ public class SkylineToolsStoreController extends SpringActionController
             if (review != null)
                 getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "formReview", review);
 
-            return new JspView("/org/labkey/skylinetoolsstore/view/SkylineRating.jsp", null);
+            return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineRating.jsp", null);
         }
 
         @Override
@@ -813,7 +813,7 @@ public class SkylineToolsStoreController extends SpringActionController
             {
                 httpServletRequest.setAttribute(BindingResult.MODEL_KEY_PREFIX + "form", INVALID_TOOL_ID + " " + suppTargetString);
                 httpServletRequest.setAttribute(BindingResult.MODEL_KEY_PREFIX + "supptarget", suppTargetString);
-                return new JspView("/org/labkey/skylinetoolsstore/view/SkylineToolSupplementUpload.jsp", null);
+                return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolSupplementUpload.jsp", null);
             }
 
             SkylineTool tool = SkylineToolsStoreManager.get().getTool(suppTarget);
@@ -846,7 +846,7 @@ public class SkylineToolsStoreController extends SpringActionController
             }
 
             getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "supptarget", suppTargetString);
-            return new JspView("/org/labkey/skylinetoolsstore/view/SkylineToolSupplementUpload.jsp", null);
+            return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolSupplementUpload.jsp", null);
         }
 
         @Override
@@ -902,7 +902,7 @@ public class SkylineToolsStoreController extends SpringActionController
     }
 
     @RequiresLogin
-    public class DeleteAction extends FormHandlerAction<IdForm>
+    public static class DeleteAction extends FormHandlerAction<IdForm>
     {
         @Override
         public URLHelper getSuccessURL(IdForm idForm)
@@ -1002,7 +1002,7 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
         {
-            Integer id;
+            int id;
             try {
                 id = Integer.parseInt(httpServletRequest.getParameter("id"));
             }
@@ -1156,7 +1156,7 @@ public class SkylineToolsStoreController extends SpringActionController
 
     @RequiresNoPermission
     @ActionNames("downloadFile")
-    public class DownloadToolFileAction extends SimpleViewAction<DownloadFileForm> implements PermissionCheckable
+    public static class DownloadToolFileAction extends SimpleViewAction<DownloadFileForm> implements PermissionCheckable
     {
         @Override
         public ModelAndView getView(DownloadFileForm form, BindException errors) throws Exception
@@ -1243,8 +1243,7 @@ public class SkylineToolsStoreController extends SpringActionController
                 _tool = SkylineToolsStoreManager.get().getTool(toolId);
                 if (_tool == null)
                 {
-                    StringBuilder msg = new StringBuilder("Could not find tool ").append(" by Id ").append(toolId);
-                    errors.reject(SpringActionController.ERROR_MSG,  msg.toString());
+                    errors.reject(SpringActionController.ERROR_MSG, "Could not find tool " + " by Id " + toolId);
                     return new SimpleErrorView(errors);
                 }
             }
@@ -1396,7 +1395,7 @@ public class SkylineToolsStoreController extends SpringActionController
             getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "toolowners", toolOwners);
             getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "sender", sender);
             getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "updatetarget", updateTargetString);
-            return new JspView("/org/labkey/skylinetoolsstore/view/SkylineToolManageOwners.jsp", null);
+            return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolManageOwners.jsp", null);
         }
 
         @Override
@@ -1414,7 +1413,7 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
         {
-            final Integer id = Integer.parseInt(httpServletRequest.getParameter("id"));
+            final int id = Integer.parseInt(httpServletRequest.getParameter("id"));
 
             final SkylineTool tool = SkylineToolsStoreManager.get().getTool(id);
             if(tool == null)

@@ -117,7 +117,7 @@ public class SubmissionManager
             List<Submission> allSubmissions = getSubmissionsNewestFirst(submission.getJournalExperimentId());
             allSubmissions.removeIf(Submission::isObsolete);
 
-            if (allSubmissions.size() == 0)
+            if (allSubmissions.isEmpty())
             {
                 // Delete the JournalExperiment if there are no submissions left after removing any obsolete ones
                 JournalExperiment je = getJournalExperiment(submission.getJournalExperimentId());
@@ -436,7 +436,7 @@ public class SubmissionManager
         JournalSubmission js = getJournalSubmission(expAnnotations.getId(), journal.getId(), expAnnotations.getContainer());
         if (js != null)
         {
-            if (js.getCopiedSubmissions().size() == 0)
+            if (js.getCopiedSubmissions().isEmpty())
             {
                 // Experiment was submitted but not yet copied so we can delete the rows in the Submission and JournalExperiment tables.
                 try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())

@@ -191,7 +191,7 @@ public class DataValidator
     {
         List<Character> sites = ModificationInfoManager.getIsotopeModificationSites(pxMod.getDbModId(), runs, user);
         var uModsList = UnimodUtil.getMatchesIfWildcardSkylineMod(pxMod, sites);
-        if (uModsList.size() > 0)
+        if (!uModsList.isEmpty())
         {
             var modInfo = new ExperimentIsotopeModInfo();
             modInfo.setExperimentAnnotationsId(expAnnotations.getId());
@@ -281,7 +281,7 @@ public class DataValidator
         // name but different paths imported into separate replicates of a document. Skyline allows this but it can get
         // confusing even for the user.
         Set<String> ambiguousFiles = sampleFileNameAndKeys.keySet().stream().filter(k -> sampleFileNameAndKeys.get(k).size() > 1).collect(Collectors.toSet());
-        if (ambiguousFiles.size() > 0)
+        if (!ambiguousFiles.isEmpty())
         {
             for (SkylineDocValidator skyDoc : skylineDocs)
             {

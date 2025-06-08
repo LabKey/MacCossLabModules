@@ -87,7 +87,7 @@ public class RatingManager
             for (SkylineTool tool : tools)
                 ratings.addAll(Arrays.asList(getRatingsByToolId(tool.getRowId())));
         }
-        return ratings.toArray(new Rating[ratings.size()]);
+        return ratings.toArray(new Rating[0]);
     }
 
     public boolean userLeftRating(String toolLsid, User user)

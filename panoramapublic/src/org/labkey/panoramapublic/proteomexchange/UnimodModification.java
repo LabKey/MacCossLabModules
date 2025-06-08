@@ -191,12 +191,12 @@ public class UnimodModification
         {
             return false;
         }
-        if (sites.size() == 0 && terminus == null)
+        if (sites.isEmpty() && terminus == null)
         {
             // Cannot find an exact match based on just the formula
             return false;
         }
-        if (sites.size() > 0)
+        if (!sites.isEmpty())
         {
             for (Specificity site: sites)
             {
@@ -243,7 +243,7 @@ public class UnimodModification
         sb.append("UNIMOD:").append(getId());
         sb.append(", ").append(getName());
         sb.append(", ").append(getNormalizedFormula());
-        if(_modSites.size() > 0)
+        if(!_modSites.isEmpty())
         {
             sb.append(", Sites: ").append(StringUtils.join(_modSites, ":"));
         }
@@ -279,7 +279,7 @@ public class UnimodModification
 
     public String getModSitesWithPosition()
     {
-        if(_modSites.size() > 0)
+        if(!_modSites.isEmpty())
         {
             return StringUtils.join(_modSites.stream().map(Specificity::toString).collect(Collectors.toSet()), ":");
         }
@@ -300,7 +300,7 @@ public class UnimodModification
         }
         if (_cTerm != null)
         {
-            terminus = terminus + (terminus.length() > 0 ? ", " : "") + _cTerm;
+            terminus = terminus + (!terminus.isEmpty() ? ", " : "") + _cTerm;
         }
         return terminus;
     }

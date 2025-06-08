@@ -90,7 +90,7 @@ public class ProjectAdminsTable extends ContainerTable
         addCondition(sql);
     }
 
-    class AdminsColumn extends DataColumn
+    static class AdminsColumn extends DataColumn
     {
         public AdminsColumn(ColumnInfo col)
         {

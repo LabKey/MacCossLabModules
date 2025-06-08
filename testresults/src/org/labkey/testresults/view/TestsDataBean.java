@@ -28,7 +28,6 @@ import org.labkey.testresults.model.User;
 import org.labkey.testresults.model.TestFailDetail;
 import org.labkey.testresults.model.TestPassDetail;
 
-import java.lang.String;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;

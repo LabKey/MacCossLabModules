@@ -18,7 +18,7 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 public class PanoramaPublicRunListView extends ExperimentRunListView
 {
-    private ExperimentAnnotations _expAnnotations;
+    private final ExperimentAnnotations _expAnnotations;
 
     public PanoramaPublicRunListView(ExperimentAnnotations expAnnotations, UserSchema schema, QuerySettings settings)
     {

@@ -228,9 +228,9 @@ public class RunDownBean extends TestsDataBean
 
             MathStat stats = service.getStats(ArrayUtils.toPrimitive(list.toArray(new Double[0])));
             double median = stats.getMedian();
-            int largestkey = averagePassPointMap.keySet().size() == 0 ? 0 : Collections.max(averagePassPointMap.keySet());
+            int largestkey = averagePassPointMap.keySet().isEmpty() ? 0 : Collections.max(averagePassPointMap.keySet());
             int tolerance = 500; // pases must be at least 500 runs away from eachother
-            if (averagePassPointMap.size() == 0 ||
+            if (averagePassPointMap.isEmpty() ||
                 (averagePassPointMap.get(largestkey) != null && median > tolerance + averagePassPointMap.get(largestkey))) {
                 averagePassPointMap.put(largestkey+1, median);
             }
