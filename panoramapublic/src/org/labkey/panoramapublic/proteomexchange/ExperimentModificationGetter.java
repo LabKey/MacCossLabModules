@@ -305,7 +305,7 @@ public class ExperimentModificationGetter
 
         public boolean hasPossibleUnimods()
         {
-            return _unimodModifications.size() > 0;
+            return !_unimodModifications.isEmpty();
         }
 
         public @NotNull List<UnimodModification> getPossibleUnimodMatches()
@@ -703,7 +703,7 @@ public class ExperimentModificationGetter
                 printStructuralMod(mod, pxMod);
 
                 List<UnimodModification> matches = unimodMatches.get(pxMod.getSkylineName());
-                if (matches.size() == 0)
+                if (matches.isEmpty())
                 {
                     assertFalse("Unexpected Unimod match for modification " + pxMod.getSkylineName(), pxMod.hasUnimodId());
                     assertEquals("Unexpected possible mods for modification " + pxMod.getSkylineName(), 0, pxMod.getPossibleUnimodMatches().size());
@@ -902,10 +902,10 @@ public class ExperimentModificationGetter
 
                 List<UnimodModification> expectedMatches = matches.get(pxMod.getSkylineName());
 
-                if (expectedMatches.size() == 0)
+                if (expectedMatches.isEmpty())
                 {
                     assertFalse("Unexpected Unimod match for isotopic modification " + pxMod.getSkylineName(), pxMod.hasUnimodId());
-                    assertTrue("Unexpected possible mods for isotopic modification " + pxMod.getSkylineName(), pxMod.getPossibleUnimodMatches().size() == 0);
+                    assertTrue("Unexpected possible mods for isotopic modification " + pxMod.getSkylineName(), pxMod.getPossibleUnimodMatches().isEmpty());
                 }
                 else if (expectedMatches.size() == 1)
                 {

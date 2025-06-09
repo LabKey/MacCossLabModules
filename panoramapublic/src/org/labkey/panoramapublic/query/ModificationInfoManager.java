@@ -178,7 +178,7 @@ public class ModificationInfoManager
                         new SimpleFilter(FieldKey.fromParts("experimentAnnotationsId"), expAnnotations.getId()),
                         null
                         ).getArrayList(Integer.class);
-                if (modInfoIds.size() > 0)
+                if (!modInfoIds.isEmpty())
                 {
                     SimpleFilter filter = new SimpleFilter(new SimpleFilter.InClause(FieldKey.fromParts("modInfoId"), modInfoIds));
                     Table.delete(PanoramaPublicManager.getTableInfoIsotopeUnimodInfo(), filter);
@@ -252,7 +252,7 @@ public class ModificationInfoManager
 
     private static boolean runsHaveModifications(List<Long> runIds, TableInfo tableInfo, User user, Container container)
     {
-        if (runIds.size() == 0) return false;
+        if (runIds.isEmpty()) return false;
 
         TargetedMSService svc = TargetedMSService.get();
         SQLFragment sql = new SQLFragment("SELECT mod.Id FROM ")

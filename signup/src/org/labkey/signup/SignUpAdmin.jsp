@@ -140,7 +140,7 @@
         Set<String> keySet = groupToGroup.keySet();
         for(String key: keySet) {
         List<String> rules = Arrays.asList(groupToGroup.get(key).split("\\s*,\\s*"));
-        for(String rule: rules) { if(!rule.equals("")) {%>
+        for(String rule: rules) { if(!rule.isEmpty()) {%>
         <tr>
             <td><%=h(SecurityManager.getGroup(Integer.parseInt(key)))%> (<%=h(key)%>)</td>
             <td><%=h(SecurityManager.getGroup(Integer.parseInt(rule)))%> (<%=h(rule)%>)</td>

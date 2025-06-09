@@ -358,7 +358,7 @@ public class JournalManager
         if(group != null)
         {
             Set<User> grpMembers = SecurityManager.getAllGroupMembers(group, MemberType.ACTIVE_USERS);
-            if(grpMembers.size() != 0)
+            if(!grpMembers.isEmpty())
             {
                 return grpMembers.stream().min(Comparator.comparing(User::getUserId)).orElse(null);
             }

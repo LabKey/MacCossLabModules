@@ -57,7 +57,7 @@ public class LincsDataTable extends FilteredTable
     public static final String PARENT_QUERY = "TargetedMSRunAndAnnotations";
     public static final String NAME = "LincsDataTable";
     public static final String PLATE_COL = "Plate";
-    private static Pattern plateRegex = Pattern.compile("^LINCS.*_(Plate[a-zA-Z0-9]*)_.*\\.sky\\.zip$");
+    private static final Pattern plateRegex = Pattern.compile("^LINCS.*_(Plate[a-zA-Z0-9]*)_.*\\.sky\\.zip$");
 
     public LincsDataTable(@NotNull TableInfo table, @NotNull UserSchema userSchema)
     {
@@ -122,19 +122,19 @@ public class LincsDataTable extends FilteredTable
 
         var level2Col = wrapColumn("Level 2", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(level2Col);
-        level2Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Two, gctDir, davUrl));
+        level2Col.setDisplayColumnFactory(colInfo -> new GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Two, gctDir, davUrl));
 
         var level3Col = wrapColumn("Level 3", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(level3Col);
-        level3Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Three, gctDir, davUrl));
+        level3Col.setDisplayColumnFactory(colInfo -> new GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Three, gctDir, davUrl));
 
         var level4Col = wrapColumn("Level 4", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(level4Col);
-        level4Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Four, gctDir, davUrl));
+        level4Col.setDisplayColumnFactory(colInfo -> new GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Four, gctDir, davUrl));
 
         var cfgCol = wrapColumn("Config", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(cfgCol);
-        cfgCol.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Config, gctDir, davUrl));
+        cfgCol.setDisplayColumnFactory(colInfo -> new GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Config, gctDir, davUrl));
 
         var pspJobCol = wrapColumn("PSP Job Status", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(pspJobCol);
@@ -223,12 +223,12 @@ public class LincsDataTable extends FilteredTable
             return FileUtil.getBaseName(fileName, 1);
     }
 
-    public class GctColumnPSP extends DataColumn
+    public static class GctColumnPSP extends DataColumn
     {
-        private LincsModule.LincsAssay assayType;
-        private LincsModule.LincsLevel level;
-        private Path gctDir;
-        private String davUrl;
+        private final LincsModule.LincsAssay assayType;
+        private final LincsModule.LincsLevel level;
+        private final Path gctDir;
+        private final String davUrl;
 
         public GctColumnPSP(ColumnInfo col, LincsModule.LincsAssay assayType, LincsModule.LincsLevel level, Path gctDir, String davUrl)
         {

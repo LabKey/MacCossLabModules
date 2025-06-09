@@ -84,6 +84,7 @@ public class SpecLibSourceFile extends DataFile
         return Objects.hash(getSourceType(), getName());
     }
 
+    @Override
     @NotNull
     public JSONObject toJSON(Container container)
     {

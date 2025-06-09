@@ -7,7 +7,6 @@ import org.labkey.panoramapublic.model.validation.Modification;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 
 public class ValidatorStatus extends GenericValidationStatus<SkylineDocValidator, SpecLibValidator>

@@ -57,7 +57,7 @@ public class DataValidation extends DbEntity
 
     public PxStatus getStatusIncludingExptMetadata(ExperimentAnnotations expAnnotations)
     {
-        if (isComplete() && DataValidationManager.getMissingExperimentMetadataFields(expAnnotations).size() > 0)
+        if (isComplete() && !DataValidationManager.getMissingExperimentMetadataFields(expAnnotations).isEmpty())
         {
             return PxStatus.NotValid;
         }

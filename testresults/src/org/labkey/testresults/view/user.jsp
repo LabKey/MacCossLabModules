@@ -52,7 +52,7 @@
     String startDate = req.getParameter("start");
     String endDate = req.getParameter("end");
     String user = req.getParameter("user");
-    boolean showSingleUser = user != null && !user.equals("");
+    boolean showSingleUser = user != null && !user.isEmpty();
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
     Date today = new Date();
     if (startDate == null)

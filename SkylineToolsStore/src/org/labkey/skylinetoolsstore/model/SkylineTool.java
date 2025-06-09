@@ -177,9 +177,8 @@ public class SkylineTool extends Entity
 
     public boolean equals(Object obj)
     {
-        if (!(obj instanceof SkylineTool))
+        if (!(obj instanceof SkylineTool p))
             return false;
-        SkylineTool p = (SkylineTool)obj;
 
         return Objects.equals(_name, p.getName()) &&
                Objects.equals(_authors, p.getAuthors()) &&

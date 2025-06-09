@@ -76,7 +76,7 @@ public class ContainerJoin
     public @NotNull SQLFragment getContainerSql()
     {
         SQLFragment sql = new SQLFragment();
-        if (_joinList.size() > 0)
+        if (!_joinList.isEmpty())
         {
             // We expect the last table in the join sequence to have the container column
             sql.append(getLastJoinTableAlias()).append(".");
@@ -91,7 +91,7 @@ public class ContainerJoin
 
     public @Nullable FieldKey getContainerFieldKey()
     {
-        if (_joinList.size() > 0)
+        if (!_joinList.isEmpty())
         {
             var parts = _joinList.stream().map(InnerJoinClause::getJoinCol).collect(Collectors.toList());
             parts.add(CONTAINER);

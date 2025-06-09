@@ -391,7 +391,7 @@ public class PxXmlWriter extends PxWriter
          */
         Element mod_list = new Element("ModificationList");
         var mods = validationStatus.getModifications();
-        if(mods.size() == 0 || mods.stream().noneMatch(Modification::isValid))
+        if(mods.isEmpty() || mods.stream().noneMatch(Modification::isValid))
         {
             mod_list.addChild(new CvParamElement("MS", "MS:1002864", "No PTMs are included in the dataset"));
         }
@@ -688,7 +688,7 @@ public class PxXmlWriter extends PxWriter
     {
         writer.writeCharacters("\n");
         writer.writeCharacters(indent);
-        if(StringUtils.isBlank(element.getText()) && element.getChildren().size() == 0)
+        if(StringUtils.isBlank(element.getText()) && element.getChildren().isEmpty())
         {
             writer.writeEmptyElement(element.getName());
         }
@@ -712,9 +712,9 @@ public class PxXmlWriter extends PxWriter
             writeElement(writer, child, indent + INDENT);
         }
 
-        if(!StringUtils.isBlank(element.getText()) || element.getChildren().size() != 0)
+        if(!StringUtils.isBlank(element.getText()) || !element.getChildren().isEmpty())
         {
-            if(element.getChildren().size() != 0)
+            if(!element.getChildren().isEmpty())
             {
                 writer.writeCharacters("\n");
                 writer.writeCharacters(indent);

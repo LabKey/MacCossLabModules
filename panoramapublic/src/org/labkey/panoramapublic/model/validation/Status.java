@@ -185,7 +185,7 @@ public class Status extends GenericValidationStatus <SkylineDoc, SpecLib>
             json.put("Sample file validation completed for " + validatedCount + " / " + StringUtilsLabKey.pluralize(documentCount, "document") + "."
             + (missingFilesFound ? " Found missing sample files." : ""));
         }
-        if (getModifications().size() > 0)
+        if (!getModifications().isEmpty())
         {
             boolean invalidModsFound = getModifications().stream().anyMatch(mod -> !mod.isValid());
             json.put("Modifications validation complete." + (invalidModsFound ? " Found invalid modifications." : ""));

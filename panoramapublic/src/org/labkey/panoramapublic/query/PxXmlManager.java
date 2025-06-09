@@ -10,7 +10,6 @@ import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.PxXml;
 
 import java.util.Collections;
-import java.util.List;
 
 public class PxXmlManager
 {

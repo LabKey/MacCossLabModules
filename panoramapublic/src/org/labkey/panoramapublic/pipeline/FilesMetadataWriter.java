@@ -62,7 +62,7 @@ public class FilesMetadataWriter
         if (includeSubfolders)
         {
             List<Container> children = ContainerManager.getChildren(container, user, FolderExportPermission.class);
-            if (children.size() > 0)
+            if (!children.isEmpty())
             {
                 var subfolders = vf.getDir("subfolders"); // TODO: Make SubfolderWriter.DIRECTORY_NAME public
                 for (Container child : children)
