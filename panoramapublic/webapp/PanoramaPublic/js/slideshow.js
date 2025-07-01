@@ -78,16 +78,6 @@ function addSlides(json)
             appendText(entry, slideshowTexts);
         }
 
-        // Attach the 'onclick' event handlers
-        for(let i = 0; i < catalog.length; i++)
-        {
-            const index = i + existingSlideCount + 1;
-            const el = document.getElementById(DOT_NAV_ID_PREFIX + index);
-            if (el)
-            {
-                el.onclick = function() { currentSlide(index); };
-            }
-        }
         showSlides();
     }
     else
@@ -117,13 +107,11 @@ function appendCoverSlide(entry, coverslideContainer)
 
 function appendDot(dotsContainer, index)
 {
-    // Examples:
-    // <span class="dot active" onclick="currentSlide(1)"></span>
-    // <span class="dot" onclick="currentSlide(2)"></span>
     const dot = document.createElement('span');
     const cls = index === 1 ? "dot active" : "dot";
     dot.setAttribute('class', cls);
     dot.setAttribute('id', DOT_NAV_ID_PREFIX + index);
+    dot['onclick'] = function(){ currentSlide(index); };
     dotsContainer.appendChild(dot);
     dotsContainer.appendChild(document.createTextNode(" ") );
 }
@@ -276,8 +264,8 @@ function appendSlidesContainer(parentDivId)
                      '</div>';
 
     parentDiv.innerHTML = slideshowHtml;
-    document.getElementById(nextSlideBtnId).onclick = function() { plusSlides(-1); };
-    document.getElementById(prevSlideBtnId).onclick = function() { plusSlides(1); };
+    document.getElementById(nextSlideBtnId)['onclick'] = function() { plusSlides(-1); };
+    document.getElementById(prevSlideBtnId)['onclick'] = function() { plusSlides(1); };
 
     return true;
 }

@@ -29,9 +29,11 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.settings.AppProps;
+import org.labkey.api.util.DOM;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.LinkBuilder;
+import org.labkey.api.util.LinkBuilder.Link;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.writer.HtmlWriter;
@@ -45,7 +47,11 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.labkey.api.util.DOM.Attribute.height;
+import static org.labkey.api.util.DOM.Attribute.src;
 import static org.labkey.api.util.DOM.Attribute.style;
+import static org.labkey.api.util.DOM.Attribute.width;
+import static org.labkey.api.util.DOM.IMG;
 import static org.labkey.api.util.DOM.SPAN;
 import static org.labkey.api.util.DOM.at;
 
@@ -280,22 +286,20 @@ public class LincsDataTable extends FilteredTable
 
         private String getAnalyticsScript(String eventAction, String fileName, boolean addWaitTime)
         {
-            if (!StringUtils.isBlank(AnalyticsService.getTrackingScript()))
-            {
+            //if (!StringUtils.isBlank(AnalyticsService.getTrackingScript()))
+            //{
                 // http://www.blastam.com/blog/how-to-track-downloads-in-google-analytics
                 // Tell the browser to wait 400ms before going to the download.  This is to ensure
                 // that the GA tracking request goes through. Some browsers will interrupt the tracking
                 // request if the download opens on the same page.
                 String timeout = addWaitTime ? "that=this; setTimeout(function(){location.href=that.href;},400);return false;" : "";
 
-                // Universal Analytics - remove after conversion to GA4 is complete
-                String onClickScript = "try {_gaq.push(['_trackEvent', 'Lincs', " + PageFlowUtil.qh(eventAction) + ", " + PageFlowUtil.qh(fileName) + "]); } catch (err) {}";
                 // GA4 variant
-                onClickScript += "try {gtag('event', 'Lincs', {eventAction: " + PageFlowUtil.qh(eventAction) + ", fileName: " + PageFlowUtil.qh(fileName) + "}); } catch(err) {}";
+                String onClickScript = "try {gtag('event', 'Lincs', {eventAction: " + PageFlowUtil.qh(eventAction) + ", fileName: " + PageFlowUtil.qh(fileName) + "}); } catch(err) {}";
                 onClickScript += timeout;
                 return onClickScript;
-            }
-            return null;
+            //}
+            //return null;
         }
 
         private HtmlString externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType)
@@ -304,12 +308,32 @@ public class LincsDataTable extends FilteredTable
             String morpheusUrl = getMorpheusUrl(gctFileUrl, assayType);
 
             String analyticsScript = getAnalyticsScript("Morpheus", fileName, false);
-            String onclickEvt = StringUtils.isBlank(analyticsScript) ? "" : "onclick=\"" + analyticsScript + "\"";
+            // String onclickEvt = StringUtils.isBlank(analyticsScript) ? "" : "onclick=\"" + analyticsScript + "\"";
 
             String imgUrl = AppProps.getInstance().getContextPath() + "/lincs/GENE-E_icon.png";
 
             // TODO: Should use a LinkBuilder, etc.
-            return HtmlString.unsafe("[&nbsp;<a target=\"_blank\" " + onclickEvt +  " href=\"" + morpheusUrl + "\">View in Morpheus</a> <img src=" + imgUrl + " width=\"13\", height=\"13\"/>&nbsp;]");
+            LinkBuilder viewInMorpheusLink = LinkBuilder.simpleLink("View in Morpheus", morpheusUrl).target("_blank");
+            if (analyticsScript != null)
+            {
+                viewInMorpheusLink.onClick(analyticsScript);
+            }
+            DOM.Renderable icon = IMG(at(src, imgUrl).at(width, 13).at(height, 13));
+
+            Link link = viewInMorpheusLink.build();
+            viewInMorpheusLink.
+
+
+            return viewInMorpheusLink.build().getHtmlString();
+//            return HtmlString.of(
+//                    "["
+//                            + HtmlString.NBSP
+//                            + viewInMorpheusLink.build().renderToString()
+//                            + icon.renderToString()
+//                            + HtmlString.NBSP
+//                    + "]");
+            //return HtmlString.unsafe("[").appendTo(HtmlString.NBSP).appendTo(viewInMorpheusLink).a;
+            //return HtmlString.unsafe("[&nbsp;<a target=\"_blank\" " + onclickEvt +  " href=\"" + morpheusUrl + "\">View in Morpheus</a> <img src=" + imgUrl + " width=\"13\", height=\"13\"/>&nbsp;]");
         }
 
         private String getMorpheusUrl(String gctFileUrl, LincsModule.LincsAssay assayType)

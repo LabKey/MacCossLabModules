@@ -12,14 +12,35 @@ function externalHeatmapViewerLink(container, fileName, elementId, assayType)
 
     var morpheusUrl = getMorpheusUrl(fileUrl, assayType);
 
-    var analyticsEvt = " onclick=\"try {_gaq.push(['_trackEvent', 'Lincs', 'Morpheus', '" + fileName + "']);} catch (err) {} try {gtag.event('Lincs', {eventAction: 'Morpheus', fileName: '" + fileName + "'});} catch (err) {}\" ";
-
     Ext4.Ajax.request({
         url: fileUrl,
         method: 'HEAD',
         success: function(response, opts) {
             var imgUrl = LABKEY.ActionURL.getContextPath() + "/lincs/GENE-E_icon.png";
-            Ext4.get(elementId).dom.innerHTML = '(<a target="_blank" ' + analyticsEvt + 'href="' + morpheusUrl + '">View in Morpheus</a> <img src=' + imgUrl + ' width="13", height="13"/>)';
+            Ext4.get(elementId).dom.innerHTML =
+                    '(<a target="_blank" id="morpheus_' + elementId + '" href="' + morpheusUrl + '">View in Morpheus</a> ' +
+                    '<img src="' + imgUrl + '" width="13" height="13" />)';
+
+            // Add event handler
+            const link = document.getElementById('morpheus_' + elementId);
+            if (link)
+            {
+                link['onclick'] = function () {
+                    try
+                    {
+                        _gaq.push(['_trackEvent', 'Lincs', 'Morpheus', fileName]);
+                    }
+                    catch (err) {}
+                    try
+                    {
+                        gtag('event', 'Lincs', {
+                            eventAction: 'Morpheus',
+                            fileName: fileName
+                        });
+                    }
+                    catch (err) {}
+                };
+            }
         },
         failure: function(response, opts) {
             console.log('server-side failure with status code ' + response.status);
