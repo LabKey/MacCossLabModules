@@ -26,6 +26,10 @@
 <%@ page import="org.labkey.lincs.LincsController.SelectedAnnotation" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.stream.Collectors" %>
+<%@ page import="org.labkey.api.files.FileContentService" %>
+<%@ page import="java.net.URI" %>
+<%@ page import="org.apache.commons.lang3.StringUtils" %>
+<%@ page import="org.labkey.api.analytics.AnalyticsService" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -35,6 +39,8 @@
     public void addClientDependencies(ClientDependencies dependencies)
     {
         dependencies.add("Ext4");
+        dependencies.add("/lincs/lincs.css");
+        dependencies.add("/lincs/lincs.js");
     }
 %>
 <%
@@ -46,21 +52,21 @@
     ActionURL downloadGctUrl = urlFor(DownloadCustomGCTReportAction.class);
     String fileName = FileUtil.getFileName(gctBean.getGctFile());
     downloadGctUrl.addParameter("fileName", fileName);
+
+    URI webDavUri = FileContentService.get().getWebDavUrl(gctBean.getGctFile(), getContainer(), FileContentService.PathType.full);
+    boolean hasAnalyticsTrackingScript = !StringUtils.isBlank(AnalyticsService.getTrackingScript());
 %>
 
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
-
-    LABKEY.requiresCss("/lincs/lincs.css");
-    LABKEY.requiresScript("/lincs/lincs.js");
 
     // Initialize
     Ext4.onReady(init);
     function init()
     {
-        var container = LABKEY.ActionURL.getContainer();
-        var assayType = container.indexOf("P100") !== -1 ? "P100" : "GCP";
+        const container = LABKEY.ActionURL.getContainer();
+        const assayType = container.indexOf("P100") !== -1 ? "P100" : "GCP";
         console.log("Initializing for <%=h(fileName)%>");
-        var morpheusUrl = externalHeatmapViewerLink(container, '<%=h(fileName)%>', "morpheusLink", assayType);
+        const morpheusUrl = externalHeatmapViewerLink(<%=qh(webDavUri.toString())%>, <%=qh(fileName)%>, "morpheusLink", assayType, <%=hasAnalyticsTrackingScript%>);
         console.log("Morpheus URL: " + morpheusUrl);
     }
 

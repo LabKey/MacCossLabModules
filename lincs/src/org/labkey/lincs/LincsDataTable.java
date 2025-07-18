@@ -29,6 +29,8 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.settings.AppProps;
+import org.labkey.api.util.DOM;
+import org.labkey.api.util.DOM.Renderable;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.LinkBuilder;
@@ -45,7 +47,11 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.labkey.api.util.DOM.Attribute.height;
+import static org.labkey.api.util.DOM.Attribute.src;
 import static org.labkey.api.util.DOM.Attribute.style;
+import static org.labkey.api.util.DOM.Attribute.width;
+import static org.labkey.api.util.DOM.IMG;
 import static org.labkey.api.util.DOM.SPAN;
 import static org.labkey.api.util.DOM.at;
 
@@ -288,28 +294,35 @@ public class LincsDataTable extends FilteredTable
                 // request if the download opens on the same page.
                 String timeout = addWaitTime ? "that=this; setTimeout(function(){location.href=that.href;},400);return false;" : "";
 
-                // Universal Analytics - remove after conversion to GA4 is complete
-                String onClickScript = "try {_gaq.push(['_trackEvent', 'Lincs', " + PageFlowUtil.qh(eventAction) + ", " + PageFlowUtil.qh(fileName) + "]); } catch (err) {}";
                 // GA4 variant
-                onClickScript += "try {gtag('event', 'Lincs', {eventAction: " + PageFlowUtil.qh(eventAction) + ", fileName: " + PageFlowUtil.qh(fileName) + "}); } catch(err) {}";
+                String onClickScript = "try {gtag('event', 'Lincs', {eventAction: " + PageFlowUtil.qh(eventAction) + ", fileName: " + PageFlowUtil.qh(fileName) + "}); } catch(err) {}";
                 onClickScript += timeout;
                 return onClickScript;
             }
             return null;
         }
 
-        private HtmlString externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType)
+        private Renderable externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType)
         {
             String gctFileUrl = davUrl + "GCT/" + PageFlowUtil.encodePath(fileName);
             String morpheusUrl = getMorpheusUrl(gctFileUrl, assayType);
 
             String analyticsScript = getAnalyticsScript("Morpheus", fileName, false);
-            String onclickEvt = StringUtils.isBlank(analyticsScript) ? "" : "onclick=\"" + analyticsScript + "\"";
 
             String imgUrl = AppProps.getInstance().getContextPath() + "/lincs/GENE-E_icon.png";
 
-            // TODO: Should use a LinkBuilder, etc.
-            return HtmlString.unsafe("[&nbsp;<a target=\"_blank\" " + onclickEvt +  " href=\"" + morpheusUrl + "\">View in Morpheus</a> <img src=" + imgUrl + " width=\"13\", height=\"13\"/>&nbsp;]");
+            LinkBuilder viewInMorpheusLink = LinkBuilder.simpleLink("View in Morpheus", morpheusUrl).target("_blank");
+            if (analyticsScript != null)
+            {
+                viewInMorpheusLink.onClick(analyticsScript);
+            }
+
+            return DOM.SPAN("[",
+                    HtmlString.NBSP,
+                    viewInMorpheusLink,
+                    IMG(at(src, imgUrl).at(width, 13).at(height, 13)),
+                    HtmlString.NBSP,
+                    "]");
         }
 
         private String getMorpheusUrl(String gctFileUrl, LincsModule.LincsAssay assayType)
@@ -365,12 +378,12 @@ public class LincsDataTable extends FilteredTable
 
             String actionName = (getLevel() == LincsModule.LincsLevel.Config) ? "DownloadConfig" : "DownloadGCT";
             String analyticsScript = getAnalyticsScript(actionName, downloadFileName, true);
-            HtmlString morpheusUrl = externalHeatmapViewerLink(downloadFileName, getAssayType(), getLevel());
+            Renderable morpheusUrl = externalHeatmapViewerLink(downloadFileName, getAssayType(), getLevel());
             String downloadText = (getLevel() == LincsModule.LincsLevel.Config) ? "CFG" : "GCT";
             renderGridCell(out, analyticsScript, getGctDavUrlUnencoded(downloadFileName), downloadText, morpheusUrl);
         }
 
-        private void renderGridCell(HtmlWriter out, String analyticsScript, String downloadUrl, String downloadText, HtmlString morpheusUrl)
+        private void renderGridCell(HtmlWriter out, String analyticsScript, String downloadUrl, String downloadText, Renderable morpheusUrl)
         {
             // <span style="white-space: nowrap;"> is recommended instead of deprecated <nobr></nobr>
             SPAN(
@@ -408,7 +421,7 @@ public class LincsDataTable extends FilteredTable
             }
         }
 
-        @Nullable HtmlString externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType, LincsModule.LincsLevel level)
+        @Nullable Renderable externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType, LincsModule.LincsLevel level)
         {
             if(level == LincsModule.LincsLevel.Config)
             {

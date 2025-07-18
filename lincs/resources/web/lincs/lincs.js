@@ -3,23 +3,61 @@
  *
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
-function externalHeatmapViewerLink(container, fileName, elementId, assayType)
+function externalHeatmapViewerLink(fileUrl, fileName, elementId, assayType, addAnalyticsTracking)
 {
-    var fileUrl= LABKEY.ActionURL.buildURL("_webdav", "REMOVE", container + '/@files/GCT/' + fileName);
-    fileUrl= fileUrl.substring(0, fileUrl.indexOf("/REMOVE"));
-    fileUrl= LABKEY.ActionURL.getBaseURL(true) + fileUrl;
-    // console.log("File URL is " + fileUrl);
-
-    var morpheusUrl = getMorpheusUrl(fileUrl, assayType);
-
-    var analyticsEvt = " onclick=\"try {_gaq.push(['_trackEvent', 'Lincs', 'Morpheus', '" + fileName + "']);} catch (err) {} try {gtag.event('Lincs', {eventAction: 'Morpheus', fileName: '" + fileName + "'});} catch (err) {}\" ";
+    const morpheusUrl = getMorpheusUrl(fileUrl, assayType);
 
     Ext4.Ajax.request({
         url: fileUrl,
         method: 'HEAD',
         success: function(response, opts) {
-            var imgUrl = LABKEY.ActionURL.getContextPath() + "/lincs/GENE-E_icon.png";
-            Ext4.get(elementId).dom.innerHTML = '(<a target="_blank" ' + analyticsEvt + 'href="' + morpheusUrl + '">View in Morpheus</a> <img src=' + imgUrl + ' width="13", height="13"/>)';
+            const imgUrl = LABKEY.ActionURL.getContextPath() + "/lincs/GENE-E_icon.png";
+
+            const targetElement = Ext4.get(elementId);
+            if (!targetElement) {
+                console.error('Element with Id not found:', elementId);
+                return;
+            }
+
+            // Create link element
+            const link = document.createElement('a');
+            link.href = morpheusUrl;
+            link.target = '_blank';
+            link.textContent = 'View in Morpheus ';
+
+            // Create image element
+            const img = document.createElement('img');
+            img.src = imgUrl;
+            img.width = 13;
+            img.height = 13;
+            img.alt = 'GENE-E icon';
+
+            link.appendChild(img);
+
+            const wrapper = document.createElement('span');
+            wrapper.appendChild(document.createTextNode('['));
+            wrapper.appendChild(link);
+            wrapper.appendChild(document.createTextNode(']'));
+
+            targetElement.dom.appendChild(wrapper);
+
+            if (addAnalyticsTracking)
+            {
+                // Attach the event handler
+                link['onclick'] = function () {
+                    try
+                    {
+                        gtag('event', 'Lincs', {
+                            eventAction: 'Morpheus',
+                            fileName: fileName
+                        });
+                    }
+                    catch (err)
+                    {
+                        console.warn('Failed to track Morpheus click:', err);
+                    }
+                };
+            }
         },
         failure: function(response, opts) {
             console.log('server-side failure with status code ' + response.status);
