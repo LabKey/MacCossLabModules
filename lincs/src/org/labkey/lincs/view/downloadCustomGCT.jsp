@@ -28,8 +28,10 @@
 <%@ page import="java.util.stream.Collectors" %>
 <%@ page import="org.labkey.api.files.FileContentService" %>
 <%@ page import="java.net.URI" %>
-<%@ page import="org.apache.commons.lang3.StringUtils" %>
-<%@ page import="org.labkey.api.analytics.AnalyticsService" %>
+<%@ page import="org.labkey.lincs.LincsDataTable" %>
+<%@ page import="org.labkey.lincs.LincsController" %>
+<%@ page import="org.labkey.lincs.LincsModule.LincsAssay" %>
+<%@ page import="org.labkey.api.util.HtmlString" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -40,7 +42,6 @@
     {
         dependencies.add("Ext4");
         dependencies.add("/lincs/lincs.css");
-        dependencies.add("/lincs/lincs.js");
     }
 %>
 <%
@@ -54,29 +55,13 @@
     downloadGctUrl.addParameter("fileName", fileName);
 
     URI webDavUri = FileContentService.get().getWebDavUrl(gctBean.getGctFile(), getContainer(), FileContentService.PathType.full);
-    boolean hasAnalyticsTrackingScript = !StringUtils.isBlank(AnalyticsService.getTrackingScript());
+    LincsAssay assayType = LincsController.getLincsAssayType(getContainer());
+    HtmlString morpheusViewerLink = LincsDataTable.externalHeatmapViewerLink(fileName, assayType, webDavUri.toString());
 %>
-
-<script type="text/javascript" nonce="<%=getScriptNonce()%>">
-
-    // Initialize
-    Ext4.onReady(init);
-    function init()
-    {
-        const container = LABKEY.ActionURL.getContainer();
-        const assayType = container.indexOf("P100") !== -1 ? "P100" : "GCP";
-        console.log("Initializing for <%=h(fileName)%>");
-        const morpheusUrl = externalHeatmapViewerLink(<%=qh(webDavUri.toString())%>, <%=qh(fileName)%>, "morpheusLink", assayType, <%=hasAnalyticsTrackingScript%>);
-        console.log("Morpheus URL: " + morpheusUrl);
-    }
-
-</script>
-
-
 
 <div style="margin:20px 10px 20px 10px">
 <span style="font-weight:bold;"><a href="<%=h(downloadGctUrl)%>">[Download GCT]</a></span>
-<span style="font-weight:bold;" id="morpheusLink"></span>
+<span style="font-weight:bold;" id="morpheusLink"><%=morpheusViewerLink%></span>
 <div style="color:red; margin-bottom:20px;">NOTE: The file will be deleted from the server after it is downloaded.</div>
 
 <div style="margin:20px 10px 20px 10px">
@@ -98,4 +83,5 @@
     <div># Replicates: <%=gctBean.getReplicateCount()%></div>
     <div># Probe Annotations: <%=gctBean.getProbeAnnotationCount()%></div>
     <div># Replicate Annotations: <%=gctBean.getReplicateAnnotationCount()%></div>
+</div>
 </div>
