@@ -40,7 +40,6 @@
     @Override
     public void addClientDependencies(ClientDependencies dependencies)
     {
-        dependencies.add("Ext4");
         dependencies.add("/lincs/lincs.css");
     }
 %>
