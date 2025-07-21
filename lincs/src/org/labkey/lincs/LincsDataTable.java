@@ -285,8 +285,68 @@ public class LincsDataTable extends FilteredTable
 
         private HtmlString externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType)
         {
-            String gctFileUrl = getDavUrl() + "GCT/" + PageFlowUtil.encodePath(fileName);
-            return LincsDataTable.externalHeatmapViewerLink(fileName, assayType, gctFileUrl);
+            return externalHeatmapViewerLink(fileName, assayType, getGctDavUrl(fileName));
+        }
+
+        private static String getAnalyticsScript(String eventAction, String fileName, boolean addWaitTime)
+        {
+            if (!StringUtils.isBlank(AnalyticsService.getTrackingScript()))
+            {
+                // http://www.blastam.com/blog/how-to-track-downloads-in-google-analytics
+                // Tell the browser to wait 400ms before going to the download.  This is to ensure
+                // that the GA tracking request goes through. Some browsers will interrupt the tracking
+                // request if the download opens on the same page.
+                String timeout = addWaitTime ? "that=this; setTimeout(function(){location.href=that.href;},400);return false;" : "";
+
+                // GA4 variant
+                String onClickScript = "try {gtag('event', 'Lincs', {eventAction: " + PageFlowUtil.qh(eventAction) + ", fileName: " + PageFlowUtil.qh(fileName) + "}); } catch(err) {}";
+                onClickScript += timeout;
+                return onClickScript;
+            }
+            return null;
+        }
+
+        public static HtmlString externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType, String gctFileDavUrl)
+        {
+            String morpheusUrl = getMorpheusUrl(gctFileDavUrl, assayType);
+
+            String analyticsScript = getAnalyticsScript("Morpheus", fileName, false);
+
+            String imgUrl = AppProps.getInstance().getContextPath() + "/lincs/GENE-E_icon.png";
+
+            LinkBuilder viewInMorpheusLink = LinkBuilder.simpleLink("View in Morpheus", morpheusUrl).target("_blank");
+            if (analyticsScript != null)
+            {
+                viewInMorpheusLink.onClick(analyticsScript);
+            }
+
+            return HtmlString.of(DOM.SPAN("[",
+                    HtmlString.NBSP,
+                    viewInMorpheusLink,
+                    HtmlString.NBSP,
+                    IMG(at(src, imgUrl).at(width, 13).at(height, 13)),
+                    HtmlString.NBSP,
+                    "]"));
+        }
+
+        private static String getMorpheusUrl(String gctFileUrl, LincsModule.LincsAssay assayType)
+        {
+            String morpheusJson = "{\"dataset\":\"" + gctFileUrl + "\",";
+            if(assayType == LincsModule.LincsAssay.P100)
+            {
+                morpheusJson += "\"rows\":[{\"field\":\"pr_p100_modified_peptide_code\",\"display\":\"Text\"},{\"field\":\"pr_gene_symbol\",\"display\":\"Text\"},{\"field\":\"pr_p100_phosphosite\",\"display\":\"Text\"},{\"field\":\"pr_uniprot_id\",\"display\":\"Text\"}],";
+            }
+            if(assayType == LincsModule.LincsAssay.GCP)
+            {
+                morpheusJson += "\"rows\":[{\"field\":\"pr_gcp_histone_mark\",\"display\":\"Text\"},{\"field\":\"pr_gcp_modified_peptide_code\",\"display\":\"Text\"}],";
+            }
+            morpheusJson += "\"columns\":[{\"field\":\"pert_iname\",\"display\":\"Text\"},{\"field\":\"det_well\",\"display\":\"Text\"}],";
+            morpheusJson += "\"colorScheme\":{\"type\":\"fixed\",\"map\":[{\"value\":-3,\"color\":\"blue\"},{\"value\":0,\"color\":\"white\"},{\"value\":3,\"color\":\"red\"}]}";
+            morpheusJson += "}";
+
+            String morpheusUrl= "http://www.broadinstitute.org/cancer/software/morpheus/?json=";
+            morpheusUrl += PageFlowUtil.encodeURIComponent(morpheusJson);
+            return morpheusUrl;
         }
 
         @Override
@@ -440,66 +500,5 @@ public class LincsDataTable extends FilteredTable
         {
             return getValue(ctx);
         }
-    }
-
-    private static String getAnalyticsScript(String eventAction, String fileName, boolean addWaitTime)
-    {
-        if (!StringUtils.isBlank(AnalyticsService.getTrackingScript()))
-        {
-            // http://www.blastam.com/blog/how-to-track-downloads-in-google-analytics
-            // Tell the browser to wait 400ms before going to the download.  This is to ensure
-            // that the GA tracking request goes through. Some browsers will interrupt the tracking
-            // request if the download opens on the same page.
-            String timeout = addWaitTime ? "that=this; setTimeout(function(){location.href=that.href;},400);return false;" : "";
-
-            // GA4 variant
-            String onClickScript = "try {gtag('event', 'Lincs', {eventAction: " + PageFlowUtil.qh(eventAction) + ", fileName: " + PageFlowUtil.qh(fileName) + "}); } catch(err) {}";
-            onClickScript += timeout;
-            return onClickScript;
-        }
-        return null;
-    }
-
-    public static HtmlString externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType, String gctFileDavUrl)
-    {
-        String morpheusUrl = getMorpheusUrl(gctFileDavUrl, assayType);
-
-        String analyticsScript = getAnalyticsScript("Morpheus", fileName, false);
-
-        String imgUrl = AppProps.getInstance().getContextPath() + "/lincs/GENE-E_icon.png";
-
-        LinkBuilder viewInMorpheusLink = LinkBuilder.simpleLink("View in Morpheus", morpheusUrl).target("_blank");
-        if (analyticsScript != null)
-        {
-            viewInMorpheusLink.onClick(analyticsScript);
-        }
-
-        return HtmlString.of(DOM.SPAN("[",
-                HtmlString.NBSP,
-                viewInMorpheusLink,
-                HtmlString.NBSP,
-                IMG(at(src, imgUrl).at(width, 13).at(height, 13)),
-                HtmlString.NBSP,
-                "]"));
-    }
-
-    private static String getMorpheusUrl(String gctFileUrl, LincsModule.LincsAssay assayType)
-    {
-        String morpheusJson = "{\"dataset\":\"" + gctFileUrl + "\",";
-        if(assayType == LincsModule.LincsAssay.P100)
-        {
-            morpheusJson += "\"rows\":[{\"field\":\"pr_p100_modified_peptide_code\",\"display\":\"Text\"},{\"field\":\"pr_gene_symbol\",\"display\":\"Text\"},{\"field\":\"pr_p100_phosphosite\",\"display\":\"Text\"},{\"field\":\"pr_uniprot_id\",\"display\":\"Text\"}],";
-        }
-        if(assayType == LincsModule.LincsAssay.GCP)
-        {
-            morpheusJson += "\"rows\":[{\"field\":\"pr_gcp_histone_mark\",\"display\":\"Text\"},{\"field\":\"pr_gcp_modified_peptide_code\",\"display\":\"Text\"}],";
-        }
-        morpheusJson += "\"columns\":[{\"field\":\"pert_iname\",\"display\":\"Text\"},{\"field\":\"det_well\",\"display\":\"Text\"}],";
-        morpheusJson += "\"colorScheme\":{\"type\":\"fixed\",\"map\":[{\"value\":-3,\"color\":\"blue\"},{\"value\":0,\"color\":\"white\"},{\"value\":3,\"color\":\"red\"}]}";
-        morpheusJson += "}";
-
-        String morpheusUrl= "http://www.broadinstitute.org/cancer/software/morpheus/?json=";
-        morpheusUrl += PageFlowUtil.encodeURIComponent(morpheusJson);
-        return morpheusUrl;
     }
 }

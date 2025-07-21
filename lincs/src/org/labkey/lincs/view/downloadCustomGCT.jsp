@@ -28,10 +28,10 @@
 <%@ page import="java.util.stream.Collectors" %>
 <%@ page import="org.labkey.api.files.FileContentService" %>
 <%@ page import="java.net.URI" %>
-<%@ page import="org.labkey.lincs.LincsDataTable" %>
 <%@ page import="org.labkey.lincs.LincsController" %>
 <%@ page import="org.labkey.lincs.LincsModule.LincsAssay" %>
 <%@ page import="org.labkey.api.util.HtmlString" %>
+<%@ page import="org.labkey.lincs.LincsDataTable.GctColumnPSP" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <labkey:errors/>
@@ -56,7 +56,7 @@
 
     URI webDavUri = FileContentService.get().getWebDavUrl(gctBean.getGctFile(), getContainer(), FileContentService.PathType.full);
     LincsAssay assayType = LincsController.getLincsAssayType(getContainer());
-    HtmlString morpheusViewerLink = LincsDataTable.externalHeatmapViewerLink(fileName, assayType, webDavUri.toString());
+    HtmlString morpheusViewerLink = GctColumnPSP.externalHeatmapViewerLink(fileName, assayType, webDavUri.toString());
 %>
 
 <div style="margin:20px 10px 20px 10px">
