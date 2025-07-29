@@ -740,7 +740,7 @@ a { text-decoration: none; }
         buttons: {
             Ok: function() {
                 setButtonsEnabled(false);
-                window.location = "<%=h(urlFor(SkylineToolsStoreController.DeleteLatestAction.class).addParameter("id", tool.getRowId()).addParameter("sender", toolDetailsLatestUrl.getLocalURIString()))%>"
+                window.location = <%=q(urlFor(SkylineToolsStoreController.DeleteLatestAction.class).addParameter("id", tool.getRowId()).addParameter("sender", toolDetailsLatestUrl.getLocalURIString()))%>
             },
             Cancel: function() {$(this).dialog("close");}
         }
