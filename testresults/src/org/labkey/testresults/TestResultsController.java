@@ -28,6 +28,7 @@ import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.ReadOnlyApiAction;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.collections.IntHashMap;
 import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
@@ -1679,7 +1680,7 @@ public class TestResultsController extends SpringActionController
 
         TestPassDetail[] passes = new TableSelector(TestResultsSchema.getTableInfoTestPasses(), filter, sortById).getArray(TestPassDetail.class);
 
-        Map<Integer, List<TestPassDetail>> testPassDetails = new HashMap<>();
+        Map<Integer, List<TestPassDetail>> testPassDetails = new IntHashMap<>();
         int id = 0;
         for (TestPassDetail pass : passes) {
             if (id != pass.getTestRunId()) {
@@ -1738,7 +1739,7 @@ public class TestResultsController extends SpringActionController
         SimpleFilter filter = filterByRunId(runs);
 
         TestFailDetail[] fails = new TableSelector(TestResultsSchema.getTableInfoTestFails(), filter, null).getArray(TestFailDetail.class);
-        Map<Integer, List<TestFailDetail>> testFailDetails = new HashMap<>();
+        Map<Integer, List<TestFailDetail>> testFailDetails = new IntHashMap<>();
 
         for (TestFailDetail fail : fails) {
             List<TestFailDetail> list = testFailDetails.get(fail.getTestRunId());
@@ -1767,7 +1768,7 @@ public class TestResultsController extends SpringActionController
         List<TestLeakDetail> leaks = new ArrayList<>();
         Collections.addAll(leaks, new TableSelector(TestResultsSchema.getTableInfoMemoryLeaks(), filter, null).getArray(TestMemoryLeakDetail.class));
         Collections.addAll(leaks, new TableSelector(TestResultsSchema.getTableInfoHandleLeaks(), filter, null).getArray(TestHandleLeakDetail.class));
-        Map<Integer, List<TestLeakDetail>> testLeakDetails = new HashMap<>();
+        Map<Integer, List<TestLeakDetail>> testLeakDetails = new IntHashMap<>();
 
         for (TestLeakDetail leak : leaks) {
             List<TestLeakDetail> list = testLeakDetails.get(leak.getTestRunId());
@@ -1792,7 +1793,7 @@ public class TestResultsController extends SpringActionController
         SimpleFilter filter = filterByRunId(runs);
 
         TestHangDetail[] hangs = new TableSelector(TestResultsSchema.getTableInfoHangs(), filter, null).getArray(TestHangDetail.class);
-        Map<Integer, TestHangDetail> testHangDetails = new HashMap<>();
+        Map<Integer, TestHangDetail> testHangDetails = new IntHashMap<>();
 
         for (TestHangDetail hang : hangs) {
             testHangDetails.put(hang.getTestRunId(), hang);

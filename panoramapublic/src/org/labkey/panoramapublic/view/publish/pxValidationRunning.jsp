@@ -20,7 +20,7 @@
 <%
     JspView<PxValidationStatusBean> view = HttpView.currentView();
     var bean = view.getModelBean();
-    int jobId = bean.getDataValidation().getJobId();
+    long jobId = bean.getDataValidation().getJobId();
     var jobStatus = bean.getPipelineJobStatus();
     var onPageLoadMsg = jobStatus != null ? (String.format("Data validation job is %s. This page will automatically refresh with the validation progress.",
             jobStatus.isActive() ? (PipelineJob.TaskStatus.waiting.matches(jobStatus.getStatus()) ? "in the queue" : "running") : "complete"))

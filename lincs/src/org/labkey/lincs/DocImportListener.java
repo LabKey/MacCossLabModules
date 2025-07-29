@@ -137,7 +137,7 @@ public class DocImportListener implements ExperimentListener, SkylineDocumentImp
             return;
         }
 
-        int jobId = PipelineService.get().getJobId(user, container, job.getJobGUID());
+        long jobId = PipelineService.get().getJobId(user, container, job.getJobGUID());
         _log.info("LINCS: Queued job Id " + jobId +" for creating GCT files for " + skylineRun.getFileName() + ". Container: " + container.getPath());
 
         pspJob.setPipelineJobId(jobId);

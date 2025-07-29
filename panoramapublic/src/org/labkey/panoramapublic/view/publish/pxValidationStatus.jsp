@@ -28,7 +28,7 @@
     ExperimentAnnotations experimentAnnotations = bean.getExpAnnotations();
     int experimentAnnotationsId = experimentAnnotations.getId();
     boolean includeSubfolders = experimentAnnotations.isIncludeSubfolders();
-    int jobId = bean.getDataValidation().getJobId();
+    long jobId = bean.getDataValidation().getJobId();
     Integer journalId = bean.getJournalId();
     var submitAction = SpringActionController.getActionName(PanoramaPublicController.PublishExperimentAction.class);
     Submission submission = bean.getSubmission();

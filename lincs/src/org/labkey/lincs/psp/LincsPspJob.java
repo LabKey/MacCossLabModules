@@ -9,7 +9,7 @@ public class LincsPspJob
     private int id;
     private long _runId;
     private Container _container;
-    private Integer _pipelineJobId;
+    private Long _pipelineJobId;
 
     private String _pspJobId;
     private String pspJobName;
@@ -59,12 +59,12 @@ public class LincsPspJob
         _container = container;
     }
 
-    public Integer getPipelineJobId()
+    public Long getPipelineJobId()
     {
         return _pipelineJobId;
     }
 
-    public void setPipelineJobId(Integer pipelineJobId)
+    public void setPipelineJobId(Long pipelineJobId)
     {
         _pipelineJobId = pipelineJobId;
     }

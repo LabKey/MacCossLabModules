@@ -85,7 +85,7 @@ public class ExperimentAnnotationsManager
      * @param experimentId FK -> exp.experiment.rowId
      * @return ExperimentAnnotations object with the given experimentId
      */
-    public static ExperimentAnnotations getForExperimentId(int experimentId)
+    public static ExperimentAnnotations getForExperimentId(long experimentId)
     {
         return new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),
                 new SimpleFilter(FieldKey.fromParts("ExperimentId"), experimentId), null).getObject(ExperimentAnnotations.class);
@@ -123,7 +123,7 @@ public class ExperimentAnnotationsManager
 
         // Get all the runs in the experiment.
         List<? extends ExpRun> runs = experiment.getRuns();
-        List<Integer> rowIdsToRemove = new ArrayList<>();
+        List<Long> rowIdsToRemove = new ArrayList<>();
         Container expContainer = experiment.getContainer();
         // Get a list of runs that are not in the folder where the experiment is defined.
         for(ExpRun run: runs)
@@ -134,9 +134,9 @@ public class ExperimentAnnotationsManager
             }
         }
 
-        int[] rowIds = new int[rowIdsToRemove.size()];
+        long[] rowIds = new long[rowIdsToRemove.size()];
         int i = 0;
-        for(Integer rowId: rowIdsToRemove)
+        for(Long rowId: rowIdsToRemove)
         {
             rowIds[i++] = rowId;
         }
@@ -152,11 +152,11 @@ public class ExperimentAnnotationsManager
         }
     }
 
-    private static void removeRunIds(ExpExperiment experiment, int[] rowIds, User user)
+    private static void removeRunIds(ExpExperiment experiment, long[] rowIds, User user)
     {
         ExperimentService expService = ExperimentService.get();
 
-        for(int rowId: rowIds)
+        for (long rowId: rowIds)
         {
             ExpRun run = expService.getExpRun(rowId);
             if(run != null)
@@ -187,7 +187,7 @@ public class ExperimentAnnotationsManager
 
         // Get a list of runs that already belong to the experiment.
         List<? extends ExpRun> existingRuns = experiment.getRuns();
-        Set<Integer> existingRunRowIds = new HashSet<>();
+        Set<Long> existingRunRowIds = new HashSet<>();
         for(ExpRun run: existingRuns)
         {
             existingRunRowIds.add(run.getRowId());
@@ -195,7 +195,7 @@ public class ExperimentAnnotationsManager
 
         // Keep runs that do not already belong to the experiment.
         runs.removeIf(run -> existingRunRowIds.contains(run.getRowId()));
-        int[] rowIds = new int[runs.size()];
+        long[] rowIds = new long[runs.size()];
         int i = 0;
         for(ExpRun run: runs)
         {
@@ -213,10 +213,10 @@ public class ExperimentAnnotationsManager
         }
     }
 
-    public static void addSelectedRunsToExperiment(ExpExperiment experiment, int[] rowIds, User user)
+    public static void addSelectedRunsToExperiment(ExpExperiment experiment, long[] rowIds, User user)
     {
         List<ExpRun> runs = new ArrayList<>();
-        for (int rowId : rowIds)
+        for (long rowId : rowIds)
         {
             ExpRun run = ExperimentService.get().getExpRun(rowId);
             if (run != null)

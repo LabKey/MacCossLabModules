@@ -174,7 +174,7 @@ public class NextFlowManager
         return DbSchema.get(SCHEMA_NAME, DbSchemaType.Module);
     }
 
-    private Integer getJobId(NextFlowPipelineJob job)
+    private Long getJobId(NextFlowPipelineJob job)
     {
         PipelineStatusFile file = PipelineService.get().getStatusFile(job.getJobGUID());
         return file == null ? null : file.getRowId();
@@ -185,7 +185,7 @@ public class NextFlowManager
         return getInvocationCount(getJobId(job));
     }
 
-    private int getInvocationCount(int jobId)
+    private int getInvocationCount(long jobId)
     {
         Integer result = new SqlSelector(getDbSchema(), new SQLFragment("SELECT InvocationCount FROM nextflow.Job WHERE JobId = ?", jobId)).getObject(Integer.class);
         return result != null ? result.intValue() : 0;
@@ -193,7 +193,7 @@ public class NextFlowManager
 
     public int incrementInvocationCount(NextFlowPipelineJob job)
     {
-        int jobId = getJobId(job);
+        long jobId = getJobId(job);
         int current = getInvocationCount(jobId);
         current++;
         if (current == 1)

@@ -15,7 +15,7 @@ public class DataValidation extends DbEntity
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-d HH:mm");
 
     private int _experimentAnnotationsId;
-    private int _jobId;
+    private long _jobId;
     private PxStatus _status;
 
     public DataValidation() {}
@@ -35,12 +35,12 @@ public class DataValidation extends DbEntity
         _experimentAnnotationsId = experimentAnnotationsId;
     }
 
-    public int getJobId()
+    public long getJobId()
     {
         return _jobId;
     }
 
-    public void setJobId(int jobId)
+    public void setJobId(long jobId)
     {
         _jobId = jobId;
     }

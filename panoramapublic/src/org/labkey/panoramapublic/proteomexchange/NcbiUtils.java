@@ -20,6 +20,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.labkey.api.collections.IntHashMap;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
 import org.labkey.api.util.logging.LogHelper;
@@ -120,7 +121,7 @@ public class NcbiUtils
     {
         String queryUrl = eutilsUrl + "&id=" + StringUtils.join(taxIds, ",");
 
-        Map<Integer, String> sciNameMap = new HashMap<>();
+        Map<Integer, String> sciNameMap = new IntHashMap<>();
 
         HttpURLConnection conn = null;
         try
