@@ -187,7 +187,7 @@
         <p>
             <label for="toolOwnersManage">Tool owners </label><br />
             <input type="text" id="toolOwnersManage" class="toolOwners" name="toolOwners" /><br /><br />
-            <input type="hidden" name="sender" value="<%= h(request.getRequestURL()) %>" />
+            <input type="hidden" name="sender" value="<%= h(getActionURL()) %>" />
             <input type="hidden" id="updatetargetOwners" name="updatetarget" value="" />
             <input type="submit" value="Update Tool Owners" />
         </p>
@@ -203,7 +203,7 @@
                 <label for="toolOwnersNew">Tool owners </label><br />
                 <input type="text" id="toolOwnersNew" class="toolOwners" name="toolOwners" /><br /><br /><br />
             </span>
-            <input type="hidden" name="sender" value="<%= h(request.getRequestURL()) %>" />
+            <input type="hidden" name="sender" value="<%= h(getActionURL()) %>" />
             <input type="hidden" id="updatetarget" name="updatetarget" value="" />
             <input type="submit" value="Upload Tool" />
         </p>
