@@ -34,7 +34,7 @@ public class PanoramaPublicMyDataViewTest extends PanoramaPublicBaseTest
     @BeforeClass
     public static void initialSetUp()
     {
-        PanoramaPublicMyDataViewTest test = (PanoramaPublicMyDataViewTest) getCurrentTest();
+        PanoramaPublicMyDataViewTest test = getCurrentTest();
         test.init();
     }
 

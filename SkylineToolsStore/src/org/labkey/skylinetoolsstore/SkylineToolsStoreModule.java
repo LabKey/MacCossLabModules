@@ -32,7 +32,6 @@ import org.labkey.api.view.WebPartView;
 import org.labkey.skylinetoolsstore.model.SkylineTool;
 import org.labkey.skylinetoolsstore.view.SkylineToolsStoreWebPart;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -66,19 +65,21 @@ public class SkylineToolsStoreModule extends DefaultModule
     @NotNull
     protected Collection<WebPartFactory> createWebPartFactories()
     {
-        return new ArrayList<WebPartFactory>(
-            Arrays.asList(
-                    new BaseWebPartFactory("Skyline Tool Store") {
+        return new ArrayList<>(
+                Arrays.asList(
+                        new BaseWebPartFactory("Skyline Tool Store")
                         {
-                            addLegacyNames("Skyline Tools Store");
+                            {
+                                addLegacyNames("Skyline Tools Store");
+                            }
+
+                            @Override
+                            public WebPartView getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart) throws WebPartConfigurationException
+                            {
+                                return new SkylineToolsStoreWebPart();
+                            }
                         }
-                        @Override
-                        public WebPartView getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart) throws WebPartConfigurationException
-                        {
-                            return new SkylineToolsStoreWebPart();
-                        }
-                    }
-            ));
+                ));
     }
 
     @Override

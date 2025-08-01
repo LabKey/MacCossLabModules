@@ -360,7 +360,7 @@ public class ExperimentAnnotationsManager
         SimpleFilter filter = container != null ? SimpleFilter.createContainerFilter(container) : null;
         List<ExperimentAnnotations> expAnnotations = new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),
                 filter, null).getArrayList(ExperimentAnnotations.class);
-        if(expAnnotations.size() > 0)
+        if(!expAnnotations.isEmpty())
         {
             // 09.04.14
             // Return the first experiment in the container.
@@ -374,7 +374,7 @@ public class ExperimentAnnotationsManager
     public static boolean hasExperimentsInSubfolders(Container container, User user)
     {
         Collection<GUID> containerIds = ContainerFilter.Type.CurrentAndSubfolders.create(container, user).getIds();
-        if(containerIds == null || containerIds.size() == 0)
+        if(containerIds == null || containerIds.isEmpty())
         {
             return false;
         }
@@ -394,7 +394,7 @@ public class ExperimentAnnotationsManager
         List<ExperimentAnnotations> expAnnotations = new TableSelector(PanoramaPublicManager.getTableInfoExperimentAnnotations(),
                 filter, null).getArrayList(ExperimentAnnotations.class);
 
-        return expAnnotations.size() > 0;
+        return !expAnnotations.isEmpty();
     }
 
     public static ExperimentAnnotations getExperimentForShortUrl(ShortURLRecord shortUrl)
@@ -546,7 +546,6 @@ public class ExperimentAnnotationsManager
     }
 
     /**
-     * @param experimentAnnotations
      * @return true if the given experiment is a journal copy, and is the most recent version.
      */
     public static boolean isCurrentVersion(ExperimentAnnotations experimentAnnotations)
@@ -577,8 +576,6 @@ public class ExperimentAnnotationsManager
     }
 
     /**
-     * @param container
-     * @param user
      * @return List of instruments that were used to acquire the data for the Skyline documents in the given container.
      * The list will only include instrument model names that have a match in the PSI-MS controlled vocabulary. We are not able
      * to get specific instrument model names from Bruker, Agilent or Waters raw data. The instrument name for data from these
@@ -596,7 +593,7 @@ public class ExperimentAnnotationsManager
 
     private static List<String> getInstrumentModelNames(List<Long> runIds, User user, Container container)
     {
-        if (runIds.size() > 0)
+        if (!runIds.isEmpty())
         {
             SimpleFilter filter = new SimpleFilter().addInClause(FieldKey.fromParts("runId"), runIds);
             return new TableSelector(TargetedMSService.get().getUserSchema(user, container).getTable("instrument"),

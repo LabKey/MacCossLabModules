@@ -102,7 +102,7 @@ public class SpecLib extends SpecLibValidation<SkylineDocSpecLib>
         if (!isValid && getSpecLibInfo() == null)
         {
             List<SkylineDocSpecLib> docLibraries = DataValidationManager.getSkylineDocSpecLibs(this);
-            if (docLibraries.size() > 0)
+            if (!docLibraries.isEmpty())
             {
                 // Add the database Id of a library used with one of the Skyline documents so that we can display a link to
                 // add the "Add Library Information". The same library can be used with multiple documents. A new row is

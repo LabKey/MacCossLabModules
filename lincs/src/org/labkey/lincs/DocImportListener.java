@@ -29,7 +29,7 @@ import java.util.stream.Stream;
 
 public class DocImportListener implements ExperimentListener, SkylineDocumentImportListener
 {
-    private static Logger _log = LogManager.getLogger(DocImportListener.class);
+    private static final Logger _log = LogManager.getLogger(DocImportListener.class);
 
     @Override
     public void beforeRunDelete(ExpProtocol protocol, ExpRun run, User user)

@@ -120,7 +120,7 @@ public class TestFailDetail implements Comparable<TestFailDetail>
     @Override
     public int compareTo(TestFailDetail o)
     {
-        int diff = 0;
+        int diff;
         if(this.timestamp == null) {
             diff = Integer.compare(this.testId, o.testId);
         } else {

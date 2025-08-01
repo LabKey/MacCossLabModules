@@ -29,7 +29,7 @@
     Container c = getContainer();
     RunDetail[] runs = data.getStatRuns();
     if(runs.length > 1) {
-        Arrays.sort(runs, new Comparator<RunDetail>()
+        Arrays.sort(runs, new Comparator<>()
         {
             @Override
             public int compare(RunDetail o1, RunDetail o2)
@@ -100,7 +100,7 @@
     </tr>
     <%
     Collections.reverse(Arrays.asList(runs)); // so most recent is on top
-    Map<Date, Integer> dates = new TreeMap<Date, Integer>();  // maps dates to count of failures per run
+    Map<Date, Integer> dates = new TreeMap<>();  // maps dates to count of failures per run
     for(RunDetail run: runs) { %>
         <tr>
             <td>
@@ -141,10 +141,10 @@
                 <%
                     Map<String, Double> lang =languageBreakdown.get("");
                    for(String l: lang.keySet()) {
-                    Double percent = lang.get(l) * 100;
+                    double percent = lang.get(l) * 100;
                 %>
 
-                ['<%=h(l)%>', <%=percent.intValue()%>],
+                ['<%=h(l)%>', <%=(int)percent%>],
                 <%}%>  ],
             type : 'pie'
         },

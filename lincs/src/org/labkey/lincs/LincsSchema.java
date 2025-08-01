@@ -117,7 +117,7 @@ public class LincsSchema extends UserSchema
         }
         if (getTableNames().contains(name))
         {
-            SimpleUserSchema.SimpleTable<LincsSchema> result = new SimpleUserSchema.SimpleTable<LincsSchema>(this, getSchema().getTable(name), cf)
+            SimpleUserSchema.SimpleTable<LincsSchema> result = new SimpleUserSchema.SimpleTable<>(this, getSchema().getTable(name), cf)
             {
                 @Override
                 public boolean hasPermission(@NotNull UserPrincipal user, @NotNull Class<? extends Permission> perm)

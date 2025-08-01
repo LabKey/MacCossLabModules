@@ -16,10 +16,10 @@ import org.labkey.lincs.LincsModule;
 
 public class LincsPspPipelineJob extends PipelineJob implements LincsPspJobSupport
 {
-    private ITargetedMSRun _run;
-    private String _description;
-    private LincsPspJob _pspJob;
-    private LincsPspJob _oldPspJob;
+    private final ITargetedMSRun _run;
+    private final String _description;
+    private final LincsPspJob _pspJob;
+    private final LincsPspJob _oldPspJob;
 
     @JsonCreator
     protected LincsPspPipelineJob(@JsonProperty("_run") ITargetedMSRun run, @JsonProperty("_pspJob") LincsPspJob pspJob,

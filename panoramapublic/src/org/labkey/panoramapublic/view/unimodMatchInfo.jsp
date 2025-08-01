@@ -39,7 +39,7 @@
 
 
 <div id="unimodMatchDiv"></div>
-<%if (bean.getUnimodMatches().size() == 0 && !bean.isIsotopicMod()) { %>
+<%if (bean.getUnimodMatches().isEmpty() && !bean.isIsotopicMod()) { %>
 <div class="alert alert-info" style="width:800px;">
     Define a custom <%=button("Combination Modification").href(defineCombinationModUrl)%> if this modification is a combination of two modifications.
 </div>
@@ -85,7 +85,7 @@
             },
             {
                 xtype: 'component',
-                <% if (unimodMatches.size() == 0) { %>
+                <% if (unimodMatches.isEmpty()) { %>
                 cls: 'alert labkey-error alert-warning',
                 <% } %>
                 html: unimodMatchesHtml()

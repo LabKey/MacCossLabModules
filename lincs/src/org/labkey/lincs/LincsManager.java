@@ -49,7 +49,7 @@ public class LincsManager
 {
     private static final LincsManager _instance = new LincsManager();
 
-    private static Logger _log = LogManager.getLogger(LincsManager.class);
+    private static final Logger _log = LogManager.getLogger(LincsManager.class);
 
     private LincsManager()
     {

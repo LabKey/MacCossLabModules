@@ -48,6 +48,7 @@ public class SkylineDocSampleFile extends DataFile
         _filePathImported = filePathImported;
     }
 
+    @Override
     @NotNull
     public JSONObject toJSON(Container container)
     {

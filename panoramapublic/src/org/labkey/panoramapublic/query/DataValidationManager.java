@@ -125,7 +125,7 @@ public class DataValidationManager
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("Created"), validation.getCreated(), CompareType.GT);
             filter.addCondition(FieldKey.fromParts("Container"), container.getId());
-            if (AuditLogService.get().getAuditEvents(container, user, FileSystemAuditProvider.EVENT_TYPE, filter, null).size() > 0)
+            if (!AuditLogService.get().getAuditEvents(container, user, FileSystemAuditProvider.EVENT_TYPE, filter, null).isEmpty())
             {
                 return true;
             }
@@ -417,7 +417,7 @@ public class DataValidationManager
             // Get the libraries associated with the given SpecLibInfo
             List<SpecLib> specLibList = getLibrariesForSpecLibInfo(specLibInfo, validation);
 
-            if (specLibList.size() > 0)
+            if (!specLibList.isEmpty())
             {
                 try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
                 {
@@ -440,7 +440,7 @@ public class DataValidationManager
         if (validation != null)
         {
             // Get the libraries associated with the given SpecLibInfo
-            if (getLibrariesForSpecLibInfo(specLibInfo, validation).size() > 0)
+            if (!getLibrariesForSpecLibInfo(specLibInfo, validation).isEmpty())
             {
                 recalculateStatus(validation, user);
             }
@@ -463,7 +463,7 @@ public class DataValidationManager
             // Get the libraries associated with the given SpecLibInfo
             List<SpecLib> specLibList = getLibrariesMatchingSpecLibInfo(specLibInfo, validation, user);
 
-            if (specLibList.size() > 0)
+            if (!specLibList.isEmpty())
             {
                 try (DbScope.Transaction transaction = PanoramaPublicSchema.getSchema().getScope().ensureTransaction())
                 {
@@ -725,12 +725,11 @@ public class DataValidationManager
                 notFound.add(orgName);
             }
         }
-        if(notFound.size() > 0)
+        if(!notFound.isEmpty())
         {
-            StringBuilder err = new StringBuilder("No taxonomy ID found for organism");
-            err.append(notFound.size() > 1 ? "s: " : ": ");
-            err.append(StringUtils.join(notFound, ','));
-            errors.add(err.toString());
+            String err = "No taxonomy ID found for organism" + (notFound.size() > 1 ? "s: " : ": ") +
+                    StringUtils.join(notFound, ',');
+            errors.add(err);
         }
     }
 
@@ -757,12 +756,11 @@ public class DataValidationManager
                 notFound.add(instrumentName);
             }
         }
-        if(notFound.size() > 0)
+        if(!notFound.isEmpty())
         {
-            StringBuilder err = new StringBuilder("Unrecognized instrument");
-            err.append(notFound.size() > 1 ? "s: " : ": ");
-            err.append(StringUtils.join(notFound, ','));
-            errors.add(err.toString());
+            String err = "Unrecognized instrument" + (notFound.size() > 1 ? "s: " : ": ") +
+                    StringUtils.join(notFound, ',');
+            errors.add(err);
         }
     }
 

@@ -474,26 +474,25 @@ public class PanoramaPublicSymlinkManager
             }
         }
 
-        if(linkInvalidTarget.size() > 0)
+        if(!linkInvalidTarget.isEmpty())
         {
             String linkInvalidTargets = linkInvalidTarget.entrySet().stream().map(String::valueOf).collect(Collectors.joining("\n"));
             _log.error(linkInvalidTarget.size() + " Symlinks with invalid targets: \n" + linkInvalidTargets);
         }
 
-        if(linkWithSymlinkTarget.size() > 0)
+        if(!linkWithSymlinkTarget.isEmpty())
         {
             String linkWithSymlinkTargets = linkWithSymlinkTarget.entrySet().stream().map(String::valueOf).collect(Collectors.joining("\n"));
             _log.error(linkWithSymlinkTarget.size() + " Symlinks targeting symlinks: \n" + linkWithSymlinkTargets);
         }
 
-        return linkInvalidTarget.size() == 0 && linkWithSymlinkTarget.size() == 0;
+        return linkInvalidTarget.isEmpty() && linkWithSymlinkTarget.isEmpty();
     }
 
     /**
      * Returns a set of containers that can have symlinks that target files in targetContainer. This includes the source container,
      * and containers with previous versions of the experiment. Only the container with the current version of the experiment
      * can have symlink targets.
-     * @param targetContainer
      * @return A set of containers that can have symlinks that target files in targetContainer
      */
     private static Set<Container> getSymlinkContainers(Container targetContainer)

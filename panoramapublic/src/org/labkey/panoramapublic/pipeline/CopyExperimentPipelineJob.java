@@ -242,6 +242,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
         _deletePreviousCopy = deletePreviousCopy;
     }
 
+    @Override
     public String getPreviousVersionName()
     {
         return _previousVersionName;

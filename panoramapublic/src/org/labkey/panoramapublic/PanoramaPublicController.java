@@ -421,7 +421,7 @@ public class PanoramaPublicController extends SpringActionController
                     errors.addError(new LabKeyError("Project name " + form.getProjectName() + " already exists."));
                 }
             }
-            else if(error.length() > 0)
+            else if(!error.isEmpty())
             {
                 errors.addError(new LabKeyError(error.toString()));
             }
@@ -569,7 +569,7 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
-            if(JournalManager.getExperimentsForJournal(journal.getId()).size() > 0)
+            if(!JournalManager.getExperimentsForJournal(journal.getId()).isEmpty())
             {
                 // Do not delete the journal via the Admin console link if it contains any published data.
                 // The journal project can still be deleted from the LabKey UI, however.
@@ -1388,7 +1388,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public class DownloadPanoramaLogoForBlueskyAction extends BaseDownloadAction<AttachmentForm>
+    public static class DownloadPanoramaLogoForBlueskyAction extends BaseDownloadAction<AttachmentForm>
     {
         @Nullable
         @Override
@@ -1412,7 +1412,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
-    public class DeletePanoramaLogoForBlueskyAction extends FormHandlerAction
+    public static class DeletePanoramaLogoForBlueskyAction extends FormHandlerAction<Object>
     {
         @Override
         public void validateCommand(Object target, Errors errors)
@@ -2213,12 +2213,12 @@ public class PanoramaPublicController extends SpringActionController
             {
                 List<Container> allSubfolders = getAllSubfolders(_experimentAnnotations.getContainer());
                 List<Container> hiddenFolders = getHiddenFolders(allSubfolders, getUser());
-                if(!_experimentAnnotations.isIncludeSubfolders() && allSubfolders.size() > 0)
+                if(!_experimentAnnotations.isIncludeSubfolders() && !allSubfolders.isEmpty())
                 {
                     // Experiment is not configured to include subfolders but there are subfolders.
                     ActionURL skipSubfolderCheckUrl = getViewContext().getActionURL().clone();
                     skipSubfolderCheckUrl.addParameter("doSubfolderCheck", "false");
-                    if(hiddenFolders.size() == 0)
+                    if(hiddenFolders.isEmpty())
                     {
                         // Return a view to make the user confirm their intention to include / exclude subfolders from the experiment.
                         return getConfirmIncludeSubfoldersView(_experimentAnnotations, allSubfolders, skipSubfolderCheckUrl);
@@ -2231,7 +2231,7 @@ public class PanoramaPublicController extends SpringActionController
                         return getNoPermsInSubfoldersView(_experimentAnnotations, hiddenFolders, skipSubfolderCheckUrl);
                     }
                 }
-                else if(_experimentAnnotations.isIncludeSubfolders() && hiddenFolders.size() > 0)
+                else if(_experimentAnnotations.isIncludeSubfolders() && !hiddenFolders.isEmpty())
                 {
                     // Experiment is already configured to include subfolders but there are subfolders where this user does
                     // not have read permissions.
@@ -2261,7 +2261,7 @@ public class PanoramaPublicController extends SpringActionController
             // This may be OK for template documents that do not have any imported chromatograms but they should be rare on Panorama.
             // Most documents should have chromatogram data (.skyd files in the .sky.zip archive)
             List<ITargetedMSRun> notSkyZipRuns = getNotSkyZipRuns(_experimentAnnotations);
-            if (notSkyZipRuns.size() > 0)
+            if (!notSkyZipRuns.isEmpty())
             {
                 return new HtmlView(DIV("The following Skyline documents are incomplete. " +
                                 "Please upload the complete Skyline ZIP archive (.sky.zip file) by using the 'Upload to Panorama' button or menu in Skyline.",
@@ -2536,7 +2536,7 @@ public class PanoramaPublicController extends SpringActionController
 
         @NotNull ModelAndView getMissingMetadataView(MissingMetadataBean missingMetadataBean, String viewTitle, BindException errors)
         {
-            JspView view = new JspView("/org/labkey/panoramapublic/view/publish/missingMetadata.jsp", missingMetadataBean, errors);
+            JspView view = new JspView<>("/org/labkey/panoramapublic/view/publish/missingMetadata.jsp", missingMetadataBean, errors);
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle(viewTitle);
             return view;
@@ -2565,7 +2565,7 @@ public class PanoramaPublicController extends SpringActionController
             form.setId(exptAnnotations.getId());
             form.setShortAccessUrl(generateRandomUrl(RANDOM_URL_SIZE));
             List<Journal> journals = JournalManager.getJournals();
-            if (journals.size() == 0)
+            if (journals.isEmpty())
             {
                 throw new NotFoundException("Could not find any journals.");
             }
@@ -2606,7 +2606,7 @@ public class PanoramaPublicController extends SpringActionController
             bean.setJournal(_journal);
             bean.setForm(form);
 
-            JspView<PanoramaPublicRequest> confirmView = new JspView<PanoramaPublicRequest>("/org/labkey/panoramapublic/view/publish/confirmSubmit.jsp", bean, errors);
+            JspView<PanoramaPublicRequest> confirmView = new JspView<>("/org/labkey/panoramapublic/view/publish/confirmSubmit.jsp", bean, errors);
             confirmView.setTitle(getConfirmViewTitle());
             return confirmView;
         }
@@ -3007,7 +3007,7 @@ public class PanoramaPublicController extends SpringActionController
             _experimentAnnotations = experimentAnnotations;
             JournalSubmission js = SubmissionManager.getJournalSubmission(experimentAnnotations.getId(), form.getJournalId(), experimentAnnotations.getContainer());
             // "Permanent Link" field in the form should not be editable if one or more copies of this experiment already exist in the journal project
-            _accessUrlEditable = js == null ? true : js.getCopiedSubmissions().size() == 0;
+            _accessUrlEditable = js == null ? true : js.getCopiedSubmissions().isEmpty();
         }
 
         public PublishExperimentForm getForm()
@@ -3188,6 +3188,7 @@ public class PanoramaPublicController extends SpringActionController
             _shortCopyUrl = shortCopyUrl;
         }
 
+        @Override
         public ExperimentAnnotations lookupExperiment()
         {
             return ExperimentAnnotationsManager.get(getId());
@@ -3450,7 +3451,7 @@ public class PanoramaPublicController extends SpringActionController
         public void validateCommand(PxDataValidationForm form, Errors errors)
         {
             var validationJobs = PipelineService.get().getActivePipelineJobs(getUser(), getContainer(), PxValidationPipelineProvider.NAME);
-            if (validationJobs.size() > 0)
+            if (!validationJobs.isEmpty())
             {
                 var job = validationJobs.size() > 1 ? "jobs" : "job";
                 errors.reject(ERROR_MSG, String.format("%d data validation %s %s already running in this folder. Wait for the running %s to finish, or cancel the %s and try again.",
@@ -3822,6 +3823,7 @@ public class PanoramaPublicController extends SpringActionController
             form.setUpdate(true);
         }
 
+        @Override
         String getFormViewTitle(String journalName)
         {
             return "Update Submission Request to " + journalName;
@@ -3889,6 +3891,7 @@ public class PanoramaPublicController extends SpringActionController
 
         abstract Submission getSubmission();
 
+        @Override
         boolean validateGetRequest(PublishExperimentForm form, BindException errors)
         {
             return super.validateGetRequest(form, errors) && foundValidSubmissionRequest(form, errors);
@@ -3912,6 +3915,7 @@ public class PanoramaPublicController extends SpringActionController
             return true;
         }
 
+        @Override
         protected void checkForValidation(ExperimentAnnotations experimentAnnotations, PublishExperimentForm form)
         {
             if (form.getValidationId() == null)
@@ -3989,7 +3993,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             if (foundValidSubmissionRequest(form, errors))
             {
-                super.validateForm(form, errors);;
+                super.validateForm(form, errors);
             }
         }
     }
@@ -4164,12 +4168,14 @@ public class PanoramaPublicController extends SpringActionController
             return true;
         }
 
+        @Override
         void populateForm(PublishExperimentForm form, ExperimentAnnotations exptAnnotations)
         {
             super.populateForm(form, exptAnnotations);
             form.setResubmit(true);
         }
 
+        @Override
         String getFormViewTitle(String journalName)
         {
             return "Resubmit Request to " + journalName;
@@ -4396,7 +4402,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             Set<Container> expContainers = expAnnot.isIncludeSubfolders() ? ContainerManager.getAllChildren(expAnnot.getContainer())
                     : Collections.singleton(expAnnot.getContainer());
-            return expContainers.stream().anyMatch(container -> service.getRuns(container).size() > 0);
+            return expContainers.stream().anyMatch(container -> !service.getRuns(container).isEmpty());
         }
         return false;
     }
@@ -5215,7 +5221,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
-    public class AssignDoiAction extends DoiAction
+    public static class AssignDoiAction extends DoiAction
     {
         private Doi _doi;
 
@@ -5462,7 +5468,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class PostToBlueskyOptionsAction extends SimpleViewAction<ExperimentIdForm>
     {
         @Override
-        public ModelAndView getView(ExperimentIdForm form, BindException errors) throws Exception
+        public ModelAndView getView(ExperimentIdForm form, BindException errors)
         {
             return new HtmlView(
                     DIV(
@@ -5709,9 +5715,9 @@ public class PanoramaPublicController extends SpringActionController
             view.setTitle(TargetedMSExperimentWebPart.WEB_PART_NAME);
             view.setInitialValue(SUBMITTER, getUser().getUserId());
             List<PsiInstrumentParser.PsiInstrument> instruments = ExperimentAnnotationsManager.getContainerInstruments(getContainer(), getUser());
-            if (instruments.size() > 0)
+            if (!instruments.isEmpty())
             {
-                view.setInitialValue("instrument", StringUtils.join(instruments.stream().map(i -> i.getName()).collect(Collectors.toList()), ","));
+                view.setInitialValue("instrument", StringUtils.join(instruments.stream().map(PsiInstrumentParser.PsiInstrument::getName).collect(Collectors.toList()), ","));
             }
             return view;
         }
@@ -5739,7 +5745,7 @@ public class PanoramaPublicController extends SpringActionController
             // We are here either because handlePost failed or there were errors in the form (e.g. missing required values)
             ExperimentAnnotations expAnnot = form.getBean();
 
-            if (expAnnot.getTitle() == null || expAnnot.getTitle().trim().length() == 0)
+            if (expAnnot.getTitle() == null || expAnnot.getTitle().trim().isEmpty())
             {
                 errors.reject(ERROR_MSG, "You must specify a title for the experiment");
             }
@@ -5986,7 +5992,7 @@ public class PanoramaPublicController extends SpringActionController
             HtmlView subfoldersView = null;
             if(exptAnnotations.isIncludeSubfolders())
             {
-                if(children.size() == 0)
+                if(children.isEmpty())
                 {
                    subfoldersView = new HtmlView(DIV(cl("labkey-error"),"Experiment is configured to include subfolders but no subfolders were found.",
                            BR(),
@@ -5999,7 +6005,7 @@ public class PanoramaPublicController extends SpringActionController
                             getExcludeSubfoldersButton(exptAnnotations).build()));
                 }
             }
-            else if(children.size() > 0)
+            else if(!children.isEmpty())
             {
                 subfoldersView = new HtmlView(DIV("This folder contains " + children.size() + " subfolders. " +
                                 "Data from the subfolders is not included in this experiment. Click the button below to include subfolders.",
@@ -6020,7 +6026,7 @@ public class PanoramaPublicController extends SpringActionController
             // List of runs in the experiment.
             PanoramaPublicRunListView runListView = PanoramaPublicRunListView.createView(getViewContext(), exptAnnotations);
             TableInfo tinfo = runListView.getTable();
-            if(tinfo instanceof FilteredTable)
+            if(tinfo instanceof FilteredTable<?> filteredTable)
             {
                 SQLFragment sql = new SQLFragment();
 
@@ -6029,19 +6035,19 @@ public class PanoramaPublicController extends SpringActionController
                 sql.append(ExperimentService.get().getTinfoRunList(), "runlist").append(" ");
                 sql.append("WHERE runlist.experimentId = ? AND runlist.experimentRunId = run.rowid) ");
                 sql.add(experiment.getRowId());
-                ((FilteredTable) tinfo).addCondition(sql);
+                filteredTable.addCondition(sql);
             }
             result.addView(runListView);
 
             // Add a table of spectral libraries, if there are any
             List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(exptAnnotations);
             TargetedMSService tmsSvc = TargetedMSService.get();
-            if (runs.stream().anyMatch(run -> tmsSvc.getLibraries(run).size() > 0))
+            if (runs.stream().anyMatch(run -> !tmsSvc.getLibraries(run).isEmpty()))
             {
                 result.addView(new SpecLibView(getViewContext(), exptAnnotations));
             }
 
-            if (runs.size() > 0)
+            if (!runs.isEmpty())
             {
                 // Structural modifications
                 List<Long> runIds = runs.stream().map(ITargetedMSRun::getId).collect(Collectors.toList());
@@ -6287,16 +6293,15 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    private @Nullable WebPartView getPublishedVersionsView(int sourceExperimentId)
+    private @Nullable WebPartView<?> getPublishedVersionsView(int sourceExperimentId)
     {
         List<ExperimentAnnotations> publishedVersions = ExperimentAnnotationsManager.getPublishedVersionsOfExperiment(sourceExperimentId);
-        if (publishedVersions.size() > 0)
+        if (!publishedVersions.isEmpty())
         {
             QuerySettings qSettings = new QuerySettings(getViewContext(), "PublishedVersions", "ExperimentAnnotations");
             qSettings.setBaseFilter(new SimpleFilter(new SimpleFilter(FieldKey.fromParts("SourceExperimentId"), sourceExperimentId)));
 
-            List<FieldKey> columns = new ArrayList<>();
-            columns.addAll(List.of(FieldKey.fromParts("Version"), FieldKey.fromParts("Created"), FieldKey.fromParts("Link"), FieldKey.fromParts("Share")));
+            List<FieldKey> columns = new ArrayList<>(List.of(FieldKey.fromParts("Version"), FieldKey.fromParts("Created"), FieldKey.fromParts("Link"), FieldKey.fromParts("Share")));
             if (publishedVersions.stream().anyMatch(ExperimentAnnotations::isPublished))
             {
                 columns.add(FieldKey.fromParts("Citation"));
@@ -6443,7 +6448,7 @@ public class PanoramaPublicController extends SpringActionController
             if (je != null && je.getLatestSubmission().isPxidRequested())
             {
                 List<String> missingFields = DataValidationManager.getMissingExperimentMetadataFields(form.getBean());
-                if(missingFields.size() > 0)
+                if(!missingFields.isEmpty())
                 {
                     missingFields.stream().forEach(err -> errors.reject(ERROR_MSG, err));
                     return false;
@@ -6468,7 +6473,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(DeletePermission.class)
-    public class DeleteSelectedExperimentAnnotationsAction extends ConfirmAction<SelectedIdsForm>
+    public static class DeleteSelectedExperimentAnnotationsAction extends ConfirmAction<SelectedIdsForm>
     {
         @Override
         public ModelAndView getConfirmView(SelectedIdsForm deleteForm, BindException errors)
@@ -6546,9 +6551,9 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    public static interface SelectedExperimentIds
+    public interface SelectedExperimentIds
     {
-        public int[] getIds();
+        int[] getIds();
     }
 
     public static class DeleteExperimentAnnotationsForm extends ExperimentAnnotationsForm implements SelectedExperimentIds
@@ -6561,7 +6566,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(DeletePermission.class)
-    public class DeleteExperimentAnnotationsAction extends ConfirmAction<DeleteExperimentAnnotationsForm>
+    public static class DeleteExperimentAnnotationsAction extends ConfirmAction<DeleteExperimentAnnotationsForm>
     {
         private ExperimentAnnotations _expAnnotations;
 
@@ -6609,6 +6614,7 @@ public class PanoramaPublicController extends SpringActionController
         private ExperimentAnnotations _expAnnot;
         private ActionURL _returnPublishExptUrl;
 
+        @Override
         public ModelAndView getView(ExperimentForm form, boolean reshow, BindException errors)
         {
             // This action does not support GET requests. We should be here only if there are errors to show
@@ -6658,14 +6664,14 @@ public class PanoramaPublicController extends SpringActionController
             }
 
             List<Container> allSubfolders = getAllSubfolders(_expAnnot.getContainer());
-            if (allSubfolders.size() == 0)
+            if (allSubfolders.isEmpty())
             {
                 errors.reject(ERROR_MSG, "No subfolders were found.");
                 return;
             }
 
             List<Container> hiddenSubfolders = getHiddenFolders(allSubfolders, getUser());
-            if (hiddenSubfolders.size() > 0)
+            if (!hiddenSubfolders.isEmpty())
             {
                 errors.reject(ERROR_MSG, "User needs read permissions in all the subfolders to be able to include them in the experiment.");
                 return;
@@ -6678,7 +6684,9 @@ public class PanoramaPublicController extends SpringActionController
                 if(SpringActionController.getActionName(PublishExperimentAction.class).equals(action) ||
                         SpringActionController.getActionName(ResubmitExperimentAction.class).equals(action) ||
                         SpringActionController.getActionName(UpdateSubmissionAction.class).equals(action))
-                _returnPublishExptUrl = returnUrl;
+                {
+                    _returnPublishExptUrl = returnUrl;
+                }
             }
         }
 
@@ -6924,7 +6932,7 @@ public class PanoramaPublicController extends SpringActionController
         private ModelAndView getPublicationDetailsView(PublicationDetailsForm form, BindException errors)
         {
             PublicationDetailsBean bean = new PublicationDetailsBean(form, _copiedExperiment);
-            JspView view = new JspView("/org/labkey/panoramapublic/view/publish/publicationDetails.jsp", bean, errors);
+            JspView view = new JspView<>("/org/labkey/panoramapublic/view/publish/publicationDetails.jsp", bean, errors);
             view.setTitle("Publication Details");
             return view;
         }
@@ -6933,7 +6941,7 @@ public class PanoramaPublicController extends SpringActionController
         private ModelAndView getConfirmView(PublicationDetailsForm form, BindException errors)
         {
             PublicationDetailsBean bean = new PublicationDetailsBean(form, _copiedExperiment);
-            JspView view = new JspView("/org/labkey/panoramapublic/view/publish/confirmPublish.jsp", bean, errors);
+            JspView view = new JspView<>("/org/labkey/panoramapublic/view/publish/confirmPublish.jsp", bean, errors);
             view.setTitle("Confirm Publication Details");
             return view;
         }
@@ -7092,7 +7100,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             String webpartName = PanoramaPublicModule.DOWNLOAD_DATA_INFO_WP;
             List<Portal.WebPart> parts = Portal.getParts(container, RAW_FILES_TAB);
-            if (parts.size() != 0)
+            if (!parts.isEmpty())
             {
                 if (!parts.stream().anyMatch(p -> webpartName.equals(p.getName())))
                 {
@@ -7139,7 +7147,7 @@ public class PanoramaPublicController extends SpringActionController
         public ModelAndView getSuccessView(PublicationDetailsForm form)
         {
             PublishSuccessViewBean bean = new PublishSuccessViewBean(_expAnnot.getContainer(), _copiedExperiment, _madePublic, _addedPublication, _journal.getName());
-            JspView view = new JspView("/org/labkey/panoramapublic/view/publish/publishSuccessView.jsp", bean);
+            JspView view = new JspView<>("/org/labkey/panoramapublic/view/publish/publishSuccessView.jsp", bean);
             view.setTitle("Data Published");
             view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
@@ -7898,7 +7906,7 @@ public class PanoramaPublicController extends SpringActionController
                         .filter(l -> l != 0 && library.getId() != l)
                         .collect(Collectors.toSet());
                 List<SpectralLibrary> otherLibraries = SpecLibInfoManager.getLibraries(ids, getUser());
-                if (otherLibraries.size() > 0)
+                if (!otherLibraries.isEmpty())
                 {
                     List<DOM.Renderable> otherDocs = new ArrayList<>();
                     for (SpectralLibrary otherLib: otherLibraries)
@@ -7960,7 +7968,7 @@ public class PanoramaPublicController extends SpringActionController
                     try
                     {
                         List<LibSourceFile> libSourceFiles = reader.readLibSourceFiles(run, specLib);
-                        if (libSourceFiles == null || libSourceFiles.size() == 0)
+                        if (libSourceFiles == null || libSourceFiles.isEmpty())
                         {
                             view.addView(new HtmlView(DIV(cl("labkey-error"), "No library source file names were found.")));
                         }
@@ -7999,7 +8007,7 @@ public class PanoramaPublicController extends SpringActionController
 
         private DOM.Renderable createTable(String title, List<String> fileNames)
         {
-            if (fileNames.size() > 0)
+            if (!fileNames.isEmpty())
             {
                 return TABLE(at(border, 1),
                         THEAD(TR(TH(at(style, "padding:5px;"), STRONG(title)))),
@@ -8872,7 +8880,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public class ViewExperimentModifications extends SimpleViewAction<ExperimentIdForm>
+    public static class ViewExperimentModifications extends SimpleViewAction<ExperimentIdForm>
     {
         @Override
         public ModelAndView getView(final ExperimentIdForm form, BindException errors)
@@ -8895,7 +8903,7 @@ public class PanoramaPublicController extends SpringActionController
             if (hasStructuralMods(svc, runs))
             {
                 result.addView(new HtmlView(H3(at(style, "margin-top:10px;"),"Structural Modifications")));
-                if (ModificationInfoManager.getStructuralModInfosForExperiment(exptAnnotations.getId(), getContainer()).size() > 0)
+                if (!ModificationInfoManager.getStructuralModInfosForExperiment(exptAnnotations.getId(), getContainer()).isEmpty())
                 {
                     result.addView(getAssignedUnimodMatchesMessage());
                 }
@@ -8911,7 +8919,7 @@ public class PanoramaPublicController extends SpringActionController
             if (hasIsotopeMods(svc, runs))
             {
                 result.addView(new HtmlView(H3(at(style, "margin-top:10px;"),"Isotope Modifications")));
-                if (ModificationInfoManager.getIsotopeModInfosForExperiment(exptAnnotations.getId(), getContainer()).size() > 0)
+                if (!ModificationInfoManager.getIsotopeModInfosForExperiment(exptAnnotations.getId(), getContainer()).isEmpty())
                 {
                     result.addView(getAssignedUnimodMatchesMessage());
                 }
@@ -8935,12 +8943,12 @@ public class PanoramaPublicController extends SpringActionController
         }
         private boolean hasStructuralMods(TargetedMSService svc, List<ITargetedMSRun> runs)
         {
-            return runs.stream().anyMatch(run -> svc.getStructuralModificationsUsedInRun(run.getId()).size() > 0);
+            return runs.stream().anyMatch(run -> !svc.getStructuralModificationsUsedInRun(run.getId()).isEmpty());
         }
 
         private boolean hasIsotopeMods(TargetedMSService svc, List<ITargetedMSRun> runs)
         {
-            return runs.stream().anyMatch(run -> svc.getIsotopeModificationsUsedInRun(run.getId()).size() > 0);
+            return runs.stream().anyMatch(run -> !svc.getIsotopeModificationsUsedInRun(run.getId()).isEmpty());
         }
 
         @Override
@@ -9028,7 +9036,7 @@ public class PanoramaPublicController extends SpringActionController
         @Nullable Status getValidationStatus(DataValidation validation, BindException errors)
         {
             Status validationStatus = DataValidationManager.getIncompleteSkyDocsInContainer(validation, getContainer(), getUser());
-            if (validationStatus.getSkylineDocs().size() == 0)
+            if (validationStatus.getSkylineDocs().isEmpty())
             {
                 errors.reject(ERROR_MSG, "Could not find Skyline documents in the folder with missing sample files.");
                 return null;
@@ -9056,7 +9064,7 @@ public class PanoramaPublicController extends SpringActionController
         @Nullable Status getValidationStatus(DataValidation validation, BindException errors)
         {
             Status validationStatus = DataValidationManager.getIncompleteSpecLibs(validation, getUser());
-            if (validationStatus.getSpectralLibraries().size() == 0)
+            if (validationStatus.getSpectralLibraries().isEmpty())
             {
                 errors.reject(ERROR_MSG, "Could not find spectral libraries in the experiment with missing source files.");
                 return null;
@@ -9578,7 +9586,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public class CatalogImageDownloadAction extends BaseDownloadAction<AttachmentForm>
+    public static class CatalogImageDownloadAction extends BaseDownloadAction<AttachmentForm>
     {
         @Nullable
         @Override
@@ -9701,7 +9709,7 @@ public class PanoramaPublicController extends SpringActionController
 
     @RequiresPermission(ReadPermission.class)
     @RequiresLogin
-    public class MyDataViewAction extends SimpleViewAction<Object>
+    public static class MyDataViewAction extends SimpleViewAction<Object>
     {
         @Override
         public void addNavTrail(NavTree root)
@@ -9728,7 +9736,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class CreatePanoramaPublicMessageAction extends SimpleViewAction<PanoramaPublicMessageForm>
+    public static class CreatePanoramaPublicMessageAction extends SimpleViewAction<PanoramaPublicMessageForm>
     {
         @Override
         public ModelAndView getView(PanoramaPublicMessageForm form, BindException errors) throws Exception
