@@ -9,12 +9,15 @@ import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
+import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.User;
 import org.labkey.api.util.FileUtil;
+import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicNotification;
+import org.labkey.panoramapublic.message.PrivateDataMessageSettings;
 import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
@@ -24,7 +27,9 @@ import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
 
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -67,11 +72,12 @@ public class PrivateDataReminderJob extends PipelineJob
     {
         Set<Container> subFolders = ContainerManager.getAllChildren(projectFolder);
         List<Integer> privateDataIds = new ArrayList<>();
+        PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
         for (Container folder: subFolders)
         {
             ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(folder);
 
-            if (shouldPostReminder(exptAnnotations))
+            if (shouldPostReminder(exptAnnotations, settings))
             {
                 privateDataIds.add(exptAnnotations.getId());
             }
@@ -80,7 +86,7 @@ public class PrivateDataReminderJob extends PipelineJob
         return privateDataIds;
     }
 
-    private boolean shouldPostReminder(ExperimentAnnotations exptAnnotations)
+    private boolean shouldPostReminder(ExperimentAnnotations exptAnnotations, PrivateDataMessageSettings settings)
     {
         if (exptAnnotations == null) return false;
         if (exptAnnotations.isPublic()) return false;
@@ -92,22 +98,26 @@ public class PrivateDataReminderJob extends PipelineJob
         if (datasetStatus.deletionRequested()) return false;
 
         // Return false if the submitter has requested an extension, and the extension is still valid
-        if (datasetStatus.isExtensionValid()) return false;
+        if (datasetStatus.isExtensionValid(settings)) return false;
+
+        // Return false if this is not the latest version of the experiment
+        if (!ExperimentAnnotationsManager.isCurrentVersion(exptAnnotations)) return false;
 
         // Returns false if the last reminder was sent less than a month ago
-        if (datasetStatus.isLastReminderRecent()) return false;
+        if (datasetStatus.isLastReminderRecent(settings)) return false;
 
         return true;
     }
 
     private void postMessage(List<Integer> expAnnotationIds, Journal panoramaPublic)
     {
-        if (expAnnotationIds.size() == 0)
+        int total = expAnnotationIds.size();
+        if (total == 0)
         {
             getLogger().info("No private datasets were found.");
             return;
         }
-        getLogger().info(String.format("%sPosting reminder message to: %d message threads", _test ? "TEST MODE: " : "", expAnnotationIds.size()));
+        getLogger().info(String.format("Posting reminder message to: %d message threads", expAnnotationIds.size()));
 
         int done = 0;
 
@@ -119,11 +129,27 @@ public class PrivateDataReminderJob extends PipelineJob
         List<Integer> submitterNotFound = new ArrayList<>();
 
         Container announcementsFolder = panoramaPublic.getSupportContainer();
+        if (announcementsFolder == null)
+        {
+            getLogger().error(String.format("%s does not have a support folder for messages.", panoramaPublic.getName()));
+            return;
+        }
+
+        User journalAdmin = JournalManager.getJournalAdminUser(panoramaPublic);
+        if (journalAdmin == null)
+        {
+            getLogger().error(String.format("Could not find an admin user for %s.", panoramaPublic.getName()));
+            return;
+        }
 
         Set<Integer> exptIds = new HashSet<>(expAnnotationIds);
 
         try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
         {
+            if (_test)
+            {
+                getLogger().info("RUNNING IN TEST MODE - MESSAGES WILL NOT BE POSTED.");
+            }
             for (Integer experimentAnnotationsId : exptIds)
             {
                 ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
@@ -167,12 +193,23 @@ public class PrivateDataReminderJob extends PipelineJob
                     {
                         notifyList.add(expAnnotations.getLabHeadUser());
                     }
-                    PanoramaPublicNotification.postPrivateDataReminderMessage(panoramaPublic, submission.getJournalExperiment(), expAnnotations, submitter, getUser(), notifyList);
+                    PanoramaPublicNotification.postPrivateDataReminderMessage(panoramaPublic, submission, expAnnotations,
+                            submitter, getUser(), notifyList, announcement, announcementsFolder, journalAdmin);
+
+                    DatasetStatus datasetStatus = DatasetStatusManager.getForShortUrl(expAnnotations.getShortUrl());
+                    if (datasetStatus == null)
+                    {
+                        datasetStatus = new DatasetStatus();
+                        datasetStatus.setShortUrl(expAnnotations.getShortUrl());
+                    }
+                    datasetStatus.setLastReminderDate(Date.from(Instant.now()));
+                    DatasetStatusManager.save(datasetStatus, getUser());
                 }
 
-                done++;
-                getLogger().info(String.format("%s to message thread for experiment Id %d, announcement Id %d. Done: %d",
-                        _test ? "Would post" : "Posted", experimentAnnotationsId, announcement.getRowId(), done));
+                getLogger().info(String.format("Experiment ID: %d; Announcement ID %d; Short URL: %s.",
+                        experimentAnnotationsId, announcement.getRowId(), expAnnotations.getShortUrl().renderShortURL()));
+                getLogger().info(String.format("Folder: %s", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnotations.getContainer()).getURIString()));
+                getLogger().info(String.format("Completed: %d of %d", ++done, total));
 
             }
             transaction.commit();
@@ -205,6 +242,6 @@ public class PrivateDataReminderJob extends PipelineJob
     @Override
     public String getDescription()
     {
-        return "Posts a message to announcement threads of the private datasets";
+        return "Post private data reminder messages";
     }
 }

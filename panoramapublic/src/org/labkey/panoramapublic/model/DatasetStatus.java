@@ -1,7 +1,9 @@
 package org.labkey.panoramapublic.model;
 
 import org.jetbrains.annotations.Nullable;
+import org.labkey.api.util.DateUtil;
 import org.labkey.api.view.ShortURLRecord;
+import org.labkey.panoramapublic.message.PrivateDataMessageSettings;
 
 import java.time.ZoneId;
 import java.util.Date;
@@ -51,6 +53,11 @@ public class DatasetStatus  extends DbEntity
         return _deletionRequestedDate;
     }
 
+    public @Nullable String getDeletionRequestedDateFormatted()
+    {
+        return format(_deletionRequestedDate);
+    }
+
     public void setDeletionRequestedDate(Date deletionRequestedDate)
     {
         _deletionRequestedDate = deletionRequestedDate;
@@ -61,7 +68,7 @@ public class DatasetStatus  extends DbEntity
         return _deletionRequestedDate != null;
     }
 
-    public boolean isExtensionValid()
+    public boolean isExtensionValid(PrivateDataMessageSettings settings)
     {
         if (_extensionRequestedDate == null)
         {
@@ -72,12 +79,12 @@ public class DatasetStatus  extends DbEntity
                 .atZone(ZoneId.systemDefault())
                 .toLocalDate();
 
-        LocalDate extensionValidStartDate = LocalDate.now().minusMonths(EXTENSION_VALID_MONTHS);
+        LocalDate extensionValidStartDate = LocalDate.now().minusMonths(settings.getExtensionLength());
 
         return extensionDate.isAfter(extensionValidStartDate);
     }
 
-    public boolean isLastReminderRecent()
+    public boolean isLastReminderRecent(PrivateDataMessageSettings settings)
     {
         if (_lastReminderDate == null)
         {
@@ -88,12 +95,12 @@ public class DatasetStatus  extends DbEntity
                 .atZone(ZoneId.systemDefault())
                 .toLocalDate();
 
-        LocalDate extensionValidStartDate = LocalDate.now().minusMonths(EXTENSION_VALID_MONTHS);
+        LocalDate extensionValidStartDate = LocalDate.now().minusMonths(settings.getReminderFrequency());
 
         return reminderDate.isAfter(extensionValidStartDate);
     }
 
-    public @Nullable Date extensionValidUntil()
+    public @Nullable Date extensionValidUntil(PrivateDataMessageSettings settings)
     {
         if (_extensionRequestedDate == null)
         {
@@ -103,8 +110,18 @@ public class DatasetStatus  extends DbEntity
         return Date.from(
                 _extensionRequestedDate.toInstant()
                         .atZone(ZoneId.systemDefault())
-                        .plusMonths(EXTENSION_VALID_MONTHS)
+                        .plusMonths(settings.getExtensionLength())
                         .toInstant()
         );
+    }
+
+    public @Nullable String extensionValidUntilFormatted(PrivateDataMessageSettings settings)
+    {
+        return format(extensionValidUntil(settings));
+    }
+
+    private @Nullable String format(Date date)
+    {
+        return date != null ? DateUtil.formatDateTime(date, "MMMM d, yyyy") : null;
     }
 }

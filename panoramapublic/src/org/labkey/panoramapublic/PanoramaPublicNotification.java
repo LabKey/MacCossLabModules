@@ -15,6 +15,7 @@ import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
+import org.labkey.api.util.DateUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.NotFoundException;
@@ -24,8 +25,8 @@ import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
-import org.labkey.panoramapublic.model.validation.Status;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
@@ -307,13 +308,14 @@ public class PanoramaPublicNotification
             Your data has been granted an extension for an additional 6 months. You’ll receive another reminder at that time, or you may make the dataset public earlier.
             Please feel free to contact us if you have any questions
          */
-        String messageTitle = "Private Status Extension" +" - " + je.getShortAccessUrl().renderShortURL();
+        String messageTitle = "Private Status Extended" +" - " + je.getShortAccessUrl().renderShortURL();
         StringBuilder messageBody = new StringBuilder();
         messageBody.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
         messageBody.append("Thank you for your request to extend the private status of your data on Panorama Public. ")
-                .append("Your data has been granted an extension for an additional " + DatasetStatus.EXTENSION_VALID_MONTHS + " months. ")
-                .append("You will receive another reminder at that time, or you may make the data public earlier ")
-                .append("by clicking the \"Make Public\" button in your data folder or by clicking this link: ")
+                .append("Your data has been granted a " + DatasetStatus.EXTENSION_VALID_MONTHS + " month extension. ")
+                .append("You’ll receive another reminder when this period ends. ")
+                .append("If you'd like to make your data public sooner, you can do so at any time ")
+                .append("by clicking the \"Make Public\" button in your data folder, or by clicking this link: ")
                 .append(bold(link("Make Data Public", PanoramaPublicController.getMakePublicUrl(expAnnotations.getId(), expAnnotations.getContainer()).getURIString())))
                 .append(".");
         messageBody.append(NL2).append("Best regards,");
@@ -349,7 +351,7 @@ public class PanoramaPublicNotification
             messageBody.append("We were unable to locate the source folder for this data in your project. ")
                     .append("The folder at the path ")
                     .append(expAnnotations.getSourceExperimentPath())
-                    .append("may have been already deleted.");
+                    .append("may have been deleted.");
         }
 
         messageBody.append(NL2).append("Best regards,");
@@ -359,43 +361,76 @@ public class PanoramaPublicNotification
     }
 
 
-    public static void postPrivateDataReminderMessage(@NotNull Journal journal, @NotNull JournalExperiment je, @NotNull ExperimentAnnotations expAnnotations,
-                                                      @NotNull User submitter, @NotNull User messagePoster, List<User> notifyUsers)
+    public static void postPrivateDataReminderMessage(@NotNull Journal journal, @NotNull JournalSubmission js, @NotNull ExperimentAnnotations expAnnotations,
+                                                      @NotNull User submitter, @NotNull User messagePoster, List<User> notifyUsers,
+                                                      @NotNull Announcement announcement, @NotNull Container announcementsContainer, @NotNull User journalAdmin)
     {
-        ExperimentAnnotations sourceExperiment = ExperimentAnnotationsManager.get(expAnnotations.getSourceExperimentId());
-        String message = getDataStatusReminderMessage(expAnnotations, sourceExperiment);
+        String message = getDataStatusReminderMessage(expAnnotations, submitter, js, announcement, announcementsContainer, journalAdmin);
         String title = "Action Required: Status Update for Your Private Dataset on Panorama Public";
-        postNotificationFullTitle(journal, je, message, messagePoster, title, StatusOption.Closed, notifyUsers);
+        postNotificationFullTitle(journal, js.getJournalExperiment(), message, messagePoster, title, StatusOption.Closed, notifyUsers);
     }
 
-    public static String getDataStatusReminderMessage(@NotNull ExperimentAnnotations exptAnnotations, ExperimentAnnotations sourceExperiment)
+    public static String getDataStatusReminderMessage(@NotNull ExperimentAnnotations exptAnnotations, @NotNull User submitter,
+                                                      @NotNull JournalSubmission js,@NotNull Announcement announcement,
+                                                      @NotNull Container announcementContainer, @NotNull User journalAdmin)
     {
         /*
-        We hope you are doing well. We’re reaching out regarding your dataset on Panorama Public (https://panoramaweb.org/polyjuice.url), which has been private since January 1, 2024.
+        We’re reaching out regarding your dataset on Panorama Public (https://panoramaweb.org/polyjuice.url), which has been private since January 1, 2024.
         Is the paper associated with this work already published?
         If yes: Please make your data public by clicking the "Make Public" button in your folder or by clicking [Make Data Public] here. This helps ensure that your valuable research is easily accessible to the community.
         If not: You have a couple of options:
-        Request an Extension - If your paper is still under review, or you need additional time to publish, please let us know by clicking [Request Extension]
+        Request an Extension - If your paper is still under review, or you need additional time, please let us know by clicking [Request Extension]
         Delete from Panorama Public - If you no longer wish to host your data on Panorama Public, please click [Request Deletion]. We will remove your dataset from Panorama Public. However, your source folder (/Hogwarts/Gryffindor/magic-potion) will remain intact, allowing you to resubmit your data in the future if you wish.
         If you have any questions or need further assistance, please do not hesitate to respond to this message by clicking here.
-        Thank you for sharing your research on Panorama Public. We appreciate your commitment to open science and supporting the research community.
+        Thank you for sharing your research on Panorama Public. We appreciate your commitment to open science and your contributions to the research community.
          */
 
         String shortUrl = exptAnnotations.getShortUrl().renderShortURL();
         String makePublicLink = PanoramaPublicController.getMakePublicUrl(exptAnnotations.getId(), exptAnnotations.getContainer()).getURIString();
+        String dateString = DateUtil.formatDateTime(js.getLatestSubmission().getCreated(), "MMMM d, yyyy");
+
+        ActionURL viewMessageUrl = new ActionURL("announcements", "thread", announcementContainer)
+                .addParameter("rowId", announcement.getRowId());
+        ActionURL respondToMessageUrl = new ActionURL("announcements", "respond", announcementContainer)
+                .addParameter("parentId", announcement.getEntityId())
+                .addReturnUrl(viewMessageUrl);
+
+        String shortUrlEntityId = exptAnnotations.getShortUrl().getEntityId().toString();
+        ActionURL requestExtensionUrl = new ActionURL(PanoramaPublicController.RequestExtensionAction.class, exptAnnotations.getContainer())
+                .addParameter("shortUrlEntityId", shortUrlEntityId);
+
+        ActionURL requesDeletionUrl = new ActionURL(PanoramaPublicController.RequestDeletionAction.class, exptAnnotations.getContainer())
+                .addParameter("shortUrlEntityId",shortUrlEntityId);
+
+
+        ExperimentAnnotations sourceExperiment = ExperimentAnnotationsManager.get(exptAnnotations.getSourceExperimentId());
+
         StringBuilder message = new StringBuilder();
-        message.append("We hope you are doing well. ")
-                .append("We’re reaching out regarding your dataset on Panorama Public (").append(shortUrl).append("), which has been private since PLACEHOLDER_DATA_SUBMISSION_DATE.")
+        message.append("Dear ").append(getUserName(submitter)).append(",").append(NL2)
+                .append("We are reaching out regarding your dataset on Panorama Public (").append(shortUrl).append("), which has been private since ")
+                .append(dateString).append(".")
                 .append("\n\n**Is the paper associated with this work already published?**")
-                .append("\n- If yes: Please make your data public by clicking the \"Make Public\" button in your folder or by clicking [**Make Data Public**](").append(makePublicLink).append(")")
+                .append("\n- If yes: Please make your data public by clicking the \"Make Public\" button in your folder or by clicking ")
+                .append(bold(link("Make Data Public", makePublicLink)))
+                .append(". This helps ensure that your valuable research is easily accessible to the community.")
                 .append("\n- If not: You have a couple of options:")
-                .append("\n  - **Request an Extension** - If your paper is still under review, or you need additional time to publish, please let us know by clicking [**Request Extension**]().")
-                .append("\n  - **Delete from Panorama Public** - If you no longer wish to host your data on Panorama Public, please click [**Request Deletion**](). ")
-                .append("We will remove your dataset from Panorama Public. ")
-                .append("However, your source folder ([/Hogwarts/Gryffindor/magic-potion](http://localhost:8080/labkey/Hogwarts/Gryffindor/magic-potion/project-begin.view)) will remain intact, ")
-                .append("allowing you to resubmit your data in the future if you wish.")
-                .append("\n\nIf you have any questions or need further assistance, please do not hesitate to respond to this message by [**clicking here**](__PH__RESPOND__TO__MESSAGE__URL__).")
-                .append("\n\nThank you for sharing your research on Panorama Public. We appreciate your commitment to open science and supporting the research community.");
+                .append("\n  - **Request an Extension** - If your paper is still under review, or you need additional time, please let us know by clicking ")
+                .append(bold(link("Request Extension", requestExtensionUrl.getURIString()))).append(".")
+                .append("\n  - **Delete from Panorama Public** - If you no longer wish to host your data on Panorama Public, please click ")
+                .append(bold(link("Request Deletion", requesDeletionUrl.getURIString()))).append(". ")
+                .append("We will remove your dataset from Panorama Public.");
+        if (sourceExperiment != null)
+        {
+            message.append(" However, your source folder (")
+                    .append(getContainerLink(sourceExperiment.getContainer()))
+                    .append(") will remain intact, allowing you to resubmit your data in the future if you wish.");
+        }
+
+        message.append("\n\nIf you have any questions or need further assistance, please do not hesitate to respond to this message by ")
+        .append(bold(link("clicking here", respondToMessageUrl.getURIString()))).append(".")
+        .append("\n\nThank you for sharing your research on Panorama Public. We appreciate your commitment to open science and your contributions to the research community.")
+        .append(NL2).append("Best regards,")
+        .append(NL).append(getUserName(journalAdmin));
         return message.toString();
     }
 
@@ -422,7 +457,6 @@ public class PanoramaPublicNotification
     public static String PLACEHOLDER_MAKE_DATA_PUBLIC_URL = PLACEHOLDER + "MAKE__DATA__PUBLIC__URL__";
     public static String PLACEHOLDER_SHORT_URL = PLACEHOLDER + "DATA__SHORT__URL__";
 
-    private static String PLACEHOLDER_DATA_SUBMISSION_DATE = PLACEHOLDER + "DATA__SUBMISSION__DATE__";
     public static String replaceLinkPlaceholders(@NotNull String text, @NotNull ExperimentAnnotations expAnnotations,
                                                  @NotNull Announcement announcement, @NotNull Container announcementContainer)
     {
