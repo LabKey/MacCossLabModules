@@ -356,7 +356,7 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
     private int checkModificationRow(DataRegionTable modsTable,  List<Unimod> matches, String modificationName)
     {
         String expectedText = "";
-        if (matches != null && matches.size() > 0)
+        if (matches != null && !matches.isEmpty())
         {
             for (var unimod: matches)
             {

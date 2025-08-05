@@ -50,8 +50,8 @@ public enum ChemElement
     private final String _symbol;
     private final double _avgMass;
 
-    private static Map<String, ChemElement> titleMap = new HashMap<>();
-    private static Map<String, ChemElement> symbolMap = new HashMap<>();
+    private static final Map<String, ChemElement> titleMap = new HashMap<>();
+    private static final Map<String, ChemElement> symbolMap = new HashMap<>();
     static
     {
         for (ChemElement el: ChemElement.values())

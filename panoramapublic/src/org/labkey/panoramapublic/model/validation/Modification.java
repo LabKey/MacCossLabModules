@@ -224,7 +224,7 @@ public class Modification
         if (_modInfo != null)
         {
             List<ExperimentModInfo.UnimodInfo> unimodIdsAndNames = _modInfo.getUnimodInfos();
-            if (unimodIdsAndNames.size() > 0)
+            if (!unimodIdsAndNames.isEmpty())
             {
                 jsonObject.put("unimodMatches", getUnimodMatchesJSON(unimodIdsAndNames));
                 jsonObject.put("modInfoId", _modInfo.getId());

@@ -29,6 +29,7 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.settings.AppProps;
+import org.labkey.api.util.DOM;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.LinkBuilder;
@@ -45,7 +46,11 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.labkey.api.util.DOM.Attribute.height;
+import static org.labkey.api.util.DOM.Attribute.src;
 import static org.labkey.api.util.DOM.Attribute.style;
+import static org.labkey.api.util.DOM.Attribute.width;
+import static org.labkey.api.util.DOM.IMG;
 import static org.labkey.api.util.DOM.SPAN;
 import static org.labkey.api.util.DOM.at;
 
@@ -57,7 +62,7 @@ public class LincsDataTable extends FilteredTable
     public static final String PARENT_QUERY = "TargetedMSRunAndAnnotations";
     public static final String NAME = "LincsDataTable";
     public static final String PLATE_COL = "Plate";
-    private static Pattern plateRegex = Pattern.compile("^LINCS.*_(Plate[a-zA-Z0-9]*)_.*\\.sky\\.zip$");
+    private static final Pattern plateRegex = Pattern.compile("^LINCS.*_(Plate[a-zA-Z0-9]*)_.*\\.sky\\.zip$");
 
     public LincsDataTable(@NotNull TableInfo table, @NotNull UserSchema userSchema)
     {
@@ -122,19 +127,19 @@ public class LincsDataTable extends FilteredTable
 
         var level2Col = wrapColumn("Level 2", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(level2Col);
-        level2Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Two, gctDir, davUrl));
+        level2Col.setDisplayColumnFactory(colInfo -> new GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Two, gctDir, davUrl));
 
         var level3Col = wrapColumn("Level 3", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(level3Col);
-        level3Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Three, gctDir, davUrl));
+        level3Col.setDisplayColumnFactory(colInfo -> new GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Three, gctDir, davUrl));
 
         var level4Col = wrapColumn("Level 4", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(level4Col);
-        level4Col.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Four, gctDir, davUrl));
+        level4Col.setDisplayColumnFactory(colInfo -> new GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Four, gctDir, davUrl));
 
         var cfgCol = wrapColumn("Config", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(cfgCol);
-        cfgCol.setDisplayColumnFactory(colInfo -> new LincsDataTable.GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Config, gctDir, davUrl));
+        cfgCol.setDisplayColumnFactory(colInfo -> new GctColumnPSP(colInfo, assayType, LincsModule.LincsLevel.Config, gctDir, davUrl));
 
         var pspJobCol = wrapColumn("PSP Job Status", getRealTable().getColumn(FieldKey.fromParts("FileName")));
         addColumn(pspJobCol);
@@ -223,12 +228,12 @@ public class LincsDataTable extends FilteredTable
             return FileUtil.getBaseName(fileName, 1);
     }
 
-    public class GctColumnPSP extends DataColumn
+    public static class GctColumnPSP extends DataColumn
     {
-        private LincsModule.LincsAssay assayType;
-        private LincsModule.LincsLevel level;
-        private Path gctDir;
-        private String davUrl;
+        private final LincsModule.LincsAssay assayType;
+        private final LincsModule.LincsLevel level;
+        private final Path gctDir;
+        private final String davUrl;
 
         public GctColumnPSP(ColumnInfo col, LincsModule.LincsAssay assayType, LincsModule.LincsLevel level, Path gctDir, String davUrl)
         {
@@ -278,7 +283,12 @@ public class LincsDataTable extends FilteredTable
             return false;
         }
 
-        private String getAnalyticsScript(String eventAction, String fileName, boolean addWaitTime)
+        private HtmlString externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType)
+        {
+            return externalHeatmapViewerLink(fileName, assayType, getGctDavUrl(fileName));
+        }
+
+        private static String getAnalyticsScript(String eventAction, String fileName, boolean addWaitTime)
         {
             if (!StringUtils.isBlank(AnalyticsService.getTrackingScript()))
             {
@@ -288,31 +298,38 @@ public class LincsDataTable extends FilteredTable
                 // request if the download opens on the same page.
                 String timeout = addWaitTime ? "that=this; setTimeout(function(){location.href=that.href;},400);return false;" : "";
 
-                // Universal Analytics - remove after conversion to GA4 is complete
-                String onClickScript = "try {_gaq.push(['_trackEvent', 'Lincs', " + PageFlowUtil.qh(eventAction) + ", " + PageFlowUtil.qh(fileName) + "]); } catch (err) {}";
                 // GA4 variant
-                onClickScript += "try {gtag('event', 'Lincs', {eventAction: " + PageFlowUtil.qh(eventAction) + ", fileName: " + PageFlowUtil.qh(fileName) + "}); } catch(err) {}";
+                String onClickScript = "try {gtag('event', 'Lincs', {eventAction: " + PageFlowUtil.qh(eventAction) + ", fileName: " + PageFlowUtil.qh(fileName) + "}); } catch(err) {}";
                 onClickScript += timeout;
                 return onClickScript;
             }
             return null;
         }
 
-        private HtmlString externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType)
+        public static HtmlString externalHeatmapViewerLink(String fileName, LincsModule.LincsAssay assayType, String gctFileDavUrl)
         {
-            String gctFileUrl = davUrl + "GCT/" + PageFlowUtil.encodePath(fileName);
-            String morpheusUrl = getMorpheusUrl(gctFileUrl, assayType);
+            String morpheusUrl = getMorpheusUrl(gctFileDavUrl, assayType);
 
             String analyticsScript = getAnalyticsScript("Morpheus", fileName, false);
-            String onclickEvt = StringUtils.isBlank(analyticsScript) ? "" : "onclick=\"" + analyticsScript + "\"";
 
             String imgUrl = AppProps.getInstance().getContextPath() + "/lincs/GENE-E_icon.png";
 
-            // TODO: Should use a LinkBuilder, etc.
-            return HtmlString.unsafe("[&nbsp;<a target=\"_blank\" " + onclickEvt +  " href=\"" + morpheusUrl + "\">View in Morpheus</a> <img src=" + imgUrl + " width=\"13\", height=\"13\"/>&nbsp;]");
+            LinkBuilder viewInMorpheusLink = LinkBuilder.simpleLink("View in Morpheus", morpheusUrl).target("_blank");
+            if (analyticsScript != null)
+            {
+                viewInMorpheusLink.onClick(analyticsScript);
+            }
+
+            return HtmlString.of(DOM.SPAN("[",
+                    HtmlString.NBSP,
+                    viewInMorpheusLink,
+                    HtmlString.NBSP,
+                    IMG(at(src, imgUrl).at(width, 13).at(height, 13)),
+                    HtmlString.NBSP,
+                    "]"));
         }
 
-        private String getMorpheusUrl(String gctFileUrl, LincsModule.LincsAssay assayType)
+        private static String getMorpheusUrl(String gctFileUrl, LincsModule.LincsAssay assayType)
         {
             String morpheusJson = "{\"dataset\":\"" + gctFileUrl + "\",";
             if(assayType == LincsModule.LincsAssay.P100)

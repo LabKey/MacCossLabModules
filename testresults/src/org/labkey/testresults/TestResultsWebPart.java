@@ -30,11 +30,7 @@ public class TestResultsWebPart extends BaseWebPartFactory
         {
             bean = TestResultsController.getRunDownBean(portalCtx.getUser(), c, portalCtx);
         }
-        catch (ParseException e)
-        {
-            e.printStackTrace();
-        }
-        catch (IOException e)
+        catch (ParseException | IOException e)
         {
             e.printStackTrace();
         }

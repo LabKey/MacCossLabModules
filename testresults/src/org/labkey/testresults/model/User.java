@@ -108,37 +108,35 @@ public class User implements Comparable<User>
     public static double upperBound(double mean, double stdDev, int stdDevs) { return mean + stdDev * stdDevs; }
 
     public String runBoundHtmlString(int warningBoundary, int errorBoundary) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Good: ");
-        sb.append("> ");
-        sb.append((int) Math.round(lowerBound(getMeantestsrun(), getStddevtestsrun(), warningBoundary)) - 1);
-        sb.append("\n");
-        sb.append("Warn: ");
-        sb.append((int) Math.round(lowerBound(getMeantestsrun(), getStddevtestsrun(), errorBoundary)));
-        sb.append(" - ");
-        sb.append((int) Math.round(lowerBound(getMeantestsrun(), getStddevtestsrun(), warningBoundary)) - 1);
-        sb.append("\n");
-        sb.append("Error: ");
-        sb.append("< ");
-        sb.append((int) Math.round(lowerBound(getMeantestsrun(), getStddevtestsrun(), errorBoundary)));
-        return sb.toString();
+        String sb = "Good: " +
+                "> " +
+                ((int) Math.round(lowerBound(getMeantestsrun(), getStddevtestsrun(), warningBoundary)) - 1) +
+                "\n" +
+                "Warn: " +
+                (int) Math.round(lowerBound(getMeantestsrun(), getStddevtestsrun(), errorBoundary)) +
+                " - " +
+                ((int) Math.round(lowerBound(getMeantestsrun(), getStddevtestsrun(), warningBoundary)) - 1) +
+                "\n" +
+                "Error: " +
+                "< " +
+                (int) Math.round(lowerBound(getMeantestsrun(), getStddevtestsrun(), errorBoundary));
+        return sb;
     }
 
     public String memBoundHtmlString(int warningBoundary, int errorBoundary) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Good: ");
-        sb.append("< ");
-        sb.append((int) Math.round(upperBound(getMeanmemory(), getStddevmemory(), warningBoundary)) + 1);
-        sb.append("\n");
-        sb.append("Warn: ");
-        sb.append((int) Math.round(upperBound(getMeanmemory(), getStddevmemory(), warningBoundary)) + 1);
-        sb.append(" - ");
-        sb.append((int) Math.round(upperBound(getMeanmemory(), getStddevmemory(), errorBoundary)));
-        sb.append("\n");
-        sb.append("Error: ");
-        sb.append("> ");
-        sb.append((int) Math.round(upperBound(getMeanmemory(), getStddevmemory(), errorBoundary)));
-        return sb.toString();
+        String sb = "Good: " +
+                "< " +
+                ((int) Math.round(upperBound(getMeanmemory(), getStddevmemory(), warningBoundary)) + 1) +
+                "\n" +
+                "Warn: " +
+                ((int) Math.round(upperBound(getMeanmemory(), getStddevmemory(), warningBoundary)) + 1) +
+                " - " +
+                (int) Math.round(upperBound(getMeanmemory(), getStddevmemory(), errorBoundary)) +
+                "\n" +
+                "Error: " +
+                "> " +
+                (int) Math.round(upperBound(getMeanmemory(), getStddevmemory(), errorBoundary));
+        return sb;
     }
 
     @Override

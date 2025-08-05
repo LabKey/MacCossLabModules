@@ -143,13 +143,13 @@ public class TestResultsController extends SpringActionController
      * action to view rundown.jsp and also the landing page for module
      */
     @RequiresPermission(ReadPermission.class)
-    public class BeginAction extends SimpleViewAction
+    public static class BeginAction extends SimpleViewAction<Object>
     {
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
         {
             RunDownBean bean = getRunDownBean(getUser(), getContainer(), getViewContext());
-            return new JspView("/org/labkey/testresults/view/rundown.jsp", bean);
+            return new JspView<>("/org/labkey/testresults/view/rundown.jsp", bean);
         }
 
         @Override
@@ -163,7 +163,7 @@ public class TestResultsController extends SpringActionController
         String viewType = viewContext.getRequest().getParameter("viewType");
 
         Calendar cal = Calendar.getInstance();
-        cal.setTime(end != null && !end.equals("") ? MDYFormat.parse(end) : new Date());
+        cal.setTime(end != null && !end.isEmpty() ? MDYFormat.parse(end) : new Date());
         setToEightAM(cal);
         Date endDate = cal.getTime();
         cal.add(Calendar.DATE, -1);
@@ -335,7 +335,7 @@ public class TestResultsController extends SpringActionController
      * action to view trainging data for each user
      */
     @RequiresPermission(ReadPermission.class)
-    public class TrainingDataViewAction extends SimpleViewAction
+    public static class TrainingDataViewAction extends SimpleViewAction<Object>
     {
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
@@ -355,7 +355,7 @@ public class TestResultsController extends SpringActionController
 
             User[] users = getUsers(getContainer(), null);
             TestsDataBean bean = new TestsDataBean(runs, users);
-            return new JspView("/org/labkey/testresults/view/trainingdata.jsp", bean);
+            return new JspView<>("/org/labkey/testresults/view/trainingdata.jsp", bean);
         }
 
         @Override
@@ -450,7 +450,7 @@ public class TestResultsController extends SpringActionController
      * accepts url parameter "start" and "end" which will be the date range of selected runs for that user to display
      */
     @RequiresPermission(ReadPermission.class)
-    public class ShowUserAction extends SimpleViewAction
+    public static class ShowUserAction extends SimpleViewAction<Object>
     {
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
@@ -480,7 +480,7 @@ public class TestResultsController extends SpringActionController
             ensureRunDataCached(runs, false);
 
             TestsDataBean bean = new TestsDataBean(runs, user == null ? new User[0] : new User[]{user});
-            return new JspView("/org/labkey/testresults/view/user.jsp", bean);
+            return new JspView<>("/org/labkey/testresults/view/user.jsp", bean);
         }
 
         @Override
@@ -494,7 +494,7 @@ public class TestResultsController extends SpringActionController
      * accepts a url parameter "runId" which will be the run that the jsp displays the information of
      */
     @RequiresPermission(ReadPermission.class)
-    public class ShowRunAction extends SimpleViewAction
+    public static class ShowRunAction extends SimpleViewAction<Object>
     {
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
@@ -504,7 +504,7 @@ public class TestResultsController extends SpringActionController
             {
                 runId = Integer.parseInt(getViewContext().getRequest().getParameter("runId"));
             } catch (Exception e) {
-                return new JspView("/org/labkey/testresults/view/runDetail.jsp", null);
+                return new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
             }
             String filterTestPassesBy = getViewContext().getRequest().getParameter("filter");
 
@@ -526,10 +526,10 @@ public class TestResultsController extends SpringActionController
 
             RunDetail[] runs = executeGetRunsSQLFragment(sqlFragment, getContainer(), false, true);
             if (runs.length == 0)
-                return new JspView("/org/labkey/testresults/view/runDetail.jsp", null);
+                return new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
             RunDetail run = runs[0];
             if (run == null)
-                return new JspView("/org/labkey/testresults/view/runDetail.jsp", null);
+                return new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
             if (filterTestPassesBy != null) {
                 if (filterTestPassesBy.equals("duration")) {
                     List<TestPassDetail> filteredPasses = Arrays.asList(passes);
@@ -554,7 +554,7 @@ public class TestResultsController extends SpringActionController
                 run.setHang(hangs[0]);
             run.setPasses(passes);
             TestsDataBean bean = new TestsDataBean(runs, new User[0]);
-            return new JspView("/org/labkey/testresults/view/runDetail.jsp", bean);
+            return new JspView<>("/org/labkey/testresults/view/runDetail.jsp", bean);
         }
 
         @Override
@@ -568,7 +568,7 @@ public class TestResultsController extends SpringActionController
      * accepts a url parameter "viewType" of either wk(week), mo(month), or yr(year) and defaults to month
      */
     @RequiresPermission(ReadPermission.class)
-    public class LongTermAction extends SimpleViewAction
+    public static class LongTermAction extends SimpleViewAction<Object>
     {
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
@@ -589,7 +589,7 @@ public class TestResultsController extends SpringActionController
             bean.setNonAssociatedFailures(failures);
 
             ensureRunDataCached(runs, true);
-            return new JspView("/org/labkey/testresults/view/longTerm.jsp", bean);
+            return new JspView<>("/org/labkey/testresults/view/longTerm.jsp", bean);
         }
 
         @Override
@@ -604,7 +604,7 @@ public class TestResultsController extends SpringActionController
      * accepts parameter viewType as 'wk', 'mo', or 'yr'.  defaults to 'day'
      */
     @RequiresPermission(ReadPermission.class)
-    public class ShowFailures extends SimpleViewAction
+    public static class ShowFailures extends SimpleViewAction<Object>
     {
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
@@ -636,11 +636,11 @@ public class TestResultsController extends SpringActionController
                         (run.getLeaks() != null && Arrays.stream(run.getLeaks()).anyMatch(leak -> leak.getTestName().equals(failedTest)))
                 ).toArray(RunDetail[]::new));
 
-                return new JspView("/org/labkey/testresults/view/failureDetail.jsp", bean);
+                return new JspView<>("/org/labkey/testresults/view/failureDetail.jsp", bean);
             }
 
             bean.setRuns(runs);
-            return new JspView("/org/labkey/testresults/view/multiFailureDetail.jsp", bean);
+            return new JspView<>("/org/labkey/testresults/view/multiFailureDetail.jsp", bean);
         }
 
         @Override
@@ -713,7 +713,7 @@ public class TestResultsController extends SpringActionController
      * action to show all flagged runs flagged.jsp
      */
     @RequiresNoPermission
-    public class ShowFlaggedAction extends SimpleViewAction
+    public static class ShowFlaggedAction extends SimpleViewAction<Object>
     {
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
@@ -721,7 +721,7 @@ public class TestResultsController extends SpringActionController
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("flagged"), true);
             RunDetail[] details = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getArray(RunDetail.class);
-            return new JspView("/org/labkey/testresults/view/flagged.jsp", new TestsDataBean(details, new User[0]));
+            return new JspView<>("/org/labkey/testresults/view/flagged.jsp", new TestsDataBean(details, new User[0]));
         }
         @Override
         public void addNavTrail(NavTree root)
@@ -730,7 +730,8 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class ChangeBoundaries extends MutatingApiAction {
+    public static class ChangeBoundaries extends MutatingApiAction<Object>
+    {
         @Override
         public Object execute(Object o, BindException errors) throws Exception
         {
@@ -785,7 +786,7 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public class ViewLogAction extends ReadOnlyApiAction
+    public static class ViewLogAction extends ReadOnlyApiAction<Object>
     {
         @Override
         public Object execute(Object o, BindException errors)
@@ -809,7 +810,7 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public class ViewXmlAction extends ReadOnlyApiAction
+    public static class ViewXmlAction extends ReadOnlyApiAction<Object>
     {
         @Override
         public Object execute(Object o, BindException errors)
@@ -833,7 +834,7 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresNoPermission
-    public class SendEmailNotificationAction extends ReadOnlyApiAction
+    public static class SendEmailNotificationAction extends ReadOnlyApiAction<Object>
     {
         @Override
         public Object execute(Object o, BindException errors)
@@ -951,12 +952,12 @@ public class TestResultsController extends SpringActionController
                     else
                         error += "Email 'To' not valid.";
 
-                    if (error.equals("")) {
+                    if (error.isEmpty()) {
                         org.labkey.api.security.User y = UserManager.getUser(from);
                         if (y == null)
                             error += "Sender email not a registered user.";
                     }
-                    if (error.equals("")) {
+                    if (error.isEmpty()) {
                         res.put("Message", "Email sent from " + from.getEmailAddress() + " to " + to.getEmailAddress());
                         res.put("Response", "true");
                         testCustom.execute(SendTestResultsEmail.TEST_CUSTOM, UserManager.getUser(from), to.getEmailAddress());
@@ -999,7 +1000,8 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class SetUserActive extends MutatingApiAction {
+    public static class SetUserActive extends MutatingApiAction<Object>
+    {
         @Override
         public Object execute(Object o, BindException errors)
         {
@@ -1038,18 +1040,17 @@ public class TestResultsController extends SpringActionController
      * action for posting test output as an xml file
      */
     @RequiresNoPermission
-    public class PostAction extends MutatingApiAction {
+    public static class PostAction extends MutatingApiAction<Object>
+    {
 
         @Override
         public Object execute(Object o, BindException errors) throws Exception
         {
             // DebugRequest(getViewContext().getRequest());
-            if (!(getViewContext().getRequest() instanceof MultipartRequest))
+            if (!(getViewContext().getRequest() instanceof MultipartRequest request))
             {
-                throw new Exception("Expected a request of type MultipartRequest got " + getViewContext().getRequest().getClass().toString());
+                throw new Exception("Expected a request of type MultipartRequest got " + getViewContext().getRequest().getClass());
             }
-
-            MultipartRequest request = (MultipartRequest) getViewContext().getRequest();
 
             MultipartFile file = request.getFile("xml_file");
             if (file == null)
@@ -1092,7 +1093,7 @@ public class TestResultsController extends SpringActionController
 
         private void DebugRequest(HttpServletRequest hsRequest)
         {
-            _log.info("Request is " + hsRequest.getClass().toString());
+            _log.info("Request is " + hsRequest.getClass());
             _log.info("Content length is : "+ hsRequest.getContentLength());
             _log.info("Content type: " + hsRequest.getContentType());
             Enumeration<String> headerNames = hsRequest.getHeaderNames();
@@ -1102,9 +1103,8 @@ public class TestResultsController extends SpringActionController
                 _log.info("Header " + headerName + ": " + hsRequest.getHeader(headerName));
             }
 
-            if (hsRequest instanceof MultipartRequest)
+            if (hsRequest instanceof MultipartRequest request)
             {
-                MultipartRequest request = (MultipartRequest) hsRequest;
                 _log.info("Multi part content type for xml: " + request.getMultipartContentType("xml"));
                 _log.info("Multi part content type for xml_file: " + request.getMultipartContentType("xml_file"));
             }
@@ -1113,7 +1113,7 @@ public class TestResultsController extends SpringActionController
 
 
     @RequiresPermission(ReadPermission.class)
-    public class ErrorFilesAction extends SimpleViewAction
+    public static class ErrorFilesAction extends SimpleViewAction<Object>
     {
         @Override
         public ModelAndView getView(Object o, BindException errors)
@@ -1122,7 +1122,7 @@ public class TestResultsController extends SpringActionController
             File[] files = local.listFiles();
             if (files == null)
                 files = new File[0];
-            return new JspView("/org/labkey/testresults/view/errorFiles.jsp", files);
+            return new JspView<>("/org/labkey/testresults/view/errorFiles.jsp", files);
         }
 
         @Override
@@ -1132,7 +1132,7 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public class PostErrorFilesAction extends MutatingApiAction
+    public static class PostErrorFilesAction extends MutatingApiAction<Object>
     {
         @Override
         public Object execute(Object o, BindException errors)
@@ -1753,7 +1753,7 @@ public class TestResultsController extends SpringActionController
             int runId = run.getId();
             List<TestFailDetail> failList = testFailDetails.get(runId);
             run.setFailures(failList != null
-                    ? failList.toArray(new TestFailDetail[failList.size()])
+                    ? failList.toArray(new TestFailDetail[0])
                     : new TestFailDetail[0]);
         }
     }

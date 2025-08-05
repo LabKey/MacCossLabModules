@@ -266,7 +266,7 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
                 String missing = hasSpectrumFiles() ? "" : " spectrum file names";
                 if (isBibliospecLibrary() && !hasIdFiles())
                 {
-                    missing += (missing.length() > 0 ? " and " : "") + " peptide ID file names";
+                    missing += (!missing.isEmpty() ? " and " : "") + " peptide ID file names";
                 }
                 return "Library source files in the external repository cannot be verified since the library is missing " + missing + ".";
             }
@@ -311,7 +311,7 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
         // For example: Koina-Prosit_2020_intensity_HCD-Prosit_2019_irt where
         // Prosit_2020_intensity_HCD is the intensity model and Prosit_2019_irt is the retention time model. Skyline
         // supports multiple Koina models.
-        if(isBibliospecLibrary() && getSpectrumFiles().size() == 1 && getIdFiles().size() == 0)
+        if(isBibliospecLibrary() && getSpectrumFiles().size() == 1 && getIdFiles().isEmpty())
         {
             String modelName = getSpectrumFiles().get(0).getName();
             return "Prositintensity_prosit_publication_v1".equals(modelName)
@@ -341,7 +341,7 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
         if (isBibliospecLibrary())
         {
             var spectrumFiles = getSpectrumFiles();
-            return spectrumFiles.size() > 0 && spectrumFiles.stream().anyMatch(f -> f.getName().toLowerCase().endsWith(".csv"));
+            return !spectrumFiles.isEmpty() && spectrumFiles.stream().anyMatch(f -> f.getName().toLowerCase().endsWith(".csv"));
         }
         return false;
     }
@@ -354,12 +354,12 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
 
     private boolean hasSpectrumFiles()
     {
-        return _spectrumFiles != null && _spectrumFiles.size() > 0;
+        return _spectrumFiles != null && !_spectrumFiles.isEmpty();
     }
 
     private boolean hasIdFiles()
     {
-        return _idFiles != null && _idFiles.size() > 0;
+        return _idFiles != null && !_idFiles.isEmpty();
     }
 
     private boolean foundSpectrumFiles()

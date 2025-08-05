@@ -42,7 +42,7 @@ public class FilesMetadataImporter
         if (includeSubfolders)
         {
             List<Container> children = ContainerManager.getChildren(container);
-            if (children.size() > 0)
+            if (!children.isEmpty())
             {
                 var subfolders = vf.getDir("subfolders"); // TODO: Make SubfolderWriter.DIRECTORY_NAME public
                 for (Container child : children)

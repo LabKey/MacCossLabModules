@@ -491,7 +491,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
     public static class ExperimentUserForeignKey extends UserIdQueryForeignKey
     {
-        private FieldKey _fieldKey;
+        private final FieldKey _fieldKey;
 
         static public BaseColumnInfo initColumn(ColumnInfo column)
         {

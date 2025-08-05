@@ -29,9 +29,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.*;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.getMoleculePrecursors;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.getPeptideGroups;
-import static org.labkey.panoramapublic.chromlib.ChromLibStateManager.getPrecursors;
 
 
 public abstract class ChromLibStateImporter
@@ -172,7 +169,7 @@ public abstract class ChromLibStateImporter
     List<LibPeptideGroup> getPeptideGroupDbMatches(LibPeptideGroup tsvPepGrp, String skyFile, Container container) throws ChromLibStateException
     {
         var dbIds = _pepGrpKeyMap.get(tsvPepGrp.getKey());
-        if (dbIds == null || dbIds.size() == 0)
+        if (dbIds == null || dbIds.isEmpty())
         {
             throw new ChromLibStateException(String.format("Expected a db row for peptide group '%s' in the Skyline document '%s'. Container '%s'.",
                     tsvPepGrp.getLabel(), skyFile, container.getPath()));
@@ -439,7 +436,7 @@ public abstract class ChromLibStateImporter
         {
             var dbPepGrpMatches = _pepGrpPrecursorsList.stream().filter(p -> p.hasPrecursorDbMatch(tsvPrecursor)).collect(Collectors.toList());
 
-            if (dbPepGrpMatches.size() == 0)
+            if (dbPepGrpMatches.isEmpty())
             {
                 throw new IllegalStateException(String.format("Expected a db row for precursor %s in the peptide group '%s'. Skyline document '%s'. Folder '%s'.",
                         tsvPrecursor.getKey(), _pepGrpKey.toString(), skyFile, container.getPath()));

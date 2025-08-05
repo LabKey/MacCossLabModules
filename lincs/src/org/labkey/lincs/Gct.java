@@ -32,11 +32,11 @@ import java.util.Set;
  */
 public class Gct
 {
-    private List<GctEntity> _probes;
-    private Map<String, Integer> _probeIndexMap;
-    private List<GctEntity> _replicates;
-    private Map<String, Integer> _replicateIndexMap;
-    private GctTable<ProbeReplicate> _areaRatios;
+    private final List<GctEntity> _probes;
+    private final Map<String, Integer> _probeIndexMap;
+    private final List<GctEntity> _replicates;
+    private final Map<String, Integer> _replicateIndexMap;
+    private final GctTable<ProbeReplicate> _areaRatios;
 
     private List<String> _probeAnnotationNames;
     private List<String> _replicateAnnotationNames;
@@ -164,7 +164,7 @@ public class Gct
         // Sort replicates by the value of the det_plate annotation, and then
         // by replicate name. For custom GCT, the replicate name is:
         // <exp_type>_<plate_number>_<original_replicate_name>
-        List<GctEntity> sortedReplicates = new ArrayList<GctEntity>(_replicates.size());
+        List<GctEntity> sortedReplicates = new ArrayList<>(_replicates.size());
         sortedReplicates.addAll(_replicates);
         sortedReplicates.sort((rep1, rep2) ->
         {
@@ -262,7 +262,7 @@ public class Gct
     public static class GctEntity
     {
         private final String _name;
-        private Map<String, String> _annotations;
+        private final Map<String, String> _annotations;
 
         public GctEntity(String name)
         {
@@ -418,7 +418,7 @@ public class Gct
 
     public interface GctKeyBuilder <T extends GctKey>
     {
-        public T build(String key1, String key2);
+        T build(String key1, String key2);
     }
 
     public static class ProbePlateKeyBuilder implements GctKeyBuilder<ProbeExpTypePlate>
@@ -446,7 +446,7 @@ public class Gct
 
     public static class GctTable <T extends GctKey>
     {
-        private Map<T, String> _map;
+        private final Map<T, String> _map;
         private List<String> _sortedKey2;
 
         public GctTable()

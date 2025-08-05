@@ -52,7 +52,7 @@
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
 
     String viewType = data.getViewType();
-    if (viewType == null || viewType.equals(""))
+    if (viewType == null || viewType.isEmpty())
         viewType = ViewType.MONTH;
     String viewTypeWord = "Month";
     if (viewType.equals(ViewType.WEEK))

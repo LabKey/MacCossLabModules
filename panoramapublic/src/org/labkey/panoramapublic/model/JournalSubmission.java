@@ -104,7 +104,7 @@ public class JournalSubmission
      */
     public @Nullable Submission getLatestSubmission()
     {
-        return submissions().size() > 0 ? submissions().get(0) : null;
+        return !submissions().isEmpty() ? submissions().get(0) : null;
     }
 
     /**
@@ -129,7 +129,7 @@ public class JournalSubmission
     public @Nullable Submission getLatestCopiedSubmission()
     {
         List<Submission> copiedSubmissions = getCopiedSubmissions();
-        return copiedSubmissions.size() > 0 ? copiedSubmissions.get(0) : null;
+        return !copiedSubmissions.isEmpty() ? copiedSubmissions.get(0) : null;
     }
 
     /**
@@ -170,7 +170,6 @@ public class JournalSubmission
     }
 
     /**
-     * @param copiedExperimentId
      * @return The lab head name entered in the submission request that was copied with the given copiedExperimentId.
      * Returns null if no lab head information was entered in the submission form.
      */

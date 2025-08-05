@@ -71,7 +71,7 @@ public class SignUpModule extends DefaultModule
             @Override
             public WebPartView getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart)
             {
-                JspView<SignUpController.SignupForm> view = new JspView("/org/labkey/signup/signupPage.jsp", new SignUpController.SignupForm());
+                JspView<SignUpController.SignupForm> view = new JspView<>("/org/labkey/signup/signupPage.jsp", new SignUpController.SignupForm());
                 view.setTitle("Sign Up");
 
                 return view;

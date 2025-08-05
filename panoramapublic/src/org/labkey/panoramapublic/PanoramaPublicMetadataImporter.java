@@ -73,7 +73,7 @@ public class PanoramaPublicMetadataImporter implements FolderImporter
             // Get the experiment that was just created in the target folder as part of folder import.
             User user = job.getUser();
             List<? extends ExpExperiment> experiments = ExperimentService.get().getExperiments(container, user, false, false);
-            if (experiments.size() == 0)
+            if (experiments.isEmpty())
             {
                 throw new PipelineJobException("No experiments found in the folder " + container.getPath());
             }

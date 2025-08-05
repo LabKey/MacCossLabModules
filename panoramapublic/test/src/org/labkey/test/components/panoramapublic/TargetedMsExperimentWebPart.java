@@ -2,7 +2,6 @@ package org.labkey.test.components.panoramapublic;
 
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
-import org.labkey.test.WebTestHelper;
 import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.util.DataRegionTable;
 import org.openqa.selenium.WebElement;

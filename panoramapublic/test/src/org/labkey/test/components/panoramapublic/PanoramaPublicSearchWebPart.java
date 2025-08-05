@@ -15,7 +15,7 @@ import java.time.Duration;
 
 public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearchWebPart.ElementCache>
 {
-    private static String title = "Panorama Public Search";
+    private static final String title = "Panorama Public Search";
 
     private final WebDriverWait tabWait = new WebDriverWait(getDriver(), Duration.ofSeconds(1));
 
@@ -30,6 +30,7 @@ public class PanoramaPublicSearchWebPart extends BodyWebPart<PanoramaPublicSearc
         return new PanoramaPublicSearchWebPart.ElementCache();
     }
 
+    @Override
     public String getTitle()
     {
         return elementCache().title.get();

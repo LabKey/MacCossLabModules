@@ -20,8 +20,6 @@ import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.dialect.SqlDialect;
 import org.labkey.api.data.TableInfo;
 
-import java.lang.String;
-
 public class SkylineToolsStoreSchema
 {
     private static final SkylineToolsStoreSchema _instance = new SkylineToolsStoreSchema();

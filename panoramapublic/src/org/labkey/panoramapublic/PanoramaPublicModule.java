@@ -177,7 +177,7 @@ public class PanoramaPublicModule extends SpringModule
             @Override
             public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
             {
-                JspView view = new JspView("/org/labkey/panoramapublic/view/search/panoramaPublicProteinSearch.jsp", getDefaultProteinSearchForm());
+                JspView view = new JspView<>("/org/labkey/panoramapublic/view/search/panoramaPublicProteinSearch.jsp", getDefaultProteinSearchForm());
                 view.setTitle("Panorama Public Protein Search");
                 return view;
             }
@@ -193,7 +193,7 @@ public class PanoramaPublicModule extends SpringModule
             @Override
             public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
             {
-                JspView view = new JspView("/org/labkey/panoramapublic/view/search/panoramaPublicPeptideSearch.jsp", getDefaultPeptideSearchForm());
+                JspView view = new JspView<>("/org/labkey/panoramapublic/view/search/panoramaPublicPeptideSearch.jsp", getDefaultPeptideSearchForm());
                 view.setTitle("Panorama Public Peptide Search");
                 return view;
             }
@@ -218,7 +218,7 @@ public class PanoramaPublicModule extends SpringModule
                         JournalManager.PublicDataUser publicDataUser = JournalManager.getPublicDataUser(journal);
                         if (publicDataUser != null)
                         {
-                            JspView view = new JspView("/org/labkey/panoramapublic/view/publish/dataDownloadInfo.jsp", publicDataUser);
+                            JspView view = new JspView<>("/org/labkey/panoramapublic/view/publish/dataDownloadInfo.jsp", publicDataUser);
                             view.setTitle(DOWNLOAD_DATA_INFO_WP);
                             return view;
                         }

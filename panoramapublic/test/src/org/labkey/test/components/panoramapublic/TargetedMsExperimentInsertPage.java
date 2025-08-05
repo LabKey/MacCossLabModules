@@ -84,10 +84,10 @@ public class TargetedMsExperimentInsertPage extends InsertPage
 
     private class Elements extends InsertPage.Elements
     {
-        public Locator.XPathLocator expTitle = body.append(Locator.tagWithName("textarea", "title"));
-        public Locator.XPathLocator expAbstract = body.append(Locator.tagWithName("textarea", "abstract"));
-        public Locator.XPathLocator keywords = body.append(Locator.tagWithName("textarea","keywords"));
-        public Locator.XPathLocator submitterAffiliation = body.append(Locator.input("submitterAffiliation"));
+        public Locator.XPathLocator expTitle = body.append(Locator.tagWithName("textarea", "Title"));
+        public Locator.XPathLocator expAbstract = body.append(Locator.tagWithName("textarea", "Abstract"));
+        public Locator.XPathLocator keywords = body.append(Locator.tagWithName("textarea","Keywords"));
+        public Locator.XPathLocator submitterAffiliation = body.append(Locator.input("SubmitterAffiliation"));
         public Locator.XPathLocator organismInputDiv = body.append(Locator.id("input-picker-div-organism")
                 .descendant(Locator.tagWithClass("span", "twitter-typeahead"))
                 .child(Locator.tagWithClass("input", "tt-input")));
