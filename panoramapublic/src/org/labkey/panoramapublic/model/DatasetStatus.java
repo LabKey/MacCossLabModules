@@ -68,6 +68,16 @@ public class DatasetStatus  extends DbEntity
         return _deletionRequestedDate != null;
     }
 
+    public boolean extensionRequested()
+    {
+        return _extensionRequestedDate != null;
+    }
+
+    public boolean reminderSent()
+    {
+        return _lastReminderDate != null;
+    }
+
     public boolean isExtensionValid(PrivateDataMessageSettings settings)
     {
         if (_extensionRequestedDate == null)

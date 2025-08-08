@@ -10338,6 +10338,8 @@ public class PanoramaPublicController extends SpringActionController
         {
             PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
 
+            Journal panoramaPublic = JournalManager.getJournal(JournalManager.PANORAMA_PUBLIC);
+
             VBox view = new VBox();
             view.addView(new HtmlView(
                     DIV(
@@ -10364,15 +10366,9 @@ public class PanoramaPublicController extends SpringActionController
                             ),
                             HR(),
                             DIV(
-                                    FORM(at(method, "POST", action, new ActionURL(SendPrivateDataRemindersAction.class, getContainer())),
-                                            new ButtonBuilder("Send Reminders Now")
-                                            .usePost("Are you sure you want to send reminder messages for private datasets?")
-                                            .submit(true)
-                                            .build(),
-                                        HtmlString.NBSP,
-                                        CHECKBOX(at(name, "testMode", checked, false)),
-                                        "Test Mode"
-                                    )
+                                    panoramaPublic != null
+                                            ? (new LinkBuilder("Send Reminders Now").href(new ActionURL(SendPrivateDataRemindersAction.class,panoramaPublic.getProject())).build())
+                                            : "Panorama Public does not exist on the server"
                             )
                     )
             ));
@@ -10413,6 +10409,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
             root.addChild("Private Data Reminder Settings");
         }
     }
@@ -10455,37 +10452,75 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
-    public class SendPrivateDataRemindersAction extends FormHandlerAction<PrivateDataSendReminderForm>
+    public class SendPrivateDataRemindersAction extends FormViewAction<PrivateDataSendReminderForm>
     {
         @Override
-        public void validateCommand(PrivateDataSendReminderForm form, Errors errors)
-        {
+        public void validateCommand(PrivateDataSendReminderForm form, Errors errors){}
 
+        @Override
+        public ModelAndView getView(PrivateDataSendReminderForm form, boolean reshow, BindException errors) throws Exception
+        {
+            Journal panoramaPublic = JournalManager.getJournal(getContainer());
+            if (panoramaPublic ==  null)
+            {
+                errors.reject(ERROR_MSG, "Not a Panorama Public folder: " + getContainer().getName());
+                return new SimpleErrorView(errors, true);
+            }
+
+            QuerySettings qSettings = new QuerySettings(getViewContext(), "ExperimentAnnotationsTable", "ExperimentAnnotations");
+            qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
+            qSettings.setBaseFilter(new SimpleFilter(FieldKey.fromParts("Public"), "No"));
+
+            QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, null);
+            tableView.setTitle("Private Panorama Public Datasets");
+
+            form.setDataRegionName(tableView.getDataRegionName());
+
+            JspView<PrivateDataSendReminderForm> jspView = new JspView<>("/org/labkey/panoramapublic/view/sendPrivateDataRemindersForm.jsp", form, errors);
+            return new VBox(jspView, tableView);
         }
 
         @Override
         public boolean handlePost(PrivateDataSendReminderForm form, BindException errors) throws Exception
         {
-            //List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
+            List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
+            if (selectedExperimentIds.isEmpty())
+            {
+                errors.reject(ERROR_MSG, "Please select at least one experiment");
+                return false;
+            }
             PipelineJob job = new PrivateDataReminderJob(getViewBackgroundInfo(),
                     PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()),
-                    form.isTestMode());
+                    JournalManager.getJournal(getContainer()),
+                    form.getSelectedExperimentIds(),
+                    form.getTestMode());
             PipelineService.get().queueJob(job);
             return true;
         }
+
 
         @Override
         public URLHelper getSuccessURL(PrivateDataSendReminderForm form)
         {
             return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
         }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            addPanoramaPublicAdminConsoleNav(root, ContainerManager.getRoot());
+            root.addChild("Send Private Data Reminders");
+        }
     }
 
-    private static class PrivateDataSendReminderForm
+    public static class PrivateDataSendReminderForm
     {
         private boolean _testMode;
+        private String _selectedIds;
+        private String _dataRegionName = null;
+        private List<ExperimentAnnotations> _experiments = null;
 
-        public boolean isTestMode()
+        public boolean getTestMode()
         {
             return _testMode;
         }
@@ -10493,6 +10528,45 @@ public class PanoramaPublicController extends SpringActionController
         public void setTestMode(boolean testMode)
         {
             _testMode = testMode;
+        }
+
+        public String getSelectedIds()
+        {
+            return _selectedIds;
+        }
+
+        public List<Integer> getSelectedExperimentIds()
+        {
+            if (_selectedIds == null)
+            {
+                return Collections.emptyList();
+            }
+            return Arrays.stream(StringUtils.split(_selectedIds, ",")).map(Integer::parseInt).collect(Collectors.toList());
+        }
+
+        public void setSelectedIds(String selectedIds)
+        {
+            _selectedIds = selectedIds;
+        }
+
+        public String getDataRegionName()
+        {
+            return _dataRegionName;
+        }
+
+        public void setDataRegionName(String dataRegionName)
+        {
+            _dataRegionName = dataRegionName;
+        }
+
+        public List<ExperimentAnnotations> getExperiments()
+        {
+            return _experiments;
+        }
+
+        public void setExperiments(List<ExperimentAnnotations> experiments)
+        {
+            _experiments = experiments;
         }
     }
 

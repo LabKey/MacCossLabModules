@@ -29,6 +29,7 @@ import org.labkey.panoramapublic.query.SubmissionManager;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -37,6 +38,8 @@ import java.util.Set;
 public class PrivateDataReminderJob extends PipelineJob
 {
     private boolean _test;
+    private List<Integer> _experimentAnnotationsIds;
+    private Journal _panoramaPublic;
 
     protected PrivateDataReminderJob()
     {
@@ -44,36 +47,31 @@ public class PrivateDataReminderJob extends PipelineJob
 
     public PrivateDataReminderJob(ViewBackgroundInfo info, @NotNull PipeRoot root, boolean test)
     {
+        this(info, root, getPanoramaPublic(), getPrivateDatasets(getPanoramaPublic()), test);
+    }
+
+    public PrivateDataReminderJob(ViewBackgroundInfo info, @NotNull PipeRoot root, Journal panoramaPublic, List<Integer> experimentAnnotationsIds, boolean test)
+    {
         super("Panorama Public", info, root);
         setLogFile(root.getRootNioPath().resolve(FileUtil.makeFileNameWithTimestamp("PanoramaPublic-private-data-reminder", "log")));
+        _panoramaPublic = panoramaPublic;
+        _experimentAnnotationsIds = experimentAnnotationsIds;
         _test = test;
     }
 
-    @Override
-    public void run()
+    private static Journal getPanoramaPublic()
     {
-        setStatus(TaskStatus.running);
-
-        Journal panoramaPublic = JournalManager.getJournal(JournalManager.PANORAMA_PUBLIC);
-        if (panoramaPublic == null)
-        {
-            getLogger().error("Panorama Public project does not exist");
-            return;
-        }
-
-        List<Integer> privateDatasetIds = getPrivateDatasets(panoramaPublic.getProject());
-
-        postMessage(privateDatasetIds, panoramaPublic);
-
-        setStatus(TaskStatus.complete);
+        return JournalManager.getJournal(JournalManager.PANORAMA_PUBLIC);
     }
 
-    private List<Integer> getPrivateDatasets(Container projectFolder)
+    public static List<Integer> getPrivateDatasets(Journal panoramaPublic)
     {
-        Set<Container> subFolders = ContainerManager.getAllChildren(projectFolder);
+        if (panoramaPublic == null) return Collections.emptyList();
+
+        Set<Container> subFolders = ContainerManager.getAllChildren(panoramaPublic.getProject());
         List<Integer> privateDataIds = new ArrayList<>();
         PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
-        for (Container folder: subFolders)
+        for (Container folder : subFolders)
         {
             ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(folder);
 
@@ -86,10 +84,13 @@ public class PrivateDataReminderJob extends PipelineJob
         return privateDataIds;
     }
 
-    private boolean shouldPostReminder(ExperimentAnnotations exptAnnotations, PrivateDataMessageSettings settings)
+    private static boolean shouldPostReminder(ExperimentAnnotations exptAnnotations, PrivateDataMessageSettings settings)
     {
         if (exptAnnotations == null) return false;
         if (exptAnnotations.isPublic()) return false;
+
+        // Return false if this is not the latest version of the experiment
+        if (!ExperimentAnnotationsManager.isCurrentVersion(exptAnnotations)) return false;
 
         DatasetStatus datasetStatus = DatasetStatusManager.getForShortUrl(exptAnnotations.getShortUrl());
         if (datasetStatus == null) return true;
@@ -100,13 +101,24 @@ public class PrivateDataReminderJob extends PipelineJob
         // Return false if the submitter has requested an extension, and the extension is still valid
         if (datasetStatus.isExtensionValid(settings)) return false;
 
-        // Return false if this is not the latest version of the experiment
-        if (!ExperimentAnnotationsManager.isCurrentVersion(exptAnnotations)) return false;
-
         // Returns false if the last reminder was sent less than a month ago
-        if (datasetStatus.isLastReminderRecent(settings)) return false;
+        return !datasetStatus.isLastReminderRecent(settings);
+    }
 
-        return true;
+    @Override
+    public void run()
+    {
+        setStatus(TaskStatus.running);
+
+        if (_panoramaPublic == null)
+        {
+            getLogger().error("Panorama Public project does not exist");
+            return;
+        }
+
+        postMessage(_experimentAnnotationsIds, _panoramaPublic);
+
+        setStatus(TaskStatus.complete);
     }
 
     private void postMessage(List<Integer> expAnnotationIds, Journal panoramaPublic)

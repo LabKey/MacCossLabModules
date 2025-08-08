@@ -375,7 +375,7 @@ public class PanoramaPublicNotification
                                                       @NotNull Container announcementContainer, @NotNull User journalAdmin)
     {
         /*
-        We’re reaching out regarding your dataset on Panorama Public (https://panoramaweb.org/polyjuice.url), which has been private since January 1, 2024.
+        We are reaching out regarding your dataset on Panorama Public (https://panoramaweb.org/polyjuice.url), which has been private since January 1, 2024.
         Is the paper associated with this work already published?
         If yes: Please make your data public by clicking the "Make Public" button in your folder or by clicking [Make Data Public] here. This helps ensure that your valuable research is easily accessible to the community.
         If not: You have a couple of options:

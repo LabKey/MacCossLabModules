@@ -4,15 +4,15 @@ import org.labkey.api.data.PropertyManager;
 
 public class PrivateDataMessageSettings
 {
-    public static String PROP_PRIVATE_DATA_REMINDER = "Panorama Public private data reminder settings";
-    public static String PROP_ENABLE_REMINDER = "Enable private data reminder";
-    public static String PROP_EXTENSION_MONTHS = "Extension duration (months)";
-    public static String PROP_REMINDER_FREQUENCY = "Reminder frequency (months)";
+    public static final String PROP_PRIVATE_DATA_REMINDER = "Panorama Public private data reminder settings";
+    public static final String PROP_ENABLE_REMINDER = "Enable private data reminder";
+    public static final String PROP_EXTENSION_MONTHS = "Extension duration (months)";
+    public static final String PROP_REMINDER_FREQUENCY = "Reminder frequency (months)";
 
 
-    private static boolean DEFAULT_ENABLE_REMINDERS = false;
-    private static int DEFAULT_EXTENSION_LENGTH = 6; // Private status of a dataset can be extended by 6 months.
-    private static int DEFAULT_REMINDER_FREQUENCY = 1; // Send reminders once a month, unless extension or deletion was requested.
+    private static final boolean DEFAULT_ENABLE_REMINDERS = false;
+    private static final int DEFAULT_EXTENSION_LENGTH = 6; // Private status of a dataset can be extended by 6 months.
+    private static final int DEFAULT_REMINDER_FREQUENCY = 1; // Send reminders once a month, unless extension or deletion was requested.
 
     private boolean _enableReminders;
     private int _extensionLength;

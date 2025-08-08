@@ -4,7 +4,6 @@ import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
-import org.labkey.api.data.PropertyManager;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineService;
@@ -29,9 +28,6 @@ import org.quartz.impl.StdSchedulerFactory;
 public class PrivateDataMessageScheduler
 {
     private static final Logger _log = LogHelper.getLogger(PrivateDataMessageScheduler.class, "Panorama Public private data reminder message scheduler");
-
-    public static String PROP_PRIVATE_DATA_REMINDER = "Panorama Public private data reminder";
-    public static String PROP_ENABLE_REMINDER = "Enable private data reminder";
 
     private static final TriggerKey TRIGGER_KEY = new TriggerKey(PrivateDataMessageScheduler.class.getCanonicalName());
 
@@ -119,34 +115,15 @@ public class PrivateDataMessageScheduler
                     throw new ConfigurationException("No valid pipeline root found in the root container");
                 }
 
-
                 PipelineJob job = new PrivateDataReminderJob(vbi, PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()), false);
                 PipelineService.get().queueJob(job);
             }
             catch(Exception e)
             {
-                _log.error("Error queuing PrivateDataReminderJob", e); // TODO: Anything else?
+                _log.error("Error queuing PrivateDataReminderJob", e);
                 // ExceptionUtil.logExceptionToMothership(null, e);
 
             }
         }
-    }
-
-    public static boolean isPrivateDataReminderEnabled()
-    {
-        PropertyManager.PropertyMap map = PropertyManager.getProperties(PROP_PRIVATE_DATA_REMINDER);
-        return Boolean.parseBoolean(map != null ? map.getOrDefault(PROP_ENABLE_REMINDER, "false") : "false");
-    }
-
-    public static void enablePrivateDataReminder()
-    {
-        PropertyManager.WritablePropertyMap map = PropertyManager.getWritableProperties(PROP_PRIVATE_DATA_REMINDER, true);
-        map.put(PROP_ENABLE_REMINDER, Boolean.TRUE.toString());
-    }
-
-    public static void disablePrivateDataReminder()
-    {
-        PropertyManager.WritablePropertyMap map = PropertyManager.getWritableProperties(PROP_PRIVATE_DATA_REMINDER, true);
-        map.put(PROP_ENABLE_REMINDER, Boolean.FALSE.toString());
     }
 }
