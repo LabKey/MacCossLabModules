@@ -594,7 +594,7 @@ public class SkylineToolsStoreController extends SpringActionController
                         tool.setLatest(true);
                         SkylineToolsStoreManager.get().insertTool(c, getUser(), tool);
 
-                        return HttpView.redirect(SkylineToolStoreUrls.getToolDetailsUrl(tool).getLocalURIString());
+                        return HttpView.redirect(SkylineToolStoreUrls.getToolDetailsUrl(tool));
                     }
                 }
                 else
@@ -868,7 +868,6 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
         {
-            final String sender = httpServletRequest.getParameter("sender");
             final int suppTarget = Integer.parseInt(httpServletRequest.getParameter("supptarget"));
 
             final String suppFile = httpServletRequest.getParameter("suppFile");
@@ -890,8 +889,7 @@ public class SkylineToolsStoreController extends SpringActionController
             else
                 throw new Exception();
 
-            return HttpView.redirect((sender != null) ? sender :
-                    SkylineToolStoreUrls.getToolDetailsUrl(tool).getLocalURIString());
+            return HttpView.redirect(SkylineToolStoreUrls.getToolDetailsUrl(tool));
         }
 
         @Override
@@ -1049,8 +1047,8 @@ public class SkylineToolsStoreController extends SpringActionController
                 }
             }
 
-            return HttpView.redirect((senderUrl != null) ? senderUrl.getLocalURIString() :
-                SkylineToolStoreUrls.getToolStoreHomeUrl(toolStoreContainer, getUser()).getLocalURIString());
+            return HttpView.redirect((senderUrl != null) ? senderUrl :
+                SkylineToolStoreUrls.getToolStoreHomeUrl(toolStoreContainer, getUser()));
         }
 
         @Override
@@ -1383,8 +1381,9 @@ public class SkylineToolsStoreController extends SpringActionController
 
                 Container toolStoreContainer = tool != null ? tool.getContainerParent() : getContainer();
 
-                return HttpView.redirect((sender != null) ? sender :
-                        SkylineToolStoreUrls.getToolStoreHomeUrl(toolStoreContainer, getUser()).getLocalURIString());
+
+                return HttpView.redirect((sender != null) ? new ActionURL(sender) :
+                        SkylineToolStoreUrls.getToolStoreHomeUrl(toolStoreContainer, getUser()));
             }
             else
             {
@@ -1505,8 +1504,7 @@ public class SkylineToolsStoreController extends SpringActionController
             else
                 tool.writeIconToFile(makeFile(tool.lookupContainer(), "icon.png"), "png");
 
-            String sender = httpServletRequest.getParameter("sender");
-            return HttpView.redirect((sender != null) ? sender : new ActionURL(BeginAction.class, getContainer()).getLocalURIString());
+            return HttpView.redirect(SkylineToolStoreUrls.getToolDetailsUrl(tool));
         }
 
         @Override
