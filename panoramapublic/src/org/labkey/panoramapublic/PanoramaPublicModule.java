@@ -360,7 +360,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public void startBackgroundThreads()
     {
-        PrivateDataMessageScheduler.getInstance().initializeTimer();
+        // PrivateDataMessageScheduler.getInstance().initialize();
     }
 
     @NotNull

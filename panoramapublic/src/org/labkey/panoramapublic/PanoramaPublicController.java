@@ -10336,42 +10336,16 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getView(PrivateDataReminderSettingsForm form, boolean reshow, BindException errors) throws Exception
         {
-            PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
-
-            Journal panoramaPublic = JournalManager.getJournal(JournalManager.PANORAMA_PUBLIC);
-
+            if (!reshow)
+            {
+                PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
+                form.setEnabled(settings.isEnableReminders());
+                form.setExtensionLength(settings.getExtensionLength());
+                form.setReminderFrequency(settings.getReminderFrequency());
+            }
+            
             VBox view = new VBox();
-            view.addView(new HtmlView(
-                    DIV(
-                            ERRORS(errors),
-                            "Posts a reminder to the support message threads of the private datasets on Panorama Public.",
-                            DIV(
-                                    FORM(at(method, "POST", action, new ActionURL(PrivateDataReminderSettingsAction.class, getContainer())),
-                                            TABLE(
-                                                    TR(
-                                                            TD(cl("labkey-form-label"), SPAN(PrivateDataMessageSettings.PROP_ENABLE_REMINDER)),
-                                                            TD(at(style, "padding:0 10px 0 0;"), INPUT(at(type, "checkbox", name, "enabled", checked, settings.isEnableReminders())))
-                                                    ),
-                                                    TR(
-                                                            TD(cl("labkey-form-label"), SPAN(PrivateDataMessageSettings.PROP_EXTENSION_MONTHS)),
-                                                            TD(at(style, "padding:0 10px 0 0;"), INPUT(at(type, "Text", name, "extensionLength", value, settings.getExtensionLength())))
-                                                    ),
-                                                    TR(
-                                                            TD(cl("labkey-form-label"), SPAN(PrivateDataMessageSettings.PROP_REMINDER_FREQUENCY)),
-                                                            TD(at(style, "padding:0 10px 0 0;"), INPUT(at(type, "Text", name, "reminderFrequency", value, settings.getReminderFrequency())))
-                                                    )
-                                            ),
-                                            new ButtonBuilder("Save").submit(true).build()
-                                    )
-                            ),
-                            HR(),
-                            DIV(
-                                    panoramaPublic != null
-                                            ? (new LinkBuilder("Send Reminders Now").href(new ActionURL(SendPrivateDataRemindersAction.class,panoramaPublic.getProject())).build())
-                                            : "Panorama Public does not exist on the server"
-                            )
-                    )
-            ));
+            view.addView(new JspView<>("/org/labkey/panoramapublic/view/privateDataRemindersSettingsForm.jsp", form));
             view.setTitle("Private Data Reminder Settings");
             view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
@@ -10414,7 +10388,7 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    private static class PrivateDataReminderSettingsForm
+    public static class PrivateDataReminderSettingsForm
     {
         private boolean _enabled;
         private int _extensionLength;
