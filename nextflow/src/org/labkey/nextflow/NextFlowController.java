@@ -29,8 +29,8 @@ import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Path;
-import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.SelectBuilder;
+import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
@@ -163,8 +163,7 @@ public class NextFlowController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Admin Console", PageFlowUtil.urlProvider(AdminUrls.class).getAdminConsoleURL());
-            root.addChild("Configure NextFlow");
+            PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Configure NextFlow", getClass(), getContainer());
         }
     }
 
