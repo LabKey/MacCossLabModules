@@ -10,6 +10,7 @@ import org.labkey.api.announcements.api.Announcement;
 import org.labkey.api.announcements.api.AnnouncementService;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
+import org.labkey.api.markdown.MarkdownService;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
@@ -592,9 +593,13 @@ public class PanoramaPublicNotification
     {
         // https://www.markdownguide.org/basic-syntax/#characters-you-can-escape
         // Escape Markdown special characters. Some character combinations can result in
-        // unintended Markdown styling, e.g. "+_Italics_+" will results in "Italics" to be italicized.
+        // unintended Markdown styling, e.g. "+_Italics_+" will result in "Italics" to be italicized.
         // This can be seen with the tricky characters used for project names in labkey tests.
-        return text.replaceAll("([`*_{}\\[\\]()#+.!|-])", "\\\\$1");
+        // 8/13/25 - Escape tilde (~) as well. In the LabKey Markdown flavor, text between
+        // single tildes (e.g., ~strikethrough~) is rendered as strikethrough.
+        // IMPORTANT: The dash (-) must be escaped in the regex or placed at the start/end of the
+        // character class to be treated as a literal dash rather than a range operator.
+        return text.replaceAll("([`*_{}\\[\\]()#+.!|~-])", "\\\\$1");
     }
 
     public static String getExperimentCopiedMessageBody(ExperimentAnnotations sourceExperiment,
@@ -715,8 +720,24 @@ public class PanoramaPublicNotification
         public void testMarkdownEscape()
         {
             Assert.assertEquals("\\+\\_Test\\_\\+", escape("+_Test_+"));
-            Assert.assertEquals("PanoramaPublicTest Project ☃~\\!@$&\\(\\)\\_\\+\\{\\}\\-=\\[\\],\\.\\#äöüÅ",
-                    escape("PanoramaPublicTest Project ☃~!@$&()_+{}-=[],.#äöüÅ"));
+            String expected = "PanoramaPublicTest Project ☃\\~\\!@$&\\(\\)\\_\\+\\{\\}\\-=\\[\\],\\.\\#äöüÅ";
+            String escaped = escape("PanoramaPublicTest Project ☃~!@$&()_+{}-=[],.#äöüÅ");
+            Assert.assertEquals(expected, escaped);
+
+            /*
+            PanoramaPublicTest Project ☃~!@$&()_+{}-=[],.#äöüÅ This is a test PanoramaPublicTest Project ☃~!@$&()_+{}-=[],.#äöüÅ
+
+            should be translated to
+
+             <div class="lk-markdown-container"><p>PanoramaPublicTest Project ☃~!@$&amp;()_+{}-=[],.#äöüÅ This is a test PanoramaPublicTest Project ☃~!@$&amp;()_+{}-=[],.#äöüÅ</p>
+             </div>
+             */
+            MarkdownService mds = MarkdownService.get();
+            expected = """
+                    <div class=\"lk-markdown-container\"><p>PanoramaPublicTest Project ☃~!@$&amp;()_+{}-=[],.#äöüÅ This is a test PanoramaPublicTest Project ☃~!@$&amp;()_+{}-=[],.#äöüÅ</p>
+                    </div>""";
+            String testText = "PanoramaPublicTest Project ☃~!@$&()_+{}-=[],.#äöüÅ This is a test PanoramaPublicTest Project ☃~!@$&()_+{}-=[],.#äöüÅ";
+            Assert.assertEquals(expected, mds.toHtml(escape(testText)));
         }
     }
 }
