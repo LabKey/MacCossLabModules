@@ -78,7 +78,7 @@ public class DatasetStatus  extends DbEntity
         return _lastReminderDate != null;
     }
 
-    public boolean isExtensionValid(PrivateDataMessageSettings settings)
+    public boolean isExtensionCurrent(PrivateDataMessageSettings settings)
     {
         if (_extensionRequestedDate == null)
         {
@@ -105,9 +105,9 @@ public class DatasetStatus  extends DbEntity
                 .atZone(ZoneId.systemDefault())
                 .toLocalDate();
 
-        LocalDate extensionValidStartDate = LocalDate.now().minusMonths(settings.getReminderFrequency());
+        LocalDate reminderValidStartDate = LocalDate.now().minusMonths(settings.getReminderFrequency());
 
-        return reminderDate.isAfter(extensionValidStartDate);
+        return reminderDate.isAfter(reminderValidStartDate);
     }
 
     public @Nullable Date extensionValidUntil(PrivateDataMessageSettings settings)

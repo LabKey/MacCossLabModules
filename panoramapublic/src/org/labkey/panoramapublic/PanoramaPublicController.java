@@ -78,7 +78,6 @@ import org.labkey.api.module.FolderTypeManager;
 import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.module.ModuleProperty;
-import org.labkey.api.module.SimpleAction;
 import org.labkey.api.pipeline.LocalDirectory;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
@@ -261,7 +260,6 @@ import static org.labkey.api.util.DOM.Attribute.type;
 import static org.labkey.api.util.DOM.Attribute.valign;
 import static org.labkey.api.util.DOM.Attribute.value;
 import static org.labkey.api.util.DOM.Attribute.width;
-import static org.labkey.api.util.DOM.LK.CHECKBOX;
 import static org.labkey.api.util.DOM.LK.ERRORS;
 import static org.labkey.api.util.DOM.LK.FORM;
 import static org.labkey.panoramapublic.proteomexchange.NcbiUtils.PUBMED_ID;
@@ -10087,188 +10085,190 @@ public class PanoramaPublicController extends SpringActionController
         return result;
     }
 
-    @RequiresLogin
-    public class RequestExtensionAction extends ConfirmAction<ShortUrlForm>
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
+    public abstract class UpdateDatasetStatusAction extends ConfirmAction<ShortUrlForm>
     {
-        private ExperimentAnnotations _exptAnnotations;
-        private DatasetStatus _datasetStatus;
+        protected ExperimentAnnotations _exptAnnotations;
+        protected DatasetStatus _datasetStatus;
 
+        protected abstract void doValidationForAction(Errors errors);
+        protected abstract void updateDatasetStatus(DatasetStatus datasetStatus);
+        protected abstract void postNotification() throws Exception;
+
+        @Override
+        public void validateCommand(ShortUrlForm shortUrlForm, Errors errors)
+        {
+            _exptAnnotations = getValidExperimentAnnotations(shortUrlForm, errors);
+            if (_exptAnnotations == null)
+            {
+                return;
+            }
+
+            ensureCorrectContainer(getContainer(), _exptAnnotations.getContainer(), getViewContext());
+
+            ShortURLRecord shortUrl = _exptAnnotations.getShortUrl();
+            _datasetStatus = DatasetStatusManager.getForShortUrl(shortUrl);
+
+            // Action-specific validation
+            doValidationForAction(errors);
+        }
+
+        @Override
+        public boolean handlePost(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        {
+            DatasetStatus datasetStatus = DatasetStatusManager.getForShortUrl(_exptAnnotations.getShortUrl());
+            try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
+            {
+                if (datasetStatus == null)
+                {
+                    datasetStatus = new DatasetStatus();
+                    datasetStatus.setShortUrl(_exptAnnotations.getShortUrl());
+                    updateDatasetStatus(datasetStatus);
+                    DatasetStatusManager.save(datasetStatus, getUser());
+                }
+                else
+                {
+                    updateDatasetStatus(datasetStatus);
+                    DatasetStatusManager.update(datasetStatus, getUser());
+                }
+
+                _datasetStatus = datasetStatus;
+
+                // Post notification
+                postNotification();
+
+                transaction.commit();
+            }
+
+            return true;
+        }
+
+        @Override
+        public @NotNull URLHelper getSuccessURL(ShortUrlForm shortUrlForm)
+        {
+            return PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer());
+        }
+    }
+
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
+    public class RequestExtensionAction extends UpdateDatasetStatusAction
+    {
         @Override
         public ModelAndView getConfirmView(ShortUrlForm shortUrlForm, BindException errors) throws Exception
         {
-            setTitle("Request Extension For Panorama Public Data");
+            setTitle("Request Extension");
             HtmlView view = new HtmlView(DIV(
                     DIV("You are requesting an extension for the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL()),
                     DIV("Title: " + _exptAnnotations.getTitle()),
                     DIV("Submitted on: " + DateUtil.formatDateTime(_exptAnnotations.getCreated(), "MMMM d, yyyy")),
                     DIV("Submitter: " + _exptAnnotations.getSubmitterName())
             ));
-            view.setTitle("Request Extension");
+            view.setTitle("Request Extension For Panorama Public Data");
             return view;
         }
 
         @Override
-        public void validateCommand(ShortUrlForm shortUrlForm, Errors errors)
+        protected void doValidationForAction(Errors errors)
         {
-            _exptAnnotations = getValidExperimentAnnotations(shortUrlForm, getUser(), errors);
-            if (_exptAnnotations == null)
-            {
-                return;
-            }
-
-            ShortURLRecord shortUrl = _exptAnnotations.getShortUrl();
-            _datasetStatus = DatasetStatusManager.getForShortUrl(shortUrl);
             PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
             if (_datasetStatus != null)
             {
-                if (_datasetStatus.isExtensionValid(settings))
+                if (_datasetStatus.isExtensionCurrent(settings))
                 {
-                    errors.reject(ERROR_MSG, "An extension has already been requested for the data with short URL " + shortUrl.renderShortURL()
+                    errors.reject(ERROR_MSG, "An extension has already been requested for the data with short URL " + _datasetStatus.getShortUrl().renderShortURL()
                             + ". The extension is valid until " + _datasetStatus.extensionValidUntilFormatted(settings));
                 }
                 else if (_datasetStatus.deletionRequested())
                 {
-                    errors.reject(ERROR_MSG, "A deletion request was submitted on " + _datasetStatus.getDeletionRequestedDate() + " for the data with short URL " + shortUrl.renderShortURL());
+                    errors.reject(ERROR_MSG, "A deletion request was submitted on " + _datasetStatus.getDeletionRequestedDate()
+                            + " for the data with short URL " + _datasetStatus.getShortUrl().renderShortURL());
                 }
             }
         }
 
         @Override
-        public boolean handlePost(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        protected void updateDatasetStatus(DatasetStatus datasetStatus)
         {
-            DatasetStatus datasetStatus = DatasetStatusManager.getForShortUrl(_exptAnnotations.getShortUrl());
-            try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
-            {
-                if (datasetStatus == null) // TODO: Can this ever be null?
-                {
-                    datasetStatus = new DatasetStatus();
-                    datasetStatus.setShortUrl(_exptAnnotations.getShortUrl());
-                    datasetStatus.setExtensionRequestedDate(new Date());
-                    DatasetStatusManager.save(datasetStatus, getUser());
-                }
-                else
-                {
-                    datasetStatus.setExtensionRequestedDate(new Date());
-                    DatasetStatusManager.update(datasetStatus, getUser());
-                }
+            datasetStatus.setExtensionRequestedDate(new Date());
+        }
 
-                _datasetStatus = datasetStatus;
-
-                // Post a message to the support thread.
-                JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(_exptAnnotations);
-                Journal journal = JournalManager.getJournal(submission.getJournalId());
-                PanoramaPublicNotification.postPrivateStatusExtensionMessage(journal, submission.getJournalExperiment(), _exptAnnotations, getUser());
-
-                transaction.commit();
-            }
-
-            return true;
+        @Override
+        protected void postNotification()
+        {
+            // Post a message to the support thread.
+            JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(_exptAnnotations);
+            Journal journal = JournalManager.getJournal(submission.getJournalId());
+            PanoramaPublicNotification.postPrivateStatusExtensionMessage(journal, submission.getJournalExperiment(), _exptAnnotations, getUser());
         }
 
         @Override
         public ModelAndView getSuccessView(ShortUrlForm shortUrlForm)
         {
+            setTitle("Extension Request Success");
             PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
             return new HtmlView(DIV("An extension request was successfully submitted for the data at " + _exptAnnotations.getShortUrl().renderShortURL(),
                     DIV("The extension is valid until " + _datasetStatus.extensionValidUntilFormatted(settings)),
                     BR(),
                     DIV(
-                       LinkBuilder.labkeyLink("Data Folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()))
+                            LinkBuilder.labkeyLink("Data Folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()))
                     )
-                ));
-        }
-
-        @Override
-        public @NotNull URLHelper getSuccessURL(ShortUrlForm shortUrlForm)
-        {
-            return null;
+            ));
         }
     }
 
-    @RequiresLogin
-    public class RequestDeletionAction extends ConfirmAction<ShortUrlForm>
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
+    public class RequestDeletionAction extends UpdateDatasetStatusAction
     {
-
-        private ExperimentAnnotations _exptAnnotations;
-        private DatasetStatus _datasetStatus;
-
         @Override
         public ModelAndView getConfirmView(ShortUrlForm shortUrlForm, BindException errors) throws Exception
         {
-            setTitle("Request Deletion For Panorama Public Data");
+            setTitle("Request Deletion");
             HtmlView view = new HtmlView(DIV(
                     DIV("You are requesting deletion of the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL()),
                     DIV("Title: " + _exptAnnotations.getTitle()),
                     DIV("Submitted on: " + DateUtil.formatDateTime(_exptAnnotations.getCreated(), "MMMM d, yyyy")),
                     DIV("Submitter: " + _exptAnnotations.getSubmitterName())
             ));
-            view.setTitle("Request Deletion");
+            view.setTitle("Request Deletion For Panorama Public Data");
             return view;
         }
 
         @Override
-        public void validateCommand(ShortUrlForm shortUrlForm, Errors errors)
+        protected void doValidationForAction(Errors errors)
         {
-            _exptAnnotations = getValidExperimentAnnotations(shortUrlForm, getUser(), errors);
-            if (_exptAnnotations == null)
-            {
-                return;
-            }
-
-            ShortURLRecord shortUrl = _exptAnnotations.getShortUrl();
-            _datasetStatus = DatasetStatusManager.getForShortUrl(shortUrl);
             if (_datasetStatus != null)
             {
                 if (_datasetStatus.deletionRequested())
                 {
-                    errors.reject(ERROR_MSG, "A deletion request was already submitted on " + _datasetStatus.getDeletionRequestedDateFormatted() + " for the data with short URL " + shortUrl.renderShortURL());
+                    errors.reject(ERROR_MSG, "A deletion request was already submitted on " + _datasetStatus.getDeletionRequestedDateFormatted()
+                            + " for the data with short URL " + _datasetStatus.getShortUrl().renderShortURL());
                 }
             }
         }
 
         @Override
-        public boolean handlePost(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        protected void updateDatasetStatus(DatasetStatus datasetStatus)
         {
-            DatasetStatus datasetStatus = DatasetStatusManager.getForShortUrl(_exptAnnotations.getShortUrl());
-            try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
-            {
-                if (datasetStatus == null) // TODO: Can this ever be null?
-                {
-                    datasetStatus = new DatasetStatus();
-                    datasetStatus.setShortUrl(_exptAnnotations.getShortUrl());
-                    datasetStatus.setDeletionRequestedDate(new Date());
-                    DatasetStatusManager.save(datasetStatus, getUser());
-                }
-                else
-                {
-                    datasetStatus.setDeletionRequestedDate(new Date());
-                    DatasetStatusManager.update(datasetStatus, getUser());
-                }
+            datasetStatus.setDeletionRequestedDate(new Date());
+        }
 
-                // Post a message to the support thread.
-                JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(_exptAnnotations);
-                Journal journal = JournalManager.getJournal(submission.getJournalId());
-                PanoramaPublicNotification.postDataDeletionRequestMessage(journal, submission.getJournalExperiment(), _exptAnnotations, getUser());
-
-                transaction.commit();
-            }
-
-            return true;
+        @Override
+        protected void postNotification() throws Exception
+        {
+            // Post a message to the support thread.
+            JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(_exptAnnotations);
+            Journal journal = JournalManager.getJournal(submission.getJournalId());
+            PanoramaPublicNotification.postDataDeletionRequestMessage(journal, submission.getJournalExperiment(), _exptAnnotations, getUser());
         }
 
         @Override
         public ModelAndView getSuccessView(ShortUrlForm shortUrlForm)
         {
+            setTitle("Deletion Request Success");
             return new HtmlView(DIV("A deletion request was successfully submitted for the data at " + _exptAnnotations.getShortUrl().renderShortURL(),
                     BR(),
                     DIV(new ButtonBuilder("Home").submit(false).href(AppProps.getInstance().getHomePageActionURL()))
                 ));
-        }
-
-        @Override
-        public @NotNull URLHelper getSuccessURL(ShortUrlForm shortUrlForm)
-        {
-            return null;
         }
     }
 
@@ -10287,7 +10287,7 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    private static ExperimentAnnotations getValidExperimentAnnotations(ShortUrlForm shortUrlForm, User user, Errors errors)
+    private static ExperimentAnnotations getValidExperimentAnnotations(ShortUrlForm shortUrlForm, Errors errors)
     {
         String shortUrlEntityId = shortUrlForm.getShortUrlEntityId();
         if (StringUtils.isBlank(shortUrlEntityId))
@@ -10310,13 +10310,6 @@ public class PanoramaPublicController extends SpringActionController
             return null;
         }
 
-        // User requesting the extension / deletion must be the data submitter or lab head
-        if (!(user.equals(exptAnnotations.getSubmitterUser()) || user.equals(exptAnnotations.getLabHeadUser())))
-        {
-            errors.reject(ERROR_MSG, "Status change can be requested only by the data submitter or lab head.");
-            return null;
-        }
-
         if (exptAnnotations.isPublic())
         {
             errors.reject(ERROR_MSG, "Data for short URL " + shortUrl.renderShortURL() + " is public. Status cannot be changed.");
@@ -10327,6 +10320,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
 
+    @AdminConsoleAction
     @RequiresPermission(AdminOperationsPermission.class)
     public static class PrivateDataReminderSettingsAction extends FormViewAction<PrivateDataReminderSettingsForm>
     {
@@ -10343,7 +10337,7 @@ public class PanoramaPublicController extends SpringActionController
                 form.setExtensionLength(settings.getExtensionLength());
                 form.setReminderFrequency(settings.getReminderFrequency());
             }
-            
+
             VBox view = new VBox();
             view.addView(new JspView<>("/org/labkey/panoramapublic/view/privateDataRemindersSettingsForm.jsp", form));
             view.setTitle("Private Data Reminder Settings");
@@ -10383,7 +10377,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            addPanoramaPublicAdminConsoleNav(root, getContainer());
+            PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Panorama Public Admin Console", PanoramaPublicAdminViewAction.class, getContainer());
             root.addChild("Private Data Reminder Settings");
         }
     }
@@ -10447,11 +10441,14 @@ public class PanoramaPublicController extends SpringActionController
 
             QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, null);
             tableView.setTitle("Private Panorama Public Datasets");
+            tableView.setFrame(WebPartView.FrameType.NONE);
 
             form.setDataRegionName(tableView.getDataRegionName());
 
             JspView<PrivateDataSendReminderForm> jspView = new JspView<>("/org/labkey/panoramapublic/view/sendPrivateDataRemindersForm.jsp", form, errors);
-            return new VBox(jspView, tableView);
+            VBox view = new VBox(jspView, tableView);
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            return view;
         }
 
         @Override
@@ -10482,7 +10479,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            addPanoramaPublicAdminConsoleNav(root, ContainerManager.getRoot());
+            PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Private Data Reminder Settings", PrivateDataReminderSettingsAction.class, ContainerManager.getRoot());
             root.addChild("Send Private Data Reminders");
         }
     }

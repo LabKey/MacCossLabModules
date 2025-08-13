@@ -46,7 +46,6 @@ import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.bluesky.BlueskyApiClient;
 import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoResourceType;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentType;
-import org.labkey.panoramapublic.message.PrivateDataMessageScheduler;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
@@ -92,7 +91,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 25.001;
+        return 25.002;
     }
 
     @Override

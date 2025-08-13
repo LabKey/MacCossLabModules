@@ -8,9 +8,9 @@ CREATE TABLE panoramapublic.DatasetStatus
     Modified                  TIMESTAMP,
 
     ShortUrl                  ENTITYID NOT NULL,
-    LastReminderDate              DATETIME,
-    ExtensionRequestedDate    DATETIME,
-    DeletionRequestedDate     DATETIME,
+    LastReminderDate          TIMESTAMP,
+    ExtensionRequestedDate    TIMESTAMP,
+    DeletionRequestedDate     TIMESTAMP,
 
     CONSTRAINT PK_DatasetStatus PRIMARY KEY (Id),
 
@@ -18,4 +18,4 @@ CREATE TABLE panoramapublic.DatasetStatus
 
     CONSTRAINT UQ_DatasetStatus_ShortUrl UNIQUE (ShortUrl)
 );
-CREATE INDEX IX_DatasetStatus_ShortUrl ON panoramapublic.CatalogEntry(ShortUrl);
+CREATE INDEX IX_DatasetStatus_ShortUrl ON panoramapublic.DatasetStatus(ShortUrl);

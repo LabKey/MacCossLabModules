@@ -41,7 +41,7 @@ public class DatasetStatusTableInfo extends PanoramaPublicTable
         visibleColumns.add(FieldKey.fromParts("ModifiedBy"));
         visibleColumns.add(FieldKey.fromParts("ShortUrl"));
         visibleColumns.add(FieldKey.fromParts("Title"));
-        visibleColumns.add(FieldKey.fromParts("ReminderDate"));
+        visibleColumns.add(FieldKey.fromParts("LastReminderDate"));
         visibleColumns.add(FieldKey.fromParts("ExtensionRequestedDate"));
         visibleColumns.add(FieldKey.fromParts("DeletionRequestedDate"));
         setDefaultVisibleColumns(visibleColumns);

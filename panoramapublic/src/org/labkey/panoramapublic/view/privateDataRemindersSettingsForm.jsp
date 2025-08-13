@@ -103,7 +103,7 @@
         </table>
         <hr/>
         <label for="journal">Choose Panorama Public Folder</label>:
-        <select id="journal">
+        <select id="journal" name="journal">
             <%
                 boolean isFirst = true;
                 for (Journal journal : journals) {

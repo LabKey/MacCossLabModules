@@ -68,7 +68,7 @@
             <tr>
                 <td class="labkey-form-label" style="text-align:center;">Test Mode:</td>
                 <td>
-                    <input type="checkbox" name="testMode" selected="<%=form.getTestMode()%>" />
+                    <input type="checkbox" name="testMode" <%=checked(form.getTestMode())%> />
                 </td>
             </tr>
             <tr><td colspan=2"><%=button("Post Reminders").onClick("submitForm();")%></td></tr>

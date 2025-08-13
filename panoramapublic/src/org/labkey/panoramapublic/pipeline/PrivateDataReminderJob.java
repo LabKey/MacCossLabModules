@@ -55,6 +55,7 @@ public class PrivateDataReminderJob extends PipelineJob
         super("Panorama Public", info, root);
         setLogFile(root.getRootNioPath().resolve(FileUtil.makeFileNameWithTimestamp("PanoramaPublic-private-data-reminder", "log")));
         _panoramaPublic = panoramaPublic;
+
         _experimentAnnotationsIds = experimentAnnotationsIds;
         _test = test;
     }
@@ -74,35 +75,58 @@ public class PrivateDataReminderJob extends PipelineJob
         for (Container folder : subFolders)
         {
             ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(folder);
-
-            if (shouldPostReminder(exptAnnotations, settings))
-            {
-                privateDataIds.add(exptAnnotations.getId());
-            }
+            privateDataIds.add(exptAnnotations.getId());
         }
 
         return privateDataIds;
     }
 
-    private static boolean shouldPostReminder(ExperimentAnnotations exptAnnotations, PrivateDataMessageSettings settings)
+    private static ReminderDecision getReminderDecision(ExperimentAnnotations exptAnnotations, PrivateDataMessageSettings settings)
     {
-        if (exptAnnotations == null) return false;
-        if (exptAnnotations.isPublic()) return false;
+        if (exptAnnotations == null)
+            return ReminderDecision.skip("Experiment annotations are null");
 
-        // Return false if this is not the latest version of the experiment
-        if (!ExperimentAnnotationsManager.isCurrentVersion(exptAnnotations)) return false;
+        if (exptAnnotations.isPublic())
+            return ReminderDecision.skip("Dataset is already public");
+
+        if (!ExperimentAnnotationsManager.isCurrentVersion(exptAnnotations))
+            return ReminderDecision.skip("Not the current version of the experiment");
 
         DatasetStatus datasetStatus = DatasetStatusManager.getForShortUrl(exptAnnotations.getShortUrl());
-        if (datasetStatus == null) return true;
+        if (datasetStatus == null)
+            return ReminderDecision.post();
 
-        // Return false if the submitter has requested deletion
-        if (datasetStatus.deletionRequested()) return false;
+        if (datasetStatus.deletionRequested())
+            return ReminderDecision.skip("Submitter has requested deletion");
 
-        // Return false if the submitter has requested an extension, and the extension is still valid
-        if (datasetStatus.isExtensionValid(settings)) return false;
+        if (datasetStatus.isExtensionCurrent(settings))
+            return ReminderDecision.skip("Submitter requested an extension. Extension is current.");
 
-        // Returns false if the last reminder was sent less than a month ago
-        return !datasetStatus.isLastReminderRecent(settings);
+        if (datasetStatus.isLastReminderRecent(settings))
+            return ReminderDecision.skip("Recent reminder already sent");
+
+        return ReminderDecision.post();
+    }
+
+    public static class ReminderDecision {
+        private final boolean shouldPost;
+        private final String reason;
+
+        private ReminderDecision(boolean shouldPost, String reason) {
+            this.shouldPost = shouldPost;
+            this.reason = reason;
+        }
+
+        public static ReminderDecision post() {
+            return new ReminderDecision(true, null);
+        }
+
+        public static ReminderDecision skip(String reason) {
+            return new ReminderDecision(false, reason);
+        }
+
+        public boolean shouldPost() { return shouldPost; }
+        public String getReason() { return reason; }
     }
 
     @Override
@@ -133,12 +157,15 @@ public class PrivateDataReminderJob extends PipelineJob
 
         int done = 0;
 
+        PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
+
         AnnouncementService announcementSvc = AnnouncementService.get();
 
         List<Integer> experimentNotFound = new ArrayList<>();
         List<Integer> submissionNotFound = new ArrayList<>();
         List<Integer> announcementNotFound = new ArrayList<>();
         List<Integer> submitterNotFound = new ArrayList<>();
+        int skipped = 0;
 
         Container announcementsFolder = panoramaPublic.getSupportContainer();
         if (announcementsFolder == null)
@@ -169,6 +196,14 @@ public class PrivateDataReminderJob extends PipelineJob
                 {
                     getLogger().error("Could not find an experiment with Id: " + experimentAnnotationsId);
                     experimentNotFound.add(experimentAnnotationsId);
+                    continue;
+                }
+
+                ReminderDecision decision = getReminderDecision(expAnnotations, settings);
+                if (!decision.shouldPost())
+                {
+                    getLogger().info("Skipping reminder for experiment Id " + experimentAnnotationsId + " - " + decision.getReason());
+                    skipped++;
                     continue;
                 }
                 JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(expAnnotations);
@@ -213,9 +248,14 @@ public class PrivateDataReminderJob extends PipelineJob
                     {
                         datasetStatus = new DatasetStatus();
                         datasetStatus.setShortUrl(expAnnotations.getShortUrl());
+                        datasetStatus.setLastReminderDate(Date.from(Instant.now()));
+                        DatasetStatusManager.save(datasetStatus, getUser());
                     }
-                    datasetStatus.setLastReminderDate(Date.from(Instant.now()));
-                    DatasetStatusManager.save(datasetStatus, getUser());
+                    else
+                    {
+                        datasetStatus.setLastReminderDate(Date.from(Instant.now()));
+                        DatasetStatusManager.update(datasetStatus, getUser());
+                    }
                 }
 
                 getLogger().info(String.format("Experiment ID: %d; Announcement ID %d; Short URL: %s.",
@@ -241,7 +281,11 @@ public class PrivateDataReminderJob extends PipelineJob
         }
         if (!submitterNotFound.isEmpty())
         {
-            getLogger().error("Submitter user was not found for the following experiment Ids: " + StringUtils.join(submissionNotFound, ", "));
+            getLogger().error("Submitter user was not found for the following experiment Ids: " + StringUtils.join(submitterNotFound, ", "));
+        }
+        if (skipped > 0)
+        {
+            getLogger().info("Skipped posting reminders for " + skipped +  " experiments ");
         }
     }
 
