@@ -154,7 +154,7 @@ import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.datacite.Doi;
 import org.labkey.panoramapublic.datacite.DoiMetadata;
 import org.labkey.panoramapublic.message.PrivateDataMessageScheduler;
-import org.labkey.panoramapublic.message.PrivateDataMessageSettings;
+import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.DatasetStatus;
@@ -10170,7 +10170,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected void doValidationForAction(Errors errors)
         {
-            PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
+            PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
             if (_datasetStatus != null)
             {
                 if (_datasetStatus.isExtensionCurrent(settings))
@@ -10205,7 +10205,7 @@ public class PanoramaPublicController extends SpringActionController
         public ModelAndView getSuccessView(ShortUrlForm shortUrlForm)
         {
             setTitle("Extension Request Success");
-            PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
+            PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
             return new HtmlView(DIV("An extension request was successfully submitted for the data at " + _exptAnnotations.getShortUrl().renderShortURL(),
                     DIV("The extension is valid until " + _datasetStatus.extensionValidUntilFormatted(settings)),
                     BR(),
@@ -10332,7 +10332,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             if (!reshow)
             {
-                PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
+                PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
                 form.setEnabled(settings.isEnableReminders());
                 form.setExtensionLength(settings.getExtensionLength());
                 form.setReminderFrequency(settings.getReminderFrequency());
@@ -10348,11 +10348,11 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public boolean handlePost(PrivateDataReminderSettingsForm form, BindException errors) throws Exception
         {
-            PrivateDataMessageSettings settings = new PrivateDataMessageSettings();
+            PrivateDataReminderSettings settings = new PrivateDataReminderSettings();
             settings.setEnableReminders(form.isEnabled());
             settings.setExtensionLength(form.getExtensionLength());
             settings.setReminderFrequency(form.getReminderFrequency());
-            PrivateDataMessageSettings.save(settings);
+            PrivateDataReminderSettings.save(settings);
 
             PrivateDataMessageScheduler.getInstance().initialize(settings.isEnableReminders());
             return true;

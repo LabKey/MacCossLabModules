@@ -2,7 +2,7 @@ package org.labkey.panoramapublic.message;
 
 import org.labkey.api.data.PropertyManager;
 
-public class PrivateDataMessageSettings
+public class PrivateDataReminderSettings
 {
     public static final String PROP_PRIVATE_DATA_REMINDER = "Panorama Public private data reminder settings";
     public static final String PROP_ENABLE_REMINDER = "Enable private data reminder";
@@ -18,11 +18,11 @@ public class PrivateDataMessageSettings
     private int _extensionLength;
     private int _reminderFrequency;
 
-    public static PrivateDataMessageSettings get()
+    public static PrivateDataReminderSettings get()
     {
         PropertyManager.WritablePropertyMap settingsMap = PropertyManager.getWritableProperties(PROP_PRIVATE_DATA_REMINDER, false);
 
-        PrivateDataMessageSettings settings = new PrivateDataMessageSettings();
+        PrivateDataReminderSettings settings = new PrivateDataReminderSettings();
         if(settingsMap != null)
         {
             boolean enableReminders = settingsMap.get(PROP_EXTENSION_MONTHS) == null ? DEFAULT_ENABLE_REMINDERS : Boolean.valueOf(settingsMap.get(PROP_ENABLE_REMINDER));
@@ -42,7 +42,7 @@ public class PrivateDataMessageSettings
         return settings;
     }
 
-    public static void save(PrivateDataMessageSettings settings)
+    public static void save(PrivateDataReminderSettings settings)
     {
         PropertyManager.WritablePropertyMap settingsMap = PropertyManager.getWritableProperties(PROP_PRIVATE_DATA_REMINDER, true);
         settingsMap.put(PROP_ENABLE_REMINDER, String.valueOf(settings.isEnableReminders()));

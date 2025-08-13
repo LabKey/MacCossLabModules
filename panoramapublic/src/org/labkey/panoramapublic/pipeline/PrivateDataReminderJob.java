@@ -17,7 +17,7 @@ import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicNotification;
-import org.labkey.panoramapublic.message.PrivateDataMessageSettings;
+import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
@@ -71,7 +71,7 @@ public class PrivateDataReminderJob extends PipelineJob
 
         Set<Container> subFolders = ContainerManager.getAllChildren(panoramaPublic.getProject());
         List<Integer> privateDataIds = new ArrayList<>();
-        PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
+        PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
         for (Container folder : subFolders)
         {
             ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(folder);
@@ -81,7 +81,7 @@ public class PrivateDataReminderJob extends PipelineJob
         return privateDataIds;
     }
 
-    private static ReminderDecision getReminderDecision(ExperimentAnnotations exptAnnotations, PrivateDataMessageSettings settings)
+    private static ReminderDecision getReminderDecision(ExperimentAnnotations exptAnnotations, PrivateDataReminderSettings settings)
     {
         if (exptAnnotations == null)
             return ReminderDecision.skip("Experiment annotations are null");
@@ -157,7 +157,7 @@ public class PrivateDataReminderJob extends PipelineJob
 
         int done = 0;
 
-        PrivateDataMessageSettings settings = PrivateDataMessageSettings.get();
+        PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
 
         AnnouncementService announcementSvc = AnnouncementService.get();
 

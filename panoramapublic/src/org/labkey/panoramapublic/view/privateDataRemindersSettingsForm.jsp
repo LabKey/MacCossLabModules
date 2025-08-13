@@ -20,7 +20,7 @@
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.panoramapublic.message.PrivateDataMessageSettings" %>
+<%@ page import="org.labkey.panoramapublic.message.PrivateDataReminderSettings" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PrivateDataReminderSettingsForm" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PanoramaPublicAdminViewAction" %>
@@ -28,6 +28,7 @@
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="java.util.List" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PrivateDataReminderSettingsAction" %>
+<%@ page import="org.labkey.panoramapublic.message.PrivateDataReminderSettings" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -74,7 +75,7 @@
         <table class="lk-fields-table">
             <tr>
                 <td class="labkey-form-label">
-                    <span><%=h(PrivateDataMessageSettings.PROP_ENABLE_REMINDER)%></span>
+                    <span><%=h(PrivateDataReminderSettings.PROP_ENABLE_REMINDER)%></span>
                 </td>
                 <td>
                     <input style="padding:0 10px 0 0;" type="checkbox" name="enabled" <%=checked(form.isEnabled())%> />
@@ -82,7 +83,7 @@
             </tr>
             <tr>
                 <td class="labkey-form-label">
-                    <span><%=h(PrivateDataMessageSettings.PROP_EXTENSION_MONTHS)%></span>
+                    <span><%=h(PrivateDataReminderSettings.PROP_EXTENSION_MONTHS)%></span>
                 </td>
                 <td>
                     <input style="padding:0 10px 0 0;" type="text" name="extensionLength" value="<%=form.getExtensionLength()%>" />
@@ -90,7 +91,7 @@
             </tr>
             <tr>
                 <td class="labkey-form-label">
-                    <span><%=h(PrivateDataMessageSettings.PROP_REMINDER_FREQUENCY)%></span>
+                    <span><%=h(PrivateDataReminderSettings.PROP_REMINDER_FREQUENCY)%></span>
                 </td>
                 <td>
                     <input style="padding:0 10px 0 0;" type="text" name="reminderFrequency" value="<%=form.getReminderFrequency()%>" />

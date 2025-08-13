@@ -3,7 +3,7 @@ package org.labkey.panoramapublic.model;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.util.DateUtil;
 import org.labkey.api.view.ShortURLRecord;
-import org.labkey.panoramapublic.message.PrivateDataMessageSettings;
+import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 
 import java.time.ZoneId;
 import java.util.Date;
@@ -78,7 +78,7 @@ public class DatasetStatus  extends DbEntity
         return _lastReminderDate != null;
     }
 
-    public boolean isExtensionCurrent(PrivateDataMessageSettings settings)
+    public boolean isExtensionCurrent(PrivateDataReminderSettings settings)
     {
         if (_extensionRequestedDate == null)
         {
@@ -94,7 +94,7 @@ public class DatasetStatus  extends DbEntity
         return extensionDate.isAfter(extensionValidStartDate);
     }
 
-    public boolean isLastReminderRecent(PrivateDataMessageSettings settings)
+    public boolean isLastReminderRecent(PrivateDataReminderSettings settings)
     {
         if (_lastReminderDate == null)
         {
@@ -110,7 +110,7 @@ public class DatasetStatus  extends DbEntity
         return reminderDate.isAfter(reminderValidStartDate);
     }
 
-    public @Nullable Date extensionValidUntil(PrivateDataMessageSettings settings)
+    public @Nullable Date extensionValidUntil(PrivateDataReminderSettings settings)
     {
         if (_extensionRequestedDate == null)
         {
@@ -125,7 +125,7 @@ public class DatasetStatus  extends DbEntity
         );
     }
 
-    public @Nullable String extensionValidUntilFormatted(PrivateDataMessageSettings settings)
+    public @Nullable String extensionValidUntilFormatted(PrivateDataReminderSettings settings)
     {
         return format(extensionValidUntil(settings));
     }
