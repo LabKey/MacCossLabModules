@@ -356,12 +356,6 @@ public class PanoramaPublicModule extends SpringModule
         return Collections.singleton(PanoramaPublicSchema.SCHEMA_NAME);
     }
 
-    @Override
-    public void startBackgroundThreads()
-    {
-        // PrivateDataMessageScheduler.getInstance().initialize();
-    }
-
     @NotNull
     @Override
     public Set<Class> getIntegrationTests()

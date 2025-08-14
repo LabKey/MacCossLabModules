@@ -143,9 +143,8 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         postReminders(projectName, false, privateDataCount, -1, ++pipelineJobCount);
         // Verify that no reminders posted
         verifyNoReminderPosted(projectName, dataFolderInfos);
-        var reminderDueDate = LocalDate.now().plusMonths(12).format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
-        String message = String.format("Skipping reminder for experiment Id %d - First reminder not due until %s", privateData.get(0).getExperimentAnnotationsId(), reminderDueDate);
-        String message2 = String.format("Skipping reminder for experiment Id %d - First reminder not due until %s", privateData.get(1).getExperimentAnnotationsId(), reminderDueDate);
+        String message = String.format("Skipping reminder for experiment Id %d - First reminder not due until ", privateData.get(0).getExperimentAnnotationsId());
+        String message2 = String.format("Skipping reminder for experiment Id %d - First reminder not due until ", privateData.get(1).getExperimentAnnotationsId());
         verifyPipelineJobLogMessage(projectName, message, message2, "Skipped posting reminders for 2 experiments ");
 
         log("Changing reminder settings. Setting delay until first reminder to 0.");

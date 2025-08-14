@@ -22,9 +22,11 @@ public class DatasetStatusTableInfo extends PanoramaPublicTable
                 new ContainerJoin("ShortUrl", PanoramaPublicManager.getTableInfoExperimentAnnotations(), "ShortUrl"));
 
 
-        var accessUrlCol = wrapColumn("ShortUrl", getRealTable().getColumn("ShortUrl"));
-        accessUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
-        addColumn(accessUrlCol);
+        var accessUrlCol = getMutableColumn(FieldKey.fromParts("ShortUrl"));
+        if (accessUrlCol != null)
+        {
+            accessUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
+        }
 
         SQLFragment expColSql = new SQLFragment(" (SELECT Id FROM ")
                 .append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "exp")

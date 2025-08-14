@@ -459,7 +459,6 @@ public class PanoramaPublicNotification
     public static String PLACEHOLDER_RESPOND_TO_MESSAGE_URL = PLACEHOLDER + "RESPOND__TO__MESSAGE__URL__";
     public static String PLACEHOLDER_MAKE_DATA_PUBLIC_URL = PLACEHOLDER + "MAKE__DATA__PUBLIC__URL__";
     public static String PLACEHOLDER_SHORT_URL = PLACEHOLDER + "DATA__SHORT__URL__";
-
     public static String replaceLinkPlaceholders(@NotNull String text, @NotNull ExperimentAnnotations expAnnotations,
                                                  @NotNull Announcement announcement, @NotNull Container announcementContainer)
     {
