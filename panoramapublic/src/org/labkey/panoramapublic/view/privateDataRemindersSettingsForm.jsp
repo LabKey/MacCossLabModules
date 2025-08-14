@@ -18,7 +18,6 @@
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
-<%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ page import="org.labkey.panoramapublic.message.PrivateDataReminderSettings" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
@@ -83,10 +82,10 @@
             </tr>
             <tr>
                 <td class="labkey-form-label">
-                    <span><%=h(PrivateDataReminderSettings.PROP_EXTENSION_MONTHS)%></span>
+                    <span><%=h(PrivateDataReminderSettings.PROP_DELAY_UNTIL_FIRST_REMINDER)%></span>
                 </td>
                 <td>
-                    <input style="padding:0 10px 0 0;" type="text" name="extensionLength" value="<%=form.getExtensionLength()%>" />
+                    <input style="padding:0 10px 0 0;" type="text" name="delayUntilFirstReminder" value="<%=form.getDelayUntilFirstReminder()%>" />
                 </td>
             </tr>
             <tr>
@@ -95,6 +94,14 @@
                 </td>
                 <td>
                     <input style="padding:0 10px 0 0;" type="text" name="reminderFrequency" value="<%=form.getReminderFrequency()%>" />
+                </td>
+            </tr>
+            <tr>
+                <td class="labkey-form-label">
+                    <span><%=h(PrivateDataReminderSettings.PROP_EXTENSION_MONTHS)%></span>
+                </td>
+                <td>
+                    <input style="padding:0 10px 0 0;" type="text" name="extensionLength" value="<%=form.getExtensionLength()%>" />
                 </td>
             </tr>
             <tr><td colspan=2">

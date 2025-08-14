@@ -10334,8 +10334,9 @@ public class PanoramaPublicController extends SpringActionController
             {
                 PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
                 form.setEnabled(settings.isEnableReminders());
-                form.setExtensionLength(settings.getExtensionLength());
+                form.setDelayUntilFirstReminder(settings.getDelayUntilFirstReminder());
                 form.setReminderFrequency(settings.getReminderFrequency());
+                form.setExtensionLength(settings.getExtensionLength());
             }
 
             VBox view = new VBox();
@@ -10350,8 +10351,9 @@ public class PanoramaPublicController extends SpringActionController
         {
             PrivateDataReminderSettings settings = new PrivateDataReminderSettings();
             settings.setEnableReminders(form.isEnabled());
-            settings.setExtensionLength(form.getExtensionLength());
+            settings.setDelayUntilFirstReminder(form.getDelayUntilFirstReminder());
             settings.setReminderFrequency(form.getReminderFrequency());
+            settings.setExtensionLength(form.getExtensionLength());
             PrivateDataReminderSettings.save(settings);
 
             PrivateDataMessageScheduler.getInstance().initialize(settings.isEnableReminders());
@@ -10387,6 +10389,7 @@ public class PanoramaPublicController extends SpringActionController
         private boolean _enabled;
         private int _extensionLength;
         private int _reminderFrequency;
+        private int _delayUntilFirstReminder;
 
         public boolean isEnabled()
         {
@@ -10416,6 +10419,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setReminderFrequency(int reminderFrequency)
         {
             _reminderFrequency = reminderFrequency;
+        }
+
+        public int getDelayUntilFirstReminder()
+        {
+            return _delayUntilFirstReminder;
+        }
+
+        public void setDelayUntilFirstReminder(int delayUntilFirstReminder)
+        {
+            _delayUntilFirstReminder = delayUntilFirstReminder;
         }
     }
 

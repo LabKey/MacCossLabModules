@@ -22,6 +22,7 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
+import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
@@ -304,6 +305,7 @@ public class PanoramaPublicNotification
         {
             throw new NotFoundException(String.format("Could not find an admin user for %s.", journal.getName()));
         }
+        PrivateDataReminderSettings reminderSettings = PrivateDataReminderSettings.get();
         /*
             Thank you for your request to extend the private status of your data on Panorama Public at <short_url>.
             Your data has been granted an extension for an additional 6 months. You’ll receive another reminder at that time, or you may make the dataset public earlier.
@@ -313,7 +315,7 @@ public class PanoramaPublicNotification
         StringBuilder messageBody = new StringBuilder();
         messageBody.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
         messageBody.append("Thank you for your request to extend the private status of your data on Panorama Public. ")
-                .append("Your data has been granted a " + DatasetStatus.EXTENSION_VALID_MONTHS + " month extension. ")
+                .append("Your data has been granted a " + reminderSettings.getExtensionLength() + " month extension. ")
                 .append("You’ll receive another reminder when this period ends. ")
                 .append("If you'd like to make your data public sooner, you can do so at any time ")
                 .append("by clicking the \"Make Public\" button in your data folder, or by clicking this link: ")

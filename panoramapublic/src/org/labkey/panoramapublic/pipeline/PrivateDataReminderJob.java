@@ -2,6 +2,7 @@ package org.labkey.panoramapublic.pipeline;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.announcements.api.Announcement;
 import org.labkey.api.announcements.api.AnnouncementService;
 import org.labkey.api.data.Container;
@@ -11,6 +12,7 @@ import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.User;
+import org.labkey.api.util.DateUtil;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
@@ -28,6 +30,9 @@ import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -81,30 +86,50 @@ public class PrivateDataReminderJob extends PipelineJob
         return privateDataIds;
     }
 
-    private static ReminderDecision getReminderDecision(ExperimentAnnotations exptAnnotations, PrivateDataReminderSettings settings)
+    private static ReminderDecision getReminderDecision(@NotNull ExperimentAnnotations exptAnnotations, @NotNull PrivateDataReminderSettings settings)
     {
-        if (exptAnnotations == null)
-            return ReminderDecision.skip("Experiment annotations are null");
-
         if (exptAnnotations.isPublic())
-            return ReminderDecision.skip("Dataset is already public");
+        {
+            return ReminderDecision.skip("Data is already public");
+        }
 
         if (!ExperimentAnnotationsManager.isCurrentVersion(exptAnnotations))
+        {
             return ReminderDecision.skip("Not the current version of the experiment");
+        }
 
         DatasetStatus datasetStatus = DatasetStatusManager.getForShortUrl(exptAnnotations.getShortUrl());
-        if (datasetStatus == null)
-            return ReminderDecision.post();
+        if (datasetStatus != null)
+        {
+            if (datasetStatus.deletionRequested())
+            {
+                return ReminderDecision.skip("Submitter has requested deletion");
+            }
 
-        if (datasetStatus.deletionRequested())
-            return ReminderDecision.skip("Submitter has requested deletion");
+            if (datasetStatus.isExtensionCurrent(settings))
+            {
+                return ReminderDecision.skip("Submitter requested an extension. Extension is current.");
+            }
 
-        if (datasetStatus.isExtensionCurrent(settings))
-            return ReminderDecision.skip("Submitter requested an extension. Extension is current.");
+            if (datasetStatus.isLastReminderRecent(settings))
+            {
+                return ReminderDecision.skip("Recent reminder already sent");
+            }
+        }
+        return reminderIsDue(exptAnnotations, settings);
+    }
 
-        if (datasetStatus.isLastReminderRecent(settings))
-            return ReminderDecision.skip("Recent reminder already sent");
+    private static ReminderDecision reminderIsDue(ExperimentAnnotations exptAnnotations, PrivateDataReminderSettings settings)
+    {
+        LocalDate copyDate = exptAnnotations.getCreated().toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
 
+        LocalDate firstReminderDate = copyDate.plusMonths(settings.getDelayUntilFirstReminder());
+        if (LocalDate.now().isBefore(firstReminderDate))
+        {
+            return ReminderDecision.skip(String.format("First reminder not due until %s", firstReminderDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))));
+        }
         return ReminderDecision.post();
     }
 

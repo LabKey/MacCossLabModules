@@ -2,17 +2,16 @@ package org.labkey.test.tests.panoramapublic;
 
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.labkey.api.security.User;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
-import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
 import org.labkey.test.pages.LabkeyErrorPage;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
-import org.labkey.test.util.PermissionsHelper;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -133,11 +132,24 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         assertEquals(2, privateDataCount);
 
         log("Changing reminder settings. Setting reminder frequency to 0.");
-        saveSettings("2", "0");
+        saveSettings("2", "12", "0");
 
         // Do not select any experiments.  Job will not run.
         log("Attempt to send reminders without selecting any experiments. Job should not run.");
         postRemindersNoExperimentsSelected(projectName, privateDataCount);
+
+        // Post reminders. None should get posted since the delayUntilFirstReminder is set to 12 months.
+        log("Posting reminders. Select all experiment rows.");
+        postReminders(projectName, false, privateDataCount, -1, ++pipelineJobCount);
+        // Verify that no reminders posted
+        verifyNoReminderPosted(projectName, dataFolderInfos);
+        var reminderDueDate = LocalDate.now().plusMonths(12).format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
+        String message = String.format("Skipping reminder for experiment Id %d - First reminder not due until %s", privateData.get(0).getExperimentAnnotationsId(), reminderDueDate);
+        String message2 = String.format("Skipping reminder for experiment Id %d - First reminder not due until %s", privateData.get(1).getExperimentAnnotationsId(), reminderDueDate);
+        verifyPipelineJobLogMessage(projectName, message, message2, "Skipped posting reminders for 2 experiments ");
+
+        log("Changing reminder settings. Setting delay until first reminder to 0.");
+        saveSettings("2", "0", "0");
 
         // Post reminders in test mode.
         log("Posting reminders in test mode. Select all experiment rows.");
@@ -151,24 +163,19 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         verifyNoReminderPosted(projectName, privateData.get(1)); // No reminder on the second experiment, since it was not selected
         verifyNoReminderPosted(projectName, dataFolderInfos.get(2)); // No reminder since this is public data
 
-//        // Post reminders again. Since the reminder frequency is set to 0, reminders will get posted again. Select all experiments.
-//        postReminders(false, privateDataCount, -1, ++pipelineJobCount);
-//        verifyReminderPosted(projectName, privateData.get(0), 2);
-//        verifyReminderPosted(projectName, privateData.get(0), 1);
-
         // Change the reminder frequency to 1.
         log("Changing reminder settings. Setting reminder frequency to 1.");
-        saveSettings("2", "1");
+        saveSettings("2", "0", "1");
         // Post reminders again. Since reminder frequency is set to 1, no reminders will be posted to the first data.
         postReminders(projectName, false, privateDataCount, -1, ++pipelineJobCount);
         verifyReminderPosted(projectName, privateData.get(0), 1); // No new reminders since reminder frequency is set to 1.
         verifyReminderPosted(projectName, privateData.get(1), 1);
-        String message = String.format("Skipping reminder for experiment Id %d - Recent reminder already sent", privateData.get(0).getExperimentAnnotationsId());
+        message = String.format("Skipping reminder for experiment Id %d - Recent reminder already sent", privateData.get(0).getExperimentAnnotationsId());
         verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiments ");
 
         // Change reminder frequency to 0 again.
         log("Changing reminder settings. Setting reminder frequency to 0.");
-        saveSettings("2", "0");
+        saveSettings("2", "0", "0");
 
         // Request extension for the first experiment.
         log("Requesting extension for experiment Id " + privateData.get(0).getExperimentAnnotationsId());
@@ -187,7 +194,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         postReminders(projectName, false, privateDataCount, -1, ++pipelineJobCount);
         verifyReminderPosted(projectName, privateData.get(0),1); // No new reminders since extension requested.
         verifyReminderPosted(projectName, privateData.get(1), 2); // No new reminders since deletion requested.
-        String message2 = String.format("Skipping reminder for experiment Id %d - Submitter has requested deletion", privateData.get(1).getExperimentAnnotationsId());
+        message2 = String.format("Skipping reminder for experiment Id %d - Submitter has requested deletion", privateData.get(1).getExperimentAnnotationsId());
         verifyPipelineJobLogMessage(projectName, message, message2, "Skipped posting reminders for 2 experiments ");
     }
 
@@ -275,6 +282,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
             verifyReminderPosted(projectName, folderInfo, count);
         }
     }
+
     private void verifyReminderPosted(String projectName, DataFolderInfo folderInfo, int count)
     {
         goToProjectFolder(projectName, folderInfo.getTargetFolder());
@@ -291,21 +299,23 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         }
     }
 
-    private void saveSettings(String extensionLength, String reminderFrequency)
+    private void saveSettings(String extensionLength, String delayUntilFirstReminder, String reminderFrequency)
     {
         goToAdminConsole().goToSettingsSection();
         clickAndWait(Locator.linkWithText("Panorama Public"));
         clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
 
-        setFormElement(Locator.input("extensionLength"), extensionLength);
+        setFormElement(Locator.input("delayUntilFirstReminder"), delayUntilFirstReminder);
         setFormElement(Locator.input("reminderFrequency"), reminderFrequency);
+        setFormElement(Locator.input("extensionLength"), extensionLength);
         clickButton("Save");
         waitForText("Private data message settings saved");
         clickAndWait(Locator.linkWithText("Back to Panorama Public Admin Console"));
 
         clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
-        assertEquals(String.valueOf(extensionLength), getFormElement(Locator.input("extensionLength")));
+        assertEquals(String.valueOf(delayUntilFirstReminder), getFormElement(Locator.input("delayUntilFirstReminder")));
         assertEquals(String.valueOf(reminderFrequency), getFormElement(Locator.input("reminderFrequency")));
+        assertEquals(String.valueOf(extensionLength), getFormElement(Locator.input("extensionLength")));
     }
 
     private void postRemindersNoExperimentsSelected(String projectName, int expectedExperimentCount)

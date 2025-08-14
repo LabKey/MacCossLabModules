@@ -16,8 +16,6 @@ public class DatasetStatus  extends DbEntity
     private Date _extensionRequestedDate;
     private Date _deletionRequestedDate;
 
-    public static final int EXTENSION_VALID_MONTHS = 6; // 6 months
-
     public ShortURLRecord getShortUrl()
     {
         return _shortUrl;
@@ -110,7 +108,7 @@ public class DatasetStatus  extends DbEntity
         return reminderDate.isAfter(reminderValidStartDate);
     }
 
-    public @Nullable Date extensionValidUntil(PrivateDataReminderSettings settings)
+    public @Nullable Date getExtensionValidUntilDate(PrivateDataReminderSettings settings)
     {
         if (_extensionRequestedDate == null)
         {
@@ -127,7 +125,7 @@ public class DatasetStatus  extends DbEntity
 
     public @Nullable String extensionValidUntilFormatted(PrivateDataReminderSettings settings)
     {
-        return format(extensionValidUntil(settings));
+        return format(getExtensionValidUntilDate(settings));
     }
 
     private @Nullable String format(Date date)
