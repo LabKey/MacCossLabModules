@@ -81,7 +81,7 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
 
             if(pspJob.getPipelineJobId() == null)
             {
-                Integer pipelineJobId = (PipelineService.get().getJobId(getJob().getUser(), getJob().getContainer(), getJob().getJobGUID()));
+                Long pipelineJobId = (PipelineService.get().getJobId(getJob().getUser(), getJob().getContainer(), getJob().getJobGUID()));
                 pspJob.setPipelineJobId(pipelineJobId);
             }
 

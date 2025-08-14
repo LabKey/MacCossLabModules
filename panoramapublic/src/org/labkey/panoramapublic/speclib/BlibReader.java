@@ -1,6 +1,8 @@
 package org.labkey.panoramapublic.speclib;
 
 import org.jetbrains.annotations.Nullable;
+import org.labkey.api.collections.IntHashMap;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -27,7 +29,7 @@ public class BlibReader extends SpecLibReader
 
             List<LibSourceFile> sourceFiles = new ArrayList<>();
 
-            Map<Integer, Set<String>> scoreTypes = new HashMap<>(); // file id -> score types
+            Map<Integer, Set<String>> scoreTypes = new IntHashMap<>(); // file id -> score types
             if(hasTable(conn, "ScoreTypes")) // Older .blib files do not have a ScoreTypes table
             {
                 try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SELECT DISTINCT r.fileID, s.scoreType FROM RefSpectra as r JOIN ScoreTypes s ON r.scoreType = s.id"))

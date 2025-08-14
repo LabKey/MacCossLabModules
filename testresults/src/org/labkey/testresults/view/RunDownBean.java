@@ -2,6 +2,7 @@ package org.labkey.testresults.view;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.json.JSONObject;
+import org.labkey.api.collections.IntHashMap;
 import org.labkey.api.data.statistics.MathStat;
 import org.labkey.api.data.statistics.StatsService;
 import org.labkey.api.services.ServiceRegistry;
@@ -192,8 +193,8 @@ public class RunDownBean extends TestsDataBean
             }
         }
 
-        Map<Integer, List<Double>> allPassPointsMap = new HashMap<>();
-        Map<Integer, Double> averagePassPointMap = new HashMap<>();
+        Map<Integer, List<Double>> allPassPointsMap = new IntHashMap<>();
+        Map<Integer, Double> averagePassPointMap = new IntHashMap<>();
 
         for (Map.Entry<String, Double[]> entry : points.entrySet()) {
             if (entry.getValue().length ==0)

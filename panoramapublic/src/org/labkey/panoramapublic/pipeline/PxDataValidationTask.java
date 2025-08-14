@@ -50,7 +50,7 @@ public class PxDataValidationTask extends PipelineJob.Task<PxDataValidationTask.
                         jobSupport.getValidationId(), exptAnnotations.getContainer().getPath()));
             }
             log.info(String.format("Validating data for experiment Id: %d, validation Id: %d", exptAnnotations.getId(), validation.getId()));
-            Integer pipelineJobId = (PipelineService.get().getJobId(job.getUser(), job.getContainer(), job.getJobGUID()));
+            Long pipelineJobId = (PipelineService.get().getJobId(job.getUser(), job.getContainer(), job.getJobGUID()));
             if (pipelineJobId != null && pipelineJobId != validation.getJobId())
             {
                 throw new PipelineJobException(String.format("Unexpected pipeline job Id %d.  Job Id saved in the validation row (Id: %d) is %d.",

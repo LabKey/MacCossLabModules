@@ -20,6 +20,7 @@
 <%@ page import="java.util.Iterator" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
+<%@ page import="org.labkey.api.collections.IntHashMap" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -237,7 +238,7 @@
 
 <div id="all-tools" style="clear: both; padding-top: 2px;">
 <%
-    HashMap<Integer, String> toolOwners = new HashMap<>();
+    HashMap<Integer, String> toolOwners = new IntHashMap<>();
     for (SkylineTool tool : tools)
     {
         final String tableId = "table-" + tool.getName().replaceAll("[^A-Za-z0-9]", "");

@@ -49,7 +49,7 @@ import static org.labkey.api.targetedms.TargetedMSService.FolderType.Experiment;
  */
 public class ExperimentAnnotations extends DbEntity
 {
-    private int _experimentId;
+    private long _experimentId;
     private Container _container;
     private String _title;
     private String _experimentDescription;
@@ -83,12 +83,12 @@ public class ExperimentAnnotations extends DbEntity
 
     public ExperimentAnnotations() {}
 
-    public int getExperimentId()
+    public long getExperimentId()
     {
         return _experimentId;
     }
 
-    public void setExperimentId(int experimentId)
+    public void setExperimentId(long experimentId)
     {
         _experimentId = experimentId;
     }

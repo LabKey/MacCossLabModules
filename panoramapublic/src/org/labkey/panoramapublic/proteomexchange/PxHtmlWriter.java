@@ -17,6 +17,7 @@ package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
+import org.labkey.api.collections.IntHashMap;
 import org.labkey.api.security.User;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.logging.LogHelper;
@@ -181,7 +182,7 @@ public class PxHtmlWriter extends PxWriter
         }
 
         boolean ncbiLookupError = false;
-        Map<Integer, String> sciNameMap = new HashMap<>();
+        Map<Integer, String> sciNameMap = new IntHashMap<>();
         try
         {
             sciNameMap = getScientificNames(taxIds);

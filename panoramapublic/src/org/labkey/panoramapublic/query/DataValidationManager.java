@@ -147,7 +147,7 @@ public class DataValidationManager
 
     public static PipelineStatusFile getPipelineJobStatus(@NotNull DataValidation validation)
     {
-        int jobId = validation.getJobId();
+        long jobId = validation.getJobId();
         return PipelineService.get().getStatusFile(jobId);
     }
 

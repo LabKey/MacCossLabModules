@@ -1,5 +1,6 @@
 package org.labkey.panoramapublic;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.admin.AbstractFolderImportFactory;
@@ -98,7 +99,7 @@ public class PanoramaPublicMetadataImporter implements FolderImporter
                 ExperimentAnnotations targetExperiment = createNewExperimentAnnotations(experiment, sourceExperiment, user, log);
 
                 // Get a list of all the ExpRuns imported to subfolders of this folder.
-                int[] runRowIdsInSubfolders = getAllExpRunRowIdsInSubfolders(container);
+                long[] runRowIdsInSubfolders = getAllExpRunRowIdsInSubfolders(container);
                 if (runRowIdsInSubfolders.length > 0)
                 {
                     // The folder export and import process, creates a new experiment in exp.experiment.
@@ -119,11 +120,11 @@ public class PanoramaPublicMetadataImporter implements FolderImporter
         }
     }
 
-    private static int[] getAllExpRunRowIdsInSubfolders(Container container)
+    private static long[] getAllExpRunRowIdsInSubfolders(Container container)
     {
         Set<Container> children = ContainerManager.getAllChildren(container);
         ExperimentService expService = ExperimentService.get();
-        List<Integer> expRunRowIds = new ArrayList<>();
+        List<Long> expRunRowIds = new ArrayList<>();
         for(Container child: children)
         {
             if(container.equals(child))
@@ -136,7 +137,7 @@ public class PanoramaPublicMetadataImporter implements FolderImporter
                 expRunRowIds.add(run.getRowId());
             }
         }
-        int[] intIds = new int[expRunRowIds.size()];
+        long[] intIds = new long[expRunRowIds.size()];
         for(int i = 0; i < expRunRowIds.size(); i++)
         {
             intIds[i] = expRunRowIds.get(i);
