@@ -62,7 +62,6 @@
             alert("Please select a Panorama Public folder first.");
             return;
         }
-        //console.log("Selected folder path: " + folderPath);
         window.location = LABKEY.ActionURL.buildURL("panoramapublic", "sendPrivateDataReminders.view", folderPath);
     }
 </script>

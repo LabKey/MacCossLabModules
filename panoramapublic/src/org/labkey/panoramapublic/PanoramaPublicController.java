@@ -389,7 +389,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Panorama Public Admin Console", getClass(), getContainer());
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
         }
     }
 
@@ -526,7 +526,7 @@ public class PanoramaPublicController extends SpringActionController
 
     private static void addPanoramaPublicAdminConsoleNav(NavTree root, Container container)
     {
-        root.addChild("Panorama Public Admin Console", new ActionURL(PanoramaPublicAdminViewAction.class, container));
+        PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Panorama Public Admin Console", PanoramaPublicAdminViewAction.class, container);
     }
 
     public static class CreateJournalGroupForm
@@ -1574,6 +1574,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
             root.addChild("Panorama Public Catalog Settings");
         }
     }
@@ -10085,12 +10086,37 @@ public class PanoramaPublicController extends SpringActionController
         return result;
     }
 
-    @AdminConsoleAction
     @RequiresPermission(AdminOperationsPermission.class)
     public static class PrivateDataReminderSettingsAction extends FormViewAction<PrivateDataReminderSettingsForm>
     {
         @Override
-        public void validateCommand(PrivateDataReminderSettingsForm form, Errors errors) {}
+        public void validateCommand(PrivateDataReminderSettingsForm form, Errors errors)
+        {
+            if (form.getDelayUntilFirstReminder() == null)
+            {
+                errors.reject(ERROR_MSG, "Please enter a value for 'Delay until first reminder'.");
+            }
+            else if (form.getDelayUntilFirstReminder() < 0)
+            {
+                errors.reject(ERROR_MSG, "Value for 'Delay until first reminder' must be greater than 0.");
+            }
+            if (form.getReminderFrequency() == null)
+            {
+                errors.reject(ERROR_MSG, "Please enter a value for 'Reminder frequency'.");
+            }
+            else if (form.getReminderFrequency() < 0)
+            {
+                errors.reject(ERROR_MSG, "Value for 'Reminder frequency' must be greater than 0.");
+            }
+            if (form.getExtensionLength() == null)
+            {
+                errors.reject(ERROR_MSG, "Please enter a value for 'Extension duration'.");
+            }
+            else if (form.getExtensionLength() < 0)
+            {
+                errors.reject(ERROR_MSG, "Value for 'Extension duration' must be greater than 0.");
+            }
+        }
 
         @Override
         public ModelAndView getView(PrivateDataReminderSettingsForm form, boolean reshow, BindException errors) throws Exception
@@ -10105,7 +10131,7 @@ public class PanoramaPublicController extends SpringActionController
             }
 
             VBox view = new VBox();
-            view.addView(new JspView<>("/org/labkey/panoramapublic/view/privateDataRemindersSettingsForm.jsp", form));
+            view.addView(new JspView<>("/org/labkey/panoramapublic/view/privateDataRemindersSettingsForm.jsp", form, errors));
             view.setTitle("Private Data Reminder Settings");
             view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
@@ -10144,7 +10170,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Panorama Public Admin Console", PanoramaPublicAdminViewAction.class, getContainer());
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
             root.addChild("Private Data Reminder Settings");
         }
     }
@@ -10152,9 +10178,9 @@ public class PanoramaPublicController extends SpringActionController
     public static class PrivateDataReminderSettingsForm
     {
         private boolean _enabled;
-        private int _extensionLength;
-        private int _reminderFrequency;
-        private int _delayUntilFirstReminder;
+        private Integer _extensionLength;
+        private Integer _reminderFrequency;
+        private Integer _delayUntilFirstReminder;
 
         public boolean isEnabled()
         {
@@ -10166,32 +10192,32 @@ public class PanoramaPublicController extends SpringActionController
             _enabled = enabled;
         }
 
-        public int getExtensionLength()
+        public Integer getExtensionLength()
         {
             return _extensionLength;
         }
 
-        public void setExtensionLength(int extensionLength)
+        public void setExtensionLength(Integer extensionLength)
         {
             _extensionLength = extensionLength;
         }
 
-        public int getReminderFrequency()
+        public Integer getReminderFrequency()
         {
             return _reminderFrequency;
         }
 
-        public void setReminderFrequency(int reminderFrequency)
+        public void setReminderFrequency(Integer reminderFrequency)
         {
             _reminderFrequency = reminderFrequency;
         }
 
-        public int getDelayUntilFirstReminder()
+        public Integer getDelayUntilFirstReminder()
         {
             return _delayUntilFirstReminder;
         }
 
-        public void setDelayUntilFirstReminder(int delayUntilFirstReminder)
+        public void setDelayUntilFirstReminder(Integer delayUntilFirstReminder)
         {
             _delayUntilFirstReminder = delayUntilFirstReminder;
         }
@@ -10225,6 +10251,7 @@ public class PanoramaPublicController extends SpringActionController
 
             JspView<PrivateDataSendReminderForm> jspView = new JspView<>("/org/labkey/panoramapublic/view/sendPrivateDataRemindersForm.jsp", form, errors);
             VBox view = new VBox(jspView, tableView);
+            view.setTitle("Send Reminders");
             view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
         }
@@ -10257,8 +10284,8 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Private Data Reminder Settings", PrivateDataReminderSettingsAction.class, ContainerManager.getRoot());
-            root.addChild("Send Private Data Reminders");
+            root.addChild("Private Data Reminder Settings", new ActionURL(PrivateDataReminderSettingsAction.class, ContainerManager.getRoot()));
+            root.addChild("Send Reminders");
         }
     }
 
@@ -10327,7 +10354,23 @@ public class PanoramaPublicController extends SpringActionController
 
         protected abstract void doValidationForAction(Errors errors);
         protected abstract void updateDatasetStatus(DatasetStatus datasetStatus);
-        protected abstract void postNotification() throws Exception;
+        protected abstract void postNotification();
+
+        protected abstract String getConfirmViewTitle();
+        protected abstract String getConfirmViewMessage();
+
+        public ModelAndView getConfirmView(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        {
+            setTitle(getConfirmViewTitle());
+            HtmlView view = new HtmlView(DIV(
+                    DIV(getConfirmViewMessage()),
+                    DIV("Title: " + _exptAnnotations.getTitle()),
+                    DIV("Submitted on: " + DateUtil.formatDateTime(_exptAnnotations.getCreated(), "MMMM d, yyyy")),
+                    DIV("Submitter: " + _exptAnnotations.getSubmitterName())
+            ));
+            view.setTitle(getConfirmViewTitle());
+            return view;
+        }
 
         @Override
         public void validateCommand(ShortUrlForm shortUrlForm, Errors errors)
@@ -10384,17 +10427,15 @@ public class PanoramaPublicController extends SpringActionController
     public class RequestExtensionAction extends UpdateDatasetStatusAction
     {
         @Override
-        public ModelAndView getConfirmView(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        protected String getConfirmViewTitle()
         {
-            setTitle("Request Extension");
-            HtmlView view = new HtmlView(DIV(
-                    DIV("You are requesting an extension for the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL()),
-                    DIV("Title: " + _exptAnnotations.getTitle()),
-                    DIV("Submitted on: " + DateUtil.formatDateTime(_exptAnnotations.getCreated(), "MMMM d, yyyy")),
-                    DIV("Submitter: " + _exptAnnotations.getSubmitterName())
-            ));
-            view.setTitle("Request Extension For Panorama Public Data");
-            return view;
+            return "Request Extension For Panorama Public Data";
+        }
+
+        @Override
+        protected String getConfirmViewMessage()
+        {
+            return "You are requesting an extension for the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL();
         }
 
         @Override
@@ -10450,17 +10491,15 @@ public class PanoramaPublicController extends SpringActionController
     public class RequestDeletionAction extends UpdateDatasetStatusAction
     {
         @Override
-        public ModelAndView getConfirmView(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        protected String getConfirmViewTitle()
         {
-            setTitle("Request Deletion");
-            HtmlView view = new HtmlView(DIV(
-                    DIV("You are requesting deletion of the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL()),
-                    DIV("Title: " + _exptAnnotations.getTitle()),
-                    DIV("Submitted on: " + DateUtil.formatDateTime(_exptAnnotations.getCreated(), "MMMM d, yyyy")),
-                    DIV("Submitter: " + _exptAnnotations.getSubmitterName())
-            ));
-            view.setTitle("Request Deletion For Panorama Public Data");
-            return view;
+            return "Request Deletion For Panorama Public Data";
+        }
+
+        @Override
+        protected String getConfirmViewMessage()
+        {
+            return "You are requesting deletion of the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL();
         }
 
         @Override
@@ -10483,7 +10522,7 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected void postNotification() throws Exception
+        protected void postNotification()
         {
             // Post a message to the support thread.
             JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(_exptAnnotations);
