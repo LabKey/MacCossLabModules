@@ -19,6 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.junit.Test;
+import org.labkey.api.collections.LongHashMap;
 import org.labkey.api.targetedms.IModification;
 import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.targetedms.TargetedMSService;
@@ -47,8 +48,8 @@ public class ExperimentModificationGetter
     {
         List<ITargetedMSRun> runs = ExperimentAnnotationsManager.getTargetedMSRuns(expAnnot);
 
-        Map<Long, PxModification> strModMap = new HashMap<>();
-        Map<Long, PxModification> isoModMap = new HashMap<>();
+        Map<Long, PxModification> strModMap = new LongHashMap<>();
+        Map<Long, PxModification> isoModMap = new LongHashMap<>();
 
         UnimodModifications uMods = UnimodUtil.getUnimod(); // Read the UNIMOD modifications
 

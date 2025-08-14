@@ -1555,7 +1555,7 @@ public class LincsController extends SpringActionController
                 return false;
             }
 
-            int jobId = PipelineService.get().getJobId(getUser(), container, job.getJobGUID());
+            long jobId = PipelineService.get().getJobId(getUser(), container, job.getJobGUID());
             newPspJob.setPipelineJobId(jobId);
             lincsManager.updatePipelineJobId(newPspJob);
             return true;

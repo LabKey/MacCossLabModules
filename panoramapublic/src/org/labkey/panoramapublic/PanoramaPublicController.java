@@ -3417,7 +3417,7 @@ public class PanoramaPublicController extends SpringActionController
                     validation = DataValidationManager.saveDataValidation(validation, user);
                     PxDataValidationPipelineJob job = new PxDataValidationPipelineJob(info, root, experimentAnnotations, validation.getId());
                     PipelineService.get().queueJob(job);
-                    Integer jobId = PipelineService.get().getJobId(user, container, job.getJobGUID());
+                    Long jobId = PipelineService.get().getJobId(user, container, job.getJobGUID());
                     if (jobId == null)
                     {
                         errors.reject(ERROR_MSG, "Data validation job was not submitted for experiment Id: " + experimentAnnotations.getId());
@@ -3488,7 +3488,7 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors, false);
             }
 
-            int jobId = validation.getJobId();
+            long jobId = validation.getJobId();
             PipelineStatusFile pipelineJobStatus = PipelineService.get().getStatusFile(jobId);
             JournalSubmission js = SubmissionManager.getNewestJournalSubmission(_experimentAnnotations);
             JspView view;
@@ -3586,7 +3586,7 @@ public class PanoramaPublicController extends SpringActionController
             DataValidation validation = DataValidationManager.getValidation(form.getValidationId(), getContainer());
             if (validation != null)
             {
-                int jobId = validation.getJobId();
+                long jobId = validation.getJobId();
                 PipelineStatusFile status = PipelineService.get().getStatusFile(jobId);
                 if (status != null)
                 {
@@ -5810,7 +5810,7 @@ public class PanoramaPublicController extends SpringActionController
 
                     // Add all runs in the folder
                     List<? extends ExpRun> runsInFolder = ExperimentService.get().getExpRuns(getContainer(), null, null);
-                    int[] runIds = new int[runsInFolder.size()];
+                    long[] runIds = new long[runsInFolder.size()];
                     int i = 0;
                     for(ExpRun run: runsInFolder)
                     {
