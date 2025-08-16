@@ -6,12 +6,11 @@ import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
+import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
 import org.labkey.test.pages.LabkeyErrorPage;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -29,7 +28,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
     private static final String ADMIN_2 = "admin_2@panoramapublic.test";
     private static final String ADMIN_3 = "admin_3@panoramapublic.test";
 
-    private static final String REMINDER_MESSAGE_TITLE = "Title: Action Required: Status Update for Your Private Dataset on Panorama Public";
+    private static final String REMINDER_MESSAGE_TITLE = "Title: Action Required: Status Update for Your Private Data on Panorama Public";
     private static final String EXTENSION_MESSAGE_TITLE = "Title: Private Status Extended - ";
     private static final String DELETION_MESSAGE_TITLE = "Title: Data Deletion Requested - ";
     private static final String MESSAGE_PAGE_TITLE = "Submitted - ";
@@ -38,7 +37,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
     @Test
     public void testPrivateDataReminder()
     {
-//         String panoramaPublicProject = "Panorama Public 2";
+//        String panoramaPublicProject = "Panorama Public 2";
         String panoramaPublicProject = PANORAMA_PUBLIC;
         goToProjectHome(panoramaPublicProject);
         ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
@@ -145,7 +144,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         verifyNoReminderPosted(projectName, dataFolderInfos);
         String message = String.format("Skipping reminder for experiment Id %d - First reminder not due until ", privateData.get(0).getExperimentAnnotationsId());
         String message2 = String.format("Skipping reminder for experiment Id %d - First reminder not due until ", privateData.get(1).getExperimentAnnotationsId());
-        verifyPipelineJobLogMessage(projectName, message, message2, "Skipped posting reminders for 2 experiments ");
+        verifyPipelineJobLogMessage(projectName, message, message2, "Skipped posting reminders for 2 experiments");
 
         log("Changing reminder settings. Setting delay until first reminder to 0.");
         saveSettings("2", "0", "0");
@@ -170,7 +169,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         verifyReminderPosted(projectName, privateData.get(0), 1); // No new reminders since reminder frequency is set to 1.
         verifyReminderPosted(projectName, privateData.get(1), 1);
         message = String.format("Skipping reminder for experiment Id %d - Recent reminder already sent", privateData.get(0).getExperimentAnnotationsId());
-        verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiments ");
+        verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiments");
 
         // Change reminder frequency to 0 again.
         log("Changing reminder settings. Setting reminder frequency to 0.");
@@ -182,9 +181,9 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         postReminders(projectName, false, privateDataCount, -1, ++pipelineJobCount);
         verifyReminderPosted(projectName, privateData.get(0),1); // No new reminders since extension requested.
         verifyReminderPosted(projectName, privateData.get(1), 2); // Reminder posted since reminder frequency is 0.
-        message = String.format("Skipping reminder for experiment Id %d - Submitter requested an extension. Extension is current.",
+        message = String.format("Skipping reminder for experiment Id %d - Submitter requested an extension. Extension is current",
                 privateData.get(0).getExperimentAnnotationsId());
-        verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiments ");
+        verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiments");
 
         // Request deletion for the second experiment.
         log("Requesting deletion for experiment Id " + privateData.get(1).getExperimentAnnotationsId());
@@ -194,7 +193,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         verifyReminderPosted(projectName, privateData.get(0),1); // No new reminders since extension requested.
         verifyReminderPosted(projectName, privateData.get(1), 2); // No new reminders since deletion requested.
         message2 = String.format("Skipping reminder for experiment Id %d - Submitter has requested deletion", privateData.get(1).getExperimentAnnotationsId());
-        verifyPipelineJobLogMessage(projectName, message, message2, "Skipped posting reminders for 2 experiments ");
+        verifyPipelineJobLogMessage(projectName, message, message2, "Skipped posting reminders for 2 experiments");
     }
 
     private void requestExtension(String projectName, DataFolderInfo folderInfo)
@@ -202,21 +201,18 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         goToProjectFolder(projectName, folderInfo.getTargetFolder());
         gotoSupportMessage(folderInfo);
 
-        impersonate(SUBMITTER_3);
-        click(Locator.linkWithText("Request Extension"));
-        new LabkeyErrorPage(getDriver()).assertUnauthorized(checker());
-
-        stopImpersonating();
+        String actionName = "Request Extension";
+        checkUnauthorizedAccess(actionName);
 
         goToProjectFolder(projectName, folderInfo.getTargetFolder());
         gotoSupportMessage(folderInfo);
         impersonate(folderInfo.getSubmitter());
 
-        assertTextPresent("Request Extension");
-        click(Locator.linkWithText("Request Extension"));
+        assertTextPresent(actionName);
+        click(Locator.linkWithText(actionName));
         waitForText("Request Extension For Panorama Public Data");
         assertTextPresent("You are requesting an extension for the private data on Panorama Public at " + folderInfo.getShortUrl());
-        clickButton("OK");
+        clickButton("OK", 0);
         waitForText("An extension request was successfully submitted for the data at " + folderInfo.getShortUrl());
 
         stopImpersonating();
@@ -230,27 +226,34 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         goToProjectFolder(projectName, folderInfo.getTargetFolder());
         gotoSupportMessage(folderInfo);
 
-        impersonate(SUBMITTER_3);
-        click(Locator.linkWithText("Request Deletion"));
-        new LabkeyErrorPage(getDriver()).assertUnauthorized(checker());
-
-        stopImpersonating();
+        String actionName = "Request Deletion";
+        checkUnauthorizedAccess(actionName);
 
         goToProjectFolder(projectName, folderInfo.getTargetFolder());
         gotoSupportMessage(folderInfo);
         impersonate(folderInfo.getSubmitter());
 
-        assertTextPresent("Request Deletion");
-        click(Locator.linkWithText("Request Deletion"));
+        assertTextPresent(actionName);
+        click(Locator.linkWithText(actionName));
         waitForText("Request Deletion For Panorama Public Data");
         assertTextPresent("You are requesting deletion of the private data on Panorama Public at " + folderInfo.getShortUrl());
-        clickButton("OK");
+        clickButton("OK", 0);
         waitForText("A deletion request was successfully submitted for the data at " + folderInfo.getShortUrl());
 
         stopImpersonating();
         goToProjectFolder(projectName, folderInfo.getTargetFolder());
         gotoSupportMessage(folderInfo);
         assertTextPresent(DELETION_MESSAGE_TITLE + folderInfo.getShortUrl());
+    }
+
+    private void checkUnauthorizedAccess(String actionName)
+    {
+        impersonate(SUBMITTER_3); // This submitter does not have access
+        waitForText(actionName);
+        click(Locator.linkWithText(actionName));
+        new LabkeyErrorPage(getDriver()).assertUnauthorized(checker());
+        stopImpersonating(false); // Don't go home
+        waitForText(actionName);
     }
 
     private void verifyPipelineJobLogMessage(String project, String... message)
@@ -307,7 +310,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         setFormElement(Locator.input("delayUntilFirstReminder"), delayUntilFirstReminder);
         setFormElement(Locator.input("reminderFrequency"), reminderFrequency);
         setFormElement(Locator.input("extensionLength"), extensionLength);
-        clickButton("Save");
+        clickButton("Save", 0);
         waitForText("Private data message settings saved");
         clickAndWait(Locator.linkWithText("Back to Panorama Public Admin Console"));
 
@@ -355,11 +358,11 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
             checkCheckbox(Locator.checkboxByName("testMode"));
         }
 
-        clickButton("Post Reminders");
+        clickButton("Post Reminders", 0);
 
         if (selectRowCount == 0)
         {
-            assertTextPresent("Please select at least one experiment");
+            waitForText("Please select at least one experiment");
             if (testMode)
             {
                 assertChecked(Locator.checkboxByName("testMode"));
@@ -387,7 +390,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
         selectOptionByText(Locator.name("journal"), projectName);
         click(Locator.linkWithText("Send Reminders Now"));
-        waitForText("Send Private Data Reminders");
+        waitForText("Send Reminders");
         assertEquals("/" + projectName, getCurrentContainerPath());
     }
 

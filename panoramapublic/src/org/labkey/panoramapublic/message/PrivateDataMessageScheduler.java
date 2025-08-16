@@ -9,9 +9,12 @@ import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.security.User;
 import org.labkey.api.util.ConfigurationException;
+import org.labkey.api.util.ExceptionUtil;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.ViewBackgroundInfo;
+import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.pipeline.PrivateDataReminderJob;
+import org.labkey.panoramapublic.query.JournalManager;
 import org.quartz.DateBuilder;
 import org.quartz.Job;
 import org.quartz.JobBuilder;
@@ -88,40 +91,42 @@ public class PrivateDataMessageScheduler
 
     public static class PrivateDataMessageSchedulerJob implements Job
     {
-        private final @Nullable User _user;
-
         @SuppressWarnings("unused")
-        public PrivateDataMessageSchedulerJob()
-        {
-            this(null);
-        }
-
-        public PrivateDataMessageSchedulerJob(@Nullable User user)
-        {
-            _user = user;
-        }
+        public PrivateDataMessageSchedulerJob() {}
 
         @Override
         public void execute(JobExecutionContext context)
         {
             try
             {
-                Container c = ContainerManager.getRoot();
-                ViewBackgroundInfo vbi = new ViewBackgroundInfo(c, _user, null);
+                Journal panoramaPublic = JournalManager.getJournal(JournalManager.PANORAMA_PUBLIC);
+                if (panoramaPublic == null)
+                {
+                    throw new ConfigurationException("Server does not have a Panorama Public project.");
+                }
+
+                Container c = panoramaPublic.getProject();
+
+                User panoramaPublicAdmin = JournalManager.getJournalAdminUser(panoramaPublic);
+                if (panoramaPublicAdmin == null)
+                {
+                    throw new ConfigurationException("Unable to find an admin user in the Panorama Public project.");
+                }
+                ViewBackgroundInfo vbi = new ViewBackgroundInfo(c, panoramaPublicAdmin, null);
                 PipeRoot root = PipelineService.get().findPipelineRoot(c);
 
                 if (root == null || !root.isValid())
                 {
-                    throw new ConfigurationException("No valid pipeline root found in the root container");
+                    throw new ConfigurationException("No valid pipeline root found in the container " + c.getName());
                 }
 
-                PipelineJob job = new PrivateDataReminderJob(vbi, PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()), false);
+                PipelineJob job = new PrivateDataReminderJob(vbi, PipelineService.get().getPipelineRootSetting(c), false);
                 PipelineService.get().queueJob(job);
             }
             catch(Exception e)
             {
                 _log.error("Error queuing PrivateDataReminderJob", e);
-                // ExceptionUtil.logExceptionToMothership(null, e);
+                ExceptionUtil.logExceptionToMothership(null, e);
 
             }
         }

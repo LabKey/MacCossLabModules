@@ -97,7 +97,7 @@
             </tr>
             <tr>
                 <td class="labkey-form-label">
-                    <span><%=h(PrivateDataReminderSettings.PROP_EXTENSION_MONTHS)%></span>
+                    <span><%=h(PrivateDataReminderSettings.PROP_EXTENSION_LENGTH)%></span>
                 </td>
                 <td>
                     <input style="padding:0 10px 0 0;" type="text" name="extensionLength" value="<%=form.getExtensionLength()%>" />

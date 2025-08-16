@@ -46,6 +46,7 @@ import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.bluesky.BlueskyApiClient;
 import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoResourceType;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentType;
+import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
@@ -382,6 +383,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(Formula.TestCase.class);
         set.add(CatalogEntryManager.TestCase.class);
         set.add(BlueskyApiClient.TestCase.class);
+        set.add(PrivateDataReminderSettings.TestCase.class);
         return set;
 
     }

@@ -23,7 +23,6 @@ import org.labkey.api.view.NotFoundException;
 import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
-import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
@@ -306,17 +305,13 @@ public class PanoramaPublicNotification
             throw new NotFoundException(String.format("Could not find an admin user for %s.", journal.getName()));
         }
         PrivateDataReminderSettings reminderSettings = PrivateDataReminderSettings.get();
-        /*
-            Thank you for your request to extend the private status of your data on Panorama Public at <short_url>.
-            Your data has been granted an extension for an additional 6 months. You’ll receive another reminder at that time, or you may make the dataset public earlier.
-            Please feel free to contact us if you have any questions
-         */
+
         String messageTitle = "Private Status Extended" +" - " + je.getShortAccessUrl().renderShortURL();
         StringBuilder messageBody = new StringBuilder();
         messageBody.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
         messageBody.append("Thank you for your request to extend the private status of your data on Panorama Public. ")
                 .append("Your data has been granted a " + reminderSettings.getExtensionLength() + " month extension. ")
-                .append("You’ll receive another reminder when this period ends. ")
+                .append("You will receive another reminder when this period ends. ")
                 .append("If you'd like to make your data public sooner, you can do so at any time ")
                 .append("by clicking the \"Make Public\" button in your data folder, or by clicking this link: ")
                 .append(bold(link("Make Data Public", PanoramaPublicController.getMakePublicUrl(expAnnotations.getId(), expAnnotations.getContainer()).getURIString())))
@@ -354,7 +349,7 @@ public class PanoramaPublicNotification
             messageBody.append("We were unable to locate the source folder for this data in your project. ")
                     .append("The folder at the path ")
                     .append(expAnnotations.getSourceExperimentPath())
-                    .append("may have been deleted.");
+                    .append(" may have been deleted.");
         }
 
         messageBody.append(NL2).append("Best regards,");
@@ -369,7 +364,7 @@ public class PanoramaPublicNotification
                                                       @NotNull Announcement announcement, @NotNull Container announcementsContainer, @NotNull User journalAdmin)
     {
         String message = getDataStatusReminderMessage(expAnnotations, submitter, js, announcement, announcementsContainer, journalAdmin);
-        String title = "Action Required: Status Update for Your Private Dataset on Panorama Public";
+        String title = "Action Required: Status Update for Your Private Data on Panorama Public";
         postNotificationFullTitle(journal, js.getJournalExperiment(), message, messagePoster, title, StatusOption.Closed, notifyUsers);
     }
 
@@ -377,17 +372,6 @@ public class PanoramaPublicNotification
                                                       @NotNull JournalSubmission js,@NotNull Announcement announcement,
                                                       @NotNull Container announcementContainer, @NotNull User journalAdmin)
     {
-        /*
-        We are reaching out regarding your dataset on Panorama Public (https://panoramaweb.org/polyjuice.url), which has been private since January 1, 2024.
-        Is the paper associated with this work already published?
-        If yes: Please make your data public by clicking the "Make Public" button in your folder or by clicking [Make Data Public] here. This helps ensure that your valuable research is easily accessible to the community.
-        If not: You have a couple of options:
-        Request an Extension - If your paper is still under review, or you need additional time, please let us know by clicking [Request Extension]
-        Delete from Panorama Public - If you no longer wish to host your data on Panorama Public, please click [Request Deletion]. We will remove your dataset from Panorama Public. However, your source folder (/Hogwarts/Gryffindor/magic-potion) will remain intact, allowing you to resubmit your data in the future if you wish.
-        If you have any questions or need further assistance, please do not hesitate to respond to this message by clicking here.
-        Thank you for sharing your research on Panorama Public. We appreciate your commitment to open science and your contributions to the research community.
-         */
-
         String shortUrl = exptAnnotations.getShortUrl().renderShortURL();
         String makePublicLink = PanoramaPublicController.getMakePublicUrl(exptAnnotations.getId(), exptAnnotations.getContainer()).getURIString();
         String dateString = DateUtil.formatDateTime(js.getLatestSubmission().getCreated(), "MMMM d, yyyy");
@@ -410,10 +394,10 @@ public class PanoramaPublicNotification
 
         StringBuilder message = new StringBuilder();
         message.append("Dear ").append(getUserName(submitter)).append(",").append(NL2)
-                .append("We are reaching out regarding your dataset on Panorama Public (").append(shortUrl).append("), which has been private since ")
+                .append("We are reaching out regarding your data on Panorama Public (").append(shortUrl).append("), which has been private since ")
                 .append(dateString).append(".")
                 .append("\n\n**Is the paper associated with this work already published?**")
-                .append("\n- If yes: Please make your data public by clicking the \"Make Public\" button in your folder or by clicking ")
+                .append("\n- If yes: Please make your data public by clicking the \"Make Public\" button in your folder or by clicking this link: ")
                 .append(bold(link("Make Data Public", makePublicLink)))
                 .append(". This helps ensure that your valuable research is easily accessible to the community.")
                 .append("\n- If not: You have a couple of options:")
@@ -421,7 +405,7 @@ public class PanoramaPublicNotification
                 .append(bold(link("Request Extension", requestExtensionUrl.getURIString()))).append(".")
                 .append("\n  - **Delete from Panorama Public** - If you no longer wish to host your data on Panorama Public, please click ")
                 .append(bold(link("Request Deletion", requesDeletionUrl.getURIString()))).append(". ")
-                .append("We will remove your dataset from Panorama Public.");
+                .append("We will remove your data from Panorama Public.");
         if (sourceExperiment != null)
         {
             message.append(" However, your source folder (")
@@ -594,7 +578,7 @@ public class PanoramaPublicNotification
     {
         // https://www.markdownguide.org/basic-syntax/#characters-you-can-escape
         // Escape Markdown special characters. Some character combinations can result in
-        // unintended Markdown styling, e.g. "+_Italics_+" will result in "Italics" to be italicized.
+        // unintended Markdown styling, e.g. "+_Italics_+" results in "Italics" to be italicized.
         // This can be seen with the tricky characters used for project names in labkey tests.
         // 8/13/25 - Escape tilde (~) as well. In the LabKey Markdown flavor, text between
         // single tildes (e.g., ~strikethrough~) is rendered as strikethrough.

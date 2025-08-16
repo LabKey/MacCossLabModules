@@ -10098,7 +10098,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             else if (form.getDelayUntilFirstReminder() < 0)
             {
-                errors.reject(ERROR_MSG, "Value for 'Delay until first reminder' must be greater than 0.");
+                errors.reject(ERROR_MSG, "Value for 'Delay until first reminder' cannot be less than 0.");
             }
             if (form.getReminderFrequency() == null)
             {
@@ -10106,7 +10106,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             else if (form.getReminderFrequency() < 0)
             {
-                errors.reject(ERROR_MSG, "Value for 'Reminder frequency' must be greater than 0.");
+                errors.reject(ERROR_MSG, "Value for 'Reminder frequency' cannot be less than 0.");
             }
             if (form.getExtensionLength() == null)
             {
@@ -10114,7 +10114,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             else if (form.getExtensionLength() < 0)
             {
-                errors.reject(ERROR_MSG, "Value for 'Extension duration' must be greater than 0.");
+                errors.reject(ERROR_MSG, "Value for 'Extension duration' cannot be less than 0.");
             }
         }
 
@@ -10244,7 +10244,7 @@ public class PanoramaPublicController extends SpringActionController
             qSettings.setBaseFilter(new SimpleFilter(FieldKey.fromParts("Public"), "No"));
 
             QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, null);
-            tableView.setTitle("Private Panorama Public Datasets");
+            tableView.setTitle("Private Panorama Private Datasets");
             tableView.setFrame(WebPartView.FrameType.NONE);
 
             form.setDataRegionName(tableView.getDataRegionName());
@@ -10266,7 +10266,7 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
             PipelineJob job = new PrivateDataReminderJob(getViewBackgroundInfo(),
-                    PipelineService.get().getPipelineRootSetting(ContainerManager.getRoot()),
+                    PipelineService.get().getPipelineRootSetting(getContainer()),
                     JournalManager.getJournal(getContainer()),
                     form.getSelectedExperimentIds(),
                     form.getTestMode());
@@ -10294,7 +10294,6 @@ public class PanoramaPublicController extends SpringActionController
         private boolean _testMode;
         private String _selectedIds;
         private String _dataRegionName = null;
-        private List<ExperimentAnnotations> _experiments = null;
 
         public boolean getTestMode()
         {
@@ -10334,16 +10333,6 @@ public class PanoramaPublicController extends SpringActionController
         {
             _dataRegionName = dataRegionName;
         }
-
-        public List<ExperimentAnnotations> getExperiments()
-        {
-            return _experiments;
-        }
-
-        public void setExperiments(List<ExperimentAnnotations> experiments)
-        {
-            _experiments = experiments;
-        }
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
@@ -10355,7 +10344,6 @@ public class PanoramaPublicController extends SpringActionController
         protected abstract void doValidationForAction(Errors errors);
         protected abstract void updateDatasetStatus(DatasetStatus datasetStatus);
         protected abstract void postNotification();
-
         protected abstract String getConfirmViewTitle();
         protected abstract String getConfirmViewMessage();
 
@@ -10407,7 +10395,6 @@ public class PanoramaPublicController extends SpringActionController
                     DatasetStatusManager.update(_datasetStatus, getUser());
                 }
 
-                // Post notification
                 postNotification();
 
                 transaction.commit();
@@ -10444,10 +10431,10 @@ public class PanoramaPublicController extends SpringActionController
             if (_datasetStatus != null)
             {
                 PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
-                if (_datasetStatus.isExtensionCurrent(settings))
+                if (settings.isExtensionValid(_datasetStatus))
                 {
                     errors.reject(ERROR_MSG, "An extension has already been requested for the data with short URL " + _datasetStatus.getShortUrl().renderShortURL()
-                            + ". The extension is valid until " + _datasetStatus.extensionValidUntilFormatted(settings));
+                            + ". The extension is valid until " + settings.extensionValidUntilFormatted(_datasetStatus));
                 }
                 else if (_datasetStatus.deletionRequested())
                 {
@@ -10478,7 +10465,7 @@ public class PanoramaPublicController extends SpringActionController
             setTitle("Extension Request Success");
             PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
             return new HtmlView(DIV("An extension request was successfully submitted for the data at " + _exptAnnotations.getShortUrl().renderShortURL(),
-                    DIV("The extension is valid until " + _datasetStatus.extensionValidUntilFormatted(settings)),
+                    DIV("The extension is valid until " + settings.extensionValidUntilFormatted(_datasetStatus)),
                     BR(),
                     DIV(
                             LinkBuilder.labkeyLink("Data Folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()))
