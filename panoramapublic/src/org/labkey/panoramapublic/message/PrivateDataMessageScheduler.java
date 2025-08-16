@@ -1,9 +1,7 @@
 package org.labkey.panoramapublic.message;
 
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
-import org.labkey.api.data.ContainerManager;
 import org.labkey.api.pipeline.PipeRoot;
 import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineService;
@@ -15,14 +13,13 @@ import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.pipeline.PrivateDataReminderJob;
 import org.labkey.panoramapublic.query.JournalManager;
-import org.quartz.DateBuilder;
+import org.quartz.CronScheduleBuilder;
 import org.quartz.Job;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
-import org.quartz.SimpleScheduleBuilder;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
@@ -77,15 +74,10 @@ public class PrivateDataMessageScheduler
 
     protected Trigger getTrigger()
     {
-        // 1st of every month at 8:00AM
-//        return TriggerBuilder.newTrigger()
-//                .withIdentity(TRIGGER_KEY)
-//                .withSchedule(CronScheduleBuilder.monthlyOnDayAndHourAndMinute(1, 8, 0))
-//                .build();
+        // Run at 8:00AM every morning
         return TriggerBuilder.newTrigger()
                 .withIdentity(TRIGGER_KEY)
-                .withSchedule(SimpleScheduleBuilder.repeatMinutelyForever(2))
-                .startAt(DateBuilder.futureDate(5, DateBuilder.IntervalUnit.SECOND))
+                .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(8, 0))
                 .build();
     }
 

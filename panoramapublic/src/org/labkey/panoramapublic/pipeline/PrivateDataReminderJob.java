@@ -15,6 +15,7 @@ import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.User;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.panoramapublic.PanoramaPublicManager;
@@ -78,7 +79,7 @@ public class PrivateDataReminderJob extends PipelineJob
         for (Container folder : subFolders)
         {
             ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.getExperimentInContainer(folder);
-            if (exptAnnotations != null)
+            if (exptAnnotations != null && !exptAnnotations.isPublic())
             {
                 privateDataIds.add(exptAnnotations.getId());
             }
@@ -91,12 +92,12 @@ public class PrivateDataReminderJob extends PipelineJob
     {
         if (exptAnnotations.isPublic())
         {
-            return ReminderDecision.skip("Data is already public.");
+            return ReminderDecision.skip("Data is already public");
         }
 
         if (!ExperimentAnnotationsManager.isCurrentVersion(exptAnnotations))
         {
-            return ReminderDecision.skip("Not the current version of the experiment.");
+            return ReminderDecision.skip("Not the current version of the experiment");
         }
 
         DatasetStatus datasetStatus = DatasetStatusManager.getForShortUrl(exptAnnotations.getShortUrl());
@@ -104,17 +105,17 @@ public class PrivateDataReminderJob extends PipelineJob
         {
             if (datasetStatus.deletionRequested())
             {
-                return ReminderDecision.skip("Submitter has requested deletion.");
+                return ReminderDecision.skip("Submitter has requested deletion");
             }
 
             if (settings.isExtensionValid(datasetStatus))
             {
-                return ReminderDecision.skip("Submitter requested an extension. Extension is current.");
+                return ReminderDecision.skip("Submitter requested an extension. Extension is current");
             }
 
             if (settings.isLastReminderRecent(datasetStatus))
             {
-                return ReminderDecision.skip("Recent reminder already sent.");
+                return ReminderDecision.skip("Recent reminder already sent");
             }
         }
         return reminderIsDue(exptAnnotations, settings);
@@ -129,7 +130,7 @@ public class PrivateDataReminderJob extends PipelineJob
         LocalDate firstReminderDate = copyDate.plusMonths(settings.getDelayUntilFirstReminder());
         if (LocalDate.now().isBefore(firstReminderDate))
         {
-            return ReminderDecision.skip(String.format("First reminder not due until %s.", firstReminderDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))));
+            return ReminderDecision.skip(String.format("First reminder not due until %s", firstReminderDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))));
         }
         return ReminderDecision.post();
     }
@@ -610,12 +611,12 @@ public class PrivateDataReminderJob extends PipelineJob
         {
             if (!_skipped.isEmpty())
             {
-               log.info("Skipped posting reminders for " + _skipped.size() + " experiments");
+               log.info(String.format("Skipped posting reminders for %s.", StringUtilsLabKey.pluralize(_skipped.size(), "experiment")));
             }
 
             if (_processed > 0)
             {
-                log.info("Successfully processed " + _processed + " experiments");
+                log.info(String.format("Successfully processed %s.", StringUtilsLabKey.pluralize(_processed, "experiment")));
             }
 
             log.info(String.format("Processing complete: %d total, %d processed, %d skipped, %d errors",

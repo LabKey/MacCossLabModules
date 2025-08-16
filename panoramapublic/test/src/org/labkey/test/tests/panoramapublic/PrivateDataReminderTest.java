@@ -6,7 +6,6 @@ import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
-import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
 import org.labkey.test.pages.LabkeyErrorPage;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
@@ -37,7 +36,6 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
     @Test
     public void testPrivateDataReminder()
     {
-//        String panoramaPublicProject = "Panorama Public 2";
         String panoramaPublicProject = PANORAMA_PUBLIC;
         goToProjectHome(panoramaPublicProject);
         ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
@@ -94,8 +92,6 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         String shortAccessUrl = setupFolderSubmitAndCopy(testProject, sourceFolder, targetFolder, experimentTitle,
                 submitter, submitterName, admin, SKY_FILE_1);
         goToProjectFolder(panoramaPublicProject, targetFolder);
-//        TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
-//        String shortAccessUrl = expWebPart.getAccessLink();
         goToExperimentDetailsPage();
         int exptAnnotationsId = Integer.parseInt(portalHelper.getUrlParam("id"));
         return new DataFolderInfo(sourceFolder, targetFolder, shortAccessUrl, experimentTitle, exptAnnotationsId, submitter);
@@ -169,7 +165,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         verifyReminderPosted(projectName, privateData.get(0), 1); // No new reminders since reminder frequency is set to 1.
         verifyReminderPosted(projectName, privateData.get(1), 1);
         message = String.format("Skipping reminder for experiment Id %d - Recent reminder already sent", privateData.get(0).getExperimentAnnotationsId());
-        verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiments");
+        verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiment");
 
         // Change reminder frequency to 0 again.
         log("Changing reminder settings. Setting reminder frequency to 0.");
@@ -183,7 +179,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         verifyReminderPosted(projectName, privateData.get(1), 2); // Reminder posted since reminder frequency is 0.
         message = String.format("Skipping reminder for experiment Id %d - Submitter requested an extension. Extension is current",
                 privateData.get(0).getExperimentAnnotationsId());
-        verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiments");
+        verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiment");
 
         // Request deletion for the second experiment.
         log("Requesting deletion for experiment Id " + privateData.get(1).getExperimentAnnotationsId());
@@ -275,14 +271,6 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
     private void verifyNoReminderPosted(String projectName, DataFolderInfo folderInfo)
     {
         verifyReminderPosted(projectName, folderInfo, 0);
-    }
-
-    private void verifyReminderPosted(String projectName, List<DataFolderInfo> folderInfos, int count)
-    {
-        for (DataFolderInfo folderInfo: folderInfos)
-        {
-            verifyReminderPosted(projectName, folderInfo, count);
-        }
     }
 
     private void verifyReminderPosted(String projectName, DataFolderInfo folderInfo, int count)
@@ -391,7 +379,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         selectOptionByText(Locator.name("journal"), projectName);
         click(Locator.linkWithText("Send Reminders Now"));
         waitForText("Send Reminders");
-        assertEquals("/" + projectName, getCurrentContainerPath());
+        assertTextPresent(projectName, "A reminder message will be sent to the submitters of the selected experiments");
     }
 
     private static class DataFolderInfo
