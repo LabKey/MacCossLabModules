@@ -377,9 +377,8 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         clickAndWait(Locator.linkWithText("Panorama Public"));
         clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
         selectOptionByText(Locator.name("journal"), projectName);
-        click(Locator.linkWithText("Send Reminders Now"));
-        waitForText("Send Reminders");
-        assertTextPresent(projectName, "A reminder message will be sent to the submitters of the selected experiments");
+        clickAndWait(Locator.linkWithText("Send Reminders Now"));
+        waitForText(projectName, "A reminder message will be sent to the submitters of the selected experiments");
     }
 
     private static class DataFolderInfo
