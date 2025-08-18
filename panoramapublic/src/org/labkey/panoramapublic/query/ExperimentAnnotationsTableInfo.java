@@ -708,7 +708,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         public void renderInputHtml(RenderContext ctx, HtmlWriter out, Object value)
         {
             String name = getFormFieldName(ctx);
-            String valueString = getStringValue(value, isDisabledInput(ctx));
+            String valueString = getStringValue(value, getBoundColumn().getDisplayUnit(), isDisabledInput(ctx));
             if (valueString == null)
             {
                 valueString = "";
