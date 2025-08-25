@@ -39,7 +39,7 @@
     function submitForm()
     {
         const form = document.getElementById("send-reminders-form");
-        let dataRegion = LABKEY.DataRegions['ExperimentAnnotationsTable'];
+        let dataRegion = LABKEY.DataRegions['ExperimentAnnotations'];
         let selectedRowIds = dataRegion.getChecked();
         console.log("Selection count: " + selectedRowIds.length);
         let selected = "";

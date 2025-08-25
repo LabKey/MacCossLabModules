@@ -374,7 +374,7 @@ public class PanoramaPublicNotification
     {
         String shortUrl = exptAnnotations.getShortUrl().renderShortURL();
         String makePublicLink = PanoramaPublicController.getMakePublicUrl(exptAnnotations.getId(), exptAnnotations.getContainer()).getURIString();
-        String dateString = DateUtil.formatDateTime(js.getLatestSubmission().getCreated(), "MMMM d, yyyy");
+        String dateString = DateUtil.formatDateTime(js.getLatestSubmission().getCreated(), PrivateDataReminderSettings.DATE_FORMAT_PATTERN);
 
         ActionURL viewMessageUrl = new ActionURL("announcements", "thread", announcementContainer)
                 .addParameter("rowId", announcement.getRowId());

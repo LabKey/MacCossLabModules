@@ -26,7 +26,7 @@ public class PrivateDataReminderSettings
     private static final int DEFAULT_REMINDER_FREQUENCY = 1; // Send reminders once a month, unless extension or deletion was requested.
     private static final int DEFAULT_EXTENSION_LENGTH = 6; // Private status of a dataset can be extended by 6 months.
 
-    private static final String DATE_FORMAT_PATTERN = "MMMM d, yyyy";
+    public static final String DATE_FORMAT_PATTERN = "MMMM d, yyyy";
 
     private boolean _enableReminders;
     private int _delayUntilFirstReminder;

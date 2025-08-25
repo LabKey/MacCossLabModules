@@ -6316,7 +6316,7 @@ public class PanoramaPublicController extends SpringActionController
         List<ExperimentAnnotations> publishedVersions = ExperimentAnnotationsManager.getPublishedVersionsOfExperiment(sourceExperimentId);
         if (!publishedVersions.isEmpty())
         {
-            QuerySettings qSettings = new QuerySettings(getViewContext(), "PublishedVersions", "ExperimentAnnotations");
+            QuerySettings qSettings = new QuerySettings(getViewContext(), "PublishedVersions", PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS);
             qSettings.setBaseFilter(new SimpleFilter(new SimpleFilter(FieldKey.fromParts("SourceExperimentId"), sourceExperimentId)));
 
             List<FieldKey> columns = new ArrayList<>(List.of(FieldKey.fromParts("Version"), FieldKey.fromParts("Created"), FieldKey.fromParts("Link"), FieldKey.fromParts("Share")));
@@ -9759,7 +9759,8 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getView(PanoramaPublicMessageForm form, BindException errors) throws Exception
         {
-            QuerySettings qSettings = new QuerySettings(getViewContext(), "ExperimentAnnotationsTable", "ExperimentAnnotations");
+            QuerySettings qSettings = new QuerySettings(getViewContext(),  PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS,
+                    PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS);
             qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
             QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, errors);
             tableView.setTitle("Panorama Public Experiments");
@@ -10239,7 +10240,8 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors, true);
             }
 
-            QuerySettings qSettings = new QuerySettings(getViewContext(), "ExperimentAnnotationsTable", "ExperimentAnnotations");
+            QuerySettings qSettings = new QuerySettings(getViewContext(),  PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS,
+                    PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS);
             qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
             qSettings.setBaseFilter(new SimpleFilter(FieldKey.fromParts("Public"), "No"));
 
@@ -10353,7 +10355,7 @@ public class PanoramaPublicController extends SpringActionController
             HtmlView view = new HtmlView(DIV(
                     DIV(getConfirmViewMessage()),
                     DIV("Title: " + _exptAnnotations.getTitle()),
-                    DIV("Submitted on: " + DateUtil.formatDateTime(_exptAnnotations.getCreated(), "MMMM d, yyyy")),
+                    DIV("Submitted on: " + DateUtil.formatDateTime(_exptAnnotations.getCreated(), PrivateDataReminderSettings.DATE_FORMAT_PATTERN)),
                     DIV("Submitter: " + _exptAnnotations.getSubmitterName())
             ));
             view.setTitle(getConfirmViewTitle());

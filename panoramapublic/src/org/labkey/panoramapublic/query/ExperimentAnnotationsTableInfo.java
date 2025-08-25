@@ -927,5 +927,17 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             super.addQueryFieldKeys(keys);
             keys.add(ID_COL);
         }
+
+        @Override
+        public boolean isSortable()
+        {
+            return false;
+        }
+
+        @Override
+        public boolean isFilterable()
+        {
+            return false;
+        }
     }
 }

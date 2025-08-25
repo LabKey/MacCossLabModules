@@ -85,6 +85,11 @@
                 </td>
                 <td>
                     <input style="padding:0 10px 0 0;" type="text" name="delayUntilFirstReminder" value="<%=form.getDelayUntilFirstReminder()%>" />
+                    <div style="font-size: 0.9em; color: #8B0000; margin: 4px 0 6px 0;">
+                        Number of months after data submission before sending the first reminder.
+                        <br/>
+                        Entering 0 will send a reminder the next time the job runs.
+                    </div>
                 </td>
             </tr>
             <tr>
@@ -93,6 +98,11 @@
                 </td>
                 <td>
                     <input style="padding:0 10px 0 0;" type="text" name="reminderFrequency" value="<%=form.getReminderFrequency()%>" />
+                    <div style="font-size: 0.9em; color: #8B0000; margin: 4px 0 6px 0;">
+                        Interval in months between reminder messages after the first one.
+                        <br/>
+                        Entering 0 will send a reminder the next time the job runs.
+                    </div>
                 </td>
             </tr>
             <tr>
@@ -101,6 +111,9 @@
                 </td>
                 <td>
                     <input style="padding:0 10px 0 0;" type="text" name="extensionLength" value="<%=form.getExtensionLength()%>" />
+                    <div style="font-size: 0.9em; color: #8B0000; margin: 4px 0 6px 0;">
+                        Number of months the private status of a dataset can be extended at the submitter's request.
+                    </div>
                 </td>
             </tr>
             <tr><td colspan=2">

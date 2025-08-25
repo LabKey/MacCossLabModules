@@ -323,7 +323,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
     {
         goToSendRemindersPage(projectName);
 
-        DataRegionTable table = new DataRegionTable("ExperimentAnnotationsTable", getDriver());
+        DataRegionTable table = new DataRegionTable("ExperimentAnnotations", getDriver());
         assertEquals(expectedExperimentCount, table.getDataRowCount());
 
         table.clearAllFilters();

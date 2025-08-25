@@ -130,7 +130,8 @@ public class PrivateDataReminderJob extends PipelineJob
         LocalDate firstReminderDate = copyDate.plusMonths(settings.getDelayUntilFirstReminder());
         if (LocalDate.now().isBefore(firstReminderDate))
         {
-            return ReminderDecision.skip(String.format("First reminder not due until %s", firstReminderDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))));
+            return ReminderDecision.skip(String.format("First reminder not due until %s",
+                    firstReminderDate.format(DateTimeFormatter.ofPattern(PrivateDataReminderSettings.DATE_FORMAT_PATTERN))));
         }
         return ReminderDecision.post();
     }
