@@ -299,10 +299,10 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         setFormElement(Locator.input("reminderFrequency"), reminderFrequency);
         setFormElement(Locator.input("extensionLength"), extensionLength);
         clickButton("Save", 0);
-        waitForText("Private data message settings saved");
-        clickAndWait(Locator.linkWithText("Back to Panorama Public Admin Console"));
+        waitForText("Private data reminder settings saved");
+        clickAndWait(Locator.linkWithText("Back to Private Data Reminder Settings"));
 
-        clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
+        // clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
         assertEquals(String.valueOf(delayUntilFirstReminder), getFormElement(Locator.input("delayUntilFirstReminder")));
         assertEquals(String.valueOf(reminderFrequency), getFormElement(Locator.input("reminderFrequency")));
         assertEquals(String.valueOf(extensionLength), getFormElement(Locator.input("extensionLength")));

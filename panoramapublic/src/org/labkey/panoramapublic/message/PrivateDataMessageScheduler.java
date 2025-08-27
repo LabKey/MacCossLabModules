@@ -7,7 +7,6 @@ import org.labkey.api.pipeline.PipelineJob;
 import org.labkey.api.pipeline.PipelineService;
 import org.labkey.api.security.User;
 import org.labkey.api.util.ConfigurationException;
-import org.labkey.api.util.ExceptionUtil;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.panoramapublic.model.Journal;
@@ -24,6 +23,8 @@ import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
+
+import java.time.LocalTime;
 
 public class PrivateDataMessageScheduler
 {
@@ -55,8 +56,9 @@ public class PrivateDataMessageScheduler
                 return;
             }
 
+            PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
             // Get the quartz Trigger
-            Trigger trigger = getTrigger();
+            Trigger trigger = getTrigger(settings);
 
             // Create a quartz job that queues a pipeline job that posts private data reminder messages
             JobDetail job = JobBuilder.newJob(PrivateDataMessageSchedulerJob.class)
@@ -72,12 +74,14 @@ public class PrivateDataMessageScheduler
         }
     }
 
-    protected Trigger getTrigger()
+    protected Trigger getTrigger(PrivateDataReminderSettings settings)
     {
-        // Run at 8:00AM every morning
+        LocalTime reminderTime = settings.getReminderTime();
+
+        // Runs every day at the specified time
         return TriggerBuilder.newTrigger()
                 .withIdentity(TRIGGER_KEY)
-                .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(8, 0))
+                .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(reminderTime.getHour(), reminderTime.getMinute()))
                 .build();
     }
 
@@ -118,8 +122,6 @@ public class PrivateDataMessageScheduler
             catch(Exception e)
             {
                 _log.error("Error queuing PrivateDataReminderJob", e);
-                ExceptionUtil.logExceptionToMothership(null, e);
-
             }
         }
     }

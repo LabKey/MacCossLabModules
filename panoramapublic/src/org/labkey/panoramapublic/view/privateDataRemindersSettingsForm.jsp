@@ -81,11 +81,22 @@
             </tr>
             <tr>
                 <td class="labkey-form-label">
+                    <span><%=h(PrivateDataReminderSettings.PROP_REMINDER_TIME)%></span>
+                </td>
+                <td>
+                    <input style="padding:0 10px 0 0;" type="text" name="reminderTime" value="<%=h(form.getReminderTime())%>" />
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
+                        Reminders will be sent daily at the specified time (e.g. <%=h(PrivateDataReminderSettings.DEFAULT_REMINDER_TIME)%>), if enabled.
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="labkey-form-label">
                     <span><%=h(PrivateDataReminderSettings.PROP_DELAY_UNTIL_FIRST_REMINDER)%></span>
                 </td>
                 <td>
                     <input style="padding:0 10px 0 0;" type="text" name="delayUntilFirstReminder" value="<%=form.getDelayUntilFirstReminder()%>" />
-                    <div style="font-size: 0.9em; color: #8B0000; margin: 4px 0 6px 0;">
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         Number of months after data submission before sending the first reminder.
                         <br/>
                         Entering 0 will send a reminder the next time the job runs.
@@ -98,7 +109,7 @@
                 </td>
                 <td>
                     <input style="padding:0 10px 0 0;" type="text" name="reminderFrequency" value="<%=form.getReminderFrequency()%>" />
-                    <div style="font-size: 0.9em; color: #8B0000; margin: 4px 0 6px 0;">
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         Interval in months between reminder messages after the first one.
                         <br/>
                         Entering 0 will send a reminder the next time the job runs.
@@ -111,7 +122,7 @@
                 </td>
                 <td>
                     <input style="padding:0 10px 0 0;" type="text" name="extensionLength" value="<%=form.getExtensionLength()%>" />
-                    <div style="font-size: 0.9em; color: #8B0000; margin: 4px 0 6px 0;">
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         Number of months the private status of a dataset can be extended at the submitter's request.
                     </div>
                 </td>

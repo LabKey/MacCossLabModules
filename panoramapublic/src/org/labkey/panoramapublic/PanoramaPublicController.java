@@ -10117,6 +10117,15 @@ public class PanoramaPublicController extends SpringActionController
             {
                 errors.reject(ERROR_MSG, "Value for 'Extension duration' cannot be less than 0.");
             }
+            if (form.getReminderTime() == null)
+            {
+                errors.reject(ERROR_MSG, "Please enter a value for 'Reminder time'.");
+            }
+            else if (PrivateDataReminderSettings.parseReminderTime(form.getReminderTime()) == null)
+            {
+                errors.reject(ERROR_MSG, String.format("'Reminder time' could not be parsed. It must be in the format - %s, e.g. %s.",
+                        PrivateDataReminderSettings.REMINDER_TIME_FORMAT, PrivateDataReminderSettings.DEFAULT_REMINDER_TIME));
+            }
         }
 
         @Override
@@ -10126,6 +10135,7 @@ public class PanoramaPublicController extends SpringActionController
             {
                 PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
                 form.setEnabled(settings.isEnableReminders());
+                form.setReminderTime(settings.getReminderTimeFormatted());
                 form.setDelayUntilFirstReminder(settings.getDelayUntilFirstReminder());
                 form.setReminderFrequency(settings.getReminderFrequency());
                 form.setExtensionLength(settings.getExtensionLength());
@@ -10143,6 +10153,7 @@ public class PanoramaPublicController extends SpringActionController
         {
             PrivateDataReminderSettings settings = new PrivateDataReminderSettings();
             settings.setEnableReminders(form.isEnabled());
+            settings.setReminderTime(PrivateDataReminderSettings.parseReminderTime(form.getReminderTime()));
             settings.setDelayUntilFirstReminder(form.getDelayUntilFirstReminder());
             settings.setReminderFrequency(form.getReminderFrequency());
             settings.setExtensionLength(form.getExtensionLength());
@@ -10161,11 +10172,11 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getSuccessView(PrivateDataReminderSettingsForm form)
         {
-            ActionURL adminUrl = new ActionURL(PanoramaPublicAdminViewAction.class, getContainer());
+            ActionURL url = new ActionURL(PrivateDataReminderSettingsAction.class, getContainer());
             return new HtmlView(
-                    DIV("Private data message settings saved!",
+                    DIV("Private data reminder settings saved!",
                             BR(),
-                            new LinkBuilder("Back to Panorama Public Admin Console").href(adminUrl).build()));
+                            new LinkBuilder("Back to Private Data Reminder Settings").href(url).build()));
         }
 
         @Override
@@ -10179,6 +10190,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class PrivateDataReminderSettingsForm
     {
         private boolean _enabled;
+        private String _reminderTime;
         private Integer _extensionLength;
         private Integer _reminderFrequency;
         private Integer _delayUntilFirstReminder;
@@ -10191,6 +10203,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setEnabled(boolean enabled)
         {
             _enabled = enabled;
+        }
+
+        public String getReminderTime()
+        {
+            return _reminderTime;
+        }
+
+        public void setReminderTime(String reminderTime)
+        {
+            _reminderTime = reminderTime;
         }
 
         public Integer getExtensionLength()
@@ -10248,6 +10270,7 @@ public class PanoramaPublicController extends SpringActionController
             QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, null);
             tableView.setTitle("Private Panorama Private Datasets");
             tableView.setFrame(WebPartView.FrameType.NONE);
+            tableView.disableContainerFilterSelection();
 
             form.setDataRegionName(tableView.getDataRegionName());
 

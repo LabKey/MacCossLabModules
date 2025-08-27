@@ -9,26 +9,34 @@ import org.labkey.api.util.DateUtil;
 import org.labkey.panoramapublic.model.DatasetStatus;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Date;
 
 public class PrivateDataReminderSettings
 {
     public static final String PROP_PRIVATE_DATA_REMINDER = "Panorama Public private data reminder settings";
     public static final String PROP_ENABLE_REMINDER = "Enable private data reminder";
+    public static final String PROP_REMINDER_TIME = "Reminder time";
     public static final String PROP_DELAY_UNTIL_FIRST_REMINDER = "Delay until first reminder (months)";
     public static final String PROP_REMINDER_FREQUENCY = "Reminder frequency (months)";
     public static final String PROP_EXTENSION_LENGTH = "Extension duration (months)";
 
     private static final boolean DEFAULT_ENABLE_REMINDERS = false;
+    public static final String DEFAULT_REMINDER_TIME = "8:00 AM";
     private static final int DEFAULT_DELAY_UNTIL_FIRST_REMINDER = 12; // Send the first reminder after the data has been private for a year.
     private static final int DEFAULT_REMINDER_FREQUENCY = 1; // Send reminders once a month, unless extension or deletion was requested.
     private static final int DEFAULT_EXTENSION_LENGTH = 6; // Private status of a dataset can be extended by 6 months.
 
     public static final String DATE_FORMAT_PATTERN = "MMMM d, yyyy";
+    public static final String REMINDER_TIME_FORMAT = "h:mm a";
+    private static final DateTimeFormatter reminderTimeFormatter = DateTimeFormatter.ofPattern(REMINDER_TIME_FORMAT);
 
     private boolean _enableReminders;
+    private LocalTime _reminderTime;
     private int _delayUntilFirstReminder;
     private int _reminderFrequency;
     private int _extensionLength;
@@ -59,6 +67,9 @@ public class PrivateDataReminderSettings
                     ? DEFAULT_EXTENSION_LENGTH
                     : Integer.valueOf(settingsMap.get(PROP_EXTENSION_LENGTH));
             settings.setExtensionLength(extensionLength);
+
+            LocalTime reminderTime = tryParseReminderTime(settingsMap.get(PROP_REMINDER_TIME), DEFAULT_REMINDER_TIME);
+            settings.setReminderTime(reminderTime);
         }
         else
         {
@@ -66,9 +77,31 @@ public class PrivateDataReminderSettings
             settings.setDelayUntilFirstReminder(DEFAULT_DELAY_UNTIL_FIRST_REMINDER);
             settings.setReminderFrequency(DEFAULT_REMINDER_FREQUENCY);
             settings.setExtensionLength(DEFAULT_EXTENSION_LENGTH);
+            settings.setReminderTime(parseReminderTime(DEFAULT_REMINDER_TIME));
         }
 
         return settings;
+    }
+
+    private static LocalTime tryParseReminderTime(String timeString, String defaultTime)
+    {
+        LocalTime reminderTime = parseReminderTime(timeString);
+        if (reminderTime == null)
+        {
+            reminderTime = parseReminderTime(defaultTime);
+        }
+        return reminderTime;
+    }
+
+    public static @Nullable LocalTime parseReminderTime(String timeString)
+    {
+        try
+        {
+            return timeString != null ? LocalTime.parse(timeString, reminderTimeFormatter) : null;
+        }
+        catch(DateTimeParseException ignored) {}
+
+        return null;
     }
 
     public static void save(PrivateDataReminderSettings settings)
@@ -78,12 +111,18 @@ public class PrivateDataReminderSettings
         settingsMap.put(PROP_DELAY_UNTIL_FIRST_REMINDER, String.valueOf(settings.getDelayUntilFirstReminder()));
         settingsMap.put(PROP_REMINDER_FREQUENCY, String.valueOf(settings.getReminderFrequency()));
         settingsMap.put(PROP_EXTENSION_LENGTH, String.valueOf(settings.getExtensionLength()));
+        settingsMap.put(PROP_REMINDER_TIME, settings.getReminderTimeFormatted());
         settingsMap.save();
     }
 
     public void setEnableReminders(boolean enableReminders)
     {
         _enableReminders = enableReminders;
+    }
+
+    public void setReminderTime(LocalTime reminderTime)
+    {
+        _reminderTime = reminderTime;
     }
 
     public void setExtensionLength(int extensionLength)
@@ -99,6 +138,16 @@ public class PrivateDataReminderSettings
     public boolean isEnableReminders()
     {
         return _enableReminders;
+    }
+
+    public LocalTime getReminderTime()
+    {
+        return _reminderTime;
+    }
+
+    public String getReminderTimeFormatted()
+    {
+        return _reminderTime != null ? _reminderTime.format(reminderTimeFormatter) : "Reminder time not set";
     }
 
     public int getExtensionLength()
@@ -178,7 +227,7 @@ public class PrivateDataReminderSettings
         return isDateInFuture(extensionValidUntil, currentTime);
     }
 
-    public boolean isLastReminderRecentAsOf(@NotNull DatasetStatus status, @NotNull Date currentTime)
+    private boolean isLastReminderRecentAsOf(@NotNull DatasetStatus status, @NotNull Date currentTime)
     {
         Date reminderValidUntil = getReminderValidUntilDate(status);
         return isDateInFuture(reminderValidUntil, currentTime);
