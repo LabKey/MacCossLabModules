@@ -1,6 +1,7 @@
 package org.labkey.panoramapublic.query;
 
 import org.jetbrains.annotations.Nullable;
+import org.labkey.api.data.DbScope;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableSelector;
@@ -9,6 +10,7 @@ import org.labkey.api.security.User;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.DatasetStatus;
+import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 public class DatasetStatusManager
 {
@@ -36,5 +38,17 @@ public class DatasetStatusManager
     public static void update(DatasetStatus datasetStatus, User user)
     {
         Table.update(user, PanoramaPublicManager.getTableInfoDatasetStatus(), datasetStatus, datasetStatus.getId());
+    }
+
+    public static void deleteStatusForExperiment(ExperimentAnnotations expAnnotations)
+    {
+        DatasetStatus status = getForShortUrl(expAnnotations.getShortUrl());
+        if (status == null) return;
+
+        try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
+        {
+            Table.delete(PanoramaPublicManager.getTableInfoDatasetStatus(), new SimpleFilter(FieldKey.fromParts("id"), status.getId()));
+            transaction.commit();
+        }
     }
 }

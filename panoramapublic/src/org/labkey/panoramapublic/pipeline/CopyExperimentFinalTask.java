@@ -74,6 +74,7 @@ import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
 import org.labkey.panoramapublic.query.CatalogEntryManager;
+import org.labkey.panoramapublic.query.DatasetStatusManager;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
@@ -150,6 +151,12 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
             // Update the row in panoramapublic.ExperimentAnnotations - set the shortURL and version
             ExperimentAnnotations targetExperiment = updateExperimentAnnotations(container, sourceExperiment, js, user, log);
+            if (previousCopy != null)
+            {
+                // If this is a re-copy, a row may exist in DatasetStatus for the short URL associated with the experiment. Remove it now.
+                // This is a fresh copy, so data status should be reset.
+                DatasetStatusManager.deleteStatusForExperiment(targetExperiment);
+            }
 
             // If there is a Panorama Public data catalog entry associated with the previous copy of the experiment, move it to the
             // new container.

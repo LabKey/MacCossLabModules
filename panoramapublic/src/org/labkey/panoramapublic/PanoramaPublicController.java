@@ -10548,7 +10548,9 @@ public class PanoramaPublicController extends SpringActionController
             setTitle("Deletion Request Success");
             return new HtmlView(DIV("A deletion request was successfully submitted for the data at " + _exptAnnotations.getShortUrl().renderShortURL(),
                     BR(),
-                    DIV(new ButtonBuilder("Home").submit(false).href(AppProps.getInstance().getHomePageActionURL()))
+                    DIV(
+                            LinkBuilder.labkeyLink("Data Folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()))
+                    )
                 ));
         }
     }

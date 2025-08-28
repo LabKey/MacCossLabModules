@@ -4,6 +4,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
+import org.labkey.test.TestTimeoutException;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.pages.LabkeyErrorPage;
@@ -379,6 +380,14 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         selectOptionByText(Locator.name("journal"), projectName);
         clickAndWait(Locator.linkWithText("Send Reminders Now"));
         waitForText(projectName, "A reminder message will be sent to the submitters of the selected experiments");
+    }
+
+    @Override
+    protected void doCleanup(boolean afterTest) throws TestTimeoutException
+    {
+        _userHelper.deleteUsers(false,SUBMITTER_1, SUBMITTER_2, SUBMITTER_3, ADMIN_1, ADMIN_2, ADMIN_3);
+
+        super.doCleanup(afterTest);
     }
 
     private static class DataFolderInfo
