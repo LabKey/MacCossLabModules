@@ -8,19 +8,19 @@ import java.util.Date;
 
 public class DatasetStatus  extends DbEntity
 {
-    private ShortURLRecord _shortUrl;
+    private int _experimentAnnotationsId;
     private Date _lastReminderDate;
     private Date _extensionRequestedDate;
     private Date _deletionRequestedDate;
 
-    public ShortURLRecord getShortUrl()
+    public int getExperimentAnnotationsId()
     {
-        return _shortUrl;
+        return _experimentAnnotationsId;
     }
 
-    public void setShortUrl(ShortURLRecord shortUrl)
+    public void setExperimentAnnotationsId(int experimentAnnotationsId)
     {
-        _shortUrl = shortUrl;
+        _experimentAnnotationsId = experimentAnnotationsId;
     }
 
     public Date getLastReminderDate()

@@ -411,18 +411,18 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
     private ExprColumn getDatasetStatusCol(ContainerFilter cf)
     {
-        SQLFragment datasetStatusSql = new SQLFragment(" (SELECT status.shorturl AS DatasetStatus ")
+        SQLFragment datasetStatusSql = new SQLFragment(" (SELECT status.Id AS DatasetStatus ")
                 .append(" FROM ").append(PanoramaPublicManager.getTableInfoDatasetStatus(), "status")
                 .append(" WHERE ")
-                .append(" status.shortUrl = ").append(ExprColumn.STR_TABLE_ALIAS).append(".shortUrl")
+                .append(" status.experimentAnnotationsId = ").append(ExprColumn.STR_TABLE_ALIAS).append(".Id")
                 .append(") ");
-        ExprColumn col = new ExprColumn(this, "DatasetStatus", datasetStatusSql, JdbcType.VARCHAR);
+        ExprColumn col = new ExprColumn(this, "DatasetStatus", datasetStatusSql, JdbcType.INTEGER);
         col.setDescription("Dataset Status");
         col.setDisplayColumnFactory(DatasetStatusColumn::new);
 
         col.setFk(QueryForeignKey
                 .from(getUserSchema(), cf)
-                .to(PanoramaPublicSchema.TABLE_DATASET_STATUS, "shortUrl", null));
+                .to(PanoramaPublicSchema.TABLE_DATASET_STATUS, "Id", null));
         return col;
     }
 
@@ -876,7 +876,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
 
     public static class DatasetStatusColumn extends DataColumn
     {
-        private final FieldKey ID_COL = new FieldKey(getColumnInfo().getFieldKey(), "id");
+        private final FieldKey EXPT_ANNOTATIONS_ID_COL = new FieldKey(getColumnInfo().getFieldKey(), "experimentAnnotationsId");
 
         public DatasetStatusColumn(ColumnInfo col)
         {
@@ -892,10 +892,10 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             {
                 return "";
             }
-            Integer statusId = ctx.get(ID_COL, Integer.class);
+            Integer statusId = ctx.get(getColumnInfo().getFieldKey(), Integer.class);
 
             // Get the experiment connected with this status Id.
-            Integer experimentId = ctx.get(FieldKey.fromParts("id"), Integer.class);
+            Integer experimentId = ctx.get(EXPT_ANNOTATIONS_ID_COL, Integer.class);
             if (experimentId != null)
             {
                 ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(experimentId);
@@ -925,7 +925,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         public void addQueryFieldKeys(Set<FieldKey> keys)
         {
             super.addQueryFieldKeys(keys);
-            keys.add(ID_COL);
+            keys.add(EXPT_ANNOTATIONS_ID_COL);
         }
 
         @Override

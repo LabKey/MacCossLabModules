@@ -162,7 +162,6 @@ public class JournalManager
         List<ExperimentAnnotations> expAnnotations = getExperimentsForJournal(journal.getId());
         for(ExperimentAnnotations expAnnotation: expAnnotations)
         {
-            DatasetStatusManager.deleteStatusForExperiment(expAnnotation);
             removeJournalAccess(expAnnotation, journal, user);
         }
         SubmissionManager.deleteAllSubmissionsForJournal(journal.getId());

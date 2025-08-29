@@ -19,20 +19,13 @@ public class DatasetStatusTableInfo extends PanoramaPublicTable
     public DatasetStatusTableInfo(@NotNull PanoramaPublicSchema userSchema, ContainerFilter cf)
     {
         super(PanoramaPublicManager.getTableInfoDatasetStatus(), userSchema, cf,
-                new ContainerJoin("ShortUrl", PanoramaPublicManager.getTableInfoExperimentAnnotations(), "ShortUrl"));
+                new ContainerJoin("ExperimentAnnotationsId", PanoramaPublicManager.getTableInfoExperimentAnnotations(), "Id"));
 
+        var shortUrlCol = wrapColumn("ShortURL", getRealTable().getColumn("ExperimentAnnotationsId"));
+        shortUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory(FieldKey.fromParts("ShortUrl")));
+        addColumn(shortUrlCol);
 
-        var accessUrlCol = getMutableColumn(FieldKey.fromParts("ShortUrl"));
-        if (accessUrlCol != null)
-        {
-            accessUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory());
-        }
-
-        SQLFragment expColSql = new SQLFragment(" (SELECT Id FROM ")
-                .append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "exp")
-                .append(" WHERE exp.shortUrl = ").append(ExprColumn.STR_TABLE_ALIAS).append(".shortUrl")
-                .append(") ");
-        var experimentTitleCol = new ExprColumn(this, "Title", expColSql, JdbcType.VARCHAR);
+        var experimentTitleCol = wrapColumn("Title", getRealTable().getColumn(FieldKey.fromParts("ExperimentAnnotationsId")));
         experimentTitleCol.setFk(QueryForeignKey.from(getUserSchema(), cf).schema(getUserSchema()).to(PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS, "Id", null));
         addColumn(experimentTitleCol);
 

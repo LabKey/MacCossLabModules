@@ -100,7 +100,7 @@ public class PrivateDataReminderJob extends PipelineJob
             return ReminderDecision.skip("Not the current version of the experiment");
         }
 
-        DatasetStatus datasetStatus = DatasetStatusManager.getForShortUrl(exptAnnotations.getShortUrl());
+        DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
         if (datasetStatus != null)
         {
             if (datasetStatus.deletionRequested())
@@ -293,11 +293,11 @@ public class PrivateDataReminderJob extends PipelineJob
 
     private void updateDatasetStatus(ExperimentAnnotations expAnnotations)
     {
-        DatasetStatus datasetStatus = DatasetStatusManager.getForShortUrl(expAnnotations.getShortUrl());
+        DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(expAnnotations);
         if (datasetStatus == null)
         {
             datasetStatus = new DatasetStatus();
-            datasetStatus.setShortUrl(expAnnotations.getShortUrl());
+            datasetStatus.setExperimentAnnotationsId(expAnnotations.getId());
             datasetStatus.setLastReminderDate(new Date());
             DatasetStatusManager.save(datasetStatus, getUser());
         }

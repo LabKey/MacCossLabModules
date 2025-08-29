@@ -860,13 +860,7 @@
                 <isHidden>true</isHidden>
             </column>
             <column columnName="Id"/>
-            <column columnName="ShortUrl">
-                <fk>
-                    <fkColumnName>EntityId</fkColumnName>
-                    <fkDbSchema>core</fkDbSchema>
-                    <fkTable>ShortUrl</fkTable>
-                </fk>
-            </column>
+            <column columnName="ExperimentAnnotationsId" />
             <column columnName="LastReminderDate" />
             <column columnName="ExtensionRequestedDate" />
             <column columnName="DeletionRequestedDate"/>

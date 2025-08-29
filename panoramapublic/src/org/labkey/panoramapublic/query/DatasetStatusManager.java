@@ -7,7 +7,6 @@ import org.labkey.api.data.Table;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
-import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
@@ -19,12 +18,12 @@ public class DatasetStatusManager
         return new TableSelector(PanoramaPublicManager.getTableInfoDatasetStatus(),null, null).getObject(datasetStatusId, DatasetStatus.class);
     }
 
-    public static @Nullable DatasetStatus getForShortUrl(ShortURLRecord shortUrl)
+    public static @Nullable DatasetStatus getForExperiment(ExperimentAnnotations experimentAnnotations)
     {
-        if (shortUrl != null)
+        if (experimentAnnotations != null)
         {
             SimpleFilter filter = new SimpleFilter();
-            filter.addCondition(FieldKey.fromParts("ShortUrl"), shortUrl.getEntityId());
+            filter.addCondition(FieldKey.fromParts("ExperimentAnnotationsId"), experimentAnnotations.getId());
             return new TableSelector(PanoramaPublicManager.getTableInfoDatasetStatus(), filter, null).getObject(DatasetStatus.class);
         }
         return null;
@@ -42,12 +41,11 @@ public class DatasetStatusManager
 
     public static void deleteStatusForExperiment(ExperimentAnnotations expAnnotations)
     {
-        DatasetStatus status = getForShortUrl(expAnnotations.getShortUrl());
-        if (status == null) return;
+        if (expAnnotations == null) return;
 
         try(DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
         {
-            Table.delete(PanoramaPublicManager.getTableInfoDatasetStatus(), new SimpleFilter(FieldKey.fromParts("id"), status.getId()));
+            Table.delete(PanoramaPublicManager.getTableInfoDatasetStatus(), new SimpleFilter(FieldKey.fromParts("ExperimentAnnotationsId"), expAnnotations.getId()));
             transaction.commit();
         }
     }

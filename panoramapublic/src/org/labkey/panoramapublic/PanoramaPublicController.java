@@ -10396,7 +10396,7 @@ public class PanoramaPublicController extends SpringActionController
 
             ensureCorrectContainer(getContainer(), _exptAnnotations.getContainer(), getViewContext());
 
-            _datasetStatus = DatasetStatusManager.getForShortUrl(_exptAnnotations.getShortUrl());
+            _datasetStatus = DatasetStatusManager.getForExperiment(_exptAnnotations);
 
             // Action-specific validation
             doValidationForAction(errors);
@@ -10410,7 +10410,7 @@ public class PanoramaPublicController extends SpringActionController
                 if (_datasetStatus == null)
                 {
                     _datasetStatus = new DatasetStatus();
-                    _datasetStatus.setShortUrl(_exptAnnotations.getShortUrl());
+                    _datasetStatus.setExperimentAnnotationsId(_exptAnnotations.getId());
                     updateDatasetStatus(_datasetStatus);
                     DatasetStatusManager.save(_datasetStatus, getUser());
                 }
@@ -10458,13 +10458,13 @@ public class PanoramaPublicController extends SpringActionController
                 PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
                 if (settings.isExtensionValid(_datasetStatus))
                 {
-                    errors.reject(ERROR_MSG, "An extension has already been requested for the data with short URL " + _datasetStatus.getShortUrl().renderShortURL()
+                    errors.reject(ERROR_MSG, "An extension has already been requested for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
                             + ". The extension is valid until " + settings.extensionValidUntilFormatted(_datasetStatus));
                 }
                 else if (_datasetStatus.deletionRequested())
                 {
                     errors.reject(ERROR_MSG, "A deletion request was submitted on " + _datasetStatus.getDeletionRequestedDate()
-                            + " for the data with short URL " + _datasetStatus.getShortUrl().renderShortURL());
+                            + " for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
                 }
             }
         }
@@ -10522,7 +10522,7 @@ public class PanoramaPublicController extends SpringActionController
                 if (_datasetStatus.deletionRequested())
                 {
                     errors.reject(ERROR_MSG, "A deletion request was already submitted on " + _datasetStatus.getDeletionRequestedDateFormatted()
-                            + " for the data with short URL " + _datasetStatus.getShortUrl().renderShortURL());
+                            + " for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
                 }
             }
         }

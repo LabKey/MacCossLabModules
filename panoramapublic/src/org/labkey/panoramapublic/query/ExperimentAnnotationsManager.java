@@ -283,10 +283,6 @@ public class ExperimentAnnotationsManager
         }
         else
         {
-            // Delete the row in DatasetStatus for this experiment. Do this before setting the experiment's shortURL to null
-            // in SubmissionManager.beforeCopiedExperimentDeleted().
-            DatasetStatusManager.deleteStatusForExperiment(expAnnotations);
-
             // This experiment is a journal copy (i.e. in the Panorama Public project on PanoramaWeb)
             SubmissionManager.beforeCopiedExperimentDeleted(expAnnotations, user);
         }
@@ -304,6 +300,9 @@ public class ExperimentAnnotationsManager
 
         // Delete the Panorama Public data catalog entry for this experiment, if one exists
         CatalogEntryManager.deleteEntryForExperiment(expAnnotations, user);
+
+        // Delete the row in DatasetStatus for this experiment, if one exists.
+        DatasetStatusManager.deleteStatusForExperiment(expAnnotations);
 
         Table.delete(PanoramaPublicManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());
 
