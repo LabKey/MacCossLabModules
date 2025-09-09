@@ -28,7 +28,7 @@
     function submitForm()
     {
         const form = document.getElementById("panorama-public-message-form");
-        let dataRegion = LABKEY.DataRegions['ExperimentAnnotationsTable'];
+        let dataRegion = LABKEY.DataRegions['ExperimentAnnotations'];
         let selectedRowIds = dataRegion.getChecked();
         // console.log("Selection count: " + selectedRowIds.length);
         let selected = "";

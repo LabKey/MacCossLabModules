@@ -13,7 +13,6 @@ import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
 import org.labkey.test.pages.admin.PermissionsPage;
 import org.labkey.test.util.ApiPermissionsHelper;
-import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.PermissionsHelper;
 import org.openqa.selenium.NoSuchElementException;
@@ -225,22 +224,6 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
             // Exception thrown should be about not finding the "Panorama Public Submitter" role on the permissions page.
             assertTrue(e.getMessage().contains(role));
         }
-    }
-
-    private void verifyIsPublicColumn(String panoramaPublicProject, String experimentTitle, boolean isPublic)
-    {
-        if (isImpersonating())
-        {
-            stopImpersonating(true);
-        }
-        goToProjectHome(panoramaPublicProject);
-
-        DataRegionTable expListTable = DataRegionTable.findDataRegionWithinWebpart(this, "Targeted MS Experiment List");
-        expListTable.ensureColumnsPresent("Title", "DataVersion", "Public");
-        expListTable.setFilter("Title", "Equals", experimentTitle);
-        expListTable.setFilter("DataVersion", "Equals", "1");
-        assertEquals(1, expListTable.getDataRowCount());
-        assertEquals(isPublic ? "Yes" : "No", expListTable.getDataAsText(0, "Public"));
     }
 
     private String getReviewerEmail(String panoramaPublicProject, String panoramaPublicFolder)
