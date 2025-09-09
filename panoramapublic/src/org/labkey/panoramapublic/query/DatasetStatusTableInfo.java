@@ -21,21 +21,13 @@ public class DatasetStatusTableInfo extends PanoramaPublicTable
         super(PanoramaPublicManager.getTableInfoDatasetStatus(), userSchema, cf,
                 new ContainerJoin("ExperimentAnnotationsId", PanoramaPublicManager.getTableInfoExperimentAnnotations(), "Id"));
 
-        var shortUrlCol = wrapColumn("ShortURL", getRealTable().getColumn("ExperimentAnnotationsId"));
-        shortUrlCol.setDisplayColumnFactory(new ShortUrlDisplayColumnFactory(FieldKey.fromParts("ShortUrl")));
-        addColumn(shortUrlCol);
-
-        var experimentTitleCol = wrapColumn("Title", getRealTable().getColumn(FieldKey.fromParts("ExperimentAnnotationsId")));
-        experimentTitleCol.setFk(QueryForeignKey.from(getUserSchema(), cf).schema(getUserSchema()).to(PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS, "Id", null));
-        addColumn(experimentTitleCol);
-
         List<FieldKey> visibleColumns = new ArrayList<>();
         visibleColumns.add(FieldKey.fromParts("Created"));
         visibleColumns.add(FieldKey.fromParts("CreatedBy"));
         visibleColumns.add(FieldKey.fromParts("Modified"));
         visibleColumns.add(FieldKey.fromParts("ModifiedBy"));
-        visibleColumns.add(FieldKey.fromParts("ShortUrl"));
-        visibleColumns.add(FieldKey.fromParts("Title"));
+        visibleColumns.add(FieldKey.fromParts("ExperimentAnnotationsId", "Link"));
+        visibleColumns.add(FieldKey.fromParts("ExperimentAnnotationsId", "Title"));
         visibleColumns.add(FieldKey.fromParts("LastReminderDate"));
         visibleColumns.add(FieldKey.fromParts("ExtensionRequestedDate"));
         visibleColumns.add(FieldKey.fromParts("DeletionRequestedDate"));
