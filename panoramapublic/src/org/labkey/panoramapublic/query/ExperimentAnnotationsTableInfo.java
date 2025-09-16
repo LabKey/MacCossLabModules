@@ -49,6 +49,7 @@ import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.UserPrincipal;
+import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.Permission;
 import org.labkey.api.security.roles.FolderAdminRole;
 import org.labkey.api.security.roles.ProjectAdminRole;
@@ -75,8 +76,10 @@ import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicSchema;
 import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.DataLicense;
+import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
+import org.labkey.panoramapublic.security.PanoramaPublicSubmitterPermission;
 import org.labkey.panoramapublic.view.publish.CatalogEntryWebPart;
 import org.labkey.panoramapublic.view.publish.ShortUrlDisplayColumnFactory;
 
@@ -322,6 +325,8 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         catalogEntryCol.setDisplayColumnFactory(CatalogEntryIconColumn::new);
         addColumn(catalogEntryCol);
 
+        addColumn(getDatasetStatusCol(cf));
+
         List<FieldKey> visibleColumns = new ArrayList<>();
         visibleColumns.add(FieldKey.fromParts("Share"));
         visibleColumns.add(FieldKey.fromParts("Title"));
@@ -401,6 +406,23 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                 .append(") ");
         ExprColumn col = new ExprColumn(this, "CatalogEntry", catalogEntrySql, JdbcType.INTEGER);
         col.setDescription("Add or view the catalog entry for the experiment");
+        return col;
+    }
+
+    private ExprColumn getDatasetStatusCol(ContainerFilter cf)
+    {
+        SQLFragment datasetStatusSql = new SQLFragment(" (SELECT status.Id AS DatasetStatus ")
+                .append(" FROM ").append(PanoramaPublicManager.getTableInfoDatasetStatus(), "status")
+                .append(" WHERE ")
+                .append(" status.experimentAnnotationsId = ").append(ExprColumn.STR_TABLE_ALIAS).append(".Id")
+                .append(") ");
+        ExprColumn col = new ExprColumn(this, "DatasetStatus", datasetStatusSql, JdbcType.INTEGER);
+        col.setDescription("Dataset Status");
+        col.setDisplayColumnFactory(DatasetStatusColumn::new);
+
+        col.setFk(QueryForeignKey
+                .from(getUserSchema(), cf)
+                .to(PanoramaPublicSchema.TABLE_DATASET_STATUS, "Id", null));
         return col;
     }
 
@@ -829,7 +851,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
             if (experimentId != null)
             {
                 ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(experimentId);
-                // Display the catalog entry link only if the user has the required permissions (Admin or PanoramaPublicSubmitter) in the the experiment folder.
+                // Display the catalog entry link only if the user has the required permissions (Admin or PanoramaPublicSubmitter) in the experiment folder.
                 if (expAnnot != null && CatalogEntryWebPart.canBeDisplayed(expAnnot, user))
                 {
                     CatalogEntry entry = catalogEntryId == null ? null : CatalogEntryManager.get(catalogEntryId);
@@ -849,6 +871,73 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                 }
             }
             out.write(HtmlString.NBSP);
+        }
+    }
+
+    public static class DatasetStatusColumn extends DataColumn
+    {
+        private final FieldKey EXPT_ANNOTATIONS_ID_COL = new FieldKey(getColumnInfo().getFieldKey(), "experimentAnnotationsId");
+
+        public DatasetStatusColumn(ColumnInfo col)
+        {
+            super(col);
+            super.setCaption("Dataset Status");
+        }
+
+        @Override
+        public Object getDisplayValue(RenderContext ctx)
+        {
+            User user = ctx.getViewContext().getUser();
+            if (user == null || user.isGuest())
+            {
+                return "";
+            }
+            Integer statusId = ctx.get(getColumnInfo().getFieldKey(), Integer.class);
+
+            // Get the experiment connected with this status Id.
+            Integer experimentId = ctx.get(EXPT_ANNOTATIONS_ID_COL, Integer.class);
+            if (experimentId != null)
+            {
+                ExperimentAnnotations expAnnot = ExperimentAnnotationsManager.get(experimentId);
+                boolean userHasPermissions = expAnnot != null
+                        && expAnnot.getContainer().hasOneOf(user, Set.of(AdminPermission.class, PanoramaPublicSubmitterPermission.class));
+                if (userHasPermissions)
+                {
+                    DatasetStatus status = statusId == null ? null : DatasetStatusManager.get(statusId);
+                    if (status == null)
+                    {
+                        return statusId == null ? "" : "NOT FOUND; ID: " + statusId;
+                    }
+                    String displayStr = status.deletionRequested()
+                            ? "Deletion Requested"
+                            : status.extensionRequested()
+                            ? "Extension Requested"
+                            : status.reminderSent()
+                            ? "Reminder Sent"
+                            : "";
+                    return displayStr;
+                }
+            }
+            return "";
+        }
+
+        @Override
+        public void addQueryFieldKeys(Set<FieldKey> keys)
+        {
+            super.addQueryFieldKeys(keys);
+            keys.add(EXPT_ANNOTATIONS_ID_COL);
+        }
+
+        @Override
+        public boolean isSortable()
+        {
+            return false;
+        }
+
+        @Override
+        public boolean isFilterable()
+        {
+            return false;
         }
     }
 }

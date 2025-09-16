@@ -125,6 +125,11 @@ public class PanoramaPublicManager
         return getSchema().getTable(PanoramaPublicSchema.TABLE_CATALOG_ENTRY);
     }
 
+    public static TableInfo getTableInfoDatasetStatus()
+    {
+        return getSchema().getTable(PanoramaPublicSchema.TABLE_DATASET_STATUS);
+    }
+
     public static ITargetedMSRun getRunByLsid(String lsid, Container container)
     {
         return TargetedMSService.get().getRunByLsid(lsid, container);

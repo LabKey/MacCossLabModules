@@ -10,21 +10,26 @@ import org.labkey.api.announcements.api.Announcement;
 import org.labkey.api.announcements.api.AnnouncementService;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
+import org.labkey.api.markdown.MarkdownService;
 import org.labkey.api.portal.ProjectUrls;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
+import org.labkey.api.util.DateUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
+import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
+import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
+import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
 
@@ -292,6 +297,130 @@ public class PanoramaPublicNotification
         return messageBody;
     }
 
+    public static void postPrivateStatusExtensionMessage(@NotNull Journal journal, @NotNull JournalExperiment je, @NotNull ExperimentAnnotations expAnnotations, User submitter)
+    {
+        User journalAdmin = JournalManager.getJournalAdminUser(journal);
+        if (journalAdmin == null)
+        {
+            throw new NotFoundException(String.format("Could not find an admin user for %s.", journal.getName()));
+        }
+        PrivateDataReminderSettings reminderSettings = PrivateDataReminderSettings.get();
+
+        String messageTitle = "Private Status Extended" +" - " + je.getShortAccessUrl().renderShortURL();
+        StringBuilder messageBody = new StringBuilder();
+        messageBody.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
+        messageBody.append("Thank you for your request to extend the private status of your data on Panorama Public. ")
+                .append("Your data has been granted a " + reminderSettings.getExtensionLength() + " month extension. ")
+                .append("You will receive another reminder when this period ends. ")
+                .append("If you'd like to make your data public sooner, you can do so at any time ")
+                .append("by clicking the \"Make Public\" button in your data folder, or by clicking this link: ")
+                .append(bold(link("Make Data Public", PanoramaPublicController.getMakePublicUrl(expAnnotations.getId(), expAnnotations.getContainer()).getURIString())))
+                .append(".");
+        messageBody.append(NL2).append("Best regards,");
+        messageBody.append(NL).append(getUserName(journalAdmin));
+        
+        postNotificationFullTitle(journal, je, messageBody.toString(), journalAdmin, messageTitle, StatusOption.Closed, null);
+    }
+
+    public static void postDataDeletionRequestMessage(@NotNull Journal journal, @NotNull JournalExperiment je, @NotNull ExperimentAnnotations expAnnotations, User submitter)
+    {
+        User journalAdmin = JournalManager.getJournalAdminUser(journal);
+        if (journalAdmin == null)
+        {
+            throw new NotFoundException(String.format("Could not find an admin user for %s.", journal.getName()));
+        }
+
+        ExperimentAnnotations sourceExperiment = ExperimentAnnotationsManager.get(expAnnotations.getSourceExperimentId());
+
+        String messageTitle = "Data Deletion Requested" +" - " + expAnnotations.getShortUrl().renderShortURL();
+
+        StringBuilder messageBody = new StringBuilder();
+        messageBody.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
+        messageBody.append("Thank you for your request to delete your data on Panorama Public. ")
+                   .append("We will remove your data from Panorama Public. ");
+        if (sourceExperiment != null)
+        {
+            messageBody.append("Your source folder ")
+                       .append(getContainerLink(sourceExperiment.getContainer()))
+                       .append(" will remain intact, allowing you to resubmit the data in the future if you wish. ");
+        }
+        else
+        {
+            messageBody.append("We were unable to locate the source folder for this data in your project. ")
+                    .append("The folder at the path ")
+                    .append(expAnnotations.getSourceExperimentPath())
+                    .append(" may have been deleted.");
+        }
+
+        messageBody.append(NL2).append("Best regards,");
+        messageBody.append(NL).append(getUserName(journalAdmin));
+
+        postNotificationFullTitle(journal, je, messageBody.toString(), journalAdmin, messageTitle, StatusOption.Active, null);
+    }
+
+
+    public static void postPrivateDataReminderMessage(@NotNull Journal journal, @NotNull JournalSubmission js, @NotNull ExperimentAnnotations expAnnotations,
+                                                      @NotNull User submitter, @NotNull User messagePoster, List<User> notifyUsers,
+                                                      @NotNull Announcement announcement, @NotNull Container announcementsContainer, @NotNull User journalAdmin)
+    {
+        String message = getDataStatusReminderMessage(expAnnotations, submitter, js, announcement, announcementsContainer, journalAdmin);
+        String title = "Action Required: Status Update for Your Private Data on Panorama Public";
+        postNotificationFullTitle(journal, js.getJournalExperiment(), message, messagePoster, title, StatusOption.Closed, notifyUsers);
+    }
+
+    public static String getDataStatusReminderMessage(@NotNull ExperimentAnnotations exptAnnotations, @NotNull User submitter,
+                                                      @NotNull JournalSubmission js,@NotNull Announcement announcement,
+                                                      @NotNull Container announcementContainer, @NotNull User journalAdmin)
+    {
+        String shortUrl = exptAnnotations.getShortUrl().renderShortURL();
+        String makePublicLink = PanoramaPublicController.getMakePublicUrl(exptAnnotations.getId(), exptAnnotations.getContainer()).getURIString();
+        String dateString = DateUtil.formatDateTime(js.getLatestSubmission().getCreated(), PrivateDataReminderSettings.DATE_FORMAT_PATTERN);
+
+        ActionURL viewMessageUrl = new ActionURL("announcements", "thread", announcementContainer)
+                .addParameter("rowId", announcement.getRowId());
+        ActionURL respondToMessageUrl = new ActionURL("announcements", "respond", announcementContainer)
+                .addParameter("parentId", announcement.getEntityId())
+                .addReturnUrl(viewMessageUrl);
+
+        String shortUrlEntityId = exptAnnotations.getShortUrl().getEntityId().toString();
+        ActionURL requestExtensionUrl = new ActionURL(PanoramaPublicController.RequestExtensionAction.class, exptAnnotations.getContainer())
+                .addParameter("shortUrlEntityId", shortUrlEntityId);
+
+        ActionURL requesDeletionUrl = new ActionURL(PanoramaPublicController.RequestDeletionAction.class, exptAnnotations.getContainer())
+                .addParameter("shortUrlEntityId",shortUrlEntityId);
+
+
+        ExperimentAnnotations sourceExperiment = ExperimentAnnotationsManager.get(exptAnnotations.getSourceExperimentId());
+
+        StringBuilder message = new StringBuilder();
+        message.append("Dear ").append(getUserName(submitter)).append(",").append(NL2)
+                .append("We are reaching out regarding your data on Panorama Public (").append(shortUrl).append("), which has been private since ")
+                .append(dateString).append(".")
+                .append("\n\n**Is the paper associated with this work already published?**")
+                .append("\n- If yes: Please make your data public by clicking the \"Make Public\" button in your folder or by clicking this link: ")
+                .append(bold(link("Make Data Public", makePublicLink)))
+                .append(". This helps ensure that your valuable research is easily accessible to the community.")
+                .append("\n- If not: You have a couple of options:")
+                .append("\n  - **Request an Extension** - If your paper is still under review, or you need additional time, please let us know by clicking ")
+                .append(bold(link("Request Extension", requestExtensionUrl.getURIString()))).append(".")
+                .append("\n  - **Delete from Panorama Public** - If you no longer wish to host your data on Panorama Public, please click ")
+                .append(bold(link("Request Deletion", requesDeletionUrl.getURIString()))).append(". ")
+                .append("We will remove your data from Panorama Public.");
+        if (sourceExperiment != null)
+        {
+            message.append(" However, your source folder (")
+                    .append(getContainerLink(sourceExperiment.getContainer()))
+                    .append(") will remain intact, allowing you to resubmit your data in the future if you wish.");
+        }
+
+        message.append("\n\nIf you have any questions or need further assistance, please do not hesitate to respond to this message by ")
+        .append(bold(link("clicking here", respondToMessageUrl.getURIString()))).append(".")
+        .append("\n\nThank you for sharing your research on Panorama Public. We appreciate your commitment to open science and your contributions to the research community.")
+        .append(NL2).append("Best regards,")
+        .append(NL).append(getUserName(journalAdmin));
+        return message.toString();
+    }
+
     // The following link placeholders can be used in messages posted through the Panorama Public admin console (PostPanoramaPublicMessageAction).
     // An example message (Markdown format):
     /*
@@ -449,9 +578,13 @@ public class PanoramaPublicNotification
     {
         // https://www.markdownguide.org/basic-syntax/#characters-you-can-escape
         // Escape Markdown special characters. Some character combinations can result in
-        // unintended Markdown styling, e.g. "+_Italics_+" will results in "Italics" to be italicized.
+        // unintended Markdown styling, e.g. "+_Italics_+" results in "Italics" to be italicized.
         // This can be seen with the tricky characters used for project names in labkey tests.
-        return text.replaceAll("([`*_{}\\[\\]()#+.!|-])", "\\\\$1");
+        // 8/13/25 - Escape tilde (~) as well. In the LabKey Markdown flavor, text between
+        // single tildes (e.g., ~strikethrough~) is rendered as strikethrough.
+        // IMPORTANT: The dash (-) must be escaped in the regex or placed at the start/end of the
+        // character class to be treated as a literal dash rather than a range operator.
+        return text.replaceAll("([`*_{}\\[\\]()#+.!|~-])", "\\\\$1");
     }
 
     public static String getExperimentCopiedMessageBody(ExperimentAnnotations sourceExperiment,
@@ -572,8 +705,24 @@ public class PanoramaPublicNotification
         public void testMarkdownEscape()
         {
             Assert.assertEquals("\\+\\_Test\\_\\+", escape("+_Test_+"));
-            Assert.assertEquals("PanoramaPublicTest Project ☃~\\!@$&\\(\\)\\_\\+\\{\\}\\-=\\[\\],\\.\\#äöüÅ",
-                    escape("PanoramaPublicTest Project ☃~!@$&()_+{}-=[],.#äöüÅ"));
+            String expected = "PanoramaPublicTest Project ☃\\~\\!@$&\\(\\)\\_\\+\\{\\}\\-=\\[\\],\\.\\#äöüÅ";
+            String escaped = escape("PanoramaPublicTest Project ☃~!@$&()_+{}-=[],.#äöüÅ");
+            Assert.assertEquals(expected, escaped);
+
+            /*
+            PanoramaPublicTest Project ☃~!@$&()_+{}-=[],.#äöüÅ This is a test PanoramaPublicTest Project ☃~!@$&()_+{}-=[],.#äöüÅ
+
+            should be translated to
+
+             <div class="lk-markdown-container"><p>PanoramaPublicTest Project ☃~!@$&amp;()_+{}-=[],.#äöüÅ This is a test PanoramaPublicTest Project ☃~!@$&amp;()_+{}-=[],.#äöüÅ</p>
+             </div>
+             */
+            MarkdownService mds = MarkdownService.get();
+            expected = """
+                    <div class=\"lk-markdown-container\"><p>PanoramaPublicTest Project ☃~!@$&amp;()_+{}-=[],.#äöüÅ This is a test PanoramaPublicTest Project ☃~!@$&amp;()_+{}-=[],.#äöüÅ</p>
+                    </div>""";
+            String testText = "PanoramaPublicTest Project ☃~!@$&()_+{}-=[],.#äöüÅ This is a test PanoramaPublicTest Project ☃~!@$&()_+{}-=[],.#äöüÅ";
+            Assert.assertEquals(expected, mds.toHtml(escape(testText)));
         }
     }
 }

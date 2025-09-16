@@ -124,6 +124,7 @@ import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.targetedms.TargetedMSUrls;
 import org.labkey.api.util.ButtonBuilder;
 import org.labkey.api.util.DOM;
+import org.labkey.api.util.DateUtil;
 import org.labkey.api.util.ExceptionUtil;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.HtmlString;
@@ -152,8 +153,11 @@ import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.datacite.Doi;
 import org.labkey.panoramapublic.datacite.DoiMetadata;
+import org.labkey.panoramapublic.message.PrivateDataMessageScheduler;
+import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.DataLicense;
+import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
@@ -169,6 +173,7 @@ import org.labkey.panoramapublic.model.validation.PxStatus;
 import org.labkey.panoramapublic.model.validation.Status;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineJob;
 import org.labkey.panoramapublic.pipeline.PostPanoramaPublicMessageJob;
+import org.labkey.panoramapublic.pipeline.PrivateDataReminderJob;
 import org.labkey.panoramapublic.pipeline.PxDataValidationPipelineJob;
 import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ChemElement;
@@ -188,6 +193,7 @@ import org.labkey.panoramapublic.query.CatalogEntryManager;
 import org.labkey.panoramapublic.query.CatalogEntryManager.CatalogEntryType;
 import org.labkey.panoramapublic.query.DataValidationManager;
 import org.labkey.panoramapublic.query.DataValidationManager.MissingMetadata;
+import org.labkey.panoramapublic.query.DatasetStatusManager;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.ModificationInfoManager;
@@ -225,6 +231,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -313,6 +320,7 @@ public class PanoramaPublicController extends SpringActionController
             view.addView(getDataCiteCredentialsLink());
             view.addView(getBlueskySettingsLink());
             view.addView(getPanoramaPublicCatalogSettingsLink());
+            view.addView(getPrivateDataReminderSettingsLink());
             view.addView(getPostSupportMessageLink());
             view.setFrame(WebPartView.FrameType.PORTAL);
             view.setTitle("Panorama Public Settings");
@@ -369,10 +377,19 @@ public class PanoramaPublicController extends SpringActionController
             return null;
         }
 
+        private ModelAndView getPrivateDataReminderSettingsLink()
+        {
+            ActionURL url = new ActionURL(PrivateDataReminderSettingsAction.class, getContainer());
+            return new HtmlView(DIV(
+                    at(style, "margin-top:20px;"),
+                    LinkBuilder.labkeyLink("Private Data Reminder Settings", url)
+            ));
+        }
+
         @Override
         public void addNavTrail(NavTree root)
         {
-            PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Panorama Public Admin Console", getClass(), getContainer());
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
         }
     }
 
@@ -509,7 +526,7 @@ public class PanoramaPublicController extends SpringActionController
 
     private static void addPanoramaPublicAdminConsoleNav(NavTree root, Container container)
     {
-        root.addChild("Panorama Public Admin Console", new ActionURL(PanoramaPublicAdminViewAction.class, container));
+        PageFlowUtil.urlProvider(AdminUrls.class).addAdminNavTrail(root, "Panorama Public Admin Console", PanoramaPublicAdminViewAction.class, container);
     }
 
     public static class CreateJournalGroupForm
@@ -1557,6 +1574,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
             root.addChild("Panorama Public Catalog Settings");
         }
     }
@@ -6298,7 +6316,7 @@ public class PanoramaPublicController extends SpringActionController
         List<ExperimentAnnotations> publishedVersions = ExperimentAnnotationsManager.getPublishedVersionsOfExperiment(sourceExperimentId);
         if (!publishedVersions.isEmpty())
         {
-            QuerySettings qSettings = new QuerySettings(getViewContext(), "PublishedVersions", "ExperimentAnnotations");
+            QuerySettings qSettings = new QuerySettings(getViewContext(), "PublishedVersions", PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS);
             qSettings.setBaseFilter(new SimpleFilter(new SimpleFilter(FieldKey.fromParts("SourceExperimentId"), sourceExperimentId)));
 
             List<FieldKey> columns = new ArrayList<>(List.of(FieldKey.fromParts("Version"), FieldKey.fromParts("Created"), FieldKey.fromParts("Link"), FieldKey.fromParts("Share")));
@@ -9741,7 +9759,8 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ModelAndView getView(PanoramaPublicMessageForm form, BindException errors) throws Exception
         {
-            QuerySettings qSettings = new QuerySettings(getViewContext(), "ExperimentAnnotationsTable", "ExperimentAnnotations");
+            QuerySettings qSettings = new QuerySettings(getViewContext(),  PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS,
+                    PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS);
             qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
             QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, errors);
             tableView.setTitle("Panorama Public Experiments");
@@ -10067,9 +10086,522 @@ public class PanoramaPublicController extends SpringActionController
         result.addParameter("id", experimentAnnotationsId);
         return result;
     }
-    // ------------------------------------------------------------------------
-    // END Actions to create, delete, edit and view experiment annotations.
-    // ------------------------------------------------------------------------
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class PrivateDataReminderSettingsAction extends FormViewAction<PrivateDataReminderSettingsForm>
+    {
+        @Override
+        public void validateCommand(PrivateDataReminderSettingsForm form, Errors errors)
+        {
+            if (form.getDelayUntilFirstReminder() == null)
+            {
+                errors.reject(ERROR_MSG, "Please enter a value for 'Delay until first reminder'.");
+            }
+            else if (form.getDelayUntilFirstReminder() < 0)
+            {
+                errors.reject(ERROR_MSG, "Value for 'Delay until first reminder' cannot be less than 0.");
+            }
+            if (form.getReminderFrequency() == null)
+            {
+                errors.reject(ERROR_MSG, "Please enter a value for 'Reminder frequency'.");
+            }
+            else if (form.getReminderFrequency() < 0)
+            {
+                errors.reject(ERROR_MSG, "Value for 'Reminder frequency' cannot be less than 0.");
+            }
+            if (form.getExtensionLength() == null)
+            {
+                errors.reject(ERROR_MSG, "Please enter a value for 'Extension duration'.");
+            }
+            else if (form.getExtensionLength() < 0)
+            {
+                errors.reject(ERROR_MSG, "Value for 'Extension duration' cannot be less than 0.");
+            }
+            if (form.getReminderTime() == null)
+            {
+                errors.reject(ERROR_MSG, "Please enter a value for 'Reminder time'.");
+            }
+            else if (PrivateDataReminderSettings.parseReminderTime(form.getReminderTime()) == null)
+            {
+                errors.reject(ERROR_MSG, String.format("'Reminder time' could not be parsed. It must be in the format - %s, e.g. %s.",
+                        PrivateDataReminderSettings.REMINDER_TIME_FORMAT, PrivateDataReminderSettings.DEFAULT_REMINDER_TIME));
+            }
+        }
+
+        @Override
+        public ModelAndView getView(PrivateDataReminderSettingsForm form, boolean reshow, BindException errors) throws Exception
+        {
+            if (!reshow)
+            {
+                PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
+                form.setEnabled(settings.isEnableReminders());
+                form.setReminderTime(settings.getReminderTimeFormatted());
+                form.setDelayUntilFirstReminder(settings.getDelayUntilFirstReminder());
+                form.setReminderFrequency(settings.getReminderFrequency());
+                form.setExtensionLength(settings.getExtensionLength());
+            }
+
+            VBox view = new VBox();
+            view.addView(new JspView<>("/org/labkey/panoramapublic/view/privateDataRemindersSettingsForm.jsp", form, errors));
+            view.setTitle("Private Data Reminder Settings");
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            return view;
+        }
+
+        @Override
+        public boolean handlePost(PrivateDataReminderSettingsForm form, BindException errors) throws Exception
+        {
+            PrivateDataReminderSettings settings = new PrivateDataReminderSettings();
+            settings.setEnableReminders(form.isEnabled());
+            settings.setReminderTime(PrivateDataReminderSettings.parseReminderTime(form.getReminderTime()));
+            settings.setDelayUntilFirstReminder(form.getDelayUntilFirstReminder());
+            settings.setReminderFrequency(form.getReminderFrequency());
+            settings.setExtensionLength(form.getExtensionLength());
+            PrivateDataReminderSettings.save(settings);
+
+            PrivateDataMessageScheduler.getInstance().initialize(settings.isEnableReminders());
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(PrivateDataReminderSettingsForm privateDataReminderSettingsForm)
+        {
+            return null;
+        }
+
+        @Override
+        public ModelAndView getSuccessView(PrivateDataReminderSettingsForm form)
+        {
+            ActionURL url = new ActionURL(PrivateDataReminderSettingsAction.class, getContainer());
+            return new HtmlView(
+                    DIV("Private data reminder settings saved!",
+                            BR(),
+                            new LinkBuilder("Back to Private Data Reminder Settings").href(url).build()));
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            addPanoramaPublicAdminConsoleNav(root, getContainer());
+            root.addChild("Private Data Reminder Settings");
+        }
+    }
+
+    public static class PrivateDataReminderSettingsForm
+    {
+        private boolean _enabled;
+        private String _reminderTime;
+        private Integer _extensionLength;
+        private Integer _reminderFrequency;
+        private Integer _delayUntilFirstReminder;
+
+        public boolean isEnabled()
+        {
+            return _enabled;
+        }
+
+        public void setEnabled(boolean enabled)
+        {
+            _enabled = enabled;
+        }
+
+        public String getReminderTime()
+        {
+            return _reminderTime;
+        }
+
+        public void setReminderTime(String reminderTime)
+        {
+            _reminderTime = reminderTime;
+        }
+
+        public Integer getExtensionLength()
+        {
+            return _extensionLength;
+        }
+
+        public void setExtensionLength(Integer extensionLength)
+        {
+            _extensionLength = extensionLength;
+        }
+
+        public Integer getReminderFrequency()
+        {
+            return _reminderFrequency;
+        }
+
+        public void setReminderFrequency(Integer reminderFrequency)
+        {
+            _reminderFrequency = reminderFrequency;
+        }
+
+        public Integer getDelayUntilFirstReminder()
+        {
+            return _delayUntilFirstReminder;
+        }
+
+        public void setDelayUntilFirstReminder(Integer delayUntilFirstReminder)
+        {
+            _delayUntilFirstReminder = delayUntilFirstReminder;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public class SendPrivateDataRemindersAction extends FormViewAction<PrivateDataSendReminderForm>
+    {
+        @Override
+        public void validateCommand(PrivateDataSendReminderForm form, Errors errors){}
+
+        @Override
+        public ModelAndView getView(PrivateDataSendReminderForm form, boolean reshow, BindException errors) throws Exception
+        {
+            Journal panoramaPublic = JournalManager.getJournal(getContainer());
+            if (panoramaPublic ==  null)
+            {
+                errors.reject(ERROR_MSG, "Not a Panorama Public folder: " + getContainer().getName());
+                return new SimpleErrorView(errors, true);
+            }
+
+            QuerySettings qSettings = new QuerySettings(getViewContext(),  PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS,
+                    PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS);
+            qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
+            qSettings.setBaseFilter(new SimpleFilter(FieldKey.fromParts("Public"), "No"));
+
+            QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, null);
+            tableView.setTitle("Private Panorama Private Datasets");
+            tableView.setFrame(WebPartView.FrameType.NONE);
+            tableView.disableContainerFilterSelection();
+
+            form.setDataRegionName(tableView.getDataRegionName());
+
+            JspView<PrivateDataSendReminderForm> jspView = new JspView<>("/org/labkey/panoramapublic/view/sendPrivateDataRemindersForm.jsp", form, errors);
+            VBox view = new VBox(jspView, tableView);
+            view.setTitle("Send Reminders");
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            return view;
+        }
+
+        @Override
+        public boolean handlePost(PrivateDataSendReminderForm form, BindException errors) throws Exception
+        {
+            List<Integer> selectedExperimentIds = form.getSelectedExperimentIds();
+            if (selectedExperimentIds.isEmpty())
+            {
+                errors.reject(ERROR_MSG, "Please select at least one experiment");
+                return false;
+            }
+            PipelineJob job = new PrivateDataReminderJob(getViewBackgroundInfo(),
+                    PipelineService.get().getPipelineRootSetting(getContainer()),
+                    JournalManager.getJournal(getContainer()),
+                    form.getSelectedExperimentIds(),
+                    form.getTestMode());
+            PipelineService.get().queueJob(job);
+            return true;
+        }
+
+
+        @Override
+        public URLHelper getSuccessURL(PrivateDataSendReminderForm form)
+        {
+            return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Private Data Reminder Settings", new ActionURL(PrivateDataReminderSettingsAction.class, ContainerManager.getRoot()));
+            root.addChild("Send Reminders");
+        }
+    }
+
+    public static class PrivateDataSendReminderForm
+    {
+        private boolean _testMode;
+        private String _selectedIds;
+        private String _dataRegionName = null;
+
+        public boolean getTestMode()
+        {
+            return _testMode;
+        }
+
+        public void setTestMode(boolean testMode)
+        {
+            _testMode = testMode;
+        }
+
+        public String getSelectedIds()
+        {
+            return _selectedIds;
+        }
+
+        public List<Integer> getSelectedExperimentIds()
+        {
+            if (_selectedIds == null)
+            {
+                return Collections.emptyList();
+            }
+            return Arrays.stream(StringUtils.split(_selectedIds, ",")).map(Integer::parseInt).collect(Collectors.toList());
+        }
+
+        public void setSelectedIds(String selectedIds)
+        {
+            _selectedIds = selectedIds;
+        }
+
+        public String getDataRegionName()
+        {
+            return _dataRegionName;
+        }
+
+        public void setDataRegionName(String dataRegionName)
+        {
+            _dataRegionName = dataRegionName;
+        }
+    }
+
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
+    public abstract class UpdateDatasetStatusAction extends ConfirmAction<ShortUrlForm>
+    {
+        protected ExperimentAnnotations _exptAnnotations;
+        protected DatasetStatus _datasetStatus;
+
+        protected abstract void doValidationForAction(Errors errors);
+        protected abstract void updateDatasetStatus(DatasetStatus datasetStatus);
+        protected abstract void postNotification();
+        protected abstract String getConfirmViewTitle();
+        protected abstract String getConfirmViewMessage();
+
+        public ModelAndView getConfirmView(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        {
+            setTitle(getConfirmViewTitle());
+            HtmlView view = new HtmlView(DIV(
+                    DIV(getConfirmViewMessage()),
+                    DIV("Title: " + _exptAnnotations.getTitle()),
+                    DIV("Submitted on: " + DateUtil.formatDateTime(_exptAnnotations.getCreated(), PrivateDataReminderSettings.DATE_FORMAT_PATTERN)),
+                    DIV("Submitter: " + _exptAnnotations.getSubmitterName())
+            ));
+            view.setTitle(getConfirmViewTitle());
+            return view;
+        }
+
+        @Override
+        public void validateCommand(ShortUrlForm shortUrlForm, Errors errors)
+        {
+            _exptAnnotations = getValidExperimentAnnotations(shortUrlForm, errors);
+            if (_exptAnnotations == null)
+            {
+                return;
+            }
+
+            ensureCorrectContainer(getContainer(), _exptAnnotations.getContainer(), getViewContext());
+
+            _datasetStatus = DatasetStatusManager.getForExperiment(_exptAnnotations);
+
+            // Action-specific validation
+            doValidationForAction(errors);
+        }
+
+        @Override
+        public boolean handlePost(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        {
+            try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
+            {
+                if (_datasetStatus == null)
+                {
+                    _datasetStatus = new DatasetStatus();
+                    _datasetStatus.setExperimentAnnotationsId(_exptAnnotations.getId());
+                    updateDatasetStatus(_datasetStatus);
+                    DatasetStatusManager.save(_datasetStatus, getUser());
+                }
+                else
+                {
+                    updateDatasetStatus(_datasetStatus);
+                    DatasetStatusManager.update(_datasetStatus, getUser());
+                }
+
+                postNotification();
+
+                transaction.commit();
+            }
+
+            return true;
+        }
+
+        @Override
+        public @NotNull URLHelper getSuccessURL(ShortUrlForm shortUrlForm)
+        {
+            return PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer());
+        }
+    }
+
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
+    public class RequestExtensionAction extends UpdateDatasetStatusAction
+    {
+        @Override
+        protected String getConfirmViewTitle()
+        {
+            return "Request Extension For Panorama Public Data";
+        }
+
+        @Override
+        protected String getConfirmViewMessage()
+        {
+            return "You are requesting an extension for the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL();
+        }
+
+        @Override
+        protected void doValidationForAction(Errors errors)
+        {
+            if (_datasetStatus != null)
+            {
+                PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
+                if (settings.isExtensionValid(_datasetStatus))
+                {
+                    errors.reject(ERROR_MSG, "An extension has already been requested for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
+                            + ". The extension is valid until " + settings.extensionValidUntilFormatted(_datasetStatus));
+                }
+                else if (_datasetStatus.deletionRequested())
+                {
+                    errors.reject(ERROR_MSG, "A deletion request was submitted on " + _datasetStatus.getDeletionRequestedDate()
+                            + " for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
+                }
+            }
+        }
+
+        @Override
+        protected void updateDatasetStatus(DatasetStatus datasetStatus)
+        {
+            datasetStatus.setExtensionRequestedDate(new Date());
+        }
+
+        @Override
+        protected void postNotification()
+        {
+            // Post a message to the support thread.
+            JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(_exptAnnotations);
+            Journal journal = JournalManager.getJournal(submission.getJournalId());
+            PanoramaPublicNotification.postPrivateStatusExtensionMessage(journal, submission.getJournalExperiment(), _exptAnnotations, getUser());
+        }
+
+        @Override
+        public ModelAndView getSuccessView(ShortUrlForm shortUrlForm)
+        {
+            setTitle("Extension Request Success");
+            PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
+            return new HtmlView(DIV("An extension request was successfully submitted for the data at " + _exptAnnotations.getShortUrl().renderShortURL(),
+                    DIV("The extension is valid until " + settings.extensionValidUntilFormatted(_datasetStatus)),
+                    BR(),
+                    DIV(
+                            LinkBuilder.labkeyLink("Data Folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()))
+                    )
+            ));
+        }
+    }
+
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
+    public class RequestDeletionAction extends UpdateDatasetStatusAction
+    {
+        @Override
+        protected String getConfirmViewTitle()
+        {
+            return "Request Deletion For Panorama Public Data";
+        }
+
+        @Override
+        protected String getConfirmViewMessage()
+        {
+            return "You are requesting deletion of the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL();
+        }
+
+        @Override
+        protected void doValidationForAction(Errors errors)
+        {
+            if (_datasetStatus != null)
+            {
+                if (_datasetStatus.deletionRequested())
+                {
+                    errors.reject(ERROR_MSG, "A deletion request was already submitted on " + _datasetStatus.getDeletionRequestedDateFormatted()
+                            + " for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
+                }
+            }
+        }
+
+        @Override
+        protected void updateDatasetStatus(DatasetStatus datasetStatus)
+        {
+            datasetStatus.setDeletionRequestedDate(new Date());
+        }
+
+        @Override
+        protected void postNotification()
+        {
+            // Post a message to the support thread.
+            JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(_exptAnnotations);
+            Journal journal = JournalManager.getJournal(submission.getJournalId());
+            PanoramaPublicNotification.postDataDeletionRequestMessage(journal, submission.getJournalExperiment(), _exptAnnotations, getUser());
+        }
+
+        @Override
+        public ModelAndView getSuccessView(ShortUrlForm shortUrlForm)
+        {
+            setTitle("Deletion Request Success");
+            return new HtmlView(DIV("A deletion request was successfully submitted for the data at " + _exptAnnotations.getShortUrl().renderShortURL(),
+                    BR(),
+                    DIV(
+                            LinkBuilder.labkeyLink("Data Folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()))
+                    )
+                ));
+        }
+    }
+
+    public static class ShortUrlForm
+    {
+        private String _shortUrlEntityId;
+
+        public String getShortUrlEntityId()
+        {
+            return _shortUrlEntityId;
+        }
+
+        public void setShortUrlEntityId(String shortUrlEntityId)
+        {
+            _shortUrlEntityId = shortUrlEntityId;
+        }
+    }
+
+    private static ExperimentAnnotations getValidExperimentAnnotations(ShortUrlForm shortUrlForm, Errors errors)
+    {
+        String shortUrlEntityId = shortUrlForm.getShortUrlEntityId();
+        if (StringUtils.isBlank(shortUrlEntityId))
+        {
+            errors.reject(ERROR_MSG, "ShortUrl is missing");
+            return null;
+        }
+
+        ShortURLRecord shortUrl = ShortURLService.get().getForEntityId(shortUrlEntityId);
+        if (shortUrl == null)
+        {
+            errors.reject(ERROR_MSG, "Cannot find a shortUrl for entityId " + shortUrlEntityId);
+            return null;
+        }
+
+        ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.getExperimentForShortUrl(shortUrl);
+        if (exptAnnotations == null)
+        {
+            errors.reject(ERROR_MSG, "Unable to find an experiment for short URL: " + shortUrl.renderShortURL());
+            return null;
+        }
+
+        if (exptAnnotations.isPublic())
+        {
+            errors.reject(ERROR_MSG, "Data for short URL " + shortUrl.renderShortURL() + " is public. Status cannot be changed.");
+            return null;
+        }
+
+        return exptAnnotations;
+    }
+
     public static ActionURL getCopyExperimentURL(int experimentAnnotationsId, int journalId, Container container)
     {
         ActionURL result = new ActionURL(PanoramaPublicController.CopyExperimentAction.class, container);
@@ -10216,7 +10748,8 @@ public class PanoramaPublicController extends SpringActionController
                 new DeleteJournalGroupAction(),
                 new GetPxActionsAction(),
                 new ExportPxXmlAction(),
-                new UpdatePxDetailsAction()
+                new UpdatePxDetailsAction(),
+                new PrivateDataReminderSettingsAction()
             );
 
             // @AdminConsoleAction
