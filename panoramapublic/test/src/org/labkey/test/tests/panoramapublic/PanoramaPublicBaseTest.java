@@ -586,6 +586,22 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         waitForText("Panorama Public catalog entry settings were saved");
     }
 
+    protected void verifyIsPublicColumn(String panoramaPublicProject, String experimentTitle, boolean isPublic)
+    {
+        if (isImpersonating())
+        {
+            stopImpersonating(true);
+        }
+        goToProjectHome(panoramaPublicProject);
+
+        DataRegionTable expListTable = DataRegionTable.findDataRegionWithinWebpart(this, "Targeted MS Experiment List");
+        expListTable.ensureColumnsPresent("Title", "DataVersion", "Public");
+        expListTable.setFilter("Title", "Equals", experimentTitle);
+        expListTable.setFilter("DataVersion", "Equals", "1");
+        assertEquals(1, expListTable.getDataRowCount());
+        assertEquals(isPublic ? "Yes" : "No", expListTable.getDataAsText(0, "Public"));
+    }
+
     @Override
     protected void doCleanup(boolean afterTest) throws TestTimeoutException
     {

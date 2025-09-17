@@ -301,6 +301,9 @@ public class ExperimentAnnotationsManager
         // Delete the Panorama Public data catalog entry for this experiment, if one exists
         CatalogEntryManager.deleteEntryForExperiment(expAnnotations, user);
 
+        // Delete the row in DatasetStatus for this experiment, if one exists.
+        DatasetStatusManager.deleteStatusForExperiment(expAnnotations);
+
         Table.delete(PanoramaPublicManager.getTableInfoExperimentAnnotations(), expAnnotations.getId());
 
         if(expAnnotations.isJournalCopy() && expAnnotations.getShortUrl() != null)
