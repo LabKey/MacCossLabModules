@@ -49,9 +49,9 @@ public class ToolStoreRatingsTest  extends ToolStoreTestPart
         uncheckCheckbox(Locator.name("sendEmail"));
         clickButton("Update Group Membership");
         enterPermissionsUI();
-        setUserPermissions("SkylineToolStoreGroup", "Editor");
-        _securityHelper.setSiteGroupPermissions("All Site Users", "Reader");
-        _securityHelper.setSiteGroupPermissions("Guests", "Reader");
+        setUserPermissions("SkylineToolStoreGroup", EDITOR_ROLE);
+        _securityHelper.setSiteGroupPermissions("All Site Users", READER_ROLE);
+        _securityHelper.setSiteGroupPermissions("Guests", READER_ROLE);
         int fileNumber = 0;
         while(fileNumber < filesToUpload.length)
         {
@@ -59,8 +59,8 @@ public class ToolStoreRatingsTest  extends ToolStoreTestPart
             fileNumber++;
         }
         //toolName is the directory name in LabKey
-        setupUserPermissions(users[0], "_tool_Population Variation Updated_1.2.16269", "Editor", "panoramaPermissions");
-        setupUserPermissions(users[1], "_tool_MSstats_1.0", "Editor", "panoramaPermissions");
+        setupUserPermissions(users[0], "_tool_Population Variation Updated_1.2.16269", EDITOR_ROLE, "panoramaPermissions");
+        setupUserPermissions(users[1], "_tool_MSstats_1.0", EDITOR_ROLE, "panoramaPermissions");
         testAsGuest();
         testAsUser1();
         testAsUser2();

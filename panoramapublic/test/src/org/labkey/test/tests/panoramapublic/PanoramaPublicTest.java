@@ -25,6 +25,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.labkey.test.util.PermissionsHelper.FOLDER_ADMIN_ROLE;
+import static org.labkey.test.util.PermissionsHelper.READER_ROLE;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 7)
@@ -262,8 +264,8 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         // in all subfolders are required for submitting an experiment.
         goToProjectFolder(projectName, sourceFolder + "/" + subfolder_mam);
         ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
-        permissionsHelper.removeUserRoleAssignment(SUBMITTER_2, "Folder Administrator", projectName + "/" + sourceFolder + "/" + subfolder_mam);
-        permissionsHelper.assertNoPermission(SUBMITTER_2, "Reader");
+        permissionsHelper.removeUserRoleAssignment(SUBMITTER_2, FOLDER_ADMIN_ROLE, projectName + "/" + sourceFolder + "/" + subfolder_mam);
+        permissionsHelper.assertNoPermission(SUBMITTER_2, READER_ROLE);
 
         goToProjectFolder(projectName, sourceFolder);
         impersonate(SUBMITTER_2);
@@ -296,7 +298,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         {
             _userHelper.deleteUser(user);
             _userHelper.createUser(user);
-            permissionsHelper.addMemberToRole(user, "Folder Administrator", PermissionsHelper.MemberType.user, projectName + "/" + folderName);
+            permissionsHelper.addMemberToRole(user, FOLDER_ADMIN_ROLE, PermissionsHelper.MemberType.user, projectName + "/" + folderName);
         }
     }
 
