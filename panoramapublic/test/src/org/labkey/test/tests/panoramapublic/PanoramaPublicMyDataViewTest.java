@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.labkey.test.util.PermissionsHelper.READER_ROLE;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
@@ -42,7 +43,7 @@ public class PanoramaPublicMyDataViewTest extends PanoramaPublicBaseTest
     {
         goToProjectHome(PANORAMA_PUBLIC);
         ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
-        permissionsHelper.setSiteGroupPermissions("Guests", "Reader");
+        permissionsHelper.setSiteGroupPermissions("Guests", READER_ROLE);
         portalHelper.removeAllWebParts();
         portalHelper.addBodyWebPart("Panorama Public Search");
         portalHelper.addBodyWebPart("Targeted MS Experiment List");

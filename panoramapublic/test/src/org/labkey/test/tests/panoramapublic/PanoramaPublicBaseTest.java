@@ -44,6 +44,7 @@ import java.util.regex.Pattern;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.labkey.test.util.PermissionsHelper.FOLDER_ADMIN_ROLE;
 
 public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOnlyTest
 {
@@ -211,7 +212,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         _userHelper.ensureUsersExist(List.of(adminUsers));
         for(String user: adminUsers)
         {
-            permissionsHelper.addMemberToRole(user, "Folder Administrator", PermissionsHelper.MemberType.user, projectName + "/" + folderName);
+            permissionsHelper.addMemberToRole(user, FOLDER_ADMIN_ROLE, PermissionsHelper.MemberType.user, projectName + "/" + folderName);
         }
     }
 
@@ -523,7 +524,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     {
         _userHelper.ensureUsersExist(Collections.singletonList(user));
         ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
-        permissionsHelper.addMemberToRole(user, "Folder Administrator", PermissionsHelper.MemberType.user, projectName + "/" + folderName);
+        permissionsHelper.addMemberToRole(user, FOLDER_ADMIN_ROLE, PermissionsHelper.MemberType.user, projectName + "/" + folderName);
     }
 
     protected void makeDataPublic(boolean unpublishedData)

@@ -14,6 +14,7 @@ import org.labkey.test.util.DataRegionTable;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.labkey.test.util.PermissionsHelper.READER_ROLE;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 7)
@@ -40,7 +41,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         String panoramaPublicProject = PANORAMA_PUBLIC;
         goToProjectHome(panoramaPublicProject);
         ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
-        permissionsHelper.setSiteGroupPermissions("Guests", "Reader");
+        permissionsHelper.setSiteGroupPermissions("Guests", READER_ROLE);
 
 
         String testProject = getProjectName();

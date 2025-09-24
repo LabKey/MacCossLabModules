@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.labkey.test.util.PermissionsHelper.READER_ROLE;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
@@ -116,7 +117,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         impersonate(SUBMITTER);
         verifyCatalogEntryWebpart(projectName ,folderName, true);
         stopImpersonating();
-        impersonateRole("Reader");
+        impersonateRole(READER_ROLE);
         verifyCatalogEntryWebpart(projectName ,folderName, false);
         stopImpersonating();
     }

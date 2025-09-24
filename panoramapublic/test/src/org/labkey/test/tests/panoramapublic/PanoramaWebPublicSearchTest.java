@@ -19,6 +19,8 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import java.util.Arrays;
 import java.util.Set;
 
+import static org.labkey.test.util.PermissionsHelper.FOLDER_ADMIN_ROLE;
+
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
 public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
@@ -69,7 +71,7 @@ public class PanoramaWebPublicSearchTest extends PanoramaPublicBaseTest
         createExperimentCompleteMetadata("Experiment for small molecule search");
 
         _userHelper.createUser(SUBMITTER);
-        permissionsHelper.addMemberToRole(SUBMITTER, "Folder Administrator", PermissionsHelper.MemberType.user, getProjectName() + "/" + SUBFOLDER_2);
+        permissionsHelper.addMemberToRole(SUBMITTER, FOLDER_ADMIN_ROLE, PermissionsHelper.MemberType.user, getProjectName() + "/" + SUBFOLDER_2);
         impersonate(SUBMITTER);
         updateSubmitterAccountInfo(AUTHOR_FIRST_NAME, AUTHOR_LAST_NAME, SUBFOLDER_2);
         createExperimentCompleteMetadata("Submitter Experiment");
