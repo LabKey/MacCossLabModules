@@ -74,7 +74,7 @@ public class SkylineToolsStoreModule extends DefaultModule
                             }
 
                             @Override
-                            public WebPartView getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart) throws WebPartConfigurationException
+                            public WebPartView<?> getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart) throws WebPartConfigurationException
                             {
                                 return new SkylineToolsStoreWebPart();
                             }

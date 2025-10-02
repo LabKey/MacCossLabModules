@@ -357,9 +357,8 @@ public class PanoramaPublicModule extends SpringModule
         return Collections.singleton(PanoramaPublicSchema.SCHEMA_NAME);
     }
 
-    @NotNull
     @Override
-    public Set<Class> getIntegrationTests()
+    public @NotNull Set<Class<?>> getIntegrationTests()
     {
         return Set.of(
                 PanoramaPublicController.TestCase.class,
@@ -368,11 +367,10 @@ public class PanoramaPublicModule extends SpringModule
         );
     }
 
-    @NotNull
     @Override
-    public Set<Class> getUnitTests()
+    public @NotNull Set<Class<?>> getUnitTests()
     {
-        Set<Class> set = new HashSet<>();
+        Set<Class<?>> set = new HashSet<>();
         set.add(PanoramaPublicController.TestCase.class);
         set.add(PanoramaPublicNotification.TestCase.class);
         set.add(SkylineVersion.TestCase.class);
@@ -384,7 +382,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(CatalogEntryManager.TestCase.class);
         set.add(BlueskyApiClient.TestCase.class);
         set.add(PrivateDataReminderSettings.TestCase.class);
-        return set;
 
+        return set;
     }
 }

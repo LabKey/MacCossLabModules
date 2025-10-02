@@ -31,6 +31,7 @@ import org.labkey.api.view.Portal;
 import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartFactory;
 import org.labkey.api.view.WebPartView;
+import org.labkey.signup.SignUpController.SignupForm;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -69,9 +70,9 @@ public class SignUpModule extends DefaultModule
         BaseWebPartFactory signupWebpart = new BaseWebPartFactory("Sign Up")
         {
             @Override
-            public WebPartView getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart)
+            public JspView<SignupForm> getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart)
             {
-                JspView<SignUpController.SignupForm> view = new JspView<>("/org/labkey/signup/signupPage.jsp", new SignUpController.SignupForm());
+                JspView<SignupForm> view = new JspView<>("/org/labkey/signup/signupPage.jsp", new SignupForm());
                 view.setTitle("Sign Up");
 
                 return view;
