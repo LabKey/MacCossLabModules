@@ -2,7 +2,6 @@ package org.labkey.panoramapublic.pipeline;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
-import org.labkey.api.announcements.DiscussionService;
 import org.labkey.api.announcements.api.Announcement;
 import org.labkey.api.announcements.api.AnnouncementService;
 import org.labkey.api.data.Container;
@@ -132,7 +131,7 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
                         notifyList.add(expAnnotations.getLabHeadUser());
                     }
                     PanoramaPublicNotification.postNotification(journal, submission.getJournalExperiment(), placeholdersSubstituted, submitter, getUser(),
-                            title, DiscussionService.StatusOption.Closed, notifyList);
+                            title, AnnouncementService.StatusOption.Closed, notifyList);
                 }
 
                 done++;
