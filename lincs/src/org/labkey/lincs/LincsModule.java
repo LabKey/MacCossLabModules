@@ -85,7 +85,7 @@ public class LincsModule extends SpringModule
         BaseWebPartFactory runsList = new BaseWebPartFactory(LincsDataView.WEB_PART_NAME)
         {
             @Override
-            public WebPartView getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
+            public WebPartView<?> getWebPartView(@NotNull ViewContext portalCtx, @NotNull Portal.WebPart webPart)
             {
                 return new LincsDataView(portalCtx);
             }
