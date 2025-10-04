@@ -22,7 +22,7 @@ public class TestResultsWebPart extends BaseWebPartFactory
     }
 
     @Override
-    public WebPartView getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart) throws WebPartConfigurationException
+    public WebPartView<?> getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart) throws WebPartConfigurationException
     {
         Container c =portalCtx.getContainer();
         TestsDataBean bean = null;
