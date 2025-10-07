@@ -5,9 +5,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.junit.Test;
-import org.labkey.api.announcements.DiscussionService.StatusOption;
 import org.labkey.api.announcements.api.Announcement;
 import org.labkey.api.announcements.api.AnnouncementService;
+import org.labkey.api.announcements.api.AnnouncementService.StatusOption;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.markdown.MarkdownService;
@@ -97,7 +97,7 @@ public class PanoramaPublicNotification
                 .append(" You will receive a confirmation message after your data has been copied.");
         messageBody.append(NL);
         appendSubmissionDetails(expAnnotations, journal, je, submission, currentJournalCopy, messageBody);
-        postNotification(expAnnotations, journal, je, messageBody, true, action.title(), StatusOption.Active, user);
+        postNotification(expAnnotations, journal, je, messageBody, true, action.title(), AnnouncementService.StatusOption.Active, user);
     }
 
     @NotNull
@@ -120,7 +120,7 @@ public class PanoramaPublicNotification
         messageBody.append(NL).append("* Folder: ").append(getContainerLink(expAnnotations.getContainer()));
         messageBody.append(NL).append("* ExperimentID: ").append(expAnnotations.getId());
 
-        postNotification(expAnnotations, journal, je, messageBody, false, ACTION.DELETED.title(), StatusOption.Closed, user);
+        postNotification(expAnnotations, journal, je, messageBody, false, ACTION.DELETED.title(), AnnouncementService.StatusOption.Closed, user);
     }
 
     public static void notifyCopied(ExperimentAnnotations srcExpAnnotations, ExperimentAnnotations targetExpAnnotations, Journal journal,
@@ -133,7 +133,7 @@ public class PanoramaPublicNotification
         ACTION action = isRecopy ? ACTION.RECOPIED : ACTION.COPIED;
 
         postNotification(journal, je, messageBody, user /* User is either a site admin or a Panorama Public admin, and should have permissions to post*/,
-                         action.title(), StatusOption.Closed,  getNotifyList(srcExpAnnotations, user));
+                         action.title(), AnnouncementService.StatusOption.Closed,  getNotifyList(srcExpAnnotations, user));
     }
 
     public static void notifyDataPublished(ExperimentAnnotations srcExperiment, ExperimentAnnotations journalCopy, Journal journal,
@@ -194,8 +194,8 @@ public class PanoramaPublicNotification
 
         postNotification(srcExperiment, journal, je, messageBody, false, ACTION.PUBLISHED.title(),
                 (doiError != null || journalCopy.hasPxid())
-                        ? StatusOption.Active
-                        : StatusOption.Closed,
+                        ? AnnouncementService.StatusOption.Active
+                        : AnnouncementService.StatusOption.Closed,
                 user);
     }
 
@@ -209,7 +209,7 @@ public class PanoramaPublicNotification
                 .append(LookAndFeelProperties.getInstance(ContainerManager.getRoot()).getShortName())
                 .append(" (").append(AppProps.getInstance().getBaseServerUrl()).append(").");
 
-        postNotification(srcExperiment, journal, je, messageBody, false, ACTION.CATALOG_ENTRY.title(), StatusOption.Active, user);
+        postNotification(srcExperiment, journal, je, messageBody, false, ACTION.CATALOG_ENTRY.title(), AnnouncementService.StatusOption.Active, user);
     }
 
     private static void postNotification(ExperimentAnnotations experimentAnnotations, Journal journal, JournalExperiment je,
@@ -319,7 +319,7 @@ public class PanoramaPublicNotification
         messageBody.append(NL2).append("Best regards,");
         messageBody.append(NL).append(getUserName(journalAdmin));
         
-        postNotificationFullTitle(journal, je, messageBody.toString(), journalAdmin, messageTitle, StatusOption.Closed, null);
+        postNotificationFullTitle(journal, je, messageBody.toString(), journalAdmin, messageTitle, AnnouncementService.StatusOption.Closed, null);
     }
 
     public static void postDataDeletionRequestMessage(@NotNull Journal journal, @NotNull JournalExperiment je, @NotNull ExperimentAnnotations expAnnotations, User submitter)
@@ -355,7 +355,7 @@ public class PanoramaPublicNotification
         messageBody.append(NL2).append("Best regards,");
         messageBody.append(NL).append(getUserName(journalAdmin));
 
-        postNotificationFullTitle(journal, je, messageBody.toString(), journalAdmin, messageTitle, StatusOption.Active, null);
+        postNotificationFullTitle(journal, je, messageBody.toString(), journalAdmin, messageTitle, AnnouncementService.StatusOption.Active, null);
     }
 
 
@@ -365,7 +365,7 @@ public class PanoramaPublicNotification
     {
         String message = getDataStatusReminderMessage(expAnnotations, submitter, js, announcement, announcementsContainer, journalAdmin);
         String title = "Action Required: Status Update for Your Private Data on Panorama Public";
-        postNotificationFullTitle(journal, js.getJournalExperiment(), message, messagePoster, title, StatusOption.Closed, notifyUsers);
+        postNotificationFullTitle(journal, js.getJournalExperiment(), message, messagePoster, title, AnnouncementService.StatusOption.Closed, notifyUsers);
     }
 
     public static String getDataStatusReminderMessage(@NotNull ExperimentAnnotations exptAnnotations, @NotNull User submitter,
