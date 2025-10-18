@@ -39,6 +39,7 @@ import org.labkey.api.view.UnauthorizedException;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.nextflow.pipeline.NextFlowPipelineJob;
 import org.labkey.nextflow.pipeline.NextFlowProtocol;
+import org.labkey.vfs.FileLike;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
@@ -261,17 +262,17 @@ public class NextFlowController extends SpringActionController
         @Override
         public ModelAndView getView(AnalyzeForm o, boolean b, BindException errors)
         {
-            List<File> selectedFiles = o.getValidatedFiles(getContainer(), false);
+            List<FileLike> selectedFiles = o.getValidatedFiles(getContainer(), false);
             if (selectedFiles.isEmpty())
             {
                 return new HtmlView(HtmlString.of("Couldn't find input file(s)"));
             }
             // NextFlow operates on the full directory so show the list to the user, regardless of what they selected
             // from the file listing
-            File inputDir = selectedFiles.get(0).getParentFile();
+            FileLike inputDir = selectedFiles.get(0).getParent();
 
-            File[] inputFiles = inputDir.listFiles(new PipelineProvider.FileTypesEntryFilter(NextFlowProtocol.INPUT_TYPES));
-            if (inputFiles == null || inputFiles.length == 0)
+            List<FileLike> inputFiles = inputDir.getChildren().stream().filter(new PipelineProvider.FileTypesEntryFilter(NextFlowProtocol.INPUT_TYPES)).toList();
+            if (inputFiles.isEmpty())
             {
                 return new HtmlView(HtmlString.of("Couldn't find input file(s)"));
             }
@@ -290,7 +291,7 @@ public class NextFlowController extends SpringActionController
                                         INPUT(at(hidden, true, name, "launch", value, true)),
                                         Arrays.stream(o.getFile()).map(f -> INPUT(at(hidden, true, name, "file", value, f))).toList(),
                                         "Files: ",
-                                        UL(Arrays.stream(inputFiles).map(File::getName).map(DOM::LI)),
+                                        UL(inputFiles.stream().map(FileLike::getName).map(DOM::LI)),
                                         "Config: ",
                                         new SelectBuilder().name("configFile").addOptions(Arrays.stream(configFiles).filter(f -> f.isFile() && f.getName().toLowerCase().endsWith(".config")).map(File::getName).sorted(String.CASE_INSENSITIVE_ORDER).toList()).build(),
                                         DOM.BR(),
@@ -318,7 +319,7 @@ public class NextFlowController extends SpringActionController
             }
             else
             {
-                List<File> inputFiles = form.getValidatedFiles(getContainer());
+                List<FileLike> inputFiles = form.getValidatedFiles(getContainer());
                 if (inputFiles.isEmpty())
                 {
                     errors.reject(ERROR_MSG, "No input files");
@@ -327,7 +328,7 @@ public class NextFlowController extends SpringActionController
                 {
                     ViewBackgroundInfo info = getViewBackgroundInfo();
                     PipeRoot root = PipelineService.get().findPipelineRoot(info.getContainer());
-                    NextFlowPipelineJob job = NextFlowPipelineJob.create(info, root, configFile.toPath(), inputFiles.stream().map(File::toPath).toList());
+                    NextFlowPipelineJob job = NextFlowPipelineJob.create(info, root, configFile.toPath(), inputFiles);
                     PipelineService.get().queueJob(job);
                     LOG.info("NextFlow job queued: {}", job.getJsonJobInfo(false));
                 }

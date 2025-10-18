@@ -20,7 +20,9 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.ViewBackgroundInfo;
+import org.labkey.api.writer.PrintWriters;
 import org.labkey.nextflow.NextFlowManager;
+import org.labkey.vfs.FileLike;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -35,29 +37,29 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
 {
     protected static final Logger LOG = LogHelper.getLogger(NextFlowPipelineJob.class, "NextFlow jobs");
 
-    private Path config;
+    private FileLike config;
 
     @SuppressWarnings("unused") // For serialization
     protected NextFlowPipelineJob()
     {}
 
-    public static NextFlowPipelineJob create(ViewBackgroundInfo info, @NotNull PipeRoot root, Path templateConfig, List<Path> inputFiles) throws IOException
+    public static NextFlowPipelineJob create(ViewBackgroundInfo info, @NotNull PipeRoot root, Path templateConfig, List<FileLike> inputFiles) throws IOException
     {
-        Path parentDir = inputFiles.get(0).getParent();
+        FileLike parentDir = inputFiles.get(0).getParent();
 
         String jobName = FileUtil.makeFileNameWithTimestamp("NextFlow");
-        Path jobDir = parentDir.resolve(jobName);
-        Path log = jobDir.resolve(jobName + ".log");
+        FileLike jobDir = parentDir.resolveChild(jobName);
+        FileLike log = jobDir.resolveChild(jobName + ".log");
         FileUtil.createDirectory(jobDir);
 
-        Path config = createConfig(templateConfig, parentDir, jobDir, info.getContainer());
+        FileLike config = createConfig(templateConfig, parentDir, jobDir, info.getContainer());
 
         return new NextFlowPipelineJob(info, root, config, inputFiles, log);
     }
 
-    public NextFlowPipelineJob(ViewBackgroundInfo info, @NotNull PipeRoot root, Path config, List<Path> inputFiles, Path log) throws IOException
+    public NextFlowPipelineJob(ViewBackgroundInfo info, @NotNull PipeRoot root, FileLike config, List<FileLike> inputFiles, FileLike log) throws IOException
     {
-        super(new NextFlowProtocol(), NextFlowPipelineProvider.NAME, info, root, config.getFileName().toString(), config, inputFiles, false, false);
+        super(new NextFlowProtocol(), NextFlowPipelineProvider.NAME, info, root, config.getName(), config, inputFiles, false);
         this.config = config;
         setLogFile(log);
     }
@@ -69,7 +71,7 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
         result.put("container", getContainer().getPath());
         result.put("filePath", getLogFilePath().getParent().toString());
         result.put("runName", getNextFlowRunName(includeInvocationCount));
-        result.put("configFile", getConfig().getFileName().toString());
+        result.put("configFile", getConfig().getName());
         return result;
     }
 
@@ -88,7 +90,7 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
     }
 
     /** Take the template config file and substitute in the values for this job */
-    private static Path createConfig(Path configTemplate, Path parentDir, Path jobDir, Container container) throws IOException
+    private static FileLike createConfig(Path configTemplate, FileLike parentDir, FileLike jobDir, Container container) throws IOException
     {
         String template;
         try (InputStream in = Files.newInputStream(configTemplate))
@@ -104,8 +106,8 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
         uploadUrl = StringUtils.stripEnd(uploadUrl, "/");
         substitutedContent = substitutedContent.replace("${panorama.upload_url}", "panorama.upload_url = '" + uploadUrl + "'");
 
-        Path substitutedFile = jobDir.resolve(configTemplate.getFileName());
-        try (BufferedWriter writer = Files.newBufferedWriter(substitutedFile))
+        FileLike substitutedFile = jobDir.resolveChild(configTemplate.getFileName().toString());
+        try (BufferedWriter writer = new BufferedWriter(PrintWriters.getPrintWriter(substitutedFile.openOutputStream())))
         {
             writer.write(substitutedContent);
         }
@@ -115,7 +117,7 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
     @Override
     public String getDescription()
     {
-        return "NextFlow analysis of " + StringUtilsLabKey.pluralize(getInputFilePaths().size(), "file") + " using config: " + config.getFileName();
+        return "NextFlow analysis of " + StringUtilsLabKey.pluralize(getInputFilePaths().size(), "file") + " using config: " + config.getName();
     }
 
     @Override
@@ -131,7 +133,7 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
     }
 
     @Override
-    public AbstractFileAnalysisJob createSingleFileJob(File file)
+    public AbstractFileAnalysisJob createSingleFileJob(FileLike file)
     {
         throw new UnsupportedOperationException();
     }
