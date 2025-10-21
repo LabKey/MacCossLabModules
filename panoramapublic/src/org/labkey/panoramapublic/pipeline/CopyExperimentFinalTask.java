@@ -79,6 +79,7 @@ import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
 import org.labkey.panoramapublic.security.PanoramaPublicSubmitterRole;
+import org.labkey.vfs.FileLike;
 
 import java.io.File;
 import java.io.IOException;
@@ -254,9 +255,9 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         }
     }
 
-    private void cleanupExportDirectory(User user, File directory)
+    private void cleanupExportDirectory(User user, FileLike directory)
     {
-        List<? extends ExpData> datas = ExperimentService.get().getExpDatasUnderPath(directory.toPath(), null, true);
+        List<? extends ExpData> datas = ExperimentService.get().getExpDatasUnderPath(directory.toNioPathForRead(), null, true);
         for (ExpData data : datas)
         {
             data.delete(user);

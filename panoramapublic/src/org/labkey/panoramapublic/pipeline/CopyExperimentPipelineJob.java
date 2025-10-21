@@ -33,10 +33,10 @@ import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.panoramapublic.PanoramaPublicModule;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
+import org.labkey.vfs.FileLike;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 
 /**
  * User: vsharma
@@ -63,7 +63,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
 
     private String _previousVersionName;
 
-    private Path _exportTargetPath;
+    private FileLike _exportTargetPath;
 
     private Container _exportSourceContainer;
 
@@ -160,9 +160,9 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     }
 
     @Override
-    public File getExportDir()
+    public FileLike getExportDir()
     {
-        return _exportTargetPath.toFile();
+        return _exportTargetPath;
     }
 
     @Override
@@ -254,7 +254,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     }
 
     @Override
-    public void setExportTargetPath(Path exportTargetPath)
+    public void setExportTargetPath(FileLike exportTargetPath)
     {
         _exportTargetPath = exportTargetPath;
     }

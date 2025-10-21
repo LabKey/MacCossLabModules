@@ -215,6 +215,8 @@ import org.labkey.panoramapublic.view.expannotations.ExperimentAnnotationsFormDa
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentWebPart;
 import org.labkey.panoramapublic.view.expannotations.TargetedMSExperimentsWebPart;
 import org.labkey.panoramapublic.view.publish.CatalogEntryWebPart;
+import org.labkey.vfs.FileLike;
+import org.labkey.vfs.FileSystemLike;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
@@ -1748,7 +1750,7 @@ public class PanoramaPublicController extends SpringActionController
             return true;
         }
 
-        private Path getExportFilesDir(Container c)
+        private FileLike getExportFilesDir(Container c)
         {
             FileContentService fcs = FileContentService.get();
             if(fcs != null)
@@ -1756,7 +1758,7 @@ public class PanoramaPublicController extends SpringActionController
                 Path fileRoot = fcs.getFileRootPath(c, FileContentService.ContentType.files);
                 if (fileRoot != null)
                 {
-                    return fileRoot.resolve(PipelineService.EXPORT_DIR);
+                    return FileSystemLike.wrapFile(fileRoot.resolve(PipelineService.EXPORT_DIR));
                 }
             }
             return null;
