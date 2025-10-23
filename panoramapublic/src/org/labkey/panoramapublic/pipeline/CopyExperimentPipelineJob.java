@@ -30,7 +30,6 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.api.view.ViewBackgroundInfo;
-import org.labkey.panoramapublic.PanoramaPublicModule;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.vfs.FileLike;
@@ -93,7 +92,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
 
         // CONSIDER: Add a static factory method to LocalDirectory instead of using the constructor.
         //           create(@NotNull PipeRoot root, @NotNull String moduleName, @NotNull String baseLogFileName, @NotNull String localDirPath, boolean temporary)
-        LocalDirectory localDirectory = new LocalDirectory(targetRoot.getContainer(), PanoramaPublicModule.NAME, root, baseLogFileName);
+        LocalDirectory localDirectory = new LocalDirectory(targetRoot.getContainer(), root, baseLogFileName);
 
         setLocalDirectory(localDirectory);
         setLogFile(localDirectory.determineLogFile());

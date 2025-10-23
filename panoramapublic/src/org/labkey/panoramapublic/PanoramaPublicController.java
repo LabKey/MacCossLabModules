@@ -4712,7 +4712,7 @@ public class PanoramaPublicController extends SpringActionController
                 PipeRoot root = PipelineService.get().getPipelineRootSetting(container);
                 if (root != null)
                 {
-                    LocalDirectory localDirectory = LocalDirectory.create(root, PanoramaPublicModule.NAME);
+                    LocalDirectory localDirectory = LocalDirectory.create(root);
                     return new File(localDirectory.getLocalDirectoryFile(), fileName);
                 }
                 else
