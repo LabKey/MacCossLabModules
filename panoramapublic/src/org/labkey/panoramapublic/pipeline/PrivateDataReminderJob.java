@@ -100,6 +100,13 @@ public class PrivateDataReminderJob extends PipelineJob
             return ReminderDecision.skip("Not the current version of the experiment");
         }
 
+        // Make sure the data does not have a pending re-submission request
+        JournalSubmission journalSubmission = SubmissionManager.getSubmissionForJournalCopy(exptAnnotations);
+        if (journalSubmission != null && journalSubmission.hasPendingSubmission())
+        {
+            return ReminderDecision.skip("Data has a pending re-submission request");
+        }
+
         DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
         if (datasetStatus != null)
         {
@@ -244,7 +251,7 @@ public class PrivateDataReminderJob extends PipelineJob
         }
 
         Container announcementsFolder = context.getAnnouncementsFolder();
-        Announcement announcement = context.getAnnouncementService().getAnnouncement(announcementsFolder, getUser(), submission.getAnnouncementId());
+        Announcement announcement = submission.getAnnouncement(context.getAnnouncementService(), context.getAnnouncementsFolder(), getUser());
         if (announcement == null)
         {
             processingResults.addAnnouncementNotFound(experimentAnnotationsId, submission, announcementsFolder);

@@ -300,7 +300,7 @@ public class PxHtmlWriter extends PxWriter
         HtmlList publicationList = new HtmlList();
         if(experimentAnnotations.isPublished())
         {
-            publicationList.addItem("Link: ", experimentAnnotations.getPublicationLink(), false);
+            publicationList.addItem("Link", experimentAnnotations.getPublicationLink(), false);
 
             if(experimentAnnotations.hasPubmedId())
             {

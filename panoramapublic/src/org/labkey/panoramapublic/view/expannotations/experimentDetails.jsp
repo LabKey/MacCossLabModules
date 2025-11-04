@@ -337,7 +337,7 @@
  <li><strong>Organism:</strong> <%=h(annot.getOrganismsNoTaxId())%></li>
     <%}%>
     <%if(annot.getInstrument() != null){%>
- <li><strong>Instrument:</strong> <%=h(annot.getInstrument())%></li>
+ <li><strong>Instrument:</strong> <%=h(annot.getInstrumentsCommaSeparated())%></li>
     <%}%>
     <%if(annot.getSpikeIn() != null){%>
  <li><strong>SpikeIn:</strong>

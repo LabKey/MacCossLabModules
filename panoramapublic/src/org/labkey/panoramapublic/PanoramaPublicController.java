@@ -6894,6 +6894,11 @@ public class PanoramaPublicController extends SpringActionController
                         errors.reject(ERROR_MSG, String.format("Cannot find a copy of experiment Id %d on '%s'", expAnnot.getId(), _journal.getName()));
                         return null;
                     }
+                    if (submission.isPending())
+                    {
+                        errors.reject(ERROR_MSG, String.format("There is a pending re-submit request for experiment Id %d on '%s'", expAnnot.getId(), _journal.getName()));
+                        return null;
+                    }
                     return copiedExperiment;
                 }
             }
@@ -7007,12 +7012,10 @@ public class PanoramaPublicController extends SpringActionController
                         return;
                     }
                 }
-                if (!form.hasNewPublicationDetails(_copiedExperiment))
-                {
-                    errors.reject(ERROR_MSG, String.format("Publication details are the same as the ones associated with the data on %s at %s",
-                            _journal.getName(), _copiedExperiment.getShortUrl().renderShortURL()));
-                    return;
-                }
+                // Validation removed: no need to ensure that publication details entered in the form differ from the
+                // publication details already associated with the experiment. The user may have entered the
+                // correct PubMedID etc. when submitting but forgot to make the data public.
+                // (See commit history for the original logic.)
             }
             else if (_copiedExperiment.isPublic())
             {
@@ -7355,13 +7358,6 @@ public class PanoramaPublicController extends SpringActionController
         public boolean hasLinkAndCitation()
         {
             return !(StringUtils.isBlank(_link) || StringUtils.isBlank(_citation));
-        }
-
-        public boolean hasNewPublicationDetails(ExperimentAnnotations copiedExperiment)
-        {
-            return !(Objects.equals(_pubmedId, copiedExperiment.getPubmedId())
-                    && Objects.equals(_link, copiedExperiment.getPublicationLink())
-                    && Objects.equals(_citation, copiedExperiment.getCitation()));
         }
     }
 
@@ -9849,7 +9845,7 @@ public class PanoramaPublicController extends SpringActionController
                 {
                     continue;
                 }
-                Announcement announcement = announcementSvc.getAnnouncement(announcementsContainer, getUser(), submission.getAnnouncementId());
+                Announcement announcement = submission.getAnnouncement(announcementSvc, announcementsContainer, getUser());
                 if (announcement == null)
                 {
                     continue; // old data before we started posting submission requests to a message board

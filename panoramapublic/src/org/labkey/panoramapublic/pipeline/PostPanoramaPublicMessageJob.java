@@ -103,7 +103,8 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
                     continue;
                 }
 
-                Announcement announcement = announcementSvc.getAnnouncement(announcementsContainer, getUser(), submission.getAnnouncementId());
+                Announcement announcement = submission.getAnnouncement(announcementSvc, announcementsContainer, getUser());
+
                 if (announcement == null)
                 {
                     getLogger().error("Could not find the message thread for experiment Id: " + experimentAnnotationsId
