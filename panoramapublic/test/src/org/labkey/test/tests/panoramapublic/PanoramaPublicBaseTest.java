@@ -14,6 +14,7 @@ import org.labkey.remoteapi.SimpleGetCommand;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
+import org.labkey.test.WebTestHelper;
 import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.components.SubfoldersWebPart;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentInsertPage;
@@ -113,10 +114,6 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     @After
     public void afterTest() throws IOException, CommandException
     {
-        if (isImpersonating())
-        {
-            stopImpersonating();
-        }
         verifySymlinks();
     }
 
@@ -149,7 +146,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
     boolean verifySymlinks() throws IOException, CommandException
     {
-        Connection connection = createDefaultConnection();
+        Connection connection = WebTestHelper.getRemoteApiConnection(false);
         SimpleGetCommand command = new SimpleGetCommand("PanoramaPublic", "verifySymlinks");
         CommandResponse verifyResponse = command.execute(connection, "/");
 
