@@ -191,7 +191,7 @@ public class PanoramaPublicMyDataViewTest extends PanoramaPublicBaseTest
     @NotNull
     private DataRegionTable myDataView()
     {
-        var table = new DataRegionTable.DataRegionFinder(getDriver()).refindWhenNeeded();
+        var table = new DataRegionTable("Targeted MS Experiment List", getDriver());
         assertTrue(table.hasHeaderMenu("My Data"));
         table.clickHeaderButtonAndWait("My Data");
         return new DataRegionTable.DataRegionFinder(getDriver()).refindWhenNeeded();
