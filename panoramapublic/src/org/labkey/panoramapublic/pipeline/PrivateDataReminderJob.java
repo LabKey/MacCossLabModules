@@ -58,7 +58,7 @@ public class PrivateDataReminderJob extends PipelineJob
     public PrivateDataReminderJob(ViewBackgroundInfo info, @NotNull PipeRoot root, Journal panoramaPublic, List<Integer> experimentAnnotationsIds, boolean test)
     {
         super("Panorama Public", info, root);
-        setLogFile(root.getRootFileLike().toNioPathForWrite().resolve(FileUtil.makeFileNameWithTimestamp("PanoramaPublic-private-data-reminder", "log")));
+        setLogFile(root.getRootFileLike().resolveChild(FileUtil.makeFileNameWithTimestamp("PanoramaPublic-private-data-reminder", "log")));
         _panoramaPublic = panoramaPublic;
 
         _experimentAnnotationsIds = experimentAnnotationsIds;

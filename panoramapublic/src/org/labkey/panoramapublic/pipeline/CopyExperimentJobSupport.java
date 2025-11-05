@@ -17,9 +17,7 @@ package org.labkey.panoramapublic.pipeline;
 
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
-
-import java.io.File;
-import java.nio.file.Path;
+import org.labkey.vfs.FileLike;
 
 /**
  * User: vsharma
@@ -32,7 +30,7 @@ public interface CopyExperimentJobSupport
 
     Journal getJournal();
 
-    File getExportDir();
+    FileLike getExportDir();
 
     String getReviewerEmailPrefix();
 
@@ -48,5 +46,5 @@ public interface CopyExperimentJobSupport
 
     String getPreviousVersionName();
 
-    void setExportTargetPath(Path exportTargetPath);
+    void setExportTargetPath(FileLike exportTargetPath);
 }

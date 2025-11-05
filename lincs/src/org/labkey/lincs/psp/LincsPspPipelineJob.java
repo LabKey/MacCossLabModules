@@ -12,7 +12,6 @@ import org.labkey.api.targetedms.ITargetedMSRun;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ViewBackgroundInfo;
-import org.labkey.lincs.LincsModule;
 
 public class LincsPspPipelineJob extends PipelineJob implements LincsPspJobSupport
 {
@@ -43,7 +42,7 @@ public class LincsPspPipelineJob extends PipelineJob implements LincsPspJobSuppo
 
         String baseLogFileName = FileUtil.makeFileNameWithTimestamp("LincsPSP_" + (_oldPspJob != null ? "rerun_" : "") + run.getBaseName().replace(" ", "_"));
 
-        LocalDirectory localDirectory = LocalDirectory.create(root, LincsModule.NAME, baseLogFileName,
+        LocalDirectory localDirectory = LocalDirectory.create(root, baseLogFileName,
                 !root.isCloudRoot() ? root.getRootPath().getAbsolutePath() : FileUtil.getTempDirectory().getPath());
         setLocalDirectory(localDirectory);
         setLogFile(localDirectory.determineLogFile());

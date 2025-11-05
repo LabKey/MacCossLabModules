@@ -30,13 +30,12 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.NotFoundException;
 import org.labkey.api.view.ViewBackgroundInfo;
-import org.labkey.panoramapublic.PanoramaPublicModule;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
+import org.labkey.vfs.FileLike;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 
 /**
  * User: vsharma
@@ -63,7 +62,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
 
     private String _previousVersionName;
 
-    private Path _exportTargetPath;
+    private FileLike _exportTargetPath;
 
     private Container _exportSourceContainer;
 
@@ -93,7 +92,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
 
         // CONSIDER: Add a static factory method to LocalDirectory instead of using the constructor.
         //           create(@NotNull PipeRoot root, @NotNull String moduleName, @NotNull String baseLogFileName, @NotNull String localDirPath, boolean temporary)
-        LocalDirectory localDirectory = new LocalDirectory(targetRoot.getContainer(), PanoramaPublicModule.NAME, root, baseLogFileName);
+        LocalDirectory localDirectory = new LocalDirectory(targetRoot.getContainer(), root, baseLogFileName);
 
         setLocalDirectory(localDirectory);
         setLogFile(localDirectory.determineLogFile());
@@ -160,9 +159,9 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     }
 
     @Override
-    public File getExportDir()
+    public FileLike getExportDir()
     {
-        return _exportTargetPath.toFile();
+        return _exportTargetPath;
     }
 
     @Override
@@ -254,7 +253,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     }
 
     @Override
-    public void setExportTargetPath(Path exportTargetPath)
+    public void setExportTargetPath(FileLike exportTargetPath)
     {
         _exportTargetPath = exportTargetPath;
     }

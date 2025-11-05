@@ -16,7 +16,6 @@
 package org.labkey.panoramapublic.pipeline;
 
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.admin.FolderArchiveDataTypes;
 import org.labkey.api.admin.FolderExportContext;
@@ -36,8 +35,8 @@ import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.writer.FileSystemFile;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.vfs.FileLike;
 
-import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -49,8 +48,6 @@ import java.util.Set;
  */
 public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.Factory>
 {
-    private static final Logger _log = LogManager.getLogger(ExperimentExportTask.class);
-
     private ExperimentExportTask(Factory factory, PipelineJob job)
     {
         super(factory, job);
@@ -117,15 +114,15 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
                 false, false, new StaticLoggerGetter(LogManager.getLogger(FolderWriterImpl.class)));
 
 
-        File exportDir = support.getExportDir();
+        FileLike exportDir = support.getExportDir();
         FileUtil.deleteDir(exportDir);
         if(exportDir.exists())
         {
-            throw new Exception("Could not delete already existing export directory " + exportDir.getAbsolutePath());
+            throw new Exception("Could not delete already existing export directory " + exportDir);
         }
-        if(!exportDir.mkdir())
+        if(!FileUtil.mkdir(exportDir))
         {
-            throw new Exception("Could not create directory " + exportDir.getAbsolutePath());
+            throw new Exception("Could not create directory " + exportDir);
         }
 
         FileSystemFile vf = new FileSystemFile(exportDir);
@@ -143,7 +140,7 @@ public class ExperimentExportTask extends PipelineJob.Task<ExperimentExportTask.
         }
 
         @Override
-        public PipelineJob.Task createTask(PipelineJob job)
+        public ExperimentExportTask createTask(PipelineJob job)
         {
             return new ExperimentExportTask(this, job);
         }

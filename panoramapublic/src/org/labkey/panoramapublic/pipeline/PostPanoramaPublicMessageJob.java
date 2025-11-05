@@ -41,7 +41,7 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
                                         String titlePrefix, boolean test)
     {
         super("Panorama Public", info, root);
-        setLogFile(root.getRootNioPath().resolve(FileUtil.makeFileNameWithTimestamp("PanoramaPublic-post-to-message-thread", "log")));
+        setLogFile(root.resolvePathToFileLike(FileUtil.makeFileNameWithTimestamp("PanoramaPublic-post-to-message-thread", "log")));
         _experimentAnnotationsIds = experimentAnnotationsIds;
         _message = message;
         _titlePrefix = titlePrefix;

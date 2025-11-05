@@ -16,6 +16,7 @@ import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileType;
 import org.labkey.nextflow.NextFlowConfiguration;
 import org.labkey.nextflow.NextFlowManager;
+import org.labkey.vfs.FileLike;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -143,9 +144,9 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
         }
     }
 
-    private boolean hasAwsSection(Path configFile) throws PipelineJobException
+    private boolean hasAwsSection(FileLike configFile) throws PipelineJobException
     {
-        try (InputStream in = Files.newInputStream(configFile);
+        try (InputStream in = configFile.openInputStream();
              InputStreamReader isReader = new InputStreamReader(in, StandardCharsets.UTF_8);
              BufferedReader reader = new BufferedReader(isReader))
         {
@@ -174,7 +175,7 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
     private @NotNull List<String> getArgs() throws PipelineJobException
     {
         NextFlowConfiguration config = NextFlowManager.get().getConfiguration();
-        Path configFile = getJob().getConfig();
+        FileLike configFile = getJob().getConfig();
 
         boolean aws = hasAwsSection(configFile);
 
@@ -194,7 +195,7 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
             args.add(s3Path);
         }
         args.add("-c");
-        args.add(configFile.toAbsolutePath().toString());
+        args.add(configFile.toNioPathForRead().toAbsolutePath().toString());
         args.add("-name");
         args.add(getJob().getNextFlowRunName(true));
         return args;

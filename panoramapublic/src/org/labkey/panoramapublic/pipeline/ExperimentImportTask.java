@@ -29,6 +29,7 @@ import org.labkey.api.security.User;
 import org.labkey.api.util.FileType;
 import org.labkey.api.writer.FileSystemFile;
 import org.labkey.api.writer.VirtualFile;
+import org.labkey.vfs.FileLike;
 
 import java.io.File;
 import java.util.Collections;
@@ -74,23 +75,23 @@ public class ExperimentImportTask extends PipelineJob.Task<ExperimentImportTask.
 
     public static void doImport(PipelineJob job, CopyExperimentJobSupport jobSupport) throws Exception
     {
-        File importDir = jobSupport.getExportDir();
+        FileLike importDir = jobSupport.getExportDir();
 
         if (!importDir.exists())
         {
             throw new Exception("TargetedMS experiment import failed: Could not find directory \"" + importDir.getName() + "\"");
         }
 
-        File folderXml = new File(importDir, "folder.xml");
+        FileLike folderXml = importDir.resolveChild("folder.xml");
         if(!folderXml.exists())
         {
-            throw new Exception("This directory doesn't contain an appropriate xml: " + importDir.getAbsolutePath());
+            throw new Exception("This directory doesn't contain an appropriate xml: " + importDir);
         }
 
         User user = job.getUser();
         Container container = job.getContainer();
-        VirtualFile importJobRoot = new FileSystemFile(folderXml.getParentFile());
-        FolderImportContext importCtx = new FolderImportContext(user, container, folderXml.toPath(),
+        VirtualFile importJobRoot = new FileSystemFile(folderXml.getParent());
+        FolderImportContext importCtx = new FolderImportContext(user, container, folderXml,
                 null, new PipelineJobLoggerGetter(job),
                 importJobRoot);
         importCtx.setSkipQueryValidation(true);
@@ -110,7 +111,7 @@ public class ExperimentImportTask extends PipelineJob.Task<ExperimentImportTask.
         }
 
         @Override
-        public PipelineJob.Task createTask(PipelineJob job)
+        public ExperimentImportTask createTask(PipelineJob job)
         {
             return new ExperimentImportTask(this, job);
         }
