@@ -6876,6 +6876,11 @@ public class PanoramaPublicController extends SpringActionController
                     return null;
                 }
 
+                if (_journalSubmission.hasPendingSubmission())
+                {
+                    errors.reject(ERROR_MSG, String.format("There is a pending re-submit request for this experiment on '%s'", _journal.getName()));
+                    return null;
+                }
                 if (expAnnot.isJournalCopy())
                 {
                     if (!_journalSubmission.isLatestExperimentCopy(_expAnnot.getId()))
@@ -6892,11 +6897,6 @@ public class PanoramaPublicController extends SpringActionController
                     if (copiedExperiment == null)
                     {
                         errors.reject(ERROR_MSG, String.format("Cannot find a copy of experiment Id %d on '%s'", expAnnot.getId(), _journal.getName()));
-                        return null;
-                    }
-                    if (submission.isPending())
-                    {
-                        errors.reject(ERROR_MSG, String.format("There is a pending re-submit request for experiment Id %d on '%s'", expAnnot.getId(), _journal.getName()));
                         return null;
                     }
                     return copiedExperiment;
