@@ -34,7 +34,7 @@
     URL: <b class="bold"><span class="nobr" id="webdav_url_link"><%=h(webdavUrl)%></span></b>
     <br/>
     <br/>
-    <b class="bold">Note: </b> If you plan to download large volumes of data or datasets from multiple projects,
+    <b class="bold">Note: </b> If you plan to download large volumes of data or datasets from multiple projects via WebDAV,
     please contact the PanoramaWeb team in advance so that we can coordinate the download to minimize load on the server
     and ensure reliable access.
 </p>
