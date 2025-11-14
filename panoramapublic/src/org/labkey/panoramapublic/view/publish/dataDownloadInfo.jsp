@@ -28,12 +28,13 @@
     client such as <span class="nobr"><%=simpleLink("CyberDuck", "https://cyberduck.io")%></span>
     or <span class="nobr"><%=simpleLink("WinSCP", "https://winscp.net/eng/docs/introduction")%></span>.
     For details look at <%=simpleLink("Download data from Panorama Public", downloadDataDocHref)%>.
-    Use the following URL, login email and password to connect to this folder:
+    Use the following URL to connect to this folder:
     <br/>
     <br/>
     URL: <b class="bold"><span class="nobr" id="webdav_url_link"><%=h(webdavUrl)%></span></b>
     <br/>
-    Login email: <b class="bold"><%=h(publicDataUser.getEmail())%></b>
     <br/>
-    Password: <b class="bold"><%=h(publicDataUser.getPassword())%></b>
+    <b class="bold">Note: </b> If you plan to download large volumes of data or datasets from multiple projects,
+    please contact the PanoramaWeb team in advance so that we can coordinate the download to minimize load on the server
+    and ensure reliable access.
 </p>
