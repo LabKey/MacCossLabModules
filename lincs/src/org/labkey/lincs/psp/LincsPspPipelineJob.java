@@ -43,7 +43,7 @@ public class LincsPspPipelineJob extends PipelineJob implements LincsPspJobSuppo
         String baseLogFileName = FileUtil.makeFileNameWithTimestamp("LincsPSP_" + (_oldPspJob != null ? "rerun_" : "") + run.getBaseName().replace(" ", "_"));
 
         LocalDirectory localDirectory = LocalDirectory.create(root, baseLogFileName,
-                !root.isCloudRoot() ? root.getRootPath().getAbsolutePath() : FileUtil.getTempDirectory().getPath());
+                !root.isCloudRoot() ? root.getRootFileLike() : FileUtil.getTempDirectoryFileLike());
         setLocalDirectory(localDirectory);
         setLogFile(localDirectory.determineLogFile());
 

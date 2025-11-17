@@ -17,10 +17,12 @@ package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.entity.mime.FileBody;
+import org.apache.hc.client5.http.entity.mime.InputStreamBody;
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
@@ -28,6 +30,7 @@ import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.logging.LogHelper;
+import org.labkey.vfs.FileLike;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,17 +52,17 @@ public class ProteomeXchangeService
 
     private static final Logger LOG = LogHelper.getLogger(ProteomeXchangeService.class, "Handles requests to the ProteomeXchange server");
 
-    public static String validatePxXml(File pxxmlFile, boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
+    public static String validatePxXml(FileLike pxxmlFile, boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
     {
         return postPxXml(pxxmlFile, testDatabase, user, pass, METHOD.validateXML);
     }
 
-    public static String submitPxXml(File pxxmlFile, boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
+    public static String submitPxXml(FileLike pxxmlFile, boolean testDatabase, String user, String pass) throws ProteomeXchangeServiceException
     {
         return postPxXml(pxxmlFile, testDatabase, user, pass, METHOD.submitDataset);
     }
 
-    private static String postPxXml(File pxxmlFile, boolean testDatabase, String user, String pass, METHOD method) throws ProteomeXchangeServiceException
+    private static String postPxXml(FileLike pxxmlFile, boolean testDatabase, String user, String pass, METHOD method) throws ProteomeXchangeServiceException
     {
         String responseMessage;
         try {
@@ -118,12 +121,12 @@ public class ProteomeXchangeService
     }
 
     @NotNull
-    private static MultipartEntityBuilder getMultipartEntityBuilder(File pxxmlFile, boolean testDatabase, METHOD method, String user, String pass)
+    private static MultipartEntityBuilder getMultipartEntityBuilder(FileLike pxxmlFile, boolean testDatabase, METHOD method, String user, String pass) throws IOException
     {
         MultipartEntityBuilder builder = MultipartEntityBuilder.create();
         if(pxxmlFile != null)
         {
-            builder.addPart("ProteomeXchangeXML", new FileBody(pxxmlFile));
+            builder.addPart("ProteomeXchangeXML", new InputStreamBody(pxxmlFile.openInputStream(), ContentType.TEXT_XML, pxxmlFile.getName()));
         }
         builder.addTextBody("PXPartner", user);
         builder.addTextBody("authentication", pass);
@@ -140,7 +143,7 @@ public class ProteomeXchangeService
         return builder;
     }
 
-    private static MultipartEntityBuilder getMultipartEntityBuilder(boolean testDatabase, METHOD method, String user, String pass)
+    private static MultipartEntityBuilder getMultipartEntityBuilder(boolean testDatabase, METHOD method, String user, String pass) throws IOException
     {
         return getMultipartEntityBuilder(null, testDatabase, method, user, pass);
     }

@@ -19,7 +19,6 @@ import org.labkey.nextflow.NextFlowManager;
 import org.labkey.vfs.FileLike;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -76,7 +75,7 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
             // Need to pass to the main process directly in the future to allow concurrent execution for different users
             ProcessBuilder secretsPB = new ProcessBuilder("nextflow", "secrets", "set", "PANORAMA_API_KEY", apiKey);
             log.info("Setting secrets");
-            File dir = getJob().getLogFile().getParentFile();
+            FileLike dir = getJob().getLogFileLike().getParent();
             getJob().runSubProcess(secretsPB, dir);
 
             ProcessBuilder executionPB = new ProcessBuilder(getArgs());
@@ -85,9 +84,9 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
             NextFlowPipelineJob.LOG.info("Finished executing NextFlow: {}", getJob().getJsonJobInfo(true));
 
             RecordedAction action = new RecordedAction(ACTION_NAME);
-            for (Path inputFile : getJob().getInputFilePaths())
+            for (FileLike inputFile : getJob().getInputFiles())
             {
-                action.addInput(inputFile.toFile(), SPECTRA_INPUT_ROLE);
+                action.addInput(inputFile, SPECTRA_INPUT_ROLE);
             }
             addOutputs(action, getJob().getLogFilePath().getParent().resolve("reports"), log);
             addOutputs(action, getJob().getLogFilePath().getParent().resolve("results"), log);
