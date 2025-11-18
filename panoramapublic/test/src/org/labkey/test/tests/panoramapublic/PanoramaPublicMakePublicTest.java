@@ -50,7 +50,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         // Verify that a folder admin in the source folder, who is not the submitter or lab head will not see the
         // "Make Public" button in the Panorama Public copy.
         verifyMakePublicButtonIsNotVisible(PANORAMA_PUBLIC, targetFolder, ADMIN_2,
-                "Make Public button should not be visible to a non-submitter and non-lab head user in the Panorama Public copy");
+                "Make Public button should not be visible in the Panorama Public copy to a user who is neither submitter nor lab head");
 
         // Verify that the submitter can make the data public
         verifyMakePublic(PANORAMA_PUBLIC, targetFolder, SUBMITTER, true);
@@ -58,11 +58,11 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         // Resubmit the folder.  This is still possible since the Panorama Public copy is not yet associated with a publication.
         resubmitFolder(projectName, folderName, SUBMITTER, true);
 
-        // Data copy is pending. Verify that the "Make Public" button in not available in the source folder or the copied folder
+        // Data copy is pending. Verify that the "Make Public" button in not visible in the source folder or the copied folder
         verifyMakePublicButtonIsNotVisible(PANORAMA_PUBLIC, targetFolder, SUBMITTER,
-                "Make Public button should not be visible in the Panorama Public copy for submitter if data copy is pending");
+                "Make Public button should not be visible in the Panorama Public copy if data copy is pending");
         verifyMakePublicButtonIsNotVisible(projectName, folderName, SUBMITTER,
-                "Make Public button should not be visible in the Panorama Public copy for submitter if data copy is pending");
+                "Make Public button should not be visible in the source folder if data copy is pending");
 
         // Verify that the submitter cannot enter the MakePublicAction URL in the browser to make the data public
         verifyCannotMakePublicPendingResubmit(PANORAMA_PUBLIC, targetFolder, SUBMITTER); // In the target folder
@@ -297,7 +297,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         stopImpersonating();
     }
 
-    private void verifyMakePublicButtonVisible(boolean visible, String projectName, String folderName, String user, String errorMessage)
+    private void verifyMakePublicButtonVisible(boolean expectVisible, String projectName, String folderName, String user, String errorMessage)
     {
         if (isImpersonating())
         {
@@ -308,7 +308,7 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         goToDashboard();
         TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
 
-        if (visible)
+        if (expectVisible)
         {
             assertTrue(errorMessage, expWebPart.hasMakePublicButton());
         }
