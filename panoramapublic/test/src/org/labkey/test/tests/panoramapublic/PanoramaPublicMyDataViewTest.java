@@ -7,6 +7,7 @@ import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
+import org.labkey.test.components.WebPartPanel;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 import org.openqa.selenium.By;
@@ -191,7 +192,10 @@ public class PanoramaPublicMyDataViewTest extends PanoramaPublicBaseTest
     @NotNull
     private DataRegionTable myDataView()
     {
-        var table = new DataRegionTable.DataRegionFinder(getDriver()).refindWhenNeeded();
+        // "Panorama Public Search" re-renders webpart with a different name which can cause a
+        // StaleElementReferenceException. Find the dataregion by the updated webpart title.
+        var table = new DataRegionTable.DataRegionFinder(getDriver())
+            .find(WebPartPanel.WebPart(getDriver()).withTitle("Panorama Public Experiments").waitFor());
         assertTrue(table.hasHeaderMenu("My Data"));
         table.clickHeaderButtonAndWait("My Data");
         return new DataRegionTable.DataRegionFinder(getDriver()).refindWhenNeeded();
