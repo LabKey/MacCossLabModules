@@ -192,8 +192,8 @@ public class PanoramaPublicMyDataViewTest extends PanoramaPublicBaseTest
     @NotNull
     private DataRegionTable myDataView()
     {
-        // The "Panorama Public Search" re-renders the "Targeted MS Experiment List" webpart with a different name which
-        // can cause a StaleElementReferenceException. Find the dataregion by the updated webpart title.
+        // The "Panorama Public Search" webpart re-renders the "Targeted MS Experiment List" webpart with a different
+        // name which can cause a StaleElementReferenceException. Find the dataregion by the updated webpart title.
         var table = new DataRegionTable.DataRegionFinder(getDriver())
             .find(WebPartPanel.WebPart(getDriver()).withTitle("Panorama Public Experiments").waitFor());
         assertTrue(table.hasHeaderMenu("My Data"));
