@@ -18,11 +18,13 @@ import org.labkey.test.util.PermissionsHelper;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebElement;
 
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 @Category({External.class, MacCossLabModules.class})
@@ -45,24 +47,38 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         verifyIsPublicColumn(PANORAMA_PUBLIC, experimentTitle, false);
         verifyPermissions(projectName, folderName, PANORAMA_PUBLIC, targetFolder);
 
-        // Verify that the submitter can make the data public
-        verifyMakePublic(PANORAMA_PUBLIC, targetFolder, SUBMITTER, true);
         // Verify that a folder admin in the source folder, who is not the submitter or lab head will not see the
         // "Make Public" button in the Panorama Public copy.
-        verifyMakePublic(PANORAMA_PUBLIC, targetFolder, ADMIN_2, false);
+        verifyMakePublicButtonIsNotVisible(PANORAMA_PUBLIC, targetFolder, ADMIN_2,
+                "Make Public button should not be visible in the Panorama Public copy to a user who is neither submitter nor lab head");
+
+        // Verify that the submitter can make the data public
+        verifyMakePublic(PANORAMA_PUBLIC, targetFolder, SUBMITTER, true);
 
         // Resubmit the folder.  This is still possible since the Panorama Public copy is not yet associated with a publication.
         resubmitFolder(projectName, folderName, SUBMITTER, true);
+
+        // Data copy is pending. Verify that the "Make Public" button in not visible in the source folder or the copied folder
+        verifyMakePublicButtonIsNotVisible(PANORAMA_PUBLIC, targetFolder, SUBMITTER,
+                "Make Public button should not be visible in the Panorama Public copy if data copy is pending");
+        verifyMakePublicButtonIsNotVisible(projectName, folderName, SUBMITTER,
+                "Make Public button should not be visible in the source folder if data copy is pending");
+
+        // Verify that the submitter cannot enter the MakePublicAction URL in the browser to make the data public
+        verifyCannotMakePublicPendingResubmit(PANORAMA_PUBLIC, targetFolder, SUBMITTER); // In the target folder
+        verifyCannotMakePublicPendingResubmit(projectName, folderName, SUBMITTER); // In the source folder
 
         // Re-copy the experiment to the Panorama Public project. Do not delete the previous copy
         makeCopy(shortAccessUrl, experimentTitle, targetFolder, true, false);
 
         // Verify that the "Make Public button is not visible in the older copy of the data.
         String v1Folder = targetFolder + " V.1";
-        verifyMakePublic(PANORAMA_PUBLIC, v1Folder, SUBMITTER, true);
-        // Verify that the submitter can make data public, and add publication details
+        verifyMakePublicButtonIsNotVisible(PANORAMA_PUBLIC, v1Folder, SUBMITTER,
+                "Make Public button should not be visible in an older copy of the data");
+        verifyCannotMakePublicOldCopy(PANORAMA_PUBLIC, v1Folder, SUBMITTER);
+
+        // Verify that the submitter can make the latest copy of the data public, and add publication details
         verifyMakePublic(PANORAMA_PUBLIC, targetFolder, SUBMITTER, true, true);
-        verifyMakePublic(PANORAMA_PUBLIC, v1Folder, ADMIN_2, false);
 
         verifyIsPublicColumn(PANORAMA_PUBLIC, experimentTitle, true);
 
@@ -280,6 +296,64 @@ public class PanoramaPublicMakePublicTest extends PanoramaPublicBaseTest
         }
         stopImpersonating();
     }
+
+    private void verifyMakePublicButtonVisible(boolean expectVisible, String projectName, String folderName, String user, String errorMessage)
+    {
+        if (isImpersonating())
+        {
+            stopImpersonating(true);
+        }
+        goToProjectFolder(projectName, folderName);
+        impersonate(user);
+        goToDashboard();
+        TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
+
+        if (expectVisible)
+        {
+            assertTrue(errorMessage, expWebPart.hasMakePublicButton());
+        }
+        else
+        {
+            assertFalse(errorMessage, expWebPart.hasMakePublicButton());
+        }
+    }
+
+    private void verifyMakePublicButtonIsVisible(String projectName, String folderName, String user, String errorMessage)
+    {
+        verifyMakePublicButtonVisible(true, projectName, folderName, user, errorMessage);
+    }
+
+    private void verifyMakePublicButtonIsNotVisible(String projectName, String folderName, String user, String errorMessage)
+    {
+        verifyMakePublicButtonVisible(false, projectName, folderName, user, errorMessage);
+    }
+
+    private void verifyCannotMakePublicOldCopy(String projectName, String folderName, String user)
+    {
+        verifyCannotMakePublic(projectName, folderName, user, "not the most recent copy of the data");
+    }
+
+    private void verifyCannotMakePublicPendingResubmit(String projectName, String folderName, String user)
+    {
+        verifyCannotMakePublic(projectName, folderName, user, "There is a pending re-submit request for this experiment");
+    }
+
+    private void verifyCannotMakePublic(String projectName, String folderName, String user, String expectedMessage)
+    {
+        if (isImpersonating())
+        {
+            stopImpersonating(true);
+        }
+        goToProjectFolder(projectName, folderName);
+        impersonate(user);
+        goToDashboard();
+        TargetedMsExperimentWebPart expWebPart = new TargetedMsExperimentWebPart(this);
+        Integer expAnnotationsId = expWebPart.getExperimentAnnotationsId();
+        assertNotNull(expAnnotationsId);
+        beginAt(WebTestHelper.buildURL("panoramapublic", getCurrentContainerPath(), "makePublic", Map.of("id", expAnnotationsId)));
+        waitForText(expectedMessage);
+    }
+
 
     private void makeDataPublic()
     {
