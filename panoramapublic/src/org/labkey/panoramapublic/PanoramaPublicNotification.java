@@ -396,14 +396,15 @@ public class PanoramaPublicNotification
         message.append("Dear ").append(getUserName(submitter)).append(",").append(NL2)
                 .append("We are reaching out regarding your data on Panorama Public (").append(shortUrl).append("), which has been private since ")
                 .append(dateString).append(".")
-                .append("\n\n**Is the paper associated with this work already published?**")
-                .append("\n- If yes: Please make your data public by clicking the \"Make Public\" button in your folder or by clicking this link: ")
+                .append(NL2).append(bold("Title:")).append(" ").append(escape(exptAnnotations.getTitle()))
+                .append(NL2).append(bold("Is the paper associated with this work already published?"))
+                .append(NL).append("- If yes: Please make your data public by clicking the \"Make Public\" button in your folder or by clicking this link: ")
                 .append(bold(link("Make Data Public", makePublicLink)))
                 .append(". This helps ensure that your valuable research is easily accessible to the community.")
-                .append("\n- If not: You have a couple of options:")
-                .append("\n  - **Request an Extension** - If your paper is still under review, or you need additional time, please let us know by clicking ")
+                .append(NL).append("- If not: You have a couple of options:")
+                .append(NL).append("  - ").append(bold("Request an Extension")).append(" - If your paper is still under review, or you need additional time, please let us know by clicking ")
                 .append(bold(link("Request Extension", requestExtensionUrl.getURIString()))).append(".")
-                .append("\n  - **Delete from Panorama Public** - If you no longer wish to host your data on Panorama Public, please click ")
+                .append(NL).append("  - ").append(bold("Delete from Panorama Public")).append(" - If you no longer wish to host your data on Panorama Public, please click ")
                 .append(bold(link("Request Deletion", requesDeletionUrl.getURIString()))).append(". ")
                 .append("We will remove your data from Panorama Public.");
         if (sourceExperiment != null)
@@ -413,9 +414,9 @@ public class PanoramaPublicNotification
                     .append(") will remain intact, allowing you to resubmit your data in the future if you wish.");
         }
 
-        message.append("\n\nIf you have any questions or need further assistance, please do not hesitate to respond to this message by ")
+        message.append(NL2).append("If you have any questions or need further assistance, please do not hesitate to respond to this message by ")
         .append(bold(link("clicking here", respondToMessageUrl.getURIString()))).append(".")
-        .append("\n\nThank you for sharing your research on Panorama Public. We appreciate your commitment to open science and your contributions to the research community.")
+        .append(NL2).append("Thank you for sharing your research on Panorama Public. We appreciate your commitment to open science and your contributions to the research community.")
         .append(NL2).append("Best regards,")
         .append(NL).append(getUserName(journalAdmin));
         return message.toString();
