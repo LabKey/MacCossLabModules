@@ -2,9 +2,15 @@ package org.labkey.test.components.panoramapublic;
 
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
+import org.labkey.test.WebTest;
+import org.labkey.test.WebTestHelper;
 import org.labkey.test.components.BodyWebPart;
 import org.labkey.test.util.DataRegionTable;
 import org.openqa.selenium.WebElement;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Map;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -81,6 +87,24 @@ public class TargetedMsExperimentWebPart extends BodyWebPart <TargetedMsExperime
     public void clickMakePublic()
     {
         clickLink(elementCache().makePublicButton, "Expected to see a \"Make Public\" button");
+    }
+
+    public Integer getExperimentAnnotationsId()
+    {
+        WebElement moreDetailsLink = elementCache().moreDetailsLink;
+        if (moreDetailsLink != null)
+        {
+            String href = moreDetailsLink.getAttribute("href");
+            try
+            {
+                return Integer.parseInt(WebTestHelper.parseUrlQuery(new URL(href)).get("id"));
+            }
+            catch (MalformedURLException e)
+            {
+                throw new RuntimeException(e);
+            }
+        }
+        return null;
     }
 
     public void clickAddPublication()
