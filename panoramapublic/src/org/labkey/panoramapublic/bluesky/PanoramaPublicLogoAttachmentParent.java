@@ -2,7 +2,7 @@ package org.labkey.panoramapublic.bluesky;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.labkey.api.attachments.AttachmentType;
+import org.labkey.api.attachments.AttachmentParentType;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.panoramapublic.model.Journal;
@@ -29,7 +29,7 @@ public class PanoramaPublicLogoAttachmentParent extends ContainerManager.Contain
     }
 
     @Override
-    public @NotNull AttachmentType getAttachmentType()
+    public @NotNull AttachmentParentType getAttachmentParentType()
     {
         return PanoramaPublicLogoResourceType.get();
     }

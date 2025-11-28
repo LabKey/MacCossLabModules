@@ -1,11 +1,11 @@
 package org.labkey.panoramapublic.catalog;
 
 import org.jetbrains.annotations.NotNull;
-import org.labkey.api.attachments.AttachmentType;
+import org.labkey.api.attachments.AttachmentParentType;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.SQLFragment;
 
-public class CatalogImageAttachmentType implements AttachmentType
+public class CatalogImageAttachmentType implements AttachmentParentType
 {
     private static final CatalogImageAttachmentType INSTANCE = new CatalogImageAttachmentType();
 
@@ -21,7 +21,7 @@ public class CatalogImageAttachmentType implements AttachmentType
     @Override
     public @NotNull String getUniqueName()
     {
-        return getClass().getName();
+        return "CatalogImage";
     }
 
     @Override

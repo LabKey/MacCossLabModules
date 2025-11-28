@@ -1,11 +1,11 @@
 package org.labkey.panoramapublic.bluesky;
 
 import org.jetbrains.annotations.NotNull;
-import org.labkey.api.attachments.AttachmentType;
+import org.labkey.api.attachments.AttachmentParentType;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.SQLFragment;
 
-public class PanoramaPublicLogoResourceType implements AttachmentType
+public class PanoramaPublicLogoResourceType implements AttachmentParentType
 {
     private static final PanoramaPublicLogoResourceType INSTANCE = new PanoramaPublicLogoResourceType();
 
@@ -21,17 +21,17 @@ public class PanoramaPublicLogoResourceType implements AttachmentType
     @Override
     public @NotNull String getUniqueName()
     {
-        return getClass().getName();
+        return "PanoramaPublicLogoResource";
     }
 
     @Override
     public void addWhereSql(SQLFragment sql, String parentColumn, String documentNameColumn)
     {
         sql.append(parentColumn).append(" IN (SELECT EntityId FROM ")
-                .append(CoreSchema.getInstance().getTableInfoContainers(), "c").append(")")
-                .append(" AND (")
-                .append(documentNameColumn).append(" LIKE ")
-                .appendStringLiteral(PanoramaPublicLogoManager.LOGO_FILE_PREFIX + "%", CoreSchema.getInstance().getSqlDialect())
-                .append(") ");
+            .append(CoreSchema.getInstance().getTableInfoContainers(), "c").append(")")
+            .append(" AND (")
+            .append(documentNameColumn).append(" LIKE ")
+            .appendStringLiteral(PanoramaPublicLogoManager.LOGO_FILE_PREFIX + "%", CoreSchema.getInstance().getSqlDialect())
+            .append(") ");
     }
 }
