@@ -52,6 +52,7 @@
     CopyExperimentForm form = bean.getForm();
     ExperimentAnnotations expAnnot = form.lookupExperiment();
     Journal journal = form.lookupJournal();
+    Container folderTreeRoot = journal.getProject();
     JournalSubmission js = bean.getJournalSubmission();
     Submission currentSubmission = js.getLatestSubmission();
     ExperimentAnnotations previousCopy = ExperimentAnnotationsManager.getLatestCopyForSubmission(js);
@@ -93,15 +94,20 @@
         var folderTreeStore = Ext4.create('Ext.data.TreeStore', {
             proxy: {
                 type: 'ajax',
-                url: LABKEY.ActionURL.buildURL('core', 'getExtContainerAdminTree.api'),
-                extraParams: {move: false, requiredPermission: <%=q(RoleManager.getPermission(AdminPermission.class).getUniqueName())%>, showContainerTabs: false}
+                url: LABKEY.ActionURL.buildURL('core', 'getExtContainerTree.api'),
+                extraParams: {
+                    annotateLeaf: true,
+                    requiredPermission: <%=q(RoleManager.getPermission(AdminPermission.class).getUniqueName())%>,
+                    }
             },
             root: {
-                expanded: false
+                id : <%=folderTreeRoot.getRowId()%>,
+                expanded   : true,
+                expandable : false,
+                text       : <%=q(folderTreeRoot.getName())%>
             },
             folderSort: false,
-            autoLoad: true,
-            defaultRootId: <%=ContainerManager.getRoot().getRowId()%>
+            autoLoad: true
         });
 
         var form = Ext4.create('Ext.form.Panel', {
@@ -158,9 +164,9 @@
                     xtype: 'treepanel',
                     fieldLabel: 'Destination',
                     store: folderTreeStore,
-                    rootVisible: false,
+                    rootVisible: true,
                     enableDrag: false,
-                    useArrows : false,
+                    useArrows : true,
                     autoScroll: true,
                     title : '',
                     border: true,
@@ -168,15 +174,23 @@
                     height:150,
                     listeners: {
                         select: function(node, record, index, eOpts){
-                            //console.log("the record is...");
-                            //console.log(record.get('id'));
-                            //console.log(record.get('text'));
+                            const displayField = Ext4.ComponentQuery.query('#destParentContainer_DisplayField')[0];
+                            if (displayField) {
+                                displayField.setValue(record.getPath('text', '/'));
+                            }
 
-                            var displayField = Ext4.ComponentQuery.query('#destParentContainer_DisplayField')[0];
-                            displayField.setValue(record.get('text'));
-
-                            var hiddenField = Ext4.ComponentQuery.query('#destParentContainer_Input')[0];
-                            hiddenField.setValue(record.get('id'));
+                            const hiddenField = Ext4.ComponentQuery.query('#destParentContainer_Input')[0];
+                            if (hiddenField) {
+                                hiddenField.setValue(record.get('id'));
+                            }
+                        },
+                        load : function(store, node) {
+                            // Data on Panorama Public is organized by year. Select the subfolder for the current year.
+                            const currentYear = new Date().getFullYear().toString();
+                            const target = store.getRootNode().findChild('text', currentYear, true);
+                            if (target) {
+                                this.getSelectionModel().select(target);
+                            }
                         }
                     }
                 },

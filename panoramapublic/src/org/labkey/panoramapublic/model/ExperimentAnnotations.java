@@ -224,6 +224,11 @@ public class ExperimentAnnotations extends DbEntity
         return instruments;
     }
 
+    public String getInstrumentsCommaSeparated()
+    {
+        return StringUtils.join(getInstruments(), ", ");
+    }
+
     public void setInstrument(String instrument)
     {
         _instrument = instrument;
@@ -504,12 +509,12 @@ public class ExperimentAnnotations extends DbEntity
 
     /**
      * Returns true if the experiment is in an 'Experimental Data' folder that is public and the experiment is
-     * associated with a published paper.
+     * associated with a peer-reviewed paper (excludes biorxiv and medrxiv preprint servers).
      */
     public boolean isFinal()
     {
         TargetedMSService.FolderType folderType = TargetedMSService.get().getFolderType(getContainer());
-        return Experiment.equals(folderType) && isPublic() && isPublished();
+        return Experiment.equals(folderType) && isPublic() && isPeerReviewed();
     }
 
     public boolean hasCompletePublicationInfo()

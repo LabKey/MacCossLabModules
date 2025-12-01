@@ -2,6 +2,10 @@ package org.labkey.panoramapublic.model;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.labkey.api.announcements.api.Announcement;
+import org.labkey.api.announcements.api.AnnouncementService;
+import org.labkey.api.data.Container;
+import org.labkey.api.security.User;
 import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.query.SubmissionManager;
 
@@ -69,9 +73,18 @@ public class JournalSubmission
         return _journalExperiment.getModifiedBy();
     }
 
-    public Integer getAnnouncementId()
+    public @Nullable Integer getAnnouncementId()
     {
         return _journalExperiment.getAnnouncementId();
+    }
+
+    public @Nullable Announcement getAnnouncement(@NotNull AnnouncementService announcementSvc,
+                                                                @NotNull Container announcementsContainer,
+                                                                @NotNull User user)
+    {
+        return (getAnnouncementId() != null)
+                ? announcementSvc.getAnnouncement(announcementsContainer, user, getAnnouncementId())
+                : null; // old data before we started posting submission requests to a message board
     }
 
     public Integer getReviewerId()
