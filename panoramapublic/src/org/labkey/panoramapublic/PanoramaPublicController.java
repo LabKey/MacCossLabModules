@@ -4723,7 +4723,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             else
             {
-                return FileSystemLike.wrapFile(fileRoot.resolve(fileName));
+                return FileSystemLike.wrapFile(fileRoot).resolveChild(fileName);
             }
         }
     }
