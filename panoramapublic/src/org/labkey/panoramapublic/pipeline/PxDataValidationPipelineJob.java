@@ -14,8 +14,6 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
-import java.io.File;
-
 public class PxDataValidationPipelineJob extends PipelineJob implements PxDataValidationJobSupport
 {
     private final ExperimentAnnotations _experimentAnnotations;
@@ -41,7 +39,7 @@ public class PxDataValidationPipelineJob extends PipelineJob implements PxDataVa
         _description = String.format("Validating data for experiment Id: %d, validation Id: %d", experiment.getId(), validationId);
 
         String baseLogFileName = FileUtil.makeFileNameWithTimestamp("Experiment_Validation_" + experiment.getExperimentId(), "log");
-        setLogFile(new File(root.getLogDirectory(), baseLogFileName));
+        setLogFile(root.getLogDirectory(true).resolveChild(baseLogFileName));
 
         header("Validating data for a ProteomeXchange submission.");
     }

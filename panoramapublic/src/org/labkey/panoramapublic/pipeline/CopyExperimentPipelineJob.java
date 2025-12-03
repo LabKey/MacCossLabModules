@@ -34,9 +34,6 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.vfs.FileLike;
 
-import java.io.File;
-import java.io.IOException;
-
 /**
  * User: vsharma
  * Date: 8/21/2014
@@ -118,7 +115,7 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
     }
 
     @Override
-    public TaskPipeline getTaskPipeline()
+    public TaskPipeline<?> getTaskPipeline()
     {
         return PipelineJobService.get().getTaskPipeline(new TaskId(CopyExperimentPipelineJob.class));
     }
@@ -132,19 +129,6 @@ public class CopyExperimentPipelineJob extends PipelineJob implements CopyExperi
            super.finallyCleanUpLocalDirectory();
        }
    }
-
-    public static File getLogFileFor(PipeRoot root, ExperimentAnnotations experimentAnnotations) throws IOException
-    {
-        File rootDir = root.getLogDirectory();
-        if (!rootDir.exists())
-        {
-            throw new IOException("Pipeline root directory " + rootDir.getAbsolutePath() + " does not exist.");
-        }
-
-        String logFileName = "Experiment_" + experimentAnnotations.getExperimentId() + ".log";
-
-        return new File(rootDir, logFileName);
-    }
 
     @Override
     public ExperimentAnnotations getExpAnnotations()

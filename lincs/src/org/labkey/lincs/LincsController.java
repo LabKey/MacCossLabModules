@@ -87,6 +87,7 @@ import org.labkey.lincs.psp.LincsPspPipelineJob;
 import org.labkey.lincs.psp.LincsPspUtil;
 import org.labkey.lincs.psp.PspEndpoint;
 import org.labkey.lincs.view.GctUtils;
+import org.labkey.vfs.FileLike;
 import org.springframework.beans.MutablePropertyValues;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
@@ -144,35 +145,32 @@ public class LincsController extends SpringActionController
         }
     }
 
-    private void copyFiles(Path gctDir, String outputFileBaseName, Path gct, File reportDir) throws IOException
+    private void copyFiles(Path gctDir, String outputFileBaseName, Path gct, FileLike reportDir) throws IOException
     {
         // reportDir is a local directory under tomcat's temp directory
-        File[] reportDirFiles = reportDir.listFiles(new FilenameFilter()
+        List<FileLike> reportDirFiles = reportDir.getChildren((f) ->
         {
-            @Override
-            public boolean accept(File dir, String name)
-            {
-                return name.toLowerCase().endsWith(".txt")
+            String name = f.getName();
+            return name.toLowerCase().endsWith(".txt")
                         || name.toLowerCase().endsWith(".gct")
                         || name.equals("script.Rout");
-            }
         });
 
         // The report should create two files: lincs.gct and lincs.processed.gct
         // Copy both to the GCT folder
-        for(File file: reportDirFiles)
+        for(FileLike file: reportDirFiles)
         {
             if(file.getName().equalsIgnoreCase("lincs.gct"))
             {
-                Files.copy(file.toPath(), gct, StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(file.toNioPathForRead(), gct, StandardCopyOption.REPLACE_EXISTING);
             }
             else if(file.getName().equalsIgnoreCase("console.txt"))
             {
-                Files.copy(file.toPath(), gctDir.resolve(outputFileBaseName + ".console.txt" ), StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(file.toNioPathForRead(), gctDir.resolve(outputFileBaseName + ".console.txt" ), StandardCopyOption.REPLACE_EXISTING);
             }
             else if(file.getName().equals("script.Rout"))
             {
-                Files.copy(file.toPath(), gctDir.resolve(outputFileBaseName + ".script.Rout" ), StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(file.toNioPathForRead(), gctDir.resolve(outputFileBaseName + ".script.Rout" ), StandardCopyOption.REPLACE_EXISTING);
             }
         }
     }
@@ -306,11 +304,11 @@ public class LincsController extends SpringActionController
             }
             catch(Exception e)
             {
-                copyFiles(gctDir, outputFileBaseName, downloadFile, rreport.getReportDir(getContainer().getId()));
+                copyFiles(gctDir, outputFileBaseName, downloadFile, rreport.getReportDirFileLike(getContainer().getId()));
                 throw new ApiUsageException("There was an error running the GCT R script.", e);
             }
 
-            copyFiles(gctDir, outputFileBaseName, downloadFile, rreport.getReportDir(getContainer().getId()));
+            copyFiles(gctDir, outputFileBaseName, downloadFile, rreport.getReportDirFileLike(getContainer().getId()));
 
             if(!Files.exists(downloadFile))
             {
