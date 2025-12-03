@@ -25,7 +25,6 @@ import org.labkey.nextflow.NextFlowManager;
 import org.labkey.vfs.FileLike;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -117,7 +116,7 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
     @Override
     public String getDescription()
     {
-        return "NextFlow analysis of " + StringUtilsLabKey.pluralize(getInputFilePaths().size(), "file") + " using config: " + config.getName();
+        return "NextFlow analysis of " + StringUtilsLabKey.pluralize(getInputFiles().size(), "file") + " using config: " + config.getName();
     }
 
     @Override
@@ -139,13 +138,13 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
     }
 
     @Override
-    public File findInputFile(String name)
+    public FileLike findInputFile(String name)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public File findOutputFile(String name)
+    public FileLike findOutputFile(String name)
     {
         return null;
     }

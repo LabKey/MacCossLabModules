@@ -1180,7 +1180,7 @@ public class SkylineToolsStoreController extends SpringActionController
                 }
                 else
                 {
-                    PageFlowUtil.streamFile(getViewContext().getResponse(), downloadFile, true);
+                    PageFlowUtil.streamFile(getViewContext().getResponse(), downloadFile.toPath(), true);
                     return null;
                 }
             }

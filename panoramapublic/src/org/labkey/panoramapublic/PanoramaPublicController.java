@@ -139,6 +139,7 @@ import org.labkey.api.view.*;
 import org.labkey.api.view.template.ClientDependency;
 import org.labkey.api.wiki.WikiRendererType;
 import org.labkey.api.wiki.WikiRenderingService;
+import org.labkey.api.writer.PrintWriters;
 import org.labkey.panoramapublic.bluesky.BlueskyApiClient;
 import org.labkey.panoramapublic.bluesky.BlueskyException;
 import org.labkey.panoramapublic.bluesky.BlueskySettingsManager;
@@ -4617,11 +4618,11 @@ public class PanoramaPublicController extends SpringActionController
             }
         }
 
-        private File writePxXmlFile(String xmlString) throws PxException
+        private FileLike writePxXmlFile(String xmlString) throws PxException
         {
-            File xml = getLocalFile(getContainer(), "px.xml"); // TODO: Add date time stamp
+            FileLike xml = getLocalFile(getContainer(), "px.xml"); // TODO: Add date time stamp
 
-            try (PrintWriter out = new PrintWriter(new FileWriter(xml, StandardCharsets.UTF_8)))
+            try (PrintWriter out = PrintWriters.getPrintWriter(xml.openOutputStream()))
             {
                 out.write(xmlString);
             }
@@ -4656,7 +4657,7 @@ public class PanoramaPublicController extends SpringActionController
 
         private void validatePxXml(boolean useTestDb, String pxChangeLog, String pxUser, String pxPassword, BindException errors) throws PxException, ProteomeXchangeServiceException
         {
-            File xmlFile = writePxXmlFile(createPxXml(_expAnnot, _journalExperiment, _submission, _validationStatus, pxChangeLog, true).getXml());
+            FileLike xmlFile = writePxXmlFile(createPxXml(_expAnnot, _journalExperiment, _submission, _validationStatus, pxChangeLog, true).getXml());
             _pxResponse = ProteomeXchangeService.validatePxXml(xmlFile, useTestDb, pxUser, pxPassword);
             if(ProteomeXchangeService.responseHasErrors(_pxResponse))
             {
@@ -4677,7 +4678,7 @@ public class PanoramaPublicController extends SpringActionController
                 return;
             }
             PxXml pxXml = createPxXml(_expAnnot, _journalExperiment, _submission, _validationStatus, pxChangeLog, true);
-            File xmlFile = writePxXmlFile(pxXml.getXml());
+            FileLike xmlFile = writePxXmlFile(pxXml.getXml());
             _pxResponse = ProteomeXchangeService.submitPxXml(xmlFile, useTestDb, pxUser, pxPassword);
             if(ProteomeXchangeService.responseHasErrors(_pxResponse))
             {
@@ -4699,7 +4700,7 @@ public class PanoramaPublicController extends SpringActionController
             submitPxXml(useTestDb, testMode, pxChangeLog, pxUser, pxPassword, errors);
         }
 
-        private static File getLocalFile(Container container, String fileName) throws PxException
+        private static FileLike getLocalFile(Container container, String fileName) throws PxException
         {
             // File.createTempFile()
             java.nio.file.Path fileRoot = FileContentService.get().getFileRootPath(container, FileContentService.ContentType.files);
@@ -4713,7 +4714,7 @@ public class PanoramaPublicController extends SpringActionController
                 if (root != null)
                 {
                     LocalDirectory localDirectory = LocalDirectory.create(root);
-                    return new File(localDirectory.getLocalDirectoryFile(), fileName);
+                    return localDirectory.getLocalDirectoryFile().resolveChild(fileName);
                 }
                 else
                 {
@@ -4722,7 +4723,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             else
             {
-                return fileRoot.resolve(fileName).toFile();
+                return FileSystemLike.wrapFile(fileRoot).resolveChild(fileName);
             }
         }
     }
