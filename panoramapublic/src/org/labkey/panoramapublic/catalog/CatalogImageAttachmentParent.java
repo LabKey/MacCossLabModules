@@ -2,7 +2,7 @@ package org.labkey.panoramapublic.catalog;
 
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.attachments.AttachmentParent;
-import org.labkey.api.attachments.AttachmentType;
+import org.labkey.api.attachments.AttachmentParentType;
 import org.labkey.api.data.Container;
 import org.labkey.api.view.ShortURLRecord;
 
@@ -29,7 +29,7 @@ public class CatalogImageAttachmentParent implements AttachmentParent
     }
 
     @Override
-    public @NotNull AttachmentType getAttachmentType()
+    public @NotNull AttachmentParentType getAttachmentParentType()
     {
         return CatalogImageAttachmentType.get();
     }
