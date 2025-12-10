@@ -85,7 +85,7 @@ public class PanoramaPublicMyDataViewTest extends PanoramaPublicBaseTest
         // Sign out. Guest should not be able to see the "My Data" button
         simpleSignOut();
         goToProjectHome(PANORAMA_PUBLIC);
-        var table = new DataRegionTable.DataRegionFinder(getDriver()).refindWhenNeeded();
+        var table = findPanoramaPublicExperimentsDataRegion();
         assertFalse(table.hasHeaderMenu("My Data"));
 
         simpleSignIn();
@@ -192,12 +192,17 @@ public class PanoramaPublicMyDataViewTest extends PanoramaPublicBaseTest
     @NotNull
     private DataRegionTable myDataView()
     {
-        // The "Panorama Public Search" webpart re-renders the "Targeted MS Experiment List" webpart with a different
-        // title which can cause a StaleElementReferenceException. Find the dataregion by the updated webpart title.
-        var table = new DataRegionTable.DataRegionFinder(getDriver())
-            .find(WebPartPanel.WebPart(getDriver()).withTitle("Panorama Public Experiments").waitFor());
+        var table = findPanoramaPublicExperimentsDataRegion();
         assertTrue(table.hasHeaderMenu("My Data"));
         table.clickHeaderButtonAndWait("My Data");
         return new DataRegionTable.DataRegionFinder(getDriver()).refindWhenNeeded();
+    }
+
+    // The "Panorama Public Search" webpart re-renders the "Targeted MS Experiment List" webpart with a different
+    // title which can cause a StaleElementReferenceException. Find the dataregion by the updated webpart title.
+    private DataRegionTable findPanoramaPublicExperimentsDataRegion()
+    {
+        return new DataRegionTable.DataRegionFinder(getDriver())
+            .find(WebPartPanel.WebPart(getDriver()).withTitle("Panorama Public Experiments").waitFor());
     }
 }
