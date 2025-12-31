@@ -529,7 +529,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
         }
 
         @Override
-        public NamedObjectList getSelectList(RenderContext ctx)
+        public @NotNull NamedObjectList getSelectList(RenderContext ctx)
         {
             NamedObjectList objectList = new NamedObjectList();
 
