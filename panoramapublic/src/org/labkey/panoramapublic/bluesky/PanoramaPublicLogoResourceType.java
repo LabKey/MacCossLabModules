@@ -34,4 +34,10 @@ public class PanoramaPublicLogoResourceType implements AttachmentParentType
             .appendStringLiteral(PanoramaPublicLogoManager.LOGO_FILE_PREFIX + "%", CoreSchema.getInstance().getSqlDialect())
             .append(") ");
     }
+
+    @Override
+    public @NotNull SQLFragment getSelectEntityIdAndDescriptionSql()
+    {
+        return PARENT_CONTAINER_SQL;
+    }
 }

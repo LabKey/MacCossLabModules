@@ -25,8 +25,8 @@ public class CatalogImageAttachmentType implements AttachmentParentType
     }
 
     @Override
-    public void addWhereSql(SQLFragment sql, String parentColumn, String documentNameColumn)
+    public @NotNull SQLFragment getSelectEntityIdAndDescriptionSql()
     {
-        sql.append(parentColumn).append(" IN (SELECT EntityId FROM ").append(CoreSchema.getInstance().getTableInfoShortURL(), "shorUrls").append(")");
+        return new SQLFragment("SELECT EntityId, ShortUrl AS Description FROM ").append(CoreSchema.getInstance().getTableInfoShortURL());
     }
 }
