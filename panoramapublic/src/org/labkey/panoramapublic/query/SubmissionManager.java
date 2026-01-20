@@ -279,7 +279,7 @@ public class SubmissionManager
         //           A folder admin updating the submission request made by another submitter may want to change the shortUrl. They
         //           will need permission to delete the old shortUrl.
         MutableSecurityPolicy policy = new MutableSecurityPolicy(SecurityPolicyManager.getPolicy(shortUrl));
-        boolean isEditor = policy.getAssignedRoles(user).stream().anyMatch(r -> r instanceof EditorRole);
+        boolean isEditor = policy.getAssignedRoles(user).anyMatch(r -> r instanceof EditorRole);
         if (!isEditor)
         {
             policy.addRoleAssignment(user, EditorRole.class);

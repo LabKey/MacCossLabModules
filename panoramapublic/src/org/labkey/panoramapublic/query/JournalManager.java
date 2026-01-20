@@ -210,7 +210,7 @@ public class JournalManager
     private static void addPermission(Container folder, UserPrincipal journalGroup)
     {
         SecurityPolicy oldPolicy = folder.getPolicy();
-        if (oldPolicy.getOwnPermissions(journalGroup).contains(FolderExportPermission.class))
+        if (oldPolicy.getOwnPermissions(journalGroup).anyMatch(permClass -> permClass == FolderExportPermission.class))
             return;
         MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(folder, oldPolicy);
 
@@ -249,19 +249,16 @@ public class JournalManager
     private static void removePermission(Container folder, UserPrincipal journalGroup)
     {
         SecurityPolicy oldPolicy = folder.getPolicy();
-        if (!oldPolicy.getOwnPermissions(journalGroup).contains(FolderExportPermission.class))
+        if (oldPolicy.getOwnPermissions(journalGroup).noneMatch(permClass -> permClass == FolderExportPermission.class))
             return;
-        List<Role> roles = oldPolicy.getAssignedRoles(journalGroup);
 
         MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(folder, oldPolicy);
         newPolicy.clearAssignedRoles(journalGroup);
-        for(Role role: roles)
-        {
-            if(!(role instanceof CopyTargetedMSExperimentRole))
-            {
-                newPolicy.addRoleAssignment(journalGroup, role);
-            }
-        }
+
+        oldPolicy.getAssignedRoles(journalGroup)
+            .filter(role -> !(role instanceof CopyTargetedMSExperimentRole))
+            .forEach(role -> newPolicy.addRoleAssignment(journalGroup, role));
+
         SecurityPolicyManager.savePolicy(newPolicy, User.getAdminServiceUser());
     }
 
