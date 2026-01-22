@@ -499,7 +499,6 @@
                                ];
                             }
 
-                            debugger;
                             let wp = new LABKEY.QueryWebPart({
                                 renderTo: 'webpart_'+ expWebpart[0].webPartId,
                                 title: 'Panorama Public Experiments',
