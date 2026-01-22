@@ -361,21 +361,26 @@
                 let instrument = document.getElementById(instrumentItemId).value;
 
                 let expSearchParams = "";
+                let separator = "";
                 if (author) {
                     expAnnotationFilters.push(createFilter(authorsItemId, author));
-                    expSearchParams += "Targeted MS Experiment List." + "authors~containsoneof" + "=" + encodeURIComponent(author) + "&";
+                    expSearchParams += separator + "Targeted MS Experiment List." + "authors~containsoneof=" + encodeURIComponent(author);
+                    separator = "&";
                 }
                 if (title) {
                     expAnnotationFilters.push(createFilter(titleItemId, title));
-                    expSearchParams += "Targeted MS Experiment List." + "title~containsoneof" + "=" + encodeURIComponent(title) + "&";
+                    expSearchParams += separator + "Targeted MS Experiment List." + "title~containsoneof=" + encodeURIComponent(title);
+                    separator = "&";
                 }
                 if (organism) {
                     expAnnotationFilters.push(createFilter(organismItemId, organism));
-                    expSearchParams += "Targeted MS Experiment List." + "organism~containsoneof" + "=" + encodeURIComponent(organism.replaceAll(",", ";")) + "&";
+                    expSearchParams += separator + "Targeted MS Experiment List." + "organism~containsoneof=" + encodeURIComponent(organism.replaceAll(",", ";"));
+                    separator = "&";
                 }
                 if (instrument) {
                     expAnnotationFilters.push(createFilter(instrumentItemId, instrument));
-                    expSearchParams += "Targeted MS Experiment List." + "instrument~containsoneof" + "=" + encodeURIComponent(instrument.replaceAll(",", ";"));
+                    expSearchParams += separator + "Targeted MS Experiment List." + "instrument~containsoneof" + "=" + encodeURIComponent(instrument.replaceAll(",", ";"));
+                    separator = "&";
                 }
                 if (expSearchParams !== "") {
                     location.replace(window.location.href + "?" + expSearchParams);
