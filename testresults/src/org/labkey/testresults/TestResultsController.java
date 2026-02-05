@@ -111,6 +111,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -1034,6 +1036,261 @@ public class TestResultsController extends SpringActionController
 
             // DEFAULT TO CHECK STATUS
             return new ApiSimpleResponse(res);
+        }
+    }
+
+    @RequiresSiteAdmin
+    public static class RetrainAllAction extends MutatingApiAction<Object>
+    {
+        @Override
+        public Object execute(Object o, BindException errors)
+        {
+            var req = getViewContext().getRequest();
+            String mode = req.getParameter("mode");
+            if (mode == null || mode.isEmpty())
+                mode = "reset";
+            boolean incremental = mode.equalsIgnoreCase("incremental");
+
+            int maxRuns = 20;
+            String maxRunsParam = req.getParameter("maxRuns");
+            if (maxRunsParam == null || maxRunsParam.isEmpty())
+                maxRunsParam = req.getParameter("targetRuns"); // backwards compatibility
+            if (maxRunsParam != null && !maxRunsParam.isEmpty())
+            {
+                try { maxRuns = Integer.parseInt(maxRunsParam); }
+                catch (NumberFormatException ignored) { }
+            }
+            if (maxRuns < 1) maxRuns = 1;
+            if (maxRuns > 100) maxRuns = 100;
+
+            int minRuns = 5;
+            String minRunsParam = req.getParameter("minRuns");
+            if (minRunsParam != null && !minRunsParam.isEmpty())
+            {
+                try { minRuns = Integer.parseInt(minRunsParam); }
+                catch (NumberFormatException ignored) { }
+            }
+            if (minRuns < 1) minRuns = 1;
+            if (minRuns > maxRuns) minRuns = maxRuns;
+
+            Container c = getContainer();
+            String containerPath = c.getPath();
+            int expectedDuration = containerPath.toLowerCase().contains("perf") ? 720 : 540;
+
+            // Only look back 1.5x maxRuns days to avoid ancient data
+            int lookbackDays = (int) Math.ceil(maxRuns * 1.5);
+            java.sql.Timestamp cutoffDate = new java.sql.Timestamp(
+                System.currentTimeMillis() - (long) lookbackDays * 24 * 60 * 60 * 1000);
+
+            DbScope scope = TestResultsSchema.getSchema().getScope();
+            try (DbScope.Transaction transaction = scope.ensureTransaction())
+            {
+                // Get unique user IDs from recent testruns for this container
+                SQLFragment allUsersSql = new SQLFragment();
+                allUsersSql.append(
+                    "SELECT DISTINCT userid FROM " + TestResultsSchema.getTableInfoTestRuns() +
+                    " WHERE container = ? AND posttime >= ?");
+                allUsersSql.add(c.getEntityId());
+                allUsersSql.add(cutoffDate);
+                List<Integer> allUserIds = new ArrayList<>();
+                new SqlSelector(scope, allUsersSql).forEach(rs ->
+                    allUserIds.add(rs.getInt("userid")));
+
+                // Get current trainrun counts per user
+                Map<Integer, Integer> userTrainCounts = new HashMap<>();
+                for (int userId : allUserIds)
+                    userTrainCounts.put(userId, 0);
+
+                if (incremental)
+                {
+                    // In incremental mode, get existing counts
+                    SQLFragment countsSql = new SQLFragment();
+                    countsSql.append(
+                        "SELECT r.userid, COUNT(tr.runid) as traincount" +
+                        " FROM " + TestResultsSchema.getTableInfoTrain() + " tr" +
+                        " JOIN " + TestResultsSchema.getTableInfoTestRuns() + " r ON tr.runid = r.id" +
+                        " WHERE r.container = ?" +
+                        " GROUP BY r.userid");
+                    countsSql.add(c.getEntityId());
+                    new SqlSelector(scope, countsSql).forEach(rs ->
+                        userTrainCounts.put(rs.getInt("userid"), rs.getInt("traincount")));
+                }
+                else
+                {
+                    // Reset mode: delete all trainruns for this container
+                    SQLFragment deleteTrainSql = new SQLFragment();
+                    deleteTrainSql.append(
+                        "DELETE FROM " + TestResultsSchema.getTableInfoTrain() +
+                        " WHERE runid IN (SELECT id FROM " + TestResultsSchema.getTableInfoTestRuns() +
+                        " WHERE container = ?)");
+                    deleteTrainSql.add(c.getEntityId());
+                    new SqlExecutor(scope).execute(deleteTrainSql);
+
+                    // Delete all userdata for this container
+                    SQLFragment deleteUserDataSql = new SQLFragment();
+                    deleteUserDataSql.append(
+                        "DELETE FROM " + TestResultsSchema.getTableInfoUserData() +
+                        " WHERE container = ?");
+                    deleteUserDataSql.add(c.getEntityId());
+                    new SqlExecutor(scope).execute(deleteUserDataSql);
+                }
+
+                int usersRetrained = 0;
+                int totalTrainRuns = 0;
+                final int minRunsRequired = minRuns;
+
+                for (int userId : allUserIds)
+                {
+                    // Get existing trainrun IDs for this user
+                    SQLFragment existingRunsSql = new SQLFragment();
+                    existingRunsSql.append(
+                        "SELECT tr.runid FROM " + TestResultsSchema.getTableInfoTrain() + " tr" +
+                        " JOIN " + TestResultsSchema.getTableInfoTestRuns() + " r ON tr.runid = r.id" +
+                        " WHERE r.userid = ? AND r.container = ?");
+                    existingRunsSql.add(userId);
+                    existingRunsSql.add(c.getEntityId());
+                    Set<Integer> existingRunIds = new HashSet<>();
+                    new SqlSelector(scope, existingRunsSql).forEach(rs ->
+                        existingRunIds.add(rs.getInt("runid")));
+
+                    // Find all clean runs within lookback period (for both modes)
+                    SQLFragment cleanRunsSql = new SQLFragment();
+                    cleanRunsSql.append(
+                        "SELECT tr.id FROM " + TestResultsSchema.getTableInfoTestRuns() + " tr" +
+                        " WHERE tr.userid = ? AND tr.container = ?" +
+                        " AND tr.posttime >= ?" +
+                        " AND tr.failedtests = 0 AND tr.leakedtests = 0" +
+                        " AND tr.passedtests > 0 AND tr.flagged = false" +
+                        " AND tr.duration >= ?" +
+                        " AND NOT EXISTS (SELECT 1 FROM " + TestResultsSchema.getTableInfoHangs() +
+                        " h WHERE h.testrunid = tr.id)" +
+                        " ORDER BY tr.posttime DESC");
+                    cleanRunsSql.add(userId);
+                    cleanRunsSql.add(c.getEntityId());
+                    cleanRunsSql.add(cutoffDate);
+                    cleanRunsSql.add(expectedDuration);
+
+                    List<Integer> recentCleanRunIds = new ArrayList<>();
+                    new SqlSelector(scope, cleanRunsSql).forEach(rs ->
+                        recentCleanRunIds.add(rs.getInt("id")));
+
+                    // Determine final set of trainrun IDs
+                    final List<Integer> finalRunIds = new ArrayList<>();
+                    final int maxRunsLimit = maxRuns;
+                    if (incremental && !existingRunIds.isEmpty())
+                    {
+                        // Incremental: combine existing + new recent clean runs, keep most recent maxRuns
+                        // Get all existing trainruns with posttimes for sorting
+                        SQLFragment allCandidatesSql = new SQLFragment();
+                        allCandidatesSql.append(
+                            "SELECT id, posttime FROM " + TestResultsSchema.getTableInfoTestRuns() +
+                            " WHERE userid = ? AND container = ?" +
+                            " AND (id = ANY(?) OR id = ANY(?))" +
+                            " ORDER BY posttime DESC");
+                        allCandidatesSql.add(userId);
+                        allCandidatesSql.add(c.getEntityId());
+                        allCandidatesSql.add(existingRunIds.toArray(new Integer[0]));
+                        allCandidatesSql.add(recentCleanRunIds.toArray(new Integer[0]));
+
+                        new SqlSelector(scope, allCandidatesSql).forEach(rs -> {
+                            if (finalRunIds.size() < maxRunsLimit)
+                                finalRunIds.add(rs.getInt("id"));
+                        });
+                    }
+                    else
+                    {
+                        // Reset mode: just use recent clean runs up to maxRuns
+                        if (recentCleanRunIds.size() > maxRuns)
+                            finalRunIds.addAll(recentCleanRunIds.subList(0, maxRuns));
+                        else
+                            finalRunIds.addAll(recentCleanRunIds);
+                    }
+
+                    // Skip if total runs is below minimum threshold
+                    if (finalRunIds.size() < minRunsRequired)
+                        continue;
+
+                    // Determine runs to add and remove
+                    Set<Integer> finalRunSet = new HashSet<>(finalRunIds);
+                    List<Integer> runsToAdd = new ArrayList<>();
+                    List<Integer> runsToRemove = new ArrayList<>();
+
+                    for (int runId : finalRunIds)
+                    {
+                        if (!existingRunIds.contains(runId))
+                            runsToAdd.add(runId);
+                    }
+                    for (int runId : existingRunIds)
+                    {
+                        if (!finalRunSet.contains(runId))
+                            runsToRemove.add(runId);
+                    }
+
+                    // Remove old trainruns
+                    for (int runId : runsToRemove)
+                    {
+                        SQLFragment deleteTrainSql = new SQLFragment();
+                        deleteTrainSql.append(
+                            "DELETE FROM " + TestResultsSchema.getTableInfoTrain() + " WHERE runid = ?");
+                        deleteTrainSql.add(runId);
+                        new SqlExecutor(scope).execute(deleteTrainSql);
+                    }
+
+                    // Insert new trainruns
+                    for (int runId : runsToAdd)
+                    {
+                        SQLFragment insertTrainSql = new SQLFragment();
+                        insertTrainSql.append(
+                            "INSERT INTO " + TestResultsSchema.getTableInfoTrain() + " (runid) VALUES (?)");
+                        insertTrainSql.add(runId);
+                        new SqlExecutor(scope).execute(insertTrainSql);
+                    }
+
+                    // Set active=true only if user has at least maxRuns
+                    boolean isActive = finalRunIds.size() >= maxRuns;
+
+                    // Calculate stats and upsert into userdata
+                    SQLFragment upsertStatsSql = new SQLFragment();
+                    upsertStatsSql.append(
+                        "INSERT INTO " + TestResultsSchema.getTableInfoUserData() +
+                        " (userid, container, meantestsrun, meanmemory, stddevtestsrun, stddevmemory, active)" +
+                        " SELECT ?, ?, avg(passedtests), avg(averagemem)," +
+                        " stddev_pop(passedtests), stddev_pop(averagemem), ?" +
+                        " FROM " + TestResultsSchema.getTableInfoTestRuns() +
+                        " WHERE id = ANY(?)" +
+                        " ON CONFLICT(userid, container) DO UPDATE SET" +
+                        " meantestsrun = excluded.meantestsrun," +
+                        " meanmemory = excluded.meanmemory," +
+                        " stddevtestsrun = excluded.stddevtestsrun," +
+                        " stddevmemory = excluded.stddevmemory," +
+                        " active = excluded.active");
+                    upsertStatsSql.add(userId);
+                    upsertStatsSql.add(c.getEntityId());
+                    upsertStatsSql.add(isActive);
+                    upsertStatsSql.add(finalRunIds.toArray(new Integer[0]));
+                    new SqlExecutor(scope).execute(upsertStatsSql);
+
+                    usersRetrained++;
+                    totalTrainRuns += runsToAdd.size();
+                }
+
+                transaction.commit();
+
+                ApiSimpleResponse response = new ApiSimpleResponse();
+                response.put("success", true);
+                response.put("usersRetrained", usersRetrained);
+                response.put("totalTrainRuns", totalTrainRuns);
+                response.put("mode", mode);
+                return response;
+            }
+            catch (Exception e)
+            {
+                _log.error("Error in RetrainAllAction", e);
+                ApiSimpleResponse response = new ApiSimpleResponse();
+                response.put("success", false);
+                response.put("error", e.getMessage());
+                return response;
+            }
         }
     }
 

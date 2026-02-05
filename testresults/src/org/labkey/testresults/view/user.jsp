@@ -84,6 +84,7 @@
 %>
 
 <div id="content">
+    <% request.setAttribute("activeTab", "user"); %>
     <%@include file="menu.jsp" %>
 <%--    <form action="<%=h(new ActionURL(TestResultsController.PostAction.class, c))%>" method="post" enctype="multipart/form-data">--%>
 <%--        <labkey:csrf/>--%>

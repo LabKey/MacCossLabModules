@@ -63,8 +63,8 @@
     }
 %>
 
+<% request.setAttribute("activeTab", ""); %>
 <%@include file="menu.jsp" %>
-<br />
 <form action="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>">
     View Type: <select name="viewType">
     <option disabled selected> -- select an option -- </option>

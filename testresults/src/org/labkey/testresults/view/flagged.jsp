@@ -25,6 +25,7 @@
     TestsDataBean data = (TestsDataBean)me.getModelBean();
 %>
 
+<% request.setAttribute("activeTab", "flags"); %>
 <%@include file="menu.jsp" %>
 
 <p>Runs which are flagged will not show up in the Overview breakdown, Long Term, and Failure pages.  This includes graphs, charts, and any other sort of data visualization.</p>

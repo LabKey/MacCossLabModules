@@ -188,6 +188,7 @@
     }
 %>
 
+<% request.setAttribute("activeTab", ""); %>
 <%@include file="menu.jsp" %>
 
 <style>

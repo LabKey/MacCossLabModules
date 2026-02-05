@@ -24,6 +24,7 @@
     Container c = getContainer();
 %>
 
+<% request.setAttribute("activeTab", "errors"); %>
 <%@include file="menu.jsp" %>
 
 <p>All the files listed below at one point or another failed to post.  When a run is successfully posted through this page it gets removed from the list.</p>

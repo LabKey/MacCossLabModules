@@ -92,6 +92,7 @@
 </style>
 
 <div id="container">
+<% request.setAttribute("activeTab", "overview"); %>
 <%@include file="menu.jsp" %>
 <div id="content">
     <p>

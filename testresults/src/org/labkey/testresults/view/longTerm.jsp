@@ -31,8 +31,8 @@
     }
 %>
 
+<% request.setAttribute("activeTab", "longterm"); %>
 <%@include file="menu.jsp" %>
-<br />
 <form action="<%=h(new ActionURL(TestResultsController.LongTermAction.class, c))%>">
     View Type: <select id="view-type-combobox" name="viewType">
                     <option disabled selected> -- select an option -- </option>

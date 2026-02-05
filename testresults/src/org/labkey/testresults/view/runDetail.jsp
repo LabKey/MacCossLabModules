@@ -37,6 +37,7 @@
     String runId = getViewContext().getRequest().getParameter("runId");
 %>
 
+<% request.setAttribute("activeTab", "run"); %>
 <%@include file="menu.jsp" %>
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
     LABKEY.requiresCss("/TestResults/css/style.css");

@@ -35,6 +35,7 @@
 %>
 
 <div id="content">
+    <% request.setAttribute("activeTab", "trainingdata"); %>
     <%@include file="menu.jsp" %>
     <%
         String value = (request.getParameter("action"));
@@ -47,9 +48,10 @@
         <option disabled value="firsttime" <%= h(value.equals("firsttime") ? "selected='selected'" : "") %>> -- select an option -- </option>
         <option id="email" value="email"  <%= h(value.equals("email") ? "selected='selected'" : "") %>>Email Form</option>
         <option id="error" value="error" <%= h(value.equals("error") ? "selected='selected'" : "") %>>Error/Warning edits</option>
+        <option id="retrain" value="retrain" <%= h(value.equals("retrain") ? "selected='selected'" : "") %>>Retrain</option>
     </select>
 
-    <table id="emailform">
+    <table id="emailform" style="margin: 10px 0 10px 5px;">
         <tr>
             <td style="vertical-align: top; padding-right: 20px;">
                 <div style="font-weight:600;" title="testresults-setEmailCron.view?action={status|start|stop}">Email cron active: <span id="emailstatus" style="color:#247BA0;"></span>
@@ -57,60 +59,90 @@
                     <div id="email-cron"></div>
                 </div>
             </td>
-            <td style="vertical-align: top; padding-right: 20px;">
-                <form autocomplete="off">
-                    <table style="margin-top: 0;">
+            <td style="vertical-align: top; padding-right: 12px;">
+                <form autocomplete="off" style="margin: 0; padding: 0;">
+                    <table style="border-spacing: 0; border-collapse: separate; margin: 0;">
                         <tr>
-                            <td style="text-align: left;">From:</td>
-                            <td><input type="text" name="from" id="emailFrom" value="<%=h(SendTestResultsEmail.DEFAULT_EMAIL.ADMIN_EMAIL)%>" autocomplete="off"></td>
+                            <td style="text-align: right; padding: 0 12px 4px 0;">From:</td>
+                            <td style="padding: 0 0 4px 0;"><input type="text" name="from" id="emailFrom" value="<%=h(SendTestResultsEmail.DEFAULT_EMAIL.ADMIN_EMAIL)%>" autocomplete="off"></td>
                         </tr>
                         <tr>
-                            <td style="text-align: left;">To:</td>
-                            <td><input type="text" name="to" id="emailTo" value="<%=h(SendTestResultsEmail.DEFAULT_EMAIL.RECIPIENT)%>" autocomplete="off"></td>
+                            <td style="text-align: right; padding: 4px 12px 4px 0;">To:</td>
+                            <td style="padding: 4px 0;"><input type="text" name="to" id="emailTo" value="<%=h(SendTestResultsEmail.DEFAULT_EMAIL.RECIPIENT)%>" autocomplete="off"></td>
                         </tr>
                     </table>
                     <div id="send-email-msg"></div>
                 </form>
             </td>
-            <td style="vertical-align: top; padding-right: 20px;">
-                <div style="display: flex; flex-direction: column;">
-                    <input type="button" value="Generate Email" id="html-button" style="margin-left: 20px;">
-                    <input type="button" value="Send" id="send-button" style="margin-left: 20px;">
-                </div>
-            </td>
-            <td style="vertical-align: top; padding-right: 20px;">
-                <div style="display: flex; flex-direction: column;">
-                    <input style="width: 100px;" type="text" id="generate-email-datepicker">
-                </div>
+            <td style="vertical-align: top;">
+                <table style="border-spacing: 0; border-collapse: separate; margin: 0;">
+                    <tr>
+                        <td style="padding: 0 8px 4px 0;"><input type="button" value="Generate Email" id="html-button"></td>
+                        <td style="padding: 0 0 4px 0;"><input style="width: 100px;" type="text" id="generate-email-datepicker"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0;"><input type="button" value="Send Now" id="send-button"></td>
+                        <td></td>
+                    </tr>
+                </table>
             </td>
         </tr>
     </table>
 
-    <table id="errorform">
+    <table id="errorform" style="margin: 10px 0 10px 5px;">
         <tr>
-            <td style="vertical-align: top; padding-right: 20px;">
-                <form autocomplete="off">
-                    <table style="margin-top: 0;">
+            <td style="vertical-align: top; padding-right: 12px;">
+                <form autocomplete="off" style="margin: 0; padding: 0;">
+                    <table style="border-spacing: 0; border-collapse: separate; margin: 0;">
                         <tr>
-                            <td style="text-align: left;">Warning Boundary:</td>
-                            <td><input type="text" name="warningb" id="warningb" autocomplete="off" value="<%= data.getWarningBoundary() %>"></td>
+                            <td style="text-align: right; padding: 0 12px 4px 0;">Warning boundary:</td>
+                            <td style="padding: 0 0 4px 0;"><input type="text" name="warningb" id="warningb" autocomplete="off" value="<%= data.getWarningBoundary() %>" style="width: 50px;"></td>
                         </tr>
                         <tr>
-                            <td style="text-align: left;">Error Boundary:</td>
-                            <td><input type="text" name="errorb" id="errorb" autocomplete="off" value="<%= data.getErrorBoundary() %>"></td>
+                            <td style="text-align: right; padding: 0 12px 0 0;">Error boundary:</td>
+                            <td><input type="text" name="errorb" id="errorb" autocomplete="off" value="<%= data.getErrorBoundary() %>" style="width: 50px;"></td>
                         </tr>
                     </table>
                     <div id="send-boundaries-msg"></div>
                 </form>
             </td>
-            <td style="vertical-align: top; padding-right: 20px">
-                <div style="display: flex; flex-direction: column">
-                    <input type="button" value="submit" id="submit-button" style="margin-left: 20px;">
-                </div>
+            <td style="vertical-align: top;">
+                <input type="button" value="Submit" id="submit-button">
             </td>
         </tr>
     </table>
 
+    <table id="retrainform" style="margin: 10px 0 10px 5px;">
+        <tr>
+            <td style="vertical-align: top; padding-right: 12px;">
+                <form autocomplete="off" style="margin: 0; padding: 0;">
+                    <table style="border-spacing: 0; border-collapse: separate; margin: 0;">
+                        <tr>
+                            <td style="text-align: right; vertical-align: top; padding: 0 12px 4px 0;">Mode:</td>
+                            <td style="padding: 0 0 4px 0;">
+                                <label style="display: block; margin-bottom: 4px;"><input type="radio" name="retrainMode" value="reset" checked> Reset (delete all and rebuild)</label>
+                                <label style="display: block;"><input type="radio" name="retrainMode" value="incremental"> Incremental (add to existing)</label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: right; padding: 4px 12px 4px 0;">Max runs:</td>
+                            <td style="padding: 4px 0;"><input type="text" name="maxRuns" id="maxRuns" autocomplete="off" value="20" style="width: 50px;"></td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: right; padding: 0 12px 0 0;">Min runs:</td>
+                            <td><input type="text" name="minRuns" id="minRuns" autocomplete="off" value="5" style="width: 50px;"></td>
+                        </tr>
+                    </table>
+                </form>
+            </td>
+            <td style="vertical-align: top;">
+                <input type="button" value="Retrain All" id="retrain-all-button">
+            </td>
+            <td style="vertical-align: middle; padding-left: 10px;">
+                <span id="retrain-all-status"></span>
+            </td>
+        </tr>
+    </table>
 
     <div id="msg-container"></div>
     <table id="trainingdata">
@@ -147,9 +179,11 @@
             </tr>
             <%
                 int firstRunId = -1;
+                int runCount = 0;
                 for (RunDetail run : runs) {
                     if (run.getUserid() == user.getId()) {
                         if (firstRunId == -1) { firstRunId = run.getId(); }
+                        runCount++;
             %>
             <tr>
                 <td style="border-left: 1px solid #000; padding-left: 5px;"><%=h(formatDateTime(run.getPostTime()))%></td>
@@ -162,7 +196,7 @@
             <% }
             } %>
             <tr class="stats-row" style="font-weight: 600; font-size: 10px;" data-runid="<%=h(firstRunId != -1 ? String.valueOf(firstRunId) : "")%>">
-                <td style="padding-left: 5px;"></td>
+                <td style="padding-left: 5px; color:#50514F;">RunCount:<%=runCount%>&nbsp;||&nbsp;</td>
                 <td></td>
                 <td class="stats-row-mem-mean" style="padding-left: 0; color:#50514F;">
                     MeanTotalMem:<%=h(data.round(user.getMeanmemory(), 2))%> mb&nbsp;||&nbsp;
@@ -294,13 +328,46 @@
         }, "json")
     });
 
+    $("#retrain-all-button").click(function() {
+        var mode = $('input[name="retrainMode"]:checked').val();
+        var maxRuns = parseInt($('#maxRuns').val()) || 20;
+        var minRuns = parseInt($('#minRuns').val()) || 5;
+        var confirmMsg = mode === 'reset'
+            ? "This will DELETE all existing training data and rebuild with " + minRuns + "-" + maxRuns + " clean runs per computer. Continue?"
+            : "This will ADD clean runs to computers with fewer than " + maxRuns + " training runs. Continue?";
+        if (!confirm(confirmMsg))
+            return;
+        var btn = $(this);
+        btn.prop('disabled', true);
+        $('#retrain-all-status').text('Retraining...');
+        let url = <%=jsURL(new ActionURL(TestResultsController.RetrainAllAction.class, c))%>;
+        url.searchParams.set('mode', mode);
+        url.searchParams.set('maxRuns', maxRuns);
+        url.searchParams.set('minRuns', minRuns);
+        $.post(url.toString(), csrf_header, function(data) {
+            if (data.success) {
+                $('#retrain-all-status').text('Retrained ' + data.usersRetrained + ' computers with ' + data.totalTrainRuns + ' runs. Reloading...');
+                location.reload();
+            } else {
+                $('#retrain-all-status').text('Error: ' + (data.error || 'Unknown error'));
+                btn.prop('disabled', false);
+            }
+        }, "json").fail(function() {
+            $('#retrain-all-status').text('Request failed');
+            btn.prop('disabled', false);
+        });
+    });
+
     $("#actionform").change(function() {
         $("#errorform").hide();
         $("#emailform").hide();
+        $("#retrainform").hide();
         if ($(this).val() == "email") {
             $("#emailform").show();
         } else if ($(this).val() == "error") {
             $("#errorform").show();
+        } else if ($(this).val() == "retrain") {
+            $("#retrainform").show();
         }
     }).trigger("change");
 
