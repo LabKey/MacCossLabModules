@@ -37,7 +37,7 @@
     String runId = getViewContext().getRequest().getParameter("runId");
 %>
 
-<% request.setAttribute("activeTab", "run"); %>
+<% request.setAttribute(TestResultsController.TabNames.ACTIVE_TAB_ATTR, TestResultsController.TabNames.RUN); %>
 <%@include file="menu.jsp" %>
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
     LABKEY.requiresCss("/TestResults/css/style.css");

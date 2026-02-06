@@ -35,7 +35,7 @@
 %>
 
 <div id="content">
-    <% request.setAttribute("activeTab", "trainingdata"); %>
+    <% request.setAttribute(TestResultsController.TabNames.ACTIVE_TAB_ATTR, TestResultsController.TabNames.TRAINING_DATA); %>
     <%@include file="menu.jsp" %>
     <%
         String value = (request.getParameter("action"));

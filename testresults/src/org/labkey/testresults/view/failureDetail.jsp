@@ -188,7 +188,7 @@
     }
 %>
 
-<% request.setAttribute("activeTab", ""); %>
+<% request.setAttribute(TestResultsController.TabNames.ACTIVE_TAB_ATTR, ""); %>
 <%@include file="menu.jsp" %>
 
 <style>

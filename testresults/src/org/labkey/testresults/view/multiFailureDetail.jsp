@@ -63,7 +63,7 @@
     }
 %>
 
-<% request.setAttribute("activeTab", ""); %>
+<% request.setAttribute(TestResultsController.TabNames.ACTIVE_TAB_ATTR, ""); %>
 <%@include file="menu.jsp" %>
 <form action="<%=h(new ActionURL(TestResultsController.ShowFailures.class, c))%>">
     View Type: <select name="viewType">

@@ -8,7 +8,7 @@
     final String menuContextPath = AppProps.getInstance().getContextPath();
     Container menuContainer = getViewContext().getContainer();
     // activeTab is set by parent JSP via request attribute before including menu.jsp
-    String activeTab = (String) request.getAttribute("activeTab");
+    String activeTab = (String) request.getAttribute(TestResultsController.TabNames.ACTIVE_TAB_ATTR);
     if (activeTab == null) activeTab = "";
 %>
 
@@ -67,13 +67,13 @@
     <img src="<%=getWebappURL("TestResults/img/uw.png")%>" id="uw" alt="UW">
     <span id="stats"></span>
     <ul>
-        <li><a href="<%=h(new ActionURL(TestResultsController.BeginAction.class, menuContainer))%>" class="<%=h("nav-tab" + (activeTab.equals("overview") ? " active" : ""))%>">Overview</a></li>
-        <li><a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, menuContainer))%>" class="<%=h("nav-tab" + (activeTab.equals("user") ? " active" : ""))%>">User</a></li>
-        <li><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, menuContainer))%>" class="<%=h("nav-tab" + (activeTab.equals("run") ? " active" : ""))%>">Run</a></li>
-        <li><a href="<%=h(new ActionURL(TestResultsController.LongTermAction.class, menuContainer))%>" class="<%=h("nav-tab" + (activeTab.equals("longterm") ? " active" : ""))%>">Long Term</a></li>
-        <li><a href="<%=h(new ActionURL(TestResultsController.ShowFlaggedAction.class, menuContainer))%>" class="<%=h("nav-tab" + (activeTab.equals("flags") ? " active" : ""))%>">Flags</a></li>
-        <li><a href="<%=h(new ActionURL(TestResultsController.TrainingDataViewAction.class, menuContainer))%>" class="<%=h("nav-tab" + (activeTab.equals("trainingdata") ? " active" : ""))%>">Training Data</a></li>
-        <li><a href="<%=h(new ActionURL(TestResultsController.ErrorFilesAction.class, menuContainer))%>" class="<%=h("nav-tab" + (activeTab.equals("errors") ? " active" : ""))%>">Posting Errors</a></li>
+        <li><a href="<%=h(new ActionURL(TestResultsController.BeginAction.class, menuContainer))%>" class="<%=h(TestResultsController.TabNames.getTabClass(TestResultsController.TabNames.OVERVIEW, activeTab))%>">Overview</a></li>
+        <li><a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, menuContainer))%>" class="<%=h(TestResultsController.TabNames.getTabClass(TestResultsController.TabNames.USER, activeTab))%>">User</a></li>
+        <li><a href="<%=h(new ActionURL(TestResultsController.ShowRunAction.class, menuContainer))%>" class="<%=h(TestResultsController.TabNames.getTabClass(TestResultsController.TabNames.RUN, activeTab))%>">Run</a></li>
+        <li><a href="<%=h(new ActionURL(TestResultsController.LongTermAction.class, menuContainer))%>" class="<%=h(TestResultsController.TabNames.getTabClass(TestResultsController.TabNames.LONGTERM, activeTab))%>">Long Term</a></li>
+        <li><a href="<%=h(new ActionURL(TestResultsController.ShowFlaggedAction.class, menuContainer))%>" class="<%=h(TestResultsController.TabNames.getTabClass(TestResultsController.TabNames.FLAGS, activeTab))%>">Flags</a></li>
+        <li><a href="<%=h(new ActionURL(TestResultsController.TrainingDataViewAction.class, menuContainer))%>" class="<%=h(TestResultsController.TabNames.getTabClass(TestResultsController.TabNames.TRAINING_DATA, activeTab))%>">Training Data</a></li>
+        <li><a href="<%=h(new ActionURL(TestResultsController.ErrorFilesAction.class, menuContainer))%>" class="<%=h(TestResultsController.TabNames.getTabClass(TestResultsController.TabNames.ERRORS, activeTab))%>">Posting Errors</a></li>
         <li><a href="/home/issues/project-begin.view" target="_blank" title="Report bugs/Request features. Use 'TestResults' as area when creating new issue" class="nav-tab">Issues</a></li>
     </ul>
 </div>
