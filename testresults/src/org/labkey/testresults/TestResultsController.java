@@ -111,6 +111,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -132,6 +134,60 @@ public class TestResultsController extends SpringActionController
     private static final SimpleDateFormat MDYFormat = new SimpleDateFormat("MM/dd/yyyy");
 
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(TestResultsController.class);
+
+    // Tab name constants for menu highlighting
+    public static class TabNames
+    {
+        // Request attribute name
+        public static final String ACTIVE_TAB_ATTR = "activeTab";
+        // CSS classes
+        private static final String NAV_TAB_CLASS = "nav-tab";
+        private static final String ACTIVE_CSS_CLASS = " active";
+
+        // Tab identifiers
+        public static final String OVERVIEW = "overview";
+        public static final String USER = "user";
+        public static final String RUN = "run";
+        public static final String LONGTERM = "longterm";
+        public static final String FLAGS = "flags";
+        public static final String TRAINING_DATA = "trainingdata";
+        public static final String ERRORS = "errors";
+
+        /** Returns CSS class for a tab link: "nav-tab" or "nav-tab active" */
+        public static String getTabClass(String tabName, String activeTab)
+        {
+            return NAV_TAB_CLASS + (tabName.equals(activeTab) ? ACTIVE_CSS_CLASS : "");
+        }
+    }
+
+    // Form class for RetrainAllAction
+    public static class RetrainAllForm
+    {
+        private String _mode = "reset";
+        private int _maxRuns = 20;
+        private int _minRuns = 5;
+        private Integer _targetRuns; // backwards compatibility
+
+        public String getMode() { return _mode; }
+        public void setMode(String mode) { _mode = mode; }
+
+        public int getMaxRuns()
+        {
+            // Support legacy targetRuns parameter
+            if (_targetRuns != null)
+                return _targetRuns;
+            return _maxRuns;
+        }
+        public void setMaxRuns(int maxRuns) { _maxRuns = maxRuns; }
+
+        public int getMinRuns() { return _minRuns; }
+        public void setMinRuns(int minRuns) { _minRuns = minRuns; }
+
+        public Integer getTargetRuns() { return _targetRuns; }
+        public void setTargetRuns(Integer targetRuns) { _targetRuns = targetRuns; }
+
+        public boolean isIncremental() { return "incremental".equalsIgnoreCase(_mode); }
+    }
 
     public TestResultsController()
     {
@@ -1034,6 +1090,110 @@ public class TestResultsController extends SpringActionController
 
             // DEFAULT TO CHECK STATUS
             return new ApiSimpleResponse(res);
+        }
+    }
+
+    @RequiresSiteAdmin
+    public static class RetrainAllAction extends MutatingApiAction<RetrainAllForm>
+    {
+        @Override
+        public Object execute(RetrainAllForm form, BindException errors)
+        {
+            // Validate and clamp parameters
+            int maxRuns = Math.max(1, Math.min(100, form.getMaxRuns()));
+            int minRuns = Math.max(1, Math.min(maxRuns, form.getMinRuns()));
+            boolean incremental = form.isIncremental();
+
+            Container c = getContainer();
+            String containerPath = c.getPath();
+            int expectedDuration = containerPath.toLowerCase().contains("perf") ? 720 : 540;
+
+            // Only look back 1.5x maxRuns days to avoid ancient data
+            int lookbackDays = (int) Math.ceil(maxRuns * 1.5);
+            java.sql.Timestamp cutoffDate = new java.sql.Timestamp(
+                System.currentTimeMillis() - (long) lookbackDays * 24 * 60 * 60 * 1000);
+
+            TestResultsManager mgr = TestResultsManager.get();
+            DbScope scope = TestResultsSchema.getSchema().getScope();
+
+            try (DbScope.Transaction transaction = scope.ensureTransaction())
+            {
+                List<Integer> allUserIds = mgr.getRecentUserIds(c, cutoffDate);
+
+                if (!incremental)
+                {
+                    mgr.deleteTrainRunsForContainer(c);
+                    mgr.deleteUserDataForContainer(c);
+                }
+
+                int usersRetrained = 0;
+                int totalTrainRuns = 0;
+
+                for (int userId : allUserIds)
+                {
+                    Set<Integer> existingRunIds = mgr.getExistingTrainRunIds(userId, c);
+                    List<Integer> recentCleanRunIds = mgr.getCleanRunIds(userId, c, cutoffDate, expectedDuration);
+
+                    // Determine final set of trainrun IDs
+                    List<Integer> finalRunIds;
+                    if (incremental && !existingRunIds.isEmpty())
+                    {
+                        finalRunIds = mgr.getCandidateRunIds(userId, c, existingRunIds, recentCleanRunIds, maxRuns);
+                    }
+                    else
+                    {
+                        finalRunIds = recentCleanRunIds.size() > maxRuns
+                            ? new ArrayList<>(recentCleanRunIds.subList(0, maxRuns))
+                            : new ArrayList<>(recentCleanRunIds);
+                    }
+
+                    // Skip if total runs is below minimum threshold
+                    if (finalRunIds.size() < minRuns)
+                        continue;
+
+                    // Determine runs to add and remove
+                    Set<Integer> finalRunSet = new HashSet<>(finalRunIds);
+                    List<Integer> runsToAdd = new ArrayList<>();
+                    List<Integer> runsToRemove = new ArrayList<>();
+
+                    for (int runId : finalRunIds)
+                    {
+                        if (!existingRunIds.contains(runId))
+                            runsToAdd.add(runId);
+                    }
+                    for (int runId : existingRunIds)
+                    {
+                        if (!finalRunSet.contains(runId))
+                            runsToRemove.add(runId);
+                    }
+
+                    mgr.removeTrainRuns(runsToRemove);
+                    mgr.addTrainRuns(runsToAdd);
+
+                    boolean isActive = finalRunIds.size() >= maxRuns;
+                    mgr.upsertUserData(userId, c, finalRunIds, isActive);
+
+                    usersRetrained++;
+                    totalTrainRuns += runsToAdd.size();
+                }
+
+                transaction.commit();
+
+                ApiSimpleResponse response = new ApiSimpleResponse();
+                response.put("success", true);
+                response.put("usersRetrained", usersRetrained);
+                response.put("totalTrainRuns", totalTrainRuns);
+                response.put("mode", form.getMode());
+                return response;
+            }
+            catch (Exception e)
+            {
+                _log.error("Error in RetrainAllAction", e);
+                ApiSimpleResponse response = new ApiSimpleResponse();
+                response.put("success", false);
+                response.put("error", e.getMessage());
+                return response;
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 package org.labkey.panoramapublic.speclib;
 
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -32,7 +33,7 @@ public class LibSourceFile
 
     public boolean hasIdFile()
     {
-        return idFile != null;
+        return StringUtils.isNotBlank(idFile);
     }
 
     public @Nullable String getIdFile()

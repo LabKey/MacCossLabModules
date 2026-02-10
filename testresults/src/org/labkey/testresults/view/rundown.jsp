@@ -92,6 +92,7 @@
 </style>
 
 <div id="container">
+<% request.setAttribute(TestResultsController.TabNames.ACTIVE_TAB_ATTR, TestResultsController.TabNames.OVERVIEW); %>
 <%@include file="menu.jsp" %>
 <div id="content">
     <p>
