@@ -12,6 +12,9 @@ public class DatasetStatus  extends DbEntity
     private Date _lastReminderDate;
     private Date _extensionRequestedDate;
     private Date _deletionRequestedDate;
+    private String _potentialPubMedId;
+    private String _pubMedSearchStrategy;
+    private Boolean _userDismissedPubMed;
 
     public int getExperimentAnnotationsId()
     {
@@ -71,5 +74,35 @@ public class DatasetStatus  extends DbEntity
     public boolean reminderSent()
     {
         return _lastReminderDate != null;
+    }
+
+    public String getPotentialPubMedId()
+    {
+        return _potentialPubMedId;
+    }
+
+    public void setPotentialPubMedId(String potentialPubMedId)
+    {
+        _potentialPubMedId = potentialPubMedId;
+    }
+
+    public String getPubMedSearchStrategy()
+    {
+        return _pubMedSearchStrategy;
+    }
+
+    public void setPubMedSearchStrategy(String pubMedSearchStrategy)
+    {
+        _pubMedSearchStrategy = pubMedSearchStrategy;
+    }
+
+    public Boolean getUserDismissedPubMed()
+    {
+        return _userDismissedPubMed;
+    }
+
+    public void setUserDismissedPubMed(Boolean userDismissedPubMed)
+    {
+        _userDismissedPubMed = userDismissedPubMed;
     }
 }
