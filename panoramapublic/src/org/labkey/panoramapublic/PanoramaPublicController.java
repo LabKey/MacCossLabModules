@@ -10390,7 +10390,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public abstract class UpdateDatasetStatusAction extends ConfirmAction<ShortUrlForm>
+    public abstract static class UpdateDatasetStatusAction extends ConfirmAction<ShortUrlForm>
     {
         protected ExperimentAnnotations _exptAnnotations;
         protected DatasetStatus _datasetStatus;
@@ -10585,7 +10585,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public class DismissPubMedSuggestionAction extends UpdateDatasetStatusAction
+    public class DismissPublicationSuggestionAction extends UpdateDatasetStatusAction
     {
         @Override
         protected String getConfirmViewTitle()
@@ -10596,22 +10596,26 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected String getConfirmViewMessage()
         {
-            String message = "You are dismissing the publication suggestion for your data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL();
-            if (_datasetStatus != null && !StringUtils.isBlank(_datasetStatus.getPotentialPubMedId()))
+            String publicationLabel = "";
+            if (_datasetStatus != null && !StringUtils.isBlank(_datasetStatus.getPublicationType()))
             {
-                message += ". We will no longer suggest PubMed ID " + _datasetStatus.getPotentialPubMedId() + " for this dataset";
+                publicationLabel = _datasetStatus.getPublicationLabel();
             }
-            return message;
+
+            HtmlString message = HtmlString.of(DIV("You are dismissing the publication suggestion for your data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL(), BR(), BR(),
+                    DIV("We will no loger suggest " + publicationLabel + " " + _datasetStatus.getPotentialPublicationId() + " for this dataset.")));
+
+            return message.renderToString();
         }
 
         @Override
         protected void doValidationForAction(Errors errors)
         {
-            if (_datasetStatus == null || StringUtils.isBlank(_datasetStatus.getPotentialPubMedId()))
+            if (_datasetStatus == null || StringUtils.isBlank(_datasetStatus.getPotentialPublicationId()))
             {
                 errors.reject(ERROR_MSG, "No publication suggestion exists for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
             }
-            else if (Boolean.TRUE.equals(_datasetStatus.getUserDismissedPubMed()))
+            else if (Boolean.TRUE.equals(_datasetStatus.getUserDismissedPublication()))
             {
                 errors.reject(ERROR_MSG, "The publication suggestion for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
                         + " has already been dismissed");
@@ -10621,13 +10625,16 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected void updateDatasetStatus(DatasetStatus datasetStatus)
         {
-            datasetStatus.setUserDismissedPubMed(true);
+            datasetStatus.setUserDismissedPublication(true);
         }
 
         @Override
         protected void postNotification()
         {
-            // No notification needed for dismissal
+            // Post a message to the support thread.
+            JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(_exptAnnotations);
+            Journal journal = JournalManager.getJournal(submission.getJournalId());
+            PanoramaPublicNotification.postPublicationDismissalMessage(journal, submission.getJournalExperiment(), _exptAnnotations, getUser(), _datasetStatus);
         }
 
         @Override
@@ -10670,10 +10677,24 @@ public class PanoramaPublicController extends SpringActionController
 
                 if (searchResult.isFound())
                 {
-                    String pubMedIds = searchResult.getPmidsAsString();
-                    response.put("pubMedId", pubMedIds);
+                    String publicationIds = searchResult.getPmidsAsString();
+                    String publicationType = searchResult.getPublicationType();
+                    response.put("publicationId", publicationIds);
+                    response.put("publicationType", publicationType);
                     response.put("searchStrategy", searchResult.getSearchStrategy());
-                    response.put("pubMedUrl", "https://pubmed.ncbi.nlm.nih.gov/" + searchResult.getPmids().get(0));
+
+                    // Generate appropriate URL based on publication type
+                    String firstId = searchResult.getPmids().get(0);
+                    String publicationUrl;
+                    if (DatasetStatus.TYPE_PMC.equals(publicationType))
+                    {
+                        publicationUrl = "https://www.ncbi.nlm.nih.gov/pmc/articles/" + firstId + "/";
+                    }
+                    else
+                    {
+                        publicationUrl = "https://pubmed.ncbi.nlm.nih.gov/" + firstId;
+                    }
+                    response.put("publicationUrl", publicationUrl);
 
                     // Update DatasetStatus with the search result
                     DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
@@ -10681,19 +10702,21 @@ public class PanoramaPublicController extends SpringActionController
                     {
                         datasetStatus = new DatasetStatus();
                         datasetStatus.setExperimentAnnotationsId(exptAnnotations.getId());
-                        datasetStatus.setPotentialPubMedId(pubMedIds);
-                        datasetStatus.setPubMedSearchStrategy(searchResult.getSearchStrategy());
+                        datasetStatus.setPotentialPublicationId(publicationIds);
+                        datasetStatus.setPublicationType(publicationType);
+                        datasetStatus.setPublicationSearchStrategy(searchResult.getSearchStrategy());
                         DatasetStatusManager.save(datasetStatus, getUser());
                     }
                     else
                     {
-                        datasetStatus.setPotentialPubMedId(pubMedIds);
-                        datasetStatus.setPubMedSearchStrategy(searchResult.getSearchStrategy());
-                        datasetStatus.setUserDismissedPubMed(false); // Reset dismissal flag
+                        datasetStatus.setPotentialPublicationId(publicationIds);
+                        datasetStatus.setPublicationType(publicationType);
+                        datasetStatus.setPublicationSearchStrategy(searchResult.getSearchStrategy());
+                        datasetStatus.setUserDismissedPublication(false); // Reset dismissal flag
                         DatasetStatusManager.update(datasetStatus, getUser());
                     }
 
-                    response.put("message", "Publication found: PubMed ID " + pubMedIds);
+                    response.put("message", "Publication found: " + datasetStatus.getPublicationLabel() + " " + publicationIds);
                 }
                 else
                 {

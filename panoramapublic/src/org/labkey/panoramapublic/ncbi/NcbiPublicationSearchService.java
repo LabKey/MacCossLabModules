@@ -9,6 +9,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.datacite.DataCiteService;
+import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 
 import java.io.BufferedReader;
@@ -648,7 +649,7 @@ public class NcbiPublicationSearchService
         }
 
         // Fallback: use PMC ID if no PMID found
-        return "PMC" + pmcId;
+        return DatasetStatus.TYPE_PMC + pmcId;
     }
 
     /**
@@ -664,6 +665,10 @@ public class NcbiPublicationSearchService
         List<String> pmids = articles.stream()
             .map(ArticleMatch::getPmid)
             .collect(Collectors.toList());
+
+        // Determine publication type from first ID (prefer PMID over PMC)
+        String firstId = pmids.get(0);
+        String publicationType = firstId.startsWith(DatasetStatus.TYPE_PMC) ? DatasetStatus.TYPE_PMC : DatasetStatus.TYPE_PMID;
 
         String strategy;
         if (articles.size() == 1)
@@ -683,7 +688,7 @@ public class NcbiPublicationSearchService
                 .collect(Collectors.joining("\n"));
         }
 
-        return NcbiPublicationSearchResult.found(pmids, strategy, articles);
+        return NcbiPublicationSearchResult.found(pmids, publicationType, strategy, articles);
     }
 
     /**
@@ -715,26 +720,28 @@ public class NcbiPublicationSearchService
     public static class NcbiPublicationSearchResult
     {
         private final List<String> _pmids;
+        private final String _publicationType;     // "PMID" or "PMC"
         private final String _searchStrategy;
         private final boolean _found;
         private final List<ArticleMatch> _articles;
 
-        private NcbiPublicationSearchResult(List<String> pmids, String searchStrategy, boolean found, List<ArticleMatch> articles)
+        private NcbiPublicationSearchResult(List<String> pmids, String publicationType, String searchStrategy, boolean found, List<ArticleMatch> articles)
         {
             _pmids = pmids != null ? pmids : Collections.emptyList();
+            _publicationType = publicationType;
             _searchStrategy = searchStrategy;
             _found = found;
             _articles = articles != null ? articles : Collections.emptyList();
         }
 
-        public static NcbiPublicationSearchResult found(List<String> pmids, String strategy, List<ArticleMatch> articles)
+        public static NcbiPublicationSearchResult found(List<String> pmids, String publicationType, String strategy, List<ArticleMatch> articles)
         {
-            return new NcbiPublicationSearchResult(pmids, strategy, true, articles);
+            return new NcbiPublicationSearchResult(pmids, publicationType, strategy, true, articles);
         }
 
         public static NcbiPublicationSearchResult notFound()
         {
-            return new NcbiPublicationSearchResult(null, null, false, null);
+            return new NcbiPublicationSearchResult(null, null, null, false, null);
         }
 
         public boolean isFound()
@@ -745,6 +752,11 @@ public class NcbiPublicationSearchService
         public List<String> getPmids()
         {
             return _pmids;
+        }
+
+        public String getPublicationType()
+        {
+            return _publicationType;
         }
 
         public String getSearchStrategy()

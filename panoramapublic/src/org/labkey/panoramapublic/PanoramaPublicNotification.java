@@ -23,6 +23,7 @@ import org.labkey.api.view.NotFoundException;
 import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
+import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
@@ -358,13 +359,43 @@ public class PanoramaPublicNotification
         postNotificationFullTitle(journal, je, messageBody.toString(), journalAdmin, messageTitle, AnnouncementService.StatusOption.Active, null);
     }
 
+    public static void postPublicationDismissalMessage(@NotNull Journal journal, @NotNull JournalExperiment je, @NotNull ExperimentAnnotations expAnnotations, User submitter, @Nullable org.labkey.panoramapublic.model.DatasetStatus datasetStatus)
+    {
+        User journalAdmin = JournalManager.getJournalAdminUser(journal);
+        if (journalAdmin == null)
+        {
+            throw new NotFoundException(String.format("Could not find an admin user for %s.", journal.getName()));
+        }
+
+        String messageTitle = "Publication Suggestion Dismissed" +" - " + expAnnotations.getShortUrl().renderShortURL();
+
+        StringBuilder messageBody = new StringBuilder();
+        messageBody.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
+        messageBody.append("Thank you for letting us know that the suggested publication is not associated with your data on Panorama Public.");
+
+        if (datasetStatus != null && !StringUtils.isBlank(datasetStatus.getPotentialPublicationId()))
+        {
+            messageBody.append(NL2).append(bold("Dismissed Publication:")).append(" ").append(datasetStatus.getPublicationLabel()).append(" ").append(datasetStatus.getPotentialPublicationId());
+        }
+
+        messageBody.append(NL2).append("We will no longer suggest this publication for your dataset. ")
+                .append("If you would like to make your data public, you can do so at any time ")
+                .append("by clicking the \"Make Public\" button in your data folder, or by clicking this link: ")
+                .append(bold(link("Make Data Public", PanoramaPublicController.getMakePublicUrl(expAnnotations.getId(), expAnnotations.getContainer()).getURIString())))
+                .append(".");
+        messageBody.append(NL2).append("Best regards,");
+        messageBody.append(NL).append(getUserName(journalAdmin));
+
+        postNotificationFullTitle(journal, je, messageBody.toString(), journalAdmin, messageTitle, AnnouncementService.StatusOption.Closed, null);
+    }
+
 
     public static void postPrivateDataReminderMessage(@NotNull Journal journal, @NotNull JournalSubmission js, @NotNull ExperimentAnnotations expAnnotations,
                                                       @NotNull User submitter, @NotNull User messagePoster, List<User> notifyUsers,
                                                       @NotNull Announcement announcement, @NotNull Container announcementsContainer, @NotNull User journalAdmin,
-                                                      boolean publicationFound, @Nullable String pubMedId)
+                                                      boolean publicationFound, @Nullable String publicationId, @Nullable String publicationType)
     {
-        String message = getDataStatusReminderMessage(expAnnotations, submitter, js, announcement, announcementsContainer, journalAdmin, publicationFound, pubMedId);
+        String message = getDataStatusReminderMessage(expAnnotations, submitter, js, announcement, announcementsContainer, journalAdmin, publicationFound, publicationId, publicationType);
         String title = publicationFound
                 ? "Congratulations! We Found a Publication Associated with Your Data on Panorama Public"
                 : "Action Required: Status Update for Your Private Data on Panorama Public";
@@ -374,7 +405,7 @@ public class PanoramaPublicNotification
     public static String getDataStatusReminderMessage(@NotNull ExperimentAnnotations exptAnnotations, @NotNull User submitter,
                                                       @NotNull JournalSubmission js,@NotNull Announcement announcement,
                                                       @NotNull Container announcementContainer, @NotNull User journalAdmin,
-                                                      boolean publicationFound, @Nullable String pubMedId)
+                                                      boolean publicationFound, @Nullable String publicationId, @Nullable String publicationType)
     {
         String shortUrl = exptAnnotations.getShortUrl().renderShortURL();
         String makePublicLink = PanoramaPublicController.getMakePublicUrl(exptAnnotations.getId(), exptAnnotations.getContainer()).getURIString();
@@ -393,7 +424,7 @@ public class PanoramaPublicNotification
         ActionURL requestDeletionUrl = new ActionURL(PanoramaPublicController.RequestDeletionAction.class, exptAnnotations.getContainer())
                 .addParameter("shortUrlEntityId",shortUrlEntityId);
 
-        ActionURL dismissPubMedUrl = new ActionURL(PanoramaPublicController.DismissPubMedSuggestionAction.class, exptAnnotations.getContainer())
+        ActionURL dismissPublicationUrl = new ActionURL(PanoramaPublicController.DismissPublicationSuggestionAction.class, exptAnnotations.getContainer())
                 .addParameter("shortUrlEntityId", shortUrlEntityId);
 
         ExperimentAnnotations sourceExperiment = ExperimentAnnotationsManager.get(exptAnnotations.getSourceExperimentId());
@@ -401,19 +432,32 @@ public class PanoramaPublicNotification
         StringBuilder message = new StringBuilder();
         message.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
 
-        if (publicationFound && !StringUtils.isBlank(pubMedId))
+        if (publicationFound && !StringUtils.isBlank(publicationId))
         {
             // Message variant when a publication was found
-            String pubMedUrl = "https://pubmed.ncbi.nlm.nih.gov/" + pubMedId;
+            String publicationUrl;
+            String publicationLabel;
+
+            if (DatasetStatus.TYPE_PMC.equals(publicationType))
+            {
+                publicationUrl = "https://www.ncbi.nlm.nih.gov/pmc/articles/" + publicationId + "/";
+                publicationLabel = "PMC ID " + publicationId;
+            }
+            else  // Default to PMID
+            {
+                publicationUrl = "https://pubmed.ncbi.nlm.nih.gov/" + publicationId;
+                publicationLabel = "PubMed ID " + publicationId;
+            }
+
             message.append("Great news! We found a publication that appears to be associated with your data on Panorama Public (")
                     .append(shortUrl).append("), which has been private since ").append(dateString).append(".")
                     .append(NL2).append(bold("Title:")).append(" ").append(escape(exptAnnotations.getTitle()))
-                    .append(NL2).append(bold("Publication Found:")).append(" ").append(link("PubMed ID " + pubMedId, pubMedUrl))
+                    .append(NL2).append(bold("Publication Found:")).append(" ").append(link(publicationLabel, publicationUrl))
                     .append(NL2).append("Since your work has been published, we encourage you to make your data public so the research community can access it alongside your publication. ")
                     .append("You can do this by clicking the \"Make Public\" button in your data folder or by clicking this link: ")
                     .append(bold(link("Make Data Public", makePublicLink))).append(".")
                     .append(NL2).append(bold("If this publication is not associated with your data:"))
-                    .append(NL).append("Please let us know by ").append(bold(link("clicking here", dismissPubMedUrl.getURIString())))
+                    .append(NL).append("Please let us know by ").append(bold(link("clicking here", dismissPublicationUrl.getURIString())))
                     .append(", and we will stop suggesting this publication for your dataset.")
                     .append(NL2).append(bold("Not ready to make your data public yet?"))
                     .append(NL).append("If you need more time, you can:")

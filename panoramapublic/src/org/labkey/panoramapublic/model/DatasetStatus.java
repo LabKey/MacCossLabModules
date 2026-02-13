@@ -8,13 +8,17 @@ import java.util.Date;
 
 public class DatasetStatus  extends DbEntity
 {
+    public static final String TYPE_PMC = "PMC";
+    public static final String TYPE_PMID = "PMID";
+
     private int _experimentAnnotationsId;
     private Date _lastReminderDate;
     private Date _extensionRequestedDate;
     private Date _deletionRequestedDate;
-    private String _potentialPubMedId;
-    private String _pubMedSearchStrategy;
-    private Boolean _userDismissedPubMed;
+    private String _potentialPublicationId;
+    private String _publicationType;
+    private String _publicationSearchStrategy;
+    private Boolean _userDismissedPublication;
 
     public int getExperimentAnnotationsId()
     {
@@ -76,33 +80,61 @@ public class DatasetStatus  extends DbEntity
         return _lastReminderDate != null;
     }
 
-    public String getPotentialPubMedId()
+    public String getPotentialPublicationId()
     {
-        return _potentialPubMedId;
+        return _potentialPublicationId;
     }
 
-    public void setPotentialPubMedId(String potentialPubMedId)
+    public void setPotentialPublicationId(String potentialPublicationId)
     {
-        _potentialPubMedId = potentialPubMedId;
+        _potentialPublicationId = potentialPublicationId;
     }
 
-    public String getPubMedSearchStrategy()
+    public String getPublicationType()
     {
-        return _pubMedSearchStrategy;
+        return _publicationType;
     }
 
-    public void setPubMedSearchStrategy(String pubMedSearchStrategy)
+    public void setPublicationType(String publicationType)
     {
-        _pubMedSearchStrategy = pubMedSearchStrategy;
+        _publicationType = publicationType;
     }
 
-    public Boolean getUserDismissedPubMed()
+    public String getPublicationLabel()
     {
-        return _userDismissedPubMed;
+        if (_publicationType == null)
+        {
+            return "";
+        }
+
+        switch (_publicationType)
+        {
+            case TYPE_PMC:
+                return "PMC ID";
+            case TYPE_PMID:
+                return "PubMed ID";
+            default:
+                return _publicationType;
+        }
     }
 
-    public void setUserDismissedPubMed(Boolean userDismissedPubMed)
+    public String getPublicationSearchStrategy()
     {
-        _userDismissedPubMed = userDismissedPubMed;
+        return _publicationSearchStrategy;
+    }
+
+    public void setPublicationSearchStrategy(String publicationSearchStrategy)
+    {
+        _publicationSearchStrategy = publicationSearchStrategy;
+    }
+
+    public Boolean getUserDismissedPublication()
+    {
+        return _userDismissedPublication;
+    }
+
+    public void setUserDismissedPublication(Boolean userDismissedPublication)
+    {
+        _userDismissedPublication = userDismissedPublication;
     }
 }

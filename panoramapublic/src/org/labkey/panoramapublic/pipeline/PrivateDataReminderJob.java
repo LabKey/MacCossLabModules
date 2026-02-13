@@ -177,25 +177,28 @@ public class PrivateDataReminderJob extends PipelineJob
      */
     private static class PublicationCheckResult {
         private final boolean publicationFound;
-        private final String pubMedId;
+        private final String publicationId;
+        private final String publicationType;
         private final String searchStrategy;
 
-        public PublicationCheckResult(boolean publicationFound, @Nullable String pubMedId, @Nullable String searchStrategy) {
+        public PublicationCheckResult(boolean publicationFound, @Nullable String publicationId, @Nullable String publicationType, @Nullable String searchStrategy) {
             this.publicationFound = publicationFound;
-            this.pubMedId = pubMedId;
+            this.publicationId = publicationId;
+            this.publicationType = publicationType;
             this.searchStrategy = searchStrategy;
         }
 
         public static PublicationCheckResult notFound() {
-            return new PublicationCheckResult(false, null, null);
+            return new PublicationCheckResult(false, null, null, null);
         }
 
-        public static PublicationCheckResult found(@NotNull String pubMedId, @NotNull String searchStrategy) {
-            return new PublicationCheckResult(true, pubMedId, searchStrategy);
+        public static PublicationCheckResult found(@NotNull String publicationId, @NotNull String publicationType, @NotNull String searchStrategy) {
+            return new PublicationCheckResult(true, publicationId, publicationType, searchStrategy);
         }
 
         public boolean isPublicationFound() { return publicationFound; }
-        public @Nullable String getPubMedId() { return pubMedId; }
+        public @Nullable String getPublicationId() { return publicationId; }
+        public @Nullable String getPublicationType() { return publicationType; }
         public @Nullable String getSearchStrategy() { return searchStrategy; }
     }
 
@@ -224,20 +227,21 @@ public class PrivateDataReminderJob extends PipelineJob
         if (datasetStatus != null)
         {
             // If user has dismissed the publication suggestion, don't search again
-            if (Boolean.TRUE.equals(datasetStatus.getUserDismissedPubMed()))
+            if (Boolean.TRUE.equals(datasetStatus.getUserDismissedPublication()))
             {
                 log.info(String.format("User has dismissed publication suggestion for experiment %d; skipping search", expAnnotations.getId()));
                 return PublicationCheckResult.notFound();
             }
 
-            // If we already have a cached PubMed ID, use it
-            if (!StringUtils.isBlank(datasetStatus.getPotentialPubMedId()))
+            // If we already have a cached publication ID, use it
+            if (!StringUtils.isBlank(datasetStatus.getPotentialPublicationId()))
             {
-                log.info(String.format("Using cached PubMed ID %s for experiment %d",
-                        datasetStatus.getPotentialPubMedId(), expAnnotations.getId()));
+                log.info(String.format("Using cached publication %s %s for experiment %d",
+                        datasetStatus.getPublicationType(), datasetStatus.getPotentialPublicationId(), expAnnotations.getId()));
                 return PublicationCheckResult.found(
-                        datasetStatus.getPotentialPubMedId(),
-                        datasetStatus.getPubMedSearchStrategy()
+                        datasetStatus.getPotentialPublicationId(),
+                        datasetStatus.getPublicationType(),
+                        datasetStatus.getPublicationSearchStrategy()
                 );
             }
         }
@@ -251,10 +255,11 @@ public class PrivateDataReminderJob extends PipelineJob
 
             if (searchResult.isFound())
             {
-                String pubMedIds = searchResult.getPmidsAsString();
-                log.info(String.format("Found publication for experiment %d: PubMed ID %s (strategy: %s)",
-                        expAnnotations.getId(), pubMedIds, searchResult.getSearchStrategy()));
-                return PublicationCheckResult.found(pubMedIds, searchResult.getSearchStrategy());
+                String publicationIds = searchResult.getPmidsAsString();
+                String publicationType = searchResult.getPublicationType();
+                log.info(String.format("Found publication for experiment %d: %s %s (strategy: %s)",
+                        expAnnotations.getId(), publicationType, publicationIds, searchResult.getSearchStrategy()));
+                return PublicationCheckResult.found(publicationIds, publicationType, searchResult.getSearchStrategy());
             }
             else
             {
@@ -406,7 +411,8 @@ public class PrivateDataReminderJob extends PipelineJob
                 context.getAnnouncementsFolder(),
                 context.getJournalAdmin(),
                 publicationResult.isPublicationFound(),
-                publicationResult.getPubMedId()
+                publicationResult.getPublicationId(),
+                publicationResult.getPublicationType()
         );
     }
 
@@ -422,8 +428,9 @@ public class PrivateDataReminderJob extends PipelineJob
             // Save publication search results if found
             if (publicationResult.isPublicationFound())
             {
-                datasetStatus.setPotentialPubMedId(publicationResult.getPubMedId());
-                datasetStatus.setPubMedSearchStrategy(publicationResult.getSearchStrategy());
+                datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
+                datasetStatus.setPublicationType(publicationResult.getPublicationType());
+                datasetStatus.setPublicationSearchStrategy(publicationResult.getSearchStrategy());
             }
 
             DatasetStatusManager.save(datasetStatus, getUser());
@@ -433,10 +440,11 @@ public class PrivateDataReminderJob extends PipelineJob
             datasetStatus.setLastReminderDate(new Date());
 
             // Save publication search results if found and not already cached
-            if (publicationResult.isPublicationFound() && StringUtils.isBlank(datasetStatus.getPotentialPubMedId()))
+            if (publicationResult.isPublicationFound() && StringUtils.isBlank(datasetStatus.getPotentialPublicationId()))
             {
-                datasetStatus.setPotentialPubMedId(publicationResult.getPubMedId());
-                datasetStatus.setPubMedSearchStrategy(publicationResult.getSearchStrategy());
+                datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
+                datasetStatus.setPublicationType(publicationResult.getPublicationType());
+                datasetStatus.setPublicationSearchStrategy(publicationResult.getSearchStrategy());
             }
 
             DatasetStatusManager.update(datasetStatus, getUser());

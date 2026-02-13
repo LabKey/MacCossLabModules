@@ -864,13 +864,16 @@
             <column columnName="LastReminderDate" />
             <column columnName="ExtensionRequestedDate" />
             <column columnName="DeletionRequestedDate"/>
-            <column columnName="PotentialPubMedId">
-                <description>Cached PubMed ID(s) found for this dataset</description>
+            <column columnName="PotentialPublicationId">
+                <description>Cached publication ID (PubMed ID, PMC ID etc.)</description>
             </column>
-            <column columnName="PubMedSearchStrategy">
+            <column columnName="PublicationType">
+                <description>Type of publication ID: PMID, PMC, etc.</description>
+            </column>
+            <column columnName="PublicationSearchStrategy">
                 <description>Search strategy that found the publication</description>
             </column>
-            <column columnName="UserDismissedPubMed">
+            <column columnName="UserDismissedPublication">
                 <description>User indicated the found publication is not related to their data</description>
             </column>
         </columns>
