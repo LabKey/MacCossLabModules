@@ -155,6 +155,7 @@ import org.labkey.panoramapublic.datacite.Doi;
 import org.labkey.panoramapublic.datacite.DoiMetadata;
 import org.labkey.panoramapublic.message.PrivateDataMessageScheduler;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
+import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
 import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.DatasetStatus;
@@ -10135,6 +10136,7 @@ public class PanoramaPublicController extends SpringActionController
                 form.setDelayUntilFirstReminder(settings.getDelayUntilFirstReminder());
                 form.setReminderFrequency(settings.getReminderFrequency());
                 form.setExtensionLength(settings.getExtensionLength());
+                form.setEnablePublicationCheck(settings.isEnablePublicationCheck());
             }
 
             VBox view = new VBox();
@@ -10153,6 +10155,7 @@ public class PanoramaPublicController extends SpringActionController
             settings.setDelayUntilFirstReminder(form.getDelayUntilFirstReminder());
             settings.setReminderFrequency(form.getReminderFrequency());
             settings.setExtensionLength(form.getExtensionLength());
+            settings.setEnablePublicationCheck(form.isEnablePublicationCheck());
             PrivateDataReminderSettings.save(settings);
 
             PrivateDataMessageScheduler.getInstance().initialize(settings.isEnableReminders());
@@ -10190,6 +10193,7 @@ public class PanoramaPublicController extends SpringActionController
         private Integer _extensionLength;
         private Integer _reminderFrequency;
         private Integer _delayUntilFirstReminder;
+        private boolean _enablePublicationCheck;
 
         public boolean isEnabled()
         {
@@ -10240,6 +10244,16 @@ public class PanoramaPublicController extends SpringActionController
         {
             _delayUntilFirstReminder = delayUntilFirstReminder;
         }
+
+        public boolean isEnablePublicationCheck()
+        {
+            return _enablePublicationCheck;
+        }
+
+        public void setEnablePublicationCheck(boolean enablePublicationCheck)
+        {
+            _enablePublicationCheck = enablePublicationCheck;
+        }
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
@@ -10256,6 +10270,13 @@ public class PanoramaPublicController extends SpringActionController
             {
                 errors.reject(ERROR_MSG, "Not a Panorama Public folder: " + getContainer().getName());
                 return new SimpleErrorView(errors, true);
+            }
+
+            // Initialize form with current settings on first view
+            if (!reshow)
+            {
+                PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
+                form.setCheckPublications(settings.isEnablePublicationCheck());
             }
 
             QuerySettings qSettings = new QuerySettings(getViewContext(),  PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS,
@@ -10290,7 +10311,8 @@ public class PanoramaPublicController extends SpringActionController
                     PipelineService.get().getPipelineRootSetting(getContainer()),
                     JournalManager.getJournal(getContainer()),
                     form.getSelectedExperimentIds(),
-                    form.getTestMode());
+                    form.getTestMode(),
+                    form.isCheckPublications());
             PipelineService.get().queueJob(job);
             return true;
         }
@@ -10313,6 +10335,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class PrivateDataSendReminderForm
     {
         private boolean _testMode;
+        private boolean _checkPublications;
         private String _selectedIds;
         private String _dataRegionName = null;
 
@@ -10324,6 +10347,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setTestMode(boolean testMode)
         {
             _testMode = testMode;
+        }
+
+        public boolean isCheckPublications()
+        {
+            return _checkPublications;
+        }
+
+        public void setCheckPublications(boolean checkPublications)
+        {
+            _checkPublications = checkPublications;
         }
 
         public String getSelectedIds()
@@ -10548,6 +10581,133 @@ public class PanoramaPublicController extends SpringActionController
                             LinkBuilder.labkeyLink("Data Folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()))
                     )
                 ));
+        }
+    }
+
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
+    public class DismissPubMedSuggestionAction extends UpdateDatasetStatusAction
+    {
+        @Override
+        protected String getConfirmViewTitle()
+        {
+            return "Dismiss PubMed Publication Suggestion";
+        }
+
+        @Override
+        protected String getConfirmViewMessage()
+        {
+            String message = "You are dismissing the publication suggestion for your data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL();
+            if (_datasetStatus != null && !StringUtils.isBlank(_datasetStatus.getPotentialPubMedId()))
+            {
+                message += ". We will no longer suggest PubMed ID " + _datasetStatus.getPotentialPubMedId() + " for this dataset";
+            }
+            return message;
+        }
+
+        @Override
+        protected void doValidationForAction(Errors errors)
+        {
+            if (_datasetStatus == null || StringUtils.isBlank(_datasetStatus.getPotentialPubMedId()))
+            {
+                errors.reject(ERROR_MSG, "No publication suggestion exists for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
+            }
+            else if (Boolean.TRUE.equals(_datasetStatus.getUserDismissedPubMed()))
+            {
+                errors.reject(ERROR_MSG, "The publication suggestion for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
+                        + " has already been dismissed");
+            }
+        }
+
+        @Override
+        protected void updateDatasetStatus(DatasetStatus datasetStatus)
+        {
+            datasetStatus.setUserDismissedPubMed(true);
+        }
+
+        @Override
+        protected void postNotification()
+        {
+            // No notification needed for dismissal
+        }
+
+        @Override
+        public ModelAndView getSuccessView(ShortUrlForm shortUrlForm)
+        {
+            setTitle("Publication Suggestion Dismissed");
+            return new HtmlView(DIV("The publication suggestion has been dismissed for the data at " + _exptAnnotations.getShortUrl().renderShortURL(),
+                    DIV("We will no longer suggest this publication for your dataset."),
+                    BR(),
+                    DIV(
+                            LinkBuilder.labkeyLink("Data Folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()))
+                    )
+            ));
+        }
+    }
+
+    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
+    public static class CheckPubMedForDatasetAction extends ReadOnlyApiAction<ShortUrlForm>
+    {
+        @Override
+        public Object execute(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        {
+            ApiSimpleResponse response = new ApiSimpleResponse();
+
+            ExperimentAnnotations exptAnnotations = getValidExperimentAnnotations(shortUrlForm, errors);
+            if (exptAnnotations == null)
+            {
+                errors.reject(ERROR_MSG, "Unable to find experiment for the provided short URL");
+                return null;
+            }
+
+            try
+            {
+                // Perform the publication search
+                NcbiPublicationSearchService.NcbiPublicationSearchResult searchResult =
+                        NcbiPublicationSearchService.searchForPublication(exptAnnotations);
+
+                response.put("success", true);
+                response.put("publicationFound", searchResult.isFound());
+
+                if (searchResult.isFound())
+                {
+                    String pubMedIds = searchResult.getPmidsAsString();
+                    response.put("pubMedId", pubMedIds);
+                    response.put("searchStrategy", searchResult.getSearchStrategy());
+                    response.put("pubMedUrl", "https://pubmed.ncbi.nlm.nih.gov/" + searchResult.getPmids().get(0));
+
+                    // Update DatasetStatus with the search result
+                    DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
+                    if (datasetStatus == null)
+                    {
+                        datasetStatus = new DatasetStatus();
+                        datasetStatus.setExperimentAnnotationsId(exptAnnotations.getId());
+                        datasetStatus.setPotentialPubMedId(pubMedIds);
+                        datasetStatus.setPubMedSearchStrategy(searchResult.getSearchStrategy());
+                        DatasetStatusManager.save(datasetStatus, getUser());
+                    }
+                    else
+                    {
+                        datasetStatus.setPotentialPubMedId(pubMedIds);
+                        datasetStatus.setPubMedSearchStrategy(searchResult.getSearchStrategy());
+                        datasetStatus.setUserDismissedPubMed(false); // Reset dismissal flag
+                        DatasetStatusManager.update(datasetStatus, getUser());
+                    }
+
+                    response.put("message", "Publication found: PubMed ID " + pubMedIds);
+                }
+                else
+                {
+                    response.put("message", "No publication found for this dataset");
+                }
+            }
+            catch (Exception e)
+            {
+                LOG.error("Error searching for publication for experiment " + exptAnnotations.getId(), e);
+                errors.reject(ERROR_MSG, "Error searching for publication: " + e.getMessage());
+                return null;
+            }
+
+            return response;
         }
     }
 

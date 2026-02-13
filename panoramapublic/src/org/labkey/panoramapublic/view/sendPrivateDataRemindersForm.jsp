@@ -71,6 +71,15 @@
                     <input type="checkbox" name="testMode" <%=checked(form.getTestMode())%> />
                 </td>
             </tr>
+            <tr>
+                <td class="labkey-form-label" style="text-align:center;">Check for NCBI Publications:</td>
+                <td>
+                    <input type="checkbox" name="checkPublications" <%=checked(form.isCheckPublications())%> />
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
+                        When checked, the system will search for publications before sending reminders.
+                    </div>
+                </td>
+            </tr>
             <tr><td colspan=2"><%=button("Post Reminders").onClick("submitForm();")%></td></tr>
         </table>
         <br>

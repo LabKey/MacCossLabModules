@@ -127,6 +127,19 @@
                     </div>
                 </td>
             </tr>
+            <tr>
+                <td class="labkey-form-label">
+                    <span><%=h(PrivateDataReminderSettings.PROP_ENABLE_PUBLICATION_CHECK)%></span>
+                </td>
+                <td>
+                    <input style="padding:0 10px 0 0;" type="checkbox" name="enablePublicationCheck" <%=checked(form.isEnablePublicationCheck())%> />
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
+                        When enabled, the system will search PubMed Central and PubMed for publications associated with private datasets.
+                        <br/>
+                        If a publication is found, submitters will be notified.
+                    </div>
+                </td>
+            </tr>
             <tr><td colspan=2">
                 <%=button("Save").submit(true)%>
                 <%=button("Cancel").href(panoramaPublicAdminUrl)%>

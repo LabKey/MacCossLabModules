@@ -24,12 +24,14 @@ public class PrivateDataReminderSettings
     public static final String PROP_DELAY_UNTIL_FIRST_REMINDER = "Delay until first reminder (months)";
     public static final String PROP_REMINDER_FREQUENCY = "Reminder frequency (months)";
     public static final String PROP_EXTENSION_LENGTH = "Extension duration (months)";
+    public static final String PROP_ENABLE_PUBLICATION_CHECK = "Enable NCBI publication check";
 
     private static final boolean DEFAULT_ENABLE_REMINDERS = false;
     public static final String DEFAULT_REMINDER_TIME = "8:00 AM";
     private static final int DEFAULT_DELAY_UNTIL_FIRST_REMINDER = 12; // Send the first reminder after the data has been private for a year.
     private static final int DEFAULT_REMINDER_FREQUENCY = 1; // Send reminders once a month, unless extension or deletion was requested.
     private static final int DEFAULT_EXTENSION_LENGTH = 6; // Private status of a dataset can be extended by 6 months.
+    private static final boolean DEFAULT_ENABLE_PUBLICATION_CHECK = false;
 
     public static final String DATE_FORMAT_PATTERN = "MMMM d, yyyy";
     public static final String REMINDER_TIME_FORMAT = "h:mm a";
@@ -40,6 +42,7 @@ public class PrivateDataReminderSettings
     private int _delayUntilFirstReminder;
     private int _reminderFrequency;
     private int _extensionLength;
+    private boolean _enablePublicationCheck;
 
     public static PrivateDataReminderSettings get()
     {
@@ -70,6 +73,11 @@ public class PrivateDataReminderSettings
 
             LocalTime reminderTime = tryParseReminderTime(settingsMap.get(PROP_REMINDER_TIME), DEFAULT_REMINDER_TIME);
             settings.setReminderTime(reminderTime);
+
+            boolean enablePublicationCheck = settingsMap.get(PROP_ENABLE_PUBLICATION_CHECK) == null
+                    ? DEFAULT_ENABLE_PUBLICATION_CHECK
+                    : Boolean.valueOf(settingsMap.get(PROP_ENABLE_PUBLICATION_CHECK));
+            settings.setEnablePublicationCheck(enablePublicationCheck);
         }
         else
         {
@@ -78,6 +86,7 @@ public class PrivateDataReminderSettings
             settings.setReminderFrequency(DEFAULT_REMINDER_FREQUENCY);
             settings.setExtensionLength(DEFAULT_EXTENSION_LENGTH);
             settings.setReminderTime(parseReminderTime(DEFAULT_REMINDER_TIME));
+            settings.setEnablePublicationCheck(DEFAULT_ENABLE_PUBLICATION_CHECK);
         }
 
         return settings;
@@ -112,6 +121,7 @@ public class PrivateDataReminderSettings
         settingsMap.put(PROP_REMINDER_FREQUENCY, String.valueOf(settings.getReminderFrequency()));
         settingsMap.put(PROP_EXTENSION_LENGTH, String.valueOf(settings.getExtensionLength()));
         settingsMap.put(PROP_REMINDER_TIME, settings.getReminderTimeFormatted());
+        settingsMap.put(PROP_ENABLE_PUBLICATION_CHECK, String.valueOf(settings.isEnablePublicationCheck()));
         settingsMap.save();
     }
 
@@ -168,6 +178,16 @@ public class PrivateDataReminderSettings
     public void setDelayUntilFirstReminder(int delayUntilFirstReminder)
     {
         _delayUntilFirstReminder = delayUntilFirstReminder;
+    }
+
+    public boolean isEnablePublicationCheck()
+    {
+        return _enablePublicationCheck;
+    }
+
+    public void setEnablePublicationCheck(boolean enablePublicationCheck)
+    {
+        _enablePublicationCheck = enablePublicationCheck;
     }
 
     public @Nullable Date getReminderValidUntilDate(@NotNull DatasetStatus status)
