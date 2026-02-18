@@ -36,18 +36,17 @@
 <%@ page import="org.labkey.panoramapublic.model.JournalSubmission" %>
 <%@ page import="org.labkey.panoramapublic.model.Submission" %>
 <%@ page import="org.labkey.panoramapublic.model.validation.DataValidation" %>
-<%@ page import="static org.labkey.api.util.DOM.SPAN" %>
-<%@ page import="static org.labkey.api.util.DOM.Attribute.style" %>
 <%@ page import="org.labkey.panoramapublic.model.validation.PxStatus" %>
-<%@ page import="static org.labkey.api.util.DOM.Attribute.title" %>
-<%@ page import="static org.labkey.api.util.DOM.Attribute.href" %>
 <%@ page import="org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService" %>
 <%@ page import="org.labkey.panoramapublic.query.CatalogEntryManager" %>
 <%@ page import="org.labkey.panoramapublic.query.DataValidationManager" %>
 <%@ page import="org.labkey.panoramapublic.query.JournalManager" %>
 <%@ page import="org.labkey.panoramapublic.view.publish.CatalogEntryWebPart" %>
 <%@ page import="java.text.SimpleDateFormat" %>
-<%@ page import="org.labkey.api.util.LinkBuilder" %>
+<%@ page import="static org.labkey.api.util.DOM.SPAN" %>
+<%@ page import="static org.labkey.api.util.DOM.Attribute.style" %>
+<%@ page import="static org.labkey.api.util.DOM.Attribute.title" %>
+<%@ page import="static org.labkey.api.util.DOM.Attribute.href" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -109,7 +108,7 @@
             StringBuilder status = new StringBuilder();
             if (DataValidationManager.isValidationOutdated(validation, annot, getUser()))
             {
-                DOM.A(DOM.at(href, viewExptDetailsUrl.toContainerRelativeURL()),
+                DOM.A(DOM.at(href, viewExptDetailsUrl.toRelativeURL()),
                         DOM.SPAN(DOM.cl("labkey-error"), SPAN(DOM.at(style, "background-color: #FFF6D8;margin:2px;font-weight:bold;"), "PX validation is outdated")))
                         .appendTo(status);
             }
@@ -121,7 +120,7 @@
                         PxStatus.IncompleteMetadata == pxStatus ? "pxv-circle-incomplete" : "pxv-circle-invalid");
                 String pxStatusStr = PxStatus.NotValid == pxStatus ? pxStatus.getLabel() :
                         ("ProteomeXchange status: " + pxStatus.getLabel());
-                DOM.A(DOM.at(href, viewExptDetailsUrl.toContainerRelativeURL()),
+                DOM.A(DOM.at(href, viewExptDetailsUrl.toRelativeURL()),
                         DOM.SPAN(DOM.at(title, pxStatusStr), DOM.SPAN(DOM.cl(pxCls), "PX")))
                         .appendTo(status);
             }
