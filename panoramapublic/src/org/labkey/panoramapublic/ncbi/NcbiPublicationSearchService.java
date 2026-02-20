@@ -1,16 +1,17 @@
 package org.labkey.panoramapublic.ncbi;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
+import org.labkey.panoramapublic.model.PublicationType;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -43,7 +44,13 @@ public class NcbiPublicationSearchService
     private static final int RATE_LIMIT_DELAY_MS = 400; // NCBI allows 3 requests/sec
     private static final int MAX_RESULTS = 5;
     private static final int TIMEOUT_MS = 10000; // 10 seconds
-    private static final String NCBI_EMAIL = "panoramapublic@proteinms.net";
+    private static final String NCBI_EMAIL = "panorama@proteinms.net";
+
+    // Preprint indicators
+    private static final String[] PREPRINT_INDICATORS = {
+            "preprint", "biorxiv", "medrxiv", "chemrxiv", "arxiv",
+            "research square", "preprints.org"
+    };
 
     // Title keyword extraction
     private static final int MIN_KEYWORD_LENGTH = 5;
@@ -57,32 +64,72 @@ public class NcbiPublicationSearchService
         "comparison", "evaluation"
     );
 
-    // Preprint indicators
-    private static final String[] PREPRINT_INDICATORS = {
-        "preprint", "biorxiv", "medrxiv", "chemrxiv", "arxiv",
-        "research square", "preprints.org"
-    };
+    private static final int MAX_RESULTS_LIMIT = 5;
+
+    private static Logger getLog(@Nullable Logger logger)
+    {
+        return logger != null ? logger : LOG;
+    }
+
+    /**
+     * Search for publications associated with the given experiment.
+     * Returns at most 1 result.
+     */
+    public static NcbiPublicationSearchResult searchForPublication(@NotNull ExperimentAnnotations expAnnotations)
+    {
+        return searchForPublication(expAnnotations, 1, null);
+    }
 
     /**
      * Search for publications associated with the given experiment.
      * Search PubMed Central first, then fall back to PubMed if needed.
+     * @param maxResults maximum number of article matches to return (capped at 5)
+     * @param logger optional logger; when null, uses the class logger
      */
-    public static NcbiPublicationSearchResult searchForPublication(@NotNull ExperimentAnnotations expAnnotations)
+    public static NcbiPublicationSearchResult searchForPublication(@NotNull ExperimentAnnotations expAnnotations, int maxResults, @Nullable Logger logger)
     {
-        LOG.info("Starting publication search for experiment: " + expAnnotations.getId());
+        Logger log = getLog(logger);
+        maxResults = Math.max(1, Math.min(maxResults, MAX_RESULTS_LIMIT));
+        log.info("Starting publication search for experiment: " + expAnnotations.getId());
 
+        List<ArticleMatch> matchedArticles = searchPmc(expAnnotations, log);
+
+        // If no PMC results, fall back to PubMed
+        if (matchedArticles.isEmpty())
+        {
+            log.info("No PMC articles found, trying PubMed fallback");
+            matchedArticles = searchPubMed(expAnnotations, log);
+        }
+
+        // Build and return result
+        if (matchedArticles.isEmpty())
+        {
+            log.info("No publications found");
+            return NcbiPublicationSearchResult.notFound();
+        }
+
+        if (matchedArticles.size() > maxResults)
+        {
+            matchedArticles = matchedArticles.subList(0, maxResults);
+        }
+        log.info("Returning " + matchedArticles.size() + StringUtilsLabKey.pluralize(matchedArticles.size(), "publication"));
+        return buildSearchResult(matchedArticles);
+    }
+
+    private static @NotNull List<ArticleMatch> searchPmc(@NotNull ExperimentAnnotations expAnnotations, Logger log)
+    {
         // Track PMC IDs found by each strategy
         Map<String, List<String>> pmcIdsByStrategy = new HashMap<>();
 
         // Step 1: Search PMC by PX ID
         if (!StringUtils.isBlank(expAnnotations.getPxid()))
         {
-            LOG.info("Searching PMC by PX ID: " + expAnnotations.getPxid());
+            log.debug("Searching PMC by PX ID: " + expAnnotations.getPxid());
             List<String> ids = searchPmc(quote(expAnnotations.getPxid()));
             if (!ids.isEmpty())
             {
                 pmcIdsByStrategy.put("PMC_PX_ID", ids);
-                LOG.info("Found " + ids.size() + " PMC articles by PX ID");
+                log.debug("Found " + ids.size() + " PMC articles by PX ID");
             }
             rateLimit();
         }
@@ -91,12 +138,12 @@ public class NcbiPublicationSearchService
         if (expAnnotations.getShortUrl() != null)
         {
             String panoramaUrl = expAnnotations.getShortUrl().renderShortURL();
-            LOG.info("Searching PMC by Panorama URL: " + panoramaUrl);
+            log.debug("Searching PMC by Panorama URL: " + panoramaUrl);
             List<String> ids = searchPmc(quote(panoramaUrl));
             if (!ids.isEmpty())
             {
                 pmcIdsByStrategy.put("PMC_PanoramaURL", ids);
-                LOG.info("Found " + ids.size() + " PMC articles by Panorama URL");
+                log.debug("Found " + ids.size() + " PMC articles by Panorama URL");
             }
             rateLimit();
         }
@@ -107,12 +154,12 @@ public class NcbiPublicationSearchService
             String doiUrl = expAnnotations.getDoi().startsWith("http")
                 ? expAnnotations.getDoi()
                 : DataCiteService.toUrl(expAnnotations.getDoi());
-            LOG.info("Searching PMC by DOI: " + doiUrl);
+            log.debug("Searching PMC by DOI: " + doiUrl);
             List<String> ids = searchPmc(quote(doiUrl));
             if (!ids.isEmpty())
             {
                 pmcIdsByStrategy.put("PMC_DOI", ids);
-                LOG.info("Found " + ids.size() + " PMC articles by DOI");
+                log.debug("Found " + ids.size() + " PMC articles by DOI");
             }
             rateLimit();
         }
@@ -131,30 +178,13 @@ public class NcbiPublicationSearchService
             }
         }
 
-        LOG.info("Total unique PMC IDs found: " + uniquePmcIds.size());
+        log.info("Total unique PMC IDs found: " + uniquePmcIds.size());
 
         // Fetch and verify PMC articles
-        List<ArticleMatch> pmcArticles = fetchAndVerifyPmcArticles(uniquePmcIds, idToStrategies, expAnnotations);
+        List<ArticleMatch> pmcArticles = fetchAndVerifyPmcArticles(uniquePmcIds, idToStrategies, expAnnotations, log);
 
         // Apply priority filtering
-        List<ArticleMatch> filteredArticles = applyPriorityFiltering(pmcArticles);
-
-        // If no PMC results, fall back to PubMed
-        if (filteredArticles.isEmpty())
-        {
-            LOG.info("No PMC articles found, trying PubMed fallback");
-            filteredArticles = searchPubMedFallback(expAnnotations);
-        }
-
-        // Build and return result
-        if (filteredArticles.isEmpty())
-        {
-            LOG.info("No publications found");
-            return NcbiPublicationSearchResult.notFound();
-        }
-
-        LOG.info("Found " + filteredArticles.size() + " publication(s)");
-        return buildSearchResult(filteredArticles);
+        return applyPriorityFiltering(pmcArticles, log);
     }
 
     /**
@@ -323,7 +353,8 @@ public class NcbiPublicationSearchService
     private static List<ArticleMatch> fetchAndVerifyPmcArticles(
         Set<String> pmcIds,
         Map<String, List<String>> idToStrategies,
-        ExperimentAnnotations expAnnotations)
+        ExperimentAnnotations expAnnotations,
+        Logger log)
     {
         if (pmcIds.isEmpty()) return Collections.emptyList();
 
@@ -346,7 +377,7 @@ public class NcbiPublicationSearchService
             {
                 String source = articleData.optString("source", "");
                 String journal = articleData.optString("fulljournalname", "");
-                LOG.info("Excluded preprint PMC" + pmcId + ": source=\"" + source + "\", journal=\"" + journal + "\"");
+                log.info("Excluded preprint PMC" + pmcId + ": source=\"" + source + "\", journal=\"" + journal + "\"");
                 continue;
             }
 
@@ -354,25 +385,33 @@ public class NcbiPublicationSearchService
             boolean authorMatch = checkAuthorMatch(articleData, firstName, lastName);
             boolean titleMatch = checkTitleMatch(articleData, expAnnotations.getTitle());
 
-            List<String> matchedBy = new ArrayList<>();
-            if (authorMatch) matchedBy.add("Author");
-            if (titleMatch) matchedBy.add("Title");
-
-            // Extract PMID from PMC metadata
-            String pmid = extractPmidFromPmcMetadata(articleData, pmcId);
+            // Extract publication ID and determine type
+            String publicationId = extractPmidFromPmcMetadata(articleData, pmcId);
+            PublicationType publicationType = publicationId.startsWith(DatasetStatus.TYPE_PMC)
+                ? PublicationType.PMC
+                : PublicationType.PMID;
 
             // Get strategies that found this article
             List<String> strategies = idToStrategies.getOrDefault(pmcId, Collections.emptyList());
 
+            // Map strategies to boolean flags
+            boolean foundByPxId = strategies.contains("PMC_PX_ID");
+            boolean foundByUrl = strategies.contains("PMC_PanoramaURL");
+            boolean foundByDoi = strategies.contains("PMC_DOI");
+
             ArticleMatch article = new ArticleMatch(
-                pmid,
-                String.join(", ", strategies),
-                String.join(", ", matchedBy)
+                publicationId,
+                publicationType,
+                foundByPxId,
+                foundByUrl,
+                foundByDoi,
+                authorMatch,
+                titleMatch
             );
             articles.add(article);
 
-            LOG.info("PMC" + pmcId + " -> PMID " + pmid + " | Found by: " + article.getFoundBy() +
-                " | Matched: " + article.getMatchedBy());
+            log.info("PMC" + pmcId + " -> " + publicationType + " " + publicationId +
+                " | Match info: " + article.getMatchInfo());
         }
 
         return articles;
@@ -381,18 +420,24 @@ public class NcbiPublicationSearchService
     /**
      * Apply priority filtering to narrow down results
      */
-    private static List<ArticleMatch> applyPriorityFiltering(List<ArticleMatch> articles)
+    private static List<ArticleMatch> applyPriorityFiltering(List<ArticleMatch> articles, Logger log)
     {
         if (articles.size() <= 1) return articles;
 
         // Priority 1: Filter to articles found by multiple data IDs (most reliable)
         List<ArticleMatch> multipleIds = articles.stream()
-            .filter(a -> a.getFoundBy().split(", ").length >= 2)
+            .filter(a -> {
+                int count = 0;
+                if (a.matchesProteomeXchangeId()) count++;
+                if (a.matchesPanoramaUrl()) count++;
+                if (a.matchesDoi()) count++;
+                return count >= 2;
+            })
             .collect(Collectors.toList());
 
         if (!multipleIds.isEmpty())
         {
-            LOG.info("Filtered to " + multipleIds.size() + " article(s) found by multiple IDs");
+            log.debug("Filtered to " + multipleIds.size() + " article(s) found by multiple IDs");
             articles = multipleIds;
         }
 
@@ -400,12 +445,12 @@ public class NcbiPublicationSearchService
 
         // Priority 2: Filter to articles with both Author AND Title match
         List<ArticleMatch> bothMatches = articles.stream()
-            .filter(a -> "Author, Title".equals(a.getMatchedBy()))
+            .filter(a -> a.matchesAuthor() && a.matchesTitle())
             .collect(Collectors.toList());
 
         if (!bothMatches.isEmpty())
         {
-            LOG.info("Filtered to " + bothMatches.size() + " article(s) with both Author and Title match");
+            log.debug("Filtered to " + bothMatches.size() + " article(s) with both Author and Title match");
             return bothMatches;
         }
 
@@ -415,7 +460,7 @@ public class NcbiPublicationSearchService
     /**
      * Fall back to PubMed search if PMC finds nothing
      */
-    private static List<ArticleMatch> searchPubMedFallback(ExperimentAnnotations expAnnotations)
+    private static List<ArticleMatch> searchPubMed(ExperimentAnnotations expAnnotations, Logger log)
     {
         String firstName = expAnnotations.getSubmitterUser() != null
             ? expAnnotations.getSubmitterUser().getFirstName() : null;
@@ -425,7 +470,7 @@ public class NcbiPublicationSearchService
 
         if (StringUtils.isBlank(firstName) || StringUtils.isBlank(lastName) || StringUtils.isBlank(title))
         {
-            LOG.info("Cannot perform PubMed fallback - missing author or title information");
+            log.info("Cannot perform PubMed fallback - missing author or title information");
             return Collections.emptyList();
         }
 
@@ -433,16 +478,16 @@ public class NcbiPublicationSearchService
         String query = String.format("%s %s[Author] AND %s NOT preprint[Publication Type]",
             lastName, firstName, title);
 
-        LOG.info("PubMed fallback query: " + query);
+        log.debug("PubMed fallback query: " + query);
         List<String> pmids = searchPubMed(query);
 
         if (pmids.isEmpty())
         {
-            LOG.info("PubMed fallback found no results");
+            log.info("PubMed fallback found no results");
             return Collections.emptyList();
         }
 
-        LOG.info("PubMed fallback found " + pmids.size() + " result(s), verifying...");
+        log.info("PubMed fallback found " + pmids.size() + " result(s), verifying...");
 
         // Fetch metadata and verify
         Map<String, JSONObject> metadata = fetchPubMedMetadata(pmids);
@@ -456,7 +501,7 @@ public class NcbiPublicationSearchService
             // Filter out preprints
             if (isPreprint(articleData))
             {
-                LOG.info("Excluded preprint PMID " + pmid);
+                log.info("Excluded preprint PMID " + pmid);
                 continue;
             }
 
@@ -467,13 +512,21 @@ public class NcbiPublicationSearchService
             // Only accept if BOTH match
             if (authorMatch && titleMatch)
             {
-                ArticleMatch article = new ArticleMatch(pmid, "PubMed_Author+Title", "Author, Title");
+                ArticleMatch article = new ArticleMatch(
+                    pmid,
+                    PublicationType.PMID,
+                    false,  // Not found by PX ID
+                    false,  // Not found by Panorama URL
+                    false,  // Not found by DOI
+                    true,   // Matched by author
+                    true    // Matched by title
+                );
                 articles.add(article);
-                LOG.info("PMID " + pmid + " verified with both Author and Title match");
+                log.info("PMID " + pmid + " verified with both Author and Title match");
             }
         }
 
-        LOG.info("Verified " + articles.size() + " of " + pmids.size() + " PubMed results");
+        log.info("Verified " + articles.size() + " of " + pmids.size() + " PubMed results");
         return articles;
     }
 
@@ -662,33 +715,20 @@ public class NcbiPublicationSearchService
             return NcbiPublicationSearchResult.notFound();
         }
 
-        List<String> pmids = articles.stream()
-            .map(ArticleMatch::getPmid)
-            .collect(Collectors.toList());
-
-        // Determine publication type from first ID (prefer PMID over PMC)
-        String firstId = pmids.get(0);
-        String publicationType = firstId.startsWith(DatasetStatus.TYPE_PMC) ? DatasetStatus.TYPE_PMC : DatasetStatus.TYPE_PMID;
-
-        String strategy;
+        String matchInfo;
         if (articles.size() == 1)
         {
-            ArticleMatch article = articles.get(0);
-            String matchInfo = article.getMatchedBy().isEmpty() ? "" : "(" + article.getMatchedBy() + ")";
-            strategy = article.getFoundBy() + matchInfo;
+            matchInfo = articles.get(0).getMatchInfo();
         }
         else
         {
-            // Multiple articles: format each on separate line
-            strategy = articles.stream()
-                .map(a -> {
-                    String matchInfo = a.getMatchedBy().isEmpty() ? "" : "(" + a.getMatchedBy() + ")";
-                    return a.getPmid() + ": " + a.getFoundBy() + matchInfo;
-                })
+            // Multiple articles: prefix each with publication ID
+            matchInfo = articles.stream()
+                .map(a -> a.getPublicationId() + ": " + a.getMatchInfo())
                 .collect(Collectors.joining("\n"));
         }
 
-        return NcbiPublicationSearchResult.found(pmids, publicationType, strategy, articles);
+        return NcbiPublicationSearchResult.found(matchInfo, articles);
     }
 
     /**
@@ -719,49 +759,33 @@ public class NcbiPublicationSearchService
      */
     public static class NcbiPublicationSearchResult
     {
-        private final List<String> _pmids;
-        private final String _publicationType;     // "PMID" or "PMC"
-        private final String _searchStrategy;
-        private final boolean _found;
+        private final String _matchInfo;
         private final List<ArticleMatch> _articles;
 
-        private NcbiPublicationSearchResult(List<String> pmids, String publicationType, String searchStrategy, boolean found, List<ArticleMatch> articles)
+        private NcbiPublicationSearchResult(String matchInfo, List<ArticleMatch> articles)
         {
-            _pmids = pmids != null ? pmids : Collections.emptyList();
-            _publicationType = publicationType;
-            _searchStrategy = searchStrategy;
-            _found = found;
+            _matchInfo = matchInfo;
             _articles = articles != null ? articles : Collections.emptyList();
         }
 
-        public static NcbiPublicationSearchResult found(List<String> pmids, String publicationType, String strategy, List<ArticleMatch> articles)
+        public static NcbiPublicationSearchResult found(String matchInfo, List<ArticleMatch> articles)
         {
-            return new NcbiPublicationSearchResult(pmids, publicationType, strategy, true, articles);
+            return new NcbiPublicationSearchResult(matchInfo, articles);
         }
 
         public static NcbiPublicationSearchResult notFound()
         {
-            return new NcbiPublicationSearchResult(null, null, null, false, null);
+            return new NcbiPublicationSearchResult(null, null);
         }
 
         public boolean isFound()
         {
-            return _found;
+            return !_articles.isEmpty();
         }
 
-        public List<String> getPmids()
+        public String getMatchInfo()
         {
-            return _pmids;
-        }
-
-        public String getPublicationType()
-        {
-            return _publicationType;
-        }
-
-        public String getSearchStrategy()
-        {
-            return _searchStrategy;
+            return _matchInfo;
         }
 
         public List<ArticleMatch> getArticles()
@@ -769,9 +793,46 @@ public class NcbiPublicationSearchService
             return _articles;
         }
 
-        public String getPmidsAsString()
+        /**
+         * Get list of publication IDs from all articles
+         */
+        public List<String> getPublicationIds()
         {
-            return String.join(", ", _pmids);
+            return _articles.stream()
+                .map(ArticleMatch::getPublicationId)
+                .collect(Collectors.toList());
+        }
+
+        /**
+         * Get publication IDs as comma-separated string
+         */
+        public String getPublicationIdsAsString()
+        {
+            return _articles.stream()
+                .map(ArticleMatch::getPublicationId)
+                .collect(Collectors.joining(", "));
+        }
+
+        /**
+         * Get publication type of the first article (primary result)
+         * Returns null if no articles found
+         */
+        public String getPublicationType()
+        {
+            if (_articles.isEmpty())
+            {
+                return null;
+            }
+            PublicationType type = _articles.get(0).getPublicationType();
+            return type != null ? type.toDatabaseValue() : null;
+        }
+
+        /**
+         * Get the primary (first) article match, or null if no articles found
+         */
+        public ArticleMatch getPrimaryArticle()
+        {
+            return _articles.isEmpty() ? null : _articles.get(0);
         }
     }
 
@@ -780,30 +841,76 @@ public class NcbiPublicationSearchService
      */
     public static class ArticleMatch
     {
-        private final String _pmid;
-        private final String _foundBy;    // e.g., "PMC_PX_ID, PMC_DOI"
-        private final String _matchedBy;  // e.g., "Author, Title"
+        private final String _publicationId;
+        private final PublicationType _publicationType;
+        private final boolean _matchesProteomeXchangeId;
+        private final boolean _matchesPanoramaUrl;
+        private final boolean _matchesDoi;
+        private final boolean _matchesAuthor;
+        private final boolean _matchesTitle;
 
-        public ArticleMatch(String pmid, String foundBy, String matchedBy)
+        public ArticleMatch(String publicationId, PublicationType publicationType,
+                           boolean matchesProteomeXchangeId, boolean matchesPanoramaUrl, boolean matchesDoi,
+                           boolean matchesAuthor, boolean matchesTitle)
         {
-            _pmid = pmid;
-            _foundBy = foundBy;
-            _matchedBy = matchedBy;
+            _publicationId = publicationId;
+            _publicationType = publicationType;
+            _matchesProteomeXchangeId = matchesProteomeXchangeId;
+            _matchesPanoramaUrl = matchesPanoramaUrl;
+            _matchesDoi = matchesDoi;
+            _matchesAuthor = matchesAuthor;
+            _matchesTitle = matchesTitle;
         }
 
-        public String getPmid()
+        public String getPublicationId()
         {
-            return _pmid;
+            return _publicationId;
         }
 
-        public String getFoundBy()
+        public PublicationType getPublicationType()
         {
-            return _foundBy;
+            return _publicationType;
         }
 
-        public String getMatchedBy()
+        public boolean matchesProteomeXchangeId()
         {
-            return _matchedBy;
+            return _matchesProteomeXchangeId;
+        }
+
+        public boolean matchesPanoramaUrl()
+        {
+            return _matchesPanoramaUrl;
+        }
+
+        public boolean matchesDoi()
+        {
+            return _matchesDoi;
+        }
+
+        public boolean matchesAuthor()
+        {
+            return _matchesAuthor;
+        }
+
+        public boolean matchesTitle()
+        {
+            return _matchesTitle;
+        }
+
+        /**
+         * Get a predictable representation of what matched for this article.
+         * This is what gets stored in the PublicationMatchInfo database column.
+         * Example: "ProteomeXchange ID, Panorama URL, Author, Title"
+         */
+        public String getMatchInfo()
+        {
+            List<String> matches = new ArrayList<>();
+            if (_matchesProteomeXchangeId) matches.add("ProteomeXchange ID");
+            if (_matchesPanoramaUrl) matches.add("Panorama URL");
+            if (_matchesDoi) matches.add("DOI");
+            if (_matchesAuthor) matches.add("Author");
+            if (_matchesTitle) matches.add("Title");
+            return String.join(", ", matches);
         }
     }
 }

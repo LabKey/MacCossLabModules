@@ -10652,7 +10652,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public static class CheckPubMedForDatasetAction extends ReadOnlyApiAction<ShortUrlForm>
+    public static class FindPublicationForDatasetAction extends ReadOnlyApiAction<ShortUrlForm>
     {
         @Override
         public Object execute(ShortUrlForm shortUrlForm, BindException errors) throws Exception
@@ -10677,14 +10677,14 @@ public class PanoramaPublicController extends SpringActionController
 
                 if (searchResult.isFound())
                 {
-                    String publicationIds = searchResult.getPmidsAsString();
+                    String publicationIds = searchResult.getPublicationIdsAsString();
                     String publicationType = searchResult.getPublicationType();
                     response.put("publicationId", publicationIds);
                     response.put("publicationType", publicationType);
-                    response.put("searchStrategy", searchResult.getSearchStrategy());
+                    response.put("matchInfo", searchResult.getMatchInfo());
 
                     // Generate appropriate URL based on publication type
-                    String firstId = searchResult.getPmids().get(0);
+                    String firstId = searchResult.getPublicationIds().get(0);
                     String publicationUrl;
                     if (DatasetStatus.TYPE_PMC.equals(publicationType))
                     {
@@ -10704,14 +10704,14 @@ public class PanoramaPublicController extends SpringActionController
                         datasetStatus.setExperimentAnnotationsId(exptAnnotations.getId());
                         datasetStatus.setPotentialPublicationId(publicationIds);
                         datasetStatus.setPublicationType(publicationType);
-                        datasetStatus.setPublicationSearchStrategy(searchResult.getSearchStrategy());
+                        datasetStatus.setPublicationMatchInfo(searchResult.getMatchInfo());
                         DatasetStatusManager.save(datasetStatus, getUser());
                     }
                     else
                     {
                         datasetStatus.setPotentialPublicationId(publicationIds);
                         datasetStatus.setPublicationType(publicationType);
-                        datasetStatus.setPublicationSearchStrategy(searchResult.getSearchStrategy());
+                        datasetStatus.setPublicationMatchInfo(searchResult.getMatchInfo());
                         datasetStatus.setUserDismissedPublication(false); // Reset dismissal flag
                         DatasetStatusManager.update(datasetStatus, getUser());
                     }

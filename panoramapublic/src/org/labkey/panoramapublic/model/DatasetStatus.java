@@ -17,7 +17,7 @@ public class DatasetStatus  extends DbEntity
     private Date _deletionRequestedDate;
     private String _potentialPublicationId;
     private String _publicationType;
-    private String _publicationSearchStrategy;
+    private String _publicationMatchInfo;
     private Boolean _userDismissedPublication;
 
     public int getExperimentAnnotationsId()
@@ -102,30 +102,22 @@ public class DatasetStatus  extends DbEntity
 
     public String getPublicationLabel()
     {
-        if (_publicationType == null)
+        PublicationType type = PublicationType.fromDatabaseValue(_publicationType);
+        if (type == null)
         {
-            return "";
+            return _publicationType != null ? _publicationType : "";
         }
-
-        switch (_publicationType)
-        {
-            case TYPE_PMC:
-                return "PMC ID";
-            case TYPE_PMID:
-                return "PubMed ID";
-            default:
-                return _publicationType;
-        }
+        return type.getLabel();
     }
 
-    public String getPublicationSearchStrategy()
+    public String getPublicationMatchInfo()
     {
-        return _publicationSearchStrategy;
+        return _publicationMatchInfo;
     }
 
-    public void setPublicationSearchStrategy(String publicationSearchStrategy)
+    public void setPublicationMatchInfo(String publicationMatchInfo)
     {
-        _publicationSearchStrategy = publicationSearchStrategy;
+        _publicationMatchInfo = publicationMatchInfo;
     }
 
     public Boolean getUserDismissedPublication()

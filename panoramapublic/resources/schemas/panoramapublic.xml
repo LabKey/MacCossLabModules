@@ -870,8 +870,8 @@
             <column columnName="PublicationType">
                 <description>Type of publication ID: PMID, PMC, etc.</description>
             </column>
-            <column columnName="PublicationSearchStrategy">
-                <description>Search strategy that found the publication</description>
+            <column columnName="PublicationMatchInfo">
+                <description>Information about which fields (e.g. PXD, Panorama link, title etc.) matched</description>
             </column>
             <column columnName="UserDismissedPublication">
                 <description>User indicated the found publication is not related to their data</description>

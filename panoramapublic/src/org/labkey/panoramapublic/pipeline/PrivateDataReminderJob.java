@@ -179,27 +179,27 @@ public class PrivateDataReminderJob extends PipelineJob
         private final boolean publicationFound;
         private final String publicationId;
         private final String publicationType;
-        private final String searchStrategy;
+        private final String matchInfo;
 
-        public PublicationCheckResult(boolean publicationFound, @Nullable String publicationId, @Nullable String publicationType, @Nullable String searchStrategy) {
+        public PublicationCheckResult(boolean publicationFound, @Nullable String publicationId, @Nullable String publicationType, @Nullable String matchInfo) {
             this.publicationFound = publicationFound;
             this.publicationId = publicationId;
             this.publicationType = publicationType;
-            this.searchStrategy = searchStrategy;
+            this.matchInfo = matchInfo;
         }
 
         public static PublicationCheckResult notFound() {
             return new PublicationCheckResult(false, null, null, null);
         }
 
-        public static PublicationCheckResult found(@NotNull String publicationId, @NotNull String publicationType, @NotNull String searchStrategy) {
-            return new PublicationCheckResult(true, publicationId, publicationType, searchStrategy);
+        public static PublicationCheckResult found(@NotNull String publicationId, @NotNull String publicationType, @NotNull String matchInfo) {
+            return new PublicationCheckResult(true, publicationId, publicationType, matchInfo);
         }
 
         public boolean isPublicationFound() { return publicationFound; }
         public @Nullable String getPublicationId() { return publicationId; }
         public @Nullable String getPublicationType() { return publicationType; }
-        public @Nullable String getSearchStrategy() { return searchStrategy; }
+        public @Nullable String getMatchInfo() { return matchInfo; }
     }
 
     /**
@@ -241,7 +241,7 @@ public class PrivateDataReminderJob extends PipelineJob
                 return PublicationCheckResult.found(
                         datasetStatus.getPotentialPublicationId(),
                         datasetStatus.getPublicationType(),
-                        datasetStatus.getPublicationSearchStrategy()
+                        datasetStatus.getPublicationMatchInfo()
                 );
             }
         }
@@ -251,15 +251,15 @@ public class PrivateDataReminderJob extends PipelineJob
         try
         {
             NcbiPublicationSearchService.NcbiPublicationSearchResult searchResult =
-                    NcbiPublicationSearchService.searchForPublication(expAnnotations);
+                    NcbiPublicationSearchService.searchForPublication(expAnnotations, 1, log);
 
             if (searchResult.isFound())
             {
-                String publicationIds = searchResult.getPmidsAsString();
+                String publicationIds = searchResult.getPublicationIdsAsString();
                 String publicationType = searchResult.getPublicationType();
-                log.info(String.format("Found publication for experiment %d: %s %s (strategy: %s)",
-                        expAnnotations.getId(), publicationType, publicationIds, searchResult.getSearchStrategy()));
-                return PublicationCheckResult.found(publicationIds, publicationType, searchResult.getSearchStrategy());
+                log.info(String.format("Found publication for experiment %d: %s %s (match info: %s)",
+                        expAnnotations.getId(), publicationType, publicationIds, searchResult.getMatchInfo()));
+                return PublicationCheckResult.found(publicationIds, publicationType, searchResult.getMatchInfo());
             }
             else
             {
@@ -430,7 +430,7 @@ public class PrivateDataReminderJob extends PipelineJob
             {
                 datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
                 datasetStatus.setPublicationType(publicationResult.getPublicationType());
-                datasetStatus.setPublicationSearchStrategy(publicationResult.getSearchStrategy());
+                datasetStatus.setPublicationMatchInfo(publicationResult.getMatchInfo());
             }
 
             DatasetStatusManager.save(datasetStatus, getUser());
@@ -444,7 +444,7 @@ public class PrivateDataReminderJob extends PipelineJob
             {
                 datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
                 datasetStatus.setPublicationType(publicationResult.getPublicationType());
-                datasetStatus.setPublicationSearchStrategy(publicationResult.getSearchStrategy());
+                datasetStatus.setPublicationMatchInfo(publicationResult.getMatchInfo());
             }
 
             DatasetStatusManager.update(datasetStatus, getUser());
