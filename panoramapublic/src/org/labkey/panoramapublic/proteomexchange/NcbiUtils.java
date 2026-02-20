@@ -23,6 +23,7 @@ import org.json.JSONObject;
 import org.labkey.api.collections.IntHashMap;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
+import org.labkey.api.util.XmlBeansUtil;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.AjaxCompletion;
 import org.w3c.dom.CharacterData;
@@ -33,7 +34,6 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -43,7 +43,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -134,8 +133,7 @@ public class NcbiUtils
 
             if (status == HttpURLConnection.HTTP_OK)
             {
-                DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-                DocumentBuilder builder = factory.newDocumentBuilder();
+                DocumentBuilder builder = XmlBeansUtil.DOCUMENT_BUILDER_FACTORY.newDocumentBuilder();
                 Document doc = builder.parse(conn.getInputStream());
 
                 NodeList nodes = doc.getElementsByTagName("DocSum");

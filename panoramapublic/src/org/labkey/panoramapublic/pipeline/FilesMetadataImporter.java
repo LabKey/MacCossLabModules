@@ -9,6 +9,7 @@ import org.labkey.api.files.FileContentService;
 import org.labkey.api.pipeline.PipelineJobException;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.User;
+import org.labkey.api.util.XmlBeansUtil;
 import org.labkey.api.writer.VirtualFile;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -17,7 +18,6 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -72,7 +72,7 @@ public class FilesMetadataImporter
                 return;
             }
 
-            Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new InputSource(is));
+            Document document = XmlBeansUtil.DOCUMENT_BUILDER_FACTORY.newDocumentBuilder().parse(new InputSource(is));
             NodeList nodes = document.getElementsByTagName(FilesMetadataWriter.FILE);
             for(int i = 0; i < nodes.getLength(); i++)
             {

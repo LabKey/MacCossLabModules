@@ -56,6 +56,7 @@ import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.MimeMap;
 import org.labkey.api.util.Pair;
+import org.labkey.api.util.XmlBeansUtil;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.ViewContext;
@@ -93,7 +94,6 @@ import org.xml.sax.InputSource;
 
 import javax.management.modelmbean.XMLParseException;
 import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -1381,8 +1381,7 @@ public class TestResultsController extends SpringActionController
                 "\\[(\\d\\d):(\\d\\d)]\\s+(\\d+)\\.\\d+\\s+([A-Za-z]\\w*)\\s+\\(([A-Za-z]+)\\)");
 
             try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction()) {
-                DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-                DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+                DocumentBuilder dBuilder = XmlBeansUtil.DOCUMENT_BUILDER_FACTORY.newDocumentBuilder();
                 InputSource is = new InputSource();
                 is.setCharacterStream(new StringReader(xml));
                 Document doc = dBuilder.parse(is);
