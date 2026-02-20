@@ -20,6 +20,7 @@ import org.labkey.api.module.Module;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.resource.FileResource;
 import org.labkey.api.util.Path;
+import org.labkey.api.util.XmlBeansUtil;
 import org.labkey.panoramapublic.PanoramaPublicModule;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -28,7 +29,6 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
@@ -77,13 +77,11 @@ public class UnimodParser
         {
             throw new PxException("UNIMOD xml file does not exist: " + unimodXml);
         }
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(true);
         DocumentBuilder db;
         Document document;
         try
         {
-            db = dbf.newDocumentBuilder();
+            db = XmlBeansUtil.DOCUMENT_BUILDER_FACTORY.newDocumentBuilder();
             document = db.parse(unimodXml);
         }
         catch (ParserConfigurationException | SAXException | IOException e)
@@ -122,7 +120,7 @@ public class UnimodParser
     private void parseAminoAcid(Element aaEl, UnimodModifications uMods) throws PxException
     {
         String title = aaEl.getAttribute("title");
-        if(title == null || title.length() > 1 || !Character.isUpperCase(title.charAt(0)))
+        if(title.length() > 1 || !Character.isUpperCase(title.charAt(0)))
         {
             return;
         }

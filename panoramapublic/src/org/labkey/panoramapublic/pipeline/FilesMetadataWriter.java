@@ -11,12 +11,12 @@ import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.pipeline.PipelineJobException;
 import org.labkey.api.security.User;
+import org.labkey.api.util.XmlBeansUtil;
 import org.labkey.api.writer.FileSystemFile;
 import org.labkey.api.writer.VirtualFile;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
@@ -76,7 +76,7 @@ public class FilesMetadataWriter
     private void writeFilesXml(Container container, ExperimentService expSvc, FileContentService fcs, PrintWriter writer, Logger log)
             throws ParserConfigurationException, TransformerException
     {
-        Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
+        Document doc = XmlBeansUtil.DOCUMENT_BUILDER_FACTORY.newDocumentBuilder().newDocument();
 
         List<? extends ExpData> expDatasWithComments = getExpDatasWithComments(container, expSvc);
 
