@@ -23,12 +23,12 @@ import org.labkey.api.view.NotFoundException;
 import org.labkey.panoramapublic.datacite.DataCiteException;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
-import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
+import org.labkey.panoramapublic.ncbi.PublicationMatch;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
@@ -393,10 +393,10 @@ public class PanoramaPublicNotification
     public static void postPrivateDataReminderMessage(@NotNull Journal journal, @NotNull JournalSubmission js, @NotNull ExperimentAnnotations expAnnotations,
                                                       @NotNull User submitter, @NotNull User messagePoster, List<User> notifyUsers,
                                                       @NotNull Announcement announcement, @NotNull Container announcementsContainer, @NotNull User journalAdmin,
-                                                      boolean publicationFound, @Nullable String publicationId, @Nullable String publicationType)
+                                                      @Nullable PublicationMatch articleMatch)
     {
-        String message = getDataStatusReminderMessage(expAnnotations, submitter, js, announcement, announcementsContainer, journalAdmin, publicationFound, publicationId, publicationType);
-        String title = publicationFound
+        String message = getDataStatusReminderMessage(expAnnotations, submitter, js, announcement, announcementsContainer, journalAdmin, articleMatch);
+        String title = articleMatch != null
                 ? "Congratulations! We Found a Publication Associated with Your Data on Panorama Public"
                 : "Action Required: Status Update for Your Private Data on Panorama Public";
         postNotificationFullTitle(journal, js.getJournalExperiment(), message, messagePoster, title, AnnouncementService.StatusOption.Closed, notifyUsers);
@@ -405,7 +405,7 @@ public class PanoramaPublicNotification
     public static String getDataStatusReminderMessage(@NotNull ExperimentAnnotations exptAnnotations, @NotNull User submitter,
                                                       @NotNull JournalSubmission js,@NotNull Announcement announcement,
                                                       @NotNull Container announcementContainer, @NotNull User journalAdmin,
-                                                      boolean publicationFound, @Nullable String publicationId, @Nullable String publicationType)
+                                                      @Nullable PublicationMatch articleMatch)
     {
         String shortUrl = exptAnnotations.getShortUrl().renderShortURL();
         String makePublicLink = PanoramaPublicController.getMakePublicUrl(exptAnnotations.getId(), exptAnnotations.getContainer()).getURIString();
@@ -432,27 +432,13 @@ public class PanoramaPublicNotification
         StringBuilder message = new StringBuilder();
         message.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
 
-        if (publicationFound && !StringUtils.isBlank(publicationId))
+        if (articleMatch != null)
         {
             // Message variant when a publication was found
-            String publicationUrl;
-            String publicationLabel;
-
-            if (DatasetStatus.TYPE_PMC.equals(publicationType))
-            {
-                publicationUrl = "https://www.ncbi.nlm.nih.gov/pmc/articles/" + publicationId + "/";
-                publicationLabel = "PMC ID " + publicationId;
-            }
-            else  // Default to PMID
-            {
-                publicationUrl = "https://pubmed.ncbi.nlm.nih.gov/" + publicationId;
-                publicationLabel = "PubMed ID " + publicationId;
-            }
-
             message.append("Great news! We found a publication that appears to be associated with your data on Panorama Public (")
                     .append(shortUrl).append("), which has been private since ").append(dateString).append(".")
                     .append(NL2).append(bold("Title:")).append(" ").append(escape(exptAnnotations.getTitle()))
-                    .append(NL2).append(bold("Publication Found:")).append(" ").append(link(publicationLabel, publicationUrl))
+                    .append(NL2).append(bold("Publication Found:")).append(" ").append(link(articleMatch.getPublicationLabel(), articleMatch.getPublicationUrl()))
                     .append(NL2).append("Since your work has been published, we encourage you to make your data public so the research community can access it alongside your publication. ")
                     .append("You can do this by clicking the \"Make Public\" button in your data folder or by clicking this link: ")
                     .append(bold(link("Make Data Public", makePublicLink))).append(".")

@@ -26,6 +26,7 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
+import org.labkey.panoramapublic.ncbi.PublicationMatch;
 import org.labkey.panoramapublic.query.DatasetStatusManager;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
@@ -175,51 +176,24 @@ public class PrivateDataReminderJob extends PipelineJob
     /**
      * Container for publication search results used during reminder processing
      */
-    private static class PublicationCheckResult {
-        private final boolean publicationFound;
-        private final String publicationId;
-        private final String publicationType;
-        private final String matchInfo;
-
-        public PublicationCheckResult(boolean publicationFound, @Nullable String publicationId, @Nullable String publicationType, @Nullable String matchInfo) {
-            this.publicationFound = publicationFound;
-            this.publicationId = publicationId;
-            this.publicationType = publicationType;
-            this.matchInfo = matchInfo;
-        }
-
-        public static PublicationCheckResult notFound() {
-            return new PublicationCheckResult(false, null, null, null);
-        }
-
-        public static PublicationCheckResult found(@NotNull String publicationId, @NotNull String publicationType, @NotNull String matchInfo) {
-            return new PublicationCheckResult(true, publicationId, publicationType, matchInfo);
-        }
-
-        public boolean isPublicationFound() { return publicationFound; }
-        public @Nullable String getPublicationId() { return publicationId; }
-        public @Nullable String getPublicationType() { return publicationType; }
-        public @Nullable String getMatchInfo() { return matchInfo; }
-    }
-
     /**
      * Checks for publications associated with the experiment if enabled in settings
      * @param expAnnotations The experiment to check
      * @param settings The reminder settings
      * @param forceCheck Force publication check regardless of global setting
      * @param log Logger for diagnostic messages
-     * @return PublicationCheckResult with search results
+     * @return NcbiArticleMatch with search result
      */
-    private static PublicationCheckResult checkForPublication(@NotNull ExperimentAnnotations expAnnotations,
-                                                               @NotNull PrivateDataReminderSettings settings,
-                                                               boolean forceCheck,
-                                                               @NotNull Logger log)
+    private static PublicationMatch checkForPublication(@NotNull ExperimentAnnotations expAnnotations,
+                                                        @NotNull PrivateDataReminderSettings settings,
+                                                        boolean forceCheck,
+                                                        @NotNull Logger log)
     {
         // Check if publication checking is enabled (either globally or forced for this run)
         if (!forceCheck && !settings.isEnablePublicationCheck())
         {
             log.debug("Publication checking is disabled in settings");
-            return PublicationCheckResult.notFound();
+            return null;
         }
 
         // Get existing DatasetStatus to check cached results and user dismissals
@@ -230,7 +204,7 @@ public class PrivateDataReminderJob extends PipelineJob
             if (Boolean.TRUE.equals(datasetStatus.getUserDismissedPublication()))
             {
                 log.info(String.format("User has dismissed publication suggestion for experiment %d; skipping search", expAnnotations.getId()));
-                return PublicationCheckResult.notFound();
+                return null;
             }
 
             // If we already have a cached publication ID, use it
@@ -238,11 +212,7 @@ public class PrivateDataReminderJob extends PipelineJob
             {
                 log.info(String.format("Using cached publication %s %s for experiment %d",
                         datasetStatus.getPublicationType(), datasetStatus.getPotentialPublicationId(), expAnnotations.getId()));
-                return PublicationCheckResult.found(
-                        datasetStatus.getPotentialPublicationId(),
-                        datasetStatus.getPublicationType(),
-                        datasetStatus.getPublicationMatchInfo()
-                );
+                return PublicationMatch.fromDatasetStatus(datasetStatus);
             }
         }
 
@@ -250,28 +220,13 @@ public class PrivateDataReminderJob extends PipelineJob
         log.info(String.format("Searching for publications for experiment %d", expAnnotations.getId()));
         try
         {
-            NcbiPublicationSearchService.NcbiPublicationSearchResult searchResult =
-                    NcbiPublicationSearchService.searchForPublication(expAnnotations, 1, log);
-
-            if (searchResult.isFound())
-            {
-                String publicationIds = searchResult.getPublicationIdsAsString();
-                String publicationType = searchResult.getPublicationType();
-                log.info(String.format("Found publication for experiment %d: %s %s (match info: %s)",
-                        expAnnotations.getId(), publicationType, publicationIds, searchResult.getMatchInfo()));
-                return PublicationCheckResult.found(publicationIds, publicationType, searchResult.getMatchInfo());
-            }
-            else
-            {
-                log.info(String.format("No publication found for experiment %d", expAnnotations.getId()));
-                return PublicationCheckResult.notFound();
-            }
+            return NcbiPublicationSearchService.searchForPublication(expAnnotations, log);
         }
         catch (Exception e)
         {
             log.error(String.format("Error searching for publication for experiment %d: %s",
                     expAnnotations.getId(), e.getMessage()), e);
-            return PublicationCheckResult.notFound();
+            return null;
         }
     }
 
@@ -377,7 +332,7 @@ public class PrivateDataReminderJob extends PipelineJob
         }
 
         // Check for publications if enabled
-        PublicationCheckResult publicationResult = checkForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, processingResults._log);
+        PublicationMatch publicationResult = checkForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, processingResults._log);
 
         if (!context.isTestMode())
         {
@@ -390,7 +345,7 @@ public class PrivateDataReminderJob extends PipelineJob
     }
 
     private void postReminderMessage(ExperimentAnnotations expAnnotations, JournalSubmission submission,
-                                     Announcement announcement, User submitter, PublicationCheckResult publicationResult,
+                                     Announcement announcement, User submitter, @Nullable PublicationMatch publicationResult,
                                      ProcessingContext context)
     {
         // Older message threads, pre March 2023, will not have the submitter or lab head on the notify list. Add them.
@@ -410,13 +365,11 @@ public class PrivateDataReminderJob extends PipelineJob
                 announcement,
                 context.getAnnouncementsFolder(),
                 context.getJournalAdmin(),
-                publicationResult.isPublicationFound(),
-                publicationResult.getPublicationId(),
-                publicationResult.getPublicationType()
+                publicationResult
         );
     }
 
-    private void updateDatasetStatus(ExperimentAnnotations expAnnotations, PublicationCheckResult publicationResult)
+    private void updateDatasetStatus(ExperimentAnnotations expAnnotations, @Nullable PublicationMatch publicationResult)
     {
         DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(expAnnotations);
         if (datasetStatus == null)
@@ -426,10 +379,10 @@ public class PrivateDataReminderJob extends PipelineJob
             datasetStatus.setLastReminderDate(new Date());
 
             // Save publication search results if found
-            if (publicationResult.isPublicationFound())
+            if (publicationResult != null)
             {
                 datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
-                datasetStatus.setPublicationType(publicationResult.getPublicationType());
+                datasetStatus.setPublicationType(publicationResult.getPublicationType().name());
                 datasetStatus.setPublicationMatchInfo(publicationResult.getMatchInfo());
             }
 
@@ -440,10 +393,10 @@ public class PrivateDataReminderJob extends PipelineJob
             datasetStatus.setLastReminderDate(new Date());
 
             // Save publication search results if found and not already cached
-            if (publicationResult.isPublicationFound() && StringUtils.isBlank(datasetStatus.getPotentialPublicationId()))
+            if (publicationResult != null && StringUtils.isBlank(datasetStatus.getPotentialPublicationId()))
             {
                 datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
-                datasetStatus.setPublicationType(publicationResult.getPublicationType());
+                datasetStatus.setPublicationType(publicationResult.getPublicationType().name());
                 datasetStatus.setPublicationMatchInfo(publicationResult.getMatchInfo());
             }
 

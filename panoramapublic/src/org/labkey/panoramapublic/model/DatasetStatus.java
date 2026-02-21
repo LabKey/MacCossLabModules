@@ -1,15 +1,13 @@
 package org.labkey.panoramapublic.model;
 
 import org.jetbrains.annotations.Nullable;
-import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
+import org.labkey.panoramapublic.ncbi.PublicationMatch;
 
 import java.util.Date;
 
 public class DatasetStatus  extends DbEntity
 {
-    public static final String TYPE_PMC = "PMC";
-    public static final String TYPE_PMID = "PMID";
 
     private int _experimentAnnotationsId;
     private Date _lastReminderDate;
@@ -102,7 +100,7 @@ public class DatasetStatus  extends DbEntity
 
     public String getPublicationLabel()
     {
-        PublicationType type = PublicationType.fromDatabaseValue(_publicationType);
+        PublicationMatch.PublicationType type = PublicationMatch.PublicationType.fromString(_publicationType);
         if (type == null)
         {
             return _publicationType != null ? _publicationType : "";
