@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.panoramapublic.model.DatasetStatus;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -25,6 +26,7 @@ public class PublicationMatch
     private final boolean _matchesDoi;
     private final boolean _matchesAuthor;
     private final boolean _matchesTitle;
+    private final @Nullable Date _publicationDate;
 
     public enum PublicationType
     {
@@ -57,7 +59,8 @@ public class PublicationMatch
 
     public PublicationMatch(String publicationId, PublicationType publicationType,
                             boolean matchesProteomeXchangeId, boolean matchesPanoramaUrl, boolean matchesDoi,
-                            boolean matchesAuthor, boolean matchesTitle)
+                            boolean matchesAuthor, boolean matchesTitle,
+                            @Nullable Date publicationDate)
     {
         _publicationId = publicationId;
         _publicationType = publicationType;
@@ -66,6 +69,7 @@ public class PublicationMatch
         _matchesDoi = matchesDoi;
         _matchesAuthor = matchesAuthor;
         _matchesTitle = matchesTitle;
+        _publicationDate = publicationDate;
     }
 
     public String getPublicationId()
@@ -101,6 +105,11 @@ public class PublicationMatch
     public boolean matchesTitle()
     {
         return _matchesTitle;
+    }
+
+    public @Nullable Date getPublicationDate()
+    {
+        return _publicationDate;
     }
 
     /**
@@ -167,6 +176,6 @@ public class PublicationMatch
             }
         }
         return new PublicationMatch(datasetStatus.getPotentialPublicationId(), type,
-                pxId, url, doi, author, title);
+                pxId, url, doi, author, title, null);
     }
 }
