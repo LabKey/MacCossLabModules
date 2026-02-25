@@ -1,26 +1,28 @@
 package org.labkey.panoramapublic.ncbi;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.config.ConnectionConfig;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.io.BasicHttpClientConnectionManager;
+import org.apache.hc.client5.http.HttpResponseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.util.Timeout;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.labkey.api.util.JsonUtil;
 import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.ncbi.PublicationMatch.PublicationType;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
@@ -102,7 +104,7 @@ public class NcbiPublicationSearchService
     {
         Logger log = getLog(logger);
         maxResults = Math.max(1, Math.min(maxResults, MAX_RESULTS));
-        log.info("Starting publication search for experiment: " + expAnnotations.getId());
+        log.info("Starting publication search for experiment: {}", expAnnotations.getId());
 
         // Search PubMed Central first
         List<PublicationMatch> matchedArticles = searchPmc(expAnnotations, log);
@@ -141,7 +143,7 @@ public class NcbiPublicationSearchService
         if (!StringUtils.isBlank(expAnnotations.getPxid()))
         {
             log.debug("Searching PMC by PX ID: {}", expAnnotations.getPxid());
-            List<String> ids = searchPmc(quote(expAnnotations.getPxid()));
+            List<String> ids = searchPmc(quote(expAnnotations.getPxid()), log);
             if (!ids.isEmpty())
             {
                 pmcIdsByStrategy.put(MATCH_PX_ID, ids);
@@ -155,7 +157,7 @@ public class NcbiPublicationSearchService
         {
             String panoramaUrl = expAnnotations.getShortUrl().renderShortURL();
             log.debug("Searching PMC by Panorama URL: {}", panoramaUrl);
-            List<String> ids = searchPmc(quote(panoramaUrl));
+            List<String> ids = searchPmc(quote(panoramaUrl), log);
             if (!ids.isEmpty())
             {
                 pmcIdsByStrategy.put(MATCH_PANORAMA_URL, ids);
@@ -170,12 +172,12 @@ public class NcbiPublicationSearchService
             String doiUrl = expAnnotations.getDoi().startsWith("http")
                 ? expAnnotations.getDoi()
                 : DataCiteService.toUrl(expAnnotations.getDoi());
-            log.debug("Searching PMC by DOI: " + doiUrl);
-            List<String> ids = searchPmc(quote(doiUrl));
+            log.debug("Searching PMC by DOI: {}", doiUrl);
+            List<String> ids = searchPmc(quote(doiUrl), log);
             if (!ids.isEmpty())
             {
                 pmcIdsByStrategy.put(MATCH_DOI, ids);
-                log.debug("Found " + ids.size() + " PMC articles by DOI");
+                log.debug("Found {} PMC articles by DOI", ids.size());
             }
             rateLimit();
         }
@@ -194,7 +196,7 @@ public class NcbiPublicationSearchService
             }
         }
 
-        log.info("Total unique PMC IDs found: " + uniquePmcIds.size());
+        log.info("Total unique PMC IDs found: {}", uniquePmcIds.size());
 
         // Fetch and verify PMC articles
         List<PublicationMatch> pmcArticles = fetchAndVerifyPmcArticles(uniquePmcIds, idToStrategies, expAnnotations, log);
@@ -206,50 +208,35 @@ public class NcbiPublicationSearchService
     /**
      * Search PubMed Central with the given query
      */
-    private static List<String> searchPmc(String query)
+    private static List<String> searchPmc(String query, Logger log)
     {
-        return executeSearch(query, "pmc");
+        return executeSearch(query, "pmc", log);
     }
 
     /**
      * Search PubMed with the given query
      */
-    private static List<String> searchPubMed(String query)
+    private static List<String> searchPubMed(String query, Logger log)
     {
-        return executeSearch(query, "pubmed");
+        return executeSearch(query, "pubmed", log);
     }
 
     /**
      * Execute search using NCBI ESearch API
      */
-    private static List<String> executeSearch(String query, String database)
+    private static List<String> executeSearch(String query, String database, Logger log)
     {
-        HttpURLConnection conn = null;
+        String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
+        String url = ESEARCH_URL +
+            "?db=" + database +
+            "&term=" + encodedQuery +
+            "&retmax=" + MAX_RESULTS +
+            "&retmode=json" +
+            "&email=" + URLEncoder.encode(NCBI_EMAIL, StandardCharsets.UTF_8);
+
         try
         {
-            String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
-            String urlString = ESEARCH_URL +
-                "?db=" + database +
-                "&term=" + encodedQuery +
-                "&retmax=" + MAX_RESULTS +
-                "&retmode=json" +
-                "&email=" + URLEncoder.encode(NCBI_EMAIL, StandardCharsets.UTF_8);
-
-            conn = openGet(urlString);
-
-            int responseCode = conn.getResponseCode();
-            if (responseCode != 200)
-            {
-                LOG.warn("NCBI ESearch returned non-200 response: " + responseCode);
-                return Collections.emptyList();
-            }
-
-            // Parse JSON response
-            JSONObject json = readJson(conn);
-            if (json == null)
-            {
-                return Collections.emptyList();
-            }
+            JSONObject json = getJson(url);
             JSONObject eSearchResult = json.getJSONObject("esearchresult");
             JSONArray idList = eSearchResult.getJSONArray("idlist");
 
@@ -262,36 +249,45 @@ public class NcbiPublicationSearchService
         }
         catch (IOException | JSONException e)
         {
-            LOG.error("Error searching " + database + " with query: " + query, e);
+            log.error("Error searching {} with query: {}", database, query, e);
             return Collections.emptyList();
         }
-        finally
-        {
-            if (conn != null) conn.disconnect();
-        }
     }
 
-    private static HttpURLConnection openGet(String urlString) throws IOException
+    /**
+     * Execute an HTTP GET request and parse the response as JSON.
+     * @throws IOException if the request fails or the server returns a non-2xx response
+     * @throws JSONException if the response body is not valid JSON
+     */
+    private static JSONObject getJson(String url) throws IOException
     {
-        URL url = new URL(urlString);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("GET");
-        conn.setConnectTimeout(TIMEOUT_MS);
-        conn.setReadTimeout(TIMEOUT_MS);
-        return conn;
-    }
+        ConnectionConfig connectionConfig = ConnectionConfig.custom()
+            .setConnectTimeout(Timeout.ofMilliseconds(TIMEOUT_MS))
+            .setSocketTimeout(Timeout.ofMilliseconds(TIMEOUT_MS))
+            .build();
 
-    private static @Nullable JSONObject readJson(HttpURLConnection conn)
-    {
-        try (InputStream in = conn.getInputStream())
+        RequestConfig requestConfig = RequestConfig.custom()
+            .setResponseTimeout(Timeout.ofMilliseconds(TIMEOUT_MS))
+            .build();
+
+        BasicHttpClientConnectionManager connectionManager = new BasicHttpClientConnectionManager();
+        connectionManager.setConnectionConfig(connectionConfig);
+
+        try (CloseableHttpClient client = HttpClientBuilder.create()
+                .setDefaultRequestConfig(requestConfig)
+                .setConnectionManager(connectionManager)
+                .build())
         {
-            String response = IOUtils.toString(in, StandardCharsets.UTF_8);
-            return new JSONObject(response);
-        }
-        catch (IOException | JSONException e)
-        {
-            LOG.error("Error reading JSON response", e);
-            return null;
+            HttpGet get = new HttpGet(url);
+            return client.execute(get, response -> {
+                int status = response.getCode();
+                if (status < 200 || status >= 300)
+                {
+                    throw new HttpResponseException(status, response.getReasonPhrase());
+                }
+                String body = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+                return new JSONObject(body);
+            });
         }
     }
 
@@ -318,30 +314,16 @@ public class NcbiPublicationSearchService
     {
         if (ids.isEmpty()) return Collections.emptyMap();
 
-        HttpURLConnection conn = null;
+        String idString = String.join(",", ids);
+        String url = ESUMMARY_URL +
+            "?db=" + database +
+            "&id=" + URLEncoder.encode(idString, StandardCharsets.UTF_8) +
+            "&retmode=json" +
+            "&email=" + URLEncoder.encode(NCBI_EMAIL, StandardCharsets.UTF_8);
+
         try
         {
-            String idString = String.join(",", ids);
-            String urlString = ESUMMARY_URL +
-                "?db=" + database +
-                "&id=" + URLEncoder.encode(idString, StandardCharsets.UTF_8) +
-                "&retmode=json" +
-                "&email=" + URLEncoder.encode(NCBI_EMAIL, StandardCharsets.UTF_8);
-
-            conn = openGet(urlString);
-
-            int responseCode = conn.getResponseCode();
-            if (responseCode != 200)
-            {
-                log.warn("NCBI ESummary returned non-200 response: " + responseCode);
-                return Collections.emptyMap();
-            }
-
-            JSONObject json = readJson(conn);
-            if (json == null)
-            {
-                return Collections.emptyMap();
-            }
+            JSONObject json = getJson(url);
             JSONObject result = json.optJSONObject("result");
             if (result == null) return Collections.emptyMap();
 
@@ -357,19 +339,10 @@ public class NcbiPublicationSearchService
             }
             return metadata;
         }
-        catch (IOException e)
+        catch (IOException | JSONException e)
         {
-            log.error("Error fetching " + database + " metadata for IDs: " + ids, e);
+            log.error("Error fetching {} metadata for IDs: {}", database, ids, e);
             return Collections.emptyMap();
-        }
-        catch (JSONException e)
-        {
-            log.error("Error fetching " + database + " metadata for IDs: " + ids, e);
-            return Collections.emptyMap();
-        }
-        finally
-        {
-            if (conn != null) conn.disconnect();
         }
     }
 
@@ -403,7 +376,7 @@ public class NcbiPublicationSearchService
             {
                 String source = articleData.optString("source", "");
                 String journal = articleData.optString("fulljournalname", "");
-                log.info("Excluded preprint PMC" + pmcId + ": source=\"" + source + "\", journal=\"" + journal + "\"");
+                log.info("Excluded preprint PMC{}: source=\"{}\", journal=\"{}\"", pmcId, source, journal);
                 continue;
             }
 
@@ -412,7 +385,7 @@ public class NcbiPublicationSearchService
             boolean titleMatch = checkTitleMatch(articleData, expAnnotations.getTitle());
 
             // Extract PubMed ID, is found
-            String pubMedId = extractPubMedId(articleData, pmcId);
+            String pubMedId = extractPubMedId(articleData);
             String publicationId = pubMedId == null ? pmcId : pubMedId;
             PublicationType publicationType = pubMedId == null ? PublicationType.PMC : PublicationType.PMID;
 
@@ -424,7 +397,7 @@ public class NcbiPublicationSearchService
             boolean foundByUrl = strategies.contains(MATCH_PANORAMA_URL);
             boolean foundByDoi = strategies.contains(MATCH_DOI);
 
-            Date pubDate = parsePublicationDate(articleData);
+            Date pubDate = parsePublicationDate(articleData, log);
 
             PublicationMatch article = new PublicationMatch(
                 publicationId,
@@ -438,8 +411,7 @@ public class NcbiPublicationSearchService
             );
             articles.add(article);
 
-            log.info("PMC" + pmcId + " -> " + publicationType + " " + publicationId +
-                " | Match info: " + article.getMatchInfo());
+            log.info("PMC{} -> {} {} | Match info: {}", pmcId, publicationType, publicationId, article.getMatchInfo());
         }
 
         return articles;
@@ -459,7 +431,7 @@ public class NcbiPublicationSearchService
 
         if (!multipleIds.isEmpty())
         {
-            log.debug("Filtered to " + multipleIds.size() + " article(s) found by multiple IDs");
+            log.debug("Filtered to {} article(s) found by multiple IDs", multipleIds.size());
             articles = multipleIds;
         }
 
@@ -472,7 +444,7 @@ public class NcbiPublicationSearchService
 
         if (!bothMatches.isEmpty())
         {
-            log.debug("Filtered to " + bothMatches.size() + " article(s) with both Author and Title match");
+            log.debug("Filtered to {} article(s) with both Author and Title match", bothMatches.size());
             articles = bothMatches;
         }
 
@@ -528,8 +500,8 @@ public class NcbiPublicationSearchService
         String query = String.format("%s %s[Author] AND %s NOT preprint[Publication Type]",
             lastName, firstName, title);
 
-        log.debug("PubMed fallback query: " + query);
-        List<String> pmids = searchPubMed(query);
+        log.debug("PubMed fallback query: {}", query);
+        List<String> pmids = searchPubMed(query, log);
 
         if (pmids.isEmpty())
         {
@@ -537,7 +509,7 @@ public class NcbiPublicationSearchService
             return Collections.emptyList();
         }
 
-        log.info("PubMed fallback found " + pmids.size() + " result(s), verifying...");
+        log.info("PubMed fallback found {} result(s), verifying...", pmids.size());
 
         // Fetch metadata and verify
         Map<String, JSONObject> metadata = fetchPubMedMetadata(pmids, log);
@@ -551,7 +523,7 @@ public class NcbiPublicationSearchService
             // Filter out preprints
             if (isPreprint(articleData))
             {
-                log.info("Excluded preprint PMID " + pmid);
+                log.info("Excluded preprint PMID {}", pmid);
                 continue;
             }
 
@@ -562,7 +534,7 @@ public class NcbiPublicationSearchService
             // Only accept if BOTH match
             if (authorMatch && titleMatch)
             {
-                Date pubDate = parsePublicationDate(articleData);
+                Date pubDate = parsePublicationDate(articleData, log);
                 PublicationMatch article = new PublicationMatch(
                     pmid,
                     PublicationType.PMID,
@@ -574,11 +546,11 @@ public class NcbiPublicationSearchService
                     pubDate
                 );
                 articles.add(article);
-                log.info("PMID " + pmid + " verified with both Author and Title match");
+                log.info("PMID {} verified with both Author and Title match", pmid);
             }
         }
 
-        log.info("Verified " + articles.size() + " of " + pmids.size() + " PubMed results");
+        log.info("Verified {} of {} PubMed results", articles.size(), pmids.size());
         return articles;
     }
 
@@ -611,7 +583,7 @@ public class NcbiPublicationSearchService
         }
 
         JSONArray authors = metadata.optJSONArray("authors");
-        if (authors == null || authors.length() == 0)
+        if (authors == null || authors.isEmpty())
         {
             return false;
         }
@@ -737,7 +709,7 @@ public class NcbiPublicationSearchService
     /**
      * Extract PMID from PMC metadata
      */
-    private static @Nullable String extractPubMedId(JSONObject pmcMetadata, String pmcId)
+    private static @Nullable String extractPubMedId(JSONObject pmcMetadata)
     {
         // PMC articles contain PMID in articleids array
         JSONArray articleIds = pmcMetadata.optJSONArray("articleids");
@@ -760,7 +732,7 @@ public class NcbiPublicationSearchService
      * Parse publication date from ESummary metadata.
      * Tries "pubdate" first, then "epubdate". Dates are typically in "YYYY Mon DD" or "YYYY Mon" format.
      */
-    private static @Nullable Date parsePublicationDate(JSONObject metadata)
+    private static @Nullable Date parsePublicationDate(JSONObject metadata, Logger log)
     {
         String dateStr = metadata.optString("pubdate", "");
         if (StringUtils.isBlank(dateStr))
@@ -784,7 +756,7 @@ public class NcbiPublicationSearchService
             {
             }
         }
-        LOG.debug("Unable to parse publication date: {}", dateStr);
+        log.debug("Unable to parse publication date: {}", dateStr);
         return null;
     }
 
