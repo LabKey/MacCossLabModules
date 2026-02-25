@@ -56,7 +56,7 @@ public class NcbiPublicationSearchService
 
     // API parameters
     private static final int RATE_LIMIT_DELAY_MS = 400; // NCBI allows 3 requests/sec
-    private static final int MAX_RESULTS = 5;
+    public static final int MAX_RESULTS = 5;
     private static final int TIMEOUT_MS = 10000; // 10 seconds
     private static final String NCBI_EMAIL = "panorama@proteinms.net";
 

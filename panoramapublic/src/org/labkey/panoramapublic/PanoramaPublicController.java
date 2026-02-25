@@ -10530,7 +10530,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public class RequestDeletionAction extends UpdateDatasetStatusAction
+    public static class RequestDeletionAction extends UpdateDatasetStatusAction
     {
         @Override
         protected String getConfirmViewTitle()
