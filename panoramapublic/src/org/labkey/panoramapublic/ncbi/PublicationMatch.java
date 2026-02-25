@@ -145,20 +145,11 @@ public class PublicationMatch
     }
 
     /**
-     * Build a PublicationMatch from a persisted DatasetStatus.
+     * Build a PublicationMatch from a publication ID, type, and match info string.
+     * @see #getMatchInfo()
      */
-    public static @Nullable PublicationMatch fromDatasetStatus(@NotNull DatasetStatus datasetStatus)
+    public static PublicationMatch fromMatchInfo(@NotNull String publicationId, @NotNull PublicationType publicationType, @Nullable String matchInfo)
     {
-        if (StringUtils.isBlank(datasetStatus.getPotentialPublicationId()))
-        {
-            return null;
-        }
-        PublicationType type = PublicationType.fromString(datasetStatus.getPublicationType());
-        if (type == null)
-        {
-            return null;
-        }
-        String matchInfo = datasetStatus.getPublicationMatchInfo();
         boolean pxId = false, url = false, doi = false, author = false, title = false;
         if (!StringUtils.isBlank(matchInfo))
         {
@@ -175,7 +166,23 @@ public class PublicationMatch
                 }
             }
         }
-        return new PublicationMatch(datasetStatus.getPotentialPublicationId(), type,
-                pxId, url, doi, author, title, null);
+        return new PublicationMatch(publicationId, publicationType, pxId, url, doi, author, title, null);
+    }
+
+    /**
+     * Build a PublicationMatch from a persisted DatasetStatus.
+     */
+    public static @Nullable PublicationMatch fromDatasetStatus(@NotNull DatasetStatus datasetStatus)
+    {
+        if (StringUtils.isBlank(datasetStatus.getPotentialPublicationId()))
+        {
+            return null;
+        }
+        PublicationType type = PublicationType.fromString(datasetStatus.getPublicationType());
+        if (type == null)
+        {
+            return null;
+        }
+        return fromMatchInfo(datasetStatus.getPotentialPublicationId(), type, datasetStatus.getPublicationMatchInfo());
     }
 }

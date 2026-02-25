@@ -10650,72 +10650,299 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public static class FindPublicationForDatasetAction extends ReadOnlyApiAction<ShortUrlForm>
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class FindPublicationsForDatasetAction extends SimpleViewAction<ExperimentIdForm>
     {
-        @Override
-        public Object execute(ShortUrlForm shortUrlForm, BindException errors) throws Exception
-        {
-            ApiSimpleResponse response = new ApiSimpleResponse();
+        private ExperimentAnnotations _exptAnnotations;
 
-            ExperimentAnnotations exptAnnotations = getValidExperimentAnnotations(shortUrlForm, errors);
-            if (exptAnnotations == null)
+        @Override
+        public ModelAndView getView(ExperimentIdForm form, BindException errors)
+        {
+            _exptAnnotations = getValidExperiment(form, getContainer(), getViewContext(), errors);
+            if (_exptAnnotations == null)
             {
-                errors.reject(ERROR_MSG, "Unable to find experiment for the provided short URL");
-                return null;
+                return new SimpleErrorView(errors);
             }
 
+            List<PublicationMatch> matches;
             try
             {
-                // Perform the publication search
-                PublicationMatch articleMatch =
-                        NcbiPublicationSearchService.searchForPublication(exptAnnotations, null);
-
-                response.put("success", true);
-                response.put("publicationFound", articleMatch != null);
-
-                if (articleMatch != null)
-                {
-                    response.put("publicationId", articleMatch.getPublicationId());
-                    response.put("publicationType", articleMatch.getPublicationType().name());
-                    response.put("matchInfo", articleMatch.getMatchInfo());
-                    response.put("publicationUrl", articleMatch.getPublicationUrl());
-
-                    // Update DatasetStatus with the search result
-                    DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
-                    if (datasetStatus == null)
-                    {
-                        datasetStatus = new DatasetStatus();
-                        datasetStatus.setExperimentAnnotationsId(exptAnnotations.getId());
-                        datasetStatus.setPotentialPublicationId(articleMatch.getPublicationId());
-                        datasetStatus.setPublicationType(articleMatch.getPublicationType().name());
-                        datasetStatus.setPublicationMatchInfo(articleMatch.getMatchInfo());
-                        DatasetStatusManager.save(datasetStatus, getUser());
-                    }
-                    else
-                    {
-                        datasetStatus.setPotentialPublicationId(articleMatch.getPublicationId());
-                        datasetStatus.setPublicationType(articleMatch.getPublicationType().name());
-                        datasetStatus.setPublicationMatchInfo(articleMatch.getMatchInfo());
-                        datasetStatus.setUserDismissedPublication(false); // Reset dismissal flag
-                        DatasetStatusManager.update(datasetStatus, getUser());
-                    }
-
-                    response.put("message", "Publication found: " + articleMatch.getPublicationLabel());
-                }
-                else
-                {
-                    response.put("message", "No publication found for this dataset");
-                }
+                matches = NcbiPublicationSearchService.searchForPublication(_exptAnnotations, NcbiPublicationSearchService.MAX_RESULTS, null);
             }
             catch (Exception e)
             {
-                LOG.error("Error searching for publication for experiment " + exptAnnotations.getId(), e);
-                errors.reject(ERROR_MSG, "Error searching for publication: " + e.getMessage());
-                return null;
+                LOG.error("Error searching for publications for experiment " + _exptAnnotations.getId(), e);
+                errors.reject(ERROR_MSG, "Error searching for publications: " + e.getMessage());
+                return new SimpleErrorView(errors);
             }
 
-            return response;
+            DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(_exptAnnotations);
+
+            VBox view = new VBox();
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            view.setTitle("Find Publications for Dataset");
+
+            // Dataset info section
+            List<DOM.Renderable> infoRows = new ArrayList<>();
+            ShortURLRecord shortUrl = _exptAnnotations.getShortUrl();
+            if (shortUrl != null)
+            {
+                infoRows.add(row("Title:", LinkBuilder.simpleLink(_exptAnnotations.getTitle(), shortUrl.renderShortURL())));
+            }
+            else
+            {
+                infoRows.add(row("Title:", _exptAnnotations.getTitle()));
+            }
+            infoRows.add(row("Created:", DateUtil.formatDateTime(_exptAnnotations.getCreated(), "yyyy-MM-dd")));
+            String submitterName = _exptAnnotations.getSubmitterName();
+            infoRows.add(row("Submitter:", submitterName != null ? submitterName : "Unknown"));
+            if (_exptAnnotations.hasPxid())
+            {
+                infoRows.add(row("PX ID:", LinkBuilder.simpleLink(_exptAnnotations.getPxid(),
+                        "https://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=" + PageFlowUtil.encode(_exptAnnotations.getPxid()))));
+            }
+            if (_exptAnnotations.hasDoi())
+            {
+                infoRows.add(row("DOI:", _exptAnnotations.getDoi()));
+            }
+            view.addView(new HtmlView(TABLE(cl("lk-fields-table"), infoRows)));
+
+            // Publications section
+            if (!matches.isEmpty())
+            {
+                // Check if any displayed match was dismissed by the user
+                boolean showDismissedColumn = false;
+                String dismissedPubId = null;
+                if (datasetStatus != null && Boolean.TRUE.equals(datasetStatus.getUserDismissedPublication())
+                        && datasetStatus.getPotentialPublicationId() != null)
+                {
+                    dismissedPubId = datasetStatus.getPotentialPublicationId();
+                    for (PublicationMatch match : matches)
+                    {
+                        if (match.getPublicationId().equals(dismissedPubId))
+                        {
+                            showDismissedColumn = true;
+                            break;
+                        }
+                    }
+                }
+
+                ActionURL postUrl = new ActionURL(NotifySubmitterOfPublicationsAction.class, getContainer());
+                List<DOM.Renderable> formContents = new ArrayList<>();
+                formContents.add(INPUT(at(type, "hidden", name, "id", value, _exptAnnotations.getId())));
+                formContents.add(INPUT(at(type, "hidden", name, "publicationType", value, "")));
+                formContents.add(INPUT(at(type, "hidden", name, "matchInfo", value, "")));
+
+                // Table header
+                List<DOM.Renderable> headerCells = new ArrayList<>();
+                headerCells.add(TH(cl("labkey-col-header"), "Select"));
+                headerCells.add(TH(cl("labkey-col-header"), "Publication ID"));
+                headerCells.add(TH(cl("labkey-col-header"), "Matches"));
+                if (showDismissedColumn)
+                {
+                    headerCells.add(TH(cl("labkey-col-header"), "User Dismissed"));
+                }
+                DOM.Renderable headerRow = TR(headerCells);
+
+                // Table rows
+                List<DOM.Renderable> tableRows = new ArrayList<>();
+                tableRows.add(headerRow);
+                String finalDismissedPubId = dismissedPubId;
+                boolean finalShowDismissedColumn = showDismissedColumn;
+                String rowCls;
+                int rowIdx = 0;
+                for (PublicationMatch match : matches)
+                {
+                    String pubId = match.getPublicationId();
+                    List<DOM.Renderable> cells = new ArrayList<>();
+                    cells.add(TD(INPUT(at(type, "radio", name, "publicationId", value, pubId)
+                            .data("publicationType", match.getPublicationType().name())
+                            .data("matchInfo", match.getMatchInfo()))));
+                    cells.add(TD(LinkBuilder.simpleLink(match.getPublicationLabel(), match.getPublicationUrl())));
+                    cells.add(TD(match.getMatchInfo()));
+
+                    if (finalShowDismissedColumn)
+                    {
+                        cells.add(TD(pubId.equals(finalDismissedPubId) ? "Yes" : ""));
+                    }
+
+                    rowCls = (rowIdx++) % 2 == 0 ? "labkey-alternate-row" : "labkey-row";
+                    tableRows.add(TR(cl(rowCls), cells));
+                }
+
+                formContents.add(TABLE(cl("labkey-data-region labkey-show-borders table-bordered table-condensed"), tableRows));
+                formContents.add(BR());
+                formContents.add(new ButtonBuilder("Notify Submitter").submit(true).build());
+
+                view.addView(new HtmlView(FORM(at(method, "POST", action, postUrl), formContents)));
+                view.addView(new HtmlView(SCRIPT(HtmlString.unsafe(
+                        "document.querySelectorAll('input[name=\"publicationId\"]').forEach(function(radio) {\n" +
+                        "    radio.addEventListener('change', function() {\n" +
+                        "        var form = this.closest('form');\n" +
+                        "        form.querySelector('input[name=\"publicationType\"]').value = this.dataset.publicationtype;\n" +
+                        "        form.querySelector('input[name=\"matchInfo\"]').value = this.dataset.matchinfo;\n" +
+                        "    });\n" +
+                        "});"
+                ))));
+            }
+            else
+            {
+                view.addView(new HtmlView(DIV(at(style, "margin-top:10px;"), "No publications found for this dataset.")));
+            }
+
+            return view;
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Publication Matches for Dataset");
+        }
+    }
+
+    public static class NotifySubmitterForm extends IdForm
+    {
+        private String _publicationId;
+        private String _publicationType;
+        private String _matchInfo;
+
+        public String getPublicationId()
+        {
+            return _publicationId;
+        }
+
+        public void setPublicationId(String publicationId)
+        {
+            _publicationId = publicationId;
+        }
+
+        public String getPublicationType()
+        {
+            return _publicationType;
+        }
+
+        public void setPublicationType(String publicationType)
+        {
+            _publicationType = publicationType;
+        }
+
+        public String getMatchInfo()
+        {
+            return _matchInfo;
+        }
+
+        public void setMatchInfo(String matchInfo)
+        {
+            _matchInfo = matchInfo;
+        }
+
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class NotifySubmitterOfPublicationsAction extends FormHandlerAction<NotifySubmitterForm>
+    {
+        @Override
+        public void validateCommand(NotifySubmitterForm form, Errors errors)
+        {
+            if (form.getId() <= 0)
+            {
+                errors.reject(ERROR_MSG, "Missing experiment annotations ID");
+            }
+            if (StringUtils.isBlank(form.getPublicationId()))
+            {
+                errors.reject(ERROR_MSG, "No publication was selected");
+            }
+        }
+
+        @Override
+        public boolean handlePost(NotifySubmitterForm form, BindException errors) throws Exception
+        {
+            ExperimentAnnotations exptAnnotations = ExperimentAnnotationsManager.get(form.getId());
+            if (exptAnnotations == null)
+            {
+                errors.reject(ERROR_MSG, "No experiment found for Id " + form.getId());
+                return false;
+            }
+
+            PublicationMatch.PublicationType pubType = PublicationMatch.PublicationType.fromString(form.getPublicationType());
+            if (pubType == null)
+            {
+                errors.reject(ERROR_MSG, "Invalid publication type: " + form.getPublicationType());
+                return false;
+            }
+
+            // Reconstruct PublicationMatch from form fields
+            PublicationMatch selectedMatch = PublicationMatch.fromMatchInfo(form.getPublicationId(), pubType, form.getMatchInfo());
+
+            // Post notification
+            JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(exptAnnotations);
+            if (submission == null)
+            {
+                errors.reject(ERROR_MSG, "No journal submission found for experiment " + exptAnnotations.getId());
+                return false;
+            }
+            Journal journal = JournalManager.getJournal(submission.getJournalId());
+            if (journal == null)
+            {
+                errors.reject(ERROR_MSG, "No journal found for submission");
+                return false;
+            }
+
+            Container announcementsContainer = journal.getSupportContainer();
+            Announcement announcement = submission.getAnnouncement(AnnouncementService.get(), announcementsContainer, getUser());
+            if (announcement == null)
+            {
+                errors.reject(ERROR_MSG, "No support thread found for this submission");
+                return false;
+            }
+
+            User submitter = exptAnnotations.getSubmitterUser();
+            if (submitter == null)
+            {
+                errors.reject(ERROR_MSG, "Could not find submitter for experiment " + exptAnnotations.getId());
+                return false;
+            }
+
+            List<User> notifyUsers = new ArrayList<>();
+            notifyUsers.add(submitter);
+            if (exptAnnotations.getLabHeadUser() != null)
+            {
+                notifyUsers.add(exptAnnotations.getLabHeadUser());
+            }
+
+            PanoramaPublicNotification.postPrivateDataReminderMessage(
+                    journal, submission, exptAnnotations, submitter, getUser(), notifyUsers,
+                    announcement, announcementsContainer, getUser(), selectedMatch);
+
+            // Update DatasetStatus
+            DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
+            if (datasetStatus == null)
+            {
+                datasetStatus = new DatasetStatus();
+                datasetStatus.setExperimentAnnotationsId(exptAnnotations.getId());
+            }
+            datasetStatus.setPotentialPublicationId(form.getPublicationId());
+            datasetStatus.setPublicationType(pubType.name());
+            datasetStatus.setPublicationMatchInfo(form.getMatchInfo());
+            datasetStatus.setUserDismissedPublication(false);
+            datasetStatus.setLastReminderDate(new Date());
+
+            if (datasetStatus.getId() == 0)
+            {
+                DatasetStatusManager.save(datasetStatus, getUser());
+            }
+            else
+            {
+                DatasetStatusManager.update(datasetStatus, getUser());
+            }
+
+            return true;
+        }
+
+        @Override
+        public ActionURL getSuccessURL(NotifySubmitterForm form)
+        {
+            return new ActionURL(FindPublicationsForDatasetAction.class, getContainer()).addParameter("id", form.getId());
         }
     }
 
