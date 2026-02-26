@@ -190,7 +190,7 @@ public class PrivateDataReminderJob extends PipelineJob
                                                         @NotNull Logger log)
     {
         // Check if publication checking is enabled (either globally or forced for this run)
-        if (!forceCheck && !settings.isEnablePublicationCheck())
+        if (!forceCheck && !settings.isEnablePublicationSearch())
         {
             log.debug("Publication checking is disabled in settings");
             return null;

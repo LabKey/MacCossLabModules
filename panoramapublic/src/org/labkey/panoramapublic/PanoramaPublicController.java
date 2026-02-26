@@ -236,6 +236,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -10137,7 +10138,7 @@ public class PanoramaPublicController extends SpringActionController
                 form.setDelayUntilFirstReminder(settings.getDelayUntilFirstReminder());
                 form.setReminderFrequency(settings.getReminderFrequency());
                 form.setExtensionLength(settings.getExtensionLength());
-                form.setEnablePublicationCheck(settings.isEnablePublicationCheck());
+                form.setEnablePublicationSearch(settings.isEnablePublicationSearch());
             }
 
             VBox view = new VBox();
@@ -10156,7 +10157,7 @@ public class PanoramaPublicController extends SpringActionController
             settings.setDelayUntilFirstReminder(form.getDelayUntilFirstReminder());
             settings.setReminderFrequency(form.getReminderFrequency());
             settings.setExtensionLength(form.getExtensionLength());
-            settings.setEnablePublicationCheck(form.isEnablePublicationCheck());
+            settings.setEnablePublicationSearch(form.isEnablePublicationSearch());
             PrivateDataReminderSettings.save(settings);
 
             PrivateDataMessageScheduler.getInstance().initialize(settings.isEnableReminders());
@@ -10194,7 +10195,7 @@ public class PanoramaPublicController extends SpringActionController
         private Integer _extensionLength;
         private Integer _reminderFrequency;
         private Integer _delayUntilFirstReminder;
-        private boolean _enablePublicationCheck;
+        private boolean _enablePublicationSearch;
 
         public boolean isEnabled()
         {
@@ -10246,14 +10247,14 @@ public class PanoramaPublicController extends SpringActionController
             _delayUntilFirstReminder = delayUntilFirstReminder;
         }
 
-        public boolean isEnablePublicationCheck()
+        public boolean isEnablePublicationSearch()
         {
-            return _enablePublicationCheck;
+            return _enablePublicationSearch;
         }
 
-        public void setEnablePublicationCheck(boolean enablePublicationCheck)
+        public void setEnablePublicationSearch(boolean enablePublicationSearch)
         {
-            _enablePublicationCheck = enablePublicationCheck;
+            _enablePublicationSearch = enablePublicationSearch;
         }
     }
 
@@ -10277,7 +10278,7 @@ public class PanoramaPublicController extends SpringActionController
             if (!reshow)
             {
                 PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
-                form.setCheckPublications(settings.isEnablePublicationCheck());
+                form.setCheckPublications(settings.isEnablePublicationSearch());
             }
 
             QuerySettings qSettings = new QuerySettings(getViewContext(),  PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS,
@@ -10390,6 +10391,65 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
+    // region Search Publications
+
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class SearchPublicationsAction extends SimpleViewAction<Object>
+    {
+        @Override
+        public ModelAndView getView(Object form, BindException errors)
+        {
+            Journal panoramaPublic = JournalManager.getJournal(getContainer());
+            if (panoramaPublic == null)
+            {
+                errors.reject(ERROR_MSG, "Not a Panorama Public folder: " + getContainer().getName());
+                return new SimpleErrorView(errors, true);
+            }
+
+            QuerySettings qSettings = new QuerySettings(getViewContext(), PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS,
+                    PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS);
+            qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
+            qSettings.setBaseFilter(new SimpleFilter(FieldKey.fromParts("Public"), "No"));
+
+            QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, null);
+            tableView.setTitle("Private Datasets");
+            tableView.setFrame(WebPartView.FrameType.NONE);
+            tableView.disableContainerFilterSelection();
+
+            SearchPublicationsBean bean = new SearchPublicationsBean();
+            bean.setDataRegionName(tableView.getDataRegionName());
+
+            JspView<SearchPublicationsBean> jspView = new JspView<>("/org/labkey/panoramapublic/view/searchPublicationsForm.jsp", bean, errors);
+            VBox view = new VBox(jspView, tableView);
+            view.setTitle("Search Publications");
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            return view;
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Private Data Reminder Settings", new ActionURL(PrivateDataReminderSettingsAction.class, ContainerManager.getRoot()));
+            root.addChild("Search Publications");
+        }
+    }
+
+    public static class SearchPublicationsBean
+    {
+        private String _dataRegionName;
+
+        public String getDataRegionName()
+        {
+            return _dataRegionName;
+        }
+
+        public void setDataRegionName(String dataRegionName)
+        {
+            _dataRegionName = dataRegionName;
+        }
+    }
+    // endregion Search Publications
+
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
     public abstract static class UpdateDatasetStatusAction extends ConfirmAction<ShortUrlForm>
     {
@@ -10402,11 +10462,13 @@ public class PanoramaPublicController extends SpringActionController
         protected abstract String getConfirmViewTitle();
         protected abstract String getConfirmViewMessage();
 
+        @Override
         public ModelAndView getConfirmView(ShortUrlForm shortUrlForm, BindException errors) throws Exception
         {
             setTitle(getConfirmViewTitle());
             HtmlView view = new HtmlView(DIV(
                     DIV(getConfirmViewMessage()),
+                    BR(),
                     DIV("Title: " + _exptAnnotations.getTitle()),
                     DIV("Submitted on: " + DateUtil.formatDateTime(_exptAnnotations.getCreated(), PrivateDataReminderSettings.DATE_FORMAT_PATTERN)),
                     DIV("Submitter: " + _exptAnnotations.getSubmitterName())
@@ -10466,7 +10528,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public class RequestExtensionAction extends UpdateDatasetStatusAction
+    public static class RequestExtensionAction extends UpdateDatasetStatusAction
     {
         @Override
         protected String getConfirmViewTitle()
@@ -10592,17 +10654,15 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected String getConfirmViewTitle()
         {
-            return "Dismiss PubMed Publication Suggestion";
+            return "Dismiss Publication Suggestion";
         }
 
         @Override
         protected String getConfirmViewMessage()
         {
-            HtmlString message = HtmlString.of(DIV("You are dismissing the publication suggestion for your data on Panorama Public at "
-                            + _exptAnnotations.getShortUrl().renderShortURL(), BR(), BR(),
-                    DIV("We will no longer suggest " + _publicationMatch.getPublicationLabel() + " for this dataset.")));
-
-            return message.renderToString();
+            return "You are dismissing the publication suggestion for your data on Panorama Public at "
+                            + _exptAnnotations.getShortUrl().renderShortURL() +
+                    "We will no longer suggest " + _publicationMatch.getPublicationLabel() + " for this dataset.";
         }
 
         @Override
@@ -10651,7 +10711,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
-    public static class FindPublicationsForDatasetAction extends SimpleViewAction<ExperimentIdForm>
+    public static class SearchPublicationsForDatasetAction extends SimpleViewAction<ExperimentIdForm>
     {
         private ExperimentAnnotations _exptAnnotations;
 
@@ -10800,6 +10860,51 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
+    @RequiresPermission(AdminOperationsPermission.class)
+    public static class SearchPublicationsForDatasetApiAction extends ReadOnlyApiAction<ExperimentIdForm>
+    {
+        @Override
+        public Object execute(ExperimentIdForm form, BindException errors)
+        {
+            ApiSimpleResponse response = new ApiSimpleResponse();
+            ExperimentAnnotations exptAnnotations = form.lookupExperiment();
+            if (exptAnnotations == null)
+            {
+                response.put("success", false);
+                response.put("error", "No experiment found for Id " + form.getId());
+                return response;
+            }
+
+            try
+            {
+                List<PublicationMatch> matches = NcbiPublicationSearchService.searchForPublication(exptAnnotations, NcbiPublicationSearchService.MAX_RESULTS, null);
+                response.put("success", true);
+                response.put("papersFound", matches.size());
+
+                List<Map<String, Object>> matchList = new ArrayList<>();
+                for (PublicationMatch match : matches)
+                {
+                    Map<String, Object> matchMap = new HashMap<>();
+                    matchMap.put("publicationId", match.getPublicationId());
+                    matchMap.put("publicationType", match.getPublicationType().name());
+                    matchMap.put("publicationLabel", match.getPublicationLabel());
+                    matchMap.put("publicationUrl", match.getPublicationUrl());
+                    matchMap.put("matchInfo", match.getMatchInfo());
+                    matchList.add(matchMap);
+                }
+                response.put("matches", matchList);
+            }
+            catch (Exception e)
+            {
+                LOG.error("Error searching for publications for experiment " + form.getId(), e);
+                response.put("success", false);
+                response.put("error", "Error searching for publications: " + e.getMessage());
+            }
+
+            return response;
+        }
+    }
+
     public static class NotifySubmitterForm extends IdForm
     {
         private String _publicationId;
@@ -10841,6 +10946,9 @@ public class PanoramaPublicController extends SpringActionController
     @RequiresPermission(AdminOperationsPermission.class)
     public static class NotifySubmitterOfPublicationsAction extends FormHandlerAction<NotifySubmitterForm>
     {
+        private Container _announcementsContainer;
+        private Announcement _announcement;
+
         @Override
         public void validateCommand(NotifySubmitterForm form, Errors errors)
         {
@@ -10888,9 +10996,9 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
-            Container announcementsContainer = journal.getSupportContainer();
-            Announcement announcement = submission.getAnnouncement(AnnouncementService.get(), announcementsContainer, getUser());
-            if (announcement == null)
+            _announcementsContainer = journal.getSupportContainer();
+            _announcement = submission.getAnnouncement(AnnouncementService.get(), _announcementsContainer, getUser());
+            if (_announcement == null)
             {
                 errors.reject(ERROR_MSG, "No support thread found for this submission");
                 return false;
@@ -10912,7 +11020,7 @@ public class PanoramaPublicController extends SpringActionController
 
             PanoramaPublicNotification.postPrivateDataReminderMessage(
                     journal, submission, exptAnnotations, submitter, getUser(), notifyUsers,
-                    announcement, announcementsContainer, getUser(), selectedMatch);
+                    _announcement, _announcementsContainer, getUser(), selectedMatch);
 
             // Update DatasetStatus
             DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
@@ -10942,7 +11050,8 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public ActionURL getSuccessURL(NotifySubmitterForm form)
         {
-            return new ActionURL(FindPublicationsForDatasetAction.class, getContainer()).addParameter("id", form.getId());
+            return new ActionURL("announcements", "thread", _announcementsContainer)
+                    .addParameter("rowId", _announcement.getRowId());
         }
     }
 

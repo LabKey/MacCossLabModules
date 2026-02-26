@@ -127,7 +127,7 @@ public class NcbiPublicationSearchService
         {
             matchedArticles = matchedArticles.subList(0, maxResults);
         }
-        log.info("Returning {}{}", matchedArticles.size(), StringUtilsLabKey.pluralize(matchedArticles.size(), "publication"));
+        log.info("Returning {}", StringUtilsLabKey.pluralize(matchedArticles.size(), "publication"));
         return matchedArticles;
     }
 
