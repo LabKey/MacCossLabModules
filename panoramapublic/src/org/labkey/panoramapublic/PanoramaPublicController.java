@@ -10278,18 +10278,10 @@ public class PanoramaPublicController extends SpringActionController
             if (!reshow)
             {
                 PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
-                form.setCheckPublications(settings.isEnablePublicationSearch());
+                form.setSearchPublications(settings.isEnablePublicationSearch());
             }
 
-            QuerySettings qSettings = new QuerySettings(getViewContext(),  PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS,
-                    PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS);
-            qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
-            qSettings.setBaseFilter(new SimpleFilter(FieldKey.fromParts("Public"), "No"));
-
-            QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, null);
-            tableView.setTitle("Private Panorama Private Datasets");
-            tableView.setFrame(WebPartView.FrameType.NONE);
-            tableView.disableContainerFilterSelection();
+            QueryView tableView = getPrivateExperimentsQueryView(getViewContext(), getContainer(), getUser());
 
             form.setDataRegionName(tableView.getDataRegionName());
 
@@ -10314,7 +10306,7 @@ public class PanoramaPublicController extends SpringActionController
                     JournalManager.getJournal(getContainer()),
                     form.getSelectedExperimentIds(),
                     form.getTestMode(),
-                    form.isCheckPublications());
+                    form.isSearchPublications());
             PipelineService.get().queueJob(job);
             return true;
         }
@@ -10334,10 +10326,24 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
+    private static @NotNull QueryView getPrivateExperimentsQueryView(ViewContext viewContext, Container container, User user)
+    {
+        QuerySettings qSettings = new QuerySettings(viewContext, PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS,
+                PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS);
+        qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
+        qSettings.setBaseFilter(new SimpleFilter(FieldKey.fromParts("Public"), "No"));
+
+        QueryView tableView = new QueryView(new PanoramaPublicSchema(user, container), qSettings, null);
+        tableView.setTitle("Private Panorama Public Datasets");
+        tableView.setFrame(WebPartView.FrameType.NONE);
+        tableView.disableContainerFilterSelection();
+        return tableView;
+    }
+
     public static class PrivateDataSendReminderForm
     {
         private boolean _testMode;
-        private boolean _checkPublications;
+        private boolean _searchPublications;
         private String _selectedIds;
         private String _dataRegionName = null;
 
@@ -10351,14 +10357,14 @@ public class PanoramaPublicController extends SpringActionController
             _testMode = testMode;
         }
 
-        public boolean isCheckPublications()
+        public boolean isSearchPublications()
         {
-            return _checkPublications;
+            return _searchPublications;
         }
 
-        public void setCheckPublications(boolean checkPublications)
+        public void setSearchPublications(boolean searchPublications)
         {
-            _checkPublications = checkPublications;
+            _searchPublications = searchPublications;
         }
 
         public String getSelectedIds()
@@ -10406,15 +10412,7 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors, true);
             }
 
-            QuerySettings qSettings = new QuerySettings(getViewContext(), PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS,
-                    PanoramaPublicSchema.TABLE_EXPERIMENT_ANNOTATIONS);
-            qSettings.setContainerFilterName(ContainerFilter.Type.CurrentAndSubfolders.name());
-            qSettings.setBaseFilter(new SimpleFilter(FieldKey.fromParts("Public"), "No"));
-
-            QueryView tableView = new QueryView(new PanoramaPublicSchema(getUser(), getContainer()), qSettings, null);
-            tableView.setTitle("Private Datasets");
-            tableView.setFrame(WebPartView.FrameType.NONE);
-            tableView.disableContainerFilterSelection();
+            QueryView tableView = getPrivateExperimentsQueryView(getViewContext(), getContainer(), getUser());
 
             SearchPublicationsBean bean = new SearchPublicationsBean();
             bean.setDataRegionName(tableView.getDataRegionName());

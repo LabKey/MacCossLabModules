@@ -72,9 +72,9 @@
                 </td>
             </tr>
             <tr>
-                <td class="labkey-form-label" style="text-align:center;">Check for NCBI Publications:</td>
+                <td class="labkey-form-label" style="text-align:center;">Search for Publications:</td>
                 <td>
-                    <input type="checkbox" name="checkPublications" <%=checked(form.isCheckPublications())%> />
+                    <input type="checkbox" name="searchPublications" <%=checked(form.isSearchPublications())%> />
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         When checked, the system will search for publications before sending reminders.
                     </div>

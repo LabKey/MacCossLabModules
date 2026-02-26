@@ -8,12 +8,10 @@
 <%
     JspView<PanoramaPublicController.SearchPublicationsBean> view = HttpView.currentView();
     var form = view.getModelBean();
-    ActionURL searchPublicationsUrl = new ActionURL(PanoramaPublicController.SearchPublicationsForDatasetAction.class, getContainer());
-    ActionURL searchPublicationsApiUrl = new ActionURL(PanoramaPublicController.SearchPublicationsForDatasetApiAction.class, getContainer());
 %>
 
 <style>
-    .search-pub-progress {
+    .pub-search-progress {
         margin: 10px 0;
         padding: 8px 12px;
         background: #f0f8ff;
@@ -21,66 +19,78 @@
         border-radius: 4px;
         display: none;
     }
-    .search-pub-progress.complete {
+    .pub-search-progress.complete {
         background: #f0fff0;
         border-color: #b0d4b0;
     }
-    .search-pub-result-error {
+    .pub-search-error {
         color: #cc0000;
     }
 </style>
 
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
-    const _dataRegionName = <%= q(form.getDataRegionName()) %>;
-    const _searchPublicationsApiUrl = <%= q(searchPublicationsApiUrl.getLocalURIString()) %>;
-    const _searchPublicationsUrl = <%= q(searchPublicationsUrl.getLocalURIString()) %>;
+    const dataRegionName = <%= q(form.getDataRegionName()) %>;
+    const headers = [
+        { key: 'COUNT', label: 'Papers Found' },
+        { key: 'PUBLICATION_IDS', label: 'Publication IDs' },
+        { key: 'MATCHES', label: 'Matches' },
+        { key: 'ACTION', label: '' } // intentionally blank
+    ];
+    const headerIndex = headers.reduce(function(map, col, index)
+    {
+        map[col.key] = index;
+        return map;
+    }, {});
 
-    var _resultColumnsAdded = false;
+    let resultColumnsAdded = false;
+    let experimentsTable;
+
+    LABKEY.Utils.onReady(function() {
+        experimentsTable = dataRegionName ? document.querySelector('table[data-region-name="' + dataRegionName + '"]') : null;
+        if (!experimentsTable)
+        {
+            console.log("Private experiments table could not be initialized for data region " + dataRegionName);
+        }
+    });
 
     function addResultColumns()
     {
-        if (_resultColumnsAdded) return;
-
-        var dr = document.querySelector('table[data-region-name="' + _dataRegionName + '"]');
-        if (!dr) return;
+        if (resultColumnsAdded || !experimentsTable) return;
 
         // Add headers
-        var headerRow = dr.querySelector('tr.labkey-col-header, thead tr');
+        const headerRow = experimentsTable.querySelector('tr.labkey-col-header, thead tr');
         if (headerRow)
         {
-            var headers = ['Papers Found', 'Publication IDs', 'Matches', ''];
-            for (var i = 0; i < headers.length; i++)
+            for (let i = 0; i < headers.length; i++)
             {
-                var th = document.createElement('th');
+                const th = document.createElement('th');
                 th.className = 'labkey-col-header';
-                th.textContent = headers[i];
+                th.textContent = headers[i].label;
                 headerRow.appendChild(th);
             }
         }
 
         // Add empty cells to each data row
-        var rows = dr.querySelectorAll('tr.labkey-alternate-row, tr.labkey-row');
-        for (var r = 0; r < rows.length; r++)
+        const rows = experimentsTable.querySelectorAll('tr.labkey-alternate-row, tr.labkey-row');
+        for (let r = 0; r < rows.length; r++)
         {
-            for (var c = 0; c < 4; c++)
+            for (let c = 0; c < headers.length; c++)
             {
-                var td = document.createElement('td');
+                const td = document.createElement('td');
                 rows[r].appendChild(td);
             }
         }
 
-        _resultColumnsAdded = true;
+        resultColumnsAdded = true;
     }
 
     function getRowForExperimentId(expId)
     {
-        // Scope the search to this data region's DOM element.
-        var regionEl = document.querySelector('table[data-region-name="' + _dataRegionName + '"]');
-        if (!regionEl) return null;
+        if (!experimentsTable) return null;
 
-        var checkboxes = regionEl.querySelectorAll('input[name=".select"]');
-        for (var i = 0; i < checkboxes.length; i++)
+        const checkboxes = experimentsTable.querySelectorAll('input[name=".select"]');
+        for (let i = 0; i < checkboxes.length; i++)
         {
             if (checkboxes[i].value === String(expId))
             {
@@ -94,42 +104,49 @@
     {
         const row = getRowForExperimentId(expId);
         if (!row) return;
-        console.log("Found row");
 
         const cells = row.querySelectorAll('td');
-        console.log("Found cells " + cells.length);
-        // The last 4 cells are our result columns
-        const resultCells = [cells[cells.length - 4], cells[cells.length - 3], cells[cells.length - 2], cells[cells.length - 1]];
+
+        // Last N cells are result columns
+        const headersSize = headers.length;
+        const resultCells = Array.from(cells).slice(-headersSize);
+
 
         if (!data.success)
         {
-            resultCells[0].innerHTML = '<span class="search-pub-result-error">Error</span>';
-            resultCells[2].textContent = data.error || 'Unknown error';
+            resultCells[headerIndex.COUNT].innerHTML = '<span class="pub-search-error">Error</span>';
+            resultCells[headerIndex.MATCHES].textContent = data.error || 'Unknown error';
+
             return;
         }
 
         const count = data.papersFound;
         if (count > 0)
         {
-            resultCells[0].innerHTML = LABKEY.Utils.encodeHtml(count);
+            // Count
+            resultCells[headerIndex.COUNT].innerHTML = LABKEY.Utils.encodeHtml(count);
 
-            // Publication IDs
+            // Publication IDs and Matches
             let pubHtml = '';
             let matchHtml = '';
-            for (var i = 0; i < data.matches.length; i++)
+
+            for (let i = 0; i < data.matches.length; i++)
             {
                 const match = data.matches[i];
+
                 pubHtml += '<a class="labkey-text-link"'
                         + ' href="' + LABKEY.Utils.encodeHtml(match.publicationUrl) + '"'
                         + ' target="_blank"'
-                        + ' rel="noopener noreferrer" >'
+                        + ' rel="noopener noreferrer">'
                         + LABKEY.Utils.encodeHtml(match.publicationLabel)
                         + '</a>';
 
-                matchHtml += '<div>' + LABKEY.Utils.encodeHtml(match.matchInfo) + '</div>';
+                matchHtml += '<div>'
+                        + LABKEY.Utils.encodeHtml(match.matchInfo)
+                        + '</div>';
             }
-            resultCells[1].innerHTML = pubHtml;
-            resultCells[2].innerHTML = matchHtml;
+            resultCells[headerIndex.PUBLICATION_IDS].innerHTML = pubHtml;
+            resultCells[headerIndex.MATCHES].innerHTML = matchHtml;
 
             // Notify link
             const notifyLinkUrl = LABKEY.ActionURL.buildURL(
@@ -137,43 +154,45 @@
                     LABKEY.ActionURL.getContainer(),
                     {id: expId}
             );
-            resultCells[3].innerHTML = '<a href="' + LABKEY.Utils.encodeHtml(notifyLinkUrl) + '" target="_blank" class="labkey-text-link" >' + 'Notify</a>';
+            resultCells[headerIndex.ACTION].innerHTML = '<a href="' + LABKEY.Utils.encodeHtml(notifyLinkUrl) + '" target="_blank" class="labkey-text-link" >' + 'Notify</a>';
         }
         else
         {
-            resultCells[0].innerHTML = '0';
+            resultCells[headerIndex.COUNT].innerHTML = '0';
         }
     }
 
     function searchPublications()
     {
-        var dataRegion = LABKEY.DataRegions[_dataRegionName];
+        const dataRegion = LABKEY.DataRegions[dataRegionName];
         if (!dataRegion)
         {
             alert('Data region not found.');
             return;
         }
 
-        var selectedIds = dataRegion.getChecked();
+        const selectedIds = dataRegion.getChecked();
         if (selectedIds.length === 0)
         {
             alert('Please select at least one dataset.');
             return;
         }
 
+        if (!experimentsTable) return;
+
         // Add result columns to the table
         addResultColumns();
 
-        var progressEl = document.getElementById('search-pub-progress');
+        const progressEl = document.getElementById('pub-search-progress');
         progressEl.style.display = 'block';
-        progressEl.className = 'search-pub-progress';
+        progressEl.className = 'pub-search-progress';
 
-        var btn = document.getElementById('search-pub-btn');
+        const btn = document.getElementById('search-pub-btn');
         btn.disabled = true;
 
-        var total = selectedIds.length;
-        var completed = 0;
-        var foundCount = 0;
+        const total = selectedIds.length;
+        let completed = 0;
+        let foundCount = 0;
 
         function updateProgress()
         {
@@ -185,20 +204,20 @@
             if (index >= total)
             {
                 progressEl.textContent = 'Search complete. Found publications for ' + foundCount + ' of ' + total + ' datasets.';
-                progressEl.className = 'search-pub-progress complete';
+                progressEl.className = 'pub-search-progress complete';
                 btn.disabled = false;
                 return;
             }
 
             updateProgress();
-            var expId = selectedIds[index];
+            const expId = selectedIds[index];
 
             LABKEY.Ajax.request({
                 url: <%=q(new ActionURL(PanoramaPublicController.SearchPublicationsForDatasetApiAction.class, getContainer()))%>,
                 method: 'GET',
                 params: { id: expId },
                 success: function(response) {
-                    var data = JSON.parse(response.responseText);
+                    const data = JSON.parse(response.responseText);
                     updateRowResults(expId, data);
                     if (data.success && data.papersFound > 0)
                     {
@@ -228,6 +247,6 @@
     <div>
         <%=button("Search Publications").id("search-pub-btn").onClick("searchPublications();")%>
     </div>
-    <div id="search-pub-progress" class="search-pub-progress"></div>
+    <div id="pub-search-progress" class="pub-search-progress"></div>
 
 </div>
