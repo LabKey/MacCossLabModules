@@ -182,6 +182,7 @@ import org.labkey.panoramapublic.proteomexchange.ChemElement;
 import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
 import org.labkey.panoramapublic.proteomexchange.Formula;
 import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
+import org.labkey.panoramapublic.proteomexchange.NcbiUtils.DB;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
 import org.labkey.panoramapublic.proteomexchange.PsiInstrumentParser;
@@ -7047,7 +7048,7 @@ public class PanoramaPublicController extends SpringActionController
             {
                 if (form.hasPubmedId())
                 {
-                    Pair<String, String> linkAndCitation = NcbiUtils.getLinkAndCitation(form.getPubmedId());
+                    Pair<String, String> linkAndCitation = NcbiUtils.getPubMedLinkAndCitation(form.getPubmedId());
                     if (linkAndCitation != null)
                     {
                         form.setLink(linkAndCitation.first);
@@ -10721,7 +10722,7 @@ public class PanoramaPublicController extends SpringActionController
             List<PublicationMatch> matches;
             try
             {
-                matches = NcbiPublicationSearchService.searchForPublication(_exptAnnotations, NcbiPublicationSearchService.MAX_RESULTS, null);
+                matches = NcbiPublicationSearchService.searchForPublication(_exptAnnotations, NcbiPublicationSearchService.MAX_RESULTS, null, true);
             }
             catch (Exception e)
             {
@@ -10817,7 +10818,7 @@ public class PanoramaPublicController extends SpringActionController
 
             try
             {
-                List<PublicationMatch> matches = NcbiPublicationSearchService.searchForPublication(expAnnotations, NcbiPublicationSearchService.MAX_RESULTS, null);
+                List<PublicationMatch> matches = NcbiPublicationSearchService.searchForPublication(expAnnotations, NcbiPublicationSearchService.MAX_RESULTS, null, false);
                 response.put("success", true);
                 response.put("papersFound", matches.size());
 
@@ -10906,7 +10907,7 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
-            PublicationMatch.PublicationType pubType = PublicationMatch.PublicationType.fromString(form.getPublicationType());
+            DB pubType = DB.fromString(form.getPublicationType());
             if (pubType == null)
             {
                 errors.reject(ERROR_MSG, "Invalid publication type: " + form.getPublicationType());
@@ -10915,6 +10916,7 @@ public class PanoramaPublicController extends SpringActionController
 
             // Reconstruct PublicationMatch from form fields
             PublicationMatch selectedMatch = PublicationMatch.fromMatchInfo(form.getPublicationId(), pubType, form.getMatchInfo());
+            selectedMatch.setCitation(NcbiUtils.getCitation(form.getPublicationId(), pubType));
 
             // Post notification
             JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(exptAnnotations);

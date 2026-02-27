@@ -5,6 +5,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
 import org.labkey.panoramapublic.model.DatasetStatus;
+import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
+import org.labkey.panoramapublic.proteomexchange.NcbiUtils.DB;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -21,44 +24,17 @@ public class PublicationMatch
     public static final String MATCH_TITLE = "Title";
 
     private final String _publicationId;
-    private final PublicationType _publicationType;
+    private final DB _publicationType;
     private final boolean _matchesProteomeXchangeId;
     private final boolean _matchesPanoramaUrl;
     private final boolean _matchesDoi;
     private final boolean _matchesAuthor;
     private final boolean _matchesTitle;
     private final @Nullable Date _publicationDate;
+    private @Nullable String _citation;
 
-    public enum PublicationType
-    {
-        PMID("PubMed ID"),
-        PMC("PMC ID");
 
-        private final String _label;
-
-        PublicationType(String label)
-        {
-            _label = label;
-        }
-
-        /** Human-readable label, e.g. "PubMed ID" or "PMC ID". */
-        public String getLabel()
-        {
-            return _label;
-        }
-
-        public static @Nullable PublicationType fromString(@Nullable String value)
-        {
-            if (value == null) return null;
-            for (PublicationType type : values())
-            {
-                if (type.name().equals(value)) return type;
-            }
-            return null;
-        }
-    }
-
-    public PublicationMatch(String publicationId, PublicationType publicationType,
+    public PublicationMatch(String publicationId, DB publicationType,
                             boolean matchesProteomeXchangeId, boolean matchesPanoramaUrl, boolean matchesDoi,
                             boolean matchesAuthor, boolean matchesTitle,
                             @Nullable Date publicationDate)
@@ -78,7 +54,7 @@ public class PublicationMatch
         return _publicationId;
     }
 
-    public PublicationType getPublicationType()
+    public DB getPublicationType()
     {
         return _publicationType;
     }
@@ -113,12 +89,20 @@ public class PublicationMatch
         return _publicationDate;
     }
 
+    public @Nullable String getCitation()
+    {
+        return _citation;
+    }
+
+    public void setCitation(@Nullable String citation)
+    {
+        _citation = citation;
+    }
+
     /**
      * String representation of what matched for this article.
      * This is what gets stored in the PublicationMatchInfo database column.
      * Example: "ProteomeXchange ID, Panorama URL, Author, Title"
-     *
-     * <p>Use {@link #fromMatchInfo(String)} to reconstruct the individual flags.
      */
     public String getMatchInfo()
     {
@@ -133,11 +117,11 @@ public class PublicationMatch
 
     public String getPublicationUrl()
     {
-        if (_publicationType == PublicationType.PMC)
+        if (_publicationType == DB.PMC)
         {
-            return "https://www.ncbi.nlm.nih.gov/pmc/articles/" + _publicationId;
+            return NcbiUtils.getPmcLink(_publicationId);
         }
-        return "https://pubmed.ncbi.nlm.nih.gov/" + _publicationId;
+        return NcbiUtils.getPubmedLink(_publicationId);
     }
 
     public String getPublicationLabel()
@@ -153,6 +137,10 @@ public class PublicationMatch
         json.put("publicationLabel", getPublicationLabel());
         json.put("publicationUrl", getPublicationUrl());
         json.put("matchInfo", getMatchInfo());
+        if (_citation != null)
+        {
+            json.put("citation", _citation);
+        }
         return json;
     }
 
@@ -160,7 +148,7 @@ public class PublicationMatch
      * Build a PublicationMatch from a publication ID, type, and match info string.
      * @see #getMatchInfo()
      */
-    public static PublicationMatch fromMatchInfo(@NotNull String publicationId, @NotNull PublicationType publicationType, @Nullable String matchInfo)
+    public static PublicationMatch fromMatchInfo(@NotNull String publicationId, @NotNull DB publicationType, @Nullable String matchInfo)
     {
         boolean pxId = false, url = false, doi = false, author = false, title = false;
         if (!StringUtils.isBlank(matchInfo))
@@ -190,7 +178,7 @@ public class PublicationMatch
         {
             return null;
         }
-        PublicationType type = PublicationType.fromString(datasetStatus.getPublicationType());
+        DB type = DB.fromString(datasetStatus.getPublicationType());
         if (type == null)
         {
             return null;

@@ -27,6 +27,7 @@ import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
 import org.labkey.panoramapublic.ncbi.PublicationMatch;
+import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
 import org.labkey.panoramapublic.query.DatasetStatusManager;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
@@ -184,10 +185,10 @@ public class PrivateDataReminderJob extends PipelineJob
      * @param log Logger for diagnostic messages
      * @return NcbiArticleMatch with search result
      */
-    private static PublicationMatch checkForPublication(@NotNull ExperimentAnnotations expAnnotations,
-                                                        @NotNull PrivateDataReminderSettings settings,
-                                                        boolean forceCheck,
-                                                        @NotNull Logger log)
+    private static PublicationMatch searchForPublication(@NotNull ExperimentAnnotations expAnnotations,
+                                                         @NotNull PrivateDataReminderSettings settings,
+                                                         boolean forceCheck,
+                                                         @NotNull Logger log)
     {
         // Check if publication checking is enabled (either globally or forced for this run)
         if (!forceCheck && !settings.isEnablePublicationSearch())
@@ -332,7 +333,7 @@ public class PrivateDataReminderJob extends PipelineJob
         }
 
         // Check for publications if enabled
-        PublicationMatch publicationResult = checkForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, processingResults._log);
+        PublicationMatch publicationResult = searchForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, processingResults._log);
 
         if (!context.isTestMode())
         {

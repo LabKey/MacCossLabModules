@@ -438,7 +438,10 @@ public class PanoramaPublicNotification
             message.append("Great news! We found a publication that appears to be associated with your data on Panorama Public (")
                     .append(shortUrl).append("), which has been private since ").append(dateString).append(".")
                     .append(NL2).append(bold("Title:")).append(" ").append(escape(exptAnnotations.getTitle()))
-                    .append(NL2).append(bold("Publication Found:")).append(" ").append(link(articleMatch.getPublicationLabel(), articleMatch.getPublicationUrl()))
+                    .append(NL2).append(bold("Publication Found:")).append(" ")
+                    .append(articleMatch.getCitation() != null
+                            ? link(articleMatch.getCitation(), articleMatch.getPublicationUrl())
+                            : link(articleMatch.getPublicationLabel(), articleMatch.getPublicationUrl()))
                     .append(NL2).append("Since your work has been published, we encourage you to make your data public so the research community can access it alongside your publication. ")
                     .append("You can do this by clicking the \"Make Public\" button in your data folder or by clicking this link: ")
                     .append(bold(link("Make Data Public", makePublicLink))).append(".")

@@ -20,7 +20,8 @@ import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
-import org.labkey.panoramapublic.ncbi.PublicationMatch.PublicationType;
+import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
+import org.labkey.panoramapublic.proteomexchange.NcbiUtils.DB;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -90,7 +91,7 @@ public class NcbiPublicationSearchService
      */
     public static PublicationMatch searchForPublication(@NotNull ExperimentAnnotations expAnnotations, @Nullable Logger logger)
     {
-        List<PublicationMatch> matches = searchForPublication(expAnnotations, 1, logger);
+        List<PublicationMatch> matches = searchForPublication(expAnnotations, 1, logger, true);
         return matches.isEmpty() ? null : matches.get(0);
     }
 
@@ -100,7 +101,7 @@ public class NcbiPublicationSearchService
      * @param maxResults maximum number of article matches to return (capped at 5)
      * @param logger optional logger; when null, uses the class logger
      */
-    public static List<PublicationMatch> searchForPublication(@NotNull ExperimentAnnotations expAnnotations, int maxResults, @Nullable Logger logger)
+    public static List<PublicationMatch> searchForPublication(@NotNull ExperimentAnnotations expAnnotations, int maxResults, @Nullable Logger logger, boolean getCitations)
     {
         Logger log = getLog(logger);
         maxResults = Math.max(1, Math.min(maxResults, MAX_RESULTS));
@@ -127,6 +128,16 @@ public class NcbiPublicationSearchService
         {
             matchedArticles = matchedArticles.subList(0, maxResults);
         }
+
+        if (getCitations)
+        {
+            // Fetch citations for each match
+            for (PublicationMatch match : matchedArticles)
+            {
+                match.setCitation(NcbiUtils.getCitation(match.getPublicationId(), match.getPublicationType()));
+            }
+        }
+
         log.info("Returning {}", StringUtilsLabKey.pluralize(matchedArticles.size(), "publication"));
         return matchedArticles;
     }
@@ -387,7 +398,7 @@ public class NcbiPublicationSearchService
             // Extract PubMed ID, is found
             String pubMedId = extractPubMedId(articleData);
             String publicationId = pubMedId == null ? pmcId : pubMedId;
-            PublicationType publicationType = pubMedId == null ? PublicationType.PMC : PublicationType.PMID;
+            DB publicationType = pubMedId == null ? DB.PMC : DB.PubMed;
 
             // Get strategies that found this article
             List<String> strategies = idToStrategies.getOrDefault(pmcId, Collections.emptyList());
@@ -537,7 +548,7 @@ public class NcbiPublicationSearchService
                 Date pubDate = parsePublicationDate(articleData, log);
                 PublicationMatch article = new PublicationMatch(
                     pmid,
-                    PublicationType.PMID,
+                    DB.PubMed,
                     false,  // Not found by PX ID
                     false,  // Not found by Panorama URL
                     false,  // Not found by DOI

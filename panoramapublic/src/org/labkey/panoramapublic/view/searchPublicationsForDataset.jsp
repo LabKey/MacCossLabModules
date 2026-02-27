@@ -3,7 +3,6 @@
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.ActionURL" %>
 <%@ page import="org.labkey.api.util.DateUtil" %>
-<%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.SearchPublicationsForDatasetBean" %>
 <%@ page import="org.labkey.panoramapublic.ncbi.PublicationMatch" %>
@@ -81,7 +80,7 @@
     <table class="labkey-data-region labkey-show-borders table-bordered table-condensed">
         <tr>
             <th class="labkey-col-header">Select</th>
-            <th class="labkey-col-header">Publication ID</th>
+            <th class="labkey-col-header">Publication</th>
             <th class="labkey-col-header">Matches</th>
             <% if (bean.isShowDismissedColumn()) { %>
             <th class="labkey-col-header">User Dismissed</th>
@@ -100,7 +99,9 @@
                        data-publicationtype="<%=h(match.getPublicationType().name())%>"
                        data-matchinfo="<%=h(match.getMatchInfo())%>" />
             </td>
-            <td><a href="<%=h(match.getPublicationUrl())%>" target="_blank" rel="noopener noreferrer"><%=h(match.getPublicationLabel())%></a></td>
+            <td>
+                <%=simpleLink(match.getCitation() != null ? match.getCitation() : match.getPublicationUrl(), match.getPublicationUrl()).target("_blank")%>
+            </td>
             <td><%=h(match.getMatchInfo())%></td>
             <% if (bean.isShowDismissedColumn()) { %>
             <td><%=h(pubId.equals(bean.getDismissedPubId()) ? "Yes" : "")%></td>
