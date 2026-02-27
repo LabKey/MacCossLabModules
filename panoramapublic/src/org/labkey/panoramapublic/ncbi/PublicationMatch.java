@@ -3,6 +3,7 @@ package org.labkey.panoramapublic.ncbi;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.json.JSONObject;
 import org.labkey.panoramapublic.model.DatasetStatus;
 import java.util.ArrayList;
 import java.util.Date;
@@ -142,6 +143,17 @@ public class PublicationMatch
     public String getPublicationLabel()
     {
         return _publicationType.getLabel() + " " + _publicationId;
+    }
+
+    public JSONObject toJson()
+    {
+        JSONObject json = new JSONObject();
+        json.put("publicationId", _publicationId);
+        json.put("publicationType", _publicationType.name());
+        json.put("publicationLabel", getPublicationLabel());
+        json.put("publicationUrl", getPublicationUrl());
+        json.put("matchInfo", getMatchInfo());
+        return json;
     }
 
     /**

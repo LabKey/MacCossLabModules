@@ -236,7 +236,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -10397,8 +10396,6 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    // region Search Publications
-
     @RequiresPermission(AdminOperationsPermission.class)
     public static class SearchPublicationsAction extends SimpleViewAction<Object>
     {
@@ -10446,7 +10443,6 @@ public class PanoramaPublicController extends SpringActionController
             _dataRegionName = dataRegionName;
         }
     }
-    // endregion Search Publications
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
     public abstract static class UpdateDatasetStatusAction extends ConfirmAction<ShortUrlForm>
@@ -10736,125 +10732,71 @@ public class PanoramaPublicController extends SpringActionController
 
             DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(_exptAnnotations);
 
-            VBox view = new VBox();
-            view.setFrame(WebPartView.FrameType.PORTAL);
-            view.setTitle("Find Publications for Dataset");
-
-            // Dataset info section
-            List<DOM.Renderable> infoRows = new ArrayList<>();
-            ShortURLRecord shortUrl = _exptAnnotations.getShortUrl();
-            if (shortUrl != null)
+            // Check if any displayed match was dismissed by the user
+            boolean showDismissedColumn = false;
+            String dismissedPubId = null;
+            if (datasetStatus != null && Boolean.TRUE.equals(datasetStatus.getUserDismissedPublication())
+                    && datasetStatus.getPotentialPublicationId() != null)
             {
-                infoRows.add(row("Title:", LinkBuilder.simpleLink(_exptAnnotations.getTitle(), shortUrl.renderShortURL())));
-            }
-            else
-            {
-                infoRows.add(row("Title:", _exptAnnotations.getTitle()));
-            }
-            infoRows.add(row("Created:", DateUtil.formatDateTime(_exptAnnotations.getCreated(), "yyyy-MM-dd")));
-            String submitterName = _exptAnnotations.getSubmitterName();
-            infoRows.add(row("Submitter:", submitterName != null ? submitterName : "Unknown"));
-            if (_exptAnnotations.hasPxid())
-            {
-                infoRows.add(row("PX ID:", LinkBuilder.simpleLink(_exptAnnotations.getPxid(),
-                        "https://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=" + PageFlowUtil.encode(_exptAnnotations.getPxid()))));
-            }
-            if (_exptAnnotations.hasDoi())
-            {
-                infoRows.add(row("DOI:", _exptAnnotations.getDoi()));
-            }
-            view.addView(new HtmlView(TABLE(cl("lk-fields-table"), infoRows)));
-
-            // Publications section
-            if (!matches.isEmpty())
-            {
-                // Check if any displayed match was dismissed by the user
-                boolean showDismissedColumn = false;
-                String dismissedPubId = null;
-                if (datasetStatus != null && Boolean.TRUE.equals(datasetStatus.getUserDismissedPublication())
-                        && datasetStatus.getPotentialPublicationId() != null)
-                {
-                    dismissedPubId = datasetStatus.getPotentialPublicationId();
-                    for (PublicationMatch match : matches)
-                    {
-                        if (match.getPublicationId().equals(dismissedPubId))
-                        {
-                            showDismissedColumn = true;
-                            break;
-                        }
-                    }
-                }
-
-                ActionURL postUrl = new ActionURL(NotifySubmitterOfPublicationsAction.class, getContainer());
-                List<DOM.Renderable> formContents = new ArrayList<>();
-                formContents.add(INPUT(at(type, "hidden", name, "id", value, _exptAnnotations.getId())));
-                formContents.add(INPUT(at(type, "hidden", name, "publicationType", value, "")));
-                formContents.add(INPUT(at(type, "hidden", name, "matchInfo", value, "")));
-
-                // Table header
-                List<DOM.Renderable> headerCells = new ArrayList<>();
-                headerCells.add(TH(cl("labkey-col-header"), "Select"));
-                headerCells.add(TH(cl("labkey-col-header"), "Publication ID"));
-                headerCells.add(TH(cl("labkey-col-header"), "Matches"));
-                if (showDismissedColumn)
-                {
-                    headerCells.add(TH(cl("labkey-col-header"), "User Dismissed"));
-                }
-                DOM.Renderable headerRow = TR(headerCells);
-
-                // Table rows
-                List<DOM.Renderable> tableRows = new ArrayList<>();
-                tableRows.add(headerRow);
-                String finalDismissedPubId = dismissedPubId;
-                boolean finalShowDismissedColumn = showDismissedColumn;
-                String rowCls;
-                int rowIdx = 0;
+                dismissedPubId = datasetStatus.getPotentialPublicationId();
                 for (PublicationMatch match : matches)
                 {
-                    String pubId = match.getPublicationId();
-                    List<DOM.Renderable> cells = new ArrayList<>();
-                    cells.add(TD(INPUT(at(type, "radio", name, "publicationId", value, pubId)
-                            .data("publicationType", match.getPublicationType().name())
-                            .data("matchInfo", match.getMatchInfo()))));
-                    cells.add(TD(LinkBuilder.simpleLink(match.getPublicationLabel(), match.getPublicationUrl())));
-                    cells.add(TD(match.getMatchInfo()));
-
-                    if (finalShowDismissedColumn)
+                    if (match.getPublicationId().equals(dismissedPubId))
                     {
-                        cells.add(TD(pubId.equals(finalDismissedPubId) ? "Yes" : ""));
+                        showDismissedColumn = true;
+                        break;
                     }
-
-                    rowCls = (rowIdx++) % 2 == 0 ? "labkey-alternate-row" : "labkey-row";
-                    tableRows.add(TR(cl(rowCls), cells));
                 }
-
-                formContents.add(TABLE(cl("labkey-data-region labkey-show-borders table-bordered table-condensed"), tableRows));
-                formContents.add(BR());
-                formContents.add(new ButtonBuilder("Notify Submitter").submit(true).build());
-
-                view.addView(new HtmlView(FORM(at(method, "POST", action, postUrl), formContents)));
-                view.addView(new HtmlView(SCRIPT(HtmlString.unsafe(
-                        "document.querySelectorAll('input[name=\"publicationId\"]').forEach(function(radio) {\n" +
-                        "    radio.addEventListener('change', function() {\n" +
-                        "        var form = this.closest('form');\n" +
-                        "        form.querySelector('input[name=\"publicationType\"]').value = this.dataset.publicationtype;\n" +
-                        "        form.querySelector('input[name=\"matchInfo\"]').value = this.dataset.matchinfo;\n" +
-                        "    });\n" +
-                        "});"
-                ))));
-            }
-            else
-            {
-                view.addView(new HtmlView(DIV(at(style, "margin-top:10px;"), "No publications found for this dataset.")));
             }
 
-            return view;
+            SearchPublicationsForDatasetBean bean = new SearchPublicationsForDatasetBean(_exptAnnotations, matches, showDismissedColumn, dismissedPubId);
+            JspView<SearchPublicationsForDatasetBean> jspView = new JspView<>("/org/labkey/panoramapublic/view/searchPublicationsForDataset.jsp", bean, errors);
+            jspView.setFrame(WebPartView.FrameType.PORTAL);
+            jspView.setTitle("Publications Matches for Dataset");
+            return jspView;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
             root.addChild("Publication Matches for Dataset");
+        }
+    }
+
+    public static class SearchPublicationsForDatasetBean
+    {
+        private final ExperimentAnnotations _experimentAnnotations;
+        private final List<PublicationMatch> _matches;
+        private final boolean _showDismissedColumn;
+        private final String _dismissedPubId;
+
+        public SearchPublicationsForDatasetBean(ExperimentAnnotations experimentAnnotations, List<PublicationMatch> matches,
+                                                boolean showDismissedColumn, String dismissedPubId)
+        {
+            _experimentAnnotations = experimentAnnotations;
+            _matches = matches;
+            _showDismissedColumn = showDismissedColumn;
+            _dismissedPubId = dismissedPubId;
+        }
+
+        public ExperimentAnnotations getExperimentAnnotations()
+        {
+            return _experimentAnnotations;
+        }
+
+        public List<PublicationMatch> getMatches()
+        {
+            return _matches;
+        }
+
+        public boolean isShowDismissedColumn()
+        {
+            return _showDismissedColumn;
+        }
+
+        public String getDismissedPubId()
+        {
+            return _dismissedPubId;
         }
     }
 
@@ -10865,8 +10807,8 @@ public class PanoramaPublicController extends SpringActionController
         public Object execute(ExperimentIdForm form, BindException errors)
         {
             ApiSimpleResponse response = new ApiSimpleResponse();
-            ExperimentAnnotations exptAnnotations = form.lookupExperiment();
-            if (exptAnnotations == null)
+            ExperimentAnnotations expAnnotations = form.lookupExperiment();
+            if (expAnnotations == null)
             {
                 response.put("success", false);
                 response.put("error", "No experiment found for Id " + form.getId());
@@ -10875,20 +10817,14 @@ public class PanoramaPublicController extends SpringActionController
 
             try
             {
-                List<PublicationMatch> matches = NcbiPublicationSearchService.searchForPublication(exptAnnotations, NcbiPublicationSearchService.MAX_RESULTS, null);
+                List<PublicationMatch> matches = NcbiPublicationSearchService.searchForPublication(expAnnotations, NcbiPublicationSearchService.MAX_RESULTS, null);
                 response.put("success", true);
                 response.put("papersFound", matches.size());
 
-                List<Map<String, Object>> matchList = new ArrayList<>();
+                List<JSONObject> matchList = new ArrayList<>();
                 for (PublicationMatch match : matches)
                 {
-                    Map<String, Object> matchMap = new HashMap<>();
-                    matchMap.put("publicationId", match.getPublicationId());
-                    matchMap.put("publicationType", match.getPublicationType().name());
-                    matchMap.put("publicationLabel", match.getPublicationLabel());
-                    matchMap.put("publicationUrl", match.getPublicationUrl());
-                    matchMap.put("matchInfo", match.getMatchInfo());
-                    matchList.add(matchMap);
+                    matchList.add(match.toJson());
                 }
                 response.put("matches", matchList);
             }
