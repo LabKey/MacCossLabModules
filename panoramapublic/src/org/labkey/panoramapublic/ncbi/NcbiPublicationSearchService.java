@@ -1,5 +1,6 @@
 package org.labkey.panoramapublic.ncbi;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.config.ConnectionConfig;
@@ -16,14 +17,17 @@ import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.labkey.api.util.Pair;
 import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.datacite.DataCiteService;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
-import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
-import org.labkey.panoramapublic.proteomexchange.NcbiUtils.DB;
+import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
@@ -55,6 +59,10 @@ public class NcbiPublicationSearchService
     private static final String ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi";
     private static final String ESUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi";
 
+    // NCBI Literature Citation Exporter endpoints
+    private static final String PUBMED_CITATION_EXPORTER_URL = "https://api.ncbi.nlm.nih.gov/api/ctxp/v1/pubmed/?format=citation&id=";
+    private static final String PMC_CITATION_EXPORTER_URL =    "https://api.ncbi.nlm.nih.gov/api/ctxp/v1/pmc/?format=citation&id=";
+
     // API parameters
     private static final int RATE_LIMIT_DELAY_MS = 400; // NCBI allows 3 requests/sec
     public static final int MAX_RESULTS = 5;
@@ -82,6 +90,79 @@ public class NcbiPublicationSearchService
     private static Logger getLog(@Nullable Logger logger)
     {
         return logger != null ? logger : LOG;
+    }
+
+    /**
+     * Fetches the NLM-style citation for a publication using the NCBI Literature Citation Exporter.
+     * Supports both PubMed and PMC publication types.
+     * @param publicationId numeric publication ID (e.g. "28691345")
+     * @param database PubMed or PMC
+     * @return the NLM citation string, or null if the lookup fails or the ID is invalid
+     */
+    public static @Nullable String getCitation(String publicationId, DB database)
+    {
+        if (publicationId == null || !publicationId.matches(NcbiConstants.PUBMED_ID))
+        {
+            return null;
+        }
+
+        String baseUrl = database == DB.PMC ? PMC_CITATION_EXPORTER_URL : PUBMED_CITATION_EXPORTER_URL;
+        String queryUrl = baseUrl + publicationId;
+
+        HttpURLConnection conn = null;
+        try
+        {
+            URL url = new URL(queryUrl);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+
+            int status = conn.getResponseCode();
+
+            if (status == HttpURLConnection.HTTP_OK)
+            {
+                String response;
+                try (InputStream in = conn.getInputStream())
+                {
+                    response = IOUtils.toString(in, StandardCharsets.UTF_8);
+                }
+                return parseCitation(response, publicationId, database);
+            }
+        }
+        catch (IOException e)
+        {
+            LOG.error("Error submitting a request to NCBI Literature Citation Exporter. URL: " + queryUrl, e);
+        }
+        finally
+        {
+            if (conn != null) conn.disconnect();
+        }
+        return null;
+    }
+
+    /**
+     * Does a citation lookup for the given PubMedId using the NCBI's Literature Citation Exporter.
+     * @param pubmedId PubMed Id
+     * @return the PubMed link and the NLM-style citation if the lookup is successful
+     */
+    public static Pair<String, String> getPubMedLinkAndCitation(String pubmedId)
+    {
+        String citation = getCitation(pubmedId, DB.PubMed);
+        return citation != null ? new Pair<>(NcbiConstants.getPubmedLink(pubmedId), citation) : null;
+    }
+
+    private static String parseCitation(String response, String publicationId, DB database)
+    {
+        try
+        {
+            var jsonObject = new JSONObject(response);
+            var nlmInfo = jsonObject.optJSONObject("nlm");
+            return null != nlmInfo ? nlmInfo.getString("orig") : null;
+        }
+        catch (JSONException e)
+        {
+            LOG.error("Error parsing response from NCBI Literature Citation Exporter for " + database.getLabel() + " ID " + publicationId, e);
+        }
+        return null;
     }
 
     /**
@@ -134,7 +215,7 @@ public class NcbiPublicationSearchService
             // Fetch citations for each match
             for (PublicationMatch match : matchedArticles)
             {
-                match.setCitation(NcbiUtils.getCitation(match.getPublicationId(), match.getPublicationType()));
+                match.setCitation(getCitation(match.getPublicationId(), match.getPublicationType()));
             }
         }
 

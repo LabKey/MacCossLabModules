@@ -181,8 +181,10 @@ import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ChemElement;
 import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
 import org.labkey.panoramapublic.proteomexchange.Formula;
+import org.labkey.panoramapublic.ncbi.NcbiConstants;
+import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
+import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
 import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
-import org.labkey.panoramapublic.proteomexchange.NcbiUtils.DB;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
 import org.labkey.panoramapublic.proteomexchange.PsiInstrumentParser;
@@ -265,7 +267,7 @@ import static org.labkey.api.util.DOM.Attribute.value;
 import static org.labkey.api.util.DOM.Attribute.width;
 import static org.labkey.api.util.DOM.LK.ERRORS;
 import static org.labkey.api.util.DOM.LK.FORM;
-import static org.labkey.panoramapublic.proteomexchange.NcbiUtils.PUBMED_ID;
+import static org.labkey.panoramapublic.ncbi.NcbiConstants.PUBMED_ID;
 
 /**
  * User: vsharma
@@ -7048,7 +7050,7 @@ public class PanoramaPublicController extends SpringActionController
             {
                 if (form.hasPubmedId())
                 {
-                    Pair<String, String> linkAndCitation = NcbiUtils.getPubMedLinkAndCitation(form.getPubmedId());
+                    Pair<String, String> linkAndCitation = NcbiPublicationSearchService.getPubMedLinkAndCitation(form.getPubmedId());
                     if (linkAndCitation != null)
                     {
                         form.setLink(linkAndCitation.first);
@@ -10916,7 +10918,7 @@ public class PanoramaPublicController extends SpringActionController
 
             // Reconstruct PublicationMatch from form fields
             PublicationMatch selectedMatch = PublicationMatch.fromMatchInfo(form.getPublicationId(), pubType, form.getMatchInfo());
-            selectedMatch.setCitation(NcbiUtils.getCitation(form.getPublicationId(), pubType));
+            selectedMatch.setCitation(NcbiPublicationSearchService.getCitation(form.getPublicationId(), pubType));
 
             // Post notification
             JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(exptAnnotations);

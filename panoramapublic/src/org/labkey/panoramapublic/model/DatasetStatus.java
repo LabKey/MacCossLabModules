@@ -2,7 +2,7 @@ package org.labkey.panoramapublic.model;
 
 import org.jetbrains.annotations.Nullable;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
-import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
+import org.labkey.panoramapublic.ncbi.NcbiConstants;
 
 import java.util.Date;
 
@@ -100,7 +100,7 @@ public class DatasetStatus  extends DbEntity
 
     public String getPublicationLabel()
     {
-        NcbiUtils.DB type = NcbiUtils.DB.fromString(_publicationType);
+        NcbiConstants.DB type = NcbiConstants.DB.fromString(_publicationType);
         if (type == null)
         {
             return _publicationType != null ? _publicationType : "";

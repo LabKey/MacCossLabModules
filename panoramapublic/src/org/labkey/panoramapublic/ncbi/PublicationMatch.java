@@ -5,8 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
 import org.labkey.panoramapublic.model.DatasetStatus;
-import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
-import org.labkey.panoramapublic.proteomexchange.NcbiUtils.DB;
+import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -119,9 +118,9 @@ public class PublicationMatch
     {
         if (_publicationType == DB.PMC)
         {
-            return NcbiUtils.getPmcLink(_publicationId);
+            return NcbiConstants.getPmcLink(_publicationId);
         }
-        return NcbiUtils.getPubmedLink(_publicationId);
+        return NcbiConstants.getPubmedLink(_publicationId);
     }
 
     public String getPublicationLabel()

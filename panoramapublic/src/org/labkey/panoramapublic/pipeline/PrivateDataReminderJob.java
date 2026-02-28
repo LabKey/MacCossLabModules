@@ -27,7 +27,6 @@ import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
 import org.labkey.panoramapublic.ncbi.PublicationMatch;
-import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
 import org.labkey.panoramapublic.query.DatasetStatusManager;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
