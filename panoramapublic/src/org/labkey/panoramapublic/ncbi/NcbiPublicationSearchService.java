@@ -17,6 +17,8 @@ import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.Assert;
+import org.junit.Test;
 import org.labkey.api.util.Pair;
 import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.api.util.logging.LogHelper;
@@ -60,8 +62,8 @@ public class NcbiPublicationSearchService
     private static final String ESUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi";
 
     // NCBI Literature Citation Exporter endpoints
-    private static final String PUBMED_CITATION_EXPORTER_URL = "https://api.ncbi.nlm.nih.gov/api/ctxp/v1/pubmed/?format=citation&id=";
-    private static final String PMC_CITATION_EXPORTER_URL =    "https://api.ncbi.nlm.nih.gov/api/ctxp/v1/pmc/?format=citation&id=";
+    private static final String PUBMED_CITATION_EXPORTER_URL = "https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/?format=citation&id=";
+    private static final String PMC_CITATION_EXPORTER_URL =    "https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pmc/?format=citation&id=";
 
     // API parameters
     private static final int RATE_LIMIT_DELAY_MS = 400; // NCBI allows 3 requests/sec
@@ -76,15 +78,27 @@ public class NcbiPublicationSearchService
     };
 
     // Title keyword extraction
-    private static final int MIN_KEYWORD_LENGTH = 5;
-    private static final int MAX_KEYWORDS = 5;
+    private static final int MIN_KEYWORD_LENGTH = 3;
+    private static final double KEYWORD_MATCH_THRESHOLD = 0.6; // 60% of keywords must match
 
-    // Stop words for title matching
+    // Stop words for title keyword matching. These words are not meaningful discriminators between papers.
+    // Function words: articles, prepositions, conjunctions, auxiliary verbs, pronouns.
+    // Title fillers: common words in paper titles that are not discriminating.
     private static final Set<String> TITLE_STOP_WORDS = Set.of(
-        "analysis", "study", "using", "based", "data", "dataset", "proteomics",
-        "method", "methods", "approach", "application", "investigation",
-        "examination", "characterization", "identification", "quantification",
-        "comparison", "evaluation"
+
+            // Function words
+            "the", "this", "that", "these", "those", "its",                          // articles / determiners
+            "for", "with", "from", "into", "upon", "via", "after", "about",          // prepositions
+            "between", "through", "across", "under", "over", "during",
+            "and", "but", "than",                                                    // conjunctions
+            "are", "was", "were", "been", "have", "has", "can", "may",               // auxiliary / modal verbs
+            "our", "their",                                                          // pronouns
+            "not", "all", "also", "both", "each", "how", "use", "used",              // other function words
+            "here", "well", "two", "one", "more", "most", "only", "such", "other", "which",
+
+            // Title fillers
+            "using", "based", "reveals", "revealed", "show", "shows", "shown",
+            "role", "study", "studies"
     );
 
     private static Logger getLog(@Nullable Logger logger)
@@ -714,14 +728,13 @@ public class NcbiPublicationSearchService
             return false;
         }
 
-        // Try sorttitle first, then title
-        String articleTitle = normalizeTitle(metadata.optString("sorttitle"));
-        if (articleTitle.isEmpty())
-        {
-            articleTitle = normalizeTitle(metadata.optString("title"));
-        }
+        // Try title first, then sorttitle as fallback
+        String title = normalizeTitle(metadata.optString("title"));
+        String normalizedArticleTitle = title.isEmpty()
+            ? normalizeTitle(metadata.optString("sorttitle"))
+            : title;
 
-        if (articleTitle.isEmpty())
+        if (normalizedArticleTitle.isEmpty())
         {
             return false;
         }
@@ -729,28 +742,36 @@ public class NcbiPublicationSearchService
         String normalizedDatasetTitle = normalizeTitle(datasetTitle);
 
         // Try exact match first
-        if (articleTitle.equals(normalizedDatasetTitle))
+        if (normalizedArticleTitle.equals(normalizedDatasetTitle))
         {
             return true;
         }
 
-        // Fall back to keyword matching
-        List<String> keywords = extractTitleKeywords(datasetTitle);
+        // Bi-directional keyword matching: match if either direction meets the threshold.
+        // This handles cases where one title is much more specific than the other.
+        return keywordsMatch(datasetTitle, normalizedArticleTitle)
+            || keywordsMatch(metadata.optString("title", metadata.optString("sorttitle", "")), normalizedDatasetTitle);
+    }
+
+    /**
+     * Check if keywords extracted from {@code sourceTitle} are present in {@code normalizedTarget}.
+     * Returns true if at least 60% of keywords match (with a minimum of 2).
+     */
+    private static boolean keywordsMatch(String sourceTitle, String normalizedTarget)
+    {
+        List<String> keywords = extractTitleKeywords(sourceTitle);
         if (keywords.isEmpty())
         {
             return false;
         }
 
-        // All keywords must be present in article title
-        for (String keyword : keywords)
-        {
-            if (!articleTitle.contains(keyword.toLowerCase()))
-            {
-                return false;
-            }
-        }
+        long matchCount = keywords.stream()
+            .filter(keyword -> normalizedTarget.contains(keyword))
+            .count();
 
-        return true;
+        int required = (int) Math.ceil(keywords.size() * KEYWORD_MATCH_THRESHOLD);
+        required = Math.max(required, Math.min(2, keywords.size()));
+        return matchCount >= required;
     }
 
     /**
@@ -767,7 +788,8 @@ public class NcbiPublicationSearchService
     }
 
     /**
-     * Extract meaningful keywords from title for matching
+     * Extract meaningful keywords from title for matching.
+     * Returns all qualifying words (no cap) — the caller uses a percentage threshold.
      */
     private static List<String> extractTitleKeywords(String title)
     {
@@ -776,7 +798,6 @@ public class NcbiPublicationSearchService
             return Collections.emptyList();
         }
 
-        // Extract words of minimum length
         String[] words = title.toLowerCase().split("\\s+");
         List<String> keywords = new ArrayList<>();
 
@@ -792,10 +813,7 @@ public class NcbiPublicationSearchService
             }
         }
 
-        // Return top N keywords
-        return keywords.stream()
-            .limit(MAX_KEYWORDS)
-            .collect(Collectors.toList());
+        return keywords;
     }
 
     /**
@@ -873,5 +891,405 @@ public class NcbiPublicationSearchService
     private static String quote(String str)
     {
         return "\"" + str + "\"";
+    }
+
+    public static class TestCase extends Assert
+    {
+        // -- parseCitation tests --
+
+        @Test
+        public void testParseCitation()
+        {
+            // Valid NLM citation response
+            String json = "{\"nlm\":{\"orig\":\"Abbatiello SE, Mani DR. Mol Cell Proteomics. 2013 Sep;12(9):2623-39. PMID: 23689285; PMCID: PMC3769335.\"}}";
+            assertEquals("Abbatiello SE, Mani DR. Mol Cell Proteomics. 2013 Sep;12(9):2623-39. PMID: 23689285; PMCID: PMC3769335.", parseCitation(json, "23689285", DB.PubMed));
+
+            // Missing nlm key
+            assertEquals(null, parseCitation("{\"ama\":{\"orig\":\"something\"}}", "23689285", DB.PubMed));
+
+            // Malformed JSON
+            assertEquals(null, parseCitation("not json", "23689285", DB.PubMed));
+
+            // Empty nlm object (missing "orig" key)
+            assertEquals(null, parseCitation("{\"nlm\":{}}", "23689285", DB.PubMed));
+        }
+
+        // -- isPreprint tests --
+
+        @Test
+        public void testIsPreprint()
+        {
+            // Non-preprint
+            assertFalse(isPreprint(articleMetadata("J Proteome Res", "Journal of Proteome Research")));
+
+            // Preprint by source
+            assertTrue(isPreprint(articleMetadata("bioRxiv", "bioRxiv")));
+            assertTrue(isPreprint(articleMetadata("medRxiv", "")));
+
+            // Preprint by journal name
+            assertTrue(isPreprint(articleMetadata("", "Research Square")));
+            assertTrue(isPreprint(articleMetadata("", "ChemRxiv preprint")));
+
+            // Case insensitive
+            assertTrue(isPreprint(articleMetadata("BIORXIV", "")));
+
+            // Empty fields
+            assertFalse(isPreprint(articleMetadata("", "")));
+        }
+
+        // -- checkAuthorMatch tests --
+
+        @Test
+        public void testCheckAuthorMatch()
+        {
+            // Standard match: "Sharma V" matches firstName=Vagisha, lastName=Sharma
+            JSONObject metadata = metadataWithAuthors("Sharma V", "Jones AB", "Smith CD");
+            assertTrue(checkAuthorMatch(metadata, "Vagisha", "Sharma"));
+
+            // Match is case-insensitive
+            assertTrue(checkAuthorMatch(metadataWithAuthors("sharma v"), "Vagisha", "Sharma"));
+            assertTrue(checkAuthorMatch(metadataWithAuthors("SHARMA V"), "vagisha", "sharma"));
+
+            // No matching author
+            assertFalse(checkAuthorMatch(metadataWithAuthors("Jones AB", "Smith CD"), "Vagisha", "Sharma"));
+
+            // Blank first or last name
+            assertFalse(checkAuthorMatch(metadataWithAuthors("Sharma V"), "", "Sharma"));
+            assertFalse(checkAuthorMatch(metadataWithAuthors("Sharma V"), "Vagisha", ""));
+            assertFalse(checkAuthorMatch(metadataWithAuthors("Sharma V"), null, "Sharma"));
+
+            // Empty authors array
+            assertFalse(checkAuthorMatch(new JSONObject(), "Vagisha", "Sharma"));
+
+            // Author with full first name: "Sharma Vagisha"
+            assertTrue(checkAuthorMatch(metadataWithAuthors("Sharma Vagisha"), "Vagisha", "Sharma"));
+        }
+
+        // -- checkTitleMatch tests --
+
+        @Test
+        public void testCheckTitleMatchExact()
+        {
+            // Exact match (case-insensitive, punctuation-stripped)
+            JSONObject metadata = metadataWithTitle("Quantitative Proteomics of Muscle Fibers");
+            assertTrue(checkTitleMatch(metadata, "Quantitative Proteomics of Muscle Fibers"));
+            assertTrue(checkTitleMatch(metadata, "quantitative proteomics of muscle fibers"));
+            assertTrue(checkTitleMatch(metadata, "Quantitative Proteomics of Muscle Fibers!"));
+        }
+
+        @Test
+        public void testCheckTitleMatchKeywords()
+        {
+            // Article: "quantitative proteomics reveals muscle fibers composition"
+            // Dataset: "muscle fibers composition proteomics quantitative patterns"
+            // Dataset keywords: "muscle", "fibers", "composition", "proteomics", "quantitative", "patterns" (6 keywords)
+            // Matches in article: "muscle", "fibers", "composition", "proteomics", "quantitative" (5 of 6 = 83%) -> pass
+            JSONObject metadata = metadataWithTitle("A study of quantitative proteomics reveals muscle fibers composition");
+            assertTrue(checkTitleMatch(metadata, "muscle fibers composition proteomics quantitative patterns"));
+
+            // Keywords not present in article title — well below 60%
+            assertFalse(checkTitleMatch(metadata, "Novel cardiac lipids quantitation in mouse tissue"));
+        }
+
+        @Test
+        public void testCheckTitleMatchThreshold()
+        {
+            // Article contains: "phosphoproteomics", "analysis", "lung", "cancer", "cell", "lines"
+            JSONObject metadata = metadataWithTitle("Phosphoproteomics analysis of lung cancer cell lines");
+
+            // 4 of 5 keywords match (80%) -> pass (threshold is 60%)
+            assertTrue(checkTitleMatch(metadata, "phosphoproteomics lung cancer cell biomarkers"));
+
+            // Only 2 of 5 keywords match (40%) -> fail
+            assertFalse(checkTitleMatch(metadata, "phosphoproteomics kidney heart liver cancer"));
+        }
+
+        @Test
+        public void testCheckTitleMatchShortKeywords()
+        {
+            // Short but meaningful words (3-4 chars) should be extracted as keywords
+            JSONObject metadata = metadataWithTitle("DIA proteomics of lung cell iron metabolism in mice");
+            assertTrue(checkTitleMatch(metadata, "DIA lung cell iron mice proteomics"));
+        }
+
+        @Test
+        public void testCheckTitleMatchBidirectional()
+        {
+            // Forward direction fails: dataset is very specific, article is short.
+            // Dataset keywords: "comprehensive", "phosphoproteomics", "analysis", "novel", "biomarkers", "lung", "cancer", "cell", "lines" (9)
+            // Only "lung", "cancer" found in article (2 of 9 = 22%) -> forward fails
+            //
+            // Reverse direction passes: article keywords: "lung", "cancer", "proteomics" (3)
+            // All 3 found in dataset -> 100% -> reverse passes
+            JSONObject metadata = metadataWithTitle("Lung cancer proteomics");
+            assertTrue(checkTitleMatch(metadata,
+                    "Comprehensive phosphoproteomics analysis reveals novel biomarkers in lung cancer cell lines"));
+
+            // Both directions fail — completely unrelated titles
+            assertFalse(checkTitleMatch(metadataWithTitle("Cardiac tissue lipidomics"),
+                    "Hepatic transcriptomics in zebrafish embryos"));
+        }
+
+        @Test
+        public void testCheckTitleMatchEdgeCases()
+        {
+            // Blank dataset title
+            assertFalse(checkTitleMatch(metadataWithTitle("Some article"), ""));
+            assertFalse(checkTitleMatch(metadataWithTitle("Some article"), null));
+
+            // Missing title in metadata
+            assertFalse(checkTitleMatch(new JSONObject(), "Some title"));
+
+            // Dataset title with only stop words and short words below MIN_KEYWORD_LENGTH
+            // "a the and for with" -> all stop words or < 3 chars -> no keywords
+            assertFalse(checkTitleMatch(metadataWithTitle("Different title entirely"), "a the and for with"));
+        }
+
+        @Test
+        public void testCheckTitleMatchSorttitleFallback()
+        {
+            // When "title" is missing, falls back to "sorttitle"
+            JSONObject metadata = new JSONObject();
+            metadata.put("sorttitle", "phosphoproteomics of lung cancer");
+            assertTrue(checkTitleMatch(metadata, "Phosphoproteomics of Lung Cancer"));
+
+            // When "title" is present, it is used (not "sorttitle")
+            metadata = new JSONObject();
+            metadata.put("title", "Phosphoproteomics of Lung Cancer");
+            metadata.put("sorttitle", "completely different sort title");
+            assertTrue(checkTitleMatch(metadata, "Phosphoproteomics of Lung Cancer"));
+        }
+
+        // -- extractTitleKeywords tests --
+
+        @Test
+        public void testExtractTitleKeywords()
+        {
+            // Normal title — all non-stop words >= 3 chars are extracted
+            List<String> keywords = extractTitleKeywords("Novel phosphoproteomics workflow for cardiac tissue samples");
+            assertTrue(keywords.contains("novel"));
+            assertTrue(keywords.contains("phosphoproteomics"));
+            assertTrue(keywords.contains("workflow"));
+            assertTrue(keywords.contains("cardiac"));
+            assertTrue(keywords.contains("tissue"));
+            assertTrue(keywords.contains("samples"));
+            assertFalse("'for' is too short", keywords.contains("for"));
+
+            // Domain-specific words are NOT stop words — they should be kept
+            keywords = extractTitleKeywords("Quantitative proteomics characterization identification analysis");
+            assertTrue("'proteomics' is domain-specific, not a stop word", keywords.contains("proteomics"));
+            assertTrue("'characterization' is domain-specific", keywords.contains("characterization"));
+            assertTrue("'identification' is domain-specific", keywords.contains("identification"));
+            assertTrue("'analysis' is domain-specific", keywords.contains("analysis"));
+            assertTrue(keywords.contains("quantitative"));
+
+            // Function words and title fillers are excluded
+            keywords = extractTitleKeywords("the study using based reveals role");
+            assertFalse("'the' is a function word", keywords.contains("the"));
+            assertFalse("'study' is a title filler", keywords.contains("study"));
+            assertFalse("'using' is a title filler", keywords.contains("using"));
+            assertFalse("'based' is a title filler", keywords.contains("based"));
+            assertFalse("'reveals' is a title filler", keywords.contains("reveals"));
+            assertFalse("'role' is a title filler", keywords.contains("role"));
+
+            // Short meaningful words (>= 3 chars) are kept
+            keywords = extractTitleKeywords("DIA analysis of lung cell iron metabolism in mice");
+            assertTrue("'dia' (3 chars) should be kept", keywords.contains("dia"));
+            assertTrue("'lung' (4 chars) should be kept", keywords.contains("lung"));
+            assertTrue("'cell' (4 chars) should be kept", keywords.contains("cell"));
+            assertTrue("'iron' (4 chars) should be kept", keywords.contains("iron"));
+            assertTrue("'mice' (4 chars) should be kept", keywords.contains("mice"));
+            assertFalse("'of' (2 chars) is too short", keywords.contains("of"));
+            assertFalse("'in' (2 chars) is too short", keywords.contains("in"));
+
+            // No cap on number of keywords
+            keywords = extractTitleKeywords("alpha bravo charlie delta foxtrot hotel india juliet kilo lima");
+            assertEquals(10, keywords.size());
+
+            // Blank input
+            assertTrue(extractTitleKeywords("").isEmpty());
+            assertTrue(extractTitleKeywords(null).isEmpty());
+        }
+
+        // -- normalizeTitle tests --
+
+        @Test
+        public void testNormalizeTitle()
+        {
+            assertEquals("hello world", normalizeTitle("Hello, World!"));
+            assertEquals("testdriven development", normalizeTitle("Test-Driven Development"));
+            assertEquals("multiple spaces become one", normalizeTitle("  Multiple   spaces become one  "));
+            assertEquals("", normalizeTitle(null));
+            assertEquals("", normalizeTitle(""));
+        }
+
+        // -- extractPubMedId tests --
+
+        @Test
+        public void testExtractPubMedId()
+        {
+            // PMC metadata with PMID
+            JSONObject metadata = new JSONObject();
+            JSONArray articleIds = new JSONArray();
+            articleIds.put(new JSONObject().put("idtype", "pmcid").put("value", "PMC1234567"));
+            articleIds.put(new JSONObject().put("idtype", "pmid").put("value", "28691345"));
+            metadata.put("articleids", articleIds);
+            assertEquals("28691345", extractPubMedId(metadata));
+
+            // No PMID in articleids
+            metadata = new JSONObject();
+            articleIds = new JSONArray();
+            articleIds.put(new JSONObject().put("idtype", "pmcid").put("value", "PMC1234567"));
+            metadata.put("articleids", articleIds);
+            assertNull(extractPubMedId(metadata));
+
+            // No articleids key
+            assertNull(extractPubMedId(new JSONObject()));
+        }
+
+        // -- parsePublicationDate tests --
+
+        @Test
+        public void testParsePublicationDate()
+        {
+            // "YYYY Mon DD" format
+            assertNotNull(parsePublicationDate(metadataWithDate("pubdate", "2024 Jan 15"), LOG));
+
+            // "YYYY Mon" format
+            assertNotNull(parsePublicationDate(metadataWithDate("pubdate", "2024 Jan"), LOG));
+
+            // "YYYY" format
+            assertNotNull(parsePublicationDate(metadataWithDate("pubdate", "2024"), LOG));
+
+            // Falls back to epubdate when pubdate is blank
+            assertNotNull(parsePublicationDate(metadataWithDate("epubdate", "2024 Mar 01"), LOG));
+
+            // Unparseable date
+            assertNull(parsePublicationDate(metadataWithDate("pubdate", "not-a-date"), LOG));
+
+            // Empty date fields
+            assertNull(parsePublicationDate(new JSONObject(), LOG));
+        }
+
+        // -- applyPriorityFiltering tests --
+
+        @Test
+        public void testApplyPriorityFiltering()
+        {
+            Date refDate = new Date();
+
+            // Single article returned as-is
+            PublicationMatch single = createMatch("111", true, false, false, false, false, refDate);
+            List<PublicationMatch> result = applyPriorityFiltering(List.of(single), refDate, LOG);
+            assertEquals(1, result.size());
+
+            // Articles found by multiple data IDs preferred over single-ID matches
+            PublicationMatch multiId = createMatch("222", true, true, false, true, true, refDate);
+            PublicationMatch singleId = createMatch("333", true, false, false, true, true, refDate);
+            result = applyPriorityFiltering(List.of(singleId, multiId), refDate, LOG);
+            assertEquals(1, result.size());
+            assertEquals("222", result.get(0).getPublicationId());
+
+            // Among single-ID matches, author+title both matching preferred
+            PublicationMatch bothMatch = createMatch("444", true, false, false, true, true, refDate);
+            PublicationMatch authorOnly = createMatch("555", true, false, false, true, false, refDate);
+            result = applyPriorityFiltering(List.of(authorOnly, bothMatch), refDate, LOG);
+            assertEquals(1, result.size());
+            assertEquals("444", result.get(0).getPublicationId());
+        }
+
+        @Test
+        public void testSortByDateProximity()
+        {
+            Date refDate = new Date();
+            Date closer = new Date(refDate.getTime() - 86400000L); // 1 day before
+            Date farther = new Date(refDate.getTime() - 86400000L * 365); // 1 year before
+
+            PublicationMatch farMatch = createMatch("111", true, false, false, false, false, farther);
+            PublicationMatch closeMatch = createMatch("222", true, false, false, false, false, closer);
+            PublicationMatch noDate = createMatch("333", true, false, false, false, false, null);
+
+            List<PublicationMatch> result = sortByDateProximity(List.of(farMatch, noDate, closeMatch), refDate);
+            assertEquals("222", result.get(0).getPublicationId()); // closest
+            assertEquals("111", result.get(1).getPublicationId()); // farther
+            assertEquals("333", result.get(2).getPublicationId()); // no date last
+        }
+
+        // -- PublicationMatch round-trip tests --
+
+        @Test
+        public void testPublicationMatchRoundTrip()
+        {
+            PublicationMatch original = new PublicationMatch("12345", DB.PubMed, true, true, false, true, false, null);
+            assertEquals("ProteomeXchange ID, Panorama URL, Author", original.getMatchInfo());
+
+            PublicationMatch restored = PublicationMatch.fromMatchInfo("12345", DB.PubMed, original.getMatchInfo());
+            assertTrue(restored.matchesProteomeXchangeId());
+            assertTrue(restored.matchesPanoramaUrl());
+            assertFalse(restored.matchesDoi());
+            assertTrue(restored.matchesAuthor());
+            assertFalse(restored.matchesTitle());
+
+            // All flags
+            original = new PublicationMatch("67890", DB.PMC, true, true, true, true, true, null);
+            assertEquals("ProteomeXchange ID, Panorama URL, DOI, Author, Title", original.getMatchInfo());
+            restored = PublicationMatch.fromMatchInfo("67890", DB.PMC, original.getMatchInfo());
+            assertTrue(restored.matchesProteomeXchangeId());
+            assertTrue(restored.matchesPanoramaUrl());
+            assertTrue(restored.matchesDoi());
+            assertTrue(restored.matchesAuthor());
+            assertTrue(restored.matchesTitle());
+
+            // Empty match info
+            restored = PublicationMatch.fromMatchInfo("11111", DB.PubMed, "");
+            assertFalse(restored.matchesProteomeXchangeId());
+            assertFalse(restored.matchesAuthor());
+
+            // Null match info
+            restored = PublicationMatch.fromMatchInfo("11111", DB.PubMed, null);
+            assertFalse(restored.matchesProteomeXchangeId());
+        }
+
+        // -- Helper methods for building test JSON --
+
+        private static JSONObject articleMetadata(String source, String fullJournalName)
+        {
+            JSONObject metadata = new JSONObject();
+            metadata.put("source", source);
+            metadata.put("fulljournalname", fullJournalName);
+            return metadata;
+        }
+
+        private static JSONObject metadataWithAuthors(String... authorNames)
+        {
+            JSONObject metadata = new JSONObject();
+            JSONArray authors = new JSONArray();
+            for (String name : authorNames)
+            {
+                authors.put(new JSONObject().put("name", name));
+            }
+            metadata.put("authors", authors);
+            return metadata;
+        }
+
+        private static JSONObject metadataWithTitle(String title)
+        {
+            JSONObject metadata = new JSONObject();
+            metadata.put("title", title);
+            return metadata;
+        }
+
+        private static JSONObject metadataWithDate(String field, String dateStr)
+        {
+            JSONObject metadata = new JSONObject();
+            metadata.put(field, dateStr);
+            return metadata;
+        }
+
+        private static PublicationMatch createMatch(String id, boolean pxId, boolean url, boolean doi,
+                                                    boolean author, boolean title, @Nullable Date pubDate)
+        {
+            return new PublicationMatch(id, DB.PubMed, pxId, url, doi, author, title, pubDate);
+        }
     }
 }
