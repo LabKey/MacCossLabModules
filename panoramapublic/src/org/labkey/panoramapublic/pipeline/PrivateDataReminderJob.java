@@ -220,7 +220,7 @@ public class PrivateDataReminderJob extends PipelineJob
         log.info(String.format("Searching for publications for experiment %d", expAnnotations.getId()));
         try
         {
-            return NcbiPublicationSearchService.searchForPublication(expAnnotations, log);
+            return NcbiPublicationSearchService.get().searchForPublication(expAnnotations, log);
         }
         catch (Exception e)
         {

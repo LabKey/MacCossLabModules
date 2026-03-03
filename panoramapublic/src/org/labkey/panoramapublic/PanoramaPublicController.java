@@ -155,7 +155,9 @@ import org.labkey.panoramapublic.datacite.Doi;
 import org.labkey.panoramapublic.datacite.DoiMetadata;
 import org.labkey.panoramapublic.message.PrivateDataMessageScheduler;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
+import org.labkey.panoramapublic.ncbi.MockNcbiPublicationSearchService;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
+import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchServiceImpl;
 import org.labkey.panoramapublic.ncbi.PublicationMatch;
 import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.DataLicense;
@@ -183,7 +185,6 @@ import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
 import org.labkey.panoramapublic.proteomexchange.Formula;
 import org.labkey.panoramapublic.ncbi.NcbiConstants;
 import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
-import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
 import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
@@ -7050,7 +7051,7 @@ public class PanoramaPublicController extends SpringActionController
             {
                 if (form.hasPubmedId())
                 {
-                    Pair<String, String> linkAndCitation = NcbiPublicationSearchService.getPubMedLinkAndCitation(form.getPubmedId());
+                    Pair<String, String> linkAndCitation = NcbiPublicationSearchService.get().getPubMedLinkAndCitation(form.getPubmedId());
                     if (linkAndCitation != null)
                     {
                         form.setLink(linkAndCitation.first);
@@ -10648,6 +10649,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class DismissPublicationSuggestionAction extends UpdateDatasetStatusAction
     {
         private PublicationMatch _publicationMatch;
+
         @Override
         protected String getConfirmViewTitle()
         {
@@ -10657,9 +10659,13 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected String getConfirmViewMessage()
         {
+            String publicationRef = _publicationMatch.getCitation() != null
+                    ? _publicationMatch.getCitation()
+                    : _publicationMatch.getPublicationLabel();
             return "You are dismissing the publication suggestion for your data on Panorama Public at "
-                            + _exptAnnotations.getShortUrl().renderShortURL() +
-                    "We will no longer suggest " + _publicationMatch.getPublicationLabel() + " for this dataset.";
+                    + _exptAnnotations.getShortUrl().renderShortURL() +
+                    ". We will no longer suggest the following publication for this dataset - "
+                    + "\n\n" + publicationRef;
         }
 
         @Override
@@ -10676,6 +10682,15 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, "The publication suggestion for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
                         + " has already been dismissed");
             }
+            else
+            {
+                // Fetch the citation from NCBI. If we cannot retrieve it, the publication ID will be used as a fallback.
+                String citation = NcbiPublicationSearchService.get().getCitation(_publicationMatch.getPublicationId(), _publicationMatch.getPublicationType());
+                if (!StringUtils.isBlank(citation))
+                {
+                    _publicationMatch.setCitation(citation);
+                }
+            }
         }
 
         @Override
@@ -10690,7 +10705,7 @@ public class PanoramaPublicController extends SpringActionController
             // Post a message to the support thread.
             JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(_exptAnnotations);
             Journal journal = JournalManager.getJournal(submission.getJournalId());
-            PanoramaPublicNotification.postPublicationDismissalMessage(journal, submission.getJournalExperiment(), _exptAnnotations, getUser(), _datasetStatus);
+            PanoramaPublicNotification.postPublicationDismissalMessage(journal, submission.getJournalExperiment(), _exptAnnotations, getUser(), _publicationMatch);
         }
 
         @Override
@@ -10724,7 +10739,7 @@ public class PanoramaPublicController extends SpringActionController
             List<PublicationMatch> matches;
             try
             {
-                matches = NcbiPublicationSearchService.searchForPublication(_exptAnnotations, NcbiPublicationSearchService.MAX_RESULTS, null, true);
+                matches = NcbiPublicationSearchService.get().searchForPublication(_exptAnnotations, NcbiPublicationSearchService.MAX_RESULTS, null, true);
             }
             catch (Exception e)
             {
@@ -10820,7 +10835,7 @@ public class PanoramaPublicController extends SpringActionController
 
             try
             {
-                List<PublicationMatch> matches = NcbiPublicationSearchService.searchForPublication(expAnnotations, NcbiPublicationSearchService.MAX_RESULTS, null, false);
+                List<PublicationMatch> matches = NcbiPublicationSearchService.get().searchForPublication(expAnnotations, NcbiPublicationSearchService.MAX_RESULTS, null, false);
                 response.put("success", true);
                 response.put("papersFound", matches.size());
 
@@ -10909,6 +10924,17 @@ public class PanoramaPublicController extends SpringActionController
                 return false;
             }
 
+            // Check if the user has already dismissed this publication suggestion
+            DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
+            if (datasetStatus != null && Boolean.TRUE.equals(datasetStatus.getUserDismissedPublication())
+                    && form.getPublicationId().equals(datasetStatus.getPotentialPublicationId()))
+            {
+                errors.reject(ERROR_MSG, "The user has already dismissed the publication suggestion "
+                        + datasetStatus.getPublicationLabel() + " " + datasetStatus.getPotentialPublicationId()
+                        + " for this dataset.");
+                return false;
+            }
+
             DB pubType = DB.fromString(form.getPublicationType());
             if (pubType == null)
             {
@@ -10918,7 +10944,7 @@ public class PanoramaPublicController extends SpringActionController
 
             // Reconstruct PublicationMatch from form fields
             PublicationMatch selectedMatch = PublicationMatch.fromMatchInfo(form.getPublicationId(), pubType, form.getMatchInfo());
-            selectedMatch.setCitation(NcbiPublicationSearchService.getCitation(form.getPublicationId(), pubType));
+            selectedMatch.setCitation(NcbiPublicationSearchService.get().getCitation(form.getPublicationId(), pubType));
 
             // Post notification
             JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(exptAnnotations);
@@ -10961,7 +10987,6 @@ public class PanoramaPublicController extends SpringActionController
                     _announcement, _announcementsContainer, getUser(), selectedMatch);
 
             // Update DatasetStatus
-            DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
             if (datasetStatus == null)
             {
                 datasetStatus = new DatasetStatus();
@@ -11159,6 +11184,49 @@ public class PanoramaPublicController extends SpringActionController
         return new ActionURL(CatalogImageDownloadAction.class, expAnnotations.getContainer())
                 .addParameter("entityId", expAnnotations.getShortUrl().getEntityId().toString())
                 .addParameter("name", filename);
+    }
+
+    // ======================== Test support actions for Selenium tests ========================
+
+    @RequiresSiteAdmin
+    public static class SetupMockNcbiServiceAction extends ReadOnlyApiAction<SetupMockForm>
+    {
+        @Override
+        public Object execute(SetupMockForm form, BindException errors)
+        {
+            if (form.isCheckNcbiReachable() && NcbiPublicationSearchServiceImpl.isNcbiReachable())
+            {
+                return new ApiSimpleResponse("mock", false);
+            }
+            NcbiPublicationSearchServiceImpl.setInstance(new MockNcbiPublicationSearchService());
+            return new ApiSimpleResponse("mock", true);
+        }
+    }
+
+    public static class SetupMockForm
+    {
+        private boolean _checkNcbiReachable;
+
+        public boolean isCheckNcbiReachable()
+        {
+            return _checkNcbiReachable;
+        }
+
+        public void setCheckNcbiReachable(boolean checkNcbiReachable)
+        {
+            _checkNcbiReachable = checkNcbiReachable;
+        }
+    }
+
+    @RequiresSiteAdmin
+    public static class RestoreNcbiServiceAction extends ReadOnlyApiAction<Object>
+    {
+        @Override
+        public Object execute(Object form, BindException errors)
+        {
+            NcbiPublicationSearchServiceImpl.setInstance(new NcbiPublicationSearchServiceImpl());
+            return new ApiSimpleResponse("restored", true);
+        }
     }
 
     public static class TestCase extends AbstractActionPermissionTest

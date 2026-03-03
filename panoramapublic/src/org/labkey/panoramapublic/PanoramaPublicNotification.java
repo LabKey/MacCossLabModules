@@ -359,7 +359,8 @@ public class PanoramaPublicNotification
         postNotificationFullTitle(journal, je, messageBody.toString(), journalAdmin, messageTitle, AnnouncementService.StatusOption.Active, null);
     }
 
-    public static void postPublicationDismissalMessage(@NotNull Journal journal, @NotNull JournalExperiment je, @NotNull ExperimentAnnotations expAnnotations, User submitter, @Nullable org.labkey.panoramapublic.model.DatasetStatus datasetStatus)
+    public static void postPublicationDismissalMessage(@NotNull Journal journal, @NotNull JournalExperiment je, @NotNull ExperimentAnnotations expAnnotations, User submitter,
+                                                       @NotNull PublicationMatch publicationMatch)
     {
         User journalAdmin = JournalManager.getJournalAdminUser(journal);
         if (journalAdmin == null)
@@ -371,14 +372,15 @@ public class PanoramaPublicNotification
 
         StringBuilder messageBody = new StringBuilder();
         messageBody.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
-        messageBody.append("Thank you for letting us know that the suggested publication is not associated with your data on Panorama Public.");
+        messageBody.append("Thank you for letting us know that the suggested paper is not associated with your data on Panorama Public.");
 
-        if (datasetStatus != null && !StringUtils.isBlank(datasetStatus.getPotentialPublicationId()))
+        messageBody.append(NL2).append(bold("Dismissed Publication:")).append(" ").append(publicationMatch.getPublicationLabel());
+        if (!StringUtils.isBlank(publicationMatch.getCitation()))
         {
-            messageBody.append(NL2).append(bold("Dismissed Publication:")).append(" ").append(datasetStatus.getPublicationLabel()).append(" ").append(datasetStatus.getPotentialPublicationId());
+            messageBody.append(NL).append(publicationMatch.getCitation());
         }
 
-        messageBody.append(NL2).append("We will no longer suggest this publication for your dataset. ")
+        messageBody.append(NL2).append("We will no longer suggest this paper for your dataset. ")
                 .append("If you would like to make your data public, you can do so at any time ")
                 .append("by clicking the \"Make Public\" button in your data folder, or by clicking this link: ")
                 .append(bold(link("Make Data Public", PanoramaPublicController.getMakePublicUrl(expAnnotations.getId(), expAnnotations.getContainer()).getURIString())))
@@ -397,7 +399,7 @@ public class PanoramaPublicNotification
     {
         String message = getDataStatusReminderMessage(expAnnotations, submitter, js, announcement, announcementsContainer, journalAdmin, articleMatch);
         String title = articleMatch != null
-                ? "Congratulations! We Found a Publication Associated with Your Data on Panorama Public"
+                ? "Action Required: Publication Found for Your Data on Panorama Public"
                 : "Action Required: Status Update for Your Private Data on Panorama Public";
         postNotificationFullTitle(journal, js.getJournalExperiment(), message, messagePoster, title, AnnouncementService.StatusOption.Closed, notifyUsers);
     }
@@ -435,25 +437,17 @@ public class PanoramaPublicNotification
         if (articleMatch != null)
         {
             // Message variant when a publication was found
-            message.append("Great news! We found a publication that appears to be associated with your data on Panorama Public (")
-                    .append(shortUrl).append("), which has been private since ").append(dateString).append(".")
+            message.append("We found a paper that appears to be associated with your private data on Panorama Public.")
                     .append(NL2).append(bold("Title:")).append(" ").append(escape(exptAnnotations.getTitle()))
                     .append(NL2).append(bold("Publication Found:")).append(" ")
                     .append(articleMatch.getCitation() != null
                             ? link(articleMatch.getCitation(), articleMatch.getPublicationUrl())
                             : link(articleMatch.getPublicationLabel(), articleMatch.getPublicationUrl()))
-                    .append(NL2).append("Since your work has been published, we encourage you to make your data public so the research community can access it alongside your publication. ")
+                    .append(NL2).append("If this is indeed your paper, congratulations! We encourage you to make your data public so the research community can access it alongside your paper. ")
                     .append("You can do this by clicking the \"Make Public\" button in your data folder or by clicking this link: ")
                     .append(bold(link("Make Data Public", makePublicLink))).append(".")
-                    .append(NL2).append(bold("If this publication is not associated with your data:"))
-                    .append(NL).append("Please let us know by ").append(bold(link("clicking here", dismissPublicationUrl.getURIString())))
-                    .append(", and we will stop suggesting this publication for your dataset.")
-                    .append(NL2).append(bold("Not ready to make your data public yet?"))
-                    .append(NL).append("If you need more time, you can:")
-                    .append(NL).append("  - ").append(bold(link("Request an Extension", requestExtensionUrl.getURIString())))
-                    .append(" - This will give you additional time before we send another reminder.")
-                    .append(NL).append("  - ").append(bold(link("Request Deletion", requestDeletionUrl.getURIString())))
-                    .append(" - If you no longer wish to host your data on Panorama Public.");
+                    .append(NL2).append("If this paper is not associated with your data please let us know by clicking ")
+                    .append(bold(link("Dismiss Publication Suggestion", dismissPublicationUrl.getURIString())));
         }
         else
         {

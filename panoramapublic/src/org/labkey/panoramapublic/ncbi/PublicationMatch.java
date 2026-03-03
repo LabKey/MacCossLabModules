@@ -125,7 +125,7 @@ public class PublicationMatch
 
     public String getPublicationLabel()
     {
-        return _publicationType.getLabel() + " " + _publicationId;
+        return _publicationType.getLabel() + " ID " + _publicationId;
     }
 
     public JSONObject toJson()

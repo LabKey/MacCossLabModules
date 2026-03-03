@@ -224,9 +224,14 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
     void updateSubmitterAccountInfo(String lastName)
     {
+        updateSubmitterAccountInfo(lastName, null);
+    }
+
+    void updateSubmitterAccountInfo(String lastName, String firstName)
+    {
         goToMyAccount();
         clickButton("Edit");
-        setFormElement(Locator.name("quf_FirstName"), "Submitter");
+        setFormElement(Locator.name("quf_FirstName"), firstName != null ? firstName : "Submitter");
         setFormElement(Locator.name("quf_LastName"), lastName);
         clickButton("Submit");
     }
@@ -490,20 +495,27 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         return TestFileUtils.getSampleData("TargetedMS/" + getSampleDataFolder() + file);
     }
 
-    protected String setupFolderSubmitAndCopy(String projectName, String folderName, String targetFolder, String experimentTitle, String submitter, @Nullable String submitterLastName,
+    protected String setupFolderSubmitAndCopy(String projectName, String folderName, String targetFolder, String experimentTitle, String submitterEmail, @Nullable String submitterLastName,
                                               @Nullable String admin, String skylineDocName)
     {
-        setupSourceFolder(projectName, folderName, submitter);
+        return setupFolderSubmitAndCopy(projectName, folderName, targetFolder, experimentTitle, submitterEmail, submitterLastName, null, admin, skylineDocName);
+    }
+
+    protected String setupFolderSubmitAndCopy(String projectName, String folderName, String targetFolder, String experimentTitle, String submitterEmail,
+                                              @Nullable String submitterLastName, @Nullable String submitterFirstName,
+                                              @Nullable String admin, String skylineDocName)
+    {
+        setupSourceFolder(projectName, folderName, submitterEmail);
 
         if (admin != null)
         {
             createFolderAdmin(projectName, folderName, admin);
         }
 
-        impersonate(submitter);
+        impersonate(submitterEmail);
         if (submitterLastName != null)
         {
-            updateSubmitterAccountInfo(submitterLastName);
+            updateSubmitterAccountInfo(submitterLastName, submitterFirstName);
         }
 
         // Import a Skyline document to the folder
@@ -601,6 +613,47 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         expListTable.setFilter("DataVersion", "Equals", "1");
         assertEquals(1, expListTable.getDataRowCount());
         assertEquals(isPublic ? "Yes" : "No", expListTable.getDataAsText(0, "Public"));
+    }
+
+    protected void savePrivateDataReminderSettings(String extensionLength, String delayUntilFirstReminder, String reminderFrequency)
+    {
+        savePrivateDataReminderSettings(extensionLength, delayUntilFirstReminder, reminderFrequency, false);
+    }
+
+    protected void savePrivateDataReminderSettings(String extensionLength, String delayUntilFirstReminder, String reminderFrequency, boolean enablePublicationSearch)
+    {
+        goToAdminConsole().goToSettingsSection();
+        clickAndWait(Locator.linkWithText("Panorama Public"));
+        clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
+
+        setFormElement(Locator.input("delayUntilFirstReminder"), delayUntilFirstReminder);
+        setFormElement(Locator.input("reminderFrequency"), reminderFrequency);
+        setFormElement(Locator.input("extensionLength"), extensionLength);
+        if (enablePublicationSearch)
+        {
+            checkCheckbox(Locator.checkboxByName("enablePublicationSearch"));
+        }
+        else
+        {
+            uncheckCheckbox(Locator.checkboxByName("enablePublicationSearch"));
+        }
+        clickButton("Save", 0);
+        waitForText("Private data reminder settings saved");
+        clickAndWait(Locator.linkWithText("Back to Private Data Reminder Settings"));
+
+        assertEquals(String.valueOf(delayUntilFirstReminder), getFormElement(Locator.input("delayUntilFirstReminder")));
+        assertEquals(String.valueOf(reminderFrequency), getFormElement(Locator.input("reminderFrequency")));
+        assertEquals(String.valueOf(extensionLength), getFormElement(Locator.input("extensionLength")));
+    }
+
+    protected void goToSendRemindersPage(String projectName)
+    {
+        goToAdminConsole().goToSettingsSection();
+        clickAndWait(Locator.linkWithText("Panorama Public"));
+        clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
+        selectOptionByText(Locator.name("journal"), projectName);
+        clickAndWait(Locator.linkWithText("Send Reminders Now"));
+        waitForText(projectName, "A reminder message will be sent to the submitters of the selected experiments");
     }
 
     @Override
