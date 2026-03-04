@@ -98,10 +98,16 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
             _pubmedMetadata.put(id, metadata);
         }
 
-        // Store citation keyed by PMID
-        if (citation != null && pmid != null)
+        // Store citation keyed by PMID.
+        // For PMC articles, the PMID is in the pmid parameter.
+        // For PubMed articles, the id parameter is already the PMID.
+        if (citation != null)
         {
-            _citations.put(pmid, citation);
+            String citationKey = isPmc ? pmid : id;
+            if (citationKey != null)
+            {
+                _citations.put(citationKey, citation);
+            }
         }
     }
 

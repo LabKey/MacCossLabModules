@@ -1,5 +1,6 @@
 package org.labkey.test.tests.panoramapublic;
 
+import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.remoteapi.CommandException;
@@ -238,7 +239,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         boolean useMockNcbiService = TestProperties.isTestRunningOnTeamCity();
         if (useMockNcbiService)
         {
-            installMockNcbiService();
+            initMockNcbiService();
         }
         else
         {
@@ -247,7 +248,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         }
     }
 
-    private void installMockNcbiService()
+    private void initMockNcbiService()
     {
         try
         {
@@ -367,8 +368,8 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         }
     }
 
-    @Override
-    protected void doCleanup(boolean afterTest) throws TestTimeoutException
+    @After
+    public void resetAfterTest()
     {
         if (_useMockNcbi)
         {
@@ -383,7 +384,11 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
                     _originalReminderSettings.get("reminderFrequency"),
                     Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")));
         }
+    }
 
+    @Override
+    protected void doCleanup(boolean afterTest) throws TestTimeoutException
+    {
         _userHelper.deleteUsers(false, SUBMITTER_1, SUBMITTER_2, ADMIN_USER);
         super.doCleanup(afterTest);
     }

@@ -10457,7 +10457,7 @@ public class PanoramaPublicController extends SpringActionController
         protected abstract void updateDatasetStatus(DatasetStatus datasetStatus);
         protected abstract void postNotification();
         protected abstract String getConfirmViewTitle();
-        protected abstract HtmlString getConfirmViewMessage();
+        protected abstract Renderable getConfirmViewMessage();
 
         @Override
         public ModelAndView getConfirmView(ShortUrlForm shortUrlForm, BindException errors) throws Exception
@@ -10534,9 +10534,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected HtmlString getConfirmViewMessage()
+        protected Renderable getConfirmViewMessage()
         {
-            return HtmlString.of("You are requesting an extension for the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL());
+            return DIV("You are requesting an extension for the private data on Panorama Public at ", _exptAnnotations.getShortUrl().renderShortURL());
         }
 
         @Override
@@ -10598,9 +10598,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected HtmlString getConfirmViewMessage()
+        protected Renderable getConfirmViewMessage()
         {
-            return HtmlString.of("You are requesting deletion of the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL());
+            return DIV("You are requesting deletion of the private data on Panorama Public at ",  _exptAnnotations.getShortUrl().renderShortURL());
         }
 
         @Override
@@ -10656,15 +10656,17 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected HtmlString getConfirmViewMessage()
+        protected Renderable getConfirmViewMessage()
         {
             String publicationRef = _publicationMatch.getCitation() != null
                     ? _publicationMatch.getCitation()
                     : _publicationMatch.getPublicationIdLabel();
-            return HtmlString.of("You are dismissing the publication suggestion for your data on Panorama Public at "
-                    + _exptAnnotations.getShortUrl().renderShortURL() +
-                    ". We will no longer suggest the following publication for this dataset - " +
-                    HtmlString.BR +  publicationRef);
+            return DIV("You are dismissing the publication suggestion for your data on Panorama Public at "
+                    , _exptAnnotations.getShortUrl().renderShortURL()
+                    , BR()
+                    , "We will no longer suggest the following publication for this dataset - "
+                    , BR(),
+                    publicationRef);
         }
 
         @Override
@@ -10712,7 +10714,6 @@ public class PanoramaPublicController extends SpringActionController
         {
             setTitle("Publication Suggestion Dismissed");
             return new HtmlView(DIV("The publication suggestion has been dismissed for the data at " + _exptAnnotations.getShortUrl().renderShortURL(),
-                    DIV("We will no longer suggest this publication for your dataset."),
                     BR(),
                     DIV(
                             LinkBuilder.labkeyLink("Data Folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()))
