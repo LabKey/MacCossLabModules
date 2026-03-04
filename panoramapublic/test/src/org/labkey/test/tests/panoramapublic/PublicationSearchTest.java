@@ -236,6 +236,8 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
             restoreNcbiService();
         }
 
+        // TODO: Reset the reminder settings to not search for publications.
+
         _userHelper.deleteUsers(false, SUBMITTER_USER, ADMIN_USER);
         super.doCleanup(afterTest);
     }

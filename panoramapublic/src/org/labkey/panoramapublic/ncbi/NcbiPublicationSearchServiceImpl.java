@@ -264,7 +264,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Search PubMed Central
      */
-    private static @NotNull List<PublicationMatch> searchPmc(@NotNull ExperimentAnnotations expAnnotations, Logger log)
+    private @NotNull List<PublicationMatch> searchPmc(@NotNull ExperimentAnnotations expAnnotations, Logger log)
     {
         // Track PMC IDs found by each strategy
         Map<String, List<String>> pmcIdsByStrategy = new HashMap<>();
@@ -338,7 +338,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Search PubMed Central with the given query
      */
-    private static List<String> searchPmc(String query, Logger log)
+    private List<String> searchPmc(String query, Logger log)
     {
         return executeSearch(query, "pmc", log);
     }
@@ -346,7 +346,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Search PubMed with the given query
      */
-    private static List<String> searchPubMed(String query, Logger log)
+    private List<String> searchPubMed(String query, Logger log)
     {
         return executeSearch(query, "pubmed", log);
     }
@@ -354,7 +354,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Execute search using NCBI ESearch API
      */
-    private static List<String> executeSearch(String query, String database, Logger log)
+    private List<String> executeSearch(String query, String database, Logger log)
     {
         String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
         String url = ESEARCH_URL +
@@ -389,7 +389,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
      * @throws IOException if the request fails or the server returns a non-2xx response
      * @throws JSONException if the response body is not valid JSON
      */
-    private static JSONObject getJson(String url) throws IOException
+    protected JSONObject getJson(String url) throws IOException
     {
         ConnectionConfig connectionConfig = ConnectionConfig.custom()
             .setConnectTimeout(Timeout.ofMilliseconds(TIMEOUT_MS))
@@ -424,7 +424,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Fetch metadata for PMC articles using ESummary API
      */
-    private static Map<String, JSONObject> fetchPmcMetadata(Collection<String> pmcIds, Logger log)
+    private Map<String, JSONObject> fetchPmcMetadata(Collection<String> pmcIds, Logger log)
     {
         return fetchMetadata(pmcIds, "pmc", log);
     }
@@ -432,7 +432,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Fetch metadata for PubMed articles using ESummary API
      */
-    private static Map<String, JSONObject> fetchPubMedMetadata(Collection<String> pmids, Logger log)
+    private Map<String, JSONObject> fetchPubMedMetadata(Collection<String> pmids, Logger log)
     {
         return fetchMetadata(pmids, "pubmed", log);
     }
@@ -440,7 +440,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Fetch metadata using NCBI ESummary API (batch request)
      */
-    private static Map<String, JSONObject> fetchMetadata(Collection<String> ids, String database, Logger log)
+    private Map<String, JSONObject> fetchMetadata(Collection<String> ids, String database, Logger log)
     {
         if (ids.isEmpty()) return Collections.emptyMap();
 
@@ -479,7 +479,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Fetch and verify PMC articles (filter preprints, check author/title matches)
      */
-    private static List<PublicationMatch> fetchAndVerifyPmcArticles(
+    private List<PublicationMatch> fetchAndVerifyPmcArticles(
         Set<String> pmcIds,
         Map<String, List<String>> idToStrategies,
         ExperimentAnnotations expAnnotations,
@@ -612,7 +612,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Fall back to PubMed search if PMC finds nothing
      */
-    private static List<PublicationMatch> searchPubMed(ExperimentAnnotations expAnnotations, Logger log)
+    private List<PublicationMatch> searchPubMed(ExperimentAnnotations expAnnotations, Logger log)
     {
         String firstName = expAnnotations.getSubmitterUser() != null
             ? expAnnotations.getSubmitterUser().getFirstName() : null;
