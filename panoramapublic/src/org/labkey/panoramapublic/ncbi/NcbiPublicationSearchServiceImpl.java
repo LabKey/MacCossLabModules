@@ -73,7 +73,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     // NCBI API endpoints
     private static final String ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi";
     private static final String ESUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi";
-    private static final String EINFO_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi";
+
 
     // NCBI Literature Citation Exporter endpoints
     private static final String PUBMED_CITATION_EXPORTER_URL = "https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/?format=citation&id=";
@@ -82,7 +82,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     // API parameters
     private static final int RATE_LIMIT_DELAY_MS = 400; // NCBI allows 3 requests/sec
     private static final int TIMEOUT_MS = 10000; // 10 seconds
-    private static final int REACHABILITY_TIMEOUT_MS = 5000; // 5 seconds
+
     private static final String NCBI_EMAIL = "panorama@proteinms.net";
 
     // Preprint indicators
@@ -120,34 +120,6 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         return logger != null ? logger : LOG;
     }
 
-    /**
-     * Checks whether the NCBI E-utilities API is reachable.
-     * Performs a HEAD request to the einfo endpoint with a 5-second timeout.
-     * @return true if NCBI responds with HTTP 200, false otherwise
-     */
-    public static boolean isNcbiReachable()
-    {
-        HttpURLConnection conn = null;
-        try
-        {
-            URL url = new URL(EINFO_URL);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("HEAD");
-            conn.setConnectTimeout(REACHABILITY_TIMEOUT_MS);
-            conn.setReadTimeout(REACHABILITY_TIMEOUT_MS);
-            return conn.getResponseCode() == HttpURLConnection.HTTP_OK;
-        }
-        catch (IOException e)
-        {
-            LOG.info("NCBI is not reachable: " + e.getMessage());
-            return false;
-        }
-        finally
-        {
-            if (conn != null) conn.disconnect();
-        }
-    }
-
     @Override
     public @Nullable String getCitation(String publicationId, DB database)
     {
@@ -165,6 +137,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             URL url = new URL(queryUrl);
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "PanoramaPublic/1.0");
 
             int status = conn.getResponseCode();
 
@@ -409,6 +382,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                 .build())
         {
             HttpGet get = new HttpGet(url);
+            get.setHeader("User-Agent", "PanoramaPublic/1.0");
             return client.execute(get, response -> {
                 int status = response.getCode();
                 if (status < 200 || status >= 300)

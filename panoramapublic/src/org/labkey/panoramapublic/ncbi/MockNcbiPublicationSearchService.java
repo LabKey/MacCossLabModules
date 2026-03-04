@@ -6,44 +6,107 @@ import org.json.JSONObject;
 import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Mock implementation of {@link NcbiPublicationSearchService} that returns canned data for PMID 23689285
- * (Abbatiello et al., Mol Cell Proteomics 2013). Used by Selenium tests when NCBI is not reachable.
- *
+ * Mock implementation of {@link NcbiPublicationSearchService} that returns canned data registered by tests.
+ * Used by Selenium tests when running on TeamCity.
  * Extends {@link NcbiPublicationSearchServiceImpl} and only overrides the two methods that make HTTP calls
  * to NCBI: {@link #getJson(String)} (used by ESearch/ESummary) and {@link #getCitation(String, DB)}
- * (used by the Citation Exporter API). All search logic, filtering, author/title verification, and
+ * (used for the Citation Exporter API). All search logic, filtering, author/title verification, and
  * priority filtering run through the real implementation code.
+ * Tests register mock articles via {@link #register}, providing the database, ID, search key,
+ * metadata fields, and citation. The mock builds internal lookup maps from this data and returns
+ * appropriate JSON responses when the real search logic calls {@code getJson()} or {@code getCitation()}.
  */
 public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServiceImpl
 {
-    private static final String PMID = "23689285";
-    private static final String PMC_ID = "3769335";
+    // ESearch: searchKey -> list of IDs (per database)
+    private final Map<String, List<String>> _pmcSearchResults = new HashMap<>();
+    private final Map<String, List<String>> _pubmedSearchResults = new HashMap<>();
 
-    private static final String CITATION = "Abbatiello SE, Mani DR, Schilling B, Maclean B, Zimmerman LJ, " +
-            "Feng X, Cusack MP, Sedransk N, Hall SC, Addona T, Allen S, Dodder NG, Ghosh M, Held JM, Hedrick V, " +
-            "Inerowicz HD, Jackson A, Keshishian H, Kim JW, Lyssand JS, Riley CP, Rudnick P, Sadowski P, " +
-            "Shaddox K, Smith D, Tomazela D, Wahlander A, Waldemarson S, Whitwell CA, You J, Zhang S, " +
-            "Kinsinger CR, Mesri M, Rodriguez H, Borchers CH, Buck C, Fisher SJ, Gibson BW, Liebler D, " +
-            "Maccoss M, Neubert TA, Paulovich A, Regnier F, Skates SJ, Tempst P, Wang M, Carr SA. " +
-            "Design, implementation and multisite evaluation of a system suitability protocol for the quantitative " +
-            "assessment of instrument performance in liquid chromatography-multiple reaction monitoring-MS (LC-MRM-MS). " +
-            "Mol Cell Proteomics. 2013 Sep;12(9):2623-39. doi: 10.1074/mcp.M112.027078. Epub 2013 May 20. " +
-            "PMID: 23689285; PMCID: PMC3769335.";
+    // ESummary: ID -> metadata JSONObject (per database)
+    private final Map<String, JSONObject> _pmcMetadata = new HashMap<>();
+    private final Map<String, JSONObject> _pubmedMetadata = new HashMap<>();
 
-    private static final String ARTICLE_TITLE = "Design, implementation and multisite evaluation of a system suitability " +
-            "protocol for the quantitative assessment of instrument performance in liquid chromatography-multiple " +
-            "reaction monitoring-MS (LC-MRM-MS).";
+    // Citations: PMID -> citation string
+    private final Map<String, String> _citations = new HashMap<>();
 
     /**
-     * Returns canned JSON for NCBI ESearch and ESummary API requests.
-     * <ul>
-     *   <li>ESearch for PMC with a query containing "PXD010535" returns PMC ID 3769335</li>
-     *   <li>ESummary for PMC ID 3769335 returns article metadata (authors, title, pubdate, PMID)</li>
-     *   <li>All other requests return empty results</li>
-     * </ul>
-     * This allows the real search logic in {@link NcbiPublicationSearchServiceImpl} to run against mock data.
+     * Register a mock article. The mock stores the data in internal lookup maps used by
+     * {@link #getJson(String)} and {@link #getCitation(String, DB)}.
+     * @param database     "pmc" or "pubmed" — the NCBI database this article is in
+     * @param id           the article ID in the given database (numeric ID for pmc or pubmed)
+     * @param searchKey    what ESearch query term finds this article (e.g. PXD ID for PMC, author last name for PubMed)
+     * @param pmid         linked PubMed ID for PMC articles. PMC articles usually have a corresponding PMID in their
+     *                     metadata (articleids array), which the real code extracts via {@code extractPubMedId()}.
+     *                     Null for pubmed articles (where {@code id} is already the PMID).
+     * @param title        article title
+     * @param authors      comma-separated author list (e.g. "Abbatiello SE,Mani DR,Schilling B")
+     * @param pubDate      publication date string (e.g. "2013 Sep")
+     * @param source       journal abbreviation used as ESummary "source" field (e.g. "Mol Cell Proteomics", "bioRxiv")
+     * @param journalFull  full journal name used as ESummary "fulljournalname" field
+     * @param citation     NLM citation string (for getCitation, keyed by PMID; null if not applicable)
+     */
+    public void register(String database, String id, String searchKey,
+                         @Nullable String pmid, String title, String authors,
+                         String pubDate, String source, String journalFull,
+                         @Nullable String citation)
+    {
+        boolean isPmc = "pmc".equalsIgnoreCase(database);
+
+        // Build ESummary metadata
+        JSONObject metadata = new JSONObject();
+        metadata.put("title", title);
+        metadata.put("sorttitle", title.toLowerCase());
+        metadata.put("source", source);
+        metadata.put("fulljournalname", journalFull);
+        metadata.put("pubdate", pubDate);
+
+        // Authors array
+        JSONArray authorsArray = new JSONArray();
+        for (String author : authors.split(","))
+        {
+            authorsArray.put(new JSONObject().put("name", author.trim()));
+        }
+        metadata.put("authors", authorsArray);
+
+        // For PMC articles, add articleids with PMC ID and optional PMID
+        if (isPmc)
+        {
+            JSONArray articleIds = new JSONArray();
+            articleIds.put(new JSONObject().put("idtype", "pmcid").put("value", "PMC" + id));
+            if (pmid != null)
+            {
+                articleIds.put(new JSONObject().put("idtype", "pmid").put("value", pmid));
+            }
+            metadata.put("articleids", articleIds);
+        }
+
+        // Store in appropriate maps
+        if (isPmc)
+        {
+            _pmcSearchResults.computeIfAbsent(searchKey, k -> new ArrayList<>()).add(id);
+            _pmcMetadata.put(id, metadata);
+        }
+        else
+        {
+            _pubmedSearchResults.computeIfAbsent(searchKey, k -> new ArrayList<>()).add(id);
+            _pubmedMetadata.put(id, metadata);
+        }
+
+        // Store citation keyed by PMID
+        if (citation != null && pmid != null)
+        {
+            _citations.put(pmid, citation);
+        }
+    }
+
+    /**
+     * Returns canned JSON for NCBI ESearch and ESummary API requests based on registered mock data.
      */
     @Override
     protected JSONObject getJson(String url) throws IOException
@@ -60,79 +123,47 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
     }
 
     /**
-     * Returns the canned NLM citation for PMID 23689285. Returns null for any other publication ID.
-     * Overrides the real implementation which makes an HTTP call to the NCBI Citation Exporter API.
+     * Returns the registered citation for the given PubMed ID, or null if not registered.
      */
     @Override
-    public @Nullable String getCitation(String publicationId, DB database)
+    public @Nullable String getCitation(String pubMedId, DB database)
     {
-        if (PMID.equals(publicationId))
-        {
-            return CITATION;
-        }
-        return null;
+        return _citations.get(pubMedId);
     }
 
-    /**
-     * Handle mock ESearch requests. Returns PMC ID 3769335 when query contains "PXD010535",
-     * empty results otherwise.
-     */
     private JSONObject handleESearch(String url)
     {
-        JSONObject result = new JSONObject();
+        boolean isPmc = url.contains("db=pmc");
+        Map<String, List<String>> searchMap = isPmc ? _pmcSearchResults : _pubmedSearchResults;
+
+        JSONArray idList = new JSONArray();
+        for (Map.Entry<String, List<String>> entry : searchMap.entrySet())
+        {
+            if (url.contains(entry.getKey()))
+            {
+                entry.getValue().forEach(idList::put);
+            }
+        }
+
         JSONObject esearchResult = new JSONObject();
-
-        if (url.contains("PXD010535"))
-        {
-            esearchResult.put("idlist", new JSONArray().put(PMC_ID));
-        }
-        else
-        {
-            esearchResult.put("idlist", new JSONArray());
-        }
-
-        result.put("esearchresult", esearchResult);
-        return result;
+        esearchResult.put("idlist", idList);
+        return new JSONObject().put("esearchresult", esearchResult);
     }
 
-    /**
-     * Handle mock ESummary requests. Returns article metadata for PMC ID 3769335.
-     */
     private JSONObject handleESummary(String url)
     {
-        JSONObject response = new JSONObject();
+        boolean isPmc = url.contains("db=pmc");
+        Map<String, JSONObject> metadataMap = isPmc ? _pmcMetadata : _pubmedMetadata;
+
         JSONObject result = new JSONObject();
-
-        if (url.contains(PMC_ID))
+        for (Map.Entry<String, JSONObject> entry : metadataMap.entrySet())
         {
-            JSONObject articleData = new JSONObject();
-            articleData.put("title", ARTICLE_TITLE);
-            articleData.put("sorttitle", ARTICLE_TITLE.toLowerCase());
-            articleData.put("source", "Mol Cell Proteomics");
-            articleData.put("fulljournalname", "Molecular & cellular proteomics : MCP");
-            articleData.put("pubdate", "2013 Sep");
-            articleData.put("epubdate", "2013 May 20");
-
-            // Authors — include first 3 plus a few more for realism
-            JSONArray authors = new JSONArray();
-            authors.put(new JSONObject().put("name", "Abbatiello SE"));
-            authors.put(new JSONObject().put("name", "Mani DR"));
-            authors.put(new JSONObject().put("name", "Schilling B"));
-            authors.put(new JSONObject().put("name", "Maclean B"));
-            authors.put(new JSONObject().put("name", "Zimmerman LJ"));
-            authors.put(new JSONObject().put("name", "Carr SA"));
-            articleData.put("authors", authors);
-
-            // Article IDs — PMC ID and PubMed ID
-            JSONArray articleIds = new JSONArray();
-            articleIds.put(new JSONObject().put("idtype", "pmcid").put("value", "PMC" + PMC_ID));
-            articleIds.put(new JSONObject().put("idtype", "pmid").put("value", PMID));
-            articleData.put("articleids", articleIds);
-
-            result.put(PMC_ID, articleData);
+            if (url.contains(entry.getKey()))
+            {
+                result.put(entry.getKey(), entry.getValue());
+            }
         }
 
-        response.put("result", result);
-        return response;
+        return new JSONObject().put("result", result);
     }
 }

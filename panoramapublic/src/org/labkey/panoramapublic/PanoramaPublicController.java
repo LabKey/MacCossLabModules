@@ -183,7 +183,6 @@ import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ChemElement;
 import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
 import org.labkey.panoramapublic.proteomexchange.Formula;
-import org.labkey.panoramapublic.ncbi.NcbiConstants;
 import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
 import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
@@ -10458,7 +10457,7 @@ public class PanoramaPublicController extends SpringActionController
         protected abstract void updateDatasetStatus(DatasetStatus datasetStatus);
         protected abstract void postNotification();
         protected abstract String getConfirmViewTitle();
-        protected abstract String getConfirmViewMessage();
+        protected abstract HtmlString getConfirmViewMessage();
 
         @Override
         public ModelAndView getConfirmView(ShortUrlForm shortUrlForm, BindException errors) throws Exception
@@ -10535,9 +10534,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected String getConfirmViewMessage()
+        protected HtmlString getConfirmViewMessage()
         {
-            return "You are requesting an extension for the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL();
+            return HtmlString.of("You are requesting an extension for the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL());
         }
 
         @Override
@@ -10599,9 +10598,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected String getConfirmViewMessage()
+        protected HtmlString getConfirmViewMessage()
         {
-            return "You are requesting deletion of the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL();
+            return HtmlString.of("You are requesting deletion of the private data on Panorama Public at " + _exptAnnotations.getShortUrl().renderShortURL());
         }
 
         @Override
@@ -10657,15 +10656,15 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected String getConfirmViewMessage()
+        protected HtmlString getConfirmViewMessage()
         {
             String publicationRef = _publicationMatch.getCitation() != null
                     ? _publicationMatch.getCitation()
-                    : _publicationMatch.getPublicationLabel();
-            return "You are dismissing the publication suggestion for your data on Panorama Public at "
+                    : _publicationMatch.getPublicationIdLabel();
+            return HtmlString.of("You are dismissing the publication suggestion for your data on Panorama Public at "
                     + _exptAnnotations.getShortUrl().renderShortURL() +
-                    ". We will no longer suggest the following publication for this dataset - "
-                    + "\n\n" + publicationRef;
+                    ". We will no longer suggest the following publication for this dataset - " +
+                    HtmlString.BR +  publicationRef);
         }
 
         @Override
@@ -10930,7 +10929,7 @@ public class PanoramaPublicController extends SpringActionController
                     && form.getPublicationId().equals(datasetStatus.getPotentialPublicationId()))
             {
                 errors.reject(ERROR_MSG, "The user has already dismissed the publication suggestion "
-                        + datasetStatus.getPublicationLabel() + " " + datasetStatus.getPotentialPublicationId()
+                        + datasetStatus.getPublicationIdLabel()
                         + " for this dataset.");
                 return false;
             }
@@ -11186,35 +11185,16 @@ public class PanoramaPublicController extends SpringActionController
                 .addParameter("name", filename);
     }
 
-    // ======================== Test support actions for Selenium tests ========================
+    // ======================== Support actions for Selenium tests ========================
 
     @RequiresSiteAdmin
-    public static class SetupMockNcbiServiceAction extends ReadOnlyApiAction<SetupMockForm>
+    public static class SetupMockNcbiServiceAction extends ReadOnlyApiAction<Object>
     {
         @Override
-        public Object execute(SetupMockForm form, BindException errors)
+        public Object execute(Object form, BindException errors)
         {
-            if (form.isCheckNcbiReachable() && NcbiPublicationSearchServiceImpl.isNcbiReachable())
-            {
-                return new ApiSimpleResponse("mock", false);
-            }
             NcbiPublicationSearchServiceImpl.setInstance(new MockNcbiPublicationSearchService());
             return new ApiSimpleResponse("mock", true);
-        }
-    }
-
-    public static class SetupMockForm
-    {
-        private boolean _checkNcbiReachable;
-
-        public boolean isCheckNcbiReachable()
-        {
-            return _checkNcbiReachable;
-        }
-
-        public void setCheckNcbiReachable(boolean checkNcbiReachable)
-        {
-            _checkNcbiReachable = checkNcbiReachable;
         }
     }
 
@@ -11227,6 +11207,70 @@ public class PanoramaPublicController extends SpringActionController
             NcbiPublicationSearchServiceImpl.setInstance(new NcbiPublicationSearchServiceImpl());
             return new ApiSimpleResponse("restored", true);
         }
+    }
+
+    @RequiresSiteAdmin
+    public static class RegisterMockPublicationAction extends ReadOnlyApiAction<RegisterMockPublicationForm>
+    {
+        @Override
+        public Object execute(RegisterMockPublicationForm form, BindException errors)
+        {
+            NcbiPublicationSearchService service = NcbiPublicationSearchServiceImpl.getInstance();
+            if (!(service instanceof MockNcbiPublicationSearchService mock))
+            {
+                errors.reject(ERROR_MSG, "Mock NCBI service is not available. Call setupMockNcbiService first.");
+                return null;
+            }
+            mock.register(form.getDatabase(), form.getId(), form.getSearchKey(),
+                    form.getPmid(), form.getTitle(), form.getAuthors(),
+                    form.getPubDate(), form.getSource(), form.getJournalFull(),
+                    form.getCitation());
+            return new ApiSimpleResponse("registered", true);
+        }
+    }
+
+    public static class RegisterMockPublicationForm
+    {
+        private String _database;
+        private String _id;
+        private String _searchKey;
+        private String _pmid;
+        private String _title;
+        private String _authors;
+        private String _pubDate;
+        private String _source;
+        private String _journalFull;
+        private String _citation;
+
+        public String getDatabase() { return _database; }
+        public void setDatabase(String database) { _database = database; }
+
+        public String getId() { return _id; }
+        public void setId(String id) { _id = id; }
+
+        public String getSearchKey() { return _searchKey; }
+        public void setSearchKey(String searchKey) { _searchKey = searchKey; }
+
+        public String getPmid() { return _pmid; }
+        public void setPmid(String pmid) { _pmid = pmid; }
+
+        public String getTitle() { return _title; }
+        public void setTitle(String title) { _title = title; }
+
+        public String getAuthors() { return _authors; }
+        public void setAuthors(String authors) { _authors = authors; }
+
+        public String getPubDate() { return _pubDate; }
+        public void setPubDate(String pubDate) { _pubDate = pubDate; }
+
+        public String getSource() { return _source; }
+        public void setSource(String source) { _source = source; }
+
+        public String getJournalFull() { return _journalFull; }
+        public void setJournalFull(String journalFull) { _journalFull = journalFull; }
+
+        public String getCitation() { return _citation; }
+        public void setCitation(String citation) { _citation = citation; }
     }
 
     public static class TestCase extends AbstractActionPermissionTest

@@ -138,7 +138,7 @@
                         + ' href="' + LABKEY.Utils.encodeHtml(match.publicationUrl) + '"'
                         + ' target="_blank"'
                         + ' rel="noopener noreferrer">'
-                        + LABKEY.Utils.encodeHtml(match.publicationLabel)
+                        + LABKEY.Utils.encodeHtml(match.publicationIdLabel)
                         + '</a>';
 
                 matchHtml += '<div>'

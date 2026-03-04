@@ -123,7 +123,7 @@ public class PublicationMatch
         return NcbiConstants.getPubmedLink(_publicationId);
     }
 
-    public String getPublicationLabel()
+    public String getPublicationIdLabel()
     {
         return _publicationType.getLabel() + " ID " + _publicationId;
     }
@@ -133,7 +133,7 @@ public class PublicationMatch
         JSONObject json = new JSONObject();
         json.put("publicationId", _publicationId);
         json.put("publicationType", _publicationType.name());
-        json.put("publicationLabel", getPublicationLabel());
+        json.put("publicationIdLabel", getPublicationIdLabel());
         json.put("publicationUrl", getPublicationUrl());
         json.put("matchInfo", getMatchInfo());
         if (_citation != null)

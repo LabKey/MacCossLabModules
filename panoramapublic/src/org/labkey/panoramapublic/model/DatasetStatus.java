@@ -98,14 +98,11 @@ public class DatasetStatus  extends DbEntity
         _publicationType = publicationType;
     }
 
-    public String getPublicationLabel()
+    public String getPublicationIdLabel()
     {
         NcbiConstants.DB type = NcbiConstants.DB.fromString(_publicationType);
-        if (type == null)
-        {
-            return _publicationType != null ? _publicationType : "";
-        }
-        return type.getLabel();
+        String label = type == null ? (_publicationType != null ? _publicationType : "") : type.getLabel();
+        return label + " ID " + getPotentialPublicationId();
     }
 
     public String getPublicationMatchInfo()

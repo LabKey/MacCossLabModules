@@ -37,7 +37,9 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -613,6 +615,24 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         expListTable.setFilter("DataVersion", "Equals", "1");
         assertEquals(1, expListTable.getDataRowCount());
         assertEquals(isPublic ? "Yes" : "No", expListTable.getDataAsText(0, "Public"));
+    }
+
+    /**
+     * Navigate to the Private Data Reminder Settings page and read the current form values.
+     * Returns a map with keys: extensionLength, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch.
+     */
+    protected Map<String, String> getPrivateDataReminderSettings()
+    {
+        goToAdminConsole().goToSettingsSection();
+        clickAndWait(Locator.linkWithText("Panorama Public"));
+        clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
+
+        Map<String, String> settings = new HashMap<>();
+        settings.put("extensionLength", getFormElement(Locator.input("extensionLength")));
+        settings.put("delayUntilFirstReminder", getFormElement(Locator.input("delayUntilFirstReminder")));
+        settings.put("reminderFrequency", getFormElement(Locator.input("reminderFrequency")));
+        settings.put("enablePublicationSearch", String.valueOf(Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected()));
+        return settings;
     }
 
     protected void savePrivateDataReminderSettings(String extensionLength, String delayUntilFirstReminder, String reminderFrequency)

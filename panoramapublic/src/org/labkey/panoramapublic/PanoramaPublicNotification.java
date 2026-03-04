@@ -374,7 +374,7 @@ public class PanoramaPublicNotification
         messageBody.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
         messageBody.append("Thank you for letting us know that the suggested paper is not associated with your data on Panorama Public.");
 
-        messageBody.append(NL2).append(bold("Dismissed Publication:")).append(" ").append(publicationMatch.getPublicationLabel());
+        messageBody.append(NL2).append(bold("Dismissed Publication:")).append(" ").append(publicationMatch.getPublicationIdLabel());
         if (!StringUtils.isBlank(publicationMatch.getCitation()))
         {
             messageBody.append(NL).append(publicationMatch.getCitation());
@@ -437,12 +437,12 @@ public class PanoramaPublicNotification
         if (articleMatch != null)
         {
             // Message variant when a publication was found
-            message.append("We found a paper that appears to be associated with your private data on Panorama Public.")
+            message.append("We found a paper that appears to be associated with your private data on Panorama Public (").append(shortUrl).append(").")
                     .append(NL2).append(bold("Title:")).append(" ").append(escape(exptAnnotations.getTitle()))
                     .append(NL2).append(bold("Publication Found:")).append(" ")
                     .append(articleMatch.getCitation() != null
                             ? link(articleMatch.getCitation(), articleMatch.getPublicationUrl())
-                            : link(articleMatch.getPublicationLabel(), articleMatch.getPublicationUrl()))
+                            : link(articleMatch.getPublicationIdLabel(), articleMatch.getPublicationUrl()))
                     .append(NL2).append("If this is indeed your paper, congratulations! We encourage you to make your data public so the research community can access it alongside your paper. ")
                     .append("You can do this by clicking the \"Make Public\" button in your data folder or by clicking this link: ")
                     .append(bold(link("Make Data Public", makePublicLink))).append(".")

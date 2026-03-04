@@ -3,7 +3,6 @@ package org.labkey.test.tests.panoramapublic;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.remoteapi.CommandException;
-import org.labkey.remoteapi.CommandResponse;
 import org.labkey.remoteapi.Connection;
 import org.labkey.remoteapi.SimpleGetCommand;
 import org.labkey.test.BaseWebDriverTest;
@@ -17,43 +16,70 @@ import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.labkey.test.util.PermissionsHelper.READER_ROLE;
 
 @Category({External.class, MacCossLabModules.class})
-@BaseWebDriverTest.ClassTimeout(minutes = 7)
+@BaseWebDriverTest.ClassTimeout(minutes = 10)
 public class PublicationSearchTest extends PanoramaPublicBaseTest
 {
     private static final String SKY_FILE = "MRMer.zip";
 
-    private static final String SUBMITTER_USER = "submitter@panoramapublic.test";
+    private static final String SUBMITTER_1 = "submitter1@panoramapublic.test";
+    private static final String SUBMITTER_2 = "submitter2@panoramapublic.test";
     private static final String ADMIN_USER = "admin@panoramapublic.test";
 
-    private static final String EXPERIMENT_TITLE = "Design, Implementation and Multisite Evaluation of a System Suitability Protocol" +
-            " for the Quantitative Assessment of Instrument Performance in Liquid Chromatography-Multiple Reaction Monitoring-MS (LC-MRM-MS)";
-    private static final String PXD_ID = "PXD010535";
-    private static final String PMID = "23689285";
+    // --- Dataset 1: Abbatiello et al. (Mol Cell Proteomics 2013) ---
+    // Found via PubMed fallback (author + title match). Paper does not reference PXD010535 in PMC.
+    private static final String FOLDER_1 = "System Suitability Study";
+    private static final String TARGET_FOLDER_1 = "System Suitability Copy";
+    private static final String TITLE_1 = "Design, implementation and multisite evaluation of a system suitability protocol " +
+            "for the quantitative assessment of instrument performance in liquid chromatography-multiple reaction monitoring-MS (LC-MRM-MS)";
+    private static final String PXD_1 = "PXD010535";
+    private static final String PMID_1 = "23689285";
+    private static final String ARTICLE_TITLE_1 = TITLE_1; // Same as experiment title
+    private static final String CITATION_1 = "Abbatiello SE, Mani DR, Schilling B, Maclean B, Zimmerman LJ, " +
+            "Feng X, Cusack MP, Sedransk N, Hall SC, Addona T, Allen S, Dodder NG, Ghosh M, Held JM, Hedrick V, " +
+            "Inerowicz HD, Jackson A, Keshishian H, Kim JW, Lyssand JS, Riley CP, Rudnick P, Sadowski P, " +
+            "Shaddox K, Smith D, Tomazela D, Wahlander A, Waldemarson S, Whitwell CA, You J, Zhang S, " +
+            "Kinsinger CR, Mesri M, Rodriguez H, Borchers CH, Buck C, Fisher SJ, Gibson BW, Liebler D, " +
+            "Maccoss M, Neubert TA, Paulovich A, Regnier F, Skates SJ, Tempst P, Wang M, Carr SA. " +
+            "Design, implementation and multisite evaluation of a system suitability protocol for the quantitative " +
+            "assessment of instrument performance in liquid chromatography-multiple reaction monitoring-MS (LC-MRM-MS). " +
+            "Mol Cell Proteomics. 2013 Sep;12(9):2623-39. doi: 10.1074/mcp.M112.027078. Epub 2013 May 20. " +
+            "PMID: 23689285; PMCID: PMC3769335.";
 
-    private static final String SOURCE_FOLDER = "Pub Search Source";
-    private static final String TARGET_FOLDER = "Pub Search Copy";
+    // --- Dataset 2: Wen et al. (Nat Commun 2025) ---
+    // Found via PMC search by PXD. PMC returns two results: Nature article and bioRxiv preprint.
+    // The preprint is filtered out by isPreprint().
+    private static final String FOLDER_2 = "Carafe";
+    private static final String TARGET_FOLDER_2 = "Carafe Copy";
+    private static final String TITLE_2 = "Carafe: a tool for in silico spectral library generation for DIA proteomics";
+    private static final String PXD_2 = "PXD056793";
+    private static final String PMID_2 = "41198693";
+    private static final String PMC_ID_2 = "12592563";
+    private static final String PMC_ID_2_PREPRINT = "11507862";
+    private static final String ARTICLE_TITLE_2 = "Carafe enables high quality in silico spectral library generation " +
+            "for data-independent acquisition proteomics."; // Not identical to the experiment title but keywords match
+    private static final String CITATION_2 = "Wen B, Hsu C, Shteynberg D, Zeng WF, Riffle M, Chang A, Mudge MC, " +
+            "Nunn BL, MacLean BX, Berg MD, Villén J, MacCoss MJ, Noble WS. " +
+            "Carafe enables high quality in silico spectral library generation for data-independent acquisition proteomics. " +
+            "Nat Commun. 2025 Nov 6;16(1):9815. doi: 10.1038/s41467-025-64928-4. " +
+            "PMID: 41198693; PMCID: PMC12592563.";
 
     private boolean _useMockNcbi = false;
+    private Map<String, String> _originalReminderSettings = null;
 
     /**
-     * Tests the publication search flow:
-     * > search for publications
-     * > notify submitter
-     * > submitter dismisses suggestion
-     * > verify publication not suggested again
-     * Uses mock NCBI service when running on TeamCity, and NCBI API is not reachable.
-     * The mock service returns saved data for PMID 23689285 (Abbatiello et al., Mol Cell Proteomics 2013).
-     * The test dataset uses:
-     * - Submitter: Birgit Schilling (author #3 on the paper)
-     * - PXD: PXD010535
-     * - Title matches the paper title
+     * Tests the publication search flow with two datasets:
+     * Dataset 1 (Abbatiello et al.): search → notify → dismiss → verify not suggested again
+     * Dataset 2 (Wen et al.): verify publication found via pipeline job reminders
+     * Uses mock NCBI service when running on TeamCity.
      */
     @Test
     public void testPublicationSearchAndDismiss()
@@ -64,153 +90,108 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         permissionsHelper.setSiteGroupPermissions("Guests", READER_ROLE);
 
         // Step 1: Set up mock NCBI service if running on TeamCity
-        // On dev machine only mock if NCBI is not reachable.
         setupMockNcbiService();
 
-        // Step 2: Create folder, submit to Panorama Public, and copy
+        // Step 2: Create dataset 1 folder, submit to Panorama Public, and copy
         String testProject = getProjectName();
-        String shortAccessUrl = setupFolderSubmitAndCopy(testProject, SOURCE_FOLDER, TARGET_FOLDER,
-                EXPERIMENT_TITLE, SUBMITTER_USER, "Schilling", "Birgit", ADMIN_USER, SKY_FILE);
+        String shortAccessUrl1 = setupFolderSubmitAndCopy(testProject, FOLDER_1, TARGET_FOLDER_1,
+                TITLE_1, SUBMITTER_1, "Schilling", "Birgit", ADMIN_USER, SKY_FILE);
+        int exptId1 = getExperimentId(panoramaPublicProject, TARGET_FOLDER_1);
+        assignPxdId(panoramaPublicProject, TARGET_FOLDER_1, exptId1, PXD_1);
 
-        // Navigate to the Panorama Public copy folder and get the experiment ID
-        goToProjectFolder(panoramaPublicProject, TARGET_FOLDER);
-        goToExperimentDetailsPage();
-        int exptId = Integer.parseInt(portalHelper.getUrlParam("id"));
+        // Step 3: Create dataset 2 folder, submit to Panorama Public, and copy
+        String shortAccessUrl2 = setupFolderSubmitAndCopy(testProject, FOLDER_2, TARGET_FOLDER_2,
+                TITLE_2, SUBMITTER_2, "Wen", "Bo", ADMIN_USER, SKY_FILE);
+        int exptId2 = getExperimentId(panoramaPublicProject, TARGET_FOLDER_2);
+        assignPxdId(panoramaPublicProject, TARGET_FOLDER_2, exptId2, PXD_2);
 
-        // Step 3: Assign PXD ID to the experiment via API
-        assignPxdId(panoramaPublicProject, TARGET_FOLDER, exptId, PXD_ID);
-
-        // Step 4: Search publications for the dataset — should find PMID 23689285
-        goToProjectFolder(panoramaPublicProject, TARGET_FOLDER);
-        beginAt(WebTestHelper.buildURL("panoramapublic", getCurrentContainerPath(),
-                "searchPublicationsForDataset", Map.of("id", String.valueOf(exptId))));
-        waitForText("Publications Matches for Dataset");
-
-        // Verify the publication was found
-        assertTextPresent(PMID);
-        // assertTextPresent("ProteomeXchange ID");
+        // Step 4: Search publications for dataset 1 — should find PMID 23689285 via PubMed fallback
+        searchPublicationsForDataset(panoramaPublicProject, TARGET_FOLDER_1, exptId1);
+        assertTextPresent(PMID_1);
         assertTextPresent("Author, Title");
+        assertTextNotPresent("ProteomeXchange ID"); // Paper does not contain the PXD
 
         // Step 5: Select the publication and notify the submitter
-        click(Locator.radioButtonByNameAndValue("publicationId", PMID));
+        click(Locator.radioButtonByNameAndValue("publicationId", PMID_1));
         clickButton("Notify Submitter");
 
         // Step 6: Verify the reminder message was posted in the support thread
-        goToProjectFolder(panoramaPublicProject, TARGET_FOLDER);
-        portalHelper.clickWebpartMenuItem("Targeted MS Experiment", true, "Support Messages");
-        waitForText("Submitted - " + shortAccessUrl);
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_1);
+        waitForText("Submitted - " + shortAccessUrl1);
         assertTextPresent("Action Required: Publication Found for Your Data on Panorama Public");
         assertTextPresent("We found a paper that appears to be associated with your private data on Panorama Public");
-        assertTextPresent("Abbatiello SE, Mani DR, Schilling B"); // Verify the citation is included in the message
-        assertElementPresent(Locator.linkWithHref("https://pubmed.ncbi.nlm.nih.gov/" + PMID)); // Verify the PubMed link
+        assertTextPresent("Abbatiello SE, Mani DR, Schilling B");
+        assertElementPresent(Locator.linkWithHref("https://pubmed.ncbi.nlm.nih.gov/" + PMID_1));
 
         // Step 7: Impersonate submitter, dismiss the publication suggestion
-        goToProjectFolder(panoramaPublicProject, TARGET_FOLDER);
-        portalHelper.clickWebpartMenuItem("Targeted MS Experiment", true, "Support Messages");
-        impersonate(SUBMITTER_USER);
-        waitForText("Submitted - " + shortAccessUrl);
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_1);
+        impersonate(SUBMITTER_1);
+        waitForText("Submitted - " + shortAccessUrl1);
         click(Locator.linkWithText("Dismiss Publication Suggestion"));
-        waitForText("Dismiss Publication Suggestion");
+        waitForText("You are dismissing the publication suggestion for your data on Panorama Public");
+        assertTextPresent(shortAccessUrl1);
         clickButton("OK", 0);
         waitForText("The publication suggestion has been dismissed");
         stopImpersonating();
 
         // Verify the dismissal notification was posted in the support thread
-        goToProjectFolder(panoramaPublicProject, TARGET_FOLDER);
-        portalHelper.clickWebpartMenuItem("Targeted MS Experiment", true, "Support Messages");
-        waitForText("Submitted - " + shortAccessUrl);
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_1);
+        waitForText("Submitted - " + shortAccessUrl1);
         assertTextPresentInThisOrder(
-               // "Abbatiello SE, Mani DR, Schilling B", // From previous message
                 "Publication Suggestion Dismissed",
                 "Thank you for letting us know that the suggested paper is not associated with your data on Panorama Public");
-               // "Abbatiello SE, Mani DR, Schilling B"); // Citation should appear within the dismissal message, after the title and body
 
-        // Step 8: Search publications for the dataset again and verify the dismissed publication is flagged
-        goToProjectFolder(panoramaPublicProject, TARGET_FOLDER);
-        beginAt(WebTestHelper.buildURL("panoramapublic", getCurrentContainerPath(),
-                "searchPublicationsForDataset", Map.of("id", String.valueOf(exptId))));
-        waitForText("Publications Matches for Dataset");
-        assertTextPresent(PMID);
-        // The dismissed publication should show "Yes" in the User Dismissed column
+        // Step 8: Search publications for dataset 1 again and verify the dismissed publication is flagged
+        searchPublicationsForDataset(panoramaPublicProject, TARGET_FOLDER_1, exptId1);
+        assertTextPresent(PMID_1);
         assertTextPresent("User Dismissed");
 
-        // Find the row containing the PMID radio button and verify the last cell contains "Yes"
-        Locator dismissedCell = Locator.xpath("//tr[.//input[@value='" + PMID + "']]/td[last()]");
+        // Verify the dismissed cell contains "Yes"
+        Locator dismissedCell = Locator.xpath("//tr[.//input[@value='" + PMID_1 + "']]/td[last()]");
         assertEquals("Yes", getText(dismissedCell));
 
         // Verify that we cannot notify the submitter for a dismissed publication
-        click(Locator.radioButtonByNameAndValue("publicationId", PMID));
+        click(Locator.radioButtonByNameAndValue("publicationId", PMID_1));
         clickButton("Notify Submitter");
-        assertTextPresent("has already dismissed the publication suggestion");
+        assertTextPresent("The user has already dismissed the publication suggestion PubMed ID " + PMID_1 + " for this dataset");
 
-        // Step 9: Run the post reminders pipeline job and verify the dismissed publication is skipped
-        // Set reminder settings: delayUntilFirstReminder=0, reminderFrequency=0, enablePublicationSearch=true
+        // Step 9: Run the post reminders pipeline job with publication search enabled
+        // Save current settings so they can be restored in doCleanup
+        _originalReminderSettings = getPrivateDataReminderSettings();
         savePrivateDataReminderSettings("2", "0", "0", true);
 
         // Post reminders with publication search enabled
         goToSendRemindersPage(panoramaPublicProject);
         DataRegionTable table = new DataRegionTable("ExperimentAnnotations", getDriver());
         table.checkAllOnPage();
-        checkCheckbox(Locator.checkboxByName("searchPublications"));
+        assertChecked(Locator.checkboxByName("searchPublications"));
         clickButton("Post Reminders", 0);
         waitForPipelineJobsToComplete(1, "Post private data reminder messages", false);
 
-        // Verify the pipeline job log contains the skip message for the dismissed publication
+        // Verify the pipeline job log contains the skip message for the dismissed dataset 1 publication
         goToProjectHome(panoramaPublicProject);
         goToDataPipeline();
         goToDataPipeline().clickStatusLink(0);
-        String skipMessage = String.format("User has dismissed publication suggestion for experiment %d; skipping search", exptId);
+        String skipMessage = String.format("User has dismissed publication suggestion for experiment %d; skipping search", exptId1);
         assertTextPresent(skipMessage);
+
+        // Step 10: Verify that the pipeline job found a publication for dataset 2 and posted a message
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_2);
+        waitForText("Submitted - " + shortAccessUrl2);
+        assertTextPresent("Action Required: Publication Found for Your Data on Panorama Public");
+        assertTextPresent("We found a paper that appears to be associated with your private data on Panorama Public");
+        assertTextPresent("Wen B, Hsu C, Shteynberg D");
+        assertElementPresent(Locator.linkWithHref("https://pubmed.ncbi.nlm.nih.gov/" + PMID_2));
     }
 
     /**
-     * POST to SetupMockNcbiServiceAction.
+     * Navigate to the Panorama Public copy folder and get the experiment ID.
      */
-    private void setupMockNcbiService()
+    private int getExperimentId(String panoramaPublicProject, String targetFolder)
     {
-        boolean mock = TestProperties.isTestRunningOnTeamCity();
-        if (!mock) return;
-        boolean checkNcbiReachable = false;
-
-        try
-        {
-            Connection connection = createDefaultConnection();
-            SimpleGetCommand command = new SimpleGetCommand("panoramapublic", "setupMockNcbiService");
-            command.setParameters(Map.of("checkNcbiReachable", checkNcbiReachable));
-            CommandResponse response = command.execute(connection, "/");
-            Object mockValue = response.getProperty("mock");
-            _useMockNcbi = Boolean.TRUE.equals(mockValue);
-            if (_useMockNcbi)
-            {
-                log("Using mock NCBI service" + (checkNcbiReachable ? " (NCBI not reachable)" : ""));
-            }
-            else
-            {
-                log("Using real NCBI service (NCBI is reachable)");
-            }
-        }
-        catch (IOException | CommandException e)
-        {
-            fail("Failed to set up mock NCBI service: " + e.getMessage());
-        }
-    }
-
-    /**
-     * POST to RestoreNcbiServiceAction to restore the real NCBI service.
-     */
-    private void restoreNcbiService()
-    {
-        try
-        {
-            Connection connection = createDefaultConnection();
-            SimpleGetCommand command = new SimpleGetCommand("panoramapublic", "restoreNcbiService");
-            command.execute(connection, "/");
-            log("Restored real NCBI service");
-        }
-        catch (IOException | CommandException e)
-        {
-            log("Warning: Failed to restore NCBI service: " + e.getMessage());
-        }
+        goToProjectFolder(panoramaPublicProject, targetFolder);
+        goToExperimentDetailsPage();
+        return Integer.parseInt(portalHelper.getUrlParam("id"));
     }
 
     /**
@@ -228,6 +209,164 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         log("Assigned PXD ID " + pxdId + " to experiment " + exptId);
     }
 
+    /**
+     * Navigate to the search publications page for a dataset.
+     */
+    private void searchPublicationsForDataset(String panoramaPublicProject, String targetFolder, int exptId)
+    {
+        goToProjectFolder(panoramaPublicProject, targetFolder);
+        beginAt(WebTestHelper.buildURL("panoramapublic", getCurrentContainerPath(),
+                "searchPublicationsForDataset", Map.of("id", String.valueOf(exptId))));
+        waitForText("Publications Matches for Dataset");
+    }
+
+    /**
+     * Navigate to the support messages for a dataset.
+     */
+    private void goToSupportMessages(String panoramaPublicProject, String targetFolder)
+    {
+        goToProjectFolder(panoramaPublicProject, targetFolder);
+        portalHelper.clickWebpartMenuItem("Targeted MS Experiment", true, "Support Messages");
+    }
+
+    /**
+     * On TeamCity: set up the mock NCBI service and register mock publication data.
+     * On dev machine: verify that NCBI is reachable; fail with a clear message if not.
+     */
+    private void setupMockNcbiService()
+    {
+        boolean useMockNcbiService = TestProperties.isTestRunningOnTeamCity();
+        if (useMockNcbiService)
+        {
+            installMockNcbiService();
+        }
+        else
+        {
+            assertTrue("NCBI E-utilities API is not reachable. Check your network connection.", isNcbiReachable());
+            log("Using real NCBI service");
+        }
+    }
+
+    private void installMockNcbiService()
+    {
+        try
+        {
+            Connection connection = createDefaultConnection();
+            SimpleGetCommand command = new SimpleGetCommand("panoramapublic", "setupMockNcbiService");
+            command.execute(connection, "/");
+            _useMockNcbi = true;
+            log("Using mock NCBI service");
+            registerMockPublications();
+        }
+        catch (IOException | CommandException e)
+        {
+            fail("Failed to set up mock NCBI service: " + e.getMessage());
+        }
+    }
+
+    private static boolean isNcbiReachable()
+    {
+        try
+        {
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection)
+                    new java.net.URL("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi").openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "PanoramaPublic/1.0");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            int responseCode = conn.getResponseCode();
+            boolean reachable = responseCode >= 200 && responseCode < 300;
+            conn.disconnect();
+            return reachable;
+        }
+        catch (IOException e)
+        {
+            return false;
+        }
+    }
+
+    /**
+     * Register mock publication data with the mock NCBI service.
+     */
+    private void registerMockPublications()
+    {
+        // Dataset 1: PMID 23689285 (Abbatiello et al.) — found via PubMed fallback (author + title match)
+        // Paper does not reference PXD010535 in PMC.
+        registerMockPublication("pubmed", PMID_1, "Schilling",
+                null, ARTICLE_TITLE_1,
+                "Abbatiello SE,Mani DR,Schilling B,Maclean B,Zimmerman LJ,Carr SA",
+                "2013 Sep", "Mol Cell Proteomics", "Molecular & cellular proteomics : MCP",
+                CITATION_1);
+
+        // Dataset 2: PMID 41198693 (Wen et al.) — found via PMC search by PXD ID
+        // PMC search for PXD056793 returns two articles: Nature + bioRxiv preprint.
+
+        // Nature article (published) — PMC ID 12592563, PMID 41198693
+        registerMockPublication("pmc", PMC_ID_2, PXD_2,
+                PMID_2, ARTICLE_TITLE_2,
+                "Wen B,Hsu C,Shteynberg D,Zeng WF,Riffle M,Chang A,Mudge MC,Nunn BL,MacLean BX,Berg MD,Villén J,MacCoss MJ,Noble WS",
+                "2025 Nov 6", "Nat Commun", "Nature communications",
+                CITATION_2);
+
+        // bioRxiv preprint — PMC ID 11507862, PMID 39463980 (will be filtered out by isPreprint)
+        registerMockPublication("pmc", PMC_ID_2_PREPRINT, PXD_2,
+                "39463980", ARTICLE_TITLE_2,
+                "Wen B,Hsu C,Shteynberg D,Zeng WF,Riffle M,Chang A,Mudge M,Nunn BL,MacLean BX,Berg MD,Villén J,MacCoss MJ,Noble WS",
+                "2025 Aug 4", "bioRxiv", "bioRxiv : the preprint server for biology",
+                null);
+    }
+
+    /**
+     * Register a single mock article with the mock NCBI service via the RegisterMockPublicationAction API.
+     */
+    private void registerMockPublication(String database, String id, String searchKey,
+                                         String pmid, String title, String authors,
+                                         String pubDate, String source, String journalFull,
+                                         String citation)
+    {
+        try
+        {
+            Connection connection = createDefaultConnection();
+            SimpleGetCommand command = new SimpleGetCommand("panoramapublic", "registerMockPublication");
+            Map<String, Object> params = new HashMap<>();
+            params.put("database", database);
+            params.put("id", id);
+            params.put("searchKey", searchKey);
+            params.put("title", title);
+            params.put("authors", authors);
+            params.put("pubDate", pubDate);
+            params.put("source", source);
+            params.put("journalFull", journalFull);
+            if (pmid != null) params.put("pmid", pmid);
+            if (citation != null) params.put("citation", citation);
+            command.setParameters(params);
+            command.execute(connection, "/");
+            log("Registered mock publication: " + database + " " + id);
+        }
+        catch (IOException | CommandException e)
+        {
+            fail("Failed to register mock publication: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Restore the real NCBI service.
+     */
+    private void restoreNcbiService()
+    {
+        try
+        {
+            Connection connection = createDefaultConnection();
+            SimpleGetCommand command = new SimpleGetCommand("panoramapublic", "restoreNcbiService");
+            command.execute(connection, "/");
+            log("Restored real NCBI service");
+        }
+        catch (IOException | CommandException e)
+        {
+            log("Warning: Failed to restore NCBI service: " + e.getMessage());
+        }
+    }
+
     @Override
     protected void doCleanup(boolean afterTest) throws TestTimeoutException
     {
@@ -236,9 +375,16 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
             restoreNcbiService();
         }
 
-        // TODO: Reset the reminder settings to not search for publications.
+        if (_originalReminderSettings != null)
+        {
+            savePrivateDataReminderSettings(
+                    _originalReminderSettings.get("extensionLength"),
+                    _originalReminderSettings.get("delayUntilFirstReminder"),
+                    _originalReminderSettings.get("reminderFrequency"),
+                    Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")));
+        }
 
-        _userHelper.deleteUsers(false, SUBMITTER_USER, ADMIN_USER);
+        _userHelper.deleteUsers(false, SUBMITTER_1, SUBMITTER_2, ADMIN_USER);
         super.doCleanup(afterTest);
     }
 }
