@@ -10679,6 +10679,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected Renderable getConfirmViewMessage()
         {
+            fetchCitation();
             String publicationRef = _publicationMatch.getCitation() != null
                     ? _publicationMatch.getCitation()
                     : _publicationMatch.getPublicationIdLabel();
@@ -10704,13 +10705,24 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, "The publication suggestion for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
                         + " has already been dismissed");
             }
-            else
+        }
+
+        // Fetch the citation from NCBI. If NCBI is unavailable, the publication ID label will be used as a fallback.
+        private void fetchCitation()
+        {
+            if (_publicationMatch != null && _publicationMatch.getCitation() == null)
             {
-                // Fetch the citation from NCBI. If we cannot retrieve it, the publication ID will be used as a fallback.
-                String citation = NcbiPublicationSearchService.get().getCitation(_publicationMatch.getPublicationId(), _publicationMatch.getPublicationType());
-                if (!StringUtils.isBlank(citation))
+                try
                 {
-                    _publicationMatch.setCitation(citation);
+                    String citation = NcbiPublicationSearchService.get().getCitation(_publicationMatch.getPublicationId(), _publicationMatch.getPublicationType());
+                    if (!StringUtils.isBlank(citation))
+                    {
+                        _publicationMatch.setCitation(citation);
+                    }
+                }
+                catch (Exception e)
+                {
+                    LOG.warn("Failed to fetch citation for " + _publicationMatch.getPublicationIdLabel() + ": " + e.getMessage());
                 }
             }
         }
@@ -10724,6 +10736,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected void postNotification()
         {
+            fetchCitation();
             // Post a message to the support thread.
             JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(_exptAnnotations);
             Journal journal = JournalManager.getJournal(submission.getJournalId());
