@@ -172,10 +172,7 @@ public class PrivateDataReminderJob extends PipelineJob
         public boolean shouldPost() { return shouldPost; }
         public String getReason() { return reason; }
     }
-
-    /**
-     * Container for publication search results used during reminder processing
-     */
+    
     /**
      * Checks for publications associated with the experiment if enabled in settings
      * @param expAnnotations The experiment to check
@@ -184,9 +181,10 @@ public class PrivateDataReminderJob extends PipelineJob
      * @param log Logger for diagnostic messages
      * @return NcbiArticleMatch with search result
      */
-    private static PublicationMatch searchForPublication(@NotNull ExperimentAnnotations expAnnotations,
+    private PublicationMatch searchForPublication(@NotNull ExperimentAnnotations expAnnotations,
                                                          @NotNull PrivateDataReminderSettings settings,
                                                          boolean forceCheck,
+                                                         @NotNull User user,
                                                          @NotNull Logger log)
     {
         // Check if publication checking is enabled (either globally or forced for this run)
@@ -200,11 +198,46 @@ public class PrivateDataReminderJob extends PipelineJob
         DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(expAnnotations);
         if (datasetStatus != null)
         {
-            // If user has dismissed the publication suggestion, don't search again
-            if (Boolean.TRUE.equals(datasetStatus.getUserDismissedPublication()))
+            // If user has dismissed the publication suggestion, check search delay
+            Date dismissedDate = datasetStatus.getUserDismissedPublication();
+            if (dismissedDate != null)
             {
-                log.info(String.format("User has dismissed publication suggestion for experiment %d; skipping search", expAnnotations.getId()));
-                return null;
+                if (settings.isPublicationDismissalRecent(datasetStatus))
+                {
+                    log.info(String.format("User dismissed publication for experiment %d on %s; Publication search deferred (%d months)",
+                            expAnnotations.getId(), dismissedDate, settings.getPublicationSearchFrequency()));
+                    return null;
+                }
+
+                // Search deferral expired — re-search NCBI
+                log.info(String.format("Search deferral expired for experiment %d (dismissed %s); re-searching NCBI",
+                        expAnnotations.getId(), dismissedDate));
+                try
+                {
+                    PublicationMatch newMatch = NcbiPublicationSearchService.get().searchForPublication(expAnnotations, log);
+                    if (newMatch != null && !newMatch.getPublicationId().equals(datasetStatus.getPotentialPublicationId()))
+                    {
+                        // Different publication found — return it (caller will save and notify)
+                        log.info(String.format("New publication %s found for experiment %d (previously dismissed %s)",
+                                newMatch.getPublicationId(), expAnnotations.getId(), datasetStatus.getPotentialPublicationId()));
+                        return newMatch;
+                    }
+                    else
+                    {
+                        // Same publication or nothing found — update dismissal date to restart search delay
+                        log.info(String.format("No new publication for experiment %d; resetting search delay",
+                                expAnnotations.getId()));
+                        datasetStatus.setUserDismissedPublication(new Date());
+                        DatasetStatusManager.update(datasetStatus, user);
+                        return null;
+                    }
+                }
+                catch (Exception e)
+                {
+                    log.error(String.format("Error re-searching publication for experiment %d: %s",
+                            expAnnotations.getId(), e.getMessage()), e);
+                    return null;
+                }
             }
 
             // If we already have a cached publication ID, use it
@@ -332,7 +365,7 @@ public class PrivateDataReminderJob extends PipelineJob
         }
 
         // Check for publications if enabled
-        PublicationMatch publicationResult = searchForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, processingResults._log);
+        PublicationMatch publicationResult = searchForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, getUser(), processingResults._log);
 
         if (!context.isTestMode())
         {
@@ -392,12 +425,17 @@ public class PrivateDataReminderJob extends PipelineJob
         {
             datasetStatus.setLastReminderDate(new Date());
 
-            // Save publication search results if found and not already cached
-            if (publicationResult != null && StringUtils.isBlank(datasetStatus.getPotentialPublicationId()))
+            // Update publication search results
+            if (publicationResult != null)
             {
-                datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
-                datasetStatus.setPublicationType(publicationResult.getPublicationType().name());
-                datasetStatus.setPublicationMatchInfo(publicationResult.getMatchInfo());
+                // If this is a new/different publication, update it and clear dismissal
+                if (!publicationResult.getPublicationId().equals(datasetStatus.getPotentialPublicationId()))
+                {
+                    datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
+                    datasetStatus.setPublicationType(publicationResult.getPublicationType().name());
+                    datasetStatus.setPublicationMatchInfo(publicationResult.getMatchInfo());
+                    datasetStatus.setUserDismissedPublication(null); // Clear dismissal for new publication
+                }
             }
 
             DatasetStatusManager.update(datasetStatus, getUser());

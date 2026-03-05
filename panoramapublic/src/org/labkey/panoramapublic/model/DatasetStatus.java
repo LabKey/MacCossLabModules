@@ -16,7 +16,7 @@ public class DatasetStatus  extends DbEntity
     private String _potentialPublicationId;
     private String _publicationType;
     private String _publicationMatchInfo;
-    private Boolean _userDismissedPublication;
+    private Date _userDismissedPublication;
 
     public int getExperimentAnnotationsId()
     {
@@ -115,12 +115,12 @@ public class DatasetStatus  extends DbEntity
         _publicationMatchInfo = publicationMatchInfo;
     }
 
-    public Boolean getUserDismissedPublication()
+    public Date getUserDismissedPublication()
     {
         return _userDismissedPublication;
     }
 
-    public void setUserDismissedPublication(Boolean userDismissedPublication)
+    public void setUserDismissedPublication(Date userDismissedPublication)
     {
         _userDismissedPublication = userDismissedPublication;
     }

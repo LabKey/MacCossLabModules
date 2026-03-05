@@ -157,6 +157,19 @@
                     </div>
                 </td>
             </tr>
+            <tr>
+                <td class="labkey-form-label">
+                    <span><%=h(PrivateDataReminderSettings.PROP_PUBLICATION_SEARCH_FREQUENCY)%></span>
+                </td>
+                <td>
+                    <input style="padding:0 10px 0 0;" type="text" name="publicationSearchFrequency" value="<%=form.getPublicationSearchFrequency()%>" />
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
+                        Number of months to wait after a user dismisses a publication suggestion before re-searching.
+                        <br/>
+                        If a different publication is found after this delay, the submitter will be notified again.
+                    </div>
+                </td>
+            </tr>
             <tr><td colspan=2">
                 <%=button("Save").submit(true)%>
                 <%=button("Cancel").href(panoramaPublicAdminUrl)%>

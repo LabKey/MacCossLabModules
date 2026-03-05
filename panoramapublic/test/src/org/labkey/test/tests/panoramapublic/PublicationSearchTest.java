@@ -173,8 +173,17 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         goToProjectHome(panoramaPublicProject);
         goToDataPipeline();
         goToDataPipeline().clickStatusLink(0);
-        String skipMessage = String.format("User has dismissed publication suggestion for experiment %d; skipping search", exptId1);
+        String skipMessage = String.format("User dismissed publication for experiment %d", exptId1);
         assertTextPresent(skipMessage);
+        assertTextPresent("Publication search deferred");
+
+        // Verify that the reminder for the dismissed dataset 1 is about making data public, not about a publication.
+        // The thread already has a "Publication Found" message from Step 6 (before dismissal),
+        // so we check that the pipeline job posted a "Status Update" message was also posted after the "Publication Found" message.
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_1);
+        waitForText("Submitted - " + shortAccessUrl1);
+        assertTextPresentInThisOrder("Action Required: Publication Found for Your Data on Panorama Public",
+                "Action Required: Status Update for Your Private Data on Panorama Public");
 
         // Step 10: Verify that the pipeline job found a publication for dataset 2 and posted a message
         goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_2);

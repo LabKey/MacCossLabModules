@@ -874,7 +874,7 @@
                 <description>Information about which fields (e.g. PXD, Panorama link, title etc.) matched</description>
             </column>
             <column columnName="UserDismissedPublication">
-                <description>User indicated the found publication is not related to their data</description>
+                <description>Date when the user dismissed the publication suggestion for this dataset</description>
             </column>
         </columns>
     </table>

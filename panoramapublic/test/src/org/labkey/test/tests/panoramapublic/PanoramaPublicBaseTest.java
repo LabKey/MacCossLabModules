@@ -619,7 +619,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
     /**
      * Navigate to the Private Data Reminder Settings page and read the current form values.
-     * Returns a map with keys: extensionLength, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch.
+     * Returns a map with keys: extensionLength, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch, publicationSearchFrequency.
      */
     protected Map<String, String> getPrivateDataReminderSettings()
     {
@@ -632,6 +632,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         settings.put("delayUntilFirstReminder", getFormElement(Locator.input("delayUntilFirstReminder")));
         settings.put("reminderFrequency", getFormElement(Locator.input("reminderFrequency")));
         settings.put("enablePublicationSearch", String.valueOf(Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected()));
+        settings.put("publicationSearchFrequency", getFormElement(Locator.input("publicationSearchFrequency")));
         return settings;
     }
 

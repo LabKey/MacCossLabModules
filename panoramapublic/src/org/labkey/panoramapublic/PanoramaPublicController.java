@@ -10118,6 +10118,14 @@ public class PanoramaPublicController extends SpringActionController
             {
                 errors.reject(ERROR_MSG, "Value for 'Extension duration' cannot be less than 0.");
             }
+            if (form.getPublicationSearchFrequency() == null)
+            {
+                errors.reject(ERROR_MSG, "Please enter a value for 'Publication search frequency'.");
+            }
+            else if (form.getPublicationSearchFrequency() < 1)
+            {
+                errors.reject(ERROR_MSG, "Value for 'Publication search frequency' must be at least 1.");
+            }
             if (form.getReminderTime() == null)
             {
                 errors.reject(ERROR_MSG, "Please enter a value for 'Reminder time'.");
@@ -10141,6 +10149,7 @@ public class PanoramaPublicController extends SpringActionController
                 form.setReminderFrequency(settings.getReminderFrequency());
                 form.setExtensionLength(settings.getExtensionLength());
                 form.setEnablePublicationSearch(settings.isEnablePublicationSearch());
+                form.setPublicationSearchFrequency(settings.getPublicationSearchFrequency());
             }
 
             VBox view = new VBox();
@@ -10160,6 +10169,7 @@ public class PanoramaPublicController extends SpringActionController
             settings.setReminderFrequency(form.getReminderFrequency());
             settings.setExtensionLength(form.getExtensionLength());
             settings.setEnablePublicationSearch(form.isEnablePublicationSearch());
+            settings.setPublicationSearchFrequency(form.getPublicationSearchFrequency());
             PrivateDataReminderSettings.save(settings);
 
             PrivateDataMessageScheduler.getInstance().initialize(settings.isEnableReminders());
@@ -10198,6 +10208,7 @@ public class PanoramaPublicController extends SpringActionController
         private Integer _reminderFrequency;
         private Integer _delayUntilFirstReminder;
         private boolean _enablePublicationSearch;
+        private Integer _publicationSearchFrequency;
 
         public boolean isEnabled()
         {
@@ -10257,6 +10268,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setEnablePublicationSearch(boolean enablePublicationSearch)
         {
             _enablePublicationSearch = enablePublicationSearch;
+        }
+
+        public Integer getPublicationSearchFrequency()
+        {
+            return _publicationSearchFrequency;
+        }
+
+        public void setPublicationSearchFrequency(Integer publicationSearchFrequency)
+        {
+            _publicationSearchFrequency = publicationSearchFrequency;
         }
     }
 
@@ -10678,7 +10699,7 @@ public class PanoramaPublicController extends SpringActionController
             {
                 errors.reject(ERROR_MSG, "No publication suggestion exists for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
             }
-            else if (Boolean.TRUE.equals(_datasetStatus.getUserDismissedPublication()))
+            else if (_datasetStatus.getUserDismissedPublication() != null)
             {
                 errors.reject(ERROR_MSG, "The publication suggestion for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
                         + " has already been dismissed");
@@ -10697,7 +10718,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected void updateDatasetStatus(DatasetStatus datasetStatus)
         {
-            datasetStatus.setUserDismissedPublication(true);
+            datasetStatus.setUserDismissedPublication(new Date());
         }
 
         @Override
@@ -10753,7 +10774,7 @@ public class PanoramaPublicController extends SpringActionController
             // Check if any displayed match was dismissed by the user
             boolean showDismissedColumn = false;
             String dismissedPubId = null;
-            if (datasetStatus != null && Boolean.TRUE.equals(datasetStatus.getUserDismissedPublication())
+            if (datasetStatus != null && datasetStatus.getUserDismissedPublication() != null
                     && datasetStatus.getPotentialPublicationId() != null)
             {
                 dismissedPubId = datasetStatus.getPotentialPublicationId();
@@ -10926,7 +10947,7 @@ public class PanoramaPublicController extends SpringActionController
 
             // Check if the user has already dismissed this publication suggestion
             DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
-            if (datasetStatus != null && Boolean.TRUE.equals(datasetStatus.getUserDismissedPublication())
+            if (datasetStatus != null && datasetStatus.getUserDismissedPublication() != null
                     && form.getPublicationId().equals(datasetStatus.getPotentialPublicationId()))
             {
                 errors.reject(ERROR_MSG, "The user has already dismissed the publication suggestion "
@@ -10995,7 +11016,7 @@ public class PanoramaPublicController extends SpringActionController
             datasetStatus.setPotentialPublicationId(form.getPublicationId());
             datasetStatus.setPublicationType(pubType.name());
             datasetStatus.setPublicationMatchInfo(form.getMatchInfo());
-            datasetStatus.setUserDismissedPublication(false);
+            datasetStatus.setUserDismissedPublication(null);
             datasetStatus.setLastReminderDate(new Date());
 
             if (datasetStatus.getId() == 0)

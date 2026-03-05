@@ -25,6 +25,7 @@ public class PrivateDataReminderSettings
     public static final String PROP_REMINDER_FREQUENCY = "Reminder frequency (months)";
     public static final String PROP_EXTENSION_LENGTH = "Extension duration (months)";
     public static final String PROP_ENABLE_PUBLICATION_SEARCH = "Enable publication search";
+    public static final String PROP_PUBLICATION_SEARCH_FREQUENCY = "Publication search frequency (months)";
 
     private static final boolean DEFAULT_ENABLE_REMINDERS = false;
     public static final String DEFAULT_REMINDER_TIME = "8:00 AM";
@@ -32,6 +33,7 @@ public class PrivateDataReminderSettings
     private static final int DEFAULT_REMINDER_FREQUENCY = 1; // Send reminders once a month, unless extension or deletion was requested.
     private static final int DEFAULT_EXTENSION_LENGTH = 6; // Private status of a dataset can be extended by 6 months.
     private static final boolean DEFAULT_ENABLE_PUBLICATION_SEARCH = false;
+    private static final int DEFAULT_PUBLICATION_SEARCH_FREQUENCY = 3; // Re-search every 3 months after dismissal
 
     public static final String DATE_FORMAT_PATTERN = "MMMM d, yyyy";
     public static final String REMINDER_TIME_FORMAT = "h:mm a";
@@ -43,6 +45,7 @@ public class PrivateDataReminderSettings
     private int _reminderFrequency;
     private int _extensionLength;
     private boolean _enablePublicationSearch;
+    private int _publicationSearchFrequency;
 
     public static PrivateDataReminderSettings get()
     {
@@ -78,6 +81,11 @@ public class PrivateDataReminderSettings
                     ? DEFAULT_ENABLE_PUBLICATION_SEARCH
                     : Boolean.valueOf(settingsMap.get(PROP_ENABLE_PUBLICATION_SEARCH));
             settings.setEnablePublicationSearch(enablePublicationCheck);
+
+            int publicationSearchFrequency = settingsMap.get(PROP_PUBLICATION_SEARCH_FREQUENCY) == null
+                    ? DEFAULT_PUBLICATION_SEARCH_FREQUENCY
+                    : Integer.valueOf(settingsMap.get(PROP_PUBLICATION_SEARCH_FREQUENCY));
+            settings.setPublicationSearchFrequency(publicationSearchFrequency);
         }
         else
         {
@@ -87,6 +95,7 @@ public class PrivateDataReminderSettings
             settings.setExtensionLength(DEFAULT_EXTENSION_LENGTH);
             settings.setReminderTime(parseReminderTime(DEFAULT_REMINDER_TIME));
             settings.setEnablePublicationSearch(DEFAULT_ENABLE_PUBLICATION_SEARCH);
+            settings.setPublicationSearchFrequency(DEFAULT_PUBLICATION_SEARCH_FREQUENCY);
         }
 
         return settings;
@@ -122,6 +131,7 @@ public class PrivateDataReminderSettings
         settingsMap.put(PROP_EXTENSION_LENGTH, String.valueOf(settings.getExtensionLength()));
         settingsMap.put(PROP_REMINDER_TIME, settings.getReminderTimeFormatted());
         settingsMap.put(PROP_ENABLE_PUBLICATION_SEARCH, String.valueOf(settings.isEnablePublicationSearch()));
+        settingsMap.put(PROP_PUBLICATION_SEARCH_FREQUENCY, String.valueOf(settings.getPublicationSearchFrequency()));
         settingsMap.save();
     }
 
@@ -190,6 +200,16 @@ public class PrivateDataReminderSettings
         _enablePublicationSearch = enablePublicationSearch;
     }
 
+    public int getPublicationSearchFrequency()
+    {
+        return _publicationSearchFrequency;
+    }
+
+    public void setPublicationSearchFrequency(int publicationSearchFrequency)
+    {
+        _publicationSearchFrequency = publicationSearchFrequency;
+    }
+
     public @Nullable Date getReminderValidUntilDate(@NotNull DatasetStatus status)
     {
         return status.getLastReminderDate() == null ? null : addMonths(status.getLastReminderDate(), getReminderFrequency());
@@ -208,6 +228,14 @@ public class PrivateDataReminderSettings
     public boolean isExtensionValid(@NotNull DatasetStatus status)
     {
         return isDateInFuture(getExtensionValidUntilDate(status));
+    }
+
+    public boolean isPublicationDismissalRecent(@NotNull DatasetStatus status)
+    {
+        Date dismissed = status.getUserDismissedPublication();
+        if (dismissed == null) return false;
+        Date searchDeferralEnd = addMonths(dismissed, getPublicationSearchFrequency());
+        return isDateInFuture(searchDeferralEnd);
     }
 
     public @Nullable String extensionValidUntilFormatted(@NotNull DatasetStatus status)
