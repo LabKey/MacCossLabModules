@@ -58,7 +58,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     private static final Logger LOG = LogHelper.getLogger(NcbiPublicationSearchServiceImpl.class, "Search NCBI for publications associated with Panorama Public datasets");
 
     // Static holder for the service instance
-    private static NcbiPublicationSearchService _instance = new NcbiPublicationSearchServiceImpl();
+    private static volatile NcbiPublicationSearchService _instance = new NcbiPublicationSearchServiceImpl();
 
     public static NcbiPublicationSearchService getInstance()
     {

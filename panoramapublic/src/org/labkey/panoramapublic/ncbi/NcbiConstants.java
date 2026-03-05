@@ -4,7 +4,7 @@ import org.jetbrains.annotations.Nullable;
 
 public class NcbiConstants
 {
-    /** Regex for validating numeric PubMed/PMC IDs (1-8 digits). */
+    /** Regex for validating PubMed IDs (1-8 digits). Not used for PMC IDs which may be longer. */
     public static final String PUBMED_ID = "^[0-9]{1,8}$"; // https://libguides.library.arizona.edu/c.php?g=406096&p=2779570
 
     public enum DB

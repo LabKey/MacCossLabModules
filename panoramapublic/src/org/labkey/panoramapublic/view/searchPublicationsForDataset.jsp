@@ -100,7 +100,7 @@
                        data-matchinfo="<%=h(match.getMatchInfo())%>" />
             </td>
             <td>
-                <%=simpleLink(match.getCitation() != null ? match.getCitation() : match.getPublicationUrl(), match.getPublicationUrl()).target("_blank")%>
+                <%=simpleLink(match.getCitation() != null ? match.getCitation() : match.getPublicationIdLabel(), match.getPublicationUrl()).target("_blank")%>
             </td>
             <td><%=h(match.getMatchInfo())%></td>
             <% if (bean.isShowDismissedColumn()) { %>
