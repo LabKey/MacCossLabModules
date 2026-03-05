@@ -40,7 +40,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -74,7 +74,6 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     private static final String ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi";
     private static final String ESUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi";
 
-
     // NCBI Literature Citation Exporter endpoints
     private static final String PUBMED_CITATION_EXPORTER_URL = "https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/?format=citation&id=";
     private static final String PMC_CITATION_EXPORTER_URL =    "https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pmc/?format=citation&id=";
@@ -83,7 +82,10 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     private static final int RATE_LIMIT_DELAY_MS = 400; // NCBI allows 3 requests/sec
     private static final int TIMEOUT_MS = 10000; // 10 seconds
 
-    private static final String NCBI_EMAIL = "panorama@proteinms.net";
+    // NCBI suggests using the 'tool' and 'email' parameters on E-utilities URLs
+    // https://www.nlm.nih.gov/dataguide/eutilities/utilities.html
+    private static final String TOOL = "PanoramaPublic";
+    private static final String EMAIL = "panorama@proteinms.net";
 
     // Preprint indicators
     private static final String[] PREPRINT_INDICATORS = {
@@ -94,6 +96,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     // Title keyword extraction
     private static final int MIN_KEYWORD_LENGTH = 3;
     private static final double KEYWORD_MATCH_THRESHOLD = 0.6; // 60% of keywords must match
+    private static final int MIN_KEYWORDS_FOR_MATCH = 2;
 
     // Stop words for title keyword matching. These words are not meaningful discriminators between papers.
     // Function words: articles, prepositions, conjunctions, auxiliary verbs, pronouns.
@@ -101,11 +104,11 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     private static final Set<String> TITLE_STOP_WORDS = Set.of(
 
             // Function words
-            "the", "this", "that", "these", "those", "its",                          // articles / determiners
+            "the", "this", "that", "these", "those", "its",                          // articles
             "for", "with", "from", "into", "upon", "via", "after", "about",          // prepositions
             "between", "through", "across", "under", "over", "during",
             "and", "but", "than",                                                    // conjunctions
-            "are", "was", "were", "been", "have", "has", "can", "may",               // auxiliary / modal verbs
+            "are", "was", "were", "been", "have", "has", "can", "may",               // auxiliary verbs
             "our", "their",                                                          // pronouns
             "not", "all", "also", "both", "each", "how", "use", "used",              // other function words
             "here", "well", "two", "one", "more", "most", "only", "such", "other", "which",
@@ -123,6 +126,13 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     @Override
     public @Nullable String getCitation(String publicationId, DB database)
     {
+        return getCitation(publicationId, database, null);
+    }
+
+    public @Nullable String getCitation(String publicationId, DB database, @Nullable Logger logger)
+    {
+        Logger log = getLog(logger);
+
         if (publicationId == null || !publicationId.matches(NcbiConstants.PUBMED_ID))
         {
             return null;
@@ -137,7 +147,6 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             URL url = new URL(queryUrl);
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
-            conn.setRequestProperty("User-Agent", "PanoramaPublic/1.0");
 
             int status = conn.getResponseCode();
 
@@ -148,12 +157,12 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                 {
                     response = IOUtils.toString(in, StandardCharsets.UTF_8);
                 }
-                return parseCitation(response, publicationId, database);
+                return parseCitation(response, publicationId, database, log);
             }
         }
         catch (IOException e)
         {
-            LOG.error("Error submitting a request to NCBI Literature Citation Exporter. URL: " + queryUrl, e);
+            log.error("Error submitting a request to NCBI Literature Citation Exporter. URL: " + queryUrl, e);
         }
         finally
         {
@@ -171,6 +180,12 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
     static String parseCitation(String response, String publicationId, DB database)
     {
+        return parseCitation(response, publicationId, database, null);
+    }
+
+    static String parseCitation(String response, String publicationId, DB database, @Nullable Logger logger)
+    {
+        Logger log = getLog(logger);
         try
         {
             var jsonObject = new JSONObject(response);
@@ -179,7 +194,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (JSONException e)
         {
-            LOG.error("Error parsing response from NCBI Literature Citation Exporter for " + database.getLabel() + " ID " + publicationId, e);
+            log.error("Error parsing response from NCBI Literature Citation Exporter for " + database.getLabel() + " ID " + publicationId, e);
         }
         return null;
     }
@@ -226,7 +241,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             for (PublicationMatch match : matchedArticles)
             {
                 rateLimit();
-                match.setCitation(getCitation(match.getPublicationId(), match.getPublicationType()));
+                match.setCitation(getCitation(match.getPublicationId(), match.getPublicationType(), log));
             }
         }
 
@@ -239,73 +254,51 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
      */
     private @NotNull List<PublicationMatch> searchPmc(@NotNull ExperimentAnnotations expAnnotations, Logger log)
     {
-        // Track PMC IDs found by each strategy
+        Map<String, String> searchTermsByStrategy = buildSearchTerms(expAnnotations);
+
+        // Search PMC using each strategy, accumulating results
         Map<String, List<String>> pmcIdsByStrategy = new HashMap<>();
-
-        // Step 1: Search PMC by PX ID
-        if (!StringUtils.isBlank(expAnnotations.getPxid()))
-        {
-            log.debug("Searching PMC by PX ID: {}", expAnnotations.getPxid());
-            List<String> ids = searchPmc(quote(expAnnotations.getPxid()), log);
-            if (!ids.isEmpty())
-            {
-                pmcIdsByStrategy.put(MATCH_PX_ID, ids);
-                log.debug("Found {} PMC articles by PX ID", ids.size());
-            }
-            rateLimit();
-        }
-
-        // Step 2: Search PMC by Panorama URL
-        if (expAnnotations.getShortUrl() != null)
-        {
-            String panoramaUrl = expAnnotations.getShortUrl().renderShortURL();
-            log.debug("Searching PMC by Panorama URL: {}", panoramaUrl);
-            List<String> ids = searchPmc(quote(panoramaUrl), log);
-            if (!ids.isEmpty())
-            {
-                pmcIdsByStrategy.put(MATCH_PANORAMA_URL, ids);
-                log.debug("Found {} PMC articles by Panorama URL", ids.size());
-            }
-            rateLimit();
-        }
-
-        // Step 3: Search PMC by DOI
-        if (!StringUtils.isBlank(expAnnotations.getDoi()))
-        {
-            String doiUrl = expAnnotations.getDoi().startsWith("http")
-                ? expAnnotations.getDoi()
-                : DataCiteService.toUrl(expAnnotations.getDoi());
-            log.debug("Searching PMC by DOI: {}", doiUrl);
-            List<String> ids = searchPmc(quote(doiUrl), log);
-            if (!ids.isEmpty())
-            {
-                pmcIdsByStrategy.put(MATCH_DOI, ids);
-                log.debug("Found {} PMC articles by DOI", ids.size());
-            }
-            rateLimit();
-        }
-
-        // Accumulate unique PMC IDs and track which strategies found each
-        Set<String> uniquePmcIds = new HashSet<>();
-        Map<String, List<String>> idToStrategies = new HashMap<>();
-
-        for (Map.Entry<String, List<String>> entry : pmcIdsByStrategy.entrySet())
+        for (Map.Entry<String, String> entry : searchTermsByStrategy.entrySet())
         {
             String strategy = entry.getKey();
-            for (String id : entry.getValue())
+            String searchTerm = entry.getValue();
+            log.debug("Searching PMC by {}: {}", strategy, searchTerm);
+            List<String> ids = searchPmc(quote(searchTerm), log);
+            if (!ids.isEmpty())
             {
-                uniquePmcIds.add(id);
-                idToStrategies.computeIfAbsent(id, k -> new ArrayList<>()).add(strategy);
+                pmcIdsByStrategy.put(strategy, ids);
+                log.debug("Found {} PMC articles by {}", ids.size(), strategy);
             }
+            rateLimit();
         }
 
-        log.info("Total unique PMC IDs found: {}", uniquePmcIds.size());
+        // Build reverse map: PMC ID -> strategies that found it
+        Map<String, List<String>> idToStrategies = new HashMap<>();
+        pmcIdsByStrategy.forEach((strategy, ids) ->
+                ids.forEach(id -> idToStrategies.computeIfAbsent(id, k -> new ArrayList<>()).add(strategy)));
+
+        log.info("Total unique PMC IDs found: {}", idToStrategies.size());
 
         // Fetch and verify PMC articles
-        List<PublicationMatch> pmcArticles = fetchAndVerifyPmcArticles(uniquePmcIds, idToStrategies, expAnnotations, log);
+        List<PublicationMatch> pmcArticles = fetchAndVerifyPmcArticles(idToStrategies.keySet(), idToStrategies, expAnnotations, log);
 
         // Apply priority filtering
         return applyPriorityFiltering(pmcArticles, expAnnotations.getCreated(), log);
+    }
+
+    private @NotNull Map<String, String> buildSearchTerms(@NotNull ExperimentAnnotations expAnnotations)
+    {
+        Map<String, String> terms = new LinkedHashMap<>();
+
+        if (!StringUtils.isBlank(expAnnotations.getPxid()))
+            terms.put(MATCH_PX_ID, expAnnotations.getPxid());
+        if (expAnnotations.getShortUrl() != null)
+            terms.put(MATCH_PANORAMA_URL, expAnnotations.getShortUrl().renderShortURL());
+        if (!StringUtils.isBlank(expAnnotations.getDoi()))
+            terms.put(MATCH_DOI, expAnnotations.getDoi().startsWith("http")
+                    ? expAnnotations.getDoi()
+                    : DataCiteService.toUrl(expAnnotations.getDoi()));
+        return terms;
     }
 
     /**
@@ -335,7 +328,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             "&term=" + encodedQuery +
             "&retmax=" + NcbiPublicationSearchService.MAX_RESULTS +
             "&retmode=json" +
-            "&email=" + URLEncoder.encode(NCBI_EMAIL, StandardCharsets.UTF_8);
+            "&tool=" + TOOL +
+            "&email=" + URLEncoder.encode(EMAIL, StandardCharsets.UTF_8);
 
         try
         {
@@ -352,7 +346,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (IOException | JSONException e)
         {
-            log.error("Error searching {} with query: {}", database, query, e);
+            log.error("Error searching " + database + " with query: " + query , e);
             return Collections.emptyList();
         }
     }
@@ -381,9 +375,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                 .setConnectionManager(connectionManager)
                 .build())
         {
-            HttpGet get = new HttpGet(url);
-            get.setHeader("User-Agent", "PanoramaPublic/1.0");
-            return client.execute(get, response -> {
+            HttpGet getRequest = new HttpGet(url);
+            return client.execute(getRequest, response -> {
                 int status = response.getCode();
                 if (status < 200 || status >= 300)
                 {
@@ -423,7 +416,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             "?db=" + database +
             "&id=" + URLEncoder.encode(idString, StandardCharsets.UTF_8) +
             "&retmode=json" +
-            "&email=" + URLEncoder.encode(NCBI_EMAIL, StandardCharsets.UTF_8);
+            "&tool=" + TOOL +
+            "&email=" + URLEncoder.encode(EMAIL, StandardCharsets.UTF_8);
 
         try
         {
@@ -556,17 +550,17 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Sort articles by proximity of publication date to the reference date (experiment creation date).
-     * Articles with dates closest to the reference date come first.
+     * Sort articles by proximity of publication date to the experiment creation date (proxy for data submission date)
+     * Articles with dates closest to the experiment creation date come first.
      * Articles without a publication date are sorted to the end.
      */
-    static List<PublicationMatch> sortByDateProximity(List<PublicationMatch> articles, @NotNull Date referenceDate)
+    static List<PublicationMatch> sortByDateProximity(List<PublicationMatch> articles, @NotNull Date experimentDate)
     {
         if (articles.size() <= 1)
         {
             return articles;
         }
-        long refTime = referenceDate.getTime();
+        long refTime = experimentDate.getTime();
         articles = new ArrayList<>(articles);
         articles.sort(Comparator.comparingLong(a ->
             a.getPublicationDate() != null ? Math.abs(a.getPublicationDate().getTime() - refTime) : Long.MAX_VALUE
@@ -702,7 +696,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
             String authorName = author.optString("name", "").toLowerCase();
 
-            // Match format: "LastName FirstInitial" or "LastName F"
+            // Match format: "LastName FirstInitial"
             if (authorName.startsWith(lastNameLower))
             {
                 String afterLastName = authorName.substring(lastNameLower.length()).trim();
@@ -746,29 +740,31 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
 
         // Bi-directional keyword matching: match if either direction meets the threshold.
-        // This handles cases where one title is much more specific than the other.
-        return keywordsMatch(datasetTitle, normalizedArticleTitle)
-            || keywordsMatch(metadata.optString("title", metadata.optString("sorttitle", "")), normalizedDatasetTitle);
+        List<String> articleKeywords = extractTitleKeywords(normalizedArticleTitle);
+        List<String> datasetKeywords = extractTitleKeywords(normalizedDatasetTitle);
+
+        return keywordsMatch(datasetKeywords, articleKeywords)
+            || keywordsMatch(articleKeywords, datasetKeywords);
     }
 
     /**
-     * Check if keywords extracted from {@code sourceTitle} are present in {@code normalizedTarget}.
-     * Returns true if at least 60% of keywords match (with a minimum of 2).
+     * Check if at least 60% of {@code sourceKeywords} are present in {@code targetKeywords} (with a minimum of 2).
      */
-    private static boolean keywordsMatch(String sourceTitle, String normalizedTarget)
+    private static boolean keywordsMatch(List<String> sourceKeywords, List<String> targetKeywords)
     {
-        List<String> keywords = extractTitleKeywords(sourceTitle);
-        if (keywords.isEmpty())
+        if (sourceKeywords.size() < MIN_KEYWORDS_FOR_MATCH || targetKeywords.size() < MIN_KEYWORDS_FOR_MATCH)
         {
             return false;
         }
 
-        long matchCount = keywords.stream()
-            .filter(keyword -> normalizedTarget.contains(keyword))
+        Set<String> targetSet = new java.util.HashSet<>(targetKeywords);
+
+        long matchCount = sourceKeywords.stream()
+            .filter(targetSet::contains)
             .count();
 
-        int required = (int) Math.ceil(keywords.size() * KEYWORD_MATCH_THRESHOLD);
-        required = Math.max(required, Math.min(2, keywords.size()));
+        int required = (int) Math.ceil(sourceKeywords.size() * KEYWORD_MATCH_THRESHOLD);
+        required = Math.max(required, Math.min(2, sourceKeywords.size()));
         return matchCount >= required;
     }
 
@@ -838,27 +834,48 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
     /**
      * Parse publication date from ESummary metadata.
-     * Tries "pubdate" first, then "epubdate". Dates are typically in "YYYY Mon DD" or "YYYY Mon" format.
+     * Tries "sortpubdate" or "sortdate" first (format "YYYY/MM/DD HH:MM"), then falls back to
+     * "pubdate" and "epubdate" (formats "YYYY Mon DD", "YYYY Mon", or "YYYY").
      */
     static @Nullable Date parsePublicationDate(JSONObject metadata, Logger log)
     {
-        String dateStr = metadata.optString("pubdate", "");
-        if (StringUtils.isBlank(dateStr))
+        // Try sort dates first — these have a consistent "YYYY/MM/DD HH:MM" format
+        for (String field : new String[]{"sortpubdate", "sortdate"})
         {
-            dateStr = metadata.optString("epubdate", "");
+            String dateStr = metadata.optString(field, "").trim();
+            if (!StringUtils.isBlank(dateStr))
+            {
+                try
+                {
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm");
+                    sdf.setLenient(false);
+                    return sdf.parse(dateStr);
+                }
+                catch (ParseException ignored)
+                {
+                }
+            }
+        }
+
+        // Fall back to pubdate / epubdate
+        String dateStr = "";
+        for (String field : new String[]{"pubdate", "epubdate"})
+        {
+            dateStr = metadata.optString(field, "").trim();
+            if (!StringUtils.isBlank(dateStr)) break;
         }
         if (StringUtils.isBlank(dateStr))
         {
             return null;
         }
 
-        // NCBI dates are typically "YYYY Mon DD", "YYYY Mon", or "YYYY"
-        String[] formats = {"yyyy MMM dd", "yyyy MMM", "yyyy"};
-        for (String format : formats)
+        for (String format : new String[]{"yyyy MMM dd", "yyyy MMM", "yyyy"})
         {
             try
             {
-                return new SimpleDateFormat(format).parse(dateStr);
+                SimpleDateFormat sdf = new SimpleDateFormat(format);
+                sdf.setLenient(false);
+                return sdf.parse(dateStr);
             }
             catch (ParseException ignored)
             {
@@ -921,8 +938,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             assertFalse(isPreprint(articleMetadata("J Proteome Res", "Journal of Proteome Research")));
 
             // Preprint by source
-            assertTrue(isPreprint(articleMetadata("bioRxiv", "bioRxiv")));
             assertTrue(isPreprint(articleMetadata("medRxiv", "")));
+            assertTrue(isPreprint(articleMetadata("bioRxiv", "bioRxiv : the preprint server for biology")));
 
             // Preprint by journal name
             assertTrue(isPreprint(articleMetadata("", "Research Square")));
@@ -940,27 +957,30 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         @Test
         public void testCheckAuthorMatch()
         {
-            // Standard match: "Sharma V" matches firstName=Vagisha, lastName=Sharma
-            JSONObject metadata = metadataWithAuthors("Sharma V", "Jones AB", "Smith CD");
-            assertTrue(checkAuthorMatch(metadata, "Vagisha", "Sharma"));
+            // Standard match: "Jones A" matches firstName=Andrew, lastName=Jones
+            JSONObject metadata = metadataWithAuthors("Smith CD", "Jones A", "Brown EF");
+            assertTrue(checkAuthorMatch(metadata, "Andrew", "Jones"));
+
+            // Match with multiple initials: "Jones AB" matches firstName=Andrew, lastName=Jones
+            assertTrue(checkAuthorMatch(metadataWithAuthors("Jones AB"), "Andrew", "Jones"));
 
             // Match is case-insensitive
-            assertTrue(checkAuthorMatch(metadataWithAuthors("sharma v"), "Vagisha", "Sharma"));
-            assertTrue(checkAuthorMatch(metadataWithAuthors("SHARMA V"), "vagisha", "sharma"));
+            assertTrue(checkAuthorMatch(metadataWithAuthors("jones a"), "Andrew", "Jones"));
+            assertTrue(checkAuthorMatch(metadataWithAuthors("JONES A"), "andrew", "jones"));
+
+            // Author with full first name: "Jones Andrew"
+            assertTrue(checkAuthorMatch(metadataWithAuthors("Jones Andrew"), "Andrew", "Jones"));
 
             // No matching author
-            assertFalse(checkAuthorMatch(metadataWithAuthors("Jones AB", "Smith CD"), "Vagisha", "Sharma"));
+            assertFalse(checkAuthorMatch(metadataWithAuthors("Smith CD", "Brown EF"), "Andrew", "Jones"));
 
             // Blank first or last name
-            assertFalse(checkAuthorMatch(metadataWithAuthors("Sharma V"), "", "Sharma"));
-            assertFalse(checkAuthorMatch(metadataWithAuthors("Sharma V"), "Vagisha", ""));
-            assertFalse(checkAuthorMatch(metadataWithAuthors("Sharma V"), null, "Sharma"));
+            assertFalse(checkAuthorMatch(metadataWithAuthors("Jones A"), "", "Jones"));
+            assertFalse(checkAuthorMatch(metadataWithAuthors("Jones A"), "Andrew", ""));
+            assertFalse(checkAuthorMatch(metadataWithAuthors("Jones A"), null, "Jones"));
 
             // Empty authors array
-            assertFalse(checkAuthorMatch(new JSONObject(), "Vagisha", "Sharma"));
-
-            // Author with full first name: "Sharma Vagisha"
-            assertTrue(checkAuthorMatch(metadataWithAuthors("Sharma Vagisha"), "Vagisha", "Sharma"));
+            assertFalse(checkAuthorMatch(new JSONObject(), "Andrew", "Jones"));
         }
 
         // -- checkTitleMatch tests --
@@ -969,59 +989,41 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         public void testCheckTitleMatchExact()
         {
             // Exact match (case-insensitive, punctuation-stripped)
-            JSONObject metadata = metadataWithTitle("Quantitative Proteomics of Muscle Fibers");
-            assertTrue(checkTitleMatch(metadata, "Quantitative Proteomics of Muscle Fibers"));
-            assertTrue(checkTitleMatch(metadata, "quantitative proteomics of muscle fibers"));
-            assertTrue(checkTitleMatch(metadata, "Quantitative Proteomics of Muscle Fibers!"));
+            JSONObject metadata = metadataWithTitle("Carafe in silico spectral library generation for DIA");
+            assertTrue(checkTitleMatch(metadata, "Carafe in silico spectral library generation for DIA"));
+            assertTrue(checkTitleMatch(metadata, "carafe in silico spectral library generation for dia"));
+            assertTrue(checkTitleMatch(metadata, "Carafe: in silico spectral library generation for DIA!"));
         }
 
         @Test
         public void testCheckTitleMatchKeywords()
         {
-            // Article: "quantitative proteomics reveals muscle fibers composition"
-            // Dataset: "muscle fibers composition proteomics quantitative patterns"
-            // Dataset keywords: "muscle", "fibers", "composition", "proteomics", "quantitative", "patterns" (6 keywords)
-            // Matches in article: "muscle", "fibers", "composition", "proteomics", "quantitative" (5 of 6 = 83%) -> pass
-            JSONObject metadata = metadataWithTitle("A study of quantitative proteomics reveals muscle fibers composition");
-            assertTrue(checkTitleMatch(metadata, "muscle fibers composition proteomics quantitative patterns"));
+            // Article: "Carafe enables high quality in silico spectral library generation for data-independent acquisition proteomics"
+            // Dataset: "Carafe: a tool for in silico spectral library generation for DIA proteomics"
+            // Dataset keywords: "carafe", "tool", "silico", "spectral", "library", "generation", "dia", "proteomics" (8 keywords)
+            // Matches in article: "carafe", "silico", "spectral", "library", "generation", "proteomics" (6 of 8 = 73%) -> pass
+            JSONObject metadata = metadataWithTitle("Carafe enables high quality in silico spectral library generation for data-independent acquisition proteomics");
+            assertTrue(checkTitleMatch(metadata, "Carafe: a tool for in silico spectral library generation for DIA proteomics"));
 
-            // Keywords not present in article title — well below 60%
-            assertFalse(checkTitleMatch(metadata, "Novel cardiac lipids quantitation in mouse tissue"));
-        }
+            // Keywords not present in article title —  below 60%
+            assertFalse(checkTitleMatch(metadata, "Carafe for generating spectrum libraries from DIA data"));
 
-        @Test
-        public void testCheckTitleMatchThreshold()
-        {
-            // Article contains: "phosphoproteomics", "analysis", "lung", "cancer", "cell", "lines"
-            JSONObject metadata = metadataWithTitle("Phosphoproteomics analysis of lung cancer cell lines");
-
-            // 4 of 5 keywords match (80%) -> pass (threshold is 60%)
-            assertTrue(checkTitleMatch(metadata, "phosphoproteomics lung cancer cell biomarkers"));
-
-            // Only 2 of 5 keywords match (40%) -> fail
-            assertFalse(checkTitleMatch(metadata, "phosphoproteomics kidney heart liver cancer"));
-        }
-
-        @Test
-        public void testCheckTitleMatchShortKeywords()
-        {
-            // Short but meaningful words (3-4 chars) should be extracted as keywords
-            JSONObject metadata = metadataWithTitle("DIA proteomics of lung cell iron metabolism in mice");
-            assertTrue(checkTitleMatch(metadata, "DIA lung cell iron mice proteomics"));
+            // Dataset title tool short
+            assertFalse(checkTitleMatch(metadata, "Carafe"));
         }
 
         @Test
         public void testCheckTitleMatchBidirectional()
         {
-            // Forward direction fails: dataset is very specific, article is short.
-            // Dataset keywords: "comprehensive", "phosphoproteomics", "analysis", "novel", "biomarkers", "lung", "cancer", "cell", "lines" (9)
+            // Forward direction fails: dataset is very specific, article title is short.
+            // Dataset keywords: "comprehensive", "phosphoproteomic", "analysis", "novel", "biomarkers", "lung", "cancer", "cell", "lines" (9)
             // Only "lung", "cancer" found in article (2 of 9 = 22%) -> forward fails
             //
             // Reverse direction passes: article keywords: "lung", "cancer", "proteomics" (3)
-            // All 3 found in dataset -> 100% -> reverse passes
+            // "lung" and "cancer" found in dataset (2 of 3 = 67%) -> passes 60% threshold
             JSONObject metadata = metadataWithTitle("Lung cancer proteomics");
             assertTrue(checkTitleMatch(metadata,
-                    "Comprehensive phosphoproteomics analysis reveals novel biomarkers in lung cancer cell lines"));
+                    "Comprehensive phosphoproteomic analysis reveals novel biomarkers in lung cancer cell lines"));
 
             // Both directions fail — completely unrelated titles
             assertFalse(checkTitleMatch(metadataWithTitle("Cardiac tissue lipidomics"),
@@ -1038,9 +1040,10 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             // Missing title in metadata
             assertFalse(checkTitleMatch(new JSONObject(), "Some title"));
 
-            // Dataset title with only stop words and short words below MIN_KEYWORD_LENGTH
-            // "a the and for with" -> all stop words or < 3 chars -> no keywords
-            assertFalse(checkTitleMatch(metadataWithTitle("Different title entirely"), "a the and for with"));
+            // Stop words in titles should be ignored — only meaningful keywords matter.
+            // All words other than "Cats" and "Dogs" will be ignored
+            assertFalse(checkTitleMatch(metadataWithTitle("The Role of Cats: A study based on all other studies"),
+                    "The Role of Dogs: A study based on all other studies"));
         }
 
         @Test
@@ -1048,6 +1051,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         {
             // When "title" is missing, falls back to "sorttitle"
             JSONObject metadata = new JSONObject();
+            metadata.put("title", "");
             metadata.put("sorttitle", "phosphoproteomics of lung cancer");
             assertTrue(checkTitleMatch(metadata, "Phosphoproteomics of Lung Cancer"));
 
@@ -1150,7 +1154,21 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         @Test
         public void testParsePublicationDate()
         {
-            // "YYYY Mon DD" format
+            // sortpubdate is preferred (format "YYYY/MM/DD HH:MM")
+            assertNotNull(parsePublicationDate(metadataWithDate("sortpubdate", "2025/11/06 00:00"), LOG));
+
+            // sortdate is next
+            assertNotNull(parsePublicationDate(metadataWithDate("sortdate", "2025/11/06 00:00"), LOG));
+
+            // sortpubdate takes priority over pubdate
+            JSONObject metadata = new JSONObject();
+            metadata.put("sortpubdate", "2025/11/06 00:00");
+            metadata.put("pubdate", "2024 Jan");
+            Date parsed = parsePublicationDate(metadata, LOG);
+            assertNotNull(parsed);
+            assertTrue("sortpubdate should be used over pubdate", parsed.toString().contains("2025"));
+
+            // Falls back to "pubdate" when sort dates are absent
             assertNotNull(parsePublicationDate(metadataWithDate("pubdate", "2024 Jan 15"), LOG));
 
             // "YYYY Mon" format
@@ -1174,24 +1192,24 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         @Test
         public void testApplyPriorityFiltering()
         {
-            Date refDate = new Date();
+            Date articleDate = new Date();
 
             // Single article returned as-is
-            PublicationMatch single = createMatch("111", true, false, false, false, false, refDate);
-            List<PublicationMatch> result = applyPriorityFiltering(List.of(single), refDate, LOG);
+            PublicationMatch single = createMatch("111", true, false, false, false, false, articleDate);
+            List<PublicationMatch> result = applyPriorityFiltering(List.of(single), articleDate, LOG);
             assertEquals(1, result.size());
 
             // Articles found by multiple data IDs preferred over single-ID matches
-            PublicationMatch multiId = createMatch("222", true, true, false, true, true, refDate);
-            PublicationMatch singleId = createMatch("333", true, false, false, true, true, refDate);
-            result = applyPriorityFiltering(List.of(singleId, multiId), refDate, LOG);
+            PublicationMatch multiFieldMatch = createMatch("222", true, true, false, true, true, articleDate);
+            PublicationMatch singleFieldMatch = createMatch("333", true, false, false, true, true, articleDate);
+            result = applyPriorityFiltering(List.of(singleFieldMatch, multiFieldMatch), articleDate, LOG);
             assertEquals(1, result.size());
             assertEquals("222", result.get(0).getPublicationId());
 
             // Among single-ID matches, author+title both matching preferred
-            PublicationMatch bothMatch = createMatch("444", true, false, false, true, true, refDate);
-            PublicationMatch authorOnly = createMatch("555", true, false, false, true, false, refDate);
-            result = applyPriorityFiltering(List.of(authorOnly, bothMatch), refDate, LOG);
+            PublicationMatch bothMatch = createMatch("444", true, false, false, true, true, articleDate);
+            PublicationMatch authorOnly = createMatch("555", true, false, false, true, false, articleDate);
+            result = applyPriorityFiltering(List.of(authorOnly, bothMatch), articleDate, LOG);
             assertEquals(1, result.size());
             assertEquals("444", result.get(0).getPublicationId());
         }
@@ -1199,15 +1217,15 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         @Test
         public void testSortByDateProximity()
         {
-            Date refDate = new Date();
-            Date closer = new Date(refDate.getTime() - 86400000L); // 1 day before
-            Date farther = new Date(refDate.getTime() - 86400000L * 365); // 1 year before
+            Date exptSubmitDate = new Date();
+            Date closer = new Date(exptSubmitDate.getTime() - 86400000L); // 1 day before
+            Date farther = new Date(exptSubmitDate.getTime() - 86400000L * 365); // 1 year before
 
             PublicationMatch farMatch = createMatch("111", true, false, false, false, false, farther);
             PublicationMatch closeMatch = createMatch("222", true, false, false, false, false, closer);
             PublicationMatch noDate = createMatch("333", true, false, false, false, false, null);
 
-            List<PublicationMatch> result = sortByDateProximity(List.of(farMatch, noDate, closeMatch), refDate);
+            List<PublicationMatch> result = sortByDateProximity(List.of(farMatch, noDate, closeMatch), exptSubmitDate);
             assertEquals("222", result.get(0).getPublicationId()); // closest
             assertEquals("111", result.get(1).getPublicationId()); // farther
             assertEquals("333", result.get(2).getPublicationId()); // no date last
