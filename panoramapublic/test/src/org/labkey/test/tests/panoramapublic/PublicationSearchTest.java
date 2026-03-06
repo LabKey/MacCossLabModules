@@ -6,6 +6,9 @@ import org.junit.experimental.categories.Category;
 import org.labkey.remoteapi.CommandException;
 import org.labkey.remoteapi.Connection;
 import org.labkey.remoteapi.SimpleGetCommand;
+import org.labkey.remoteapi.query.Filter;
+import org.labkey.remoteapi.query.SelectRowsCommand;
+import org.labkey.remoteapi.query.SelectRowsResponse;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.TestProperties;
@@ -18,15 +21,18 @@ import org.labkey.test.util.DataRegionTable;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.labkey.test.util.PermissionsHelper.READER_ROLE;
 
 @Category({External.class, MacCossLabModules.class})
-@BaseWebDriverTest.ClassTimeout(minutes = 10)
+@BaseWebDriverTest.ClassTimeout(minutes = 7)
 public class PublicationSearchTest extends PanoramaPublicBaseTest
 {
     private static final String SKY_FILE = "MRMer.zip";
@@ -124,6 +130,18 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertTextPresent("Abbatiello SE, Mani DR, Schilling B");
         assertElementPresent(Locator.linkWithHref("https://pubmed.ncbi.nlm.nih.gov/" + PMID_1));
 
+        // Step 6a: Verify DatasetStatus was updated for dataset 1 after notifying submitter
+        Map<String, Object> dsStatus1 = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_1, exptId1);
+        assertNotNull("Expected DatasetStatus row for dataset 1 after notification", dsStatus1);
+        assertNotNull("Expected lastReminderDate to be set after notification", dsStatus1.get("LastReminderDate"));
+        assertEquals("Expected potentialPublicationId to be set", PMID_1, dsStatus1.get("PotentialPublicationId"));
+        assertEquals("Expected publicationType to be PubMed", "PubMed", dsStatus1.get("PublicationType"));
+        assertNotNull("Expected citation to be cached", dsStatus1.get("Citation"));
+
+        // Verify DatasetStatus does NOT exist for dataset 2 yet (no notification sent)
+        Map<String, Object> dsStatus2Before = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
+        assertNull("Expected no DatasetStatus row for dataset 2 before reminders", dsStatus2Before);
+
         // Step 7: Impersonate submitter, dismiss the publication suggestion
         goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_1);
         impersonate(SUBMITTER_1);
@@ -156,18 +174,41 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         clickButton("Notify Submitter");
         assertTextPresent("The user has already dismissed the publication suggestion PubMed ID " + PMID_1 + " for this dataset");
 
-        // Step 9: Run the post reminders pipeline job with publication search enabled
+        // Step 9: Run reminders in TEST MODE — verify DatasetStatus is NOT updated
         // Save current settings so they can be restored in doCleanup
         _originalReminderSettings = getPrivateDataReminderSettings();
         savePrivateDataReminderSettings("2", "0", "0", true);
 
-        // Post reminders with publication search enabled
+        // Post reminders in test mode with publication search enabled
         goToSendRemindersPage(panoramaPublicProject);
         DataRegionTable table = new DataRegionTable("ExperimentAnnotations", getDriver());
         table.checkAllOnPage();
         assertChecked(Locator.checkboxByName("searchPublications"));
+        checkCheckbox(Locator.checkboxByName("testMode"));
         clickButton("Post Reminders", 0);
         waitForPipelineJobsToComplete(1, "Post private data reminder messages", false);
+
+        // Verify test mode was logged
+        goToProjectHome(panoramaPublicProject);
+        goToDataPipeline();
+        goToDataPipeline().clickStatusLink(0);
+        assertTextPresent("RUNNING IN TEST MODE - MESSAGES WILL NOT BE POSTED.");
+
+        // Verify DatasetStatus for dataset 2 was NOT updated in test mode
+        Map<String, Object> dsStatus2TestMode = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
+        assertNull("Expected no DatasetStatus row for dataset 2 after test-mode run", dsStatus2TestMode);
+
+        // Step 10: Run reminders in ACTUAL mode and verify the following:
+        // 1. pipeline job skips searching for publicaiton for dataset 1
+        // 2. message posted for dataset 1 is about reminding user to make data public rather than about a publication
+        // 3. a publication is found for dataset 2 and message posted to the message thread
+        // 4. verify DatasetStatus for dataset 2 IS updated
+        goToSendRemindersPage(panoramaPublicProject);
+        table = new DataRegionTable("ExperimentAnnotations", getDriver());
+        table.checkAllOnPage();
+        assertChecked(Locator.checkboxByName("searchPublications"));
+        clickButton("Post Reminders", 0);
+        waitForPipelineJobsToComplete(2, "Post private data reminder messages", false);
 
         // Verify the pipeline job log contains the skip message for the dismissed dataset 1 publication
         goToProjectHome(panoramaPublicProject);
@@ -178,23 +219,31 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertTextPresent("Publication search deferred");
 
         // Verify that the reminder for the dismissed dataset 1 is about making data public, not about a publication.
-        // The thread already has a "Publication Found" message from Step 6 (before dismissal),
-        // so we check that the pipeline job posted a "Status Update" message was also posted after the "Publication Found" message.
+        // The message thread already has a "Publication Found" message from Step 6 (before dismissal),
+        // so we check that the pipeline job posted a "Status Update" message that will appear after the "Publication Found" message.
         goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_1);
         waitForText("Submitted - " + shortAccessUrl1);
         assertTextPresentInThisOrder("Action Required: Publication Found for Your Data on Panorama Public",
                 "Action Required: Status Update for Your Private Data on Panorama Public");
 
-        // Step 10: Verify that the pipeline job found a publication for dataset 2 and posted a message
+        // Verify that the pipeline job found a publication for dataset 2 and posted a message
         goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_2);
         waitForText("Submitted - " + shortAccessUrl2);
         assertTextPresent("Action Required: Publication Found for Your Data on Panorama Public");
         assertTextPresent("We found a paper that appears to be associated with your private data on Panorama Public");
         assertTextPresent("Wen B, Hsu C, Shteynberg D");
         assertElementPresent(Locator.linkWithHref("https://pubmed.ncbi.nlm.nih.gov/" + PMID_2));
+
+        // Verify DatasetStatus for dataset 2 was updated after actual posting
+        Map<String, Object> dsStatus2AfterPost = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
+        assertNotNull("Expected DatasetStatus row for dataset 2 after actual posting", dsStatus2AfterPost);
+        assertEquals("Expected potentialPublicationId for dataset 2", PMID_2, dsStatus2AfterPost.get("PotentialPublicationId"));
+        assertNotNull("Expected publicationType for dataset 2", dsStatus2AfterPost.get("PublicationType"));
+        assertNotNull("Expected lastReminderDate for dataset 2", dsStatus2AfterPost.get("LastReminderDate"));
+        assertNotNull("Expected citation to be cached for dataset 2", dsStatus2AfterPost.get("Citation"));
     }
 
-    /**
+    /*
      * Navigate to the Panorama Public copy folder and get the experiment ID.
      */
     private int getExperimentId(String panoramaPublicProject, String targetFolder)
@@ -204,7 +253,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         return Integer.parseInt(portalHelper.getUrlParam("id"));
     }
 
-    /**
+    /*
      * Assign a PXD ID to an experiment using the UpdatePxDetails page.
      * Cannot use UpdateRowsCommand because the ExperimentAnnotations table is not updatable via the HTTP-based APIs.
      */
@@ -219,7 +268,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         log("Assigned PXD ID " + pxdId + " to experiment " + exptId);
     }
 
-    /**
+    /*
      * Navigate to the search publications page for a dataset.
      */
     private void searchPublicationsForDataset(String panoramaPublicProject, String targetFolder, int exptId)
@@ -230,7 +279,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         waitForText("Publications Matches for Dataset");
     }
 
-    /**
+    /*
      * Navigate to the support messages for a dataset.
      */
     private void goToSupportMessages(String panoramaPublicProject, String targetFolder)
@@ -239,7 +288,37 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         portalHelper.clickWebpartMenuItem("Targeted MS Experiment", true, "Support Messages");
     }
 
-    /**
+    /*
+     * Query the DatasetStatus table for a given experiment ID.
+     * Returns null if no row exists, or a map of column name → value.
+     */
+    private Map<String, Object> getDatasetStatus(String panoramaPublicProject, String targetFolder, int exptId)
+    {
+        try
+        {
+            Connection connection = createDefaultConnection();
+            SelectRowsCommand cmd = new SelectRowsCommand("panoramapublic", "DatasetStatus");
+            cmd.addFilter(new Filter("ExperimentAnnotationsId", exptId));
+            cmd.setColumns(List.of("ExperimentAnnotationsId", "PotentialPublicationId", "PublicationType",
+                    "PublicationMatchInfo", "Citation", "LastReminderDate", "UserDismissedPublication"));
+            String containerPath = "/" + panoramaPublicProject + "/" + targetFolder;
+            SelectRowsResponse resp = cmd.execute(connection, containerPath);
+            List<Map<String, Object>> rows = resp.getRows();
+            if (rows.isEmpty())
+            {
+                return null;
+            }
+            assertEquals("Expected at most one DatasetStatus row for experiment " + exptId, 1, rows.size());
+            return rows.get(0);
+        }
+        catch (IOException | CommandException e)
+        {
+            fail("Failed to query DatasetStatus: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /*
      * On TeamCity: set up the mock NCBI service and register mock publication data.
      * On dev machine: verify that NCBI is reachable; fail with a clear message if not.
      */
@@ -295,7 +374,8 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         }
     }
 
-    /**
+
+    /*
      * Register mock publication data with the mock NCBI service.
      */
     private void registerMockPublications()
@@ -305,7 +385,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         registerMockPublication("pubmed", PMID_1, "Schilling",
                 null, ARTICLE_TITLE_1,
                 "Abbatiello SE,Mani DR,Schilling B,Maclean B,Zimmerman LJ,Carr SA",
-                "2013 Sep", "Mol Cell Proteomics", "Molecular & cellular proteomics : MCP",
+                "2013/09/01 00:00", "Mol Cell Proteomics", "Molecular & cellular proteomics : MCP",
                 CITATION_1);
 
         // Dataset 2: PMID 41198693 (Wen et al.) — found via PMC search by PXD ID
@@ -315,23 +395,23 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         registerMockPublication("pmc", PMC_ID_2, PXD_2,
                 PMID_2, ARTICLE_TITLE_2,
                 "Wen B,Hsu C,Shteynberg D,Zeng WF,Riffle M,Chang A,Mudge MC,Nunn BL,MacLean BX,Berg MD,Villén J,MacCoss MJ,Noble WS",
-                "2025 Nov 6", "Nat Commun", "Nature communications",
+                "2025/11/06 00:00", "Nat Commun", "Nature communications",
                 CITATION_2);
 
         // bioRxiv preprint — PMC ID 11507862, PMID 39463980 (will be filtered out by isPreprint)
         registerMockPublication("pmc", PMC_ID_2_PREPRINT, PXD_2,
                 "39463980", ARTICLE_TITLE_2,
                 "Wen B,Hsu C,Shteynberg D,Zeng WF,Riffle M,Chang A,Mudge M,Nunn BL,MacLean BX,Berg MD,Villén J,MacCoss MJ,Noble WS",
-                "2025 Aug 4", "bioRxiv", "bioRxiv : the preprint server for biology",
+                "2025/08/04 00:00", "bioRxiv", "bioRxiv : the preprint server for biology",
                 null);
     }
 
-    /**
+    /*
      * Register a single mock article with the mock NCBI service via the RegisterMockPublicationAction API.
      */
     private void registerMockPublication(String database, String id, String searchKey,
                                          String pmid, String title, String authors,
-                                         String pubDate, String source, String journalFull,
+                                         String sortDate, String source, String journalFull,
                                          String citation)
     {
         try
@@ -344,7 +424,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
             params.put("searchKey", searchKey);
             params.put("title", title);
             params.put("authors", authors);
-            params.put("pubDate", pubDate);
+            params.put("pubDate", sortDate);
             params.put("source", source);
             params.put("journalFull", journalFull);
             if (pmid != null) params.put("pmid", pmid);
@@ -359,7 +439,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         }
     }
 
-    /**
+    /*
      * Restore the real NCBI service.
      */
     private void restoreNcbiService()

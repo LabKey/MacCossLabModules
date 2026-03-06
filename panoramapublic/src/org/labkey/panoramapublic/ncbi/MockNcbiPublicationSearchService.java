@@ -46,7 +46,8 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
      *                     Null for pubmed articles (where {@code id} is already the PMID).
      * @param title        article title
      * @param authors      comma-separated author list (e.g. "Abbatiello SE,Mani DR,Schilling B")
-     * @param pubDate      publication date string (e.g. "2013 Sep")
+     * @param pubDate      publication date in "YYYY/MM/DD HH:MM" format, matching the NCBI ESummary
+     *                     sortpubdate (PubMed) or sortdate (PMC) field that parsePublicationDate() checks first
      * @param source       journal abbreviation used as ESummary "source" field (e.g. "Mol Cell Proteomics", "bioRxiv")
      * @param journalFull  full journal name used as ESummary "fulljournalname" field
      * @param citation     NLM citation string (for getCitation, keyed by PMID; null if not applicable)
@@ -64,7 +65,9 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
         metadata.put("sorttitle", title.toLowerCase());
         metadata.put("source", source);
         metadata.put("fulljournalname", journalFull);
-        metadata.put("pubdate", pubDate);
+        // Real NCBI ESummary returns sortpubdate (PubMed) or sortdate (PMC) in "YYYY/MM/DD HH:MM" format.
+        // parsePublicationDate() checks these first before falling back to pubdate.
+        metadata.put(isPmc ? "sortdate" : "sortpubdate", pubDate);
 
         // Authors array
         JSONArray authorsArray = new JSONArray();

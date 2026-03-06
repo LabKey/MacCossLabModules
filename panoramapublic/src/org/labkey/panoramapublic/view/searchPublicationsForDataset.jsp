@@ -17,7 +17,7 @@
     ExperimentAnnotations experiment = bean.getExperimentAnnotations();
     ShortURLRecord shortUrl = experiment.getShortUrl();
     String submitterName = experiment.getSubmitterName();
-    ActionURL postUrl = new ActionURL(PanoramaPublicController.NotifySubmitterOfPublicationsAction.class, getContainer());
+    ActionURL postUrl = new ActionURL(PanoramaPublicController.NotifySubmitterOfPublicationAction.class, getContainer());
 %>
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
 

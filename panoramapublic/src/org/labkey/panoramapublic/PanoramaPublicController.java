@@ -159,6 +159,7 @@ import org.labkey.panoramapublic.ncbi.MockNcbiPublicationSearchService;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchServiceImpl;
 import org.labkey.panoramapublic.ncbi.PublicationMatch;
+import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
 import org.labkey.panoramapublic.model.CatalogEntry;
 import org.labkey.panoramapublic.model.DataLicense;
 import org.labkey.panoramapublic.model.DatasetStatus;
@@ -183,7 +184,6 @@ import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ChemElement;
 import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
 import org.labkey.panoramapublic.proteomexchange.Formula;
-import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
 import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
@@ -10300,6 +10300,7 @@ public class PanoramaPublicController extends SpringActionController
             // Initialize form with current settings on first view
             if (!reshow)
             {
+                // Check the "Search for Publications" box if enabled in the saved settings
                 PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
                 form.setSearchPublications(settings.isEnablePublicationSearch());
             }
@@ -10671,6 +10672,22 @@ public class PanoramaPublicController extends SpringActionController
         private PublicationMatch _publicationMatch;
 
         @Override
+        protected void doValidationForAction(Errors errors)
+        {
+            _publicationMatch = PublicationMatch.fromDatasetStatus(_datasetStatus);
+
+            if (_publicationMatch == null)
+            {
+                errors.reject(ERROR_MSG, "No publication suggestion exists for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
+            }
+            else if (_datasetStatus.getUserDismissedPublication() != null)
+            {
+                errors.reject(ERROR_MSG, "The publication suggestion for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
+                        + " has already been dismissed");
+            }
+        }
+
+        @Override
         protected String getConfirmViewTitle()
         {
             return "Dismiss Publication Suggestion";
@@ -10689,22 +10706,6 @@ public class PanoramaPublicController extends SpringActionController
                     , "We will no longer suggest the following publication for this dataset - "
                     , BR(),
                     publicationRef);
-        }
-
-        @Override
-        protected void doValidationForAction(Errors errors)
-        {
-            _publicationMatch = PublicationMatch.fromDatasetStatus(_datasetStatus);
-
-            if (_publicationMatch == null)
-            {
-                errors.reject(ERROR_MSG, "No publication suggestion exists for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
-            }
-            else if (_datasetStatus.getUserDismissedPublication() != null)
-            {
-                errors.reject(ERROR_MSG, "The publication suggestion for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
-                        + " has already been dismissed");
-            }
         }
 
         // Fetch the citation from NCBI. If NCBI is unavailable, the publication ID label will be used as a fallback.
@@ -10756,6 +10757,21 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
+    public static class ShortUrlForm
+    {
+        private String _shortUrlEntityId;
+
+        public String getShortUrlEntityId()
+        {
+            return _shortUrlEntityId;
+        }
+
+        public void setShortUrlEntityId(String shortUrlEntityId)
+        {
+            _shortUrlEntityId = shortUrlEntityId;
+        }
+    }
+
     @RequiresPermission(AdminOperationsPermission.class)
     public static class SearchPublicationsForDatasetAction extends SimpleViewAction<ExperimentIdForm>
     {
@@ -10785,21 +10801,17 @@ public class PanoramaPublicController extends SpringActionController
             DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(_exptAnnotations);
 
             // Check if any displayed match was dismissed by the user
-            boolean showDismissedColumn = false;
+
             String dismissedPubId = null;
-            if (datasetStatus != null && datasetStatus.getUserDismissedPublication() != null
-                    && datasetStatus.getPotentialPublicationId() != null)
+            if (datasetStatus != null)
             {
-                dismissedPubId = datasetStatus.getPotentialPublicationId();
-                for (PublicationMatch match : matches)
-                {
-                    if (match.getPublicationId().equals(dismissedPubId))
-                    {
-                        showDismissedColumn = true;
-                        break;
-                    }
-                }
+                dismissedPubId = matches.stream()
+                        .map(PublicationMatch::getPublicationId)
+                        .filter(datasetStatus::isPublicationDismissed)
+                        .findFirst()
+                        .orElse(null);
             }
+            boolean showDismissedColumn = dismissedPubId != null;
 
             SearchPublicationsForDatasetBean bean = new SearchPublicationsForDatasetBean(_exptAnnotations, matches, showDismissedColumn, dismissedPubId);
             JspView<SearchPublicationsForDatasetBean> jspView = new JspView<>("/org/labkey/panoramapublic/view/searchPublicationsForDataset.jsp", bean, errors);
@@ -10891,46 +10903,8 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    public static class NotifySubmitterForm extends IdForm
-    {
-        private String _publicationId;
-        private String _publicationType;
-        private String _matchInfo;
-
-        public String getPublicationId()
-        {
-            return _publicationId;
-        }
-
-        public void setPublicationId(String publicationId)
-        {
-            _publicationId = publicationId;
-        }
-
-        public String getPublicationType()
-        {
-            return _publicationType;
-        }
-
-        public void setPublicationType(String publicationType)
-        {
-            _publicationType = publicationType;
-        }
-
-        public String getMatchInfo()
-        {
-            return _matchInfo;
-        }
-
-        public void setMatchInfo(String matchInfo)
-        {
-            _matchInfo = matchInfo;
-        }
-
-    }
-
     @RequiresPermission(AdminOperationsPermission.class)
-    public static class NotifySubmitterOfPublicationsAction extends FormHandlerAction<NotifySubmitterForm>
+    public static class NotifySubmitterOfPublicationAction extends FormHandlerAction<NotifySubmitterForm>
     {
         private Container _announcementsContainer;
         private Announcement _announcement;
@@ -10960,8 +10934,7 @@ public class PanoramaPublicController extends SpringActionController
 
             // Check if the user has already dismissed this publication suggestion
             DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
-            if (datasetStatus != null && datasetStatus.getUserDismissedPublication() != null
-                    && form.getPublicationId().equals(datasetStatus.getPotentialPublicationId()))
+            if (datasetStatus != null && datasetStatus.isPublicationDismissed(form.getPublicationId()))
             {
                 errors.reject(ERROR_MSG, "The user has already dismissed the publication suggestion "
                         + datasetStatus.getPublicationIdLabel()
@@ -10977,8 +10950,8 @@ public class PanoramaPublicController extends SpringActionController
             }
 
             // Reconstruct PublicationMatch from form fields
-            PublicationMatch selectedMatch = PublicationMatch.fromMatchInfo(form.getPublicationId(), pubType, form.getMatchInfo());
-            selectedMatch.setCitation(NcbiPublicationSearchService.get().getCitation(form.getPublicationId(), pubType));
+            String citation = NcbiPublicationSearchService.get().getCitation(form.getPublicationId(), pubType);
+            PublicationMatch selectedMatch = PublicationMatch.fromMatchInfo(form.getPublicationId(), pubType, form.getMatchInfo(), citation);
 
             // Post notification
             JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(exptAnnotations);
@@ -11029,6 +11002,7 @@ public class PanoramaPublicController extends SpringActionController
             datasetStatus.setPotentialPublicationId(form.getPublicationId());
             datasetStatus.setPublicationType(pubType.name());
             datasetStatus.setPublicationMatchInfo(form.getMatchInfo());
+            datasetStatus.setCitation(selectedMatch.getCitation());
             datasetStatus.setUserDismissedPublication(null);
             datasetStatus.setLastReminderDate(new Date());
 
@@ -11052,19 +11026,42 @@ public class PanoramaPublicController extends SpringActionController
         }
     }
 
-    public static class ShortUrlForm
+    public static class NotifySubmitterForm extends IdForm
     {
-        private String _shortUrlEntityId;
+        private String _publicationId;
+        private String _publicationType;
+        private String _matchInfo;
 
-        public String getShortUrlEntityId()
+        public String getPublicationId()
         {
-            return _shortUrlEntityId;
+            return _publicationId;
         }
 
-        public void setShortUrlEntityId(String shortUrlEntityId)
+        public void setPublicationId(String publicationId)
         {
-            _shortUrlEntityId = shortUrlEntityId;
+            _publicationId = publicationId;
         }
+
+        public String getPublicationType()
+        {
+            return _publicationType;
+        }
+
+        public void setPublicationType(String publicationType)
+        {
+            _publicationType = publicationType;
+        }
+
+        public String getMatchInfo()
+        {
+            return _matchInfo;
+        }
+
+        public void setMatchInfo(String matchInfo)
+        {
+            _matchInfo = matchInfo;
+        }
+
     }
 
     private static ExperimentAnnotations getValidExperimentAnnotations(ShortUrlForm shortUrlForm, Errors errors)

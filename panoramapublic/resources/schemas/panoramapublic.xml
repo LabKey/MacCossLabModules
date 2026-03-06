@@ -865,13 +865,16 @@
             <column columnName="ExtensionRequestedDate" />
             <column columnName="DeletionRequestedDate"/>
             <column columnName="PotentialPublicationId">
-                <description>Cached publication ID (PubMed ID, PMC ID etc.)</description>
+                <description>Publication ID (PubMed ID, PMC ID) suggestion based on NCBI search</description>
             </column>
             <column columnName="PublicationType">
-                <description>Type of publication ID: PMID, PMC, etc.</description>
+                <description>Type of publication ID: PMID, PMC</description>
             </column>
             <column columnName="PublicationMatchInfo">
                 <description>Information about which fields (e.g. PXD, Panorama link, title etc.) matched</description>
+            </column>
+            <column columnName="Citation">
+                <description>NLM citation string for the potential publication match</description>
             </column>
             <column columnName="UserDismissedPublication">
                 <description>Date when the user dismissed the publication suggestion for this dataset</description>

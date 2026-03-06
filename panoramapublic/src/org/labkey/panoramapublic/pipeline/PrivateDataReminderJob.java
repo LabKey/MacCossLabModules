@@ -185,6 +185,7 @@ public class PrivateDataReminderJob extends PipelineJob
                                                          @NotNull PrivateDataReminderSettings settings,
                                                          boolean forceCheck,
                                                          @NotNull User user,
+                                                         boolean testMode,
                                                          @NotNull Logger log)
     {
         // Check if publication checking is enabled (either globally or forced for this run)
@@ -224,11 +225,18 @@ public class PrivateDataReminderJob extends PipelineJob
                     }
                     else
                     {
-                        // Same publication or nothing found — update dismissal date to restart search delay
-                        log.info(String.format("No new publication for experiment %d; resetting search delay",
-                                expAnnotations.getId()));
-                        datasetStatus.setUserDismissedPublication(new Date());
-                        DatasetStatusManager.update(datasetStatus, user);
+                        // Same publication or nothing found — update dismissal date to restart search deferral
+                        if (testMode)
+                        {
+                            log.info(String.format("TEST MODE: No new publication for experiment %d; Would reset search deferral", expAnnotations.getId()));
+                        }
+                        else
+                        {
+                            log.info(String.format("No new publication for experiment %d; resetting search deferral",
+                                    expAnnotations.getId()));
+                            datasetStatus.setUserDismissedPublication(new Date());
+                            DatasetStatusManager.update(datasetStatus, user);
+                        }
                         return null;
                     }
                 }
@@ -306,17 +314,21 @@ public class PrivateDataReminderJob extends PipelineJob
         log.info(String.format("Posting reminder message to: %d message threads.", expAnnotationIds.size()));
 
         Set<Integer> exptIds = new HashSet<>(expAnnotationIds);
-        try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
+        if (_test)
         {
-            if (_test)
-            {
-                log.info("RUNNING IN TEST MODE - MESSAGES WILL NOT BE POSTED.");
-            }
-            for (Integer experimentAnnotationsId : exptIds)
+            log.info("RUNNING IN TEST MODE - MESSAGES WILL NOT BE POSTED.");
+        }
+        for (Integer experimentAnnotationsId : exptIds)
+        {
+            try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
             {
                 processExperiment(experimentAnnotationsId, context, processingResults);
+                transaction.commit();
             }
-            transaction.commit();
+            catch (Exception e)
+            {
+                log.error(String.format("Error processing experiment %d: %s", experimentAnnotationsId, e.getMessage()), e);
+            }
         }
 
         processingResults.logResults(log);
@@ -365,7 +377,7 @@ public class PrivateDataReminderJob extends PipelineJob
         }
 
         // Check for publications if enabled
-        PublicationMatch publicationResult = searchForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, getUser(), processingResults._log);
+        PublicationMatch publicationResult = searchForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, getUser(), context.isTestMode(), processingResults._log);
 
         if (!context.isTestMode())
         {
@@ -417,6 +429,7 @@ public class PrivateDataReminderJob extends PipelineJob
                 datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
                 datasetStatus.setPublicationType(publicationResult.getPublicationType().name());
                 datasetStatus.setPublicationMatchInfo(publicationResult.getMatchInfo());
+                datasetStatus.setCitation(publicationResult.getCitation());
             }
 
             DatasetStatusManager.save(datasetStatus, getUser());
@@ -434,6 +447,7 @@ public class PrivateDataReminderJob extends PipelineJob
                     datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
                     datasetStatus.setPublicationType(publicationResult.getPublicationType().name());
                     datasetStatus.setPublicationMatchInfo(publicationResult.getMatchInfo());
+                    datasetStatus.setCitation(publicationResult.getCitation());
                     datasetStatus.setUserDismissedPublication(null); // Clear dismissal for new publication
                 }
             }

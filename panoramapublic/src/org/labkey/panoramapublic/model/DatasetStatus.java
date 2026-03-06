@@ -16,6 +16,7 @@ public class DatasetStatus  extends DbEntity
     private String _potentialPublicationId;
     private String _publicationType;
     private String _publicationMatchInfo;
+    private String _citation;
     private Date _userDismissedPublication;
 
     public int getExperimentAnnotationsId()
@@ -101,7 +102,7 @@ public class DatasetStatus  extends DbEntity
     public String getPublicationIdLabel()
     {
         NcbiConstants.DB type = NcbiConstants.DB.fromString(_publicationType);
-        String label = type == null ? (_publicationType != null ? _publicationType : "") : type.getLabel();
+        String label = type == null ? (_publicationType != null ? _publicationType : "") : type.name();
         return label + " ID " + getPotentialPublicationId();
     }
 
@@ -115,6 +116,16 @@ public class DatasetStatus  extends DbEntity
         _publicationMatchInfo = publicationMatchInfo;
     }
 
+    public String getCitation()
+    {
+        return _citation;
+    }
+
+    public void setCitation(String citation)
+    {
+        _citation = citation;
+    }
+
     public Date getUserDismissedPublication()
     {
         return _userDismissedPublication;
@@ -123,5 +134,10 @@ public class DatasetStatus  extends DbEntity
     public void setUserDismissedPublication(Date userDismissedPublication)
     {
         _userDismissedPublication = userDismissedPublication;
+    }
+
+    public boolean isPublicationDismissed(String publicationId)
+    {
+        return getUserDismissedPublication() != null && publicationId != null && publicationId.equals(getPotentialPublicationId());
     }
 }

@@ -11,9 +11,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-/**
- * Container for publication search article match
- */
 public class PublicationMatch
 {
     public static final String MATCH_PX_ID = "ProteomeXchange ID";
@@ -36,7 +33,7 @@ public class PublicationMatch
     public PublicationMatch(String publicationId, DB publicationType,
                             boolean matchesProteomeXchangeId, boolean matchesPanoramaUrl, boolean matchesDoi,
                             boolean matchesAuthor, boolean matchesTitle,
-                            @Nullable Date publicationDate)
+                            @Nullable Date publicationDate, @Nullable String citation)
     {
         _publicationId = publicationId;
         _publicationType = publicationType;
@@ -46,6 +43,15 @@ public class PublicationMatch
         _matchesAuthor = matchesAuthor;
         _matchesTitle = matchesTitle;
         _publicationDate = publicationDate;
+        _citation = citation;
+    }
+
+    public PublicationMatch(String publicationId, DB publicationType,
+                            boolean matchesProteomeXchangeId, boolean matchesPanoramaUrl, boolean matchesDoi,
+                            boolean matchesAuthor, boolean matchesTitle,
+                            @Nullable Date publicationDate)
+    {
+        this(publicationId, publicationType, matchesProteomeXchangeId, matchesPanoramaUrl, matchesDoi, matchesAuthor, matchesTitle, publicationDate, null);
     }
 
     public String getPublicationId()
@@ -100,7 +106,7 @@ public class PublicationMatch
 
     /**
      * String representation of what matched for this article.
-     * This is what gets stored in the PublicationMatchInfo database column.
+     * This is what gets stored in the DatasetStatus table's PublicationMatchInfo column.
      * Example: "ProteomeXchange ID, Panorama URL, Author, Title"
      */
     public String getMatchInfo()
@@ -144,10 +150,11 @@ public class PublicationMatch
     }
 
     /**
-     * Build a PublicationMatch from a publication ID, type, and match info string.
+     * Build a PublicationMatch from a publication ID, type, citation, and match info string.
      * @see #getMatchInfo()
      */
-    public static PublicationMatch fromMatchInfo(@NotNull String publicationId, @NotNull DB publicationType, @Nullable String matchInfo)
+    public static PublicationMatch fromMatchInfo(@NotNull String publicationId, @NotNull DB publicationType,
+                                                @Nullable String matchInfo, @Nullable String citation)
     {
         boolean pxId = false, url = false, doi = false, author = false, title = false;
         if (!StringUtils.isBlank(matchInfo))
@@ -165,7 +172,13 @@ public class PublicationMatch
                 }
             }
         }
-        return new PublicationMatch(publicationId, publicationType, pxId, url, doi, author, title, null);
+        return new PublicationMatch(publicationId, publicationType, pxId, url, doi, author, title, null, citation);
+    }
+
+    public static PublicationMatch fromMatchInfo(@NotNull String publicationId, @NotNull DB publicationType,
+                                                 @Nullable String matchInfo)
+    {
+        return fromMatchInfo(publicationId, publicationType, matchInfo, null);
     }
 
     /**
@@ -182,6 +195,7 @@ public class PublicationMatch
         {
             return null;
         }
-        return fromMatchInfo(datasetStatus.getPotentialPublicationId(), type, datasetStatus.getPublicationMatchInfo());
+        return fromMatchInfo(datasetStatus.getPotentialPublicationId(), type,
+                datasetStatus.getPublicationMatchInfo(), datasetStatus.getCitation());
     }
 }

@@ -25,6 +25,10 @@ public interface NcbiPublicationSearchService
 
     @Nullable Pair<String, String> getPubMedLinkAndCitation(String pubmedId);
 
+    /**
+     * Searches PMC and PubMed for a publication associated with the experiment.
+     * Returns the top match (highest priority) if multiple matches are found, or null if none.
+     */
     @Nullable PublicationMatch searchForPublication(@NotNull ExperimentAnnotations expAnnotations, @Nullable Logger logger);
 
     List<PublicationMatch> searchForPublication(@NotNull ExperimentAnnotations expAnnotations, int maxResults, @Nullable Logger logger, boolean getCitations);

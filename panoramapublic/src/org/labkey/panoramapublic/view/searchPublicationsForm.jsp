@@ -7,7 +7,7 @@
 
 <%
     JspView<PanoramaPublicController.SearchPublicationsBean> view = HttpView.currentView();
-    var form = view.getModelBean();
+    var bean = view.getModelBean();
 %>
 
 <style>
@@ -30,7 +30,7 @@
 
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
 
-    const dataRegionName = <%= q(form.getDataRegionName()) %>;
+    const dataRegionName = <%= q(bean.getDataRegionName()) %>;
     const headers = [
         { key: 'COUNT', label: 'Papers Found' },
         { key: 'PUBLICATION_IDS', label: 'Publication IDs' },
@@ -47,6 +47,7 @@
     let experimentsTable;
 
     LABKEY.Utils.onReady(function() {
+        // Direct DOM access to the experiments table required to add header and data cells, and update cell values
         experimentsTable = dataRegionName ? document.querySelector('table[data-region-name="' + dataRegionName + '"]') : null;
         if (!experimentsTable)
         {
