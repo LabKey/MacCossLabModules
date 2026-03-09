@@ -134,6 +134,11 @@ public class PublicationMatch
         return _publicationType.getLabel() + " ID " + _publicationId;
     }
 
+    public boolean isPubMed()
+    {
+        return _publicationType != null && _publicationType == DB.PubMed;
+    }
+
     public JSONObject toJson()
     {
         JSONObject json = new JSONObject();

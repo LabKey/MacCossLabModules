@@ -170,7 +170,7 @@
                     </div>
                 </td>
             </tr>
-            <tr><td colspan=2">
+            <tr><td colspan="2">
                 <%=button("Save").submit(true)%>
                 <%=button("Cancel").href(panoramaPublicAdminUrl)%>
             </td></tr>

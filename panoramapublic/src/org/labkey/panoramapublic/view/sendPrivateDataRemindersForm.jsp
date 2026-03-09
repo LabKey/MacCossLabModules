@@ -80,7 +80,7 @@
                     </div>
                 </td>
             </tr>
-            <tr><td colspan=2"><%=button("Post Reminders").onClick("submitForm();")%></td></tr>
+            <tr><td colspan="2"><%=button("Post Reminders").onClick("submitForm();")%></td></tr>
         </table>
         <br>
     </labkey:form>

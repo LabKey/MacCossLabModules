@@ -3,7 +3,6 @@ package org.labkey.panoramapublic.ncbi;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -14,13 +13,12 @@ import java.util.Map;
 /**
  * Mock implementation of {@link NcbiPublicationSearchService} that returns canned data registered by tests.
  * Used by Selenium tests when running on TeamCity.
- * Extends {@link NcbiPublicationSearchServiceImpl} and only overrides the two methods that make HTTP calls
- * to NCBI: {@link #getJson(String)} (used by ESearch/ESummary) and {@link #getCitation(String, DB)}
- * (used for the Citation Exporter API). All search logic, filtering, author/title verification, and
- * priority filtering run through the real implementation code.
+ * Extends {@link NcbiPublicationSearchServiceImpl} and only overrides {@link #getString(String)},
+ * the single method that makes HTTP calls to NCBI. All search logic, filtering, author/title
+ * verification, citation parsing, and priority filtering run through the real implementation code.
  * Tests register mock articles via {@link #register}, providing the database, ID, search key,
  * metadata fields, and citation. The mock builds internal lookup maps from this data and returns
- * appropriate JSON responses when the real search logic calls {@code getJson()} or {@code getCitation()}.
+ * appropriate responses when the real search logic calls {@code getString()}.
  */
 public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServiceImpl
 {
@@ -37,7 +35,7 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
 
     /**
      * Register a mock article. The mock stores the data in internal lookup maps used by
-     * {@link #getJson(String)} and {@link #getCitation(String, DB)}.
+     * {@link #getString(String)}.
      * @param database     "pmc" or "pubmed" — the NCBI database this article is in
      * @param id           the article ID in the given database (numeric ID for pmc or pubmed)
      * @param searchKey    what ESearch query term finds this article (e.g. PXD ID for PMC, author last name for PubMed)
@@ -115,29 +113,25 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
     }
 
     /**
-     * Returns canned JSON for NCBI ESearch and ESummary API requests based on registered mock data.
+     * Returns canned responses for NCBI API requests based on registered mock data.
+     * Handles ESearch, ESummary, and Citation Exporter URLs.
      */
     @Override
-    protected JSONObject getJson(String url) throws IOException
+    protected String getString(String url) throws IOException
     {
         if (url.contains("esearch.fcgi"))
         {
-            return handleESearch(url);
+            return handleESearch(url).toString();
         }
         else if (url.contains("esummary.fcgi"))
         {
-            return handleESummary(url);
+            return handleESummary(url).toString();
+        }
+        else if (url.contains("lit/ctxp"))
+        {
+            return handleCitation(url).toString();
         }
         throw new IOException("MockNcbiPublicationSearchService: unexpected URL: " + url);
-    }
-
-    /**
-     * Returns the registered citation for the given PubMed ID, or null if not registered.
-     */
-    @Override
-    public @Nullable String getCitation(String pubMedId, DB database)
-    {
-        return _citations.get(pubMedId);
     }
 
     private JSONObject handleESearch(String url)
@@ -174,5 +168,34 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
         }
 
         return new JSONObject().put("result", result);
+    }
+
+    /**
+     * Build a citation JSON response matching the NCBI Literature Citation Exporter format.
+     * The real API returns {@code {"nlm":{"orig":"citation text..."}}}.
+     * If no citation is registered for the ID, returns an empty JSON object.
+     */
+    private JSONObject handleCitation(String url)
+    {
+        // Extract the publication ID from the URL (last segment after "id=")
+        String id = null;
+        int idIdx = url.indexOf("id=");
+        if (idIdx >= 0)
+        {
+            id = url.substring(idIdx + 3);
+            // Remove any trailing query parameters
+            int ampIdx = id.indexOf('&');
+            if (ampIdx >= 0)
+            {
+                id = id.substring(0, ampIdx);
+            }
+        }
+
+        String citation = id != null ? _citations.get(id) : null;
+        if (citation != null)
+        {
+            return new JSONObject().put("nlm", new JSONObject().put("orig", citation));
+        }
+        return new JSONObject();
     }
 }

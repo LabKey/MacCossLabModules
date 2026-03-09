@@ -1,6 +1,5 @@
 package org.labkey.panoramapublic.ncbi;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.config.ConnectionConfig;
@@ -27,11 +26,9 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -141,32 +138,14 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         String baseUrl = database == DB.PMC ? PMC_CITATION_EXPORTER_URL : PUBMED_CITATION_EXPORTER_URL;
         String queryUrl = baseUrl + publicationId;
 
-        HttpURLConnection conn = null;
         try
         {
-            URL url = new URL(queryUrl);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-
-            int status = conn.getResponseCode();
-
-            if (status == HttpURLConnection.HTTP_OK)
-            {
-                String response;
-                try (InputStream in = conn.getInputStream())
-                {
-                    response = IOUtils.toString(in, StandardCharsets.UTF_8);
-                }
-                return parseCitation(response, publicationId, database, log);
-            }
+            String response = getString(queryUrl);
+            return parseCitation(response, publicationId, database, log);
         }
         catch (IOException e)
         {
             log.error("Error submitting a request to NCBI Literature Citation Exporter. URL: " + queryUrl, e);
-        }
-        finally
-        {
-            if (conn != null) conn.disconnect();
         }
         return null;
     }
@@ -358,6 +337,15 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
      */
     protected JSONObject getJson(String url) throws IOException
     {
+        return new JSONObject(getString(url));
+    }
+
+    /**
+     * Execute an HTTP GET request and return the response body as a string.
+     * @throws IOException if the request fails or the server returns a non-2xx response
+     */
+    protected String getString(String url) throws IOException
+    {
         ConnectionConfig connectionConfig = ConnectionConfig.custom()
             .setConnectTimeout(Timeout.ofMilliseconds(TIMEOUT_MS))
             .setSocketTimeout(Timeout.ofMilliseconds(TIMEOUT_MS))
@@ -382,8 +370,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                 {
                     throw new HttpResponseException(status, response.getReasonPhrase());
                 }
-                String body = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                return new JSONObject(body);
+                return EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             });
         }
     }
@@ -482,7 +469,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             boolean authorMatch = checkAuthorMatch(articleData, firstName, lastName);
             boolean titleMatch = checkTitleMatch(articleData, expAnnotations.getTitle());
 
-            // Extract PubMed ID, is found
+            // Extract PubMed ID, if found
             String pubMedId = extractPubMedId(articleData);
             String publicationId = pubMedId == null ? pmcId : pubMedId;
             DB publicationType = pubMedId == null ? DB.PMC : DB.PubMed;
@@ -671,7 +658,11 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Check if article matches the author (submitter)
+     * Check if article matches the author (submitter).
+     * NCBI ESummary returns author names in "LastName Initials" format (e.g. "Jones A", "van der Berg M").
+     * We match by checking that the author name starts with the submitter's last name followed by a space,
+     * and that the remainder starts with the submitter's first initial.
+     * Diacritics are stripped before comparison so that "García" matches "Garcia".
      */
     static boolean checkAuthorMatch(JSONObject metadata, String firstName, String lastName)
     {
@@ -686,28 +677,49 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             return false;
         }
 
-        String firstInitial = firstName.substring(0, 1).toLowerCase();
-        String lastNameLower = lastName.toLowerCase();
+        String firstInitial = stripDiacritics(firstName.substring(0, 1).toLowerCase());
+        String lastNameLower = stripDiacritics(lastName.toLowerCase());
 
         for (int i = 0; i < authors.length(); i++)
         {
             JSONObject author = authors.optJSONObject(i);
             if (author == null) continue;
 
-            String authorName = author.optString("name", "").toLowerCase();
+            String authorName = stripDiacritics(author.optString("name", "").toLowerCase());
 
-            // Match format: "LastName FirstInitial"
+            // Match format: "LastName FirstInitial" - require a space after the last name
+            // to avoid prefix collisions (e.g. "Li" matching "Liang")
             if (authorName.startsWith(lastNameLower))
             {
-                String afterLastName = authorName.substring(lastNameLower.length()).trim();
-                if (afterLastName.startsWith(firstInitial))
+                // Last name must be followed by a space (before initials) or be the entire name
+                if (authorName.length() == lastNameLower.length())
                 {
-                    return true;
+                    return true; // Exact last name match, no initials
+                }
+                if (authorName.charAt(lastNameLower.length()) == ' ')
+                {
+                    String afterLastName = authorName.substring(lastNameLower.length()).trim();
+                    if (afterLastName.startsWith(firstInitial))
+                    {
+                        return true;
+                    }
                 }
             }
         }
 
         return false;
+    }
+
+    /**
+     * Strip diacritical marks from a string (e.g. "Villén" → "Villen", "Müller" → "Muller").
+     * Uses Unicode NFD decomposition to separate base characters from combining marks,
+     * then removes the marks.
+     */
+    static String stripDiacritics(String str)
+    {
+        if (str == null) return "";
+        return Normalizer.normalize(str, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}", "");
     }
 
     /**
@@ -769,14 +781,17 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Normalize title for comparison (lowercase, remove punctuation, normalize whitespace)
+     * Normalize title for comparison: strip HTML tags, strip diacritics, lowercase,
+     * replace punctuation with space (so "data-independent" becomes "data independent"),
+     * and normalize whitespace.
      */
     static String normalizeTitle(String title)
     {
         if (title == null) return "";
 
-        return title.toLowerCase()
-            .replaceAll("[^\\w\\s]", "")  // Remove punctuation
+        return stripDiacritics(title.toLowerCase())
+            .replaceAll("<[^>]+>", " ")    // Strip HTML/XML tags
+            .replaceAll("[^\\w\\s]", " ")  // Replace punctuation with space (not remove)
             .replaceAll("\\s+", " ")       // Normalize whitespace
             .trim();
     }
@@ -981,6 +996,29 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
             // Empty authors array
             assertFalse(checkAuthorMatch(new JSONObject(), "Andrew", "Jones"));
+
+            // Short last name prefix collisions — last name must be followed by a space
+            assertFalse("'Li' should not match 'Liang B'",
+                    checkAuthorMatch(metadataWithAuthors("Liang B"), "Alice", "Li"));
+            assertFalse("'Li' should not match 'Liu C'",
+                    checkAuthorMatch(metadataWithAuthors("Liu C"), "Andrew", "Li"));
+            assertTrue(checkAuthorMatch(metadataWithAuthors("Li A"), "Alice", "Li"));
+
+            // Compound last names: hyphenated and apostrophe
+            assertTrue(checkAuthorMatch(metadataWithAuthors("Smith-Jones A"), "Andrew", "Smith-Jones"));
+            assertFalse(checkAuthorMatch(metadataWithAuthors("Smith-Jones A"), "Andrew", "Smith"));
+            assertTrue(checkAuthorMatch(metadataWithAuthors("O'Brien K"), "Kate", "O'Brien"));
+
+            // Name particles
+            assertTrue(checkAuthorMatch(metadataWithAuthors("von Haller M"), "Mark", "von Haller"));
+            assertTrue(checkAuthorMatch(metadataWithAuthors("de Silva R"), "Raj", "de Silva"));
+
+            // Diacritics — accented characters match unaccented and vice versa
+            assertTrue(checkAuthorMatch(metadataWithAuthors("Villén J"), "Judit", "Villén"));
+            assertTrue(checkAuthorMatch(metadataWithAuthors("Villén J"), "Judit", "Villen"));
+            assertTrue(checkAuthorMatch(metadataWithAuthors("Villen J"), "Judit", "Villén"));
+            assertTrue(checkAuthorMatch(metadataWithAuthors("Müller E"), "Eric", "Muller"));
+            assertTrue(checkAuthorMatch(metadataWithAuthors("Muller E"), "Eric", "Müller"));
         }
 
         // -- checkTitleMatch tests --
@@ -989,8 +1027,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         public void testCheckTitleMatchExact()
         {
             // Exact match (case-insensitive, punctuation-stripped)
-            JSONObject metadata = metadataWithTitle("Carafe in silico spectral library generation for DIA");
-            assertTrue(checkTitleMatch(metadata, "Carafe in silico spectral library generation for DIA"));
+            JSONObject metadata = metadataWithTitle("Carafe in-silico spectral library generation for DIA");
+            assertTrue(checkTitleMatch(metadata, "Carafe in-silico spectral library generation for DIA"));
             assertTrue(checkTitleMatch(metadata, "carafe in silico spectral library generation for dia"));
             assertTrue(checkTitleMatch(metadata, "Carafe: in silico spectral library generation for DIA!"));
         }
@@ -1047,6 +1085,37 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
 
         @Test
+        public void testCheckTitleMatchHyphens()
+        {
+            // "data-independent" in one title should match "data independent" in the other
+            JSONObject metadata = metadataWithTitle("Data-independent acquisition proteomics workflow");
+            assertTrue("Hyphenated should match unhyphenated",
+                    checkTitleMatch(metadata, "Data independent acquisition proteomics workflow"));
+        }
+
+        @Test
+        public void testCheckTitleMatchHtmlTags()
+        {
+            // NCBI sometimes returns titles with HTML tags like <i>in vivo</i>
+            JSONObject metadata = metadataWithTitle("<i>In vivo</i> analysis of protein interactions");
+            assertTrue("HTML tags should be stripped for matching",
+                    checkTitleMatch(metadata, "In vivo analysis of protein interactions"));
+
+            // Multiple tags
+            metadata = metadataWithTitle("Role of <i>E. coli</i> chaperones in <b>protein</b> folding");
+            assertTrue(checkTitleMatch(metadata, "Role of E. coli chaperones in protein folding"));
+        }
+
+        @Test
+        public void testCheckTitleMatchDiacritics()
+        {
+            // Accented characters in titles
+            assertTrue("Accented title should match unaccented",
+                    checkTitleMatch(metadataWithTitle("Protéomique des échantillons hépatiques"),
+                            "Proteomique des echantillons hepatiques"));
+        }
+
+        @Test
         public void testCheckTitleMatchSorttitleFallback()
         {
             // When "title" is missing, falls back to "sorttitle"
@@ -1061,7 +1130,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             metadata.put("sorttitle", "completely different sort title");
             assertTrue(checkTitleMatch(metadata, "Phosphoproteomics of Lung Cancer"));
         }
-
+        
         // -- extractTitleKeywords tests --
 
         @Test
@@ -1119,10 +1188,21 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         public void testNormalizeTitle()
         {
             assertEquals("hello world", normalizeTitle("Hello, World!"));
-            assertEquals("testdriven development", normalizeTitle("Test-Driven Development"));
+            assertEquals("test driven development", normalizeTitle("Test-Driven Development"));
             assertEquals("multiple spaces become one", normalizeTitle("  Multiple   spaces become one  "));
             assertEquals("", normalizeTitle(null));
             assertEquals("", normalizeTitle(""));
+
+            // HTML tags are stripped
+            assertEquals("in vivo analysis of protein", normalizeTitle("<i>in vivo</i> analysis of protein"));
+            assertEquals("e coli proteomics", normalizeTitle("<i>E. coli</i> proteomics"));
+
+            // Apostrophes are replaced with space (like other punctuation)
+            assertEquals("garcia s analysis", normalizeTitle("García's Analysis"));
+
+            // Hyphens become spaces: "data-independent" matches "data independent"
+            assertEquals("data independent acquisition", normalizeTitle("data-independent acquisition"));
+            assertEquals("data independent acquisition", normalizeTitle("data independent acquisition"));
         }
 
         // -- extractPubMedId tests --

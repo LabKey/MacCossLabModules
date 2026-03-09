@@ -410,7 +410,12 @@ public class PanoramaPublicNotification
                                                       @Nullable PublicationMatch articleMatch)
     {
         String shortUrl = exptAnnotations.getShortUrl().renderShortURL();
-        String makePublicLink = PanoramaPublicController.getMakePublicUrl(exptAnnotations.getId(), exptAnnotations.getContainer()).getURIString();
+        ActionURL makePublicUrl = PanoramaPublicController.getMakePublicUrl(exptAnnotations.getId(), exptAnnotations.getContainer());
+        if (articleMatch != null && articleMatch.isPubMed() && articleMatch.getPublicationId() != null)
+        {
+            makePublicUrl.replaceParameter("pubmedId", articleMatch.getPublicationId());
+        }
+        String makePublicLink = makePublicUrl.getURIString();
         String dateString = DateUtil.formatDateTime(js.getLatestSubmission().getCreated(), PrivateDataReminderSettings.DATE_FORMAT_PATTERN);
 
         ActionURL viewMessageUrl = new ActionURL("announcements", "thread", announcementContainer)
@@ -446,6 +451,7 @@ public class PanoramaPublicNotification
                     .append(NL2).append("If this is indeed your paper, congratulations! We encourage you to make your data public so the research community can access it alongside your paper. ")
                     .append("You can do this by clicking the \"Make Public\" button in your data folder or by clicking this link: ")
                     .append(bold(link("Make Data Public", makePublicLink))).append(".")
+                    .append(articleMatch.isPubMed() ? " Please enter " + articleMatch.getPublicationId() + " in the PubMed ID field." : "")
                     .append(NL2).append("If this paper is not associated with your data please let us know by clicking ")
                     .append(bold(link("Dismiss Publication Suggestion", dismissPublicationUrl.getURIString())));
         }

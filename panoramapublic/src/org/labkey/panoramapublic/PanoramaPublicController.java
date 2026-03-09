@@ -6951,7 +6951,6 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors);
             }
 
-            form.setPubmedId(_copiedExperiment.getPubmedId());
             form.setLink(_copiedExperiment.getPublicationLink());
             form.setCitation(_copiedExperiment.getCitation());
             return getPublicationDetailsView(form, errors);
