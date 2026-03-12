@@ -1088,7 +1088,12 @@ public class SkylineToolsStoreController extends SpringActionController
                 // Cookie expires after 1 day
                 final int expires = 24 * 60 * 60;
 
-                SkylineToolsStoreManager.get().recordToolDownload(tool);
+                // Download counter is an incidental write on a GET action — use ignoreSqlUpdates()
+                // to avoid the dev-mode mutating SQL assertion (like auditing writes)
+                try (var ignored = SpringActionController.ignoreSqlUpdates())
+                {
+                    SkylineToolsStoreManager.get().recordToolDownload(tool);
+                }
 
                 DateFormat df = new SimpleDateFormat("EEE, dd-MMM-yyyy HH:mm:ss 'GMT'", Locale.US);
                 Calendar calendar = Calendar.getInstance();
