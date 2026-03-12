@@ -7,14 +7,11 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.skylinetoolsstore.RatingManager" %>
 <%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreController" %>
 <%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreManager" %>
-<%@ page import="org.labkey.skylinetoolsstore.model.Rating" %>
 <%@ page import="org.labkey.skylinetoolsstore.model.SkylineTool" %>
 <%@ page import="org.labkey.skylinetoolsstore.view.SkylineToolStoreUrls" %>
 <%@ page import="java.io.File" %>
-<%@ page import="java.util.ArrayList" %>
 <%@ page import="java.util.Arrays" %>
 <%@ page import="java.util.HashMap" %>
 <%@ page import="java.util.Iterator" %>
@@ -44,28 +41,6 @@
     final String contextPath = AppProps.getInstance().getContextPath();
     final String imgDir = contextPath + "/skylinetoolsstore/img/";
 
-    HashMap<Integer, Integer> toolRatings = new HashMap();
-    HashMap<Integer, Integer[]> toolRatingSplit = new HashMap();
-    Rating[] allRatings = RatingManager.get().getRatings(null);
-    if (allRatings != null)
-    {
-        for (Rating rating : allRatings)
-        {
-            int toolId = rating.getToolId();
-            int value = rating.getRating();
-            toolRatings.put(toolId, (toolRatings.containsKey(toolId)) ?
-                toolRatings.get(rating.getToolId()) + value : value);
-
-            if (toolRatingSplit.containsKey(toolId))
-                ++toolRatingSplit.get(toolId)[value - 1];
-            else
-            {
-                Integer ratingBreakDown[] = new Integer[] {0, 0, 0, 0, 0};
-                ++ratingBreakDown[value - 1];
-                toolRatingSplit.put(toolId, ratingBreakDown);
-            }
-        }
-    }
 %>
 <style type="text/css">
     .tablewrap {width:100%; min-width:600px; margin-top:20px;}
@@ -76,12 +51,6 @@
     .title {font-size: 150%; font-weight: 400; color:#0044cc; margin: 0 !important; padding: 0; float: left;}
     .title:hover {text-decoration: underline;}
     .title:active {color: #ff0000;}
-    .rating {margin: 0 !important; padding: 0; width: 74px; height: 15px; overflow: hidden;}
-    .rating div {position: absolute;}
-    .ratingstars {width: 74px !important; overflow:hidden; height: 15px; padding:0 !important; margin:0 !important; }
-    .ratingfull {height: 100%; background: url('<%= h(imgDir) %>star_full15x15.png') repeat-x;}
-    .ratingempty {width: 100%; height: 100%; background: url('<%= h(imgDir) %>star_empty15x15.png') repeat-x; padding:0 !important; margin:0 !important;}
-    .ratingcontent {width: 100%; top: 20px; padding-left:10px; padding-bottom:0px;}
     .toolSubtitle {font-size: 14px; margin:0; padding:0; clear: both;}
     .contentleft {width: 128px; vertical-align: top;}
     .contentright {vertical-align: top;}
@@ -110,56 +79,6 @@
     .sprocket {cursor: pointer; float: right;}
     .menuIconImg {width: 16px; height: 16px;}
     .noCloseDlg .ui-dialog-titlebar-close {display: none;}
-    .rating {visibility: hidden;}
-    .ratingbox
-    {
-        width:150px;
-        height:15px;
-        margin-top:-15px;
-        background-color:#EBEBEB;
-        display:block;
-        margin-left:60px;
-    }
-    .ratingboxover
-    {
-        height:15px;
-        background-color:#5B74A8;
-        display:block;
-    }
-    .averagerating
-    {
-        top:-32px;
-        left:90px;
-        width:100%;
-    }
-    .ratingfooter
-    {
-        position:absolute;
-    }
-    .ratingfooter p, a
-    {
-        padding-bottom: 0 !important;
-        margin: 7px 0 0 0 !important;
-    }
-    #slider
-    {
-        border: 0 !important;
-        width: 100px;
-        height: 20px;
-        background-color: #8e8d8d;
-        background: url('<%= h(imgDir) %>star_empty20x20.png') repeat-x;
-        z-index: 0;
-        overflow: hidden;
-        cursor:pointer;
-    }
-    #sliderover
-    {
-        width:100px;
-        height:20px;
-        background: url('<%= h(imgDir) %>star_full20x20.png') repeat-x;
-        z-index:99;
-    }
-    .ui-slider-handle { display:none; }
 
 </style>
 
@@ -169,19 +88,6 @@
     <% addHandler("add-new-tool-btn", "click", "$('#uploadPopOwners').show(); $('#updatetarget').val(''); $('#uploadPop').dialog('open')"); %>
 </div>
 <% } %>
-<!--Submit Rating Form-->
-<div id="reviewPop" title="Leave a review" style="display:none;">
-    <form action="<%=h(urlFor(SkylineToolsStoreController.SubmitRatingAction.class))%>" method="post">
-        Title: <input type="text" name="title"><br>
-        <input type="text" name="value" style="display:none;" value="5">
-        <div id="slider">
-            <div id="sliderover"></div>
-        </div>
-        <input type="hidden" id="ratingToolId" name="toolId" value="" />
-        <textarea name="review" rows="6" cols="60"></textarea><br /><br />
-        <input type="submit" value="Submit Review" />
-    </form>
-</div>
 <!--Manage Tool Owners Form-->
 <div id="manageOwnersPop" title="Manage tool owners" style="display:none;">
     <form action="<%=h(urlFor(SkylineToolsStoreController.SetOwnersAction.class))%>" method="post">
@@ -254,9 +160,6 @@
         final SkylineTool[] allVersions = SkylineToolsStoreManager.get().getToolsByIdentifier(tool.getIdentifier());
         final boolean multipleVersions = allVersions.length > 1;
         final int numDownloads = Arrays.stream(allVersions).mapToInt(SkylineTool::getDownloads).sum();
-        final Rating[] ratings = RatingManager.get().getRatingsByToolAllVersions(tool.getIdentifier());
-        final Rating[] ratingsCurVer = RatingManager.get().getRatingsByToolId(tool.getRowId());
-        final boolean leftReview = RatingManager.get().userLeftRating(tool.getIdentifier(), getUser());
 %>
 
 <table id="<%= h(tableId) %>" class="tablewrap"
@@ -293,80 +196,13 @@
 <% if (tool.getProvider() != null) { %>
                 <p class="toolSubtitle"><a href="<%= h(tool.getProvider()) %>" target="_blank"><%= h(tool.getProvider()) %></a></p>
 <% } %>
-<%
-    if (ratings != null && ratings.length > 0)
-    {
-        int totalReviews = ratings.length;
-        List<Integer> ratingValues = new ArrayList<>();
-        double averageRating = 0;
-        double averageRatingRounded = 0;
-        double percentOfTotal[] = new double[]{0,0,0,0,0};
-        int ratingsBreakDown[] = new int[]{0,0,0,0,0};
-        List<Integer> usedIds = new ArrayList<>();
-
-        for (Rating getRatings: ratings) {
-            if (toolRatings.containsKey(getRatings.getToolId()))
-                ratingValues.add(getRatings.getRating());
-
-            if (toolRatingSplit.containsKey(getRatings.getToolId()))
-            {
-                if (!usedIds.contains(getRatings.getToolId()))
-                {
-                    for (int j = 0; j < 5; j++)
-                        ratingsBreakDown[j] = ratingsBreakDown[j] + toolRatingSplit.get(getRatings.getToolId())[j];
-                    usedIds.add(getRatings.getToolId());
-                }
-            }
-        }
-
-        for (int j = 0; j < 5; j++)
-            percentOfTotal[j]= ((double)ratingsBreakDown[j]/totalReviews) * 100;
-
-        for (int i = 0; i < ratingValues.size(); i++)
-        {
-            averageRating = averageRating + ratingValues.get(i);
-            if (i == ratingValues.size() - 1)
-            {
-                averageRating = averageRating / totalReviews;
-                averageRatingRounded =   Math.round(averageRating * 100.0) / 100.0;
-                break;
-            }
-        }
-%>
-                <div class="rating">
-                    <div class="ratingstars">
-                        <div class="ratingempty"></div>
-                        <%--98% because of css properties inherited.  Actual ratingfull size is not exactly 75px--%>
-                        <div class="ratingfull" style="width:<%= averageRating / 5 * 100 %>%;"></div>
-                    </div>
-                    <div class="ratingcontent">
-                        <div class="averagerating"><p><%= averageRatingRounded %> out of 5 stars</p></div>
-                        5 stars:<div id="rating-5-<%=tool.getRowId()%>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[4])%>%;"></div><div style="margin-left:153px !important;"><%=ratingsBreakDown[4]%></div></div><br>
-                        4 stars:<div id="rating-5-<%=tool.getRowId()%>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[3])%>%;"></div><div style="margin-left:153px !important;"><%=ratingsBreakDown[3]%></div></div><br>
-                        3 stars:<div id="rating-5-<%=tool.getRowId()%>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[2])%>%;"></div><div style="margin-left:153px !important;"><%=ratingsBreakDown[2]%></div></div><br>
-                        2 stars:<div id="rating-5-<%=tool.getRowId()%>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[1])%>%;"></div><div style="margin-left:153px !important;"><%=ratingsBreakDown[1]%></div></div><br>
-                        1 stars:<div id="rating-5-<%=tool.getRowId()%>" class="ratingbox"><div class="ratingboxover" style="width:<%=h(percentOfTotal[0])%>%;"></div><div style="margin-left:153px !important;"><%=ratingsBreakDown[0]%></div></div><br>
-                        <div class="ratingfooter">
-                            <p>
-                                <a href="<%= h(detailsUrl) %>">See all <%= totalReviews %> reviews</a>
-<% if (loggedIn && !leftReview) { %>
-                                <%=simpleLink("Leave review").onClick("$('#ratingToolId').val(" + tool.getRowId() + "); $('#reviewPop').dialog('open')")%>
-<% } %>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-<% } %>
                 <p class="content"><%= h(tool.getDescription(), true) %><br />[<a href="<%=h(detailsUrl)%>">Tool Details</a>, <a href="/labkey/home/software/Skyline/tools/Support/<%=h(tool.getName())%>/project-begin.view" target="_blank">Support Board</a>]</p>
 
                 <div class="toolButtons">
 
                     <button type="button" id="download-tool-btn-<%=tool.getRowId()%>" class="styled-button">Download</button>
                     <% addHandler("download-tool-btn-" + tool.getRowId(), "click", "window.location.href = " + q(urlFor(SkylineToolsStoreController.DownloadToolAction.class).addParameter("id", tool.getRowId()))); %>
-<% if ((ratingsCurVer == null || ratingsCurVer.length == 0) && loggedIn) { %>
-                    <%--<button type="button" onclick="$('#ratingToolId').val(<%= h(tool.getRowId()) %>); $('#reviewPop').dialog('open')" class="styled-button">Leave the first Review!</button>--%>
 <%
-    }
     if (suppFiles.size() == 1) {
         Map.Entry suppPair = (Map.Entry)suppIter.next();
 %>
@@ -397,10 +233,6 @@
     var READ_LESS_TEXT = "Close";
     var BASE_SLIDE_TIME = 100;
     var LINE_THRESHOLD = 2.0;
-
-    $(function() {
-        initRatingSlider($("#slider"), $("#sliderover"), "value");
-    });
 
     function adjustContent(element) {
         var newP = $("<p />").html($("<a />").text(READ_MORE_TEXT).click(function() {
@@ -455,42 +287,9 @@
 
     $(".menuMouseArea").each(function() {initMenu($(this));});
 
-    function ratinghover(){
-
-        $(function() {
-            $(".content").each(function() {adjustContent($(this));});
-
-            $(".rating").each(function() {
-                var containingTable = $(this).parents(".tablewrap:first");
-                containingTable.height(containingTable.height());
-                var toShift = $(this).next();
-                var oldTop = toShift.position().top;
-                $(this).css("visibility", "visible");
-                $(this).css("position", "absolute");
-                var newTop = toShift.position().top;
-                toShift.css("margin-top", ((parseInt(toShift.css("margin-top")) + (oldTop - newTop)) + "px"));
-            });
-        });
-        var REVIEW_EXPAND_TIME = 250;
-        var lastExpanded = false;
-        $(".rating").mouseenter(function() {
-            lastExpanded = true;
-            $(this).css("background", "#ffffff").css("box-shadow", "7px 7px 8px #888888");
-            $(this).animate(
-                    {height: $(this).prop("scrollHeight"), width: "250px", height: "131px"},
-                    {queue: false, duration: REVIEW_EXPAND_TIME}
-            );
-        }).mouseleave(function() {
-            lastExpanded = false;
-            $(this).animate(
-                {height: $(this).children(":first").height(), width: $(this).children(":first").width()},
-                {queue: false, duration: REVIEW_EXPAND_TIME, always: function() {
-                    if (!lastExpanded)
-                        $(this).css("background", "").css("box-shadow", "0px 0px 0px 0px #fff");
-                }}
-            );
-        });
-    }
+    $(function() {
+        $(".content").each(function() {adjustContent($(this));});
+    });
 
 <% if (admin) { %>
     var toolOwners = new Array();
@@ -537,7 +336,6 @@
 
     $("#uploadPop").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE});
     $("#manageOwnersPop").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE});
-    $("#reviewPop").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE});
     $("#uploadSuppPop").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE});
 
     $("#delToolAllDlg").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE, dialogClass:"noCloseDlg",
@@ -578,13 +376,11 @@
                     var newToolTable = extractToolTable(data, toolTable.attr("data-toolLsid"));
                     newToolTable.hide();
                     newToolTable.find(".menuMouseArea").each(function() {initMenu($(this));});
-                    newToolTable.find(".rating").each(function() {initMenu($(this));});
                     $("#delToolLatestDlg").dialog("close");
                     toolTable.hide("explode", function() {
                         $(this).replaceWith(newToolTable);
                         $(newToolTable).show("explode", function() {
                             adjustContent($(newToolTable).find(".content:first"));
-                           ratinghover();
                         });
                     });
                 }).fail(function() {
@@ -630,5 +426,4 @@
     $(sortSelector).val("name-asc").change();
 
     initJqueryUiImages("<%= h(imgDir + "jquery-ui") %>");
-    window.onload = ratinghover;
 </script>
