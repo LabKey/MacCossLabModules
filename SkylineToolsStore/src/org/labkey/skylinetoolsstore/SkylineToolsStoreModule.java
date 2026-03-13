@@ -52,7 +52,7 @@ public class SkylineToolsStoreModule extends DefaultModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 16.2;
+        return 25.001;
     }
 
     @Override
