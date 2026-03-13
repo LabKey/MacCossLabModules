@@ -293,6 +293,16 @@ public class SkylineTool extends Entity
         return AppProps.getInstance().getContextPath() + "/files" + lookupContainer().getPath() + "/";
     }
 
+    public boolean hasDocumentation()
+    {
+        return new File(SkylineToolsStoreController.getLocalPath(lookupContainer()), "docs/index.html").exists();
+    }
+
+    public String getDocsUrl()
+    {
+        return AppProps.getInstance().getContextPath() + "/_webdav" + lookupContainer().getPath() + "/@files/docs/index.html";
+    }
+
     public String getIconUrl()
     {
         return (SkylineToolsStoreController.makeFile(lookupContainer(), "icon.png").exists()) ?

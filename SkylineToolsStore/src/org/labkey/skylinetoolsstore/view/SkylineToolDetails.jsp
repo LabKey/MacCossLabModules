@@ -1,4 +1,6 @@
 <%@ page import="org.apache.commons.lang3.StringUtils" %>
+<%@ page import="org.labkey.api.data.Container" %>
+<%@ page import="org.labkey.api.data.ContainerManager" %>
 <%@ page import="org.labkey.api.portal.ProjectUrls" %>
 <%@ page import="org.labkey.api.security.permissions.DeletePermission" %>
 <%@ page import="org.labkey.api.security.permissions.InsertPermission" %>
@@ -299,7 +301,17 @@ a { text-decoration: none; }
         </div>
 
         <button id="tool-support-board-btn" class="banner-button-small">Support Board</button>
-        <% addHandler("tool-support-board-btn", "click", "window.open(" + q(urlProvider(ProjectUrls.class).getBeginURL(getContainer().getChild("Support").getChild(tool.getName()))) + ", '_blank', 'noopener,noreferrer')"); %>
+        <%
+            Container supportContainer = getContainer().getChild("Support");
+            Container toolSupportBoard = supportContainer != null ? supportContainer.getChild(tool.getName()) : null;
+            Container supportTarget;
+            if (toolSupportBoard != null)
+                supportTarget = toolSupportBoard;
+            else
+                supportTarget = ContainerManager.getForPath("/home/support");
+            if (supportTarget != null)
+                addHandler("tool-support-board-btn", "click", "window.open(" + q(urlProvider(ProjectUrls.class).getBeginURL(supportTarget)) + ", '_blank', 'noopener,noreferrer')");
+        %>
     </div>
 <% if (toolEditor) { %>
     <div class="menuMouseArea sprocket">
@@ -332,9 +344,17 @@ a { text-decoration: none; }
     </div>
 </div>
 
-<% if (suppIter.hasNext()) { %>
+<% if (tool.hasDocumentation() || suppIter.hasNext()) { %>
 <div id="documentationbox" class="itemsbox">
     <legend>Documentation</legend>
+<% if (tool.hasDocumentation()) { %>
+    <div class="barItem">
+        <a href="<%=h(tool.getDocsUrl())%>" target="_blank" rel="noopener noreferrer">
+        <img src="<%= h(imgDir) %>link.png" alt="Documentation" />
+        <span>Online Documentation</span>
+        </a>
+    </div>
+<% } %>
 <%
     while (suppIter.hasNext()) {
         Map.Entry suppPair = (Map.Entry)suppIter.next();
