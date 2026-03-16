@@ -347,10 +347,13 @@ a { text-decoration: none; }
     </div>
 </div>
 
-<% if (tool.hasDocumentation() || suppIter.hasNext()) { %>
+<%
+    boolean hasDocumentation = tool.hasDocumentation();
+%>
+<% if (hasDocumentation || suppIter.hasNext()) { %>
 <div id="documentationbox" class="itemsbox">
     <legend>Documentation</legend>
-<% if (tool.hasDocumentation()) { %>
+<% if (hasDocumentation) { %>
     <div class="barItem">
         <a href="<%=h(tool.getDocsUrl())%>" target="_blank" rel="noopener noreferrer">
         <img src="<%= h(imgDir) %>link.png" alt="Documentation" />
