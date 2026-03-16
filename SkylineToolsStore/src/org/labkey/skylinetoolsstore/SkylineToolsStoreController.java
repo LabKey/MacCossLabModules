@@ -176,7 +176,7 @@ public class SkylineToolsStoreController extends SpringActionController
         {
             ZipEntry zipEntry;
             while ((zipEntry = zipStream.getNextEntry()) != null &&
-                    (tool == null || tool.getIcon() == null))
+                    (tool == null || toolIcon == null))
             {
                 String entryLower = zipEntry.getName().toLowerCase();
                 if (entryLower.startsWith("tool-inf/") && !entryLower.startsWith("tool-inf/docs/"))
