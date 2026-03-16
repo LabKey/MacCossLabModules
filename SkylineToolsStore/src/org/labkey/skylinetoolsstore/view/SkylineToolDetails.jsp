@@ -300,7 +300,6 @@ a { text-decoration: none; }
 <% } %>
         </div>
 
-        <button id="tool-support-board-btn" class="banner-button-small">Support Board</button>
         <%
             Container supportContainer = getContainer().getChild("Support");
             Container toolSupportBoard = supportContainer != null ? supportContainer.getChild(tool.getName()) : null;
@@ -309,9 +308,13 @@ a { text-decoration: none; }
                 supportTarget = toolSupportBoard;
             else
                 supportTarget = ContainerManager.getForPath("/home/support");
-            if (supportTarget != null)
+        %>
+        <% if (supportTarget != null) { %>
+        <button id="tool-support-board-btn" class="banner-button-small">Support Board</button>
+        <%
                 addHandler("tool-support-board-btn", "click", "window.open(" + q(urlProvider(ProjectUrls.class).getBeginURL(supportTarget)) + ", '_blank', 'noopener,noreferrer')");
         %>
+        <% } %>
     </div>
 <% if (toolEditor) { %>
     <div class="menuMouseArea sprocket">
