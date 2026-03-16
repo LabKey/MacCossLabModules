@@ -6951,6 +6951,13 @@ public class PanoramaPublicController extends SpringActionController
                 return new SimpleErrorView(errors);
             }
 
+            // Only pre-populate the PubMed ID from the copied experiment if the form doesn't already
+            // have one. The form may arrive pre-populated via the URL when the user clicks the
+            // "Make Public" link in a notification message that includes a suggested publication.
+            if (!form.hasPubmedId())
+            {
+                form.setPubmedId(_copiedExperiment.getPubmedId());
+            }
             form.setLink(_copiedExperiment.getPublicationLink());
             form.setCitation(_copiedExperiment.getCitation());
             return getPublicationDetailsView(form, errors);
@@ -10930,6 +10937,7 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, "No experiment found for Id " + form.getId());
                 return false;
             }
+            ensureCorrectContainer(getContainer(), exptAnnotations.getContainer(), getViewContext());
 
             // Check if the user has already dismissed this publication suggestion
             DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
@@ -10988,30 +10996,34 @@ public class PanoramaPublicController extends SpringActionController
                 notifyUsers.add(exptAnnotations.getLabHeadUser());
             }
 
-            PanoramaPublicNotification.postPrivateDataReminderMessage(
-                    journal, submission, exptAnnotations, submitter, getUser(), notifyUsers,
-                    _announcement, _announcementsContainer, getUser(), selectedMatch);
+            try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
+            {
+                PanoramaPublicNotification.postPrivateDataReminderMessage(
+                        journal, submission, exptAnnotations, submitter, getUser(), notifyUsers,
+                        _announcement, _announcementsContainer, getUser(), selectedMatch);
 
-            // Update DatasetStatus
-            if (datasetStatus == null)
-            {
-                datasetStatus = new DatasetStatus();
-                datasetStatus.setExperimentAnnotationsId(exptAnnotations.getId());
-            }
-            datasetStatus.setPotentialPublicationId(form.getPublicationId());
-            datasetStatus.setPublicationType(pubType.name());
-            datasetStatus.setPublicationMatchInfo(form.getMatchInfo());
-            datasetStatus.setCitation(selectedMatch.getCitation());
-            datasetStatus.setUserDismissedPublication(null);
-            datasetStatus.setLastReminderDate(new Date());
+                // Update DatasetStatus
+                if (datasetStatus == null)
+                {
+                    datasetStatus = new DatasetStatus();
+                    datasetStatus.setExperimentAnnotationsId(exptAnnotations.getId());
+                }
+                datasetStatus.setPotentialPublicationId(form.getPublicationId());
+                datasetStatus.setPublicationType(pubType.name());
+                datasetStatus.setPublicationMatchInfo(form.getMatchInfo());
+                datasetStatus.setCitation(selectedMatch.getCitation());
+                datasetStatus.setUserDismissedPublication(null);
+                datasetStatus.setLastReminderDate(new Date());
 
-            if (datasetStatus.getId() == 0)
-            {
-                DatasetStatusManager.save(datasetStatus, getUser());
-            }
-            else
-            {
-                DatasetStatusManager.update(datasetStatus, getUser());
+                if (datasetStatus.getId() == 0)
+                {
+                    DatasetStatusManager.save(datasetStatus, getUser());
+                }
+                else
+                {
+                    DatasetStatusManager.update(datasetStatus, getUser());
+                }
+                transaction.commit();
             }
 
             return true;

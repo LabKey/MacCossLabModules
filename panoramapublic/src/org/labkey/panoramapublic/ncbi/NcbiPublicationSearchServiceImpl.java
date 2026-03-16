@@ -1,6 +1,7 @@
 package org.labkey.panoramapublic.ncbi;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
@@ -303,12 +304,10 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     {
         String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
         String url = ESEARCH_URL +
-            "?db=" + database +
+            "?" + buildCommonParams(database) +
             "&term=" + encodedQuery +
             "&retmax=" + NcbiPublicationSearchService.MAX_RESULTS +
-            "&retmode=json" +
-            "&tool=" + TOOL +
-            "&email=" + URLEncoder.encode(EMAIL, StandardCharsets.UTF_8);
+            "&retmode=json";
 
         try
         {
@@ -400,11 +399,9 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
         String idString = String.join(",", ids);
         String url = ESUMMARY_URL +
-            "?db=" + database +
+            "?" + buildCommonParams(database) +
             "&id=" + URLEncoder.encode(idString, StandardCharsets.UTF_8) +
-            "&retmode=json" +
-            "&tool=" + TOOL +
-            "&email=" + URLEncoder.encode(EMAIL, StandardCharsets.UTF_8);
+            "&retmode=json";
 
         try
         {
@@ -582,8 +579,11 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
 
         // Search PubMed: "LastName FirstName[Author] AND Title NOT preprint[Publication Type]"
+        // PubMed has no escape mechanism for special characters like brackets or parentheses —
+        // the recommended approach is to remove them before searching.
+        // See: https://pubmed.ncbi.nlm.nih.gov/help/
         String query = String.format("%s %s[Author] AND %s NOT preprint[Publication Type]",
-            lastName, firstName, title);
+            stripQuerySpecialChars(lastName), stripQuerySpecialChars(firstName), stripQuerySpecialChars(title));
 
         log.debug("PubMed fallback query: {}", query);
         List<String> pmids = searchPubMed(query, log);
@@ -781,18 +781,19 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Normalize title for comparison: strip HTML tags, strip diacritics, lowercase,
-     * replace punctuation with space (so "data-independent" becomes "data independent"),
-     * and normalize whitespace.
+     * Normalize title for comparison: decode HTML entities (e.g. {@code &amp;}), strip HTML tags
+     * (e.g. {@code <i>}, {@code </i>}), strip diacritics, lowercase, replace punctuation with space
+     * (so "data-independent" becomes "data independent"), and normalize whitespace.
+     * The tag regex {@code </?[a-zA-Z]+>} matches letter-only tag names with no attributes e.g. {@code <i>}, {@code <sub>}). 
      */
     static String normalizeTitle(String title)
     {
         if (title == null) return "";
 
-        return stripDiacritics(title.toLowerCase())
-            .replaceAll("<[^>]+>", " ")    // Strip HTML/XML tags
-            .replaceAll("[^\\w\\s]", " ")  // Replace punctuation with space (not remove)
-            .replaceAll("\\s+", " ")       // Normalize whitespace
+        return stripDiacritics(StringEscapeUtils.unescapeHtml4(title.toLowerCase())
+            .replaceAll("</?[a-zA-Z]+>", " "))       // Strip HTML tags (e.g. <i>, </i>, <sub>)
+            .replaceAll("[^\\w\\s]", " ")            // Replace punctuation with space
+            .replaceAll("\\s+", " ")                 // Normalize whitespace
             .trim();
     }
 
@@ -916,11 +917,33 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Wrap string in quotes for exact match search
+     * Remove characters that have special meaning in PubMed query syntax (brackets, parentheses, quotes).
+     * PubMed provides no escape mechanism for these characters. The recommended approach is to remove them.
+     * See: https://pubmed.ncbi.nlm.nih.gov/help/
+     */
+    static String stripQuerySpecialChars(String value)
+    {
+        if (value == null) return "";
+        return value.replaceAll("[\\[\\]()\"]", "").replaceAll("\\s+", " ").trim();
+    }
+
+    /**
+     * Build the common NCBI API parameters (db, tool, email) with URL encoding.
+     */
+    private static String buildCommonParams(String database)
+    {
+        return "db=" + URLEncoder.encode(database, StandardCharsets.UTF_8) +
+            "&tool=" + URLEncoder.encode(TOOL, StandardCharsets.UTF_8) +
+            "&email=" + URLEncoder.encode(EMAIL, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Wrap string in quotes for exact phrase match search.
+     * Any embedded double quotes are removed since NCBI provides no escape mechanism for them.
      */
     private static String quote(String str)
     {
-        return "\"" + str + "\"";
+        return "\"" + str.replace("\"", "") + "\"";
     }
 
     public static class TestCase extends Assert
@@ -1197,12 +1220,50 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             assertEquals("in vivo analysis of protein", normalizeTitle("<i>in vivo</i> analysis of protein"));
             assertEquals("e coli proteomics", normalizeTitle("<i>E. coli</i> proteomics"));
 
+            // HTML entities are decoded: &amp; replaced by space (not left as "amp")
+            assertEquals("proteomics genomics", normalizeTitle("Proteomics &amp; Genomics"));
+            assertEquals("e coli analysis", normalizeTitle("&lt;i&gt;E. coli&lt;/i&gt; analysis"));
+
+            // Non-tag angle bracket expressions are NOT stripped by the tag regex; < and > are replaced by punctuation step.
+            assertEquals("proteins 10 kda threshold", normalizeTitle("Proteins <10 kDa threshold"));
+            assertEquals("proteins with mw 10 kda and 5 kda", normalizeTitle("Proteins with MW <10 kDa and >5 kDa"));
+
             // Apostrophes are replaced with space (like other punctuation)
             assertEquals("garcia s analysis", normalizeTitle("García's Analysis"));
 
             // Hyphens become spaces: "data-independent" matches "data independent"
             assertEquals("data independent acquisition", normalizeTitle("data-independent acquisition"));
             assertEquals("data independent acquisition", normalizeTitle("data independent acquisition"));
+        }
+
+        @Test
+        public void testStripQuerySpecialChars()
+        {
+            // Parentheses removed entirely (not replaced with space)
+            assertEquals("proteins analysis", stripQuerySpecialChars("protein(s) analysis"));
+            assertEquals("novel approach", stripQuerySpecialChars("[novel] approach"));
+
+            // Double quotes removed
+            assertEquals("the omics revolution", stripQuerySpecialChars("the \"omics\" revolution"));
+
+            // Null and empty
+            assertEquals("", stripQuerySpecialChars(null));
+            assertEquals("", stripQuerySpecialChars(""));
+
+            // No special chars — unchanged
+            assertEquals("Smith John", stripQuerySpecialChars("Smith John"));
+
+            // Chars removed entirely — no space inserted between adjacent text
+            assertEquals("ABC", stripQuerySpecialChars("A([B])C"));
+        }
+
+        @Test
+        public void testQuote()
+        {
+            assertEquals("\"PXD012345\"", quote("PXD012345"));
+
+            // Inner double quotes are removed
+            assertEquals("\"title with quotes\"", quote("title with \"quotes\""));
         }
 
         // -- extractPubMedId tests --
