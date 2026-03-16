@@ -3,9 +3,14 @@ package org.labkey.skylinetoolsstore.model;
 import org.apache.commons.lang3.StringUtils;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.Entity;
+import org.labkey.api.files.FileContentService;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.Pair;
+import org.labkey.api.webdav.WebdavService;
 import org.labkey.skylinetoolsstore.SkylineToolsStoreController;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import javax.imageio.ImageIO;
 import java.io.BufferedReader;
@@ -295,12 +300,17 @@ public class SkylineTool extends Entity
 
     public boolean hasDocumentation()
     {
-        return new File(SkylineToolsStoreController.getLocalPath(lookupContainer()), "docs/index.html").exists();
+        Path localPath = SkylineToolsStoreController.getLocalPath(lookupContainer());
+        return localPath != null && Files.exists(localPath.resolve("docs/index.html"));
     }
 
     public String getDocsUrl()
     {
-        return AppProps.getInstance().getContextPath() + "/_webdav" + lookupContainer().getPath() + "/@files/docs/index.html";
+        org.labkey.api.util.Path path = WebdavService.getPath()
+                .append(lookupContainer().getParsedPath())
+                .append(FileContentService.FILES_LINK)
+                .append(new org.labkey.api.util.Path("docs", "index.html"));
+        return AppProps.getInstance().getContextPath() + path.encode();
     }
 
     public String getIconUrl()
