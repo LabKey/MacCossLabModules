@@ -303,17 +303,12 @@ a { text-decoration: none; }
         <%
             Container supportContainer = getContainer().getChild("Support");
             Container toolSupportBoard = supportContainer != null ? supportContainer.getChild(tool.getName()) : null;
-            Container supportTarget;
-            if (toolSupportBoard != null)
-                supportTarget = toolSupportBoard;
-            else
-                supportTarget = ContainerManager.getForPath("/home/support");
+            if (toolSupportBoard == null)
+                toolSupportBoard = ContainerManager.getForPath("/home/support");
         %>
-        <% if (supportTarget != null) { %>
+        <% if (toolSupportBoard != null) { %>
         <button id="tool-support-board-btn" class="banner-button-small">Support Board</button>
-        <%
-                addHandler("tool-support-board-btn", "click", "window.open(" + q(urlProvider(ProjectUrls.class).getBeginURL(supportTarget)) + ", '_blank', 'noopener,noreferrer')");
-        %>
+        <% addHandler("tool-support-board-btn", "click", "window.open(" + q(urlProvider(ProjectUrls.class).getBeginURL(toolSupportBoard)) + ", '_blank', 'noopener,noreferrer')"); %>
         <% } %>
     </div>
 <% if (toolEditor) { %>
