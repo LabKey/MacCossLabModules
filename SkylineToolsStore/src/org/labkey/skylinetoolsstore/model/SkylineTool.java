@@ -3,9 +3,14 @@ package org.labkey.skylinetoolsstore.model;
 import org.apache.commons.lang3.StringUtils;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.Entity;
+import org.labkey.api.files.FileContentService;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.Pair;
+import org.labkey.api.webdav.WebdavService;
 import org.labkey.skylinetoolsstore.SkylineToolsStoreController;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import javax.imageio.ImageIO;
 import java.io.BufferedReader;
@@ -291,6 +296,21 @@ public class SkylineTool extends Entity
     public String getFolderUrl()
     {
         return AppProps.getInstance().getContextPath() + "/files" + lookupContainer().getPath() + "/";
+    }
+
+    public boolean hasDocumentation()
+    {
+        Path localPath = SkylineToolsStoreController.getLocalPath(lookupContainer());
+        return localPath != null && Files.exists(localPath.resolve("docs/index.html"));
+    }
+
+    public String getDocsUrl()
+    {
+        org.labkey.api.util.Path path = WebdavService.getPath()
+                .append(lookupContainer().getParsedPath())
+                .append(FileContentService.FILES_LINK)
+                .append(new org.labkey.api.util.Path("docs", "index.html"));
+        return AppProps.getInstance().getContextPath() + path.encode();
     }
 
     public String getIconUrl()

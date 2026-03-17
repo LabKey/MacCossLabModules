@@ -200,7 +200,7 @@
 
                 <div class="toolButtons">
 
-                    <button type="button" id="download-tool-btn-<%=tool.getRowId()%>" class="styled-button">Download</button>
+                    <button type="button" id="download-tool-btn-<%=tool.getRowId()%>" class="styled-button">Download <span class="visually-hidden"><%=h(tool.getName())%></span></button>
                     <% addHandler("download-tool-btn-" + tool.getRowId(), "click", "window.location.href = " + q(urlFor(SkylineToolsStoreController.DownloadToolAction.class).addParameter("id", tool.getRowId()))); %>
 <%
     if (suppFiles.size() == 1) {
