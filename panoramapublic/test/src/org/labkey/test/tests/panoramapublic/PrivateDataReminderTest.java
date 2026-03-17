@@ -129,7 +129,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         assertEquals(2, privateDataCount);
 
         log("Changing reminder settings. Setting reminder frequency to 0.");
-        saveSettings("2", "12", "0");
+        savePrivateDataReminderSettings("2", "12", "0");
 
         // Do not select any experiments.  Job will not run.
         log("Attempt to send reminders without selecting any experiments. Job should not run.");
@@ -145,7 +145,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         verifyPipelineJobLogMessage(projectName, message, message2, "Skipped posting reminders for 2 experiments");
 
         log("Changing reminder settings. Setting delay until first reminder to 0.");
-        saveSettings("2", "0", "0");
+        savePrivateDataReminderSettings("2", "0", "0");
 
         // Post reminders in test mode.
         log("Posting reminders in test mode. Select all experiment rows.");
@@ -161,7 +161,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
 
         // Change the reminder frequency to 1.
         log("Changing reminder settings. Setting reminder frequency to 1.");
-        saveSettings("2", "0", "1");
+        savePrivateDataReminderSettings("2", "0", "1");
         // Post reminders again. Since reminder frequency is set to 1, no reminders will be posted to the first data.
         postReminders(projectName, false, privateDataCount, -1, ++pipelineJobCount);
         verifyReminderPosted(projectName, privateData.get(0), 1); // No new reminders since reminder frequency is set to 1.
@@ -171,7 +171,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
 
         // Change reminder frequency to 0 again.
         log("Changing reminder settings. Setting reminder frequency to 0.");
-        saveSettings("2", "0", "0");
+        savePrivateDataReminderSettings("2", "0", "0");
 
         // Request extension for the first experiment.
         log("Requesting extension for experiment Id " + privateData.get(0).getExperimentAnnotationsId());
@@ -186,6 +186,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         // Request deletion for the second experiment.
         log("Requesting deletion for experiment Id " + privateData.get(1).getExperimentAnnotationsId());
         requestDeletion(projectName, privateData.get(1));
+
         // Post reminders again - none should be posted
         postReminders(projectName, false, privateDataCount, -1, ++pipelineJobCount);
         verifyReminderPosted(projectName, privateData.get(0),1); // No new reminders since extension requested.
@@ -291,24 +292,6 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         }
     }
 
-    private void saveSettings(String extensionLength, String delayUntilFirstReminder, String reminderFrequency)
-    {
-        goToAdminConsole().goToSettingsSection();
-        clickAndWait(Locator.linkWithText("Panorama Public"));
-        clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
-
-        setFormElement(Locator.input("delayUntilFirstReminder"), delayUntilFirstReminder);
-        setFormElement(Locator.input("reminderFrequency"), reminderFrequency);
-        setFormElement(Locator.input("extensionLength"), extensionLength);
-        clickButton("Save", 0);
-        waitForText("Private data reminder settings saved");
-        clickAndWait(Locator.linkWithText("Back to Private Data Reminder Settings"));
-
-        // clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
-        assertEquals(String.valueOf(delayUntilFirstReminder), getFormElement(Locator.input("delayUntilFirstReminder")));
-        assertEquals(String.valueOf(reminderFrequency), getFormElement(Locator.input("reminderFrequency")));
-        assertEquals(String.valueOf(extensionLength), getFormElement(Locator.input("extensionLength")));
-    }
 
     private void postRemindersNoExperimentsSelected(String projectName, int expectedExperimentCount)
     {
@@ -373,15 +356,6 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         }
     }
 
-    private void goToSendRemindersPage(String projectName)
-    {
-        goToAdminConsole().goToSettingsSection();
-        clickAndWait(Locator.linkWithText("Panorama Public"));
-        clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
-        selectOptionByText(Locator.name("journal"), projectName);
-        clickAndWait(Locator.linkWithText("Send Reminders Now"));
-        waitForText(projectName, "A reminder message will be sent to the submitters of the selected experiments");
-    }
 
     @Override
     protected void doCleanup(boolean afterTest) throws TestTimeoutException

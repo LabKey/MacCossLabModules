@@ -28,6 +28,7 @@ import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.model.Submission;
+import org.labkey.panoramapublic.ncbi.PublicationMatch;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
@@ -358,22 +359,63 @@ public class PanoramaPublicNotification
         postNotificationFullTitle(journal, je, messageBody.toString(), journalAdmin, messageTitle, AnnouncementService.StatusOption.Active, null);
     }
 
+    public static void postPublicationDismissalMessage(@NotNull Journal journal, @NotNull JournalExperiment je, @NotNull ExperimentAnnotations expAnnotations, User submitter,
+                                                       @NotNull PublicationMatch publicationMatch)
+    {
+        User journalAdmin = JournalManager.getJournalAdminUser(journal);
+        if (journalAdmin == null)
+        {
+            throw new NotFoundException(String.format("Could not find an admin user for %s.", journal.getName()));
+        }
+
+        String messageTitle = "Publication Suggestion Dismissed" +" - " + expAnnotations.getShortUrl().renderShortURL();
+
+        StringBuilder messageBody = new StringBuilder();
+        messageBody.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
+        messageBody.append("Thank you for letting us know that the suggested paper is not associated with your data on Panorama Public.");
+
+        messageBody.append(NL2).append(bold("Dismissed Publication:")).append(" ").append(publicationMatch.getPublicationIdLabel());
+        if (!StringUtils.isBlank(publicationMatch.getCitation()))
+        {
+            messageBody.append(NL).append(publicationMatch.getCitation());
+        }
+
+        messageBody.append(NL2).append("We will no longer suggest this paper for your dataset. ")
+                .append("If you would like to make your data public, you can do so at any time ")
+                .append("by clicking the \"Make Public\" button in your data folder, or by clicking this link: ")
+                .append(bold(link("Make Data Public", PanoramaPublicController.getMakePublicUrl(expAnnotations.getId(), expAnnotations.getContainer()).getURIString())))
+                .append(".");
+        messageBody.append(NL2).append("Best regards,");
+        messageBody.append(NL).append(getUserName(journalAdmin));
+
+        postNotificationFullTitle(journal, je, messageBody.toString(), journalAdmin, messageTitle, AnnouncementService.StatusOption.Closed, null);
+    }
+
 
     public static void postPrivateDataReminderMessage(@NotNull Journal journal, @NotNull JournalSubmission js, @NotNull ExperimentAnnotations expAnnotations,
                                                       @NotNull User submitter, @NotNull User messagePoster, List<User> notifyUsers,
-                                                      @NotNull Announcement announcement, @NotNull Container announcementsContainer, @NotNull User journalAdmin)
+                                                      @NotNull Announcement announcement, @NotNull Container announcementsContainer, @NotNull User journalAdmin,
+                                                      @Nullable PublicationMatch articleMatch)
     {
-        String message = getDataStatusReminderMessage(expAnnotations, submitter, js, announcement, announcementsContainer, journalAdmin);
-        String title = "Action Required: Status Update for Your Private Data on Panorama Public";
+        String message = getDataStatusReminderMessage(expAnnotations, submitter, js, announcement, announcementsContainer, journalAdmin, articleMatch);
+        String title = articleMatch != null
+                ? "Action Required: Publication Found for Your Data on Panorama Public"
+                : "Action Required: Status Update for Your Private Data on Panorama Public";
         postNotificationFullTitle(journal, js.getJournalExperiment(), message, messagePoster, title, AnnouncementService.StatusOption.Closed, notifyUsers);
     }
 
     public static String getDataStatusReminderMessage(@NotNull ExperimentAnnotations exptAnnotations, @NotNull User submitter,
                                                       @NotNull JournalSubmission js,@NotNull Announcement announcement,
-                                                      @NotNull Container announcementContainer, @NotNull User journalAdmin)
+                                                      @NotNull Container announcementContainer, @NotNull User journalAdmin,
+                                                      @Nullable PublicationMatch articleMatch)
     {
         String shortUrl = exptAnnotations.getShortUrl().renderShortURL();
-        String makePublicLink = PanoramaPublicController.getMakePublicUrl(exptAnnotations.getId(), exptAnnotations.getContainer()).getURIString();
+        ActionURL makePublicUrl = PanoramaPublicController.getMakePublicUrl(exptAnnotations.getId(), exptAnnotations.getContainer());
+        if (articleMatch != null && articleMatch.isPubMed() && articleMatch.getPublicationId() != null)
+        {
+            makePublicUrl.replaceParameter("pubmedId", articleMatch.getPublicationId());
+        }
+        String makePublicLink = makePublicUrl.getURIString();
         String dateString = DateUtil.formatDateTime(js.getLatestSubmission().getCreated(), PrivateDataReminderSettings.DATE_FORMAT_PATTERN);
 
         ActionURL viewMessageUrl = new ActionURL("announcements", "thread", announcementContainer)
@@ -386,32 +428,55 @@ public class PanoramaPublicNotification
         ActionURL requestExtensionUrl = new ActionURL(PanoramaPublicController.RequestExtensionAction.class, exptAnnotations.getContainer())
                 .addParameter("shortUrlEntityId", shortUrlEntityId);
 
-        ActionURL requesDeletionUrl = new ActionURL(PanoramaPublicController.RequestDeletionAction.class, exptAnnotations.getContainer())
+        ActionURL requestDeletionUrl = new ActionURL(PanoramaPublicController.RequestDeletionAction.class, exptAnnotations.getContainer())
                 .addParameter("shortUrlEntityId",shortUrlEntityId);
 
+        ActionURL dismissPublicationUrl = new ActionURL(PanoramaPublicController.DismissPublicationSuggestionAction.class, exptAnnotations.getContainer())
+                .addParameter("shortUrlEntityId", shortUrlEntityId);
 
         ExperimentAnnotations sourceExperiment = ExperimentAnnotationsManager.get(exptAnnotations.getSourceExperimentId());
 
         StringBuilder message = new StringBuilder();
-        message.append("Dear ").append(getUserName(submitter)).append(",").append(NL2)
-                .append("We are reaching out regarding your data on Panorama Public (").append(shortUrl).append("), which has been private since ")
-                .append(dateString).append(".")
-                .append(NL2).append(bold("Title:")).append(" ").append(escape(exptAnnotations.getTitle()))
-                .append(NL2).append(bold("Is the paper associated with this work already published?"))
-                .append(NL).append("- If yes: Please make your data public by clicking the \"Make Public\" button in your folder or by clicking this link: ")
-                .append(bold(link("Make Data Public", makePublicLink)))
-                .append(". This helps ensure that your valuable research is easily accessible to the community.")
-                .append(NL).append("- If not: You have a couple of options:")
-                .append(NL).append("  - ").append(bold("Request an Extension")).append(" - If your paper is still under review, or you need additional time, please let us know by clicking ")
-                .append(bold(link("Request Extension", requestExtensionUrl.getURIString()))).append(".")
-                .append(NL).append("  - ").append(bold("Delete from Panorama Public")).append(" - If you no longer wish to host your data on Panorama Public, please click ")
-                .append(bold(link("Request Deletion", requesDeletionUrl.getURIString()))).append(". ")
-                .append("We will remove your data from Panorama Public.");
-        if (sourceExperiment != null)
+        message.append("Dear ").append(getUserName(submitter)).append(",").append(NL2);
+
+        if (articleMatch != null)
         {
-            message.append(" However, your source folder (")
-                    .append(getContainerLink(sourceExperiment.getContainer()))
-                    .append(") will remain intact, allowing you to resubmit your data in the future if you wish.");
+            // Message variant when a publication was found
+            message.append("We found a paper that appears to be associated with your private data on Panorama Public (").append(shortUrl).append(").")
+                    .append(NL2).append(bold("Title:")).append(" ").append(escape(exptAnnotations.getTitle()))
+                    .append(NL2).append(bold("Publication Found:")).append(" ")
+                    .append(articleMatch.getCitation() != null
+                            ? link(articleMatch.getCitation(), articleMatch.getPublicationUrl())
+                            : link(articleMatch.getPublicationIdLabel(), articleMatch.getPublicationUrl()))
+                    .append(NL2).append("If this is indeed your paper, congratulations! We encourage you to make your data public so the research community can access it alongside your paper. ")
+                    .append("You can do this by clicking the \"Make Public\" button in your data folder or by clicking this link: ")
+                    .append(bold(link("Make Data Public", makePublicLink))).append(".")
+                    .append(articleMatch.isPubMed() ? " Please enter " + articleMatch.getPublicationId() + " in the PubMed ID field." : "")
+                    .append(NL2).append("If this paper is not associated with your data please let us know by clicking ")
+                    .append(bold(link("Dismiss Publication Suggestion", dismissPublicationUrl.getURIString())));
+        }
+        else
+        {
+            // Original message variant when no publication was found
+            message.append("We are reaching out regarding your data on Panorama Public (").append(shortUrl).append("), which has been private since ")
+                    .append(dateString).append(".")
+                    .append(NL2).append(bold("Title:")).append(" ").append(escape(exptAnnotations.getTitle()))
+                    .append(NL2).append(bold("Is the paper associated with this work already published?"))
+                    .append(NL).append("- If yes: Please make your data public by clicking the \"Make Public\" button in your folder or by clicking this link: ")
+                    .append(bold(link("Make Data Public", makePublicLink)))
+                    .append(". This helps ensure that your valuable research is easily accessible to the community.")
+                    .append(NL).append("- If not: You have a couple of options:")
+                    .append(NL).append("  - ").append(bold("Request an Extension")).append(" - If your paper is still under review, or you need additional time, please let us know by clicking ")
+                    .append(bold(link("Request Extension", requestExtensionUrl.getURIString()))).append(".")
+                    .append(NL).append("  - ").append(bold("Delete from Panorama Public")).append(" - If you no longer wish to host your data on Panorama Public, please click ")
+                    .append(bold(link("Request Deletion", requestDeletionUrl.getURIString()))).append(". ")
+                    .append("We will remove your data from Panorama Public.");
+            if (sourceExperiment != null)
+            {
+                message.append(" However, your source folder (")
+                        .append(getContainerLink(sourceExperiment.getContainer()))
+                        .append(") will remain intact, allowing you to resubmit your data in the future if you wish.");
+            }
         }
 
         message.append(NL2).append("If you have any questions or need further assistance, please do not hesitate to respond to this message by ")

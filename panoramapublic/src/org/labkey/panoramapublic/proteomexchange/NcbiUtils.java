@@ -15,14 +15,10 @@
  */
 package org.labkey.panoramapublic.proteomexchange;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.Logger;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.labkey.api.collections.IntHashMap;
 import org.labkey.api.util.PageFlowUtil;
-import org.labkey.api.util.Pair;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.AjaxCompletion;
 import org.w3c.dom.CharacterData;
@@ -37,26 +33,26 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.logging.log4j.Logger;
+
+/**
+ * Utilities for NCBI taxonomy lookups (autocomplete and scientific name resolution).
+ */
 public class NcbiUtils
 {
     private static final Pattern pattern = Pattern.compile("new Array\\(\"(.*)\"\\),");
     private static final String eutilsUrl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=taxonomy";
     private static final String autoCompUrl = "https://blast.ncbi.nlm.nih.gov/portal/utils/autocomp.fcgi?dict=taxids_sg&q=";
-
-    private static final String citationEporterUrl = "https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/?format=citation&id=";
-    public static final String PUBMED_ID = "^[0-9]{1,8}$"; // https://libguides.library.arizona.edu/c.php?g=406096&p=2779570
 
     private static final Logger LOG = LogHelper.getLogger(NcbiUtils.class, "Messages about using the NCBI utilities");
 
@@ -180,79 +176,5 @@ public class NcbiUtils
             if(conn != null) conn.disconnect();
         }
         return sciNameMap;
-    }
-
-    /**
-     * Does a citation lookup for the given PubMedId using the NCBI's Literature Citation Exporter (https://api.ncbi.nlm.nih.gov/lit/ctxp).
-     * Example URL: https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pubmed/?format=citation&id=28691345
-     * @param pubmedId PubMed Id
-     * @return the PubMed link and the NLM-style citation if the lookup is successful
-     */
-    public static Pair<String, String> getLinkAndCitation (String pubmedId)
-    {
-        if (pubmedId == null || !pubmedId.matches(PUBMED_ID))
-        {
-            return null;
-        }
-
-        String queryUrl = citationEporterUrl + pubmedId;
-
-        HttpURLConnection conn = null;
-        try
-        {
-            URL url = new URL(queryUrl);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-
-            int status = conn.getResponseCode();
-
-            if (status == HttpURLConnection.HTTP_OK)
-            {
-                String response;
-                try (InputStream in = conn.getInputStream())
-                {
-                    response = IOUtils.toString(in, StandardCharsets.UTF_8);
-                }
-                String citation = getCitation(response, pubmedId);
-
-                return citation != null ? new Pair<>(getPubmedLink(pubmedId), citation) : null;
-            }
-        }
-        catch (IOException e)
-        {
-            LOG.error("Error submitting a request to NCBI Literature Citation Exporter. URL: " + queryUrl, e);
-        }
-        finally
-        {
-            if(conn != null) conn.disconnect();
-        }
-        return null;
-    }
-
-    private static String getPubmedLink(String pubmedId)
-    {
-        // Example: https://pubmed.ncbi.nlm.nih.gov/29331002
-        return "https://pubmed.ncbi.nlm.nih.gov/" + pubmedId;
-    }
-
-    private static String getCitation(String response, String pubmedId)
-    {
-        try
-        {
-            var jsonObject = new JSONObject(response);
-            /* We are interested in the NLM style citation.
-            nlm: {
-                orig: "ENCODE Project Consortium. An integrated encyclopedia of DNA elements in the human genome. Nature. 2012 Sep 6;489(7414):57-74. doi: 10.1038/nature11247. PMID: 22955616; PMCID: PMC3439153.",
-                format: "ENCODE Project Consortium. An integrated encyclopedia of DNA elements in the human genome. Nature. 2012 Sep 6;489(7414):57-74. doi: 10.1038/nature11247. PMID: 22955616; PMCID: PMC3439153."
-            }
-            */
-            var nlmInfo = jsonObject.optJSONObject("nlm");
-            return null != nlmInfo ? nlmInfo.getString("orig") : null;
-        }
-        catch (JSONException e)
-        {
-            LOG.error("Error parsing response from NCBI Literature Citation Exporter for pubmedID " + pubmedId, e);
-        }
-        return null;
     }
 }

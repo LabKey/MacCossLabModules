@@ -47,6 +47,7 @@ import org.labkey.panoramapublic.bluesky.BlueskyApiClient;
 import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoResourceType;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentType;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
+import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchServiceImpl;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
@@ -92,7 +93,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 25.003;
+        return 25.004;
     }
 
     @Override
@@ -382,6 +383,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(CatalogEntryManager.TestCase.class);
         set.add(BlueskyApiClient.TestCase.class);
         set.add(PrivateDataReminderSettings.TestCase.class);
+        set.add(NcbiPublicationSearchServiceImpl.TestCase.class);
 
         return set;
     }

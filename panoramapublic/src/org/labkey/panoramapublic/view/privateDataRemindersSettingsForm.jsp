@@ -64,6 +64,23 @@
         }
         window.location = LABKEY.ActionURL.buildURL("panoramapublic", "sendPrivateDataReminders.view", folderPath);
     }
+
+    function clickSearchPublicationsLink()
+    {
+        const journal = document.getElementById("journal");
+        if (!journal)
+        {
+            alert("Cannot get journal selector element.");
+            return;
+        }
+        const folderPath = journal.value;
+        if (!folderPath)
+        {
+            alert("Please select a Panorama Public folder first.");
+            return;
+        }
+        window.location = LABKEY.ActionURL.buildURL("panoramapublic", "searchPublications.view", folderPath);
+    }
 </script>
 
 <labkey:errors/>
@@ -127,7 +144,33 @@
                     </div>
                 </td>
             </tr>
-            <tr><td colspan=2">
+            <tr>
+                <td class="labkey-form-label">
+                    <span><%=h(PrivateDataReminderSettings.PROP_ENABLE_PUBLICATION_SEARCH)%></span>
+                </td>
+                <td>
+                    <input style="padding:0 10px 0 0;" type="checkbox" name="enablePublicationSearch" <%=checked(form.isEnablePublicationSearch())%> />
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
+                        When enabled, the system will search PubMed Central and PubMed for publications associated with private datasets.
+                        <br/>
+                        If a publication is found, submitters will be notified.
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="labkey-form-label">
+                    <span><%=h(PrivateDataReminderSettings.PROP_PUBLICATION_SEARCH_FREQUENCY)%></span>
+                </td>
+                <td>
+                    <input style="padding:0 10px 0 0;" type="text" name="publicationSearchFrequency" value="<%=form.getPublicationSearchFrequency()%>" />
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
+                        Number of months to wait after a user dismisses a publication suggestion before re-searching.
+                        <br/>
+                        If a different publication is found after this delay, the submitter will be notified again.
+                    </div>
+                </td>
+            </tr>
+            <tr><td colspan="2">
                 <%=button("Save").submit(true)%>
                 <%=button("Cancel").href(panoramaPublicAdminUrl)%>
             </td></tr>
@@ -148,6 +191,7 @@
             %>
         </select>
         <%=link("Send Reminders Now").onClick("clickSendRemindersLink();").build()%>
+        <%=link("Search Publications").onClick("clickSearchPublicationsLink();").build()%>
     </labkey:form>
     <hr/>
 
