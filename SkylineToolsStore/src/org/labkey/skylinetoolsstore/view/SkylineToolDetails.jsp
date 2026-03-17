@@ -10,16 +10,11 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
-<%@ page import="org.labkey.skylinetoolsstore.RatingManager" %>
 <%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreController" %>
 <%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreManager" %>
-<%@ page import="org.labkey.skylinetoolsstore.model.Rating" %>
 <%@ page import="org.labkey.skylinetoolsstore.model.SkylineTool" %>
 <%@ page import="org.labkey.skylinetoolsstore.view.SkylineToolStoreUrls" %>
 <%@ page import="java.io.File" %>
-<%@ page import="java.text.DateFormat" %>
-<%@ page import="java.text.SimpleDateFormat" %>
-<%@ page import="java.util.ArrayList" %>
 <%@ page import="java.util.Arrays" %>
 <%@ page import="java.util.HashMap" %>
 <%@ page import="java.util.Iterator" %>
@@ -63,7 +58,6 @@
     final SkylineTool[] allVersions = SkylineToolsStoreController.sortToolsByCreateDate(SkylineToolsStoreManager.get().getToolsByIdentifier(tool.getIdentifier()));
     final boolean multipleVersions = allVersions.length > 1;
     final boolean isLatestVersion = SkylineToolsStoreManager.get().getToolLatestByIdentifier(tool.getIdentifier()).getVersion().equals(tool.getVersion());
-    final boolean leftReview = RatingManager.get().userLeftRating(tool.getIdentifier(), getUser());
     final int numDownloads = Arrays.stream(allVersions).mapToInt(SkylineTool::getDownloads).sum();
 
     ActionURL toolDetailsUrl = SkylineToolStoreUrls.getToolDetailsUrl(tool);
@@ -83,7 +77,6 @@ a { text-decoration: none; }
 .headerwrap h3 {margin: 0 !important; padding: 5px 0 0; font-weight: 500 !important;}
 .headerwrap p {margin: 0;}
 .headerwrap h2 {margin: 0 !important; padding: 0 !important; font-weight: 500 !important;}
-.reviewwrap {width: 100%; min-height: 40px;}
 .block {
     float: left;
     margin: 0 0 0 3px !important;
@@ -100,22 +93,6 @@ a { text-decoration: none; }
     float: left;
     width: 100%;
 }
-.reviewwrap h2 {
-    float: left;
-    font-weight: 600;
-    font-size: 1.2em;
-    margin: -3px 0 0 30px;
-    padding: 0 !important;
-}
-.reviewwrap h3 {
-    float: left;
-    padding: 0 !important;
-    margin: 1px 0 0 50px !important;
-    font-weight: 300 !important;
-}
-.reviewwrap h4 {margin: 0 !important; padding: 0 !important;}
-.reviewwrap p {padding: 0; margin: 6px 0 0 30px !important;}
-.reviewdate {float: right; margin: -12px 2% 0 0;}
 .bottombar a > div {color: #126495;}
 #allVersionsPop a {color: #126495;}
 #allVersionsPop a:hover {color: #000;}
@@ -135,26 +112,6 @@ a { text-decoration: none; }
     background: url('<%= h(imgDir) %>trashcan.png') no-repeat center center;
     background-size: cover;
     z-index: 99;
-}
-.ratingfull {
-    height: 15px;
-    background: url('<%= h(imgDir) %>star_full15x15.png') repeat-x left;
-}
-.ratingempty {
-    width: 74px;
-    height: 100%;
-    background-size: 15px 15px;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: url('<%= h(imgDir) %>star_empty15x15.png') repeat-x left;
-}
-.ratingstars {
-    width: 74px !important;
-    height: 15px;
-    float: left;
-    overflow: hidden !important;
-    margin: -1px 0 0 30px !important;
-    border-spacing: 0 !important;
 }
 .noCloseDlg .ui-dialog-titlebar-close {display: none;}
 .itemsbox {
@@ -246,69 +203,6 @@ a { text-decoration: none; }
 .sprocket {cursor: pointer; float: right; margin: 0 0 8px 12px;}
 .noCloseDlg .ui-dialog-titlebar-close {display: none;}
 .boldfont {font-weight: 700;}
-.ratingbutton {float: right;}
-#ratingSlider, #ratingSliderPop
-{
-    border: 0 !important;
-    width: 100px;
-    height: 20px;
-    background: #8e8d8d url('<%= h(imgDir) %>star_empty20x20.png') repeat-x;
-    z-index: 0;
-    overflow: hidden;
-    cursor:pointer;
-}
-#ratingSliderOver, #ratingSliderOverPop
-{
-    width:100px;
-    height:20px;
-    background: url('<%= h(imgDir) %>star_full20x20.png') repeat-x;
-    z-index:99;
-}
-.ratinginput
-{
-    width:400px;
-    float:left;
-    border:0 !important;
-}
-#ratingform
-{
-    margin-top:24px;
-    width:400px;
-    border-radius: 5px 5px 5px 5px;
-    -moz-border-radius: 5px 5px 5px 5px;
-    -webkit-border-radius: 5px 5px 5px 5px;
-    background-color: #e9e9e9;
-    padding:12px 15px 20px 10px;
-    height:170px;
-    float:left;
-    border: 1px #6E6E6E solid;
-}
-#ratingform legend
-{
-    font-weight: bold;
-    font-size:14px;
-    margin: -23px 10px 10px 0;
-    position: relative;
-    background-color: #e9e9e9;
-    color: #000;
-    border: 1px #6E6E6E solid;
-    max-width:150px;
-    text-shadow: 1px 1px #fff;
-}
-#ratingform h3
-{
-    padding: 0 0 8px;
-    margin: 0;
-}
-#separatorborder
-{
-    border-bottom: 1px solid #d9d9d9;
-    width:100%;
-    padding-top:20px;
-    margin-bottom:10px;
-}
-.ui-slider-handle {display: none;}
-.versionheader {margin:0; padding:0;}
 </style>
 <div id="trashcan"></div>
 <div id="allVersionsPop" title="All versions" style="display:none;">
@@ -363,24 +257,6 @@ a { text-decoration: none; }
             <input type="submit" value="Upload Supplementary File" />
         </p>
     </form>
-</div>
-<!--Submit Rating Web Form-->
-<div id="reviewPop" title="Leave a review" style="display:none;">
-    <form action="<%=h(urlFor(SkylineToolsStoreController.SubmitRatingAction.class))%>" method="post">
-        Title: <input type="text" name="title"><br>
-        <input type="text" id="reviewValuePop" name="value" style="display:none;" value="5">
-        <div id="ratingSliderPop">
-            <div id="ratingSliderOverPop"></div>
-        </div>
-        <textarea name="review" rows="6" cols="60"></textarea><br /><br />
-        <input type="hidden" name="toolId" value="<%= tool.getRowId() %>" />
-        <input type="hidden" name="ratingId" value="" />
-        <input type="submit" value="Submit Review" />
-    </form>
-</div>
-<!--Delete Rating Dialog-->
-<div id="delRatingDlg" title="Delete Review" style="display:none;">
-    <p>Delete review?</p>
 </div>
 <!--Delete Tool Dialog-->
 <div id="delToolAllDlg" title="Delete" style="display:none;">
@@ -518,94 +394,9 @@ a { text-decoration: none; }
 <% } %>
 </div>
 
-<% if (!getUser().isGuest() && isLatestVersion && !leftReview) { %>
-
-<form action="<%=h(urlFor(SkylineToolsStoreController.SubmitRatingAction.class))%>" method="post" id="ratingform">
-    <legend>Leave a Review</legend>
-    <input type="text" name="title" class="ratinginput">
-    <input type="text" id="reviewValue" name="value" style="display:none;" value="5">
-    <br><br>
-    <textarea name="review" rows="6" cols="40" class="ratinginput"></textarea><br /><br />
-    <input type="hidden" name="toolId" value="<%= tool.getRowId() %>" />
-    <input type="hidden" name="ratingId" value="" />
-    <div id="ratingSlider" style="float:left; margin-top:15px; margin-left:10px;">
-        <div id="ratingSliderOver"></div>
-    </div>
-    <input type="submit" value="Submit Review" style="float:right; margin-right:10px; margin-top:10px;"/>
-</form>
-<br />
-
-<% } %>
-<div style="width:100%; height:100%; overflow:hidden;">
-    <div id="separatorborder">
-    </div>
-<%
-    Rating[] ratings = RatingManager.get().getRatingsByToolAllVersions(tool.getIdentifier());
-
-    if (!tool.getVersion().equals(SkylineToolsStoreManager.get().getToolLatestByIdentifier(tool.getIdentifier()).getVersion()))
-        ratings = RatingManager.get().getRatingsByToolId(tool.getRowId());
-
-    List<String> usedVersions = new ArrayList<>();
-
-    for (Rating rating : ratings)
-    {
-        final String tableId2 = "table-" + rating.getRowId();
-        final String reviewTitle = rating.getTitle();
-        final String review = h(rating.getReview()).toString();
-        pageContext.setAttribute("review", review);
-        pageContext.setAttribute("reviewEscaped", review.replace("&#039;", "\\'"));
-        final Integer ratingValue = rating.getRating();
-        final String ratingVersion =  SkylineToolsStoreManager.get().getTool(rating.getToolId()).getVersion();
-
-        DateFormat df = new SimpleDateFormat("MM/dd/yy");
-        String formattedDate = df.format(rating.getModified());
-
-        if (!usedVersions.contains(ratingVersion)) {
-            usedVersions.add(ratingVersion);
-            if (tool.getVersion().equals(SkylineToolsStoreManager.get().getToolLatestByIdentifier(tool.getIdentifier()).getVersion()) && multipleVersions)  {
-%>
-<div id="version-<%= h(ratingVersion) %>" class="versionheader" style="text-align: center;"><h3>Version <%= h(ratingVersion) %> ratings</h3></div>
-<%
-            }
-        }
-%>
-<div class="leftstyle" id="<%= h(tableId2) %>" >
-    <div class="reviewwrap">
-        <div class="reviewbar">
-            <h2><%= h(reviewTitle) %></h2>
-            <div class="ratingstars">
-                <div class="ratingempty">
-                    <div class="ratingfull" style="width:<%=ratingValue * 15%>px;"></div>
-                </div>
-            </div>
-            <br />
-            <div class="reviewdate"><h4><%= h(formattedDate) %></h4></div>
-        </div>
-        <p>
-            ${review}
-<% if (rating.getCreatedBy() == getUser().getUserId() || admin) { %>
-            <br />
-            <button type="button" class="ratingbutton" style="margin-right:25px;" onclick="prepReviewPop('<%= h(reviewTitle) %>', <%= ratingValue %>, '${reviewEscaped}', <%= rating.getRowId() %>); $('#reviewPop').dialog('open')">
-                Edit Review
-            </button>
-            <button type="button" class="ratingbutton" onclick="$('#delRatingDlg').dialog('open').data('ratingId', <%= rating.getRowId() %>)">
-                Delete Review
-            </button>
-<% } %>
-       </p>
-    </div>
-</div>
-
-<%
-    }
-%>
-
-</div>
 
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
     $(function() {
-        initRatingSlider($("#ratingSlider"), $("#ratingSliderOver"), $("#reviewValue"));
-        initRatingSlider($("#ratingSliderPop"), $("#ratingSliderOverPop"), $("#reviewValuePop"));
         $("#editIcon").position({my: "right bottom", at: "right bottom", of: $("#editIcon").siblings(".logoWrap:first")});
     });
 
@@ -709,17 +500,6 @@ a { text-decoration: none; }
     $("#uploadPop").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE});
     $("#manageOwnersPop").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE});
     $("#uploadSuppPop").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE});
-    $("#reviewPop").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE});
-
-    $("#delRatingDlg").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE, dialogClass:"noCloseDlg",
-        buttons: {
-            Ok: function() {
-                window.location = LABKEY.ActionURL.buildURL("skyts", "deleteRating.view", null, {id: $("#delRatingDlg").data("ratingId")});
-            },
-            Cancel: function() {$(this).dialog("close");}
-        }
-    });
-
     $("#delToolAllDlg").dialog({modal:true, autoOpen:false, create:function(){fixDlg($(this));}, width:'auto', show:DLG_EFFECT_SHOW, hide:DLG_EFFECT_HIDE, dialogClass:"noCloseDlg",
         buttons: {
             Ok: function() {
@@ -841,14 +621,6 @@ a { text-decoration: none; }
                          .children(hideType).hide().end()
                          .dialog("open")
                          .children(targetType + ":first").show().focus().val(propValueContainer.text());
-    }
-
-    function prepReviewPop(title, value, content, ratingId) {
-        $("#reviewPop").find('input[name="title"]').val(title).end()
-                       .find('input[name="value"]').val(value).end()
-                       .find('textarea[name="review"]').html(content.replace(/<br>/g, "&#13;&#10;")).end()
-                       .find('input[name="ratingId"]').val(ratingId);
-        $('#sliderover').css('width', value * 20);
     }
 
     autocomplete($("#toolOwners"), <%=autocompleteUsers%>);
