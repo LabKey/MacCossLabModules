@@ -56,9 +56,4 @@ public class SkylineToolsStoreSchema
     {
         return getSchema().getTable("SkylineTool");
     }
-
-    public TableInfo getTableInfoRating()
-    {
-        return getSchema().getTable("Rating");
-    }
 }
