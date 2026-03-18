@@ -58,6 +58,8 @@
     .content {margin: 8px 12px 0 0; padding:0; text-align:justify;}
     .toolButtons {margin-top: 12px;}
     .styled-button{
+        display:inline-flex;
+        align-items:center;
         box-shadow:rgba(0,0,0,0.0.1) 0 1px 0 0;
         background-color:#5B74A8;
         border:1px solid #29447E;
@@ -207,12 +209,12 @@
 <%
     if (docCount == 1 && hasDocs) {
 %>
-                        <a href="<%=h(tool.getDocsUrl())%>" target="_blank" rel="noopener noreferrer"><button type="button" class="styled-button">Documentation <span class="visually-hidden"><%=h(tool.getName())%></span></button></a>
+                        <%=link(unsafe("Documentation <span class=\"visually-hidden\">" + h(tool.getName()) + "</span>")).href(tool.getDocsUrl()).clearClasses().addClass("styled-button").target("_blank").rel("noopener noreferrer")%>
 <%
     } else if (docCount == 1) {
         Map.Entry suppPair = (Map.Entry)suppIter.next();
 %>
-                        <a href="<%=h(suppPair.getKey())%>"><button type="button" class="styled-button">Documentation <span class="visually-hidden"><%=h(tool.getName())%></span></button></a>
+                        <%=link(unsafe("Documentation <span class=\"visually-hidden\">" + h(tool.getName()) + "</span>")).href(suppPair.getKey().toString()).clearClasses().addClass("styled-button")%>
 <% } else if (docCount > 1) { %>
                         <div class="menuMouseArea">
                             <button type="button" class="styled-button">Documentation <span class="visually-hidden"><%=h(tool.getName())%></span></button>
