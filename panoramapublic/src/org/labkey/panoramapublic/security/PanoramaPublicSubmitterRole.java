@@ -2,7 +2,6 @@ package org.labkey.panoramapublic.security;
 
 import org.labkey.api.data.Container;
 import org.labkey.api.security.SecurableResource;
-import org.labkey.api.security.SecurityPolicy;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.security.roles.AbstractRole;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
@@ -20,9 +19,9 @@ public class PanoramaPublicSubmitterRole extends AbstractRole
     }
 
     @Override
-    public boolean isApplicable(SecurityPolicy policy, SecurableResource resource)
+    public boolean isApplicable(SecurableResource resource)
     {
-        if (super.isApplicable(policy, resource)) // Superclass verifies that the resource is a Container.
+        if (super.isApplicable(resource)) // Superclass verifies that the resource is a Container.
         {
             // Show the role on the permissions page of subfolders of the Panorama Public project that have an experiment.
             Container project = ((Container)resource).getProject();
