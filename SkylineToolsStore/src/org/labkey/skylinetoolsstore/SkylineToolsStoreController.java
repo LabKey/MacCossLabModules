@@ -78,7 +78,6 @@ import org.labkey.api.view.RedirectException;
 import org.labkey.api.view.UnauthorizedException;
 import org.labkey.api.webdav.WebdavResource;
 import org.labkey.api.webdav.WebdavService;
-import org.labkey.skylinetoolsstore.model.Rating;
 import org.labkey.skylinetoolsstore.model.SkylineTool;
 import org.labkey.skylinetoolsstore.view.SkylineToolDetails;
 import org.labkey.skylinetoolsstore.view.SkylineToolStoreUrls;
@@ -613,7 +612,8 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild(getToolStoreNav(getContainer())).addChild("Upload Tool", getURL());
+            root.addChild(getToolStoreNav(getContainer()));
+            root.addChild("Upload Tool", getURL());
         }
 
         public ActionURL getURL()
@@ -642,151 +642,6 @@ public class SkylineToolsStoreController extends SpringActionController
                 url.setContainer(toolContainerParent);
                 throw new RedirectException(url);
             }
-        }
-    }
-
-    @RequiresNoPermission
-    public class SubmitRatingAction extends AbstractController implements PermissionCheckable
-    {
-        private static final String NO_TITLE = "You did not enter a valid title.";
-        private static final String NO_RATING = "You did not submit a valid rating. Ratings must be between 1 and 5.";
-        private static final String NO_REVIEW = "You did not submit a valid review.";
-        private static final String ALREADY_REVIEWED = "You have already left a review for this tool.";
-
-        public SubmitRatingAction()
-        {
-        }
-
-        @Override
-        protected ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
-        {
-            final User user = getUser();
-            final String toolIdString = httpServletRequest.getParameter("toolId");
-            int toolId = (toolIdString != null && !toolIdString.isEmpty()) ? Integer.parseInt(toolIdString) : -1;
-
-            final String ratingIdString = httpServletRequest.getParameter("ratingId");
-            int ratingId;
-            try {
-                ratingId = (ratingIdString != null && !ratingIdString.isEmpty()) ? Integer.parseInt(ratingIdString) : -1;
-            } catch(Exception e) {
-                return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineRating.jsp", null);
-            }
-            Rating rating = (ratingId < 0) ? null : RatingManager.get().getRatingById(ratingId);
-            final SkylineTool tool = SkylineToolsStoreManager.get().getTool((toolId >= 0) ? toolId : rating.getToolId());
-
-            final String ratingValueString = httpServletRequest.getParameter("value");
-            final int ratingValue;
-            try {
-                ratingValue = Integer.parseInt(ratingValueString);
-            } catch(Exception e) {
-                return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineRating.jsp", null);
-            }
-            final String ratingTitle = httpServletRequest.getParameter("title");
-            final String review = httpServletRequest.getParameter("review");
-
-            if (ratingId < 0 && RatingManager.get().userLeftRating(tool.getIdentifier(), getUser()))
-            {
-                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                    ALREADY_REVIEWED);
-                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "hideForm",
-                    true);
-            }
-            else if (ratingTitle == null || ratingTitle.isEmpty())
-            {
-                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                    NO_TITLE);
-            }
-            else if (ratingValue < 1 || ratingValue > 5)
-            {
-                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                    NO_RATING);
-            }
-            else if (review == null || review.isEmpty())
-            {
-                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                    NO_REVIEW);
-            }
-            else if (user.isGuest())
-            {
-                throw new Exception();
-            }
-            else if (tool == null || (ratingId >= 0 && rating == null))
-            {
-                throw new Exception();
-            }
-            else
-            {
-                if (rating == null)
-                {
-                    // Adding new rating
-                    rating = new Rating(ratingValue, review, toolId, ratingTitle);
-                    rating.setContainer(getContainer().getId());
-                    RatingManager.get().insertRating(user, rating);
-                }
-                else
-                {
-                    // Editing existing rating
-                    if (rating.getCreatedBy() != user.getUserId() && !getUser().hasSiteAdminPermission())
-                    {
-                        throw new Exception();
-                    }
-                    rating.setTitle(ratingTitle);
-                    rating.setRating(ratingValue);
-                    rating.setReview(review);
-                    RatingManager.get().editRating(rating, user);
-                }
-                return HttpView.redirect(SkylineToolStoreUrls.getToolDetailsUrl(tool));
-            }
-
-            if (toolId >= 0)
-                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "toolId", toolId);
-            if (ratingId >= 0)
-                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "ratingId", ratingId);
-            if (ratingTitle != null)
-                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "formTitle", ratingTitle);
-            getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "formValue", ratingValue);
-            if (review != null)
-                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "formReview", review);
-
-            return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineRating.jsp", null);
-        }
-
-        @Override
-        public void checkPermissions() throws UnauthorizedException
-        {
-
-        }
-    }
-
-    @RequiresNoPermission
-    public class DeleteRatingAction extends AbstractController implements PermissionCheckable
-    {
-        public DeleteRatingAction()
-        {
-        }
-
-        @Override
-        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
-        {
-            int id = NumberUtils.toInt(httpServletRequest.getParameter("id"), -1);
-            int user = getUser().getUserId();
-            final Rating rating = RatingManager.get().getRatingById(id);
-            if(rating != null)
-            {
-                if (user == rating.getCreatedBy() || getUser().hasSiteAdminPermission())
-                    RatingManager.get().deleteRating(id);
-                else
-                    throw new Exception();
-            }
-
-            final SkylineTool tool = SkylineToolsStoreManager.get().getTool(rating.getToolId());
-            return HttpView.redirect(SkylineToolStoreUrls.getToolDetailsUrl(tool));
-        }
-
-        @Override
-        public void checkPermissions() throws UnauthorizedException
-        {
-
         }
     }
 
@@ -948,7 +803,6 @@ public class SkylineToolsStoreController extends SpringActionController
             // TODO: Should be in a transaction
             for (SkylineTool toDelete : SkylineToolsStoreManager.get().getToolsByIdentifier(tool.getIdentifier()))
             {
-                RatingManager.get().deleteRatingsByToolId(toDelete.getRowId());
                 ContainerManager.delete(toDelete.lookupContainer(), getUser());
             }
 
@@ -1027,7 +881,6 @@ public class SkylineToolsStoreController extends SpringActionController
                 if (tools.length == 1)
                     throw new Exception();
 
-                RatingManager.get().deleteRatingsByToolId(tool.getRowId());
                 ContainerManager.delete(tools[0].lookupContainer(), getUser());
 
                 if (tools.length > 1)
@@ -1088,7 +941,12 @@ public class SkylineToolsStoreController extends SpringActionController
                 // Cookie expires after 1 day
                 final int expires = 24 * 60 * 60;
 
-                SkylineToolsStoreManager.get().recordToolDownload(tool);
+                // Download counter is an incidental write on a GET action — use ignoreSqlUpdates()
+                // to avoid the dev-mode mutating SQL assertion (like auditing writes)
+                try (var ignored = SpringActionController.ignoreSqlUpdates())
+                {
+                    SkylineToolsStoreManager.get().recordToolDownload(tool);
+                }
 
                 DateFormat df = new SimpleDateFormat("EEE, dd-MMM-yyyy HH:mm:ss 'GMT'", Locale.US);
                 Calendar calendar = Calendar.getInstance();

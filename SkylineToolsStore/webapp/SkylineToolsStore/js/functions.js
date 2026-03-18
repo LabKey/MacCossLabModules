@@ -59,22 +59,3 @@ function initJqueryUiImages(dir) {
     setBg(".ui-widget-overlay", "ui-bg_flat_0_aaaaaa_40x100.png");
     setBg(".ui-widget-shadow", "ui-bg_flat_0_aaaaaa_40x100.png");
 }
-
-function initRatingSlider(sliderElement, sliderOverElement, valueInput) {
-    var sliderWidth = $(sliderElement).width();
-    var starWidth = sliderWidth / 5;
-    $(sliderElement).mousemove(function(e) {
-        var value = Math.ceil(((e.pageX - $(this).offset().left) / sliderWidth) * 5);
-        var newWidth = value * starWidth;
-        if (newWidth != $(sliderOverElement).width()) {
-            $(sliderOverElement).fadeTo(250, 0.5);
-            $(sliderOverElement).width(newWidth);
-        }
-    }).click(function() {
-        $(valueInput).val($(sliderOverElement).width() / starWidth);
-        $(sliderOverElement).fadeTo(250, 1.0);
-    }).mouseleave(function() {
-        $(sliderOverElement).width($(valueInput).val() * starWidth);
-        $(sliderOverElement).fadeTo(250, 1.0);
-    });
-}
