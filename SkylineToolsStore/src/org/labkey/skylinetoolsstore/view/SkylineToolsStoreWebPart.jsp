@@ -74,6 +74,8 @@
         cursor:pointer;
     }
     .styled-button:hover{background-color:#1e90ff; color:#f5f5dc;}
+    a.styled-button{text-decoration:none; color:#fff;}
+    a.styled-button:visited{color:#fff;}
     .toolOwners {width: 80%; min-width: 300px;}
     .ui-menu {width:240px;}
     .dropMenu {position: absolute;}
@@ -204,20 +206,19 @@
 
                 <div class="toolButtons">
 
-                    <button type="button" id="download-tool-btn-<%=tool.getRowId()%>" class="styled-button">Download <span class="visually-hidden"><%=h(tool.getName())%></span></button>
-                    <% addHandler("download-tool-btn-" + tool.getRowId(), "click", "window.location.href = " + q(urlFor(SkylineToolsStoreController.DownloadToolAction.class).addParameter("id", tool.getRowId()))); %>
+                    <%=link(unsafe("Download<span class=\"visually-hidden\">&nbsp;" + h(tool.getName()) + "</span>")).href(urlFor(SkylineToolsStoreController.DownloadToolAction.class).addParameter("id", tool.getRowId()).toString()).clearClasses().addClass("styled-button")%>
 <%
     if (docCount == 1 && hasDocs) {
 %>
-                        <%=link(unsafe("Documentation <span class=\"visually-hidden\">" + h(tool.getName()) + "</span>")).href(tool.getDocsUrl()).clearClasses().addClass("styled-button").target("_blank").rel("noopener noreferrer")%>
+                        <%=link(unsafe("Documentation<span class=\"visually-hidden\">&nbsp;" + h(tool.getName()) + "</span>")).href(tool.getDocsUrl()).clearClasses().addClass("styled-button").target("_blank").rel("noopener noreferrer")%>
 <%
     } else if (docCount == 1) {
         Map.Entry suppPair = (Map.Entry)suppIter.next();
 %>
-                        <%=link(unsafe("Documentation <span class=\"visually-hidden\">" + h(tool.getName()) + "</span>")).href(suppPair.getKey().toString()).clearClasses().addClass("styled-button")%>
+                        <%=link(unsafe("Documentation<span class=\"visually-hidden\">&nbsp;" + h(tool.getName()) + "</span>")).href(suppPair.getKey().toString()).clearClasses().addClass("styled-button")%>
 <% } else if (docCount > 1) { %>
                         <div class="menuMouseArea">
-                            <button type="button" class="styled-button">Documentation <span class="visually-hidden"><%=h(tool.getName())%></span></button>
+                            <button type="button" class="styled-button">Documentation<span class="visually-hidden"><%=h(tool.getName())%></span></button>
                             <ul class="dropMenu">
 <% if (hasDocs) { %>
                                 <li><a href="<%=h(tool.getDocsUrl())%>" target="_blank" rel="noopener noreferrer"><img class="menuIconImg" src="<%= h(imgDir) %>link.png" alt="Documentation">Online Documentation</a></li>
