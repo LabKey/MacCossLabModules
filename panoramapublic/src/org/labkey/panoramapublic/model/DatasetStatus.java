@@ -1,17 +1,23 @@
 package org.labkey.panoramapublic.model;
 
 import org.jetbrains.annotations.Nullable;
-import org.labkey.api.view.ShortURLRecord;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
+import org.labkey.panoramapublic.ncbi.NcbiConstants;
 
 import java.util.Date;
 
 public class DatasetStatus  extends DbEntity
 {
+
     private int _experimentAnnotationsId;
     private Date _lastReminderDate;
     private Date _extensionRequestedDate;
     private Date _deletionRequestedDate;
+    private String _potentialPublicationId;
+    private String _publicationType;
+    private String _publicationMatchInfo;
+    private String _citation;
+    private Date _userDismissedPublication;
 
     public int getExperimentAnnotationsId()
     {
@@ -71,5 +77,67 @@ public class DatasetStatus  extends DbEntity
     public boolean reminderSent()
     {
         return _lastReminderDate != null;
+    }
+
+    public String getPotentialPublicationId()
+    {
+        return _potentialPublicationId;
+    }
+
+    public void setPotentialPublicationId(String potentialPublicationId)
+    {
+        _potentialPublicationId = potentialPublicationId;
+    }
+
+    public String getPublicationType()
+    {
+        return _publicationType;
+    }
+
+    public void setPublicationType(String publicationType)
+    {
+        _publicationType = publicationType;
+    }
+
+    public String getPublicationIdLabel()
+    {
+        NcbiConstants.DB type = NcbiConstants.DB.fromString(_publicationType);
+        String label = type == null ? (_publicationType != null ? _publicationType : "") : type.name();
+        return label + " ID " + getPotentialPublicationId();
+    }
+
+    public String getPublicationMatchInfo()
+    {
+        return _publicationMatchInfo;
+    }
+
+    public void setPublicationMatchInfo(String publicationMatchInfo)
+    {
+        _publicationMatchInfo = publicationMatchInfo;
+    }
+
+    public String getCitation()
+    {
+        return _citation;
+    }
+
+    public void setCitation(String citation)
+    {
+        _citation = citation;
+    }
+
+    public Date getUserDismissedPublication()
+    {
+        return _userDismissedPublication;
+    }
+
+    public void setUserDismissedPublication(Date userDismissedPublication)
+    {
+        _userDismissedPublication = userDismissedPublication;
+    }
+
+    public boolean isPublicationDismissed(String publicationId)
+    {
+        return getUserDismissedPublication() != null && publicationId != null && publicationId.equals(getPotentialPublicationId());
     }
 }

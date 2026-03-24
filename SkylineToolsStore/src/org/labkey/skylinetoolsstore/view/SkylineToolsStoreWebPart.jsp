@@ -58,6 +58,8 @@
     .content {margin: 8px 12px 0 0; padding:0; text-align:justify;}
     .toolButtons {margin-top: 12px;}
     .styled-button{
+        display:inline-flex;
+        align-items:center;
         box-shadow:rgba(0,0,0,0.0.1) 0 1px 0 0;
         background-color:#5B74A8;
         border:1px solid #29447E;
@@ -72,6 +74,8 @@
         cursor:pointer;
     }
     .styled-button:hover{background-color:#1e90ff; color:#f5f5dc;}
+    a.styled-button{text-decoration:none; color:#fff;}
+    a.styled-button:visited{color:#fff;}
     .toolOwners {width: 80%; min-width: 300px;}
     .ui-menu {width:240px;}
     .dropMenu {position: absolute;}
@@ -153,6 +157,8 @@
         // Get supporting files in map <url, icon url>
         HashMap<String, String> suppFiles = SkylineToolsStoreController.getSupplementaryFiles(tool);
         Iterator suppIter = suppFiles.entrySet().iterator();
+        boolean hasDocs = tool.hasDocumentation();
+        int docCount = suppFiles.size() + (hasDocs ? 1 : 0);
 
         final String curToolOwners = StringUtils.join(SkylineToolsStoreController.getToolOwners(tool), ", ");
         toolOwners.put(tool.getRowId(), curToolOwners);
@@ -200,17 +206,23 @@
 
                 <div class="toolButtons">
 
-                    <button type="button" id="download-tool-btn-<%=tool.getRowId()%>" class="styled-button">Download</button>
-                    <% addHandler("download-tool-btn-" + tool.getRowId(), "click", "window.location.href = " + q(urlFor(SkylineToolsStoreController.DownloadToolAction.class).addParameter("id", tool.getRowId()))); %>
+                    <%=link(unsafe("Download<span class=\"visually-hidden\">&nbsp;" + h(tool.getName()) + "</span>")).href(urlFor(SkylineToolsStoreController.DownloadToolAction.class).addParameter("id", tool.getRowId()).toString()).clearClasses().addClass("styled-button")%>
 <%
-    if (suppFiles.size() == 1) {
+    if (docCount == 1 && hasDocs) {
+%>
+                        <%=link(unsafe("Documentation<span class=\"visually-hidden\">&nbsp;" + h(tool.getName()) + "</span>")).href(tool.getDocsUrl()).clearClasses().addClass("styled-button").target("_blank").rel("noopener noreferrer")%>
+<%
+    } else if (docCount == 1) {
         Map.Entry suppPair = (Map.Entry)suppIter.next();
 %>
-                        <a href="<%=h(suppPair.getKey())%>"><button type="button" class="styled-button">Documentation</button></a>
-<% } else if (suppFiles.size() > 1) { %>
+                        <%=link(unsafe("Documentation<span class=\"visually-hidden\">&nbsp;" + h(tool.getName()) + "</span>")).href(suppPair.getKey().toString()).clearClasses().addClass("styled-button")%>
+<% } else if (docCount > 1) { %>
                         <div class="menuMouseArea">
-                            <button type="button" class="styled-button">Documentation</button>
+                            <button type="button" class="styled-button">Documentation<span class="visually-hidden"><%=h(tool.getName())%></span></button>
                             <ul class="dropMenu">
+<% if (hasDocs) { %>
+                                <li><a href="<%=h(tool.getDocsUrl())%>" target="_blank" rel="noopener noreferrer"><img class="menuIconImg" src="<%= h(imgDir) %>link.png" alt="Documentation">Online Documentation</a></li>
+<% } %>
 <%
         while (suppIter.hasNext()) {
             Map.Entry suppPair = (Map.Entry)suppIter.next();

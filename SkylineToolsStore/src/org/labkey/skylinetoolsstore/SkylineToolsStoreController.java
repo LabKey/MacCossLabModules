@@ -100,6 +100,7 @@ import java.io.StringReader;
 import java.net.URLDecoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -176,9 +177,10 @@ public class SkylineToolsStoreController extends SpringActionController
         {
             ZipEntry zipEntry;
             while ((zipEntry = zipStream.getNextEntry()) != null &&
-                    (tool == null || tool.getIcon() == null))
+                    (tool == null || toolIcon == null))
             {
-                if (zipEntry.getName().toLowerCase().startsWith("tool-inf/"))
+                String entryLower = zipEntry.getName().toLowerCase();
+                if (entryLower.startsWith("tool-inf/") && !entryLower.startsWith("tool-inf/docs/"))
                 {
                     String lowerBaseName = new File(zipEntry.getName()).getName().toLowerCase();
 
@@ -229,14 +231,46 @@ public class SkylineToolsStoreController extends SpringActionController
         }
     }
 
-    public static File makeFile(Container c, String filename)
+    protected static boolean extractDocsFromZip(Path zipFile, Path containerDir) throws IOException
     {
-        return new File(getLocalPath(c), FileUtil.makeLegalName(filename));
+        Path docsDir = containerDir.resolve("docs");
+        boolean extracted = false;
+        try (ZipFile zf = new ZipFile(zipFile.toFile()))
+        {
+            Enumeration<? extends ZipEntry> entries = zf.entries();
+            while (entries.hasMoreElements())
+            {
+                ZipEntry entry = entries.nextElement();
+                String name = entry.getName();
+                if (!name.toLowerCase().startsWith("tool-inf/docs/") || entry.isDirectory())
+                    continue;
+                // Strip "tool-inf/docs/" prefix to get relative path within docs dir
+                String relativePath = name.substring("tool-inf/docs/".length());
+                if (relativePath.isEmpty())
+                    continue;
+                Path destPath = docsDir.resolve(relativePath).normalize();
+                // Zip-slip protection
+                if (!destPath.startsWith(docsDir.normalize()))
+                    throw new IOException("Zip entry outside target directory: " + name);
+                Files.createDirectories(destPath.getParent());
+                try (InputStream in = zf.getInputStream(entry))
+                {
+                    Files.copy(in, destPath, StandardCopyOption.REPLACE_EXISTING);
+                }
+                extracted = true;
+            }
+        }
+        return extracted;
     }
 
-    public static File getLocalPath(Container c)
+    public static File makeFile(Container c, String filename)
     {
-        return FileContentService.get().getFileRootPath(c, FileContentService.ContentType.files).toFile();
+        return getLocalPath(c).resolve(FileUtil.makeLegalName(filename)).toFile();
+    }
+
+    public static Path getLocalPath(Container c)
+    {
+        return FileContentService.get().getFileRootPath(c, FileContentService.ContentType.files);
     }
 
     protected Container makeContainer(Container parent, String folderName, List<User> users, Role role) throws IOException
@@ -383,7 +417,7 @@ public class SkylineToolsStoreController extends SpringActionController
         return new ArrayList<>(users);
     }
 
-    public static HashMap<String, String> getSupplementaryFiles(SkylineTool tool)
+    public static HashMap<String, String> getSupplementaryFiles(SkylineTool tool) throws IOException
     {
         // Store supporting files in map <url, icon url>
         final String[] knownExtensions = {"pdf", "zip"};
@@ -401,15 +435,15 @@ public class SkylineToolsStoreController extends SpringActionController
         return suppFiles;
     }
 
-    public static HashSet<String> getSupplementaryFileBasenames(SkylineTool tool)
+    public static HashSet<String> getSupplementaryFileBasenames(SkylineTool tool) throws IOException
     {
         HashSet<String> suppFiles = new HashSet<>();
-        File localToolDir = getLocalPath(tool.lookupContainer());
-        for (String suppFile : localToolDir.list())
+        Path localToolDir = getLocalPath(tool.lookupContainer());
+        try (var stream = Files.list(localToolDir))
         {
-            final String basename = new File(suppFile).getName();
-            if (!basename.startsWith(".") && !basename.equals(tool.getZipName()) && !basename.equals("icon.png"))
-                suppFiles.add(suppFile);
+            stream.map(p -> p.getFileName().toString())
+                  .filter(name -> !name.startsWith(".") && !name.equals(tool.getZipName()) && !name.equals("icon.png") && !name.equals("docs"))
+                  .forEach(suppFiles::add);
         }
         return suppFiles;
     }
@@ -583,8 +617,18 @@ public class SkylineToolsStoreController extends SpringActionController
                     {
                         Container c = makeContainer(getContainer(), folderName, toolOwnersUsers, RoleManager.getRole(EditorRole.class));
                         copyContainerPermissions(existingVersionContainer, c);
-                        zip.transferTo(makeFile(c, zip.getOriginalFilename()));
+                        File storedZip = makeFile(c, zip.getOriginalFilename());
+                        zip.transferTo(storedZip);
                         tool.writeIconToFile(makeFile(c, "icon.png"), "png");
+
+                        // Extract docs from tool-inf/docs/ in the ZIP; carry forward from previous version if absent
+                        boolean hasDocs = extractDocsFromZip(storedZip.toPath(), getLocalPath(c));
+                        if (!hasDocs && existingVersionContainer != null)
+                        {
+                            Path oldDocs = getLocalPath(existingVersionContainer).resolve("docs");
+                            if (Files.isDirectory(oldDocs))
+                                FileUtil.copyDirectory(oldDocs, getLocalPath(c).resolve("docs"));
+                        }
 
                         if (copyFiles != null && existingVersionContainer != null)
                             for (String copyFile : copyFiles)
