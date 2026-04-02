@@ -22,7 +22,9 @@ import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.module.DefaultModule;
 import org.labkey.api.module.ModuleContext;
+import org.labkey.api.security.Directive;
 import org.labkey.api.security.SecurityManager;
+import org.labkey.filters.ContentSecurityPolicyFilter;
 import org.labkey.api.view.WebPartFactory;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
@@ -84,6 +86,7 @@ public class TestResultsModule extends DefaultModule
     protected void init()
     {
         addController("testresults", TestResultsController.class);
+        TestResultsSchema.register(this);
     }
 
     @Override
@@ -92,6 +95,10 @@ public class TestResultsModule extends DefaultModule
         // add a container listener so we'll know when our container is deleted:
         ContainerManager.addContainerListener(new TestResultsContainerListener());
         SecurityManager.registerAllowedConnectionSource("jquery-ui", "https://code.jquery.com/ui/1.13.2/jquery-ui.min.js");
+        // jQuery UI CSS and its background images are loaded from code.jquery.com.
+        // Register for style-src and img-src so they are not blocked by CSP.
+        ContentSecurityPolicyFilter.registerAllowedSources("jquery-ui-css", Directive.Style, "code.jquery.com");
+        ContentSecurityPolicyFilter.registerAllowedSources("jquery-ui-images", Directive.Image, "code.jquery.com");
     }
 
     @Override

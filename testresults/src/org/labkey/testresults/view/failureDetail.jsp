@@ -397,14 +397,10 @@ $(document).ready(function() {
         widthFixed : true,
         resizable: true,
         widgets: ['zebra'],
-        headers : { "#col-problem": { sorter: false } },
+        headers : { 5: { sorter: false } },
         cssAsc: "headerSortUp",
         cssDesc: "headerSortDown",
         ignoreCase: true,
-        sortList: [[1, 1]], // initial sort by post time descending
-        sortAppend: {
-            0: [[ 1, 'a' ]] // secondary sort by date ascending
-        },
         theme: 'default'
     });
 });

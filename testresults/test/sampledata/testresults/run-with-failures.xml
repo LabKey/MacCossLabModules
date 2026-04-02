@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Run with failures: 2 test failures, no leaks. Does not qualify as a training run. -->
+<nightly id="TESTPC-AUTOMATION" os="Windows 10" start="01/16/2026 09:00:00 PM" duration="540" revision="26084" git_hash="abc1234de0">
+    <leaks/>
+    <failures>
+        <failure name="TestFailOne" pass="1" test="2" language="CSharp" timestamp="21:03">
+            System.Exception: Assertion failed at TestFailOne line 42
+              at Skyline.Test.TestFailOne() in TestFailOne.cs:line 42
+        </failure>
+        <failure name="TestFailTwo" pass="1" test="4" language="CSharp" timestamp="21:07">
+            System.NullReferenceException: Object reference not set to an instance of an object
+              at Skyline.Test.TestFailTwo() in TestFailTwo.cs:line 17
+        </failure>
+    </failures>
+    <pass id="1">
+        <test id="1" name="TestAlpha"   language="CSharp" duration="60"  managed="150" total="300" timestamp="21:01"/>
+        <test id="2" name="TestFailOne" language="CSharp" duration="120" managed="160" total="310" timestamp="21:03"/>
+        <test id="3" name="TestGamma"   language="CSharp" duration="75"  managed="155" total="305" timestamp="21:05"/>
+        <test id="4" name="TestFailTwo" language="CSharp" duration="150" managed="165" total="315" timestamp="21:07"/>
+        <test id="5" name="TestEpsilon" language="CSharp" duration="70"  managed="152" total="302" timestamp="21:10"/>
+    </pass>
+</nightly>

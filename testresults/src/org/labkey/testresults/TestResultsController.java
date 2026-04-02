@@ -206,11 +206,16 @@ public class TestResultsController extends SpringActionController
         public ModelAndView getView(Object o, BindException errors) throws Exception
         {
             RunDownBean bean = getRunDownBean(getUser(), getContainer(), getViewContext());
-            return new JspView<>("/org/labkey/testresults/view/rundown.jsp", bean);
+            JspView<RunDownBean> view = new JspView<>("/org/labkey/testresults/view/rundown.jsp", bean);
+            view.setTitle("Test Results");
+            return view;
         }
 
         @Override
-        public void addNavTrail(NavTree root) { }
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Test Results");
+        }
     }
 
     // return TestDataBean specifically for rundown.jsp aka the home page of the module
@@ -244,7 +249,7 @@ public class TestResultsController extends SpringActionController
 
         // show blank page if no runs exist
         if (todaysRuns.isEmpty() && monthRuns.isEmpty())
-            return new RunDownBean(new RunDetail[0], new User[0]);
+            return new RunDownBean(new RunDetail[0], new User[0], viewType, null, endDate);
 
         RunDetail[] today = todaysRuns.toArray(new RunDetail[0]);
         if (!todaysRuns.isEmpty())
@@ -412,11 +417,13 @@ public class TestResultsController extends SpringActionController
 
             User[] users = getUsers(getContainer(), null);
             TestsDataBean bean = new TestsDataBean(runs, users);
-            return new JspView<>("/org/labkey/testresults/view/trainingdata.jsp", bean);
+            JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/trainingdata.jsp", bean);
+            view.setTitle("Training Data");
+            return view;
         }
 
         @Override
-        public void addNavTrail(NavTree root) { }
+        public void addNavTrail(NavTree root) { root.addChild("Training Data"); }
     }
 
     // API endpoint for adding or removing a run for the training set needs parameters: runId=int&train=boolean
@@ -537,12 +544,15 @@ public class TestResultsController extends SpringActionController
             ensureRunDataCached(runs, false);
 
             TestsDataBean bean = new TestsDataBean(runs, user == null ? new User[0] : new User[]{user});
-            return new JspView<>("/org/labkey/testresults/view/user.jsp", bean);
+            JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/user.jsp", bean);
+            view.setTitle("User Results");
+            return view;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
+            root.addChild("User Results");
         }
     }
 
@@ -561,7 +571,9 @@ public class TestResultsController extends SpringActionController
             {
                 runId = Integer.parseInt(getViewContext().getRequest().getParameter("runId"));
             } catch (Exception e) {
-                return new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
+                JspView<TestsDataBean> errorView = new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
+                errorView.setTitle("Run Detail");
+                return errorView;
             }
             String filterTestPassesBy = getViewContext().getRequest().getParameter("filter");
 
@@ -583,10 +595,18 @@ public class TestResultsController extends SpringActionController
 
             RunDetail[] runs = executeGetRunsSQLFragment(sqlFragment, getContainer(), false, true);
             if (runs.length == 0)
-                return new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
+            {
+                JspView<TestsDataBean> errorView = new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
+                errorView.setTitle("Run Detail");
+                return errorView;
+            }
             RunDetail run = runs[0];
             if (run == null)
-                return new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
+            {
+                JspView<TestsDataBean> errorView = new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
+                errorView.setTitle("Run Detail");
+                return errorView;
+            }
             if (filterTestPassesBy != null) {
                 if (filterTestPassesBy.equals("duration")) {
                     List<TestPassDetail> filteredPasses = Arrays.asList(passes);
@@ -611,12 +631,15 @@ public class TestResultsController extends SpringActionController
                 run.setHang(hangs[0]);
             run.setPasses(passes);
             TestsDataBean bean = new TestsDataBean(runs, new User[0]);
-            return new JspView<>("/org/labkey/testresults/view/runDetail.jsp", bean);
+            JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/runDetail.jsp", bean);
+            view.setTitle("Run Detail");
+            return view;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
+            root.addChild("Run Detail");
         }
     }
 
@@ -646,12 +669,15 @@ public class TestResultsController extends SpringActionController
             bean.setNonAssociatedFailures(failures);
 
             ensureRunDataCached(runs, true);
-            return new JspView<>("/org/labkey/testresults/view/longTerm.jsp", bean);
+            JspView<LongTermBean> view = new JspView<>("/org/labkey/testresults/view/longTerm.jsp", bean);
+            view.setTitle("Long-Term Trends");
+            return view;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
+            root.addChild("Long-Term Trends");
         }
     }
 
@@ -693,16 +719,21 @@ public class TestResultsController extends SpringActionController
                         (run.getLeaks() != null && Arrays.stream(run.getLeaks()).anyMatch(leak -> leak.getTestName().equals(failedTest)))
                 ).toArray(RunDetail[]::new));
 
-                return new JspView<>("/org/labkey/testresults/view/failureDetail.jsp", bean);
+                JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/failureDetail.jsp", bean);
+                view.setTitle("Failure Detail");
+                return view;
             }
 
             bean.setRuns(runs);
-            return new JspView<>("/org/labkey/testresults/view/multiFailureDetail.jsp", bean);
+            JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/multiFailureDetail.jsp", bean);
+            view.setTitle("All Failures");
+            return view;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
+            root.addChild("Test Failures");
         }
     }
 
@@ -778,11 +809,14 @@ public class TestResultsController extends SpringActionController
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("flagged"), true);
             RunDetail[] details = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getArray(RunDetail.class);
-            return new JspView<>("/org/labkey/testresults/view/flagged.jsp", new TestsDataBean(details, new User[0]));
+            JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/flagged.jsp", new TestsDataBean(details, new User[0]));
+            view.setTitle("Flagged Runs");
+            return view;
         }
         @Override
         public void addNavTrail(NavTree root)
         {
+            root.addChild("Flagged Runs");
         }
     }
 

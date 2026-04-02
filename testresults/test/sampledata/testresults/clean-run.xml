@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Clean run: no failures, no leaks, duration >= 540 min. Qualifies as a training run. -->
+<nightly id="TESTPC-AUTOMATION" os="Windows 10" start="01/15/2026 09:00:00 PM" duration="540" revision="26084" git_hash="abc1234de0">
+    <leaks/>
+    <failures/>
+    <pass id="1">
+        <test id="1" name="TestAlpha" language="CSharp" duration="60" managed="150" total="300" timestamp="21:01"/>
+        <test id="2" name="TestBeta"  language="CSharp" duration="90" managed="160" total="310" timestamp="21:02"/>
+        <test id="3" name="TestGamma" language="CSharp" duration="75" managed="155" total="305" timestamp="21:04"/>
+        <test id="4" name="TestDelta" language="CSharp" duration="80" managed="158" total="308" timestamp="21:05"/>
+        <test id="5" name="TestEpsilon" language="CSharp" duration="70" managed="152" total="302" timestamp="21:07"/>
+    </pass>
+</nightly>
