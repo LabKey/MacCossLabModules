@@ -20,6 +20,7 @@ import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -37,6 +38,7 @@ import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.APITestHelper;
 import org.labkey.test.util.LogMethod;
 import org.labkey.test.util.PostgresOnlyTest;
+import org.labkey.test.util.TextSearcher;
 
 import java.io.File;
 import java.time.Month;
@@ -63,6 +65,7 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
 {
     private static final String PROJECT_NAME = "TestResultsTest" + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
     static final String COMPUTER_NAME = "TESTPC-AUTOMATION";
+    private static final Locator SUBMIT_BUTTON = Locator.css("input[type='submit'][value='Submit']");
 
     // Run IDs populated in @BeforeClass, used across test methods
     private static int _cleanRunId = -1;
@@ -82,11 +85,11 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         _containerHelper.createProject(PROJECT_NAME, null);
         _containerHelper.enableModule("TestResults");
 
-        postXmlFixture("testresults/clean-run.xml");
-        postXmlFixture("testresults/run-with-failures.xml");
-        postXmlFixture("testresults/run-with-leaks.xml");
+        postSampleXml("testresults/clean-run.xml");
+        postSampleXml("testresults/run-with-failures.xml");
+        postSampleXml("testresults/run-with-leaks.xml");
 
-        // All runs in this fresh container are our fixtures, sorted by posttime ascending
+        // All runs in this fresh container are our sample runs, sorted by posttime ascending
         List<Map<String, Object>> runs = queryRuns();
         assertEquals("Expected 3 posted runs", 3, runs.size());
         _cleanRunId = (Integer) runs.get(0).get("id");
@@ -95,9 +98,9 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     }
 
     /**
-     * Posts an XML fixture file to PostAction.
+     * Posts a sample XML file to PostAction.
      */
-    private void postXmlFixture(String sampleDataRelativePath)
+    private void postSampleXml(String sampleDataRelativePath)
     {
         File xmlFile = TestFileUtils.getSampleData(sampleDataRelativePath);
         String postUrl = WebTestHelper.buildURL("testresults", PROJECT_NAME, "post");
@@ -118,7 +121,7 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         }
         catch (Exception e)
         {
-            throw new RuntimeException("Failed to post XML fixture: " + sampleDataRelativePath, e);
+            throw new RuntimeException("Failed to post sample XML:" + sampleDataRelativePath, e);
         }
     }
 
@@ -142,6 +145,12 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         }
     }
 
+    @Before
+    public void navigateToProject()
+    {
+        goToProjectHome(PROJECT_NAME);
+    }
+
     // -------------------------------------------------------------------------
     // Tests
     // -------------------------------------------------------------------------
@@ -149,14 +158,27 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     @Test
     public void testBeginPage()
     {
-        // Navigate to the default begin page
-        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "begin"));
-        checkErrors();
+        // Navigate to the begin page via module menu
+        goToModule("TestResults");
 
-        // Use the datepicker to navigate to a date with fixture data (01/18/2026)
-        selectDateInDatepicker(1, 18, 2026);
-        checkErrors();
+        // Navigate to 01/16/2026 — the clean run (started 01/15 at 9 PM)
+        selectDateInDatepicker(1, 16, 2026);
         assertTextPresent(COMPUTER_NAME);
+        assertTextNotPresent("Top Failures");
+        assertTextNotPresent("Top Leaks");
+
+        // Click ">>>" to advance to 01/17/2026 — the run with 2 failures
+        clickAndWait(Locator.linkWithText(">>>"));
+        assertTextPresent(COMPUTER_NAME);
+        assertTextPresent("Top Failures");
+        assertTextPresent("TestFailOne", "TestFailTwo");
+        assertTextNotPresent("Top Leaks");
+
+        // Click ">>>" to advance to 01/18/2026 — the run with 2 leaks
+        clickAndWait(Locator.linkWithText(">>>"));
+        assertTextPresent(COMPUTER_NAME);
+        assertTextPresent("Top Leaks");
+        assertTextPresent("TestWithMemoryLeak", "TestWithHandleLeak");
 
         // Verify viewType selector defaults to Month
         Locator viewTypeSelect = Locator.id("viewType");
@@ -164,19 +186,16 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
 
         // Select Week — verify URL parameter and selector state after page reload
         doAndWaitForPageToLoad(() -> selectOptionByValue(viewTypeSelect, "wk"));
-        checkErrors();
         assertEquals("wk", getUrlParam("viewType"));
         assertEquals("Week", getSelectedOptionText(viewTypeSelect));
 
         // Select Year
         doAndWaitForPageToLoad(() -> selectOptionByValue(viewTypeSelect, "yr"));
-        checkErrors();
         assertEquals("yr", getUrlParam("viewType"));
         assertEquals("Year", getSelectedOptionText(viewTypeSelect));
 
         // Select back to Month
         doAndWaitForPageToLoad(() -> selectOptionByValue(viewTypeSelect, "mo"));
-        checkErrors();
         assertEquals("mo", getUrlParam("viewType"));
         assertEquals("Month", getSelectedOptionText(viewTypeSelect));
     }
@@ -184,102 +203,240 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     @Test
     public void testShowRunPage()
     {
-        // Clean run — shows passes, no failure or leak tables
-        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showRun",
-                Map.of("runId", _cleanRunId)));
-        checkErrors();
-        assertTextPresent(COMPUTER_NAME, "Passed Tests");
+        // Navigate to user page with sample data dates to get "run details" links
+        navigateToUserPageWithDateRange();
 
-        // filter parameter binding
-        for (String filter : List.of("duration", "managed", "total"))
-        {
-            beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showRun",
-                    Map.of("runId", _cleanRunId, "filter", filter)));
-            checkErrors();
-        }
+        // Runs are sorted descending by date: row 0 = 01/18 (leaks), row 1 = 01/17 (failures), row 2 = 01/16 (clean)
 
-        // Run with failures — failure table visible
-        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showRun",
-                Map.of("runId", _failRunId)));
-        checkErrors();
+        // Click the first "run details" link (01/18 — leaks run)
+        clickAndWait(Locator.linkWithText("run details").index(0));
+        assertTextPresent(COMPUTER_NAME, "Passed Tests : 5", "Failures : 0", "Leaks : 2");
+        assertTextPresent("TestWithMemoryLeak", "TestWithHandleLeak");
+
+        // Sort by Duration (descending) and verify order in the test passes table
+        clickAndWait(Locator.linkWithText("Duration"));
+        assertEquals("duration", getUrlParam("filter"));
+        assertTestPassesSortedAs("TestWithMemoryLeak", "TestWithHandleLeak", "TestGamma", "TestEpsilon", "TestAlpha");
+
+        // Sort by Managed Memory (descending) and verify order
+        clickAndWait(Locator.linkContainingText("Managed Memory"));
+        assertEquals("managed", getUrlParam("filter"));
+        assertTestPassesSortedAs("TestWithMemoryLeak", "TestWithHandleLeak", "TestGamma", "TestEpsilon", "TestAlpha");
+
+        // Sort by Total Memory (descending) and verify order
+        clickAndWait(Locator.linkContainingText("Total Memory"));
+        assertEquals("total", getUrlParam("filter"));
+        assertTestPassesSortedAs("TestWithMemoryLeak", "TestWithHandleLeak", "TestGamma", "TestEpsilon", "TestAlpha");
+
+        // Navigate to user page again for the failures run
+        navigateToUserPageWithDateRange();
+        clickAndWait(Locator.linkWithText("run details").index(1));
+        assertTextPresent(COMPUTER_NAME, "Passed Tests : 5", "Failures : 2", "Leaks : 0");
         assertTextPresent("TestFailOne", "TestFailTwo");
 
-        // Run with leaks — leak table visible
-        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showRun",
-                Map.of("runId", _leakRunId)));
-        checkErrors();
-        assertTextPresent("TestWithMemoryLeak", "TestWithHandleLeak");
+        // Navigate to user page again for the clean run
+        navigateToUserPageWithDateRange();
+        clickAndWait(Locator.linkWithText("run details").index(2));
+        assertTextPresent(COMPUTER_NAME, "Passed Tests : 5", "Failures : 0", "Leaks : 0");
     }
 
     @Test
-    public void testShowUserPage()
+    public void testRunLookup()
     {
-        // Navigate to user page without a user, then select from the dropdown
-        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showUser"));
-        checkErrors();
+        // Look up the leaks run
+        navigateToRunById(_leakRunId);
+        assertTextPresent(COMPUTER_NAME, "Passed Tests : 5", "Failures : 0", "Leaks : 2");
+        assertTextPresent("TestWithMemoryLeak", "TestWithHandleLeak");
 
-        Locator usersSelect = Locator.id("users");
-        doAndWaitForPageToLoad(() -> selectOptionByValue(usersSelect, COMPUTER_NAME));
-        checkErrors();
-        assertEquals(COMPUTER_NAME, getUrlParam("user", true));
-        assertTextPresent(COMPUTER_NAME);
+        // Look up the failures run
+        navigateToRunById(_failRunId);
+        assertTextPresent(COMPUTER_NAME, "Passed Tests : 5", "Failures : 2", "Leaks : 0");
+        assertTextPresent("TestFailOne", "TestFailTwo");
 
-        // With explicit date range covering all three fixtures
-        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showUser",
-                Map.of("user", COMPUTER_NAME, "start", "01/15/2026", "end", "01/18/2026")));
-        checkErrors();
-        assertTextPresent(COMPUTER_NAME);
+        // Look up the clean run
+        navigateToRunById(_cleanRunId);
+        assertTextPresent(COMPUTER_NAME, "Passed Tests : 5", "Failures : 0", "Leaks : 0");
     }
 
     @Test
     public void testLongTermPage()
     {
-        for (String viewType : List.of("wk", "mo", "yr"))
-        {
-            beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "longTerm",
-                    Map.of("viewType", viewType)));
-            checkErrors();
-        }
+        // Navigate to Long Term page via tab click
+        goToModule("TestResults");
+        clickAndWait(Locator.linkWithText("Long Term"));
+
+        // Use the viewType selector to switch between views
+        Locator viewTypeSelect = Locator.id("view-type-combobox");
+
+        doAndWaitForPageToLoad(() -> selectOptionByValue(viewTypeSelect, "wk"));
+        assertEquals("wk", getUrlParam("viewType"));
+
+        doAndWaitForPageToLoad(() -> selectOptionByValue(viewTypeSelect, "mo"));
+        assertEquals("mo", getUrlParam("viewType"));
+
+        doAndWaitForPageToLoad(() -> selectOptionByValue(viewTypeSelect, "yr"));
+        assertEquals("yr", getUrlParam("viewType"));
     }
 
     @Test
     public void testShowFailuresPage()
     {
-        // Failure detail for a known failed test — Month view
-        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showFailures",
-                Map.of("failedTest", "TestFailOne", "viewType", "mo")));
-        checkErrors();
+        // Navigate to the failures run via the Run tab
+        navigateToRunById(_failRunId);
+
+        // Click the failure test name link on the run detail page
+        clickAndWait(Locator.linkWithText("TestFailOne"));
         assertTextPresent("TestFailOne");
 
-        // Verify the view type selector shows Month
+        // Verify the view type selector and switch views
         Locator viewTypeSelect = Locator.id("view-type-combobox");
-        assertEquals("Month", getSelectedOptionText(viewTypeSelect));
-
-        // Switch to Week via the selector and verify
-        doAndWaitForPageToLoad(() -> selectOptionByValue(viewTypeSelect, "wk"));
-        checkErrors();
-        assertEquals("wk", getUrlParam("viewType"));
         assertEquals("Week", getSelectedOptionText(viewTypeSelect));
+
+        doAndWaitForPageToLoad(() -> selectOptionByValue(viewTypeSelect, "mo"));
+        assertEquals("mo", getUrlParam("viewType"));
+        assertEquals("Month", getSelectedOptionText(viewTypeSelect));
     }
 
     @Test
     public void testShowFlaggedPage()
     {
-        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showFlagged"));
-        checkErrors();
+        // Navigate to Flags page — no runs are flagged yet
+        goToModule("TestResults");
+        clickAndWait(Locator.linkWithText("Flags"));
+        assertTextPresent("There are currently no flagged runs.");
+
+        // Navigate to a run and flag it
+        navigateToRunById(_cleanRunId);
+        toggleRunFlag();
+
+        // Verify the Flags page now shows the flagged run
+        clickAndWait(Locator.linkWithText("Flags"));
+        assertTextNotPresent("There are currently no flagged runs.");
+        assertTextPresent("Flagged Runs");
+
+        // Unflag the run — navigate back to the run detail page
+        navigateToRunById(_cleanRunId);
+        toggleRunFlag();
+
+        // Verify the Flags page is empty again
+        clickAndWait(Locator.linkWithText("Flags"));
+        assertTextPresent("There are currently no flagged runs.");
     }
 
     @Test
     public void testTrainingDataPage()
     {
-        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "trainingDataView"));
-        checkErrors();
+        // Navigate to Training Data page — no runs in training set yet
+        goToModule("TestResults");
+        clickAndWait(Locator.linkWithText("Training Data"));
+        assertTextPresent(COMPUTER_NAME, "No Training Data");
+
+        // Add the clean run to the training set
+        navigateToRunById(_cleanRunId);
+        assertTextPresent("Add to training set");
+        toggleTrainingSet();
+        assertTextPresent("Remove from training set");
+
+        // Verify the Training Data page now shows the run
+        clickAndWait(Locator.linkWithText("Training Data"));
         assertTextPresent(COMPUTER_NAME);
+        assertElementPresent(Locator.css("#trainingdata .removedata"));
+
+        // Remove the run from the training set
+        navigateToRunById(_cleanRunId);
+        assertTextPresent("Remove from training set");
+        toggleTrainingSet();
+        assertTextPresent("Add to training set");
+
+        // Verify the Training Data page no longer shows training runs
+        clickAndWait(Locator.linkWithText("Training Data"));
+        assertTextPresent(COMPUTER_NAME, "No Training Data");
     }
 
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Navigates to a run detail page via the Run tab by entering the run ID
+     * in the form and clicking Submit.
+     */
+    private void navigateToRunById(int runId)
+    {
+        goToModule("TestResults");
+        clickAndWait(Locator.linkWithText("Run"));
+        setFormElement(Locator.name("runId"), String.valueOf(runId));
+        clickAndWait(SUBMIT_BUTTON);
+    }
+
+    /**
+     * Clicks the flag toggle image on the run detail page, accepts the confirmation
+     * dialog, and waits for the page to reload.
+     */
+    private void toggleRunFlag()
+    {
+        Locator flagImage = Locator.id("flagged");
+        boolean wasFlagged = getAttribute(flagImage, "title").contains("unflag");
+        click(flagImage);
+        acceptAlert();
+        // Wait for the page to reload with the toggled flag state
+        String expectedTitle = wasFlagged ? "Click to flag run" : "Click to unflag run";
+        waitForElement(Locator.xpath("//img[@id='flagged'][@title='" + expectedTitle + "']"));
+    }
+
+    /**
+     * Clicks the "Add to training set" / "Remove from training set" link on the
+     * run detail page and waits for the page to reload.
+     */
+    private void toggleTrainingSet()
+    {
+        Locator trainLink = Locator.id("trainset");
+        String expectedText = getText(trainLink).contains("Add") ? "Remove from training set" : "Add to training set";
+        click(trainLink);
+        waitForText(expectedText);
+    }
+
+    /**
+     * Navigates to the user page, selects the test user, and sets the date range
+     * covering all three sample runs.
+     */
+    private void navigateToUserPageWithDateRange()
+    {
+        goToModule("TestResults");
+        clickAndWait(Locator.linkWithText("User"));
+        Locator usersSelect = Locator.id("users");
+        doAndWaitForPageToLoad(() -> selectOptionByValue(usersSelect, COMPUTER_NAME));
+        setDateRange("01/15/2026", "01/18/2026");
+    }
+
+    /**
+     * Sets the date range on the user page by typing into the multi-date range
+     * picker input and clicking "Done". The Done button triggers paramRedirect()
+     * which navigates to the page with the new date range.
+     */
+    private void setDateRange(String startDate, String endDate)
+    {
+        Locator dateInput = Locator.css("#jrange input");
+        setFormElement(dateInput, startDate + " - " + endDate);
+
+        // Focus the input to open the datepicker, then click Done
+        click(dateInput);
+        waitForElement(Locator.tagWithClass("button", "ui-datepicker-close"));
+        clickAndWait(Locator.tagWithClass("button", "ui-datepicker-close"));
+    }
+
+    /**
+     * Asserts that the test names appear in the expected order within the test passes
+     * table (the "decoratedtable" whose first cell contains "Test | Sort by:").
+     */
+    private void assertTestPassesSortedAs(String... expectedTestNames)
+    {
+        Locator testPassesTable = Locator.xpath(
+                "//table[contains(@class,'decoratedtable')]" +
+                "[.//tr[1]/td[1][contains(text(),'Test | Sort by:')]]");
+        String tableText = getText(testPassesTable);
+        assertTextPresentInThisOrder(new TextSearcher(tableText), expectedTestNames);
+    }
 
     /**
      * Selects a date in the jQuery UI datepicker on the begin page by clicking
