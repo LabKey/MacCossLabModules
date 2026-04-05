@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.ReadOnlyApiAction;
+import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
 import org.labkey.api.collections.IntHashMap;
@@ -81,7 +82,7 @@ import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.impl.StdSchedulerFactory;
-import org.springframework.util.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.validation.BindException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartRequest;
@@ -92,7 +93,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
-import javax.management.modelmbean.XMLParseException;
 import javax.xml.parsers.DocumentBuilder;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -160,6 +160,11 @@ public class TestResultsController extends SpringActionController
         }
     }
 
+    private static Date parseDate(String dateStr) throws ParseException
+    {
+        return StringUtils.isNotBlank(dateStr) ? MDYFormat.parse(dateStr) : null;
+    }
+
     // Form class for RetrainAllAction
     public static class RetrainAllForm
     {
@@ -168,8 +173,14 @@ public class TestResultsController extends SpringActionController
         private int _minRuns = 5;
         private Integer _targetRuns; // backwards compatibility
 
-        public String getMode() { return _mode; }
-        public void setMode(String mode) { _mode = mode; }
+        public String getMode()
+        {
+            return _mode;
+        }
+        public void setMode(String mode)
+        {
+            _mode = mode;
+        }
 
         public int getMaxRuns()
         {
@@ -178,15 +189,33 @@ public class TestResultsController extends SpringActionController
                 return _targetRuns;
             return _maxRuns;
         }
-        public void setMaxRuns(int maxRuns) { _maxRuns = maxRuns; }
+        public void setMaxRuns(int maxRuns)
+        {
+            _maxRuns = maxRuns;
+        }
 
-        public int getMinRuns() { return _minRuns; }
-        public void setMinRuns(int minRuns) { _minRuns = minRuns; }
+        public int getMinRuns()
+        {
+            return _minRuns;
+        }
+        public void setMinRuns(int minRuns)
+        {
+            _minRuns = minRuns;
+        }
 
-        public Integer getTargetRuns() { return _targetRuns; }
-        public void setTargetRuns(Integer targetRuns) { _targetRuns = targetRuns; }
+        public Integer getTargetRuns()
+        {
+            return _targetRuns;
+        }
+        public void setTargetRuns(Integer targetRuns)
+        {
+            _targetRuns = targetRuns;
+        }
 
-        public boolean isIncremental() { return "incremental".equalsIgnoreCase(_mode); }
+        public boolean isIncremental()
+        {
+            return "incremental".equalsIgnoreCase(_mode);
+        }
     }
 
     public TestResultsController()
@@ -200,12 +229,20 @@ public class TestResultsController extends SpringActionController
      * action to view rundown.jsp and also the landing page for module
      */
     @RequiresPermission(ReadPermission.class)
-    public static class BeginAction extends SimpleViewAction<Object>
+    public static class BeginAction extends SimpleViewAction<RunDownForm>
     {
         @Override
-        public ModelAndView getView(Object o, BindException errors) throws Exception
+        public ModelAndView getView(RunDownForm form, BindException errors) throws Exception
         {
-            RunDownBean bean = getRunDownBean(getUser(), getContainer(), getViewContext());
+            Date endDate;
+            try { endDate = form.getEndDate(); }
+            catch (ParseException e)
+            {
+                errors.reject(ERROR_MSG, "Invalid date format: " + form.getEnd());
+                return new SimpleErrorView(errors);
+            }
+
+            RunDownBean bean = getRunDownBean(getUser(), getContainer(), endDate, form.getViewType());
             JspView<RunDownBean> view = new JspView<>("/org/labkey/testresults/view/rundown.jsp", bean);
             view.setTitle("Test Results");
             return view;
@@ -218,14 +255,44 @@ public class TestResultsController extends SpringActionController
         }
     }
 
-    // return TestDataBean specifically for rundown.jsp aka the home page of the module
-    public static RunDownBean getRunDownBean(org.labkey.api.security.User user, Container c, ViewContext viewContext) throws ParseException, IOException
+    public static class RunDownForm
     {
-        String end = viewContext.getRequest().getParameter("end");
-        String viewType = viewContext.getRequest().getParameter("viewType");
+        private String _end;
+        private String _viewType;
+
+        public String getEnd()
+        {
+            return _end;
+        }
+        public void setEnd(String end)
+        {
+            _end = end;
+        }
+        public Date getEndDate() throws ParseException
+        {
+            return parseDate(_end);
+        }
+        public String getViewType()
+        {
+            return _viewType;
+        }
+        public void setViewType(String viewType)
+        {
+            _viewType = viewType;
+        }
+    }
+
+    public static RunDownBean getRunDownBean(org.labkey.api.security.User user, Container c) throws ParseException, IOException
+    {
+        return getRunDownBean(user, c, null, null);
+    }
+
+    // return TestDataBean specifically for rundown.jsp aka the home page of the module
+    public static RunDownBean getRunDownBean(org.labkey.api.security.User user, Container c, Date endDateParam, String viewType) throws ParseException, IOException
+    {
 
         Calendar cal = Calendar.getInstance();
-        cal.setTime(end != null && !end.isEmpty() ? MDYFormat.parse(end) : new Date());
+        cal.setTime(endDateParam != null ? endDateParam : new Date());
         setToEightAM(cal);
         Date endDate = cal.getTime();
         cal.add(Calendar.DATE, -1);
@@ -423,35 +490,26 @@ public class TestResultsController extends SpringActionController
         }
 
         @Override
-        public void addNavTrail(NavTree root) { root.addChild("Training Data"); }
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild("Training Data");
+        }
     }
 
     // API endpoint for adding or removing a run for the training set needs parameters: runId=int&train=boolean
     @RequiresPermission(AdminPermission.class)
-    public static class TrainRunAction extends MutatingApiAction {
+    public static class TrainRunAction extends MutatingApiAction<TrainRunForm> {
         @Override
-        public Object execute(Object o, BindException errors)
+        public Object execute(TrainRunForm form, BindException errors)
         {
-            var req = getViewContext().getRequest();
-            int runId = Integer.parseInt(req.getParameter("runId"));
-            String trainString = req.getParameter("train");
-            boolean train = false;
-            boolean force = false;
-            if (trainString.equalsIgnoreCase("true"))
+            if (form.getRunId() == null)
             {
-                train = true;
+                return new ApiSimpleResponse(Map.of("Success", false, "cause", "runId is required"));
             }
-            else if (trainString.equalsIgnoreCase("false"))
-            {
-            }
-            else if (trainString.equalsIgnoreCase("force"))
-            {
-                force = true;
-            }
-            else
-            {
-                return new ApiSimpleResponse("Success", false); // invalid train value
-            }
+            int runId = form.getRunId();
+            String trainString = form.getTrain();
+            boolean train = trainString != null && trainString.equalsIgnoreCase("true"); // true = add to training set, false/null = remove
+            boolean force = trainString != null && trainString.equalsIgnoreCase("force");
 
             SQLFragment sqlFragment = new SQLFragment();
             sqlFragment.append("SELECT * FROM " + TestResultsSchema.getTableInfoTrain() + " WHERE runid = ?");
@@ -465,9 +523,9 @@ public class TestResultsController extends SpringActionController
             if (!force)
             {
                 if (details.length == 0)
-                    return new ApiSimpleResponse("Success", false); // run does not exist
+                    return new ApiSimpleResponse(Map.of("Success", false, "cause", "run does not exist: " + runId));
                 else if ((train && !foundRuns.isEmpty()) || (!train && foundRuns.isEmpty()))
-                    return new ApiSimpleResponse("Success", false); // no action necessary
+                    return new ApiSimpleResponse(Map.of("Success", false, "cause", "no action necessary"));
             }
             DbScope scope = TestResultsSchema.getSchema().getScope();
             try (DbScope.Transaction transaction = scope.ensureTransaction())
@@ -508,30 +566,63 @@ public class TestResultsController extends SpringActionController
         }
     }
 
+    public static class TrainRunForm
+    {
+        private Integer _runId;
+        private String _train;
+
+        public Integer getRunId()
+        {
+            return _runId;
+        }
+        public void setRunId(Integer runId)
+        {
+            _runId = runId;
+        }
+        public String getTrain()
+        {
+            return _train;
+        }
+        public void setTrain(String train)
+        {
+            _train = train;
+        }
+    }
+
     /**
      * action to view user.jsp and all run details for user in date selection
      * accepts a url parameter "user" which will be the user that the jsp displays runs for
      * accepts url parameter "start" and "end" which will be the date range of selected runs for that user to display
      */
     @RequiresPermission(ReadPermission.class)
-    public static class ShowUserAction extends SimpleViewAction<Object>
+    public static class ShowUserAction extends SimpleViewAction<ShowUserForm>
     {
         @Override
-        public ModelAndView getView(Object o, BindException errors) throws Exception
+        public ModelAndView getView(ShowUserForm form, BindException errors) throws Exception
         {
-            HttpServletRequest req = getViewContext().getRequest();
-            String start = req.getParameter("start");
-            String end = req.getParameter("end");
-            String userName = req.getParameter("user");
-            String dataInclude = req.getParameter("datainclude");
-            Date startDate = start == null
-                ? DateUtils.addDays(new Date(), -6) // DEFAULT TO LAST WEEK's RUNS
-                : MDYFormat.parse(start);
-            Date endDate = end == null
-                ? new Date()
-                : DateUtils.addMilliseconds(DateUtils.ceiling(MDYFormat.parse(end), Calendar.DATE), 0);
+            String userName = form.getUser();
+            String dataInclude = form.getDatainclude();
+            Date startDate;
+            Date endDate;
+            try { startDate = form.getStartDate(); }
+            catch (ParseException e)
+            {
+                errors.reject(ERROR_MSG, "Invalid start date format: " + form.getStart());
+                return new SimpleErrorView(errors);
+            }
+            try { endDate = form.getEndDate(); }
+            catch (ParseException e)
+            {
+                errors.reject(ERROR_MSG, "Invalid end date format: " + form.getEnd());
+                return new SimpleErrorView(errors);
+            }
+            if (startDate == null)
+                startDate = DateUtils.addDays(new Date(), -6); // DEFAULT TO LAST WEEK's RUNS
+            endDate = endDate == null
+                    ? new Date()
+                    : DateUtils.addMilliseconds(DateUtils.ceiling(endDate, Calendar.DATE), 0);
             User user = null;
-            if (userName != null && !userName.isEmpty())
+            if (StringUtils.isNotBlank(userName))
             {
                 User[] users = getUsers(getContainer(), userName);
                 if (users.length == 1)
@@ -556,26 +647,74 @@ public class TestResultsController extends SpringActionController
         }
     }
 
+    public static class ShowUserForm
+    {
+        private String _start;
+        private String _end;
+        private String _user;
+        private String _datainclude;
+
+        public String getStart()
+        {
+            return _start;
+        }
+        public void setStart(String start)
+        {
+            _start = start;
+        }
+        public Date getStartDate() throws ParseException
+        {
+            return parseDate(_start);
+        }
+        public String getEnd()
+        {
+            return _end;
+        }
+        public void setEnd(String end)
+        {
+            _end = end;
+        }
+        public Date getEndDate() throws ParseException
+        {
+            return parseDate(_end);
+        }
+        public String getUser()
+        {
+            return _user;
+        }
+        public void setUser(String user)
+        {
+            _user = user;
+        }
+        public String getDatainclude()
+        {
+            return _datainclude;
+        }
+        public void setDatainclude(String datainclude)
+        {
+            _datainclude = datainclude;
+        }
+    }
+
     /**
      * action to view runDetail.jsp (detail for a single run)
      * accepts a url parameter "runId" which will be the run that the jsp displays the information of
      */
     @RequiresPermission(ReadPermission.class)
-    public static class ShowRunAction extends SimpleViewAction<Object>
+    public static class ShowRunAction extends SimpleViewAction<ShowRunForm>
     {
         @Override
-        public ModelAndView getView(Object o, BindException errors) throws Exception
+        public ModelAndView getView(ShowRunForm form, BindException errors) throws Exception
         {
-            int runId;
-            try
+            if (form.getRunId() == null)
             {
-                runId = Integer.parseInt(getViewContext().getRequest().getParameter("runId"));
-            } catch (Exception e) {
+                // Null bean causes runDetail.jsp to display a form prompting the user to enter a run ID
                 JspView<TestsDataBean> errorView = new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
                 errorView.setTitle("Run Detail");
                 return errorView;
             }
-            String filterTestPassesBy = getViewContext().getRequest().getParameter("filter");
+            int runId = form.getRunId();
+            String filterTestPassesBy = form.getFilter();
 
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("testrunid"), runId);
@@ -643,17 +782,40 @@ public class TestResultsController extends SpringActionController
         }
     }
 
+    public static class ShowRunForm
+    {
+        private Integer _runId;
+        private String _filter;
+
+        public Integer getRunId()
+        {
+            return _runId;
+        }
+        public void setRunId(Integer runId)
+        {
+            _runId = runId;
+        }
+        public String getFilter()
+        {
+            return _filter;
+        }
+        public void setFilter(String filter)
+        {
+            _filter = filter;
+        }
+    }
+
     /**
      * action to view longTerm.jsp
      * accepts a url parameter "viewType" of either wk(week), mo(month), or yr(year) and defaults to month
      */
     @RequiresPermission(ReadPermission.class)
-    public static class LongTermAction extends SimpleViewAction<Object>
+    public static class LongTermAction extends SimpleViewAction<LongTermForm>
     {
         @Override
-        public ModelAndView getView(Object o, BindException errors) throws Exception
+        public ModelAndView getView(LongTermForm form, BindException errors) throws Exception
         {
-            String viewType = getViewContext().getRequest().getParameter("viewType");
+            String viewType = form.getViewType();
 
             LongTermBean bean = new LongTermBean(new RunDetail[0], new User[0]); // bean that will be handed to jsp
             viewType = getViewType(viewType, ViewType.YEAR);
@@ -681,23 +843,45 @@ public class TestResultsController extends SpringActionController
         }
     }
 
+    public static class LongTermForm
+    {
+        private String _viewType;
+
+        public String getViewType()
+        {
+            return _viewType;
+        }
+        public void setViewType(String viewType)
+        {
+            _viewType = viewType;
+        }
+    }
+
     /**
      * action to view failureDetail.jsp
      * accepts parameter failedTest as name of the failed test
      * accepts parameter viewType as 'wk', 'mo', or 'yr'.  defaults to 'day'
      */
     @RequiresPermission(ReadPermission.class)
-    public static class ShowFailures extends SimpleViewAction<Object>
+    public static class ShowFailures extends SimpleViewAction<ShowFailuresForm>
     {
         @Override
-        public ModelAndView getView(Object o, BindException errors) throws Exception
+        public ModelAndView getView(ShowFailuresForm form, BindException errors) throws Exception
         {
-            HttpServletRequest req = getViewContext().getRequest();
-            String end = req.getParameter("end");
-            String failedTest = req.getParameter("failedTest");
-            String viewType = getViewType(req.getParameter("viewType"), ViewType.DAY);
+            String failedTest = form.getFailedTest();
+            String viewType = getViewType(form.getViewType(), ViewType.DAY);
 
-            Date endDate = setToEightAM(!StringUtils.isEmpty(end) ? MDYFormat.parse(end) : new Date());
+            Date endParsed;
+            try
+            {
+                endParsed = form.getEndDate();
+            }
+            catch (ParseException e)
+            {
+                errors.reject(ERROR_MSG, "Invalid date format: " + form.getEnd());
+                return new SimpleErrorView(errors);
+            }
+            Date endDate = setToEightAM(endParsed != null ? endParsed : new Date());
             Date startDate = getStartDate(viewType, ViewType.DAY, endDate); // defaults to day
 
             RunDetail[] runs = getRunsSinceDate(startDate, endDate, getContainer(), null, false, false);
@@ -737,17 +921,59 @@ public class TestResultsController extends SpringActionController
         }
     }
 
+    public static class ShowFailuresForm
+    {
+        private String _end;
+        private String _failedTest;
+        private String _viewType;
+
+        public String getEnd()
+        {
+            return _end;
+        }
+        public void setEnd(String end)
+        {
+            _end = end;
+        }
+        public Date getEndDate() throws ParseException
+        {
+            return parseDate(_end);
+        }
+        public String getFailedTest()
+        {
+            return _failedTest;
+        }
+        public void setFailedTest(String failedTest)
+        {
+            _failedTest = failedTest;
+        }
+        public String getViewType()
+        {
+            return _viewType;
+        }
+        public void setViewType(String viewType)
+        {
+            _viewType = viewType;
+        }
+    }
+
     /**
      * action for deleting a run ex:'deleteRun.view?runId=x'
      */
     @RequiresPermission(AdminPermission.class)
-    public static class DeleteRunAction extends MutatingApiAction {
+    public static class DeleteRunAction extends MutatingApiAction<RunIdForm> {
         @Override
-        public Object execute(Object o, BindException errors)
+        public Object execute(RunIdForm form, BindException errors)
         {
             ApiSimpleResponse response = new ApiSimpleResponse();
+            if (form.getRunId() == null)
+            {
+                response.put("Success", false);
+                response.put("error", "runId is required");
+                return response;
+            }
 
-            int rowId = Integer.parseInt(getViewContext().getRequest().getParameter("runId"));
+            int rowId = form.getRunId();
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("testrunid"), rowId);
             try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction()) {
@@ -758,42 +984,85 @@ public class TestResultsController extends SpringActionController
                 Table.delete(TestResultsSchema.getTableInfoTestRuns(), rowId); // delete run last because of foreign key
                 transaction.commit();
             } catch (Exception x) {
-                response.put("success", false);
+                response.put("Success", false);
                 response.put("error", x.getMessage());
                 return response;
             }
-            response.put("success", true);
+            response.put("Success", true);
             return response;
         }
     }
 
+    public static class RunIdForm
+    {
+        private Integer _runId;
+
+        public Integer getRunId()
+        {
+            return _runId;
+        }
+        public void setRunId(Integer runId)
+        {
+            _runId = runId;
+        }
+    }
+
     @RequiresPermission(AdminPermission.class)
-    public static class FlagRunAction extends MutatingApiAction {
+    public static class FlagRunAction extends MutatingApiAction<FlagRunForm> {
         @Override
-        public Object execute(Object o, BindException errors)
+        public Object execute(FlagRunForm form, BindException errors)
         {
             ApiSimpleResponse response = new ApiSimpleResponse();
+            if (form.getRunId() == null)
+            {
+                response.put("Success", false);
+                response.put("error", "runId is required");
+                return response;
+            }
 
-            int rowId = Integer.parseInt(getViewContext().getRequest().getParameter("runId"));
-            boolean flag = Boolean.parseBoolean(getViewContext().getRequest().getParameter("flag"));
+            int rowId = form.getRunId();
+            boolean flag = form.getFlag() != null ? form.getFlag() : false;
 
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("id"), rowId);
             try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction()) {
                 RunDetail[] details = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getArray(RunDetail.class);
                 RunDetail detail = details[0];
-                if (getViewContext().getRequest().getParameter("flag") == null) // if not specified keep same
+                if (form.getFlag() == null) // if not specified keep same
                     flag = detail.isFlagged();
                 detail.setFlagged(flag);
                 Table.update(null, TestResultsSchema.getTableInfoTestRuns(), detail, detail.getId());
                 transaction.commit();
             } catch (Exception x) {
-                response.put("success", false);
+                response.put("Success", false);
                 response.put("error", x.getMessage());
                 return response;
             }
-            response.put("success", true);
+            response.put("Success", true);
             return response;
+        }
+    }
+
+    public static class FlagRunForm
+    {
+        private Integer _runId;
+        private Boolean _flag;
+
+        public Integer getRunId()
+        {
+            return _runId;
+        }
+        public void setRunId(Integer runId)
+        {
+            _runId = runId;
+        }
+        public Boolean getFlag()
+        {
+            return _flag;
+        }
+        public void setFlag(Boolean flag)
+        {
+            _flag = flag;
         }
     }
 
@@ -821,25 +1090,23 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public static class ChangeBoundaries extends MutatingApiAction<Object>
+    public static class ChangeBoundaries extends MutatingApiAction<BoundariesForm>
     {
         @Override
-        public Object execute(Object o, BindException errors) throws Exception
+        public Object execute(BoundariesForm form, BindException errors) throws Exception
         {
             //error handling - must be numbers, and limits on the range
             Map<String, String> res = new HashMap<>();
 
-            String warningBoundary = getViewContext().getRequest().getParameter("warningb");
-            String errorBoundary = getViewContext().getRequest().getParameter("errorb");
+            Integer warningB = form.getWarningb();
+            Integer errorB = form.getErrorb();
 
-            int warningB;
-            int errorB;
-
-            try {
-                warningB = Integer.parseInt(warningBoundary);
-                errorB = Integer.parseInt(errorBoundary);
-            } catch (NumberFormatException nfe) {
-                res.put("Message", "fail: you need to input a number");
+            if (warningB == null) {
+                res.put("Message", "fail: warning boundary must be a number");
+                return new ApiSimpleResponse(res);
+            }
+            if (errorB == null) {
+                res.put("Message", "fail: error boundary must be a number");
                 return new ApiSimpleResponse(res);
             }
 
@@ -876,18 +1143,38 @@ public class TestResultsController extends SpringActionController
         }
     }
 
+    public static class BoundariesForm
+    {
+        private Integer _warningb;
+        private Integer _errorb;
+
+        public Integer getWarningb()
+        {
+            return _warningb;
+        }
+        public void setWarningb(Integer warningb)
+        {
+            _warningb = warningb;
+        }
+        public Integer getErrorb()
+        {
+            return _errorb;
+        }
+        public void setErrorb(Integer errorb)
+        {
+            _errorb = errorb;
+        }
+    }
+
     @RequiresPermission(ReadPermission.class)
-    public static class ViewLogAction extends ReadOnlyApiAction<Object>
+    public static class ViewLogAction extends ReadOnlyApiAction<RunIdForm>
     {
         @Override
-        public Object execute(Object o, BindException errors)
+        public Object execute(RunIdForm form, BindException errors)
         {
-            int runId;
-            try {
-                runId = Integer.parseInt(getViewContext().getRequest().getParameter("runid"));
-            } catch (Exception e) {
+            if (form.getRunId() == null)
                 return new ApiSimpleResponse("log", null);
-            }
+            int runId = form.getRunId();
             SQLFragment sqlFragment = new SQLFragment();
             sqlFragment.append("SELECT log FROM testresults.testruns WHERE id = ?");
             sqlFragment.add(runId);
@@ -901,17 +1188,14 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresPermission(ReadPermission.class)
-    public static class ViewXmlAction extends ReadOnlyApiAction<Object>
+    public static class ViewXmlAction extends ReadOnlyApiAction<RunIdForm>
     {
         @Override
-        public Object execute(Object o, BindException errors)
+        public Object execute(RunIdForm form, BindException errors)
         {
-            int runId;
-            try {
-                runId = Integer.parseInt(getViewContext().getRequest().getParameter("runid"));
-            } catch (Exception e) {
+            if (form.getRunId() == null)
                 return new ApiSimpleResponse("xml", null);
-            }
+            int runId = form.getRunId();
             SQLFragment sqlFragment = new SQLFragment();
             sqlFragment.append("SELECT xml FROM testresults.testruns WHERE id = ?");
             sqlFragment.add(runId);
@@ -925,10 +1209,10 @@ public class TestResultsController extends SpringActionController
     }
 
     @RequiresNoPermission
-    public static class SendEmailNotificationAction extends ReadOnlyApiAction<Object>
+    public static class SendEmailNotificationAction extends ReadOnlyApiAction<SendEmailForm>
     {
         @Override
-        public Object execute(Object o, BindException errors)
+        public Object execute(SendEmailForm form, BindException errors)
         {
             org.labkey.api.security.User from;
             try
@@ -939,14 +1223,13 @@ public class TestResultsController extends SpringActionController
             {
                 return new ApiSimpleResponse("error", e.getMessage());
             }
-            HttpServletRequest req = getViewContext().getRequest();
-            String to = req.getParameter("to");
+            String to = form.getTo();
             if (to == null || to.isEmpty())
                 to = SendTestResultsEmail.DEFAULT_EMAIL.RECIPIENT;
-            String subject = req.getParameter("subject");
+            String subject = form.getSubject();
             if (subject == null)
                 subject = "";
-            String message = req.getParameter("message");
+            String message = form.getMessage();
             if (message == null)
                 message = "";
             List<String> recipients = Collections.singletonList(to);
@@ -958,17 +1241,49 @@ public class TestResultsController extends SpringActionController
         }
     }
 
+    public static class SendEmailForm
+    {
+        private String _to;
+        private String _subject;
+        private String _message;
+
+        public String getTo()
+        {
+            return _to;
+        }
+        public void setTo(String to)
+        {
+            _to = to;
+        }
+        public String getSubject()
+        {
+            return _subject;
+        }
+        public void setSubject(String subject)
+        {
+            _subject = subject;
+        }
+        public String getMessage()
+        {
+            return _message;
+        }
+        public void setMessage(String message)
+        {
+            _message = message;
+        }
+    }
+
     @RequiresSiteAdmin
-    public static class SetEmailCronAction extends MutatingApiAction {
+    public static class SetEmailCronAction extends MutatingApiAction<EmailCronForm> {
 
         // NOTE: user needs read permissions on development folder
 
         @Override
-        public Object execute(Object o, BindException errors) throws Exception
+        public Object execute(EmailCronForm form, BindException errors) throws Exception
         {
-            String action = getViewContext().getRequest().getParameter("action");
-            String emailFrom = getViewContext().getRequest().getParameter("emailF");
-            String emailTo = getViewContext().getRequest().getParameter("emailT");
+            String action = form.getAction();
+            String emailFrom = form.getEmailF();
+            String emailTo = form.getEmailT();
             Scheduler scheduler = new StdSchedulerFactory().getScheduler();
             JobKey jobKeyEmail = new JobKey(JOB_NAME, JOB_GROUP);
             Map<String, String> res = new HashMap<>();
@@ -1013,7 +1328,7 @@ public class TestResultsController extends SpringActionController
                     }
                     break;
                 case SendTestResultsEmail.TEST_GET_HTML_EMAIL:
-                    SendTestResultsEmail testHtml = new SendTestResultsEmail(getGenerateDate());
+                    SendTestResultsEmail testHtml = new SendTestResultsEmail(form.getGenerateDate());
                     Pair<String,String> msg = testHtml.getHTMLEmail(getViewContext().getUser());
                     res.put("subject", msg.first);
                     res.put("HTML", msg.second);
@@ -1021,14 +1336,14 @@ public class TestResultsController extends SpringActionController
                     break;
                 case SendTestResultsEmail.TEST_ADMIN:
                     // test target send email immedately and only to Yuval
-                    SendTestResultsEmail testAdmin = new SendTestResultsEmail(getGenerateDate());
+                    SendTestResultsEmail testAdmin = new SendTestResultsEmail(form.getGenerateDate());
                     ValidEmail admin = new ValidEmail(SendTestResultsEmail.DEFAULT_EMAIL.ADMIN_EMAIL);
                     testAdmin.execute(SendTestResultsEmail.TEST_ADMIN, UserManager.getUser(admin), SendTestResultsEmail.DEFAULT_EMAIL.ADMIN_EMAIL);
                     res.put("Message", "Testing testing 123");
                     res.put("Response", "true");
                     break;
                 case SendTestResultsEmail.TEST_CUSTOM:
-                    SendTestResultsEmail testCustom = new SendTestResultsEmail(getGenerateDate());
+                    SendTestResultsEmail testCustom = new SendTestResultsEmail(form.getGenerateDate());
                     String error = "";
                     ValidEmail from = null;
                     ValidEmail to = null;
@@ -1077,32 +1392,83 @@ public class TestResultsController extends SpringActionController
             return scheduler;
         }
 
-        private Date getGenerateDate() {
-            String s = getViewContext().getRequest().getParameter("generatedate");
-            Date d = null;
-            if (s != null && !s.isEmpty()) {
-                try {
-                    d = MDYFormat.parse(s);
-                } catch (ParseException e) {
-                }
+    }
+
+    public static class EmailCronForm
+    {
+        private String _action;
+        private String _emailF;
+        private String _emailT;
+        private String _generatedate;
+
+        public String getAction()
+        {
+            return _action;
+        }
+        public void setAction(String action)
+        {
+            _action = action;
+        }
+        public String getEmailF()
+        {
+            return _emailF;
+        }
+        public void setEmailF(String emailF)
+        {
+            _emailF = emailF;
+        }
+        public String getEmailT()
+        {
+            return _emailT;
+        }
+        public void setEmailT(String emailT)
+        {
+            _emailT = emailT;
+        }
+        public String getGeneratedate()
+        {
+            return _generatedate;
+        }
+        public void setGeneratedate(String generatedate)
+        {
+            _generatedate = generatedate;
+        }
+
+        public Date getGenerateDate()
+        {
+            try
+            {
+                return parseDate(_generatedate);
             }
-            return d;
+            catch (ParseException e)
+            {
+                return null;
+            }
         }
     }
 
     @RequiresSiteAdmin
-    public static class SetUserActive extends MutatingApiAction<Object>
+    public static class SetUserActive extends MutatingApiAction<SetUserActiveForm>
     {
         @Override
-        public Object execute(Object o, BindException errors)
+        public Object execute(SetUserActiveForm form, BindException errors)
         {
             Map<String, String> res = new HashMap<>();
-            String active = getViewContext().getRequest().getParameter("active");
-            String userId = getViewContext().getRequest().getParameter("userId");
-            boolean isActive = Boolean.parseBoolean(active);
+            if (form.getUserId() == null)
+            {
+                res.put("Message", "userId is required");
+                return new ApiSimpleResponse(res);
+            }
+            if (form.isActive() == null)
+            {
+                res.put("Message", "active parameter is required (true to activate, false to deactivate)");
+                return new ApiSimpleResponse(res);
+            }
+            boolean isActive = form.isActive();
+            int userId = form.getUserId();
 
             SimpleFilter filter = new SimpleFilter();
-            filter.addCondition(FieldKey.fromParts("userid"), Integer.parseInt(userId));
+            filter.addCondition(FieldKey.fromParts("userid"), userId);
             filter.addCondition(FieldKey.fromParts("container"), getContainer());
             User[] users = new TableSelector(TestResultsSchema.getTableInfoUserData(), filter, null).getArray(User.class);
             if (users.length == 0) {
@@ -1124,6 +1490,29 @@ public class TestResultsController extends SpringActionController
 
             // DEFAULT TO CHECK STATUS
             return new ApiSimpleResponse(res);
+        }
+    }
+
+    public static class SetUserActiveForm
+    {
+        private Boolean _active;
+        private Integer _userId;
+
+        public Boolean isActive()
+        {
+            return _active;
+        }
+        public void setActive(Boolean active)
+        {
+            _active = active;
+        }
+        public Integer getUserId()
+        {
+            return _userId;
+        }
+        public void setUserId(Integer userId)
+        {
+            _userId = userId;
         }
     }
 
@@ -1214,7 +1603,7 @@ public class TestResultsController extends SpringActionController
                 transaction.commit();
 
                 ApiSimpleResponse response = new ApiSimpleResponse();
-                response.put("success", true);
+                response.put("Success", true);
                 response.put("usersRetrained", usersRetrained);
                 response.put("totalTrainRuns", totalTrainRuns);
                 response.put("mode", form.getMode());
@@ -1224,7 +1613,7 @@ public class TestResultsController extends SpringActionController
             {
                 _log.error("Error in RetrainAllAction", e);
                 ApiSimpleResponse response = new ApiSimpleResponse();
-                response.put("success", false);
+                response.put("Success", false);
                 response.put("error", e.getMessage());
                 return response;
             }
@@ -1519,7 +1908,7 @@ public class TestResultsController extends SpringActionController
                         handleLeaks.add(new TestHandleLeakDetail(0, elLeak.getAttribute("name"), type, Float.parseFloat(elLeak.getAttribute("handles"))));
                     } else {
                         _log.error("Error parsing Leak " + elLeak.getAttribute("name") + ".");
-                        throw new XMLParseException();
+                        throw new IllegalArgumentException("Leak element missing both 'bytes' and 'handles' attributes: " + elLeak.getAttribute("name"));
                     }
                 }
 
@@ -1571,9 +1960,9 @@ public class TestResultsController extends SpringActionController
                                 Double.parseDouble(test.getAttribute("managed")),
                                 Double.parseDouble(test.getAttribute("total")),
                                 // New leak tracking values
-                                StringUtils.hasText(committedAttr) ? Double.parseDouble(committedAttr) : 0,
-                                StringUtils.hasText(usergdiAttr) ? Integer.parseInt(usergdiAttr) : 0,
-                                StringUtils.hasText(handlesAttr) ? Integer.parseInt(handlesAttr) : 0,
+                                StringUtils.isNotBlank(committedAttr) ? Double.parseDouble(committedAttr) : 0,
+                                StringUtils.isNotBlank(usergdiAttr) ? Integer.parseInt(usergdiAttr) : 0,
+                                StringUtils.isNotBlank(handlesAttr) ? Integer.parseInt(handlesAttr) : 0,
                                 timestamp);
                         avgMemory += pass.getTotalMemory();
                         passes.add(pass);

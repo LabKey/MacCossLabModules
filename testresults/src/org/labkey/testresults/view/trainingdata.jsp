@@ -254,7 +254,7 @@
                 }
                 return;
             }
-            alert("Failure removing run. Contact Yuval");
+            alert("Failed to update training set." + (data.cause ? " " + data.cause : ""));
         }, "json");
     });
 
@@ -345,7 +345,7 @@
         url.searchParams.set('maxRuns', maxRuns);
         url.searchParams.set('minRuns', minRuns);
         $.post(url.toString(), csrf_header, function(data) {
-            if (data.success) {
+            if (data.Success) {
                 $('#retrain-all-status').text('Retrained ' + data.usersRetrained + ' computers with ' + data.totalTrainRuns + ' runs. Reloading...');
                 location.reload();
             } else {
