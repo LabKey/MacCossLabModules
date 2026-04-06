@@ -20,6 +20,7 @@ import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -42,10 +43,7 @@ import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.TextSearcher;
 
 import java.io.File;
-import java.time.Month;
-import java.time.format.TextStyle;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -122,8 +120,9 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
                     .build());
             httpClient.execute(request, response -> {
                 String body = EntityUtils.toString(response.getEntity());
+                JSONObject json = new JSONObject(body);
                 assertTrue("PostAction failed for " + xmlFile.getName() + ": " + body,
-                        body.contains("\"Success\" : true"));
+                        json.optBoolean("Success", false));
                 return null;
             });
         }
@@ -172,14 +171,8 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     @Test
     public void testBeginPage()
     {
-        // Navigate to 01/16/2026 — the clean run (started 01/15 at 9 PM)
-        selectDateInDatepicker(1, 16, 2026);
-        assertTextPresent(COMPUTER_NAME_1, COMPUTER_NAME_2);
-        assertTextNotPresent("Top Failures");
-        assertTextNotPresent("Top Leaks");
-
-        // Click ">>>" to advance to 01/17/2026 — failures on both PCs
-        clickAndWait(Locator.linkWithText(">>>"));
+        // Start at 01/17/2026 via URL so the datepicker opens near our sample data dates
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "begin", Map.of("end", "01/17/2026")));
         assertTextPresent(COMPUTER_NAME_1, COMPUTER_NAME_2);
         assertTextPresent("Top Failures");
         assertTextNotPresent("Top Leaks");
@@ -194,8 +187,18 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         assertTopSummaryEntry("Top Failures", "TestFailOne", 2);
         assertTopSummaryEntry("Top Failures", "TestFailTwo", 1);
 
-        // Click ">>>" to advance to 01/18/2026 — leaks on both PCs
-        clickAndWait(Locator.linkWithText(">>>"));
+        // Verify the datepicker reflects our starting date, then navigate BACKWARD
+        // one day to 01/16/2026 — clean run, no failures or leaks
+        verifyDateInDatepicker(1, 17, 2026);
+        goToPrevDay(1);
+        verifyDateInDatepicker(1, 16, 2026);
+        assertTextPresent(COMPUTER_NAME_1, COMPUTER_NAME_2);
+        assertTextNotPresent("Top Failures");
+        assertTextNotPresent("Top Leaks");
+
+        // Navigate FORWARD two days to 01/18/2026 — leaks on both PCs
+        goToNextDay(2);
+        verifyDateInDatepicker(1, 18, 2026);
         assertTextPresent(COMPUTER_NAME_1, COMPUTER_NAME_2);
         assertTextPresent("Top Failures"); // cumulative — failures from 01/17 still in the view period
         assertTextPresent("Top Leaks");
@@ -620,31 +623,40 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     }
 
     /**
-     * Selects a date in the jQuery UI datepicker on the begin page by clicking
-     * through the calendar widget. Navigates backward from the currently displayed
-     * month to the target month/year, then clicks the target day. The datepicker's
-     * onSelect callback triggers a page navigation.
+     * Opens the jQuery UI datepicker on the begin page and verifies it is displaying
+     * the expected month, year, and selected day.
      */
-    private void selectDateInDatepicker(int month, int day, int year)
+    private void verifyDateInDatepicker(int month, int day, int year)
     {
-        click(Locator.id("datepicker"));
-        waitForElement(Locator.tagWithClass("div", "ui-datepicker"));
+        String expected = String.format("%02d/%02d/%04d", month, day, year);
+        assertEquals("Datepicker date", expected, getFormElement(Locator.id("datepicker")));
+    }
 
-        // Navigate backward to the target month/year
-        String targetTitle = Month.of(month).getDisplayName(TextStyle.FULL, Locale.ENGLISH) + " " + year;
-        Locator titleLoc = Locator.tagWithClass("div", "ui-datepicker-title");
-        Locator prevButton = Locator.tagWithClass("a", "ui-datepicker-prev");
+    // The "<<<" and ">>>" links are element siblings of the #datepicker input
+    // (a previous-day link before and a next-day link after).
+    private static final Locator PREV_DAY_LINK = Locator.xpath(
+            "//a[normalize-space(text())='<<<' and following-sibling::input[@id='datepicker']]");
+    private static final Locator NEXT_DAY_LINK = Locator.xpath(
+            "//a[normalize-space(text())='>>>' and preceding-sibling::input[@id='datepicker']]");
 
-        for (int i = 0; i < 24 && !getText(titleLoc).contains(targetTitle); i++)
-        {
-            click(prevButton);
-        }
+    /**
+     * Clicks the ">>>" link next to the date field {@code count} times to advance
+     * one day per click. Each click triggers a page navigation.
+     */
+    private void goToNextDay(int count)
+    {
+        for (int i = 0; i < count; i++)
+            clickAndWait(NEXT_DAY_LINK);
+    }
 
-        // Click the target day (exclude days from adjacent months)
-        Locator dayLink = Locator.xpath(
-                "//div[contains(@class,'ui-datepicker')]" +
-                "//td[not(contains(@class,'ui-datepicker-other-month'))]/a[text()='" + day + "']");
-        clickAndWait(dayLink);
+    /**
+     * Clicks the "<<<" link next to the date field {@code count} times to go back
+     * one day per click. Each click triggers a page navigation.
+     */
+    private void goToPrevDay(int count)
+    {
+        for (int i = 0; i < count; i++)
+            clickAndWait(PREV_DAY_LINK);
     }
 
     /**

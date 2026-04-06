@@ -18,6 +18,7 @@ package org.labkey.testresults;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.logging.log4j.LogManager;
@@ -489,8 +490,14 @@ public class TestResultsController extends SpringActionController
             }
             int runId = form.getRunId();
             String trainString = form.getTrain();
-            boolean train = trainString != null && trainString.equalsIgnoreCase("true"); // true = add to training set, false/null = remove
-            boolean force = trainString != null && trainString.equalsIgnoreCase("force");
+            if (!Strings.CI.equals(trainString, "true") &&
+                !Strings.CI.equals(trainString, "false") &&
+                !Strings.CI.equals(trainString, "force"))
+            {
+                return new ApiSimpleResponse(Map.of("Success", false, "cause", "train must be one of: true, false, force"));
+            }
+            boolean train = Strings.CI.equals(trainString, "true"); // true = add to training set, false = remove
+            boolean force = Strings.CI.equals(trainString, "force");
 
             SQLFragment sqlFragment = new SQLFragment();
             sqlFragment.append("SELECT * FROM " + TestResultsSchema.getTableInfoTrain() + " WHERE runid = ?");

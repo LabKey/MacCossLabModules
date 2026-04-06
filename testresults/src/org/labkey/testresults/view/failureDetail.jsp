@@ -392,15 +392,28 @@ $(document).ready(function() {
     $("#problem-type-selection input").change(changeProblemType);
     $("#problem-type-selection input[value=" + <%=q(problemType)%> + "]").prop("checked", true).trigger("change");
 
-    // Initialize sortable table.
+    // Initialize sortable table. tablesorter 2.0.5b requires numeric column
+    // indices in `headers`, so look up the problem column's index from its ID
+    // — keeps the named selector as the source of truth if columns are reordered.
+    var problemColIdx = $("#failurestatstable thead th").index($("#col-problem"));
+    var headers = {};
+    if (problemColIdx >= 0) {
+        headers[problemColIdx] = { sorter: false };
+    } else {
+        console.warn("failureDetail.jsp: #col-problem header not found; problem column will be sortable.");
+    }
     $("#failurestatstable").tablesorter({
         widthFixed : true,
         resizable: true,
         widgets: ['zebra'],
-        headers : { 5: { sorter: false } },
+        headers : headers,
         cssAsc: "headerSortUp",
         cssDesc: "headerSortDown",
         ignoreCase: true,
+        sortList: [[1, 1]], // initial sort by post time descending
+        sortAppend: {
+            0: [[ 1, 'a' ]] // secondary sort by date ascending
+        },
         theme: 'default'
     });
 });
