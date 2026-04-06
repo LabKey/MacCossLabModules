@@ -178,14 +178,8 @@ public class TestResultsController extends SpringActionController
         private int _minRuns = 5;
         private Integer _targetRuns; // backwards compatibility
 
-        public String getMode()
-        {
-            return _mode;
-        }
-        public void setMode(String mode)
-        {
-            _mode = mode;
-        }
+        public String getMode() { return _mode; }
+        public void setMode(String mode) { _mode = mode; }
 
         public int getMaxRuns()
         {
@@ -194,33 +188,15 @@ public class TestResultsController extends SpringActionController
                 return _targetRuns;
             return _maxRuns;
         }
-        public void setMaxRuns(int maxRuns)
-        {
-            _maxRuns = maxRuns;
-        }
+        public void setMaxRuns(int maxRuns) { _maxRuns = maxRuns; }
 
-        public int getMinRuns()
-        {
-            return _minRuns;
-        }
-        public void setMinRuns(int minRuns)
-        {
-            _minRuns = minRuns;
-        }
+        public int getMinRuns() { return _minRuns; }
+        public void setMinRuns(int minRuns) { _minRuns = minRuns; }
 
-        public Integer getTargetRuns()
-        {
-            return _targetRuns;
-        }
-        public void setTargetRuns(Integer targetRuns)
-        {
-            _targetRuns = targetRuns;
-        }
+        public Integer getTargetRuns() { return _targetRuns; }
+        public void setTargetRuns(Integer targetRuns) { _targetRuns = targetRuns; }
 
-        public boolean isIncremental()
-        {
-            return "incremental".equalsIgnoreCase(_mode);
-        }
+        public boolean isIncremental() { return "incremental".equalsIgnoreCase(_mode); }
     }
 
     public TestResultsController()

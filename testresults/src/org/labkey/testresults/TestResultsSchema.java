@@ -111,7 +111,6 @@ public class TestResultsSchema extends UserSchema
     /**
      * Converts DbSchema-level FKs (propagated by wrapAllColumns()) into UserSchema-level FKs
      * so the Query Schema Browser renders hyperlinks and can navigate to target query grids.
-     * <p>
      * After wrapAllColumns(), columns whose FK targets are within this schema show up with an
      * "undefined" schema name because the DbSchema FK has no UserSchema context. This method
      * walks all columns and replaces any such FK with a proper QueryForeignKey.
@@ -140,9 +139,17 @@ public class TestResultsSchema extends UserSchema
     @Override
     public @NotNull Set<String> getTableNames()
     {
-        return Set.of(TABLE_TEST_RUNS, TABLE_USER, TABLE_USER_DATA, TABLE_TRAIN_RUNS,
-                TABLE_HANGS, TABLE_MEMORY_LEAKS, TABLE_HANDLE_LEAKS,
-                TABLE_TEST_PASSES, TABLE_TEST_FAILS, TABLE_GLOBAL_SETTINGS);
+        return Set.of(
+                TABLE_TEST_RUNS,
+                TABLE_USER,
+                TABLE_USER_DATA,
+                TABLE_TRAIN_RUNS,
+                TABLE_HANGS,
+                TABLE_MEMORY_LEAKS,
+                TABLE_HANDLE_LEAKS,
+                TABLE_TEST_PASSES,
+                TABLE_TEST_FAILS,
+                TABLE_GLOBAL_SETTINGS);
     }
 
     // ---------------------------------------------------------------------------
