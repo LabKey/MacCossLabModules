@@ -94,12 +94,17 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
 import javax.xml.parsers.DocumentBuilder;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
@@ -591,7 +596,7 @@ public class TestResultsController extends SpringActionController
 
     /**
      * action to view user.jsp and all run details for user in date selection
-     * accepts a url parameter "user" which will be the user that the jsp displays runs for
+     * accepts a url parameter "username" which will be the user that the jsp displays runs for
      * accepts url parameter "start" and "end" which will be the date range of selected runs for that user to display
      */
     @RequiresPermission(ReadPermission.class)
@@ -600,7 +605,7 @@ public class TestResultsController extends SpringActionController
         @Override
         public ModelAndView getView(ShowUserForm form, BindException errors) throws Exception
         {
-            String userName = form.getUser();
+            String userName = form.getUsername();
             String dataInclude = form.getDatainclude();
             Date startDate;
             Date endDate;
@@ -651,7 +656,7 @@ public class TestResultsController extends SpringActionController
     {
         private String _start;
         private String _end;
-        private String _user;
+        private String _username;
         private String _datainclude;
 
         public String getStart()
@@ -678,13 +683,13 @@ public class TestResultsController extends SpringActionController
         {
             return parseDate(_end);
         }
-        public String getUser()
+        public String getUsername()
         {
-            return _user;
+            return _username;
         }
-        public void setUser(String user)
+        public void setUsername(String username)
         {
-            _user = user;
+            _username = username;
         }
         public String getDatainclude()
         {
@@ -2004,8 +2009,15 @@ public class TestResultsController extends SpringActionController
                 }
                 byte[] pointSummary = encodeRunPassSummary(passes.toArray(new TestPassDetail[0]));
 
-                // Compress xml, will be stored in testresults.testruns, column xml
-                byte[] compressedXML = xml != null ? compressString(docElement.toString()) : null;
+                // Serialize the DOM (with <Log> removed) and compress for storage
+                byte[] compressedXML = null;
+                if (xml != null)
+                {
+                    Transformer transformer = TransformerFactory.newInstance().newTransformer();
+                    StringWriter xmlWriter = new StringWriter();
+                    transformer.transform(new DOMSource(docElement), new StreamResult(xmlWriter));
+                    compressedXML = compressString(xmlWriter.toString());
+                }
                 byte[] compressedLog = log != null ? compressString(log) : null;
 
                 RunDetail run = new RunDetail(userid, duration, postTime, xmlTimestamp, os, revision, gitHash, c, false, compressedXML,

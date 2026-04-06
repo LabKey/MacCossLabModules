@@ -85,7 +85,7 @@
     </h2>
     <p>
         Run Id: <%=run.getId()%><br>
-        User : <a href="<%=h(urlFor(TestResultsController.ShowUserAction.class).addParameter("user", run.getUserName()))%>"><%=h(run.getUserName())%></a><br>
+        User : <a href="<%=h(urlFor(TestResultsController.ShowUserAction.class).addParameter("username", run.getUserName()))%>"><%=h(run.getUserName())%></a><br>
         OS: <%=h(run.getOs())%><br>
         Revision: <%=h(run.getRevisionFull())%><br>
         Passed Tests : <%=run.getPasses().length%><br>

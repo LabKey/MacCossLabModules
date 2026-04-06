@@ -51,7 +51,7 @@
     HttpServletRequest req = getViewContext().getRequest();
     String startDate = req.getParameter("start");
     String endDate = req.getParameter("end");
-    String user = req.getParameter("user");
+    String user = req.getParameter("username");
     boolean showSingleUser = user != null && !user.isEmpty();
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
     Date today = new Date();
@@ -228,7 +228,7 @@
         }
 
         let url = <%=jsURL(new ActionURL(TestResultsController.ShowUserAction.class, c))%>;
-        url.searchParams.set('user', $("#users").val() || "");
+        url.searchParams.set('username', $("#users").val() || "");
         url.searchParams.set('start', startDate);
         url.searchParams.set('end', endDate);
         url.searchParams.set('datainclude', $("#data-include").val());

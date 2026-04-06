@@ -167,7 +167,7 @@
             <tr id="user-anchor-<%= h(user.getUsername()) %>" style="border:none;"><td></td></tr>
             <tr style="border: none;">
                 <th colspan="6"  style="float: left; padding-top: 5px; font-size: 14px; width: 200px; color: #000; background: <%=h(color)%>;">
-                    <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c).addParameter("user", user.getUsername()).addParameter("datainclude", "train"))%>"><%=h(user.getUsername())%></a>
+                    <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c).addParameter("username", user.getUsername()).addParameter("datainclude", "train"))%>"><%=h(user.getUsername())%></a>
                 </th>
                 <th>
                     <% if (user.isActive()) { %>
@@ -220,7 +220,7 @@
         <% for (User user : noRunsForUser) { %>
         <tr style="border: none;">
             <th colspan="6" style="float: left; padding-top: 5px; font-size: 11px; width: 200px; color: #247BA0;">
-                <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c).addParameter("user", user.getUsername()))%>">
+                <a href="<%=h(new ActionURL(TestResultsController.ShowUserAction.class, c).addParameter("username", user.getUsername()))%>">
                     <%=h(user.getUsername())%>
                 </a>
             </th>

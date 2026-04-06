@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Clean run: no failures, no leaks, duration >= 540 min. Qualifies as a training run. -->
+<nightly id="TEST-PC-1" os="Microsoft Windows NT 10.0.26200.0" start="01/15/2026 09:00:00 PM" duration="540" revision="26084" git_hash="abc1234de0" testsrun="150" failures="0" leaks="0">
+    <failures/>
+    <leaks/>
+    <pass id="1">
+        <test id="1" name="TestAlpha" language="fr" duration="35" managed="26.46" committed="8.30" total="49.60" user_gdi="10" handles="401" timestamp="21:00"/>
+        <test id="2" name="TestBeta" language="fr" duration="117" managed="25.29" committed="8.80" total="55.56" user_gdi="10" handles="402" timestamp="21:03"/>
+        <test id="3" name="TestGamma" language="fr" duration="59" managed="42.95" committed="11.11" total="81.28" user_gdi="10" handles="403" timestamp="21:07"/>
+        <test id="4" name="TestDelta" language="fr" duration="52" managed="40.23" committed="12.86" total="76.01" user_gdi="10" handles="404" timestamp="21:10"/>
+        <test id="5" name="TestEpsilon" language="fr" duration="55" managed="38.59" committed="11.35" total="85.12" user_gdi="10" handles="405" timestamp="21:14"/>
+        <test id="6" name="Test006" language="fr" duration="65" managed="48.64" committed="17.13" total="103.29" user_gdi="10" handles="406" timestamp="21:18"/>
+        <test id="7" name="Test007" language="fr" duration="124" managed="61.03" committed="15.19" total="112.27" user_gdi="10" handles="407" timestamp="21:21"/>
+        <test id="8" name="Test008" language="fr" duration="80" managed="52.42" committed="18.47" total="111.57" user_gdi="10" handles="408" timestamp="21:25"/>
+        <test id="9" name="Test009" language="fr" duration="37" managed="70.10" committed="21.42" total="128.64" user_gdi="10" handles="409" timestamp="21:28"/>
+        <test id="10" name="Test010" language="fr" duration="45" managed="72.80" committed="18.62" total="135.13" user_gdi="10" handles="410" timestamp="21:32"/>
+        <test id="11" name="Test011" language="fr" duration="56" managed="70.27" committed="18.27" total="138.23" user_gdi="10" handles="411" timestamp="21:36"/>
+        <test id="12" name="Test012" language="fr" duration="136" managed="73.04" committed="22.26" total="151.94" user_gdi="10" handles="412" timestamp="21:39"/>
+        <test id="13" name="Test013" language="fr" duration="119" managed="75.86" committed="21.08" total="151.76" user_gdi="10" handles="413" timestamp="21:43"/>
+        <test id="14" name="Test014" language="fr" duration="109" managed="80.38" committed="19.43" total="153.84" user_gdi="10" handles="414" timestamp="21:46"/>
+        <test id="15" name="Test015" language="fr" duration="129" managed="79.11" committed="20.10" total="156.14" user_gdi="10" handles="415" timestamp="21:50"/>
+        <test id="16" name="Test016" language="fr" duration="99" managed="87.77" committed="27.45" total="181.52" user_gdi="10" handles="416" timestamp="21:54"/>
+        <test id="17" name="Test017" language="fr" duration="44" managed="79.97" committed="25.44" total="172.27" user_gdi="10" handles="417" timestamp="21:57"/>
+        <test id="18" name="Test018" language="fr" duration="65" managed="89.27" committed="23.79" total="180.99" user_gdi="10" handles="418" timestamp="22:01"/>
+        <test id="19" name="Test019" language="fr" duration="117" managed="90.23" committed="30.87" total="197.16" user_gdi="10" handles="419" timestamp="22:04"/>
+        <test id="20" name="Test020" language="fr" duration="56" managed="96.35" committed="33.15" total="201.28" user_gdi="11" handles="420" timestamp="22:08"/>
+        <test id="21" name="Test021" language="fr" duration="177" managed="107.38" committed="34.36" total="209.09" user_gdi="11" handles="421" timestamp="22:12"/>
+        <test id="22" name="Test022" language="fr" duration="61" managed="114.11" committed="33.84" total="218.88" user_gdi="11" handles="422" timestamp="22:15"/>
+        <test id="23" name="Test023" language="fr" duration="111" managed="109.55" committed="35.49" total="222.48" user_gdi="11" handles="423" timestamp="22:19"/>
+        <test id="24" name="Test024" language="fr" duration="126" managed="111.71" committed="30.97" total="229.66" user_gdi="11" handles="424" timestamp="22:22"/>
+        <test id="25" name="Test025" language="fr" duration="36" managed="116.01" committed="36.59" total="234.41" user_gdi="11" handles="425" timestamp="22:26"/>
+        <test id="26" name="Test026" language="fr" duration="98" managed="118.40" committed="36.39" total="239.68" user_gdi="11" handles="426" timestamp="22:30"/>
+        <test id="27" name="Test027" language="fr" duration="37" managed="119.26" committed="40.35" total="260.46" user_gdi="11" handles="427" timestamp="22:33"/>
+        <test id="28" name="Test028" language="fr" duration="130" managed="141.57" committed="44.99" total="270.33" user_gdi="11" handles="428" timestamp="22:37"/>
+        <test id="29" name="Test029" language="fr" duration="176" managed="125.24" committed="42.58" total="269.09" user_gdi="11" handles="429" timestamp="22:40"/>
+        <test id="30" name="Test030" language="fr" duration="48" managed="136.02" committed="34.50" total="276.60" user_gdi="11" handles="430" timestamp="22:44"/>
+        <test id="31" name="Test031" language="fr" duration="97" managed="146.21" committed="33.58" total="276.35" user_gdi="11" handles="431" timestamp="22:48"/>
+        <test id="32" name="Test032" language="fr" duration="134" managed="150.12" committed="39.41" total="287.42" user_gdi="11" handles="432" timestamp="22:51"/>
+        <test id="33" name="Test033" language="fr" duration="129" managed="124.77" committed="45.49" total="275.70" user_gdi="11" handles="433" timestamp="22:55"/>
+        <test id="34" name="Test034" language="fr" duration="100" managed="137.35" committed="47.77" total="291.06" user_gdi="11" handles="434" timestamp="22:58"/>
+        <test id="35" name="Test035" language="fr" duration="124" managed="134.37" committed="45.10" total="280.23" user_gdi="11" handles="435" timestamp="23:02"/>
+        <test id="36" name="Test036" language="fr" duration="169" managed="147.05" committed="44.27" total="292.82" user_gdi="11" handles="436" timestamp="23:06"/>
+        <test id="37" name="Test037" language="fr" duration="131" managed="138.84" committed="46.50" total="293.86" user_gdi="11" handles="437" timestamp="23:09"/>
+        <test id="38" name="Test038" language="fr" duration="137" managed="149.42" committed="40.95" total="286.68" user_gdi="11" handles="438" timestamp="23:13"/>
+        <test id="39" name="Test039" language="fr" duration="79" managed="132.61" committed="37.36" total="294.51" user_gdi="11" handles="439" timestamp="23:16"/>
+        <test id="40" name="Test040" language="fr" duration="170" managed="148.23" committed="35.05" total="283.57" user_gdi="12" handles="440" timestamp="23:20"/>
+        <test id="41" name="Test041" language="fr" duration="48" managed="147.12" committed="36.17" total="291.30" user_gdi="12" handles="441" timestamp="23:24"/>
+        <test id="42" name="Test042" language="fr" duration="67" managed="133.18" committed="35.88" total="285.83" user_gdi="12" handles="442" timestamp="23:27"/>
+        <test id="43" name="Test043" language="fr" duration="79" managed="142.18" committed="43.15" total="295.32" user_gdi="12" handles="443" timestamp="23:31"/>
+        <test id="44" name="Test044" language="fr" duration="46" managed="144.91" committed="40.11" total="299.34" user_gdi="12" handles="444" timestamp="23:34"/>
+        <test id="45" name="Test045" language="fr" duration="145" managed="164.04" committed="36.67" total="302.36" user_gdi="12" handles="445" timestamp="23:38"/>
+        <test id="46" name="Test046" language="fr" duration="108" managed="154.80" committed="42.43" total="300.84" user_gdi="12" handles="446" timestamp="23:42"/>
+        <test id="47" name="Test047" language="fr" duration="126" managed="140.14" committed="43.86" total="295.58" user_gdi="12" handles="447" timestamp="23:45"/>
+        <test id="48" name="Test048" language="fr" duration="33" managed="144.93" committed="47.16" total="301.01" user_gdi="12" handles="448" timestamp="23:49"/>
+        <test id="49" name="Test049" language="fr" duration="92" managed="160.51" committed="49.83" total="303.05" user_gdi="12" handles="449" timestamp="23:52"/>
+        <test id="50" name="Test050" language="fr" duration="163" managed="139.45" committed="43.89" total="299.29" user_gdi="12" handles="450" timestamp="23:56"/>
+        <test id="51" name="Test051" language="fr" duration="67" managed="155.60" committed="40.25" total="296.89" user_gdi="12" handles="451" timestamp="00:00"/>
+        <test id="52" name="Test052" language="fr" duration="134" managed="156.74" committed="44.81" total="306.81" user_gdi="12" handles="452" timestamp="00:03"/>
+        <test id="53" name="Test053" language="fr" duration="60" managed="143.73" committed="45.54" total="307.00" user_gdi="12" handles="453" timestamp="00:07"/>
+        <test id="54" name="Test054" language="fr" duration="120" managed="154.72" committed="36.36" total="295.54" user_gdi="12" handles="454" timestamp="00:10"/>
+        <test id="55" name="Test055" language="fr" duration="134" managed="144.48" committed="44.49" total="308.68" user_gdi="12" handles="455" timestamp="00:14"/>
+        <test id="56" name="Test056" language="fr" duration="152" managed="160.12" committed="45.66" total="292.75" user_gdi="12" handles="456" timestamp="00:18"/>
+        <test id="57" name="Test057" language="fr" duration="164" managed="133.51" committed="42.96" total="296.47" user_gdi="12" handles="457" timestamp="00:21"/>
+        <test id="58" name="Test058" language="fr" duration="72" managed="162.18" committed="41.29" total="303.40" user_gdi="12" handles="458" timestamp="00:25"/>
+        <test id="59" name="Test059" language="fr" duration="132" managed="143.44" committed="43.35" total="295.00" user_gdi="12" handles="459" timestamp="00:28"/>
+        <test id="60" name="Test060" language="fr" duration="100" managed="144.36" committed="48.28" total="309.85" user_gdi="13" handles="460" timestamp="00:32"/>
+        <test id="61" name="Test061" language="fr" duration="43" managed="146.97" committed="46.07" total="299.20" user_gdi="13" handles="461" timestamp="00:36"/>
+        <test id="62" name="Test062" language="fr" duration="67" managed="147.72" committed="39.20" total="314.19" user_gdi="13" handles="462" timestamp="00:39"/>
+        <test id="63" name="Test063" language="fr" duration="157" managed="163.06" committed="41.88" total="305.05" user_gdi="13" handles="463" timestamp="00:43"/>
+        <test id="64" name="Test064" language="fr" duration="149" managed="162.94" committed="39.57" total="298.95" user_gdi="13" handles="464" timestamp="00:46"/>
+        <test id="65" name="Test065" language="fr" duration="120" managed="154.65" committed="51.54" total="306.99" user_gdi="13" handles="465" timestamp="00:50"/>
+        <test id="66" name="Test066" language="fr" duration="37" managed="153.11" committed="40.70" total="312.50" user_gdi="13" handles="466" timestamp="00:54"/>
+        <test id="67" name="Test067" language="fr" duration="65" managed="143.15" committed="37.72" total="313.63" user_gdi="13" handles="467" timestamp="00:57"/>
+        <test id="68" name="Test068" language="fr" duration="96" managed="142.73" committed="44.36" total="315.58" user_gdi="13" handles="468" timestamp="01:01"/>
+        <test id="69" name="Test069" language="fr" duration="91" managed="157.28" committed="51.19" total="317.35" user_gdi="13" handles="469" timestamp="01:04"/>
+        <test id="70" name="Test070" language="fr" duration="62" managed="165.59" committed="41.53" total="311.50" user_gdi="13" handles="470" timestamp="01:08"/>
+        <test id="71" name="Test071" language="fr" duration="36" managed="163.63" committed="38.80" total="314.74" user_gdi="13" handles="471" timestamp="01:12"/>
+        <test id="72" name="Test072" language="fr" duration="42" managed="161.60" committed="47.27" total="321.99" user_gdi="13" handles="472" timestamp="01:15"/>
+        <test id="73" name="Test073" language="fr" duration="58" managed="160.39" committed="38.44" total="315.23" user_gdi="13" handles="473" timestamp="01:19"/>
+        <test id="74" name="Test074" language="fr" duration="137" managed="161.77" committed="49.05" total="308.31" user_gdi="13" handles="474" timestamp="01:22"/>
+        <test id="75" name="Test075" language="fr" duration="95" managed="162.77" committed="41.76" total="319.99" user_gdi="13" handles="475" timestamp="01:26"/>
+        <test id="76" name="Test076" language="fr" duration="133" managed="141.34" committed="40.89" total="310.68" user_gdi="13" handles="476" timestamp="01:30"/>
+        <test id="77" name="Test077" language="fr" duration="76" managed="177.89" committed="45.58" total="324.37" user_gdi="13" handles="477" timestamp="01:33"/>
+        <test id="78" name="Test078" language="fr" duration="178" managed="167.83" committed="53.22" total="319.12" user_gdi="13" handles="478" timestamp="01:37"/>
+        <test id="79" name="Test079" language="fr" duration="90" managed="162.72" committed="48.78" total="311.54" user_gdi="13" handles="479" timestamp="01:40"/>
+        <test id="80" name="Test080" language="fr" duration="102" managed="149.44" committed="45.14" total="329.54" user_gdi="14" handles="480" timestamp="01:44"/>
+        <test id="81" name="Test081" language="fr" duration="46" managed="152.03" committed="54.30" total="327.80" user_gdi="14" handles="481" timestamp="01:48"/>
+        <test id="82" name="Test082" language="fr" duration="79" managed="177.43" committed="40.39" total="326.86" user_gdi="14" handles="482" timestamp="01:51"/>
+        <test id="83" name="Test083" language="fr" duration="96" managed="174.90" committed="46.29" total="329.00" user_gdi="14" handles="483" timestamp="01:55"/>
+        <test id="84" name="Test084" language="fr" duration="146" managed="167.51" committed="55.27" total="331.05" user_gdi="14" handles="484" timestamp="01:58"/>
+        <test id="85" name="Test085" language="fr" duration="130" managed="155.29" committed="47.74" total="333.29" user_gdi="14" handles="485" timestamp="02:02"/>
+        <test id="86" name="Test086" language="fr" duration="130" managed="148.71" committed="47.14" total="320.17" user_gdi="14" handles="486" timestamp="02:06"/>
+        <test id="87" name="Test087" language="fr" duration="77" managed="183.41" committed="45.38" total="335.07" user_gdi="14" handles="487" timestamp="02:09"/>
+        <test id="88" name="Test088" language="fr" duration="95" managed="151.17" committed="42.42" total="331.52" user_gdi="14" handles="488" timestamp="02:13"/>
+        <test id="89" name="Test089" language="fr" duration="121" managed="169.91" committed="46.03" total="331.71" user_gdi="14" handles="489" timestamp="02:16"/>
+        <test id="90" name="Test090" language="fr" duration="39" managed="161.28" committed="46.02" total="327.30" user_gdi="14" handles="490" timestamp="02:20"/>
+        <test id="91" name="Test091" language="fr" duration="116" managed="172.14" committed="42.81" total="339.87" user_gdi="14" handles="491" timestamp="02:24"/>
+        <test id="92" name="Test092" language="fr" duration="137" managed="172.05" committed="44.25" total="322.79" user_gdi="14" handles="492" timestamp="02:27"/>
+        <test id="93" name="Test093" language="fr" duration="68" managed="183.27" committed="53.22" total="340.91" user_gdi="14" handles="493" timestamp="02:31"/>
+        <test id="94" name="Test094" language="fr" duration="74" managed="166.84" committed="46.33" total="325.65" user_gdi="14" handles="494" timestamp="02:34"/>
+        <test id="95" name="Test095" language="fr" duration="159" managed="156.76" committed="55.32" total="326.48" user_gdi="14" handles="495" timestamp="02:38"/>
+        <test id="96" name="Test096" language="fr" duration="95" managed="155.85" committed="49.72" total="334.51" user_gdi="14" handles="496" timestamp="02:42"/>
+        <test id="97" name="Test097" language="fr" duration="116" managed="165.44" committed="44.64" total="329.91" user_gdi="14" handles="497" timestamp="02:45"/>
+        <test id="98" name="Test098" language="fr" duration="143" managed="157.51" committed="40.37" total="331.38" user_gdi="14" handles="498" timestamp="02:49"/>
+        <test id="99" name="Test099" language="fr" duration="122" managed="163.28" committed="44.30" total="341.00" user_gdi="14" handles="499" timestamp="02:52"/>
+        <test id="100" name="Test100" language="fr" duration="85" managed="182.13" committed="43.93" total="333.54" user_gdi="15" handles="500" timestamp="02:56"/>
+        <test id="101" name="Test101" language="fr" duration="113" managed="171.30" committed="40.50" total="335.64" user_gdi="15" handles="501" timestamp="03:00"/>
+        <test id="102" name="Test102" language="fr" duration="63" managed="161.22" committed="53.25" total="345.47" user_gdi="15" handles="502" timestamp="03:03"/>
+        <test id="103" name="Test103" language="fr" duration="86" managed="158.44" committed="48.82" total="349.33" user_gdi="15" handles="503" timestamp="03:07"/>
+        <test id="104" name="Test104" language="fr" duration="92" managed="159.69" committed="46.43" total="336.71" user_gdi="15" handles="504" timestamp="03:10"/>
+        <test id="105" name="Test105" language="fr" duration="140" managed="179.00" committed="57.47" total="352.25" user_gdi="15" handles="505" timestamp="03:14"/>
+        <test id="106" name="Test106" language="fr" duration="68" managed="173.36" committed="53.17" total="347.11" user_gdi="15" handles="506" timestamp="03:18"/>
+        <test id="107" name="Test107" language="fr" duration="150" managed="179.60" committed="59.19" total="352.44" user_gdi="15" handles="507" timestamp="03:21"/>
+        <test id="108" name="Test108" language="fr" duration="83" managed="178.97" committed="58.71" total="347.87" user_gdi="15" handles="508" timestamp="03:25"/>
+        <test id="109" name="Test109" language="fr" duration="99" managed="158.36" committed="56.19" total="346.48" user_gdi="15" handles="509" timestamp="03:28"/>
+        <test id="110" name="Test110" language="fr" duration="142" managed="171.57" committed="57.15" total="350.62" user_gdi="15" handles="510" timestamp="03:32"/>
+        <test id="111" name="Test111" language="fr" duration="61" managed="175.37" committed="48.86" total="354.60" user_gdi="15" handles="511" timestamp="03:36"/>
+        <test id="112" name="Test112" language="fr" duration="69" managed="167.21" committed="42.69" total="344.94" user_gdi="15" handles="512" timestamp="03:39"/>
+        <test id="113" name="Test113" language="fr" duration="126" managed="165.79" committed="57.14" total="339.76" user_gdi="15" handles="513" timestamp="03:43"/>
+        <test id="114" name="Test114" language="fr" duration="84" managed="170.21" committed="45.08" total="341.66" user_gdi="15" handles="514" timestamp="03:46"/>
+        <test id="115" name="Test115" language="fr" duration="93" managed="172.91" committed="43.11" total="343.74" user_gdi="15" handles="515" timestamp="03:50"/>
+        <test id="116" name="Test116" language="fr" duration="153" managed="180.23" committed="48.34" total="343.22" user_gdi="15" handles="516" timestamp="03:54"/>
+        <test id="117" name="Test117" language="fr" duration="126" managed="157.69" committed="47.82" total="342.55" user_gdi="15" handles="517" timestamp="03:57"/>
+        <test id="118" name="Test118" language="fr" duration="90" managed="156.73" committed="46.99" total="344.72" user_gdi="15" handles="518" timestamp="04:01"/>
+        <test id="119" name="Test119" language="fr" duration="166" managed="169.21" committed="42.98" total="345.16" user_gdi="15" handles="519" timestamp="04:04"/>
+        <test id="120" name="Test120" language="fr" duration="175" managed="164.83" committed="46.31" total="355.86" user_gdi="16" handles="520" timestamp="04:08"/>
+        <test id="121" name="Test121" language="fr" duration="173" managed="192.10" committed="57.14" total="351.90" user_gdi="16" handles="521" timestamp="04:12"/>
+        <test id="122" name="Test122" language="fr" duration="55" managed="185.10" committed="53.46" total="355.66" user_gdi="16" handles="522" timestamp="04:15"/>
+        <test id="123" name="Test123" language="fr" duration="106" managed="191.33" committed="61.45" total="367.02" user_gdi="16" handles="523" timestamp="04:19"/>
+        <test id="124" name="Test124" language="fr" duration="173" managed="168.51" committed="49.28" total="361.30" user_gdi="16" handles="524" timestamp="04:22"/>
+        <test id="125" name="Test125" language="fr" duration="122" managed="178.08" committed="48.64" total="357.37" user_gdi="16" handles="525" timestamp="04:26"/>
+        <test id="126" name="Test126" language="fr" duration="168" managed="184.15" committed="45.13" total="351.11" user_gdi="16" handles="526" timestamp="04:30"/>
+        <test id="127" name="Test127" language="fr" duration="61" managed="175.22" committed="60.50" total="359.40" user_gdi="16" handles="527" timestamp="04:33"/>
+        <test id="128" name="Test128" language="fr" duration="81" managed="170.10" committed="50.30" total="353.64" user_gdi="16" handles="528" timestamp="04:37"/>
+        <test id="129" name="Test129" language="fr" duration="108" managed="189.33" committed="54.18" total="356.66" user_gdi="16" handles="529" timestamp="04:40"/>
+        <test id="130" name="Test130" language="fr" duration="158" managed="180.07" committed="48.65" total="359.76" user_gdi="16" handles="530" timestamp="04:44"/>
+        <test id="131" name="Test131" language="fr" duration="153" managed="175.94" committed="56.93" total="373.26" user_gdi="16" handles="531" timestamp="04:48"/>
+        <test id="132" name="Test132" language="fr" duration="59" managed="172.40" committed="48.00" total="359.93" user_gdi="16" handles="532" timestamp="04:51"/>
+        <test id="133" name="Test133" language="fr" duration="131" managed="185.68" committed="59.41" total="355.92" user_gdi="16" handles="533" timestamp="04:55"/>
+        <test id="134" name="Test134" language="fr" duration="97" managed="201.15" committed="46.26" total="371.80" user_gdi="16" handles="534" timestamp="04:58"/>
+        <test id="135" name="Test135" language="fr" duration="63" managed="196.64" committed="55.23" total="363.26" user_gdi="16" handles="535" timestamp="05:02"/>
+        <test id="136" name="Test136" language="fr" duration="164" managed="180.37" committed="47.85" total="360.25" user_gdi="16" handles="536" timestamp="05:06"/>
+        <test id="137" name="Test137" language="fr" duration="74" managed="193.55" committed="59.15" total="377.73" user_gdi="16" handles="537" timestamp="05:09"/>
+        <test id="138" name="Test138" language="fr" duration="168" managed="185.73" committed="58.92" total="368.22" user_gdi="16" handles="538" timestamp="05:13"/>
+        <test id="139" name="Test139" language="fr" duration="168" managed="192.09" committed="48.68" total="379.80" user_gdi="16" handles="539" timestamp="05:16"/>
+        <test id="140" name="Test140" language="fr" duration="65" managed="196.16" committed="60.10" total="365.37" user_gdi="17" handles="540" timestamp="05:20"/>
+        <test id="141" name="Test141" language="fr" duration="55" managed="183.98" committed="55.15" total="376.36" user_gdi="17" handles="541" timestamp="05:24"/>
+        <test id="142" name="Test142" language="fr" duration="65" managed="182.01" committed="63.12" total="380.21" user_gdi="17" handles="542" timestamp="05:27"/>
+        <test id="143" name="Test143" language="fr" duration="69" managed="194.34" committed="46.94" total="375.91" user_gdi="17" handles="543" timestamp="05:31"/>
+        <test id="144" name="Test144" language="fr" duration="145" managed="208.23" committed="46.26" total="383.38" user_gdi="17" handles="544" timestamp="05:34"/>
+        <test id="145" name="Test145" language="fr" duration="158" managed="195.22" committed="57.68" total="380.69" user_gdi="17" handles="545" timestamp="05:38"/>
+        <test id="146" name="Test146" language="fr" duration="82" managed="188.85" committed="62.86" total="371.49" user_gdi="17" handles="546" timestamp="05:42"/>
+        <test id="147" name="Test147" language="fr" duration="168" managed="192.69" committed="59.84" total="369.62" user_gdi="17" handles="547" timestamp="05:45"/>
+        <test id="148" name="Test148" language="fr" duration="147" managed="177.28" committed="59.06" total="386.56" user_gdi="17" handles="548" timestamp="05:49"/>
+        <test id="149" name="Test149" language="fr" duration="166" managed="198.52" committed="63.60" total="379.52" user_gdi="17" handles="549" timestamp="05:52"/>
+        <test id="150" name="Test150" language="fr" duration="47" managed="208.64" committed="60.87" total="388.81" user_gdi="17" handles="550" timestamp="05:56"/>
+    </pass>
+    <Log>
+# Nightly started Thursday, January 15, 2026 9:00 PM
+
+[21:00]    1.0 TestAlpha (fr)
+[21:03]    1.0 TestBeta (fr)
+[21:07]    1.0 TestGamma (fr)
+[21:10]    1.0 TestDelta (fr)
+[21:14]    1.0 TestEpsilon (fr)
+[21:18]    1.0 Test006 (fr)
+[21:21]    1.0 Test007 (fr)
+[21:25]    1.0 Test008 (fr)
+[21:28]    1.0 Test009 (fr)
+[21:32]    1.0 Test010 (fr)
+[21:36]    1.0 Test011 (fr)
+[21:39]    1.0 Test012 (fr)
+[21:43]    1.0 Test013 (fr)
+[21:46]    1.0 Test014 (fr)
+[21:50]    1.0 Test015 (fr)
+[21:54]    1.0 Test016 (fr)
+[21:57]    1.0 Test017 (fr)
+[22:01]    1.0 Test018 (fr)
+[22:04]    1.0 Test019 (fr)
+[22:08]    1.0 Test020 (fr)
+[22:12]    1.0 Test021 (fr)
+[22:15]    1.0 Test022 (fr)
+[22:19]    1.0 Test023 (fr)
+[22:22]    1.0 Test024 (fr)
+[22:26]    1.0 Test025 (fr)
+[22:30]    1.0 Test026 (fr)
+[22:33]    1.0 Test027 (fr)
+[22:37]    1.0 Test028 (fr)
+[22:40]    1.0 Test029 (fr)
+[22:44]    1.0 Test030 (fr)
+[22:48]    1.0 Test031 (fr)
+[22:51]    1.0 Test032 (fr)
+[22:55]    1.0 Test033 (fr)
+[22:58]    1.0 Test034 (fr)
+[23:02]    1.0 Test035 (fr)
+[23:06]    1.0 Test036 (fr)
+[23:09]    1.0 Test037 (fr)
+[23:13]    1.0 Test038 (fr)
+[23:16]    1.0 Test039 (fr)
+[23:20]    1.0 Test040 (fr)
+[23:24]    1.0 Test041 (fr)
+[23:27]    1.0 Test042 (fr)
+[23:31]    1.0 Test043 (fr)
+[23:34]    1.0 Test044 (fr)
+[23:38]    1.0 Test045 (fr)
+[23:42]    1.0 Test046 (fr)
+[23:45]    1.0 Test047 (fr)
+[23:49]    1.0 Test048 (fr)
+[23:52]    1.0 Test049 (fr)
+[23:56]    1.0 Test050 (fr)
+[00:00]    1.0 Test051 (fr)
+[00:03]    1.0 Test052 (fr)
+[00:07]    1.0 Test053 (fr)
+[00:10]    1.0 Test054 (fr)
+[00:14]    1.0 Test055 (fr)
+[00:18]    1.0 Test056 (fr)
+[00:21]    1.0 Test057 (fr)
+[00:25]    1.0 Test058 (fr)
+[00:28]    1.0 Test059 (fr)
+[00:32]    1.0 Test060 (fr)
+[00:36]    1.0 Test061 (fr)
+[00:39]    1.0 Test062 (fr)
+[00:43]    1.0 Test063 (fr)
+[00:46]    1.0 Test064 (fr)
+[00:50]    1.0 Test065 (fr)
+[00:54]    1.0 Test066 (fr)
+[00:57]    1.0 Test067 (fr)
+[01:01]    1.0 Test068 (fr)
+[01:04]    1.0 Test069 (fr)
+[01:08]    1.0 Test070 (fr)
+[01:12]    1.0 Test071 (fr)
+[01:15]    1.0 Test072 (fr)
+[01:19]    1.0 Test073 (fr)
+[01:22]    1.0 Test074 (fr)
+[01:26]    1.0 Test075 (fr)
+[01:30]    1.0 Test076 (fr)
+[01:33]    1.0 Test077 (fr)
+[01:37]    1.0 Test078 (fr)
+[01:40]    1.0 Test079 (fr)
+[01:44]    1.0 Test080 (fr)
+[01:48]    1.0 Test081 (fr)
+[01:51]    1.0 Test082 (fr)
+[01:55]    1.0 Test083 (fr)
+[01:58]    1.0 Test084 (fr)
+[02:02]    1.0 Test085 (fr)
+[02:06]    1.0 Test086 (fr)
+[02:09]    1.0 Test087 (fr)
+[02:13]    1.0 Test088 (fr)
+[02:16]    1.0 Test089 (fr)
+[02:20]    1.0 Test090 (fr)
+[02:24]    1.0 Test091 (fr)
+[02:27]    1.0 Test092 (fr)
+[02:31]    1.0 Test093 (fr)
+[02:34]    1.0 Test094 (fr)
+[02:38]    1.0 Test095 (fr)
+[02:42]    1.0 Test096 (fr)
+[02:45]    1.0 Test097 (fr)
+[02:49]    1.0 Test098 (fr)
+[02:52]    1.0 Test099 (fr)
+[02:56]    1.0 Test100 (fr)
+[03:00]    1.0 Test101 (fr)
+[03:03]    1.0 Test102 (fr)
+[03:07]    1.0 Test103 (fr)
+[03:10]    1.0 Test104 (fr)
+[03:14]    1.0 Test105 (fr)
+[03:18]    1.0 Test106 (fr)
+[03:21]    1.0 Test107 (fr)
+[03:25]    1.0 Test108 (fr)
+[03:28]    1.0 Test109 (fr)
+[03:32]    1.0 Test110 (fr)
+[03:36]    1.0 Test111 (fr)
+[03:39]    1.0 Test112 (fr)
+[03:43]    1.0 Test113 (fr)
+[03:46]    1.0 Test114 (fr)
+[03:50]    1.0 Test115 (fr)
+[03:54]    1.0 Test116 (fr)
+[03:57]    1.0 Test117 (fr)
+[04:01]    1.0 Test118 (fr)
+[04:04]    1.0 Test119 (fr)
+[04:08]    1.0 Test120 (fr)
+[04:12]    1.0 Test121 (fr)
+[04:15]    1.0 Test122 (fr)
+[04:19]    1.0 Test123 (fr)
+[04:22]    1.0 Test124 (fr)
+[04:26]    1.0 Test125 (fr)
+[04:30]    1.0 Test126 (fr)
+[04:33]    1.0 Test127 (fr)
+[04:37]    1.0 Test128 (fr)
+[04:40]    1.0 Test129 (fr)
+[04:44]    1.0 Test130 (fr)
+[04:48]    1.0 Test131 (fr)
+[04:51]    1.0 Test132 (fr)
+[04:55]    1.0 Test133 (fr)
+[04:58]    1.0 Test134 (fr)
+[05:02]    1.0 Test135 (fr)
+[05:06]    1.0 Test136 (fr)
+[05:09]    1.0 Test137 (fr)
+[05:13]    1.0 Test138 (fr)
+[05:16]    1.0 Test139 (fr)
+[05:20]    1.0 Test140 (fr)
+[05:24]    1.0 Test141 (fr)
+[05:27]    1.0 Test142 (fr)
+[05:31]    1.0 Test143 (fr)
+[05:34]    1.0 Test144 (fr)
+[05:38]    1.0 Test145 (fr)
+[05:42]    1.0 Test146 (fr)
+[05:45]    1.0 Test147 (fr)
+[05:49]    1.0 Test148 (fr)
+[05:52]    1.0 Test149 (fr)
+[05:56]    1.0 Test150 (fr)
+    </Log>
+</nightly>

@@ -37,6 +37,7 @@ import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.APITestHelper;
 import org.labkey.test.util.LogMethod;
+import org.labkey.test.util.PortalHelper;
 import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.TextSearcher;
 
@@ -50,24 +51,16 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Selenium tests for the testresults module.
- *
- * Covers the main view actions and their URL parameter binding:
- * BeginAction, ShowRunAction, ShowUserAction, LongTermAction, ShowFailures,
- * ShowFlaggedAction, and TrainingDataViewAction.
- *
- * Run before and after the Spring binding refactor to confirm no regressions.
- */
 @Category({External.class, MacCossLabModules.class})
-@BaseWebDriverTest.ClassTimeout(minutes = 10)
+@BaseWebDriverTest.ClassTimeout(minutes = 5)
 public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTest
 {
     private static final String PROJECT_NAME = "TestResultsTest" + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
-    static final String COMPUTER_NAME = "TESTPC-AUTOMATION";
-    private static final Locator SUBMIT_BUTTON = Locator.css("input[type='submit'][value='Submit']");
+    static final String COMPUTER_NAME_1 = "TEST-PC-1";
+    static final String COMPUTER_NAME_2 = "TEST-PC-2";
 
     // Run IDs populated in @BeforeClass, used across test methods
+    private static int _disposableRunId = -1;
     private static int _cleanRunId = -1;
     private static int _failRunId  = -1;
     private static int _leakRunId  = -1;
@@ -84,17 +77,32 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     {
         _containerHelper.createProject(PROJECT_NAME, null);
         _containerHelper.enableModule("TestResults");
+        new PortalHelper(this).addWebPart("Test Results");
 
-        postSampleXml("testresults/clean-run.xml");
-        postSampleXml("testresults/run-with-failures.xml");
-        postSampleXml("testresults/run-with-leaks.xml");
+        // TEST-PC-1 runs
+        postSampleXml("testresults/pc1-run-0114-disposable.xml");
+        postSampleXml("testresults/pc1-run-0115-clean.xml");
+        postSampleXml("testresults/pc1-run-0116-failures.xml");
+        postSampleXml("testresults/pc1-run-0117-leaks.xml");
 
-        // All runs in this fresh container are our sample runs, sorted by posttime ascending
+        // TEST-PC-2 runs on the same dates
+        postSampleXml("testresults/pc2-run-0115-clean.xml");
+        postSampleXml("testresults/pc2-run-0116-failures.xml");
+        postSampleXml("testresults/pc2-run-0117-leaks.xml");
+
+        // All runs in this fresh container are our sample runs, sorted by posttime ascending.
+        // PC2 runs are interleaved with PC1 runs, so identify PC1 runs by computer name.
         List<Map<String, Object>> runs = queryRuns();
-        assertEquals("Expected 3 posted runs", 3, runs.size());
-        _cleanRunId = (Integer) runs.get(0).get("id");
-        _failRunId  = (Integer) runs.get(1).get("id");
-        _leakRunId  = (Integer) runs.get(2).get("id");
+        assertEquals("Expected 7 posted runs", 7, runs.size());
+
+        List<Map<String, Object>> pc1Runs = runs.stream()
+                .filter(r -> COMPUTER_NAME_1.equals(r.get("userid/username")))
+                .toList();
+        assertEquals("Expected 4 " + COMPUTER_NAME_1 + " runs", 4, pc1Runs.size());
+        _disposableRunId = (Integer) pc1Runs.get(0).get("id");
+        _cleanRunId = (Integer) pc1Runs.get(1).get("id");
+        _failRunId  = (Integer) pc1Runs.get(2).get("id");
+        _leakRunId  = (Integer) pc1Runs.get(3).get("id");
     }
 
     /**
@@ -135,7 +143,7 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
             Connection connection = WebTestHelper.getRemoteApiConnection();
             SelectRowsCommand cmd = new SelectRowsCommand("testresults", "testruns");
             cmd.setSorts(List.of(new Sort("posttime")));
-            cmd.setColumns(List.of("id", "posttime", "passedtests", "failedtests", "leakedtests"));
+            cmd.setColumns(List.of("id", "posttime", "userid/username", "passedtests", "failedtests", "leakedtests"));
             SelectRowsResponse response = cmd.execute(connection, PROJECT_NAME);
             return response.getRows();
         }
@@ -155,30 +163,54 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     // Tests
     // -------------------------------------------------------------------------
 
+    private static final Locator SUBMIT_BUTTON = Locator.css("input[type='submit'][value='Submit']");
+    // XPath for the problems matrix table (header cell contains "Fail: | Leak: | Hang:")
+    private static final String PROBLEMS_TABLE_XPATH =
+            "//table[contains(@class,'decoratedtable')]" +
+            "[.//td[contains(.,'Fail:') and contains(.,'Leak:') and contains(.,'Hang:')]]";
+
     @Test
     public void testBeginPage()
     {
-        // Navigate to the begin page via module menu
-        goToModule("TestResults");
-
         // Navigate to 01/16/2026 — the clean run (started 01/15 at 9 PM)
         selectDateInDatepicker(1, 16, 2026);
-        assertTextPresent(COMPUTER_NAME);
+        assertTextPresent(COMPUTER_NAME_1, COMPUTER_NAME_2);
         assertTextNotPresent("Top Failures");
         assertTextNotPresent("Top Leaks");
 
-        // Click ">>>" to advance to 01/17/2026 — the run with 2 failures
+        // Click ">>>" to advance to 01/17/2026 — failures on both PCs
         clickAndWait(Locator.linkWithText(">>>"));
-        assertTextPresent(COMPUTER_NAME);
+        assertTextPresent(COMPUTER_NAME_1, COMPUTER_NAME_2);
         assertTextPresent("Top Failures");
-        assertTextPresent("TestFailOne", "TestFailTwo");
         assertTextNotPresent("Top Leaks");
 
-        // Click ">>>" to advance to 01/18/2026 — the run with 2 leaks
+        // Verify the problems matrix: TestFailOne fails on both PCs (2 icons),
+        // TestFailTwo fails only on PC-1 (1 icon)
+        assertProblemsMatrixPresent(COMPUTER_NAME_1, COMPUTER_NAME_2);
+        assertProblemIconCount("TestFailOne", "fail.png", 2);
+        assertProblemIconCount("TestFailTwo", "fail.png", 1);
+
+        // Verify Top Failures summary table: occurrences across all runs in the view period
+        assertTopSummaryEntry("Top Failures", "TestFailOne", 2);
+        assertTopSummaryEntry("Top Failures", "TestFailTwo", 1);
+
+        // Click ">>>" to advance to 01/18/2026 — leaks on both PCs
         clickAndWait(Locator.linkWithText(">>>"));
-        assertTextPresent(COMPUTER_NAME);
+        assertTextPresent(COMPUTER_NAME_1, COMPUTER_NAME_2);
+        assertTextPresent("Top Failures"); // cumulative — failures from 01/17 still in the view period
         assertTextPresent("Top Leaks");
-        assertTextPresent("TestWithMemoryLeak", "TestWithHandleLeak");
+
+        // Verify the problems matrix: TestWithMemoryLeak leaks on both PCs (2 icons),
+        // TestWithHandleLeak leaks only on PC-1 (1 icon)
+        assertProblemsMatrixPresent(COMPUTER_NAME_1, COMPUTER_NAME_2);
+        assertProblemIconCount("TestWithMemoryLeak", "leak.png", 2);
+        assertProblemIconCount("TestWithHandleLeak", "leak.png", 1);
+
+        // Verify Top Leaks summary table: occurrences and mean leak values
+        assertTopSummaryEntry("Top Leaks", "TestWithMemoryLeak", 2);
+        assertTopSummaryEntry("Top Leaks", "TestWithHandleLeak", 1);
+        assertTopLeakMean("TestWithMemoryLeak", "3 kb");
+        assertTopLeakMean("TestWithHandleLeak", "5 handles");
 
         // Verify viewType selector defaults to Month
         Locator viewTypeSelect = Locator.id("viewType");
@@ -210,34 +242,34 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
 
         // Click the first "run details" link (01/18 — leaks run)
         clickAndWait(Locator.linkWithText("run details").index(0));
-        assertTextPresent(COMPUTER_NAME, "Passed Tests : 5", "Failures : 0", "Leaks : 2");
+        assertTextPresent(COMPUTER_NAME_1, "Passed Tests : 150", "Failures : 0", "Leaks : 2");
         assertTextPresent("TestWithMemoryLeak", "TestWithHandleLeak");
 
-        // Sort by Duration (descending) and verify order in the test passes table
+        // Sort by Duration (descending) and verify the sort parameter is applied
         clickAndWait(Locator.linkWithText("Duration"));
         assertEquals("duration", getUrlParam("filter"));
-        assertTestPassesSortedAs("TestWithMemoryLeak", "TestWithHandleLeak", "TestGamma", "TestEpsilon", "TestAlpha");
 
-        // Sort by Managed Memory (descending) and verify order
+        // Sort by Managed Memory (descending) — tests later in the run have higher memory,
+        // so TestWithHandleLeak (id=100) should appear before TestAlpha (id=1)
         clickAndWait(Locator.linkContainingText("Managed Memory"));
         assertEquals("managed", getUrlParam("filter"));
-        assertTestPassesSortedAs("TestWithMemoryLeak", "TestWithHandleLeak", "TestGamma", "TestEpsilon", "TestAlpha");
+        assertTestPassesSortedAs("TestWithHandleLeak", "TestAlpha");
 
-        // Sort by Total Memory (descending) and verify order
+        // Sort by Total Memory (descending) — same ordering principle
         clickAndWait(Locator.linkContainingText("Total Memory"));
         assertEquals("total", getUrlParam("filter"));
-        assertTestPassesSortedAs("TestWithMemoryLeak", "TestWithHandleLeak", "TestGamma", "TestEpsilon", "TestAlpha");
+        assertTestPassesSortedAs("TestWithHandleLeak", "TestAlpha");
 
         // Navigate to user page again for the failures run
         navigateToUserPageWithDateRange();
         clickAndWait(Locator.linkWithText("run details").index(1));
-        assertTextPresent(COMPUTER_NAME, "Passed Tests : 5", "Failures : 2", "Leaks : 0");
+        assertTextPresent(COMPUTER_NAME_1, "Passed Tests : 150", "Failures : 2", "Leaks : 0");
         assertTextPresent("TestFailOne", "TestFailTwo");
 
         // Navigate to user page again for the clean run
         navigateToUserPageWithDateRange();
         clickAndWait(Locator.linkWithText("run details").index(2));
-        assertTextPresent(COMPUTER_NAME, "Passed Tests : 5", "Failures : 0", "Leaks : 0");
+        assertTextPresent(COMPUTER_NAME_1, "Passed Tests : 150", "Failures : 0", "Leaks : 0");
     }
 
     @Test
@@ -245,24 +277,24 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     {
         // Look up the leaks run
         navigateToRunById(_leakRunId);
-        assertTextPresent(COMPUTER_NAME, "Passed Tests : 5", "Failures : 0", "Leaks : 2");
+        assertTextPresent(COMPUTER_NAME_1, "Passed Tests : 150", "Failures : 0", "Leaks : 2");
         assertTextPresent("TestWithMemoryLeak", "TestWithHandleLeak");
 
         // Look up the failures run
         navigateToRunById(_failRunId);
-        assertTextPresent(COMPUTER_NAME, "Passed Tests : 5", "Failures : 2", "Leaks : 0");
+        assertTextPresent(COMPUTER_NAME_1, "Passed Tests : 150", "Failures : 2", "Leaks : 0");
         assertTextPresent("TestFailOne", "TestFailTwo");
 
         // Look up the clean run
         navigateToRunById(_cleanRunId);
-        assertTextPresent(COMPUTER_NAME, "Passed Tests : 5", "Failures : 0", "Leaks : 0");
+        assertTextPresent(COMPUTER_NAME_1, "Passed Tests : 150", "Failures : 0", "Leaks : 0");
     }
 
     @Test
     public void testLongTermPage()
     {
         // Navigate to Long Term page via tab click
-        goToModule("TestResults");
+        goToProjectHome(PROJECT_NAME);
         clickAndWait(Locator.linkWithText("Long Term"));
 
         // Use the viewType selector to switch between views
@@ -301,7 +333,7 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     public void testShowFlaggedPage()
     {
         // Navigate to Flags page — no runs are flagged yet
-        goToModule("TestResults");
+        goToProjectHome(PROJECT_NAME);
         clickAndWait(Locator.linkWithText("Flags"));
         assertTextPresent("There are currently no flagged runs.");
 
@@ -327,9 +359,9 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     public void testTrainingDataPage()
     {
         // Navigate to Training Data page — no runs in training set yet
-        goToModule("TestResults");
+        goToProjectHome(PROJECT_NAME);
         clickAndWait(Locator.linkWithText("Training Data"));
-        assertTextPresent(COMPUTER_NAME, "No Training Data");
+        assertTextPresent(COMPUTER_NAME_1, COMPUTER_NAME_2, "No Training Data");
 
         // Add the clean run to the training set
         navigateToRunById(_cleanRunId);
@@ -339,7 +371,7 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
 
         // Verify the Training Data page now shows the run
         clickAndWait(Locator.linkWithText("Training Data"));
-        assertTextPresent(COMPUTER_NAME);
+        assertTextPresent(COMPUTER_NAME_1);
         assertElementPresent(Locator.css("#trainingdata .removedata"));
 
         // Remove the run from the training set
@@ -350,7 +382,101 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
 
         // Verify the Training Data page no longer shows training runs
         clickAndWait(Locator.linkWithText("Training Data"));
-        assertTextPresent(COMPUTER_NAME, "No Training Data");
+        assertTextPresent(COMPUTER_NAME_1, "No Training Data");
+    }
+
+    @Test
+    public void testViewLog()
+    {
+        // The clean run has a <Log> element — ViewLogAction should return it
+        String logContent = getApiString("testresults", "viewLog", _cleanRunId, "log");
+        assertTrue("ViewLog should return log content", logContent != null && !logContent.isEmpty());
+        assertTrue("Log should contain test names", logContent.contains("TestAlpha"));
+    }
+
+    @Test
+    public void testViewXml()
+    {
+        // ViewXmlAction should return the stored XML (without the <Log> element)
+        String xmlContent = getApiString("testresults", "viewXml", _cleanRunId, "xml");
+        assertTrue("ViewXml should return XML content", xmlContent != null && !xmlContent.isEmpty());
+        assertTrue("XML should contain nightly element", xmlContent.contains("nightly"));
+        assertTrue("XML should contain test data", xmlContent.contains("TestAlpha"));
+        assertTrue("XML should not contain Log element (stripped before storage)", !xmlContent.contains("<Log>"));
+    }
+
+    @Test
+    public void testChangeBoundaries()
+    {
+        // Navigate to Training Data page and select the Error/Warning edits action
+        goToProjectHome(PROJECT_NAME);
+        clickAndWait(Locator.linkWithText("Training Data"));
+        selectOptionByValue(Locator.id("actionform"), "error");
+        waitForElement(Locator.id("warningb"));
+
+        // Set warning and error boundaries to custom values
+        setFormElement(Locator.id("warningb"), "2");
+        setFormElement(Locator.id("errorb"), "3");
+        click(Locator.id("submit-button"));
+        waitForText("success!");
+
+        // Set back to defaults
+        setFormElement(Locator.id("warningb"), "1");
+        setFormElement(Locator.id("errorb"), "2");
+        click(Locator.id("submit-button"));
+        waitForText("success!");
+    }
+
+    @Test
+    public void testSetUserActive()
+    {
+        // Add the clean run to the training set so the user appears with activate/deactivate buttons.
+        // The userdata.active column defaults to FALSE, so the user starts inactive.
+        navigateToRunById(_cleanRunId);
+        toggleTrainingSet();
+        assertTextPresent("Remove from training set");
+
+        try
+        {
+            Locator activateButton = Locator.css("input.activate-user");
+            Locator deactivateButton = Locator.css("input.deactivate-user");
+
+            // Navigate to Training Data page — user should have "Activate user" button (inactive by default)
+            clickAndWait(Locator.linkWithText("Training Data"));
+            assertElementPresent(activateButton);
+
+            // Click to activate — AJAX call followed by location.reload()
+            click(activateButton);
+            waitForElement(deactivateButton);
+
+            // Click to deactivate — AJAX call followed by location.reload()
+            click(deactivateButton);
+            waitForElement(activateButton);
+        }
+        finally
+        {
+            // Always clean up: remove the run from the training set
+            navigateToRunById(_cleanRunId);
+            toggleTrainingSet();
+            assertTextPresent("Add to training set");
+        }
+    }
+
+    @Test
+    public void testDeleteRun()
+    {
+        // Verify the disposable run exists
+        navigateToRunById(_disposableRunId);
+        assertTextPresent(COMPUTER_NAME_1, "TestDisposableOne");
+
+        // Delete it via the Delete Run button on the run detail page
+        click(Locator.id("deleteRun"));
+        acceptAlert();
+
+        // AJAX delete followed by location.reload() — page reloads with deleted runId,
+        // showing the "enter run ID" form since the bean is null
+        waitForElement(Locator.css("input[name='runId']"));
+        assertTextNotPresent("TestDisposableOne");
     }
 
     // -------------------------------------------------------------------------
@@ -363,7 +489,7 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
      */
     private void navigateToRunById(int runId)
     {
-        goToModule("TestResults");
+        goToProjectHome(PROJECT_NAME);
         clickAndWait(Locator.linkWithText("Run"));
         setFormElement(Locator.name("runId"), String.valueOf(runId));
         clickAndWait(SUBMIT_BUTTON);
@@ -398,15 +524,16 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
 
     /**
      * Navigates to the user page, selects the test user, and sets the date range
-     * covering all three sample runs.
+     * covering all sample runs. End date is 01/19 because ShowUserAction uses
+     * DateUtils.ceiling (midnight), and runs post at 6:00 AM.
      */
     private void navigateToUserPageWithDateRange()
     {
-        goToModule("TestResults");
+        goToProjectHome(PROJECT_NAME);
         clickAndWait(Locator.linkWithText("User"));
         Locator usersSelect = Locator.id("users");
-        doAndWaitForPageToLoad(() -> selectOptionByValue(usersSelect, COMPUTER_NAME));
-        setDateRange("01/15/2026", "01/18/2026");
+        doAndWaitForPageToLoad(() -> selectOptionByValue(usersSelect, COMPUTER_NAME_1));
+        setDateRange("01/15/2026", "01/19/2026");
     }
 
     /**
@@ -423,6 +550,60 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         click(dateInput);
         waitForElement(Locator.tagWithClass("button", "ui-datepicker-close"));
         clickAndWait(Locator.tagWithClass("button", "ui-datepicker-close"));
+    }
+
+    /**
+     * Asserts that the problems matrix table is present and its header contains
+     * columns for both expected computers.
+     */
+    private void assertProblemsMatrixPresent(String... computerNames)
+    {
+        assertElementPresent(Locator.xpath(PROBLEMS_TABLE_XPATH));
+        for (String name : computerNames)
+        {
+            assertElementPresent(Locator.xpath(PROBLEMS_TABLE_XPATH +
+                    "//thead//a[contains(text(),'" + name + "')]"));
+        }
+    }
+
+    /**
+     * Asserts that a test's row in the problems matrix has the expected number
+     * of icons (e.g. fail.png or leak.png). This verifies which computers are
+     * affected: 2 icons means both PCs, 1 icon means only one PC.
+     */
+    private void assertProblemIconCount(String testName, String iconFile, int expectedCount)
+    {
+        Locator icons = Locator.xpath(PROBLEMS_TABLE_XPATH +
+                "//tr[.//a[text()='" + testName + "']]//img[contains(@src,'" + iconFile + "')]");
+        assertEquals("Expected " + expectedCount + " " + iconFile + " icon(s) for " + testName,
+                expectedCount, getElementCount(icons));
+    }
+
+    /**
+     * Asserts that a test name appears in the specified summary table ("Top Failures"
+     * or "Top Leaks") with the expected occurrence count.
+     */
+    private void assertTopSummaryEntry(String tableHeader, String testName, int expectedOccurrences)
+    {
+        Locator occurrenceTd = Locator.xpath(
+                "//table[contains(@class,'decoratedtable')][.//h4[text()='" + tableHeader + "']]" +
+                "//tr[.//a[text()='" + testName + "']]/td[2]");
+        assertEquals(tableHeader + " occurrence count for " + testName,
+                String.valueOf(expectedOccurrences), getText(occurrenceTd).trim());
+    }
+
+    /**
+     * Asserts that the "Mean Leak" column in the Top Leaks table contains the
+     * expected value (e.g. "3 kb" or "5 handles") for a given test.
+     */
+    private void assertTopLeakMean(String testName, String expectedMeanLeak)
+    {
+        Locator meanLeakTd = Locator.xpath(
+                "//table[contains(@class,'decoratedtable')][.//h4[text()='Top Leaks']]" +
+                "//tr[.//a[text()='" + testName + "']]/td[3]");
+        String actual = getText(meanLeakTd).trim();
+        assertTrue("Mean leak for " + testName + " should contain '" + expectedMeanLeak + "' but was '" + actual + "'",
+                actual.contains(expectedMeanLeak));
     }
 
     /**
@@ -464,6 +645,28 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
                 "//div[contains(@class,'ui-datepicker')]" +
                 "//td[not(contains(@class,'ui-datepicker-other-month'))]/a[text()='" + day + "']");
         clickAndWait(dayLink);
+    }
+
+    /**
+     * Makes an API GET request and returns the value of the specified field from the JSON response.
+     */
+    private String getApiString(String controller, String action, int runId, String field)
+    {
+        String url = WebTestHelper.buildURL(controller, PROJECT_NAME, action) + "?runId=" + runId;
+        try (CloseableHttpClient httpClient = WebTestHelper.getHttpClient())
+        {
+            var request = new org.apache.hc.client5.http.classic.methods.HttpGet(url);
+            APITestHelper.injectCookies(request);
+            return httpClient.execute(request, response -> {
+                String body = EntityUtils.toString(response.getEntity());
+                org.json.JSONObject json = new org.json.JSONObject(body);
+                return json.optString(field, null);
+            });
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("API call failed: " + action, e);
+        }
     }
 
     // -------------------------------------------------------------------------
