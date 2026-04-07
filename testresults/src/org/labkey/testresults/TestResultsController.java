@@ -220,7 +220,7 @@ public class TestResultsController extends SpringActionController
             try { endDate = form.getEndDate(); }
             catch (ParseException e)
             {
-                errors.reject(ERROR_MSG, "Invalid date format: " + form.getEnd());
+                errors.reject(ERROR_MSG, "Invalid date format: " + form.getEnd() + " (expected MM/dd/yyyy)");
                 return new SimpleErrorView(errors);
             }
 
@@ -595,13 +595,13 @@ public class TestResultsController extends SpringActionController
             try { startDate = form.getStartDate(); }
             catch (ParseException e)
             {
-                errors.reject(ERROR_MSG, "Invalid start date format: " + form.getStart());
+                errors.reject(ERROR_MSG, "Invalid start date format: " + form.getStart() + " (expected MM/dd/yyyy)");
                 return new SimpleErrorView(errors);
             }
             try { endDate = form.getEndDate(); }
             catch (ParseException e)
             {
-                errors.reject(ERROR_MSG, "Invalid end date format: " + form.getEnd());
+                errors.reject(ERROR_MSG, "Invalid end date format: " + form.getEnd() + " (expected MM/dd/yyyy)");
                 return new SimpleErrorView(errors);
             }
             if (startDate == null)
@@ -866,7 +866,7 @@ public class TestResultsController extends SpringActionController
             }
             catch (ParseException e)
             {
-                errors.reject(ERROR_MSG, "Invalid date format: " + form.getEnd());
+                errors.reject(ERROR_MSG, "Invalid date format: " + form.getEnd() + " (expected MM/dd/yyyy)");
                 return new SimpleErrorView(errors);
             }
             Date endDate = setToEightAM(endParsed != null ? endParsed : new Date());

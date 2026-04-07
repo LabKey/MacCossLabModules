@@ -608,6 +608,30 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     }
 
     @Test
+    public void testInvalidDateParameters()
+    {
+        // BeginAction (RunDownForm) — invalid end date
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "begin",
+                Map.of("end", "garbage")));
+        assertTextPresent("Invalid date format: garbage (expected MM/dd/yyyy)");
+
+        // ShowUserAction — invalid start date
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showUser",
+                Map.of("username", COMPUTER_NAME_1, "start", "not-a-date", "end", "01/17/2026")));
+        assertTextPresent("Invalid start date format: not-a-date (expected MM/dd/yyyy)");
+
+        // ShowUserAction — invalid end date
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showUser",
+                Map.of("username", COMPUTER_NAME_1, "start", "01/15/2026", "end", "bogus")));
+        assertTextPresent("Invalid end date format: bogus (expected MM/dd/yyyy)");
+
+        // ShowFailures (ShowFailuresForm) — invalid end date
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showFailures",
+                Map.of("end", "03-24-2026")));
+        assertTextPresent("Invalid date format: 03-24-2026 (expected MM/dd/yyyy)");
+    }
+
+    @Test
     public void testDeleteRun()
     {
         // Verify the disposable run exists
