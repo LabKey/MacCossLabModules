@@ -43,6 +43,8 @@ import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.TextSearcher;
 
 import java.io.File;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -316,20 +318,67 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     @Test
     public void testShowFailuresPage()
     {
-        // Navigate to the failures run via the Run tab
-        navigateToRunById(_failRunId);
+        // All "Viewing data for: <start> - <end>" assertions below use
+        // assertTextPresentInThisOrder with just the MM/dd/yyyy date parts
+        // (no time-of-day). The controller stamps both start and end to
+        // 08:01 via setToEightAM, but the start wall-clock time can shift
+        // across DST boundaries (e.g. start 07:01 PST, end 08:01 PDT when
+        // the window crosses spring-forward), so asserting just the dates
+        // keeps the test stable year-round.
 
-        // Click the failure test name link on the run detail page
+        // --- Path 1: navigate via runDetail.jsp ---
+        // The "TestFailOne" link on runDetail.jsp does NOT set the `end`
+        // URL parameter (only `failedTest` and `viewType=wk`), so the
+        // controller falls back to `new Date()` — the displayed end date
+        // is today. Capture it once so we don't drift across a midnight
+        // rollover during the test.
+        LocalDate today = LocalDate.now();
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+        String todayStr = today.format(dateFmt);
+
+        navigateToRunById(_failRunId);
         clickAndWait(Locator.linkWithText("TestFailOne"));
         assertTextPresent("TestFailOne");
 
-        // Verify the view type selector and switch views
+        // Default view is Week → start = today - 7 days
         Locator viewTypeSelect = Locator.id("view-type-combobox");
         assertEquals("Week", getSelectedOptionText(viewTypeSelect));
+        assertTextPresentInThisOrder("Viewing data for:",
+                today.minusDays(7).format(dateFmt), " - " + todayStr);
 
+        // Switch to Month view → start = today - 30 days
         doAndWaitForPageToLoad(() -> selectOptionByValue(viewTypeSelect, "mo"));
         assertEquals("mo", getUrlParam("viewType"));
         assertEquals("Month", getSelectedOptionText(viewTypeSelect));
+        assertTextPresentInThisOrder("Viewing data for:",
+                today.minusDays(30).format(dateFmt), " - " + todayStr);
+
+        // --- Path 2: navigate via the Fail/Leak/Hang table on rundown.jsp ---
+        // The link in this table sets `end` to the begin page's selected
+        // date but does not set `viewType`, so the controller defaults to
+        // ViewType.DAY → start = end - 1 day. (The Top Failures table
+        // link also passes `viewType`, which preserves rundown's current
+        // view and produces a 30-day window — not what we want here.)
+        // Anchoring to a fixed sample-data date (01/17/2026) keeps this
+        // assertion stable regardless of when the test runs. The link
+        // opens in a new browser tab via target="_blank".
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "begin",
+                Map.of("end", "01/17/2026")));
+        Locator failLeakHangLink = Locator.xpath(
+                "//table[contains(@class,'decoratedtable')][.//td[contains(., 'Fail:') and contains(., 'Leak:') and contains(., 'Hang:')]]" +
+                "//a[text()='TestFailOne']");
+        click(failLeakHangLink);
+        switchToWindow(1); // Link opens in a new tab
+        try
+        {
+            assertTextPresent("TestFailOne");
+            assertTextPresentInThisOrder("Viewing data for:", "01/16/2026", " - 01/17/2026");
+        }
+        finally
+        {
+            getDriver().close(); // Close the tab
+            switchToMainWindow();
+        }
     }
 
     @Test
@@ -344,10 +393,15 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         navigateToRunById(_cleanRunId);
         toggleRunFlag();
 
-        // Verify the Flags page now shows the flagged run
+        // Verify the Flags page now shows the flagged run. Each flagged row is
+        // rendered (in flagged.jsp) as a link with text:
+        //   "id: <runId> / <userId> / <postTime>"
+        // Match by the runId prefix — userId and postTime are baked into the
+        // sample XML and aren't worth duplicating in the test.
         clickAndWait(Locator.linkWithText("Flags"));
         assertTextNotPresent("There are currently no flagged runs.");
         assertTextPresent("Flagged Runs");
+        assertElementPresent(Locator.tag("a").startsWith("id: " + _cleanRunId + " /"));
 
         // Unflag the run — navigate back to the run detail page
         navigateToRunById(_cleanRunId);
@@ -361,21 +415,48 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     @Test
     public void testTrainingDataPage()
     {
-        // Navigate to Training Data page — no runs in training set yet
+        // The trainingdata.jsp page renders users WITH training runs inside
+        // <table id="trainingdata"> (each user gets a section header, run
+        // rows with Date | Duration | Tests Run | Failure Count | Mean Memory
+        // | Remove, and a `.stats-row` with "RunCount:N"). Users WITHOUT
+        // training runs are listed in a separate <table> below, under a
+        // "No Training Data --" header — that header is always present, so
+        // it can't be used as an empty-state indicator.
+        Locator.XPathLocator trainingTable = Locator.tagWithId("table", "trainingdata");
+        Locator removeLink = trainingTable.descendant(Locator.tagWithClass("a", "removedata"));
+        Locator statsRow = trainingTable.descendant(Locator.tagWithClass("tr", "stats-row"));
+
+        // Initial state: no run has been added to the training set yet, so
+        // the clean run's date should not appear in the training table and
+        // no Remove link should be present. (We can't assert the stats-row
+        // is absent — users may already have non-zero mean memory / mean
+        // tests-run from the imported sample data, which causes a stats-row
+        // to render before any run is explicitly added.)
         goToProjectHome(PROJECT_NAME);
         clickAndWait(Locator.linkWithText("Training Data"));
-        assertTextPresent(COMPUTER_NAME_1, COMPUTER_NAME_2, "No Training Data");
+        assertElementNotPresent(removeLink);
+        assertElementNotPresent(trainingTable.containing("2026-01-16 06:00"));
+        assertTextPresent(COMPUTER_NAME_1, COMPUTER_NAME_2, "No Training Data --");
 
-        // Add the clean run to the training set
+        // Add the clean run (posted by COMPUTER_NAME_1) to the training set
         navigateToRunById(_cleanRunId);
         assertTextPresent("Add to training set");
         toggleTrainingSet();
         assertTextPresent("Remove from training set");
 
-        // Verify the Training Data page now shows the run
+        // Verify the Training Data page now shows the run for COMPUTER_NAME_1.
+        // Scope assertions to <table id="trainingdata"> so we don't accidentally
+        // match the same text in the "No Training Data" section below.
         clickAndWait(Locator.linkWithText("Training Data"));
-        assertTextPresent(COMPUTER_NAME_1);
-        assertElementPresent(Locator.css("#trainingdata .removedata"));
+        assertElementPresent(trainingTable.descendant(
+                Locator.tagWithId("tr", "user-anchor-" + COMPUTER_NAME_1)));
+        assertElementPresent(trainingTable.containing(COMPUTER_NAME_1));
+        assertElementPresent(trainingTable.containing("2026-01-16 06:00"));
+        assertElementPresent(removeLink);
+        assertElementPresent(statsRow);
+        assertElementPresent(statsRow.containing("RunCount:1"));
+        // The other computer should still be in the "No Training Data" section
+        assertTextPresent(COMPUTER_NAME_2, "No Training Data --");
 
         // Remove the run from the training set
         navigateToRunById(_cleanRunId);
@@ -383,9 +464,17 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         toggleTrainingSet();
         assertTextPresent("Add to training set");
 
-        // Verify the Training Data page no longer shows training runs
+        // After removal: the Remove link and the run's data row are gone, but
+        // TEST-PC-1's section stays in the training table because the user's
+        // meanmemory / meantestsrun are persisted on the User row (not derived
+        // from current training rows). The stats row now shows "RunCount:0".
+        // See trainingdata.jsp:158 — users only move to the "No Training Data"
+        // section when both meanmemory and meantestsrun are 0.
         clickAndWait(Locator.linkWithText("Training Data"));
-        assertTextPresent(COMPUTER_NAME_1, "No Training Data");
+        assertElementNotPresent(removeLink);
+        assertElementNotPresent(trainingTable.containing("2026-01-16 06:00"));
+        assertElementPresent(statsRow.containing("RunCount:0"));
+        assertTextPresent(COMPUTER_NAME_2, "No Training Data --");
     }
 
     @Test
@@ -394,7 +483,15 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         // The clean run has a <Log> element — ViewLogAction should return it
         String logContent = getApiString("testresults", "viewLog", _cleanRunId, "log");
         assertTrue("ViewLog should return log content", logContent != null && !logContent.isEmpty());
-        assertTrue("Log should contain test names", logContent.contains("TestAlpha"));
+        // Spot-check the nightly header and test entries from the beginning,
+        // middle, and end of the log (see pc1-run-0115-clean.xml).
+        assertTrue("Log should contain nightly header",
+                logContent.contains("# Nightly started Thursday, January 15, 2026 9:00 PM"));
+        assertTrue("Log should contain TestAlpha", logContent.contains("TestAlpha"));
+        assertTrue("Log should contain TestBeta", logContent.contains("TestBeta"));
+        assertTrue("Log should contain TestEpsilon", logContent.contains("TestEpsilon"));
+        assertTrue("Log should contain Test075", logContent.contains("Test075"));
+        assertTrue("Log should contain Test150", logContent.contains("Test150"));
     }
 
     @Test
@@ -422,6 +519,18 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         setFormElement(Locator.id("errorb"), "3");
         click(Locator.id("submit-button"));
         waitForText("success!");
+
+        // Empty warning boundary → server rejects (parsed as null Integer)
+        setFormElement(Locator.id("warningb"), "");
+        setFormElement(Locator.id("errorb"), "3");
+        click(Locator.id("submit-button"));
+        waitForText("fail: warning boundary must be a number");
+
+        // Empty error boundary → server rejects (parsed as null Integer)
+        setFormElement(Locator.id("warningb"), "2");
+        setFormElement(Locator.id("errorb"), "");
+        click(Locator.id("submit-button"));
+        waitForText("fail: error boundary must be a number");
 
         // Set back to defaults
         setFormElement(Locator.id("warningb"), "1");
@@ -466,6 +575,46 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     }
 
     @Test
+    public void testApiErrorResponses()
+    {
+        // TrainRunAction: missing runId
+        JSONObject noRunId = postApi("trainRun", Map.of("train", "true"));
+        assertEquals(false, noRunId.optBoolean("Success", true));
+        assertEquals("runId is required", noRunId.optString("error"));
+
+        // TrainRunAction: invalid train value
+        JSONObject badTrain = postApi("trainRun",
+                Map.of("runId", String.valueOf(_cleanRunId), "train", "garbage"));
+        assertEquals(false, badTrain.optBoolean("Success", true));
+        assertEquals("train must be one of: true, false, force", badTrain.optString("error"));
+
+        // TrainRunAction: nonexistent runId
+        JSONObject missingRun = postApi("trainRun",
+                Map.of("runId", "999999", "train", "true"));
+        assertEquals(false, missingRun.optBoolean("Success", true));
+        assertEquals("run does not exist: 999999", missingRun.optString("error"));
+
+        // SetUserActive: missing userId
+        JSONObject noUserId = postApi("setUserActive", Map.of("active", "true"));
+        assertEquals("userId is required", noUserId.optString("Message"));
+
+        // SetUserActive: missing active
+        JSONObject noActive = postApi("setUserActive", Map.of("userId", "1"));
+        assertEquals("active parameter is required (true to activate, false to deactivate)",
+                noActive.optString("Message"));
+
+        // DeleteRunAction: missing runId
+        JSONObject noDeleteRunId = postApi("deleteRun", Map.of());
+        assertEquals(false, noDeleteRunId.optBoolean("Success", true));
+        assertEquals("runId is required", noDeleteRunId.optString("error"));
+
+        // FlagRunAction: missing runId
+        JSONObject noFlagRunId = postApi("flagRun", Map.of("flag", "true"));
+        assertEquals(false, noFlagRunId.optBoolean("Success", true));
+        assertEquals("runId is required", noFlagRunId.optString("error"));
+    }
+
+    @Test
     public void testDeleteRun()
     {
         // Verify the disposable run exists
@@ -479,6 +628,13 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         // AJAX delete followed by location.reload() — page reloads with deleted runId,
         // showing the "enter run ID" form since the bean is null
         waitForElement(Locator.css("input[name='runId']"));
+        assertTextNotPresent("TestDisposableOne");
+
+        // Re-submit the deleted run ID — the form should reappear (bean is
+        // still null) and the run's content should still not be visible.
+        setFormElement(Locator.name("runId"), String.valueOf(_disposableRunId));
+        clickAndWait(SUBMIT_BUTTON);
+        assertElementPresent(Locator.css("input[name='runId']"));
         assertTextNotPresent("TestDisposableOne");
     }
 
@@ -504,13 +660,13 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
      */
     private void toggleRunFlag()
     {
-        Locator flagImage = Locator.id("flagged");
+        Locator.XPathLocator flagImage = Locator.tag("img").withAttribute("id", "flagged");
         boolean wasFlagged = getAttribute(flagImage, "title").contains("unflag");
         click(flagImage);
         acceptAlert();
         // Wait for the page to reload with the toggled flag state
         String expectedTitle = wasFlagged ? "Click to flag run" : "Click to unflag run";
-        waitForElement(Locator.xpath("//img[@id='flagged'][@title='" + expectedTitle + "']"));
+        waitForElement(flagImage.withAttribute("title", expectedTitle));
     }
 
     /**
@@ -674,6 +830,32 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
                 org.json.JSONObject json = new org.json.JSONObject(body);
                 return json.optString(field, null);
             });
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("API call failed: " + action, e);
+        }
+    }
+
+    /**
+     * Makes an API POST request with the given query-string parameters and returns
+     * the parsed JSON response. Used to exercise MutatingApiAction error paths.
+     */
+    private JSONObject postApi(String action, Map<String, String> params)
+    {
+        StringBuilder url = new StringBuilder(WebTestHelper.buildURL("testresults", PROJECT_NAME, action));
+        boolean first = true;
+        for (Map.Entry<String, String> e : params.entrySet())
+        {
+            url.append(first ? '?' : '&').append(e.getKey()).append('=').append(e.getValue());
+            first = false;
+        }
+        try (CloseableHttpClient httpClient = WebTestHelper.getHttpClient())
+        {
+            HttpPost request = new HttpPost(url.toString());
+            APITestHelper.injectCookies(request);
+            return httpClient.execute(request, response ->
+                    new JSONObject(EntityUtils.toString(response.getEntity())));
         }
         catch (Exception e)
         {

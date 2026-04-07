@@ -216,7 +216,7 @@ if (leaks.length > 0) { %>
             if (data.Success) {
                 location.reload();
             } else {
-                alert("Failed to update training set." + (data.cause ? " " + data.cause : ""));
+                alert("Failed to update training set." + (data.error ? " " + data.error : ""));
             }
         }, "json");
     });

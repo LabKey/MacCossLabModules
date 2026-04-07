@@ -268,7 +268,7 @@
                 trainObj.setAttribute("runTrained", !isTrainRun);
                 trainObj.innerHTML = !isTrainRun ? "Remove from training set" : "Add to training set";
             } else {
-                alert("Failed to update training set." + (data.cause ? " " + data.cause : ""));
+                alert("Failed to update training set." + (data.error ? " " + data.error : ""));
             }
         }, "json");
     });

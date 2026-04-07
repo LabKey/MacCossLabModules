@@ -486,7 +486,7 @@ public class TestResultsController extends SpringActionController
         {
             if (form.getRunId() == null)
             {
-                return new ApiSimpleResponse(Map.of("Success", false, "cause", "runId is required"));
+                return new ApiSimpleResponse(Map.of("Success", false, "error", "runId is required"));
             }
             int runId = form.getRunId();
             String trainString = form.getTrain();
@@ -494,7 +494,7 @@ public class TestResultsController extends SpringActionController
                 !Strings.CI.equals(trainString, "false") &&
                 !Strings.CI.equals(trainString, "force"))
             {
-                return new ApiSimpleResponse(Map.of("Success", false, "cause", "train must be one of: true, false, force"));
+                return new ApiSimpleResponse(Map.of("Success", false, "error", "train must be one of: true, false, force"));
             }
             boolean train = Strings.CI.equals(trainString, "true"); // true = add to training set, false = remove
             boolean force = Strings.CI.equals(trainString, "force");
@@ -511,9 +511,9 @@ public class TestResultsController extends SpringActionController
             if (!force)
             {
                 if (details.length == 0)
-                    return new ApiSimpleResponse(Map.of("Success", false, "cause", "run does not exist: " + runId));
+                    return new ApiSimpleResponse(Map.of("Success", false, "error", "run does not exist: " + runId));
                 else if ((train && !foundRuns.isEmpty()) || (!train && foundRuns.isEmpty()))
-                    return new ApiSimpleResponse(Map.of("Success", false, "cause", "no action necessary"));
+                    return new ApiSimpleResponse(Map.of("Success", false, "error", "no action necessary"));
             }
             DbScope scope = TestResultsSchema.getSchema().getScope();
             try (DbScope.Transaction transaction = scope.ensureTransaction())

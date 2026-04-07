@@ -402,6 +402,9 @@ $(document).ready(function() {
     } else {
         console.warn("failureDetail.jsp: #col-problem header not found; problem column will be sortable.");
     }
+    // Skip sortList/sortAppend on an empty tbody — tablesorter throws
+    // when asked to apply an initial sort with no rows to sort.
+    var hasRows = $("#failurestatstable tbody tr").length > 0;
     $("#failurestatstable").tablesorter({
         widthFixed : true,
         resizable: true,
@@ -410,10 +413,10 @@ $(document).ready(function() {
         cssAsc: "headerSortUp",
         cssDesc: "headerSortDown",
         ignoreCase: true,
-        sortList: [[1, 1]], // initial sort by post time descending
-        sortAppend: {
+        sortList: hasRows ? [[1, 1]] : [], // initial sort by post time descending
+        sortAppend: hasRows ? {
             0: [[ 1, 'a' ]] // secondary sort by date ascending
-        },
+        } : {},
         theme: 'default'
     });
 });

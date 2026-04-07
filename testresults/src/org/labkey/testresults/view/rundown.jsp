@@ -563,7 +563,7 @@ $(function() {
                 $(self).text(isTrain ? 'Untrain' : 'Train');
                 return;
             }
-            alert("Failed to update training set." + (data.cause ? " " + data.cause : ""));
+            alert("Failed to update training set." + (data.error ? " " + data.error : ""));
         }, "json");
     });
 
