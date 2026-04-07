@@ -15,6 +15,7 @@
  */
 package org.labkey.test.tests.testresults;
 
+import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -49,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @Category({External.class, MacCossLabModules.class})
@@ -58,6 +60,13 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     private static final String PROJECT_NAME = "TestResultsTest" + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
     static final String COMPUTER_NAME_1 = "TEST-PC-1";
     static final String COMPUTER_NAME_2 = "TEST-PC-2";
+
+    private static final Locator SUBMIT_BUTTON = Locator.css("input[type='submit'][value='Submit']");
+
+    // XPath for the problems matrix table (header cell contains "Fail: | Leak: | Hang:")
+    private static final String PROBLEMS_TABLE_XPATH =
+            "//table[contains(@class,'decoratedtable')]" +
+            "[.//td[contains(.,'Fail:') and contains(.,'Leak:') and contains(.,'Hang:')]]";
 
     // Run IDs populated in @BeforeClass, used across test methods
     private static int _disposableRunId = -1;
@@ -163,12 +172,6 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     // -------------------------------------------------------------------------
     // Tests
     // -------------------------------------------------------------------------
-
-    private static final Locator SUBMIT_BUTTON = Locator.css("input[type='submit'][value='Submit']");
-    // XPath for the problems matrix table (header cell contains "Fail: | Leak: | Hang:")
-    private static final String PROBLEMS_TABLE_XPATH =
-            "//table[contains(@class,'decoratedtable')]" +
-            "[.//td[contains(.,'Fail:') and contains(.,'Leak:') and contains(.,'Hang:')]]";
 
     @Test
     public void testBeginPage()
@@ -324,7 +327,7 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         // 08:01 via setToEightAM, but the start wall-clock time can shift
         // across DST boundaries (e.g. start 07:01 PST, end 08:01 PDT when
         // the window crosses spring-forward), so asserting just the dates
-        // keeps the test stable year-round.
+        // keeps the test stable.
 
         // --- Path 1: navigate via runDetail.jsp ---
         // The "TestFailOne" link on runDetail.jsp does NOT set the `end`
@@ -356,17 +359,11 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         // --- Path 2: navigate via the Fail/Leak/Hang table on rundown.jsp ---
         // The link in this table sets `end` to the begin page's selected
         // date but does not set `viewType`, so the controller defaults to
-        // ViewType.DAY → start = end - 1 day. (The Top Failures table
-        // link also passes `viewType`, which preserves rundown's current
-        // view and produces a 30-day window — not what we want here.)
-        // Anchoring to a fixed sample-data date (01/17/2026) keeps this
-        // assertion stable regardless of when the test runs. The link
+        // ViewType.DAY → start = end - 1 day. The link
         // opens in a new browser tab via target="_blank".
         beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "begin",
                 Map.of("end", "01/17/2026")));
-        Locator failLeakHangLink = Locator.xpath(
-                "//table[contains(@class,'decoratedtable')][.//td[contains(., 'Fail:') and contains(., 'Leak:') and contains(., 'Hang:')]]" +
-                "//a[text()='TestFailOne']");
+        Locator failLeakHangLink = Locator.xpath(PROBLEMS_TABLE_XPATH + "//a[text()='TestFailOne']");
         click(failLeakHangLink);
         switchToWindow(1); // Link opens in a new tab
         try
@@ -396,8 +393,7 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         // Verify the Flags page now shows the flagged run. Each flagged row is
         // rendered (in flagged.jsp) as a link with text:
         //   "id: <runId> / <userId> / <postTime>"
-        // Match by the runId prefix — userId and postTime are baked into the
-        // sample XML and aren't worth duplicating in the test.
+        // Match by the runId prefix
         clickAndWait(Locator.linkWithText("Flags"));
         assertTextNotPresent("There are currently no flagged runs.");
         assertTextPresent("Flagged Runs");
@@ -420,18 +416,14 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         // rows with Date | Duration | Tests Run | Failure Count | Mean Memory
         // | Remove, and a `.stats-row` with "RunCount:N"). Users WITHOUT
         // training runs are listed in a separate <table> below, under a
-        // "No Training Data --" header — that header is always present, so
-        // it can't be used as an empty-state indicator.
+        // "No Training Data --" header
         Locator.XPathLocator trainingTable = Locator.tagWithId("table", "trainingdata");
         Locator removeLink = trainingTable.descendant(Locator.tagWithClass("a", "removedata"));
         Locator statsRow = trainingTable.descendant(Locator.tagWithClass("tr", "stats-row"));
 
         // Initial state: no run has been added to the training set yet, so
         // the clean run's date should not appear in the training table and
-        // no Remove link should be present. (We can't assert the stats-row
-        // is absent — users may already have non-zero mean memory / mean
-        // tests-run from the imported sample data, which causes a stats-row
-        // to render before any run is explicitly added.)
+        // no Remove link should be present.
         goToProjectHome(PROJECT_NAME);
         clickAndWait(Locator.linkWithText("Training Data"));
         assertElementNotPresent(removeLink);
@@ -445,8 +437,7 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         assertTextPresent("Remove from training set");
 
         // Verify the Training Data page now shows the run for COMPUTER_NAME_1.
-        // Scope assertions to <table id="trainingdata"> so we don't accidentally
-        // match the same text in the "No Training Data" section below.
+        // Scope assertions to <table id="trainingdata">
         clickAndWait(Locator.linkWithText("Training Data"));
         assertElementPresent(trainingTable.descendant(
                 Locator.tagWithId("tr", "user-anchor-" + COMPUTER_NAME_1)));
@@ -464,12 +455,14 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         toggleTrainingSet();
         assertTextPresent("Add to training set");
 
-        // After removal: the Remove link and the run's data row are gone, but
-        // TEST-PC-1's section stays in the training table because the user's
-        // meanmemory / meantestsrun are persisted on the User row (not derived
-        // from current training rows). The stats row now shows "RunCount:0".
-        // See trainingdata.jsp:158 — users only move to the "No Training Data"
-        // section when both meanmemory and meantestsrun are 0.
+        // After removal: the Remove link and the run's data row are gone, and
+        // the stats row now shows "RunCount:0". TEST-PC-1's section is still
+        // rendered in the training table though, because of a known bug in
+        // TrainRunAction: when the user's last training run is removed, the
+        // the stale UserData row (non-zero meanmemory / meantestsrun) is
+        // never cleared. trainingdata.jsp:158 only moves users to the
+        // "No Training Data --" list when both fields are 0, so the section
+        // stays. See TODO-LK-20260403_testresults-bugs.md.
         clickAndWait(Locator.linkWithText("Training Data"));
         assertElementNotPresent(removeLink);
         assertElementNotPresent(trainingTable.containing("2026-01-16 06:00"));
@@ -481,7 +474,7 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     public void testViewLog()
     {
         // The clean run has a <Log> element — ViewLogAction should return it
-        String logContent = getApiString("testresults", "viewLog", _cleanRunId, "log");
+        String logContent = getApiString("viewLog", _cleanRunId, "log");
         assertTrue("ViewLog should return log content", logContent != null && !logContent.isEmpty());
         // Spot-check the nightly header and test entries from the beginning,
         // middle, and end of the log (see pc1-run-0115-clean.xml).
@@ -498,11 +491,11 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     public void testViewXml()
     {
         // ViewXmlAction should return the stored XML (without the <Log> element)
-        String xmlContent = getApiString("testresults", "viewXml", _cleanRunId, "xml");
+        String xmlContent = getApiString("viewXml", _cleanRunId, "xml");
         assertTrue("ViewXml should return XML content", xmlContent != null && !xmlContent.isEmpty());
         assertTrue("XML should contain nightly element", xmlContent.contains("nightly"));
         assertTrue("XML should contain test data", xmlContent.contains("TestAlpha"));
-        assertTrue("XML should not contain Log element (stripped before storage)", !xmlContent.contains("<Log>"));
+        assertFalse("XML should not contain Log element (stripped before storage)", xmlContent.contains("<Log>"));
     }
 
     @Test
@@ -579,19 +572,19 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     {
         // TrainRunAction: missing runId
         JSONObject noRunId = postApi("trainRun", Map.of("train", "true"));
-        assertEquals(false, noRunId.optBoolean("Success", true));
+        assertFalse(noRunId.optBoolean("Success", true));
         assertEquals("runId is required", noRunId.optString("error"));
 
         // TrainRunAction: invalid train value
         JSONObject badTrain = postApi("trainRun",
                 Map.of("runId", String.valueOf(_cleanRunId), "train", "garbage"));
-        assertEquals(false, badTrain.optBoolean("Success", true));
+        assertFalse(badTrain.optBoolean("Success", true));
         assertEquals("train must be one of: true, false, force", badTrain.optString("error"));
 
         // TrainRunAction: nonexistent runId
         JSONObject missingRun = postApi("trainRun",
                 Map.of("runId", "999999", "train", "true"));
-        assertEquals(false, missingRun.optBoolean("Success", true));
+        assertFalse(missingRun.optBoolean("Success", true));
         assertEquals("run does not exist: 999999", missingRun.optString("error"));
 
         // SetUserActive: missing userId
@@ -605,12 +598,12 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
 
         // DeleteRunAction: missing runId
         JSONObject noDeleteRunId = postApi("deleteRun", Map.of());
-        assertEquals(false, noDeleteRunId.optBoolean("Success", true));
+        assertFalse(noDeleteRunId.optBoolean("Success", true));
         assertEquals("runId is required", noDeleteRunId.optString("error"));
 
         // FlagRunAction: missing runId
         JSONObject noFlagRunId = postApi("flagRun", Map.of("flag", "true"));
-        assertEquals(false, noFlagRunId.optBoolean("Success", true));
+        assertFalse(noFlagRunId.optBoolean("Success", true));
         assertEquals("runId is required", noFlagRunId.optString("error"));
     }
 
@@ -735,7 +728,7 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         Locator icons = Locator.xpath(PROBLEMS_TABLE_XPATH +
                 "//tr[.//a[text()='" + testName + "']]//img[contains(@src,'" + iconFile + "')]");
         assertEquals("Expected " + expectedCount + " " + iconFile + " icon(s) for " + testName,
-                expectedCount, getElementCount(icons));
+                expectedCount, icons.findElements(getDriver()).size());
     }
 
     /**
@@ -816,18 +809,18 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     }
 
     /**
-     * Makes an API GET request and returns the value of the specified field from the JSON response.
+     * Makes an API GET request to a testresults action and returns the value
+     * of the specified field from the JSON response.
      */
-    private String getApiString(String controller, String action, int runId, String field)
+    private String getApiString(String action, int runId, String field)
     {
-        String url = WebTestHelper.buildURL(controller, PROJECT_NAME, action) + "?runId=" + runId;
+        String url = WebTestHelper.buildURL("testresults", PROJECT_NAME, action) + "?runId=" + runId;
         try (CloseableHttpClient httpClient = WebTestHelper.getHttpClient())
         {
-            var request = new org.apache.hc.client5.http.classic.methods.HttpGet(url);
+            HttpGet request = new HttpGet(url);
             APITestHelper.injectCookies(request);
             return httpClient.execute(request, response -> {
-                String body = EntityUtils.toString(response.getEntity());
-                org.json.JSONObject json = new org.json.JSONObject(body);
+                JSONObject json = new JSONObject(EntityUtils.toString(response.getEntity()));
                 return json.optString(field, null);
             });
         }
