@@ -54,6 +54,7 @@ import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
 import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
 import org.labkey.panoramapublic.proteomexchange.Formula;
+import org.labkey.panoramapublic.proteomexchange.NcbiUtils;
 import org.labkey.panoramapublic.proteomexchange.SkylineVersion;
 import org.labkey.panoramapublic.proteomexchange.UnimodUtil;
 import org.labkey.panoramapublic.proteomexchange.validator.SkylineDocValidator;
@@ -384,6 +385,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(BlueskyApiClient.TestCase.class);
         set.add(PrivateDataReminderSettings.TestCase.class);
         set.add(NcbiPublicationSearchServiceImpl.TestCase.class);
+        set.add(NcbiUtils.TestCase.class);
 
         return set;
     }
