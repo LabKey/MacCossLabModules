@@ -139,6 +139,8 @@ public class TestResultsController extends SpringActionController
     private static final Logger _log = LogManager.getLogger(TestResultsController.class);
     private static final SimpleDateFormat MDYFormat = new SimpleDateFormat("MM/dd/yyyy");
 
+    private static final String KEY_SUCCESS = "Success";
+
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(TestResultsController.class);
 
     // Tab name constants for menu highlighting
@@ -486,7 +488,7 @@ public class TestResultsController extends SpringActionController
         {
             if (form.getRunId() == null)
             {
-                return new ApiSimpleResponse(Map.of("Success", false, "error", "runId is required"));
+                return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "runId is required"));
             }
             int runId = form.getRunId();
             String trainString = form.getTrain();
@@ -494,7 +496,7 @@ public class TestResultsController extends SpringActionController
                 !Strings.CI.equals(trainString, "false") &&
                 !Strings.CI.equals(trainString, "force"))
             {
-                return new ApiSimpleResponse(Map.of("Success", false, "error", "train must be one of: true, false, force"));
+                return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "train must be one of: true, false, force"));
             }
             boolean train = Strings.CI.equals(trainString, "true"); // true = add to training set, false = remove
             boolean force = Strings.CI.equals(trainString, "force");
@@ -511,9 +513,9 @@ public class TestResultsController extends SpringActionController
             if (!force)
             {
                 if (details.length == 0)
-                    return new ApiSimpleResponse(Map.of("Success", false, "error", "run does not exist: " + runId));
+                    return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "run does not exist: " + runId));
                 else if ((train && !foundRuns.isEmpty()) || (!train && foundRuns.isEmpty()))
-                    return new ApiSimpleResponse(Map.of("Success", false, "error", "no action necessary"));
+                    return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "no action necessary"));
             }
             DbScope scope = TestResultsSchema.getSchema().getScope();
             try (DbScope.Transaction transaction = scope.ensureTransaction())
@@ -550,7 +552,7 @@ public class TestResultsController extends SpringActionController
                 new SqlExecutor(scope).execute(sqlFragmentUpdate);
                 transaction.commit();
             }
-            return new ApiSimpleResponse("Success", true);
+            return new ApiSimpleResponse(KEY_SUCCESS, true);
         }
     }
 
@@ -623,6 +625,10 @@ public class TestResultsController extends SpringActionController
             ensureRunDataCached(runs, false);
 
             TestsDataBean bean = new TestsDataBean(runs, user == null ? new User[0] : new User[]{user});
+            bean.setStartDate(startDate);
+            bean.setEndDate(endDate);
+            bean.setUsername(userName);
+            bean.setDataInclude(dataInclude);
             JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/user.jsp", bean);
             view.setTitle("User Results");
             return view;
@@ -956,7 +962,7 @@ public class TestResultsController extends SpringActionController
             ApiSimpleResponse response = new ApiSimpleResponse();
             if (form.getRunId() == null)
             {
-                response.put("Success", false);
+                response.put(KEY_SUCCESS, false);
                 response.put("error", "runId is required");
                 return response;
             }
@@ -972,11 +978,11 @@ public class TestResultsController extends SpringActionController
                 Table.delete(TestResultsSchema.getTableInfoTestRuns(), rowId); // delete run last because of foreign key
                 transaction.commit();
             } catch (Exception x) {
-                response.put("Success", false);
+                response.put(KEY_SUCCESS, false);
                 response.put("error", x.getMessage());
                 return response;
             }
-            response.put("Success", true);
+            response.put(KEY_SUCCESS, true);
             return response;
         }
     }
@@ -1003,7 +1009,7 @@ public class TestResultsController extends SpringActionController
             ApiSimpleResponse response = new ApiSimpleResponse();
             if (form.getRunId() == null)
             {
-                response.put("Success", false);
+                response.put(KEY_SUCCESS, false);
                 response.put("error", "runId is required");
                 return response;
             }
@@ -1014,19 +1020,24 @@ public class TestResultsController extends SpringActionController
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("id"), rowId);
             try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction()) {
-                RunDetail[] details = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getArray(RunDetail.class);
-                RunDetail detail = details[0];
+                RunDetail detail = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getObject(RunDetail.class);
+                if (detail == null)
+                {
+                    response.put(KEY_SUCCESS, false);
+                    response.put("error", "run not found: " + rowId);
+                    return response;
+                }
                 if (form.getFlag() == null) // if not specified keep same
                     flag = detail.isFlagged();
                 detail.setFlagged(flag);
                 Table.update(null, TestResultsSchema.getTableInfoTestRuns(), detail, detail.getId());
                 transaction.commit();
             } catch (Exception x) {
-                response.put("Success", false);
+                response.put(KEY_SUCCESS, false);
                 response.put("error", x.getMessage());
                 return response;
             }
-            response.put("Success", true);
+            response.put(KEY_SUCCESS, true);
             return response;
         }
     }
@@ -1591,7 +1602,7 @@ public class TestResultsController extends SpringActionController
                 transaction.commit();
 
                 ApiSimpleResponse response = new ApiSimpleResponse();
-                response.put("Success", true);
+                response.put(KEY_SUCCESS, true);
                 response.put("usersRetrained", usersRetrained);
                 response.put("totalTrainRuns", totalTrainRuns);
                 response.put("mode", form.getMode());
@@ -1601,7 +1612,7 @@ public class TestResultsController extends SpringActionController
             {
                 _log.error("Error in RetrainAllAction", e);
                 ApiSimpleResponse response = new ApiSimpleResponse();
-                response.put("Success", false);
+                response.put(KEY_SUCCESS, false);
                 response.put("error", e.getMessage());
                 return response;
             }
@@ -1654,13 +1665,13 @@ public class TestResultsController extends SpringActionController
             } catch (Exception e) {
                 _log.info("XML failed to parse/store");
                 _log.info("Attempting to save file for a future post attempt");
-                res.put("Success", false);
+                res.put(KEY_SUCCESS, false);
                 res.put("Message", "Error Parsing XML attempting to save the XML file...   " + NIGHTLY_POSTER.SaveXML(file, getContainer()));
                 res.put("Exception", e + NIGHTLY_POSTER.getStackTraceText(e));
                 return new ApiSimpleResponse(res);
             }
 
-            return new ApiSimpleResponse("Success", true);
+            return new ApiSimpleResponse(KEY_SUCCESS, true);
         }
 
         private void DebugRequest(HttpServletRequest hsRequest)

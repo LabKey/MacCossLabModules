@@ -48,18 +48,13 @@
 
     User userObj = data.getUsers().length == 1 ? data.getUsers()[0] : null;
 
-    HttpServletRequest req = getViewContext().getRequest();
-    String startDate = req.getParameter("start");
-    String endDate = req.getParameter("end");
-    String user = req.getParameter("username");
-    boolean showSingleUser = user != null && !user.isEmpty();
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
     Date today = new Date();
-    if (startDate == null)
-        startDate = df.format(today);
-    if (endDate == null)
-        endDate = df.format(today);
-    String dataInclude = req.getParameter("datainclude");
+    String startDate = data.getStartDate() != null ? df.format(data.getStartDate()) : df.format(today);
+    String endDate = data.getEndDate() != null ? df.format(data.getEndDate()) : df.format(today);
+    String user = data.getUsername();
+    boolean showSingleUser = user != null && !user.isEmpty();
+    String dataInclude = data.getDataInclude();
     if (dataInclude == null ||
         (!dataInclude.equalsIgnoreCase("date") && !dataInclude.equalsIgnoreCase("train") && !dataInclude.equalsIgnoreCase("both")))
         dataInclude = "date";
@@ -132,7 +127,7 @@
         <h2><%=h(user)%></h2>
         <%
             String headerDate = startDate;
-            if (getViewContext().getRequest().getParameter("end") != null)
+            if (!startDate.equals(endDate))
                 headerDate += " - " + endDate;
         %>
         <p><%=h(headerDate)%></p>
