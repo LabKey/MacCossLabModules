@@ -53,6 +53,7 @@ import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.RequiresSiteAdmin;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.ValidEmail;
+import org.labkey.api.security.permissions.AdminOperationsPermission;
 import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.util.FileUtil;
@@ -1207,7 +1208,7 @@ public class TestResultsController extends SpringActionController
         }
     }
 
-    @RequiresNoPermission
+    @RequiresPermission(AdminOperationsPermission.class)
     public static class SendEmailNotificationAction extends ReadOnlyApiAction<SendEmailForm>
     {
         @Override
