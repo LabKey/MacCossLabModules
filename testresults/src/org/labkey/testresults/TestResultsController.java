@@ -18,6 +18,7 @@ package org.labkey.testresults;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.validator.routines.EmailValidator;
@@ -60,9 +61,10 @@ import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.MimeMap;
 import org.labkey.api.util.Pair;
 import org.labkey.api.util.XmlBeansUtil;
+import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
-import org.labkey.api.view.ViewContext;
+import org.labkey.api.view.WebPartView;
 import org.labkey.testresults.model.GlobalSettings;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestFailDetail;
@@ -84,7 +86,6 @@ import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.impl.StdSchedulerFactory;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.validation.BindException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartRequest;
@@ -229,16 +230,22 @@ public class TestResultsController extends SpringActionController
 
             RunDownBean bean = getRunDownBean(getUser(), getContainer(), endDate, form.getViewType());
             JspView<RunDownBean> view = new JspView<>("/org/labkey/testresults/view/rundown.jsp", bean);
-            view.setTitle("Test Results");
+            view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Test Results");
+            addModuleNavTrail(root, getContainer());
         }
     }
+
+    private static void addModuleNavTrail(NavTree root, Container container)
+    {
+        root.addChild("Test Results", new ActionURL(TestResultsController.BeginAction.class, container));
+    }
+
 
     public static class RunDownForm
     {
@@ -470,14 +477,14 @@ public class TestResultsController extends SpringActionController
             User[] users = getUsers(getContainer(), null);
             TestsDataBean bean = new TestsDataBean(runs, users);
             JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/trainingdata.jsp", bean);
-            view.setTitle("Training Data");
+            view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Training Data");
+            addModuleNavTrail(root, getContainer());
         }
     }
 
@@ -631,14 +638,14 @@ public class TestResultsController extends SpringActionController
             bean.setUsername(userName);
             bean.setDataInclude(dataInclude);
             JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/user.jsp", bean);
-            view.setTitle("User Results");
+            view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("User Results");
+            addModuleNavTrail(root, getContainer());
         }
     }
 
@@ -705,7 +712,7 @@ public class TestResultsController extends SpringActionController
             {
                 // Null bean causes runDetail.jsp to display a form prompting the user to enter a run ID
                 JspView<TestsDataBean> errorView = new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
-                errorView.setTitle("Run Detail");
+                errorView.setFrame(WebPartView.FrameType.PORTAL);
                 return errorView;
             }
             int runId = form.getRunId();
@@ -731,14 +738,14 @@ public class TestResultsController extends SpringActionController
             if (runs.length == 0)
             {
                 JspView<TestsDataBean> errorView = new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
-                errorView.setTitle("Run Detail");
+                errorView.setFrame(WebPartView.FrameType.PORTAL);
                 return errorView;
             }
             RunDetail run = runs[0];
             if (run == null)
             {
                 JspView<TestsDataBean> errorView = new JspView<>("/org/labkey/testresults/view/runDetail.jsp", null);
-                errorView.setTitle("Run Detail");
+                errorView.setFrame(WebPartView.FrameType.PORTAL);
                 return errorView;
             }
             if (filterTestPassesBy != null) {
@@ -766,14 +773,14 @@ public class TestResultsController extends SpringActionController
             run.setPasses(passes);
             TestsDataBean bean = new TestsDataBean(runs, new User[0]);
             JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/runDetail.jsp", bean);
-            view.setTitle("Run Detail");
+            view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Run Detail");
+            addModuleNavTrail(root, getContainer());
         }
     }
 
@@ -827,14 +834,14 @@ public class TestResultsController extends SpringActionController
 
             ensureRunDataCached(runs, true);
             JspView<LongTermBean> view = new JspView<>("/org/labkey/testresults/view/longTerm.jsp", bean);
-            view.setTitle("Long-Term Trends");
+            view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Long-Term Trends");
+            addModuleNavTrail(root, getContainer());
         }
     }
 
@@ -899,20 +906,20 @@ public class TestResultsController extends SpringActionController
                 ).toArray(RunDetail[]::new));
 
                 JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/failureDetail.jsp", bean);
-                view.setTitle("Failure Detail");
+                view.setFrame(WebPartView.FrameType.PORTAL);
                 return view;
             }
 
             bean.setRuns(runs);
             JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/multiFailureDetail.jsp", bean);
-            view.setTitle("All Failures");
+            view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Test Failures");
+            addModuleNavTrail(root, getContainer());
         }
     }
 
@@ -1079,13 +1086,13 @@ public class TestResultsController extends SpringActionController
             filter.addCondition(FieldKey.fromParts("flagged"), true);
             RunDetail[] details = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getArray(RunDetail.class);
             JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/flagged.jsp", new TestsDataBean(details, new User[0]));
-            view.setTitle("Flagged Runs");
+            view.setFrame(WebPartView.FrameType.PORTAL);
             return view;
         }
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild("Flagged Runs");
+            addModuleNavTrail(root, getContainer());
         }
     }
 
@@ -1706,12 +1713,15 @@ public class TestResultsController extends SpringActionController
             File[] files = local.listFiles();
             if (files == null)
                 files = new File[0];
-            return new JspView<>("/org/labkey/testresults/view/errorFiles.jsp", files);
+            JspView view = new JspView<>("/org/labkey/testresults/view/errorFiles.jsp", files);
+            view.setFrame(WebPartView.FrameType.PORTAL);
+            return view;
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
+            addModuleNavTrail(root, getContainer());
         }
     }
 
