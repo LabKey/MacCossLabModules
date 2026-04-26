@@ -410,10 +410,15 @@ public class TestResultsController extends SpringActionController
 
     public static User[] getUsers(Container trainingDataContainer, String username) {
         SQLFragment sqlFragment = new SQLFragment();
-        sqlFragment.append("SELECT id, username FROM testresults.user");
+        sqlFragment.append("SELECT id, username FROM testresults.user WHERE 1=1");
+        if (trainingDataContainer != null)
+        {
+            sqlFragment.append(" AND id IN (SELECT userid FROM testresults.testruns WHERE container = ?)");
+            sqlFragment.add(trainingDataContainer.getEntityId());
+        }
         if (username != null && !username.isEmpty())
         {
-            sqlFragment.append(" WHERE username = ?");
+            sqlFragment.append(" AND username = ?");
             sqlFragment.add(username);
         }
         sqlFragment.append(" ORDER BY id");

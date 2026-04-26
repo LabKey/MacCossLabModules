@@ -26,6 +26,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.labkey.remoteapi.CommandException;
 import org.labkey.remoteapi.Connection;
 import org.labkey.remoteapi.query.SelectRowsCommand;
 import org.labkey.remoteapi.query.SelectRowsResponse;
@@ -44,6 +45,7 @@ import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.TextSearcher;
 
 import java.io.File;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -51,6 +53,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 @Category({External.class, MacCossLabModules.class})
@@ -115,12 +118,20 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     }
 
     /**
-     * Posts a sample XML file to PostAction.
+     * Posts a sample XML file to PostAction in the main project container.
      */
     private void postSampleXml(String sampleDataRelativePath)
     {
+        postSampleXml(sampleDataRelativePath, PROJECT_NAME);
+    }
+
+    /**
+     * Posts a sample XML file to PostAction in the given container.
+     */
+    private void postSampleXml(String sampleDataRelativePath, String containerPath)
+    {
         File xmlFile = TestFileUtils.getSampleData(sampleDataRelativePath);
-        String postUrl = WebTestHelper.buildURL("testresults", PROJECT_NAME, "post");
+        String postUrl = WebTestHelper.buildURL("testresults", containerPath, "post");
 
         try (CloseableHttpClient httpClient = WebTestHelper.getHttpClient())
         {
@@ -655,6 +666,90 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         assertTextNotPresent("TestDisposableOne");
     }
 
+    /**
+     * Verifies that child tables in the testresults schema are container-filtered
+     * via a join to testruns. Creates a subfolder, posts a single run into it,
+     * then checks that testpasses, testfails, trainruns, and user queries from
+     * each container only return rows for runs in that container.
+     *
+     * Not separately tested: hangs, memoryleaks, handleleaks. These go through the
+     * same {@code createRunChildTable} helper as testpasses/testfails, so verifying
+     * those covers them by construction.
+     */
+    @Test
+    public void testContainerFiltering() throws IOException, CommandException
+    {
+        final String subFolder = "ContainerFilterTest";
+        final String subFolderPath = "/" + PROJECT_NAME + "/" + subFolder;
+        _containerHelper.createSubfolder(PROJECT_NAME, subFolder);
+        _containerHelper.enableModule(subFolderPath, "TestResults");
+        // pc1-run-0116-failures.xml: 150 tests (testsrun=150), 2 failures (TestFailOne, TestFailTwo).
+        postSampleXml("testresults/pc1-run-0116-failures.xml", subFolderPath);
+
+        Connection conn = WebTestHelper.getRemoteApiConnection();
+
+        // The subfolder has exactly one run (the one we just posted). Fetch its ID.
+        SelectRowsCommand runsCmd = new SelectRowsCommand("testresults", "testruns");
+        runsCmd.setColumns(List.of("id", "userid/username"));
+        SelectRowsResponse subRuns = runsCmd.execute(conn, subFolderPath);
+        assertEquals("Subfolder should have exactly 1 run", 1, subRuns.getRows().size());
+        int subRunId = ((Number) subRuns.getRows().getFirst().get("id")).intValue();
+
+        // testpasses: 150 rows, all referencing subRunId. None visible from parent.
+        assertTableContainerFiltered(conn, "testpasses", "testrunid", subFolderPath, subRunId, 150);
+
+        // testfails: 2 failures in the posted XML.
+        assertTableContainerFiltered(conn, "testfails", "testrunid", subFolderPath, subRunId, 2);
+
+        // Add the subfolder's run to the training set, then verify trainruns filtering.
+        JSONObject trainResp = postApi("trainRun",
+                Map.of("runId", String.valueOf(subRunId), "train", "true"),
+                subFolderPath);
+        assertTrue("Adding run to training set failed: " + trainResp, trainResp.optBoolean("Success", false));
+
+        assertTableContainerFiltered(conn, "trainruns", "runid", subFolderPath, subRunId, 1);
+
+        // user: the subfolder's only run is for TEST-PC-1, so only that user should
+        // be visible there. The parent has both TEST-PC-1 and TEST-PC-2.
+        SelectRowsCommand userCmd = new SelectRowsCommand("testresults", "user");
+        userCmd.setColumns(List.of("username"));
+        SelectRowsResponse subUsers = userCmd.execute(conn, subFolderPath);
+        assertEquals("Subfolder should see only TEST-PC-1", 1, subUsers.getRows().size());
+        assertEquals(COMPUTER_NAME_1, subUsers.getRows().getFirst().get("username"));
+
+        SelectRowsResponse parentUsers = userCmd.execute(conn, PROJECT_NAME);
+        List<String> parentUsernames = parentUsers.getRows().stream()
+                .map(r -> (String) r.get("username")).toList();
+        assertTrue("Parent should see TEST-PC-1", parentUsernames.contains(COMPUTER_NAME_1));
+        assertTrue("Parent should see TEST-PC-2", parentUsernames.contains(COMPUTER_NAME_2));
+    }
+
+    /**
+     * Asserts that {@code tableName} is container-filtered: the subfolder query
+     * returns exactly {@code expectedSubfolderRows} rows, all referencing
+     * {@code subRunId}; the parent query returns no rows referencing
+     * {@code subRunId}.
+     */
+    private void assertTableContainerFiltered(Connection conn, String tableName, String fkColumn,
+                                              String subFolderPath, int subRunId, int expectedSubfolderRows)
+            throws IOException, CommandException
+    {
+        SelectRowsCommand cmd = new SelectRowsCommand("testresults", tableName);
+        cmd.setColumns(List.of(fkColumn));
+
+        SelectRowsResponse subfolderRows = cmd.execute(conn, subFolderPath);
+        assertEquals(tableName + " row count in subfolder",
+                expectedSubfolderRows, subfolderRows.getRows().size());
+        for (Map<String, Object> row : subfolderRows.getRows())
+            assertEquals("All " + tableName + " rows in subfolder must reference subRunId",
+                    subRunId, ((Number) row.get(fkColumn)).intValue());
+
+        SelectRowsResponse parentRows = cmd.execute(conn, PROJECT_NAME);
+        for (Map<String, Object> row : parentRows.getRows())
+            assertNotEquals("Parent " + tableName + " must not reference subfolder's run " + subRunId,
+                    subRunId, ((Number) row.get(fkColumn)).intValue());
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
@@ -860,7 +955,12 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
      */
     private JSONObject postApi(String action, Map<String, String> params)
     {
-        StringBuilder url = new StringBuilder(WebTestHelper.buildURL("testresults", PROJECT_NAME, action));
+        return postApi(action, params, PROJECT_NAME);
+    }
+
+    private JSONObject postApi(String action, Map<String, String> params, String containerPath)
+    {
+        StringBuilder url = new StringBuilder(WebTestHelper.buildURL("testresults", containerPath, action));
         boolean first = true;
         for (Map.Entry<String, String> e : params.entrySet())
         {
