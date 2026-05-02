@@ -64,7 +64,7 @@ public class TestResultsModule extends DefaultModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 13.40;
+        return 13.401;
     }
 
     @Override
