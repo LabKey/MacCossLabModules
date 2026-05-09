@@ -44,7 +44,7 @@ public class CustomGctBuilder
 
         for(Path file: files)
         {
-            _log.info("LINCS custom GCT: reading file: " + file);
+            _log.info("LINCS custom GCT: reading file: {}", file);
             Gct gct;
             try
             {
@@ -87,10 +87,10 @@ public class CustomGctBuilder
     {
         // All replicates in a single GCT file should have the same value for the "det_plate" replicate annotation.
         // TODO: This is not true for GCP plate 16 file.
-        String detPlateAnnotationVal = gct.getReplicates().get(0).getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION);
+        String detPlateAnnotationVal = gct.getReplicates().getFirst().getAnnotationValue(LincsAnnotation.PLATE_ANNOTATION);
 
         // All replicates in a single GCT file should have the same value for the "provenance_code" replicate annotation
-        String expType = gct.getExperimentType(gct.getReplicates().get(0).getAnnotationValue(LincsAnnotation.PROVENANCE_CODE));
+        String expType = gct.getExperimentType(gct.getReplicates().getFirst().getAnnotationValue(LincsAnnotation.PROVENANCE_CODE));
 
         // Append experiment type to plate annotation since we can have same plate (e.g. plate 18) analyzed by both DIA and PRM.
         String expTypeAndPlate = expType + "_" + detPlateAnnotationVal;

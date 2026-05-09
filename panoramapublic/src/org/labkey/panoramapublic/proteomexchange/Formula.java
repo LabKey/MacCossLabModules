@@ -254,13 +254,13 @@ public class Formula
             formula = Formula.tryParse(input, errors); // More than one subtraction operation is not supported
             assertNull(formula);
             assertEquals(1, errors.size());
-            assertEquals("Failed to parse formula '" + input + "'. More than one subtraction operation is not supported in a formula.", errors.get(0));
+            assertEquals("Failed to parse formula '" + input + "'. More than one subtraction operation is not supported in a formula.", errors.getFirst());
 
             errors = new ArrayList<>();
             input = C12H8S2O6 + 'X' + SO4;
             formula = Formula.tryParse(input, errors); // Unrecognized element in formula
             assertNull(formula);
-            assertEquals("Failed to parse formula '" + input + "'. Unrecognized element in formula: X", errors.get(0));
+            assertEquals("Failed to parse formula '" + input + "'. Unrecognized element in formula: X", errors.getFirst());
 
 
             // Check our ability to handle strangely constructed chemical formulas (from MassCalcTest.TestGetIonFormula() in Skyline)

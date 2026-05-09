@@ -71,7 +71,7 @@ public class CopyLibraryStateTask extends PipelineJob.Task<CopyLibraryStateTask.
         {
             throw new PipelineJobException(String.format("More than one experiment found in the container '%s'.", container.getPath()));
         }
-        ExpExperiment experiment = experiments.get(0);
+        ExpExperiment experiment = experiments.getFirst();
 
         ExperimentAnnotations sourceExperiment = jobSupport.getExpAnnotations();
         Logger log = job.getLogger();
@@ -105,10 +105,7 @@ public class CopyLibraryStateTask extends PipelineJob.Task<CopyLibraryStateTask.
         FolderType folderType = svc.getFolderType(sourceContainer);
         if (LibraryProtein.equals(folderType) || Library.equals(folderType))
         {
-            log.info(String.format("Copying '%s' state from source folder '%s' into target folder '%s' .",
-                    (LibraryProtein.equals(folderType) ? "Protein Library" : "Peptide Library"),
-                    sourceContainer.getPath(),
-                    c.getPath()));
+            log.info("Copying '{}' state from source folder '{}' into target folder '{}' .", (LibraryProtein.equals(folderType) ? "Protein Library" : "Peptide Library"), sourceContainer.getPath(), c.getPath());
             copyLibraryState(c, sourceContainer, user, svc, log);
         }
     }
@@ -120,7 +117,7 @@ public class CopyLibraryStateTask extends PipelineJob.Task<CopyLibraryStateTask.
         String versionStr = sourcePropMap.get(TargetedMSService.PROP_CHROM_LIB_REVISION);
         if (null != versionStr)
         {
-            log.info(String.format("Setting the value of property '%s' to '%s'.", TargetedMSService.PROP_CHROM_LIB_REVISION, versionStr));
+            log.info("Setting the value of property '{}' to '{}'.", TargetedMSService.PROP_CHROM_LIB_REVISION, versionStr);
             WritablePropertyMap targetPropMap = PropertyManager.getWritableProperties(container, TargetedMSService.MODULE_NAME, true);
             targetPropMap.put(TargetedMSService.PROP_CHROM_LIB_REVISION, versionStr);
             targetPropMap.save();

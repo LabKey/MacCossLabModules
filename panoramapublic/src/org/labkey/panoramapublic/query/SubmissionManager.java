@@ -386,7 +386,7 @@ public class SubmissionManager
             submission.setCopiedExperimentId(null);
             updateSubmission(submission, user);
         }
-        else if (copiedSubmissions.size() == 1 && copiedSubmissions.get(0).getId() == submission.getId())
+        else if (copiedSubmissions.size() == 1 && copiedSubmissions.getFirst().getId() == submission.getId())
         {
             // This is the only copy of the data on Panorama Public.  The Panorama Public admin must have a really good reason
             // for deleting this experiment.
@@ -419,8 +419,7 @@ public class SubmissionManager
                 {
                     // ValidationException can be thrown by ShortURLService.saveShortURL() if the URL is invalid (contains slashes, etc)
                     // We are updating an existing short URL that must be valid so we don't expect to see this exception. Log an error to the server log if it happens.
-                    LOG.error("There was an error updating the target of the short access URL: " + js.getShortAccessUrl().getShortURL()
-                            + "to: '" + sourceExperiment.getContainer().getPath() + "'", e);
+                    LOG.error("There was an error updating the target of the short access URL: {}to: '{}'", js.getShortAccessUrl().getShortURL(), sourceExperiment.getContainer().getPath(), e);
                 }
             }
         }

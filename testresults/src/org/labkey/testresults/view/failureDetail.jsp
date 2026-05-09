@@ -137,12 +137,7 @@
         }
 
         String dateKey = jsDf.format(cal.getTime());
-        JSONObject dateObj = dates.get(dateKey);
-        if (dateObj == null)
-        {
-            dateObj = new JSONObject();
-            dates.put(dateKey, dateObj);
-        }
+        JSONObject dateObj = dates.computeIfAbsent(dateKey, k -> new JSONObject());
 
         int thisFailures = problems.getFailures(run, failedTest).length;
         if (thisFailures > 0)

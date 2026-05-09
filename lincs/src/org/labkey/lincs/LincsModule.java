@@ -19,8 +19,6 @@ package org.labkey.lincs;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.labkey.api.data.Container;
-import org.labkey.api.data.ContainerManager;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.module.AdminLinkManager;
 import org.labkey.api.module.ModuleContext;
@@ -116,9 +114,6 @@ public class LincsModule extends SpringModule
     @Override
     protected void startupAfterSpringConfig(ModuleContext moduleContext)
     {
-        // add a container listener so we'll know when our container is deleted:
-        ContainerManager.addContainerListener(new LincsContainerListener());
-
         DocImportListener docImportListener = new DocImportListener();
         ExperimentService service = ExperimentService.get();
         service.addExperimentListener(docImportListener);
@@ -133,13 +128,6 @@ public class LincsModule extends SpringModule
                 adminNavTree.addChild(new NavTree("Manage Cromwell Config", new ActionURL(LincsController.CromwellConfigAction.class, container)));
             }
         });
-    }
-
-    @Override
-    @NotNull
-    public Collection<String> getSummary(Container c)
-    {
-        return Collections.emptyList();
     }
 
     public enum LincsAssay
@@ -180,17 +168,12 @@ public class LincsModule extends SpringModule
 
     public static String getExt(LincsLevel level)
     {
-        switch(level)
+        return switch (level)
         {
-            case Two:
-                return ".gct";
-            case Three:
-                return "_LVL3.gct";
-            case Four:
-                return "_LVL4.gct";
-            case Config:
-                return ".cfg";
-        }
-        return StringUtils.EMPTY;
+            case Two -> ".gct";
+            case Three -> "_LVL3.gct";
+            case Four -> "_LVL4.gct";
+            case Config -> ".cfg";
+        };
     }
 }

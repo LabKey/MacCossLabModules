@@ -13,7 +13,6 @@ import org.labkey.api.data.TableSelector;
 import org.labkey.api.query.LookupForeignKey;
 import org.labkey.api.query.QueryUpdateService;
 import org.labkey.api.query.RowIdQueryUpdateService;
-import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.security.permissions.Permission;
@@ -156,13 +155,13 @@ public class SpecLibInfoTableInfo extends PanoramaPublicTable
         }
 
         @Override
-        protected SpecLibInfo insert(User user, Container container, SpecLibInfo bean) throws ValidationException
+        protected SpecLibInfo insert(User user, Container container, SpecLibInfo bean)
         {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        protected SpecLibInfo update(User user, Container container, SpecLibInfo bean, Integer oldKey) throws ValidationException
+        protected SpecLibInfo update(User user, Container container, SpecLibInfo bean, Integer oldKey)
         {
             throw new UnsupportedOperationException();
         }

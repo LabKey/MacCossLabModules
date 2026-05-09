@@ -74,7 +74,6 @@ import org.labkey.panoramapublic.model.Submission;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeService;
 import org.labkey.panoramapublic.proteomexchange.ProteomeXchangeServiceException;
 import org.labkey.panoramapublic.query.CatalogEntryManager;
-import org.labkey.panoramapublic.query.DatasetStatusManager;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
 import org.labkey.panoramapublic.query.JournalManager;
 import org.labkey.panoramapublic.query.SubmissionManager;
@@ -220,7 +219,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             if (null != targetRoot)
             {
                 Path targetFileRoot = Path.of(targetRoot.toString(), File.separator);
-                PanoramaPublicSymlinkManager.get().handleContainerSymlinks(source, null, (sourceFile, targetFile, c, u) -> {
+                PanoramaPublicSymlinkManager.get().handleContainerSymlinks(source, null, (sourceFile, targetFile, _, _) -> {
 
                     // valid path
                     if (!FileUtil.isFileAndExists(targetFile))
@@ -315,7 +314,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         }
 
         // Update the row in the Submission table -- set the 'copied' timestamp, copiedExperimentId
-        log.info("Updating Submission. Setting copiedExperimentId to " + targetExperiment.getId());
+        log.info("Updating Submission. Setting copiedExperimentId to {}", targetExperiment.getId());
         currentSubmission.setCopied(new Date());
         currentSubmission.setCopiedExperimentId(targetExperiment.getId());
         SubmissionManager.updateSubmission(currentSubmission, user);
@@ -323,7 +322,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         // Delete the previous copy
         if (previousCopy != null && jobSupport.deletePreviousCopy())
         {
-            log.info("Deleting old folder " + previousCopy.getContainer().getPath());
+            log.info("Deleting old folder {}", previousCopy.getContainer().getPath());
             Container oldContainer = previousCopy.getContainer();
             try
             {
@@ -332,7 +331,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             catch(Exception e)
             {
                 // Log exception so that the admin doing the copy can review.
-                log.error("Error deleting previous copy of the data in folder " + oldContainer.getPath(), e);
+                log.error("Error deleting previous copy of the data in folder {}", oldContainer.getPath(), e);
             }
         }
 
@@ -412,7 +411,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 try
                 {
                     assignDoi(targetExperiment, jobSupport.useDataCiteTestApi());
-                    log.info("Assigned DOI: " + targetExperiment.getDoi());
+                    log.info("Assigned DOI: {}", targetExperiment.getDoi());
                 }
                 catch(DataCiteException e)
                 {
@@ -441,7 +440,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 try
                 {
                     assignPxId(targetExperiment, jobSupport.usePxTestDb());
-                    log.info("Assigned ProteomeXchange ID: " + targetExperiment.getPxid());
+                    log.info("Assigned ProteomeXchange ID: {}", targetExperiment.getPxid());
                 }
                 catch(ProteomeXchangeServiceException e)
                 {
@@ -471,7 +470,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     private ExperimentAnnotations updateExperimentAnnotations(Container targetContainer, ExperimentAnnotations sourceExperiment, JournalSubmission js,
                                                               User user, Logger log) throws PipelineJobException
     {
-        log.info("Updating TargetedMS experiment entry in target folder " + targetContainer.getPath());
+        log.info("Updating TargetedMS experiment entry in target folder {}", targetContainer.getPath());
         ExperimentAnnotations targetExperiment = ExperimentAnnotationsManager.getExperimentInContainer(targetContainer);
         if (targetExperiment == null)
         {
@@ -481,7 +480,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         targetExperiment.setShortUrl(js.getShortAccessUrl());
         Integer currentVersion = ExperimentAnnotationsManager.getMaxVersionForExperiment(sourceExperiment.getId());
         int version =  currentVersion == null ? 1 : currentVersion + 1;
-        log.info("Setting version on new experiment to " + version);
+        log.info("Setting version on new experiment to {}", version);
         targetExperiment.setDataVersion(version);
 
         targetExperiment = ExperimentAnnotationsManager.save(targetExperiment, user);
@@ -513,7 +512,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                                    Journal journal, User pipelineJobUser, Logger log)
     {
         // Remove the copy permissions given to the journal.
-        log.info("Removing copy permissions given to " + journal.getName());
+        log.info("Removing copy permissions given to {}", journal.getName());
         Group journalGroup = SecurityManager.getGroup(journal.getLabkeyGroupId());
         JournalManager.removeJournalPermissions(sourceExperiment, journalGroup, pipelineJobUser);
 
@@ -539,7 +538,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         MutableSecurityPolicy newPolicy = new MutableSecurityPolicy(target, target.getPolicy());
         allReaders.stream().filter(Objects::nonNull).forEach(u ->
         {
-            log.info("Assigning " + ReaderRole.class.getSimpleName() + " to " + u.getEmail());
+            log.info("Assigning {} to {}", ReaderRole.class.getSimpleName(), u.getEmail());
             newPolicy.addRoleAssignment(u, ReaderRole.class);
         });
 
@@ -556,7 +555,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     private void assignPanoramaPublicSubmitterRole(MutableSecurityPolicy policy, Logger log, User... users)
     {
         Arrays.stream(users).filter(Objects::nonNull).collect(Collectors.toSet()).forEach(user -> {
-            log.info("Assigning " + PanoramaPublicSubmitterRole.class.getSimpleName() + " to " + user.getEmail());
+            log.info("Assigning {} to {}", PanoramaPublicSubmitterRole.class.getSimpleName(), user.getEmail());
             policy.addRoleAssignment(user, PanoramaPublicSubmitterRole.class, false);
         });
     }
@@ -590,17 +589,17 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         {
             if (SecurityManager.getGroupMembers(group, MemberType.ACTIVE_USERS).contains(user))
             {
-                log.info("User " + user.getEmail() + " is already a member of group " + group.getName());
+                log.info("User {} is already a member of group {}", user.getEmail(), group.getName());
             }
             else
             {
-                log.info("Adding user " + user.getEmail() + " to group " + group.getName());
+                log.info("Adding user {} to group {}", user.getEmail(), group.getName());
                 SecurityManager.addMember(group, user);
             }
         }
         catch (InvalidGroupMembershipException e)
         {
-            log.warn("Unable to add user " + user.getEmail() + " to group " + group.getName(), e);
+            log.warn("Unable to add user {} to group {}", user.getEmail(), group.getName(), e);
         }
     }
 
@@ -614,7 +613,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         }
         if (group == null)
         {
-            log.warn("Did not find a security group with name " + groupName + " in the project " + project.getName());
+            log.warn("Did not find a security group with name {} in the project {}", groupName, project.getName());
         }
         return group;
     }
@@ -648,7 +647,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         log.info("Creating a reviewer account.");
         SecurityManager.NewUserStatus newUser = SecurityManager.addUser(email, user, true);
-        log.info("Created reviewer with email: " + newUser.getUser().getEmail());
+        log.info("Created reviewer with email: {}", newUser.getUser().getEmail());
 
         log.info("Generating password.");
         String password = createPassword(newUser.getUser());
@@ -818,7 +817,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
 
         // Append a version to the original short URL
         String versionedShortUrl = js.getShortAccessUrl().getShortURL() + "_v" + previousCopy.getDataVersion();
-        log.info("Creating a new versioned URL for the previous copy of the data: " + versionedShortUrl);
+        log.info("Creating a new versioned URL for the previous copy of the data: {}", versionedShortUrl);
         ShortURLService shortUrlService = ShortURLService.get();
         ShortURLRecord shortURLRecord = shortUrlService.resolveShortURL(versionedShortUrl);
         if (shortURLRecord != null)
@@ -837,7 +836,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             throw new PipelineJobException("Error saving shortUrl '" + versionedShortUrl + "'", e);
         }
 
-        log.info("Setting the permanent link on the previous copy to " + newShortUrl.getShortURL());
+        log.info("Setting the permanent link on the previous copy to {}", newShortUrl.getShortURL());
         previousCopy.setShortUrl(newShortUrl);
 
         ExperimentAnnotationsManager.save(previousCopy, user);
@@ -851,7 +850,7 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         }
 
         @Override
-        public PipelineJob.Task createTask(PipelineJob job)
+        public CopyExperimentFinalTask createTask(PipelineJob job)
         {
             return new CopyExperimentFinalTask(this, job);
         }

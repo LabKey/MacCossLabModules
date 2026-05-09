@@ -86,7 +86,7 @@ public class ContainerJoin
 
     private String getLastJoinTableAlias()
     {
-        return _joinList.get(_joinList.size() - 1).getJoinTableAlias();
+        return _joinList.getLast().getJoinTableAlias();
     }
 
     public @Nullable FieldKey getContainerFieldKey()

@@ -24,8 +24,6 @@ import org.labkey.api.data.TableSelector;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.ValidEmail;
 
-import java.sql.SQLException;
-
 public class SignUpManager
 {
     // Returned messages
@@ -74,7 +72,7 @@ public class SignUpManager
         return new TableSelector(getTableInfoTempUsers(),filter, null).getObject(TempUser.class);
     }
 
-    public void deleteUser(String email) throws SQLException
+    public void deleteUser(String email)
     {
         if (null != getTableInfoTempUsers())
             Table.delete(getTableInfoTempUsers(), new SimpleFilter(FieldKey.fromParts("email"), email));

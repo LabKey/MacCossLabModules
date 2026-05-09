@@ -138,7 +138,7 @@ public class ExperimentTitleDisplayColumn
             {
                 ((FilteredTable<?>)tableInfo).addColumn(col);
                 List<FieldKey> displayCols = new ArrayList<>(tableInfo.getDefaultVisibleColumns());
-                displayCols.add(0, getFieldKey());
+                displayCols.addFirst(getFieldKey());
                 tableInfo.setDefaultVisibleColumns(displayCols);
             }
         }

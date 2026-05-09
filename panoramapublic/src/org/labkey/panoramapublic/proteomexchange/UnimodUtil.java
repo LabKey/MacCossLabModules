@@ -121,7 +121,7 @@ public class UnimodUtil
             var modsList = getUnimod().getByFormula(buildIsotopeModFormula(skylineMod));
             if (modsList.size() == 1)
             {
-                return modsList.get(0);
+                return modsList.getFirst();
             }
         }
         return null;

@@ -49,7 +49,7 @@ public class FilesMetadataWriter
     private void writeFilesMetadata(VirtualFile vf, Container container, boolean includeSubfolders,
                                     ExperimentService expSvc, FileContentService fcs, User user, Logger log) throws PipelineJobException
     {
-        log.debug(String.format("[%s]  Writing files metadata to %s", container.getPath(), vf.getLocation()));
+        log.debug("[{}]  Writing files metadata to {}", container.getPath(), vf.getLocation());
 
         try (PrintWriter writer = vf.getPrintWriter(FILENAME))
         {
@@ -83,7 +83,7 @@ public class FilesMetadataWriter
         Path fileRoot = fcs.getFileRootPath(container, FileContentService.ContentType.files);
         if (fileRoot == null)
         {
-            log.error("Could not get file root for " + container.getPath());
+            log.error("Could not get file root for {}", container.getPath());
             return;
         }
 

@@ -83,7 +83,7 @@ public class LincsManager
         else
         {
             // Otherwise, read from the lincs_replicate_annotations.txt file in the module's resources directory
-            _log.info("Could not find table " + listName + " in schema 'lists'. Trying to read from file.");
+            _log.info("Could not find table {} in schema 'lists'. Trying to read from file.", listName);
             return readFromFile("lincs_replicate_annotations.txt");
         }
     }
@@ -100,7 +100,7 @@ public class LincsManager
         else
         {
             // Otherwise, read from the lincs_peptide_annotations.txt file in the module's resources directory
-            _log.info("Could not find table " + listName + " in schema 'lists'. Trying to read from file.");
+            _log.info("Could not find table {} in schema 'lists'. Trying to read from file.", listName);
             return readFromFile("lincs_peptide_annotations.txt");
         }
     }
@@ -120,10 +120,10 @@ public class LincsManager
             String[] headers = line.split("\\t");
             for(int i = 0; i < headers.length; i++)
             {
-                if(headers[i].toLowerCase().equals("name")) {nameCol = i;}
-                else if(headers[i].toLowerCase().equals("displayname")) {displayNameCol = i;}
-                else if(headers[i].toLowerCase().equals("advanced")) {advancedCol = i;}
-                else if(headers[i].toLowerCase().equals("ignored")) {ignoredCol = i;}
+                if(headers[i].equalsIgnoreCase("name")) {nameCol = i;}
+                else if(headers[i].equalsIgnoreCase("displayname")) {displayNameCol = i;}
+                else if(headers[i].equalsIgnoreCase("advanced")) {advancedCol = i;}
+                else if(headers[i].equalsIgnoreCase("ignored")) {ignoredCol = i;}
             }
 
             List<LincsAnnotation> annotations = new ArrayList<>();
@@ -142,7 +142,7 @@ public class LincsManager
         }
         catch (IOException e)
         {
-            _log.error("Could not read file " + txt.getPath(), e);
+            _log.error("Could not read file {}", txt.getPath(), e);
             return Collections.emptyList();
         }
     }

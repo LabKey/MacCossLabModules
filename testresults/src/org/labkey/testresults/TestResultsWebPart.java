@@ -6,7 +6,6 @@ import org.labkey.api.view.BaseWebPartFactory;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.Portal;
 import org.labkey.api.view.ViewContext;
-import org.labkey.api.view.WebPartConfigurationException;
 import org.labkey.api.view.WebPartFactory;
 import org.labkey.api.view.WebPartView;
 import org.labkey.testresults.view.TestsDataBean;
@@ -22,7 +21,7 @@ public class TestResultsWebPart extends BaseWebPartFactory
     }
 
     @Override
-    public WebPartView<?> getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart) throws WebPartConfigurationException
+    public WebPartView<?> getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart)
     {
         Container c =portalCtx.getContainer();
         TestsDataBean bean = null;

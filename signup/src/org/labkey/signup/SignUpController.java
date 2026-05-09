@@ -828,7 +828,7 @@ public class SignUpController extends SpringActionController
         }
     }
 
-    private TempUser getTempUser(SignupForm signupForm, ValidEmail email) throws java.sql.SQLException
+    private TempUser getTempUser(SignupForm signupForm, ValidEmail email)
     {
         // If the user does not exit in LabKey's core database, check in our temporaryusers table
         TempUser tempUser = SignUpManager.get().getTempUserWithEmail(email.getEmailAddress());

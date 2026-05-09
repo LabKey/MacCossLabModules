@@ -184,7 +184,7 @@ public class ChromLibStateManager
             String newFileName = svc.getChromLibFileName(container, revision);
             Path targetFile = path.getParent().resolve(newFileName);
 
-            log.info(String.format("Changing chromatogram library file name from '%s' to '%s'.", path.getFileName().toString(), newFileName));
+            log.info("Changing chromatogram library file name from '{}' to '{}'.", path.getFileName().toString(), newFileName);
             if (!Files.exists(targetFile))
             {
                 FileUtils.moveFile(path.toFile(), targetFile.toFile());

@@ -26,7 +26,6 @@ import org.labkey.api.security.SecurityManager;
 import org.labkey.api.view.BaseWebPartFactory;
 import org.labkey.api.view.Portal;
 import org.labkey.api.view.ViewContext;
-import org.labkey.api.view.WebPartConfigurationException;
 import org.labkey.api.view.WebPartFactory;
 import org.labkey.api.view.WebPartView;
 import org.labkey.skylinetoolsstore.model.SkylineTool;
@@ -74,7 +73,7 @@ public class SkylineToolsStoreModule extends DefaultModule
                             }
 
                             @Override
-                            public WebPartView<?> getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart) throws WebPartConfigurationException
+                            public WebPartView<?> getWebPartView(@NotNull ViewContext portalCtx, Portal.@NotNull WebPart webPart)
                             {
                                 return new SkylineToolsStoreWebPart();
                             }

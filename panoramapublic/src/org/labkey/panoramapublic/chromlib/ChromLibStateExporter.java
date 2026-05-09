@@ -44,7 +44,7 @@ public abstract class ChromLibStateExporter
 
     void exportLibraryState(Container container, File file, User user, TargetedMSService svc) throws ChromLibStateException
     {
-        _log.info(String.format("Exporting %s library state in container '%s' to file '%s'.", libTypeString(), container.getPath(), file.getPath()));
+        _log.info("Exporting {} library state in container '{}' to file '{}'.", libTypeString(), container.getPath(), file.getPath());
 
         try(PrintWriter writer = PrintWriters.getPrintWriter(file))
         {
@@ -57,10 +57,10 @@ public abstract class ChromLibStateExporter
             {
                 if (run.getRepresentativeDataState() == RunRepresentativeDataState.NotRepresentative)
                 {
-                    _log.info(String.format("'%s' does not contain any library %ss. Ignoring.", run.getFileName(), libTypeString()));
+                    _log.info("'{}' does not contain any library {}s. Ignoring.", run.getFileName(), libTypeString());
                     continue;
                 }
-                _log.info(String.format("Exporting library state of %ss in '%s'.", libTypeString(), run.getFileName()));
+                _log.info("Exporting library state of {}s in '{}'.", libTypeString(), run.getFileName());
                 exportLibStateForRun(run, svc, _log, writer, container, user);
             }
         }
@@ -95,7 +95,7 @@ public abstract class ChromLibStateExporter
         {
             // For each run get a list of peptide groups
             List<LibPeptideGroup> peptideGroups = ChromLibStateManager.getPeptideGroups(run, svc);
-            log.info(String.format("Found %d peptide groups.", peptideGroups.size()));
+            log.info("Found {} peptide groups.", peptideGroups.size());
             for (LibPeptideGroup pepGrp : peptideGroups)
             {
                 // For each run / peptide group write the representative state

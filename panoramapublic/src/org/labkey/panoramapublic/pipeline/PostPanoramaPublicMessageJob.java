@@ -69,7 +69,7 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
 
     private void postMessage()
     {
-        getLogger().info(String.format("%sPosting to: %d message threads", _test ? "TEST MODE: " : "", _experimentAnnotationsIds.size()));
+        getLogger().info("{}Posting to: {} message threads", _test ? "TEST MODE: " : "", _experimentAnnotationsIds.size());
 
         int done = 0;
 
@@ -90,14 +90,14 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
                 ExperimentAnnotations expAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
                 if (expAnnotations == null)
                 {
-                    getLogger().error("Could not find an experiment with Id: " + experimentAnnotationsId);
+                    getLogger().error("Could not find an experiment with Id: {}", experimentAnnotationsId);
                     experimentNotFound.add(experimentAnnotationsId);
                     continue;
                 }
                 JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(expAnnotations);
                 if (submission == null || submission.getLatestSubmission() == null)
                 {
-                    getLogger().error("Could not find a submission request for experiment Id: " + experimentAnnotationsId);
+                    getLogger().error("Could not find a submission request for experiment Id: {}", experimentAnnotationsId);
                     submissionNotFound.add(experimentAnnotationsId);
                     continue;
                 }
@@ -106,8 +106,7 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
 
                 if (announcement == null)
                 {
-                    getLogger().error("Could not find the message thread for experiment Id: " + experimentAnnotationsId
-                            + "; announcement Id: " + submission.getAnnouncementId() + " in the folder " + announcementsContainer.getPath());
+                    getLogger().error("Could not find the message thread for experiment Id: {}; announcement Id: {} in the folder {}", experimentAnnotationsId, submission.getAnnouncementId(), announcementsContainer.getPath());
                     announcementNotFound.add(experimentAnnotationsId);
                     continue;
                 }
@@ -115,7 +114,7 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
                 User submitter = expAnnotations.getSubmitterUser();
                 if (submitter == null)
                 {
-                    getLogger().error("Could not find a submitter user for experiment Id: " + experimentAnnotationsId);
+                    getLogger().error("Could not find a submitter user for experiment Id: {}", experimentAnnotationsId);
                     submitterNotFound.add(experimentAnnotationsId);
                     continue;
                 }
@@ -136,8 +135,7 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
                 }
 
                 done++;
-                getLogger().info(String.format("%s to message thread for experiment Id %d, announcement Id %d. Done: %d",
-                        _test ? "Would post" : "Posted", experimentAnnotationsId, announcement.getRowId(), done));
+                getLogger().info("{} to message thread for experiment Id {}, announcement Id {}. Done: {}", _test ? "Would post" : "Posted", experimentAnnotationsId, announcement.getRowId(), done);
 
             }
             transaction.commit();
@@ -145,19 +143,19 @@ public class PostPanoramaPublicMessageJob extends PipelineJob
 
         if (!experimentNotFound.isEmpty())
         {
-            getLogger().error("Experiments with the following Ids could not be found: " + StringUtils.join(experimentNotFound, ", "));
+            getLogger().error("Experiments with the following Ids could not be found: {}", StringUtils.join(experimentNotFound, ", "));
         }
         if (!submissionNotFound.isEmpty())
         {
-            getLogger().error("Submission requests were not found for the following experiment Ids: " + StringUtils.join(submissionNotFound, ", "));
+            getLogger().error("Submission requests were not found for the following experiment Ids: {}", StringUtils.join(submissionNotFound, ", "));
         }
         if (!announcementNotFound.isEmpty())
         {
-            getLogger().error("Support message threads were not found for the following experiment Ids: " + StringUtils.join(announcementNotFound, ", "));
+            getLogger().error("Support message threads were not found for the following experiment Ids: {}", StringUtils.join(announcementNotFound, ", "));
         }
         if (!submitterNotFound.isEmpty())
         {
-            getLogger().error("Submitter user was not found for the following experiment Ids: " + StringUtils.join(submissionNotFound, ", "));
+            getLogger().error("Submitter user was not found for the following experiment Ids: {}", StringUtils.join(submissionNotFound, ", "));
         }
     }
 

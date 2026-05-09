@@ -11,6 +11,7 @@ import org.labkey.panoramapublic.proteomexchange.validator.DataValidatorListener
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class ValidatorListener implements DataValidatorListener
@@ -28,9 +29,8 @@ public class ValidatorListener implements DataValidatorListener
     public void started(ValidatorStatus status)
     {
         _job.setStatus("Starting data validation");
-        _log.info(String.format("Validating data for %d Skyline documents in %d folders", status.getSkylineDocs().size(),
-                status.getSkylineDocs().stream().filter(doc -> doc.getRunContainer() != null)
-                        .map(SkylineDocValidator::getRunContainer).distinct().count()));
+        _log.info("Validating data for {} Skyline documents in {} folders", status.getSkylineDocs().size(), status.getSkylineDocs().stream().map(SkylineDocValidator::getRunContainer)
+                .filter(Objects::nonNull).distinct().count());
     }
 
     @Override
@@ -42,7 +42,7 @@ public class ValidatorListener implements DataValidatorListener
     @Override
     public void sampleFilesValidated(SkylineDocValidator document)
     {
-        _log.info("Sample file validation for Skyline document: " + document.getName());
+        _log.info("Sample file validation for Skyline document: {}", document.getName());
         if (document.foundAllSampleFiles())
         {
             _log.info("  Found all sample files.");
@@ -50,7 +50,7 @@ public class ValidatorListener implements DataValidatorListener
         else
         {
             _log.info("  MISSING SAMPLE FILES:");
-            document.getMissingSampleFileNames().stream().forEach(name -> _log.info("    " + name));
+            document.getMissingSampleFileNames().stream().forEach(name -> _log.info("    {}", name));
         }
     }
 
@@ -86,13 +86,13 @@ public class ValidatorListener implements DataValidatorListener
 
     private void logModInfo(ValidatorStatus status, Modification mod)
     {
-        _log.info(mod.getId() + ": " + mod);
+        _log.info("{}: {}", mod.getId(), mod);
         for (SkylineDocModification docMod: mod.getDocsWithModification())
         {
             SkylineDocValidator doc = status.getSkylineDocForId(docMod.getSkylineDocValidationId());
             if (doc != null)
             {
-                _log.info("    " + doc.getName());
+                _log.info("    {}", doc.getName());
             }
         }
     }
@@ -120,11 +120,11 @@ public class ValidatorListener implements DataValidatorListener
             _log.info("  MISSING FILES:");
             for (String name : specLib.getMissingSpectrumFileNames())
             {
-                _log.info("    Spectrum File: " + name);
+                _log.info("    Spectrum File: {}", name);
             }
             for (String name : specLib.getMissingIdFileNames())
             {
-                _log.info("    Peptide Id File: " + name);
+                _log.info("    Peptide Id File: {}", name);
             }
         }
     }

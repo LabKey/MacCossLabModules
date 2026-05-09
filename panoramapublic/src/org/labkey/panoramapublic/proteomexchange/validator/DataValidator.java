@@ -196,8 +196,8 @@ public class DataValidator
             var modInfo = new ExperimentIsotopeModInfo();
             modInfo.setExperimentAnnotationsId(expAnnotations.getId());
             modInfo.setModId(pxMod.getDbModId());
-            modInfo.setUnimodId(uModsList.get(0).getId());
-            modInfo.setUnimodName(uModsList.get(0).getName());
+            modInfo.setUnimodId(uModsList.getFirst().getId());
+            modInfo.setUnimodName(uModsList.getFirst().getName());
             for (int i = 1; i < uModsList.size(); i++)
             {
                 var uMod = uModsList.get(i);

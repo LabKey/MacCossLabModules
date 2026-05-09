@@ -369,7 +369,7 @@ public class ExperimentAnnotationsManager
             // Return the first experiment in the container.
             // We are now enforcing a single experiment per container, but there may already be
             // containers with multiple experiments.
-            return expAnnotations.get(0);
+            return expAnnotations.getFirst();
         }
         return null;
     }

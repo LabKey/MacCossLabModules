@@ -174,8 +174,8 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         savePrivateDataReminderSettings("2", "0", "0");
 
         // Request extension for the first experiment.
-        log("Requesting extension for experiment Id " + privateData.get(0).getExperimentAnnotationsId());
-        requestExtension(projectName, privateData.get(0));
+        log("Requesting extension for experiment Id " + privateData.getFirst().getExperimentAnnotationsId());
+        requestExtension(projectName, privateData.getFirst());
         postReminders(projectName, false, privateDataCount, -1, ++pipelineJobCount);
         verifyReminderPosted(projectName, privateData.get(0),1); // No new reminders since extension requested.
         verifyReminderPosted(projectName, privateData.get(1), 2); // Reminder posted since reminder frequency is 0.

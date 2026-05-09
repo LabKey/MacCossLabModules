@@ -15,6 +15,8 @@
  */
 package org.labkey.testresults.model;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.Date;
 
 /**
@@ -118,7 +120,7 @@ public class TestFailDetail implements Comparable<TestFailDetail>
 
     // comparable by date and then id if dates are the same
     @Override
-    public int compareTo(TestFailDetail o)
+    public int compareTo(@NotNull TestFailDetail o)
     {
         int diff;
         if(this.timestamp == null) {

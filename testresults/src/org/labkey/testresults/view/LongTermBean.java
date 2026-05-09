@@ -82,8 +82,7 @@ public class LongTermBean extends TestsDataBean
             if(!m.containsKey(dateString)) {
                 m.put(dateString, 0);
             }
-            int count = m.get(dateString);
-            m.put(dateString, count+1);
+            m.compute(dateString, (_, count) -> count + 1);
         }
         return new JSONObject(m);
     }

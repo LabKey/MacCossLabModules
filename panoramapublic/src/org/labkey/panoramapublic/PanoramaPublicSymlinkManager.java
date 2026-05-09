@@ -74,7 +74,7 @@ public class PanoramaPublicSymlinkManager
                         Path target = Files.readSymbolicLink(filePath);
                         handler.handleSymlink(filePath, target, container, user);
                     } catch (IOException x) {
-                        _log.error("Unable to resolve symlink target for symlink at " + filePath);
+                        _log.error("Unable to resolve symlink target for symlink at {}", filePath);
                     }
                 }
             }
@@ -165,7 +165,7 @@ public class PanoramaPublicSymlinkManager
                     Files.move(target, link, REPLACE_EXISTING); // Move the files back to the next highest version of the experiment
                     addReplaceSymlinkWithTargetAuditEvent(link, target, c, u);
 
-                    _log.info("File moved from " + target + " to " + link);
+                    _log.info("File moved from {} to {}", target, link);
 
                     // This should update the symlinks in the submitted folder as well as
                     // symlinks in versions older than this one to point to the files in the next highest version.
@@ -195,7 +195,7 @@ public class PanoramaPublicSymlinkManager
                 Files.move(target, link, REPLACE_EXISTING);
                 addReplaceSymlinkWithTargetAuditEvent(link, target, c, u);
 
-                _log.info("File moved from " + target + " to " + link);
+                _log.info("File moved from {} to {}", target, link);
 
                 // Symlinks in the source container point to -> current version container on Panorama Public
                 // Symlinks in previous versions of the data on Panorama Public point to -> current version container on Panorama Public
@@ -302,7 +302,7 @@ public class PanoramaPublicSymlinkManager
                     addLinkUpdatedAuditEvent(link, newTarget, c, u);
                     if (log != null)
                     {
-                        log.info("Target for symlink " + link + " updated to " + newTarget);
+                        log.info("Target for symlink {} updated to {}", link, newTarget);
                     }
                 }
                 catch (IOException e)
@@ -335,7 +335,7 @@ public class PanoramaPublicSymlinkManager
                     if (!Files.exists(targetPath))
                     {
                         Files.createDirectory(targetPath);
-                        log.debug("Directory created: " + targetPath);
+                        log.debug("Directory created: {}", targetPath);
                     }
 
                     moveAndSymLinkDirectory(job, targetContainer, file, targetPath.toFile(), log);
@@ -363,12 +363,12 @@ public class PanoramaPublicSymlinkManager
                         if (Files.isSymbolicLink(filePath))
                         {
                             Files.copy(Files.readSymbolicLink(filePath), filePath, REPLACE_EXISTING);
-                            log.debug("Copy file over symlink: " + filePath);
+                            log.debug("Copy file over symlink: {}", filePath);
                         }
 
                         // Copy the file to panorama public
                         Files.copy(filePath, targetPath, REPLACE_EXISTING);
-                        log.debug("Copied file " + filePath + " to " + targetPath);
+                        log.debug("Copied file {} to {}", filePath, targetPath);
                         fcs.fireFileCreateEvent(targetPath, job.getUser(), job.getContainer());
 
                         continue;
@@ -377,11 +377,11 @@ public class PanoramaPublicSymlinkManager
                     // Symbolic link should move the target file over. This would be for a re-copy to public.
                     if (Files.isSymbolicLink(filePath))
                     {
-                        log.debug("Source file is a symlink: " + filePath);
+                        log.debug("Source file is a symlink: {}", filePath);
 
                         Path oldPath = Files.readSymbolicLink(filePath);
                         Files.move(oldPath, targetPath, REPLACE_EXISTING);
-                        log.debug("Moved symlink target  " + oldPath + " to " + targetPath);
+                        log.debug("Moved symlink target  {} to {}", oldPath, targetPath);
                         fcs.fireFileCreateEvent(targetPath, job.getUser(), job.getContainer());
                         addFileMovedAuditEvent(targetPath, oldPath, targetContainer, job.getUser());
 
@@ -397,17 +397,17 @@ public class PanoramaPublicSymlinkManager
                             // Add an audit event in the previous version container.
                             addReplaceTargetWithSymlinkAuditEvent(symlink, targetPath, oldTargetContainer, job.getUser());
                         }
-                        log.debug("Replaced old target with symlink: " + symlink);
+                        log.debug("Replaced old target with symlink: {}", symlink);
                     }
                     else
                     {
                         Files.move(filePath, targetPath, REPLACE_EXISTING);
-                        log.debug("Moved file " + filePath + " to " + targetPath);
+                        log.debug("Moved file {} to {}", filePath, targetPath);
                         fcs.fireFileCreateEvent(targetPath, job.getUser(), job.getContainer());
                         addFileMovedAuditEvent(targetPath, filePath, targetContainer, job.getUser());
 
                         Files.createSymbolicLink(filePath, targetPath);
-                        log.debug("Created symlink " + filePath + " targeting " + targetPath);
+                        log.debug("Created symlink {} targeting {}", filePath, targetPath);
                         addLinkCreatedAuditEvent(filePath, targetPath, sourceContainer, job.getUser());
                         // We don't need to update any symlinks here since the source container should not have any symlink targets.
                     }
@@ -477,13 +477,13 @@ public class PanoramaPublicSymlinkManager
         if(!linkInvalidTarget.isEmpty())
         {
             String linkInvalidTargets = linkInvalidTarget.entrySet().stream().map(String::valueOf).collect(Collectors.joining("\n"));
-            _log.error(linkInvalidTarget.size() + " Symlinks with invalid targets: \n" + linkInvalidTargets);
+            _log.error("{} Symlinks with invalid targets: \n{}", linkInvalidTarget.size(), linkInvalidTargets);
         }
 
         if(!linkWithSymlinkTarget.isEmpty())
         {
             String linkWithSymlinkTargets = linkWithSymlinkTarget.entrySet().stream().map(String::valueOf).collect(Collectors.joining("\n"));
-            _log.error(linkWithSymlinkTarget.size() + " Symlinks targeting symlinks: \n" + linkWithSymlinkTargets);
+            _log.error("{} Symlinks targeting symlinks: \n{}", linkWithSymlinkTarget.size(), linkWithSymlinkTargets);
         }
 
         return linkInvalidTarget.isEmpty() && linkWithSymlinkTarget.isEmpty();

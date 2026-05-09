@@ -206,7 +206,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         for (int row = 0; row < submissionCount; row++)
         {
             Boolean wasCopied = copied.get(row);
-            String rowCopiedVal = submissionTable.getRowDataAsText(row, "Copied").get(0).trim();
+            String rowCopiedVal = submissionTable.getRowDataAsText(row, "Copied").getFirst().trim();
             if (wasCopied)
             {
                 assertNotEquals("Expected a value in the 'Copied' column", "", rowCopiedVal);
@@ -384,7 +384,7 @@ public class PanoramaPublicTest extends PanoramaPublicBaseTest
         assertEquals(count, expListTable.getDataRowCount()); // One row per version of the data
         for (var row = 0; row < count; row++)
         {
-            assertEquals("Unexpected VersionCount", String.valueOf(count), expListTable.getRowDataAsText(row, "VersionCount").get(0).trim());
+            assertEquals("Unexpected VersionCount", String.valueOf(count), expListTable.getRowDataAsText(row, "VersionCount").getFirst().trim());
         }
     }
 

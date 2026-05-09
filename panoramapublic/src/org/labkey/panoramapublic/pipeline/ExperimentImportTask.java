@@ -31,7 +31,6 @@ import org.labkey.api.writer.FileSystemFile;
 import org.labkey.api.writer.VirtualFile;
 import org.labkey.vfs.FileLike;
 
-import java.io.File;
 import java.util.Collections;
 import java.util.List;
 

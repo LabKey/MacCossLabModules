@@ -318,7 +318,7 @@ public class SendTestResultsEmail implements org.quartz.Job
         return new Pair(subject, message.toString());
     }
 
-    public void execute(String ctx, org.labkey.api.security.User from, String emailTo) throws JobExecutionException
+    public void execute(String ctx, org.labkey.api.security.User from, String emailTo)
     {
         List<String> recipients = Collections.singletonList(emailTo);
         if (ctx.equals(MORNING_EMAIL))

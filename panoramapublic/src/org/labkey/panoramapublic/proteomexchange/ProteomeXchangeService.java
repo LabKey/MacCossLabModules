@@ -16,7 +16,6 @@
 package org.labkey.panoramapublic.proteomexchange;
 
 import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.entity.mime.FileBody;
 import org.apache.hc.client5.http.entity.mime.InputStreamBody;
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -32,7 +31,6 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.vfs.FileLike;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -167,7 +165,7 @@ public class ProteomeXchangeService
                 int statusCode = response.getCode();
                 if (statusCode != 200)
                 {
-                    LOG.error("Unsuccessful request to ProteomeXchange.  Status code: " + statusCode + "; Response: " + responseMessage);
+                    LOG.error("Unsuccessful request to ProteomeXchange.  Status code: {}; Response: {}", statusCode, responseMessage);
                     throw new ProteomeXchangeServiceException("Error " + statusCode + " from ProteomeXchange server: " + responseMessage);
                 }
                 return responseMessage;

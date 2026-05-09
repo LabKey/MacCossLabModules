@@ -748,7 +748,7 @@ public class DataValidationManager
             catch (PxException e)
             {
                 errors.add("Error reading psi-ms file for validating instruments. " + e.getMessage());
-                log.error("Error reading psi-ms file for validating instruments in container " + expAnnot.getContainer(), e);
+                log.error("Error reading psi-ms file for validating instruments in container {}", expAnnot.getContainer(), e);
             }
 
             if(instrument == null)

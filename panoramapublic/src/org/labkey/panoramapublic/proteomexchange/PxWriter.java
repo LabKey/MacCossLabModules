@@ -74,7 +74,7 @@ public abstract class PxWriter
 
     abstract void begin(ExperimentAnnotations experimentAnnotations) throws PxException;
     abstract void end() throws PxException;
-    abstract void close() throws PxException;
+    abstract void close();
     abstract void writeChangeLog(String pxChangeLog) throws PxException;
     abstract void writeDatasetSummary(ExperimentAnnotations expAnnotations, Submission submission, Status validationStatus) throws PxException;
     abstract void writeDatasetIdentifierList(String pxId, int version, ShortURLRecord accessUrl) throws PxException;

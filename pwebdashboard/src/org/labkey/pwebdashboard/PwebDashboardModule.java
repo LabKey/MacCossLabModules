@@ -17,7 +17,6 @@
 package org.labkey.pwebdashboard;
 
 import org.jetbrains.annotations.NotNull;
-import org.labkey.api.data.Container;
 import org.labkey.api.module.ModuleContext;
 import org.labkey.api.module.SpringModule;
 import org.labkey.api.view.WebPartFactory;
@@ -70,13 +69,6 @@ public class PwebDashboardModule extends SpringModule
 
     @Override
     public void startupAfterSpringConfig(ModuleContext moduleContext) { }
-
-    @Override
-    @NotNull
-    public Collection<String> getSummary(Container c)
-    {
-        return Collections.emptyList();
-    }
 
     @Override
     @NotNull
