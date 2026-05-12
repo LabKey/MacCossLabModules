@@ -76,7 +76,7 @@ public abstract class ChromLibStateImporter
             throw new IllegalStateException("Callers should start their own transaction");
         }
 
-        _log.info(String.format("Importing %s library state in container '%s' from file '%s'.", libTypeString(), _container.getPath(), libStateFile.getPath()));
+        _log.info("Importing {} library state in container '{}' from file '{}'.", libTypeString(), _container.getPath(), libStateFile.getPath());
 
         try (TabLoader reader = new TabLoader(libStateFile, true))
         {
@@ -132,7 +132,7 @@ public abstract class ChromLibStateImporter
             var map = new HashMap<String, RunRepresentativeDataState>();
             map.put(REPRESENTATIVEDATASTATE, RunRepresentativeDataState.valueOf(runState));
             Table.update(null, _svc.getTableInfoRuns(), map, _currentRun.getId());
-            _log.info(String.format("Importing library state of %ss in '%s'.", libTypeString(), run.getFileName()));
+            _log.info("Importing library state of {}s in '{}'.", libTypeString(), run.getFileName());
 
             onNextRun();
 
@@ -191,7 +191,7 @@ public abstract class ChromLibStateImporter
         DbSchema schema = svc.getUserSchema(user, container).getDbSchema();
         schema.getSqlDialect().appendInClauseSql(sql, entityIds);
         int updated = new SqlExecutor(schema).execute(sql);
-        log.debug("UPDATED " + updated + " rows in " + tableInfo.getName());
+        log.debug("UPDATED {} rows in {}", updated, tableInfo.getName());
     }
 
     private static class ProteinLibStateImporter extends ChromLibStateImporter
@@ -251,10 +251,10 @@ public abstract class ChromLibStateImporter
                 // This is enforced during document import (SkylineDocImporter.insertPeptideGroup).
                 throw new ChromLibStateException(String.format("Expected one db row for peptide group '%s' in the Skyline document '%s'. Container '%s'. " +
                                 "Found %d rows (Ids: %s).",
-                        pepGrpMatches.get(0).getLabel(), getSkyFile(row), _container.getPath(), pepGrpMatches.size(),
+                        pepGrpMatches.getFirst().getLabel(), getSkyFile(row), _container.getPath(), pepGrpMatches.size(),
                         StringUtils.join(pepGrpMatches.stream().map(LibPeptideGroup::getId).collect(Collectors.toList()), ',')));
             }
-            var pepGrp = pepGrpMatches.get(0);
+            var pepGrp = pepGrpMatches.getFirst();
             if (pepGrp.getRepresentativeDataState() != RepresentativeDataState.NotRepresentative)
             {
                 List<Long> pepGrpIdsForState = _pepGrpsForState.computeIfAbsent(pepGrp.getRepresentativeDataState(), l -> new ArrayList<>());
@@ -291,7 +291,7 @@ public abstract class ChromLibStateImporter
             sql.append(" AND gm.Id = gp.generalMoleculeId ");
 
             int updated = new SqlExecutor(svc.getUserSchema(user, container).getDbSchema()).execute(sql);
-            log.debug("UPDATED " + updated + " rows in " + svc.getTableInfoGeneralMolecule().getName());
+            log.debug("UPDATED {} rows in {}", updated, svc.getTableInfoGeneralMolecule().getName());
         }
     }
 
@@ -449,7 +449,7 @@ public abstract class ChromLibStateImporter
                         tsvPrecursor.getKey(), _pepGrpKey.toString(), skyFile, container.getPath(), dbPepGrpMatches.size()));
             }
 
-            var pepGrpMatch = dbPepGrpMatches.get(0);
+            var pepGrpMatch = dbPepGrpMatches.getFirst();
             tsvPrecursor.setPeptideGroupId(pepGrpMatch.getDbPepGrpId());
             tsvPrecursor.setId(pepGrpMatch.getPrecursorDbId(tsvPrecursor));
             return tsvPrecursor;

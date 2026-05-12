@@ -205,22 +205,19 @@ public class PrivateDataReminderJob extends PipelineJob
             {
                 if (settings.isPublicationDismissalRecent(datasetStatus))
                 {
-                    log.info(String.format("User dismissed publication for experiment %d on %s; Publication search deferred (%d months)",
-                            expAnnotations.getId(), dismissedDate, settings.getPublicationSearchFrequency()));
+                    log.info("User dismissed publication for experiment {} on {}; Publication search deferred ({} months)", expAnnotations.getId(), dismissedDate, settings.getPublicationSearchFrequency());
                     return null;
                 }
 
                 // Search deferral expired — re-search NCBI
-                log.info(String.format("Search deferral expired for experiment %d (dismissed %s); re-searching NCBI",
-                        expAnnotations.getId(), dismissedDate));
+                log.info("Search deferral expired for experiment {} (dismissed {}); re-searching NCBI", expAnnotations.getId(), dismissedDate);
                 try
                 {
                     PublicationMatch newMatch = NcbiPublicationSearchService.get().searchForPublication(expAnnotations, log);
                     if (newMatch != null && !newMatch.getPublicationId().equals(datasetStatus.getPotentialPublicationId()))
                     {
                         // Different publication found — return it (caller will save and notify)
-                        log.info(String.format("New publication %s found for experiment %d (previously dismissed %s)",
-                                newMatch.getPublicationId(), expAnnotations.getId(), datasetStatus.getPotentialPublicationId()));
+                        log.info("New publication {} found for experiment {} (previously dismissed {})", newMatch.getPublicationId(), expAnnotations.getId(), datasetStatus.getPotentialPublicationId());
                         return newMatch;
                     }
                     else
@@ -228,12 +225,11 @@ public class PrivateDataReminderJob extends PipelineJob
                         // Same publication or nothing found — update dismissal date to restart search deferral
                         if (testMode)
                         {
-                            log.info(String.format("TEST MODE: No new publication for experiment %d; Would reset search deferral", expAnnotations.getId()));
+                            log.info("TEST MODE: No new publication for experiment {}; Would reset search deferral", expAnnotations.getId());
                         }
                         else
                         {
-                            log.info(String.format("No new publication for experiment %d; resetting search deferral",
-                                    expAnnotations.getId()));
+                            log.info("No new publication for experiment {}; resetting search deferral", expAnnotations.getId());
                             datasetStatus.setUserDismissedPublication(new Date());
                             DatasetStatusManager.update(datasetStatus, user);
                         }
@@ -242,8 +238,7 @@ public class PrivateDataReminderJob extends PipelineJob
                 }
                 catch (Exception e)
                 {
-                    log.error(String.format("Error re-searching publication for experiment %d: %s",
-                            expAnnotations.getId(), e.getMessage()), e);
+                    log.error("Error re-searching publication for experiment {}: {}", expAnnotations.getId(), e.getMessage(), e);
                     return null;
                 }
             }
@@ -251,22 +246,20 @@ public class PrivateDataReminderJob extends PipelineJob
             // If we already have a cached publication ID, use it
             if (!StringUtils.isBlank(datasetStatus.getPotentialPublicationId()))
             {
-                log.info(String.format("Using cached publication %s %s for experiment %d",
-                        datasetStatus.getPublicationType(), datasetStatus.getPotentialPublicationId(), expAnnotations.getId()));
+                log.info("Using cached publication {} {} for experiment {}", datasetStatus.getPublicationType(), datasetStatus.getPotentialPublicationId(), expAnnotations.getId());
                 return PublicationMatch.fromDatasetStatus(datasetStatus);
             }
         }
 
         // Perform the publication search
-        log.info(String.format("Searching for publications for experiment %d", expAnnotations.getId()));
+        log.info("Searching for publications for experiment {}", expAnnotations.getId());
         try
         {
             return NcbiPublicationSearchService.get().searchForPublication(expAnnotations, log);
         }
         catch (Exception e)
         {
-            log.error(String.format("Error searching for publication for experiment %d: %s",
-                    expAnnotations.getId(), e.getMessage()), e);
+            log.error("Error searching for publication for experiment {}: {}", expAnnotations.getId(), e.getMessage(), e);
             return null;
         }
     }
@@ -311,7 +304,7 @@ public class PrivateDataReminderJob extends PipelineJob
 
     private void processExperiments(List<Integer> expAnnotationIds, ProcessingContext context, ProcessingResults processingResults, Logger log)
     {
-        log.info(String.format("Posting reminder message to: %d message threads.", expAnnotationIds.size()));
+        log.info("Posting reminder message to: {} message threads.", expAnnotationIds.size());
 
         Set<Integer> exptIds = new HashSet<>(expAnnotationIds);
         if (_test)
@@ -327,7 +320,7 @@ public class PrivateDataReminderJob extends PipelineJob
             }
             catch (Exception e)
             {
-                log.error(String.format("Error processing experiment %d: %s", experimentAnnotationsId, e.getMessage()), e);
+                log.error("Error processing experiment {}: {}", experimentAnnotationsId, e.getMessage(), e);
             }
         }
 
@@ -668,46 +661,44 @@ public class PrivateDataReminderJob extends PipelineJob
         public void addExperimentNotFound(Integer experimentId)
         {
             _experimentNotFound.add(experimentId);
-            _log.error(String.format("Could not find an experiment with Id: %s.", experimentId));
+            _log.error("Could not find an experiment with Id: {}.", experimentId);
         }
 
         public void addSubmissionNotFound(Integer experimentId)
         {
             _submissionNotFound.add(experimentId);
-            _log.error(String.format("Could not find a submission request for experiment Id: %s.", experimentId));
+            _log.error("Could not find a submission request for experiment Id: {}.", experimentId);
         }
         public void addLatestSubmissionNotFound(Integer experimentId)
         {
             _submissionNotFound.add(experimentId);
-            _log.error(String.format("Submission found but latest submission is null for experiment Id: %s.", experimentId));
+            _log.error("Submission found but latest submission is null for experiment Id: {}.", experimentId);
         }
 
         public void addAnnouncementNotFound(Integer experimentId, JournalSubmission submission, Container announcementsFolder)
         {
             _announcementNotFound.add(experimentId);
-            _log.error(String.format("Could not find the message thread for experiment Id: %s; announcement Id: %s in the folder %s.",
-                    experimentId, submission.getAnnouncementId(), announcementsFolder.getPath()));
+            _log.error("Could not find the message thread for experiment Id: {}; announcement Id: {} in the folder {}.", experimentId, submission.getAnnouncementId(), announcementsFolder.getPath());
         }
 
         public void addSubmitterNotFound(Integer experimentId)
         {
             _submitterNotFound.add(experimentId);
-            _log.error(String.format("Could not find a submitter user for experiment Id: %s.", experimentId));
+            _log.error("Could not find a submitter user for experiment Id: {}.", experimentId);
         }
 
         public void addSkipped(Integer experimentId, ReminderDecision decision)
         {
             _skipped.add(experimentId);
-            _log.info(String.format("Skipping reminder for experiment Id %s - %s.", experimentId, decision.getReason()));
+            _log.info("Skipping reminder for experiment Id {} - {}.", experimentId, decision.getReason());
         }
 
         public void addProcessed(ExperimentAnnotations expAnnotations, Announcement announcement)
         {
             _processed++;
-            _log.info(String.format("Experiment ID: %d; Announcement ID %d; Short URL: %s.",
-                    expAnnotations.getId(), announcement.getRowId(), expAnnotations.getShortUrl().renderShortURL()));
-            _log.info(String.format("Folder: %s", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnotations.getContainer()).getURIString()));
-            _log.info(String.format("Completed: %d of %d", _processed, _total));
+            _log.info("Experiment ID: {}; Announcement ID {}; Short URL: {}.", expAnnotations.getId(), announcement.getRowId(), expAnnotations.getShortUrl().renderShortURL());
+            _log.info("Folder: {}", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnotations.getContainer()).getURIString());
+            _log.info("Completed: {} of {}", _processed, _total);
         }
 
         public void logResults(Logger log)
@@ -720,32 +711,27 @@ public class PrivateDataReminderJob extends PipelineJob
         {
             if (!_experimentNotFound.isEmpty())
             {
-                log.error("Experiments with the following Ids could not be found: " +
-                        StringUtils.join(_experimentNotFound, ", "));
+                log.error("Experiments with the following Ids could not be found: {}", StringUtils.join(_experimentNotFound, ", "));
             }
 
             if (!_submissionNotFound.isEmpty())
             {
-                log.error("Submission requests were not found for the following experiment Ids: " +
-                        StringUtils.join(_submissionNotFound, ", "));
+                log.error("Submission requests were not found for the following experiment Ids: {}", StringUtils.join(_submissionNotFound, ", "));
             }
 
             if (!_announcementNotFound.isEmpty())
             {
-                log.error("Support message threads were not found for the following experiment Ids: " +
-                        StringUtils.join(_announcementNotFound, ", "));
+                log.error("Support message threads were not found for the following experiment Ids: {}", StringUtils.join(_announcementNotFound, ", "));
             }
 
             if (!_submitterNotFound.isEmpty())
             {
-                log.error("Submitter user was not found for the following experiment Ids: " +
-                        StringUtils.join(_submitterNotFound, ", "));
+                log.error("Submitter user was not found for the following experiment Ids: {}", StringUtils.join(_submitterNotFound, ", "));
             }
 
             if (!_skipped.isEmpty())
             {
-                log.info("The following experiments were skipped: " +
-                        StringUtils.join(_skipped, ", "));
+                log.info("The following experiments were skipped: {}", StringUtils.join(_skipped, ", "));
             }
         }
 
@@ -760,16 +746,15 @@ public class PrivateDataReminderJob extends PipelineJob
         {
             if (!_skipped.isEmpty())
             {
-               log.info(String.format("Skipped posting reminders for %s.", StringUtilsLabKey.pluralize(_skipped.size(), "experiment")));
+               log.info("Skipped posting reminders for {}.", StringUtilsLabKey.pluralize(_skipped.size(), "experiment"));
             }
 
             if (_processed > 0)
             {
-                log.info(String.format("Successfully processed %s.", StringUtilsLabKey.pluralize(_processed, "experiment")));
+                log.info("Successfully processed {}.", StringUtilsLabKey.pluralize(_processed, "experiment"));
             }
 
-            log.info(String.format("Processing complete: %d total, %d processed, %d skipped, %d errors",
-                    _total, _processed, _skipped.size(), getTotalErrors()));
+            log.info("Processing complete: {} total, {} processed, {} skipped, {} errors", _total, _processed, _skipped.size(), getTotalErrors());
         }
     }
 }

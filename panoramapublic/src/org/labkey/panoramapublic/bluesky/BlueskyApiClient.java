@@ -72,7 +72,7 @@ public class BlueskyApiClient
         httpPost.setHeader("Content-Type", "application/json");
         httpPost.setEntity(new StringEntity(requestBody.toString(), ContentType.APPLICATION_JSON));
 
-        logger.debug(String.format("Logging into Bluesky as '%s' at endpoint '%s'", config.getAccount(), config.getAuthEndpoint()));
+        logger.debug("Logging into Bluesky as '{}' at endpoint '{}'", config.getAccount(), config.getAuthEndpoint());
 
         BlueskyResponse response;
         try (CloseableHttpClient httpClient = HttpClients.createDefault())
@@ -182,8 +182,7 @@ public class BlueskyApiClient
         httpPost.setHeader("Authorization", "Bearer " + loginInfo.getAccessJwt());
         httpPost.setEntity(new StringEntity(requestBody.toString(), ContentType.APPLICATION_JSON));
 
-        logger.debug(String.format("Posting to Bluesky account %s at endpoint '%s' for Panorama Public data at '%s'",
-                config.getAccount(), config.getPostEndpoint(), exptAnnotations.getShortUrl().renderShortURL()));
+        logger.debug("Posting to Bluesky account {} at endpoint '{}' for Panorama Public data at '{}'", config.getAccount(), config.getPostEndpoint(), exptAnnotations.getShortUrl().renderShortURL());
 
         BlueskyResponse response;
         String blueskyAtUri;
@@ -446,12 +445,12 @@ public class BlueskyApiClient
         }
         catch (FileNotFoundException e)
         {
-            logger.error("Image attachment file not found: " + attachment.getName(), e);
+            logger.error("Image attachment file not found: {}", attachment.getName(), e);
             throw new BlueskyException("Image attachment file not found", e);
         }
         catch (IOException e)
         {
-            logger.error("Error reading image file: " + attachment.getName(), e);
+            logger.error("Error reading image file: {}", attachment.getName(), e);
             throw new BlueskyException("Error reading image file", e);
         }
     }

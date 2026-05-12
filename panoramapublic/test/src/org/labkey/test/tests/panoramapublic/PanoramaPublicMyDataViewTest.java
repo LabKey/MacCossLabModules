@@ -116,7 +116,7 @@ public class PanoramaPublicMyDataViewTest extends PanoramaPublicBaseTest
         int dataPublicCol = table.getColumnIndex(COL_PUBLIC);
         verifyColumnValues(table, catalogEntryCol, dataPublicCol, experimentTitles.size());
 
-        String firstExptTitle = actualExptTitles.get(0);
+        String firstExptTitle = actualExptTitles.getFirst();
 
         // Make one dataset public
         int titleCol = table.getColumnIndex(COL_TITLE);

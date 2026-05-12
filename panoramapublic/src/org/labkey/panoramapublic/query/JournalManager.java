@@ -182,7 +182,7 @@ public class JournalManager
         return (journalId != null);
     }
 
-    public static void setupJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal, User user) throws ValidationException
+    public static void setupJournalAccess(ExperimentAnnotations exptAnnotations, Journal journal, User user)
     {
         Group journalGroup = org.labkey.api.security.SecurityManager.getGroup(journal.getLabkeyGroupId());
 
@@ -327,11 +327,11 @@ public class JournalManager
         // delete the Panorama Public project if it still contains an experiment.
         catch(UnauthorizedException e)
         {
-            LOG.info("User " + user.getEmail() + " (" + user.getUserId() + ") is not authorized to delete the shortUrl: " + shortUrl.getShortURL() + ". Error was: " + e.getMessage());
+            LOG.info("User {} ({}) is not authorized to delete the shortUrl: {}. Error was: {}", user.getEmail(), user.getUserId(), shortUrl.getShortURL(), e.getMessage());
         }
         catch(ValidationException e)
         {
-            LOG.info("Cannot delete the shortUrl: " + shortUrl.getShortURL() + ". Error was: " + e.getMessage());
+            LOG.info("Cannot delete the shortUrl: {}. Error was: {}", shortUrl.getShortURL(), e.getMessage());
         }
     }
 

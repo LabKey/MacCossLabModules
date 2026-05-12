@@ -128,7 +128,7 @@ public class ExperimentModificationGetter
         {
             // If there was only one match for the modification formula and modification sites / terminus then assume
             // that this is the right match.
-            pxMod.setUnimodMatch(uModList.get(0), true);
+            pxMod.setUnimodMatch(uModList.getFirst(), true);
         }
         else
         {
@@ -712,8 +712,8 @@ public class ExperimentModificationGetter
                 else if (matches.size() == 1)
                 {
                     assertTrue("Expected a Unimod Id for modification " + pxMod.getSkylineName(), pxMod.hasUnimodId());
-                    assertEquals("Unexpected Unimod match Id for modification " + pxMod.getSkylineName(), matches.get(0).getId(), pxMod.getUnimodIdInt().intValue());
-                    assertEquals("Unexpected Unimod match name for modification " + pxMod.getSkylineName(), matches.get(0).getName(), pxMod.getName());
+                    assertEquals("Unexpected Unimod match Id for modification " + pxMod.getSkylineName(), matches.getFirst().getId(), pxMod.getUnimodIdInt().intValue());
+                    assertEquals("Unexpected Unimod match name for modification " + pxMod.getSkylineName(), matches.getFirst().getName(), pxMod.getName());
                     assertFalse("modification " + pxMod.getSkylineName() + " has a Unimod Id."
                             + " Unexpected " + pxMod.getPossibleUnimodMatches().size() + " possible matches", pxMod.hasPossibleUnimods());
                 }
@@ -911,8 +911,8 @@ public class ExperimentModificationGetter
                 else if (expectedMatches.size() == 1)
                 {
                     assertTrue("Expected a Unimod Id for isotopic modification " + pxMod.getSkylineName(), pxMod.hasUnimodId());
-                    assertEquals("Unexpected Unimod match Id for isotopic modification " + pxMod.getSkylineName(), expectedMatches.get(0).getId(), pxMod.getUnimodIdInt().intValue());
-                    assertEquals("Unexpected Unimod match name for isotopic modification " + pxMod.getSkylineName(), expectedMatches.get(0).getName(), pxMod.getName());
+                    assertEquals("Unexpected Unimod match Id for isotopic modification " + pxMod.getSkylineName(), expectedMatches.getFirst().getId(), pxMod.getUnimodIdInt().intValue());
+                    assertEquals("Unexpected Unimod match name for isotopic modification " + pxMod.getSkylineName(), expectedMatches.getFirst().getName(), pxMod.getName());
                     assertFalse("Isotopic modification " + pxMod.getSkylineName() + " has a Unimod Id."
                             + " Unexpected " + pxMod.getPossibleUnimodMatches().size() + " possible matches", pxMod.hasPossibleUnimods());
                 }

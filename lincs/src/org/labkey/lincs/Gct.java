@@ -126,12 +126,7 @@ public class Gct
         {
             _multiValueProbeAnnotations = new HashMap<>();
         }
-        GctTable<ProbeExpTypePlate> probePlateValues = _multiValueProbeAnnotations.get(annotationName);
-        if(probePlateValues == null)
-        {
-            probePlateValues = new GctTable<>();
-            _multiValueProbeAnnotations.put(annotationName, probePlateValues);
-        }
+        GctTable<ProbeExpTypePlate> probePlateValues = _multiValueProbeAnnotations.computeIfAbsent(annotationName, _ -> new GctTable<>());
         probePlateValues.addValue(key, value);
     }
 

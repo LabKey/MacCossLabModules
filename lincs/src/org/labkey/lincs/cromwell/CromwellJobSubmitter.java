@@ -49,7 +49,7 @@ public class CromwellJobSubmitter
         Path fileRootPath = fcs.getFileRootPath(container, FileContentService.ContentType.files);
         if(fileRootPath == null)
         {
-            log.error("Cannot get a file root path for container " + container.getPath());
+            log.error("Cannot get a file root path for container {}", container.getPath());
             return null;
         }
 
@@ -57,7 +57,7 @@ public class CromwellJobSubmitter
         var skyDocPath = fileRootPath.resolve(run.getFileName());
         if(!Files.isRegularFile(skyDocPath))
         {
-            log.error("Skyline document file does not exist: " + skyDocPath);
+            log.error("Skyline document file does not exist: {}", skyDocPath);
             return null;
         }
 
@@ -137,13 +137,13 @@ public class CromwellJobSubmitter
         FileResource reportTemplateResource = (FileResource)module.getModuleResolver().lookup(org.labkey.api.util.Path.parse(reportTemplate));
         if(reportTemplateResource == null)
         {
-            log.error("Could not find report template resource: " + reportTemplate);
+            log.error("Could not find report template resource: {}", reportTemplate);
             return null;
         }
         File reportFile = reportTemplateResource.getFile();
         if(reportFile == null)
         {
-            log.error("File not found: " + reportTemplate);
+            log.error("File not found: {}", reportTemplate);
             return null;
         }
         var reportInWorkDir =  workDir.resolve(reportTemplate);
@@ -154,7 +154,7 @@ public class CromwellJobSubmitter
         }
         catch (IOException e)
         {
-            log.error("Error copying report file " + reportFile + " to work directory: " + workDir.toAbsolutePath(), e);
+            log.error("Error copying report file {} to work directory: {}", reportFile, workDir.toAbsolutePath(), e);
             return null;
         }
     }
@@ -167,7 +167,7 @@ public class CromwellJobSubmitter
         {
             if(!Files.isDirectory(dir))
             {
-                log.error("Path exists but is not a directory " + parent.toAbsolutePath());
+                log.error("Path exists but is not a directory {}", parent.toAbsolutePath());
                 return null;
             }
             return dir;
@@ -180,7 +180,7 @@ public class CromwellJobSubmitter
             }
             catch (IOException e)
             {
-                log.error("Could not create subdirectory " + dirName + " in " + parent.toAbsolutePath(), e);
+                log.error("Could not create subdirectory {} in {}", dirName, parent.toAbsolutePath(), e);
             }
         }
         return null;

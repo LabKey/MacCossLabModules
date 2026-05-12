@@ -107,7 +107,7 @@ public class SpecLib extends SpecLibValidation<SkylineDocSpecLib>
                 // Add the database Id of a library used with one of the Skyline documents so that we can display a link to
                 // add the "Add Library Information". The same library can be used with multiple documents. A new row is
                 // created in the targetedms.spectrumlibrary table for each document.
-                jsonObject.put("iSpecLibId", docLibraries.get(0).getSpectrumLibraryId());
+                jsonObject.put("iSpecLibId", docLibraries.getFirst().getSpectrumLibraryId());
             }
         }
         return jsonObject;

@@ -313,7 +313,7 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
         // supports multiple Koina models.
         if(isBibliospecLibrary() && getSpectrumFiles().size() == 1 && getIdFiles().isEmpty())
         {
-            String modelName = getSpectrumFiles().get(0).getName();
+            String modelName = getSpectrumFiles().getFirst().getName();
             return "Prositintensity_prosit_publication_v1".equals(modelName)
                     || StringUtils.startsWith(modelName, "Koina-");
         }

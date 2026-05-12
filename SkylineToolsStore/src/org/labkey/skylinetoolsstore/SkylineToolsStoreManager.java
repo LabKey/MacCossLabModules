@@ -26,8 +26,6 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
 import org.labkey.skylinetoolsstore.model.SkylineTool;
 
-import java.sql.SQLException;
-
 public class SkylineToolsStoreManager
 {
     private static final SkylineToolsStoreManager _instance = new SkylineToolsStoreManager();
@@ -42,7 +40,7 @@ public class SkylineToolsStoreManager
         return _instance;
     }
 
-    public void deleteAllData(Container c) throws SQLException
+    public void deleteAllData(Container c)
     {
         // delete all tools when the container is deleted
         Filter containerFilter = SimpleFilter.createContainerFilter(c);
@@ -124,18 +122,18 @@ public class SkylineToolsStoreManager
         return (tools != null && tools.length > 0) ? tools[0] : null;
     }
 
-    public void deleteTool(int rowId) throws SQLException
+    public void deleteTool(int rowId)
     {
         Table.delete(SkylineToolsStoreSchema.getInstance().getTableInfoSkylineTool(), rowId);
     }
 
-    public SkylineTool insertTool(Container c, User user, SkylineTool tool) throws SQLException
+    public SkylineTool insertTool(Container c, User user, SkylineTool tool)
     {
         tool.setContainer(c.getId());
         return Table.insert(user, SkylineToolsStoreSchema.getInstance().getTableInfoSkylineTool(), tool);
     }
 
-    public SkylineTool updateTool(Container c, User user, SkylineTool tool) throws SQLException
+    public SkylineTool updateTool(Container c, User user, SkylineTool tool)
     {
         if (tool.getContainerId() == null)
             tool.setContainerId(c.getId());
@@ -153,7 +151,7 @@ public class SkylineToolsStoreManager
                             tool, tool.getRowId());
     }
 
-    public SkylineTool recordToolDownload(SkylineTool tool) throws SQLException
+    public SkylineTool recordToolDownload(SkylineTool tool)
     {
         tool.setDownloads(tool.getDownloads() + 1);
         return Table.update(null, SkylineToolsStoreSchema.getInstance().getTableInfoSkylineTool(),

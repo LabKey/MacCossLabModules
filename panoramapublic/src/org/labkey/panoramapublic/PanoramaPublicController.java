@@ -23,9 +23,9 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.action.ApiResponse;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.ConfirmAction;
@@ -229,7 +229,6 @@ import org.springframework.web.servlet.ModelAndView;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
@@ -2595,7 +2594,7 @@ public class PanoramaPublicController extends SpringActionController
             {
                 throw new NotFoundException("Could not find any journals.");
             }
-            form.setJournalId(journals.get(0).getId()); // This is "Panorama Public" on panoramaweb.org
+            form.setJournalId(journals.getFirst().getId()); // This is "Panorama Public" on panoramaweb.org
 
             form.setDataLicense(DataLicense.defaultLicense().name()); // CC BY 4.0 is default license
             form.setKeepPrivate(true);
@@ -3212,12 +3211,6 @@ public class PanoramaPublicController extends SpringActionController
         public void setShortCopyUrl(String shortCopyUrl)
         {
             _shortCopyUrl = shortCopyUrl;
-        }
-
-        @Override
-        public ExperimentAnnotations lookupExperiment()
-        {
-            return ExperimentAnnotationsManager.get(getId());
         }
 
         public Journal lookupJournal()
@@ -4070,7 +4063,6 @@ public class PanoramaPublicController extends SpringActionController
             if (_journal == null)
             {
                 errors.reject(ERROR_MSG, "Could not find a journal with Id: " + _journalSubmission.getJournalId());
-                return;
             }
         }
 
@@ -4315,7 +4307,7 @@ public class PanoramaPublicController extends SpringActionController
                 if(!StringUtils.isBlank(completionForm.getToken()))
                 {
                     completions = NcbiUtils.getCompletions(completionForm.getToken());
-                    LOG.info("found " + completions.size() + " matches from NCBI for query string " + PageFlowUtil.encodeURIComponent(completionForm.getToken()));
+                    LOG.info("found {} matches from NCBI for query string {}", completions.size(), PageFlowUtil.encodeURIComponent(completionForm.getToken()));
                 }
             }
             catch(Exception e)
@@ -4359,23 +4351,23 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         protected void checkIfResubmit(ExperimentAnnotations experimentAnnotations, PublishExperimentForm form, Errors errors)
         {
-            return; // For this action we don't need to check if this is a 'resubmit'
+            // For this action we don't need to check if this is a 'resubmit'
         }
 
         @Override
-        protected ModelAndView getMissingMetadataView(ExperimentAnnotations expAnnotations, MissingMetadata missingMedata, boolean pxSubmission, BindException errors)
+        protected @NotNull ModelAndView getMissingMetadataView(ExperimentAnnotations expAnnotations, MissingMetadata missingMedata, boolean pxSubmission, BindException errors)
         {
             return getMissingMetadataView(new MissingMetadataBean(expAnnotations, pxSubmission, missingMedata, false), "Missing Metadata in Experiment", errors);
         }
 
         @Override
-        protected HtmlView getStartValidationView()
+        protected @NotNull HtmlView getStartValidationView()
         {
             return getStartValidationView(null, false);
         }
 
         @Override
-        protected HtmlView getStartValidationView(DOM.Renderable message)
+        protected @NotNull HtmlView getStartValidationView(DOM.Renderable message)
         {
             return getStartValidationView(message, false);
         }
@@ -4404,7 +4396,6 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void validateCommand(PublishExperimentForm form, Errors errors)
         {
-            return;
         }
 
         @Override
@@ -5179,7 +5170,6 @@ public class PanoramaPublicController extends SpringActionController
                 {
                     errors.reject(ERROR_MSG, "Experiment id " + _expAnnot.getId() + " is not the last copied submission. "
                             + getActionName(this.getClass()) + " is only allowed in the last copy of the submitted data");
-                    return;
                 }
             }
         }
@@ -6517,7 +6507,6 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public void validateCommand(SelectedIdsForm deleteForm, Errors errors)
         {
-            return;
         }
 
         @Override
@@ -7009,7 +6998,6 @@ public class PanoramaPublicController extends SpringActionController
                     if(!form.getPubmedId().matches(PUBMED_ID))
                     {
                         errors.reject(ERROR_MSG, "PubMed ID should be a number with 1 to 8 digits");
-                        return;
                     }
                 }
                 else
@@ -7023,7 +7011,6 @@ public class PanoramaPublicController extends SpringActionController
                     if (!urlValidator.isValid(form.getLink()))
                     {
                         errors.reject(ERROR_MSG, "Publication Link is not valid");
-                        return;
                     }
                 }
                 // Validation removed: no need to ensure that publication details entered in the form differ from the
@@ -7037,7 +7024,6 @@ public class PanoramaPublicController extends SpringActionController
                 // as a result of this action
                 errors.reject(ERROR_MSG, String.format("Data on %s at %s is already public",
                         _journal.getName(), _copiedExperiment.getShortUrl().renderShortURL()));
-                return;
             }
         }
 
@@ -7165,7 +7151,7 @@ public class PanoramaPublicController extends SpringActionController
             BlueskySettings settings = BlueskySettingsManager.getSettings();
             if (!settings.isAutopost())
             {
-                logger.info("Auto-post to Bluesky is disabled. Unable to create a post for experiment Id " + _expAnnot.getId());
+                logger.info("Auto-post to Bluesky is disabled. Unable to create a post for experiment Id {}", _expAnnot.getId());
                 return;
             }
             try
@@ -7174,7 +7160,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             catch (BlueskyException e)
             {
-                logger.error("Unable to create a Bluesky post for experiment Id " + _expAnnot.getId(), e);
+                logger.error("Unable to create a Bluesky post for experiment Id {}", _expAnnot.getId(), e);
             }
         }
 
@@ -9894,7 +9880,7 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public URLHelper getSuccessURL(PanoramaPublicMessageForm form)
+        public @NotNull URLHelper getSuccessURL(PanoramaPublicMessageForm form)
         {
             return PageFlowUtil.urlProvider(PipelineUrls.class).urlBegin(getContainer());
         }
@@ -10732,7 +10718,7 @@ public class PanoramaPublicController extends SpringActionController
                 }
                 catch (Exception e)
                 {
-                    LOG.warn("Failed to fetch citation for " + _publicationMatch.getPublicationIdLabel() + ": " + e.getMessage());
+                    LOG.warn("Failed to fetch citation for {}: {}", _publicationMatch.getPublicationIdLabel(), e.getMessage());
                 }
             }
         }
@@ -10802,7 +10788,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             catch (Exception e)
             {
-                LOG.error("Error searching for publications for experiment " + _exptAnnotations.getId(), e);
+                LOG.error("Error searching for publications for experiment {}", _exptAnnotations.getId(), e);
                 errors.reject(ERROR_MSG, "Error searching for publications: " + e.getMessage());
                 return new SimpleErrorView(errors);
             }
@@ -10903,7 +10889,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             catch (Exception e)
             {
-                LOG.error("Error searching for publications for experiment " + form.getId(), e);
+                LOG.error("Error searching for publications for experiment {}", form.getId(), e);
                 response.put("success", false);
                 response.put("error", "Error searching for publications: " + e.getMessage());
             }

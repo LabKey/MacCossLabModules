@@ -22,6 +22,7 @@ import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.xmlbeans.XmlException;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.MutatingApiAction;
@@ -92,7 +93,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
-import javax.management.modelmbean.XMLParseException;
 import javax.xml.parsers.DocumentBuilder;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -828,7 +828,7 @@ public class TestResultsController extends SpringActionController
             List<Boolean> values = new ArrayList<>();
             sqlSelector.forEach(rs -> values.add(rs.getBoolean(1)));
 
-            if (values.get(0)) {
+            if (values.getFirst()) {
                 SQLFragment sqlFragmentDelete = new SQLFragment();
                 sqlFragmentDelete.append("DELETE FROM " + TestResultsSchema.getTableInfoGlobalSettings());
                 new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentDelete);
@@ -862,7 +862,7 @@ public class TestResultsController extends SpringActionController
             sqlSelector.forEach(rs -> logs.add(rs.getBytes("log")));
             if (logs.isEmpty())
                 return new ApiSimpleResponse("log", null);
-            return new ApiSimpleResponse("log", RunDetail.decode(logs.get(0)));
+            return new ApiSimpleResponse("log", RunDetail.decode(logs.getFirst()));
         }
     }
 
@@ -886,7 +886,7 @@ public class TestResultsController extends SpringActionController
             sqlSelector.forEach(rs -> xmls.add(rs.getBytes("xml")));
             if (xmls.isEmpty())
                 return new ApiSimpleResponse("xml", null);
-            return new ApiSimpleResponse("xml", RunDetail.decode(xmls.get(0)));
+            return new ApiSimpleResponse("xml", RunDetail.decode(xmls.getFirst()));
         }
     }
 
@@ -1232,7 +1232,7 @@ public class TestResultsController extends SpringActionController
                 throw new Exception ("XML from xml_file is empty");
             }
             else
-                _log.info("XML from xml_file has length: " + xml.length());
+                _log.info("XML from xml_file has length: {}", xml.length());
 
             Map<String, Object> res = new HashMap<>();
 
@@ -1254,20 +1254,20 @@ public class TestResultsController extends SpringActionController
 
         private void DebugRequest(HttpServletRequest hsRequest)
         {
-            _log.info("Request is " + hsRequest.getClass());
-            _log.info("Content length is : "+ hsRequest.getContentLength());
-            _log.info("Content type: " + hsRequest.getContentType());
+            _log.info("Request is {}", hsRequest.getClass());
+            _log.info("Content length is : {}", hsRequest.getContentLength());
+            _log.info("Content type: {}", hsRequest.getContentType());
             Enumeration<String> headerNames = hsRequest.getHeaderNames();
             while(headerNames.hasMoreElements())
             {
                 String headerName = headerNames.nextElement();
-                _log.info("Header " + headerName + ": " + hsRequest.getHeader(headerName));
+                _log.info("Header {}: {}", headerName, hsRequest.getHeader(headerName));
             }
 
             if (hsRequest instanceof MultipartRequest request)
             {
-                _log.info("Multi part content type for xml: " + request.getMultipartContentType("xml"));
-                _log.info("Multi part content type for xml_file: " + request.getMultipartContentType("xml_file"));
+                _log.info("Multi part content type for xml: {}", request.getMultipartContentType("xml"));
+                _log.info("Multi part content type for xml_file: {}", request.getMultipartContentType("xml_file"));
             }
         }
     }
@@ -1353,14 +1353,14 @@ public class TestResultsController extends SpringActionController
             {
                 File f = makeFile(c, fileName);
                 if(f.exists()) {
-                    _log.info("A file by the name " + fileName + " is already stored.");
+                    _log.info("A file by the name {} is already stored.", fileName);
                     return "File not saved - file already exists in file system.";
                 }
                 file.transferTo(f);
             }
             catch (IOException e)
             {
-                _log.error("Failed to save " + fileName + ".");
+                _log.error("Failed to save {}.", fileName);
                 e.printStackTrace();
                 return "Failed to save the file.";
             }
@@ -1484,8 +1484,8 @@ public class TestResultsController extends SpringActionController
                     } else if (!elLeak.getAttribute("handles").isEmpty()) { // process handle leak
                         handleLeaks.add(new TestHandleLeakDetail(0, elLeak.getAttribute("name"), type, Float.parseFloat(elLeak.getAttribute("handles"))));
                     } else {
-                        _log.error("Error parsing Leak " + elLeak.getAttribute("name") + ".");
-                        throw new XMLParseException();
+                        _log.error("Error parsing Leak {}.", elLeak.getAttribute("name"));
+                        throw new XmlException("Error parsing Leak");
                     }
                 }
 
@@ -1763,26 +1763,18 @@ public class TestResultsController extends SpringActionController
         long currentTime = endDate.getTime();
         if (viewType == null)
             viewType = defaultTo;
-        switch (viewType)   // all the if/else to set dates for runs based on parameters
+        startDate = switch (viewType)   // all the if/else to set dates for runs based on parameters
         {
-            case "wk":
-            default:
-                startDate = new Date(currentTime - (7 * DAY_IN_MS)); // week
-                break;
-            case "mo":
-                startDate = new Date(currentTime - (30 * DAY_IN_MS)); // month
-                break;
-            case "yr":
-                startDate = new Date(currentTime - (365 * DAY_IN_MS)); // year
-                break;
-            case "at":
+            default -> new Date(currentTime - (7 * DAY_IN_MS)); // week
+            case "mo" -> new Date(currentTime - (30 * DAY_IN_MS)); // month
+            case "yr" -> new Date(currentTime - (365 * DAY_IN_MS)); // year
+            case "at" ->
+            {
                 long d = 1420070400000L;
-                startDate = new Date(d); // all time
-                break;
-            case "day":
-                startDate = new Date(currentTime - (DAY_IN_MS)); // day
-                break;
-        }
+                yield new Date(d);
+            }
+            case "day" -> new Date(currentTime - (DAY_IN_MS)); // day
+        };
         return startDate;
     }
 

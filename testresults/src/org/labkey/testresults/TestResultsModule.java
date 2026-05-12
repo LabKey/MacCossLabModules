@@ -19,7 +19,6 @@ package org.labkey.testresults;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
-import org.labkey.api.data.ContainerManager;
 import org.labkey.api.module.DefaultModule;
 import org.labkey.api.module.ModuleContext;
 import org.labkey.api.security.SecurityManager;
@@ -89,8 +88,6 @@ public class TestResultsModule extends DefaultModule
     @Override
     public void doStartup(ModuleContext moduleContext)
     {
-        // add a container listener so we'll know when our container is deleted:
-        ContainerManager.addContainerListener(new TestResultsContainerListener());
         SecurityManager.registerAllowedConnectionSource("jquery-ui", "https://code.jquery.com/ui/1.13.2/jquery-ui.min.js");
     }
 

@@ -60,7 +60,7 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
     }
 
     @Override
-    public List<ValidatorSampleFile> getSampleFiles()
+    public @NotNull List<ValidatorSampleFile> getSampleFiles()
     {
         return Collections.unmodifiableList(_sampleFiles);
     }

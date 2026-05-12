@@ -42,8 +42,6 @@ import org.labkey.panoramapublic.query.SubmissionManager;
 import java.beans.PropertyChangeEvent;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -82,12 +80,6 @@ public class PanoramaPublicListener implements ExperimentListener, ContainerMana
     public void containerMoved(Container c, Container oldParent, User user)
     {
         PanoramaPublicSymlinkManager.get().fireSymlinkUpdateContainer(oldParent, c, user);
-    }
-
-    @Override
-    public @NotNull Collection<String> canMove(Container c, Container newParent, User user)
-    {
-        return Collections.emptyList();
     }
 
     @Override

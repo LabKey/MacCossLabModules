@@ -478,7 +478,7 @@ public class ExperimentAnnotationsTableInfo extends FilteredTable<PanoramaPublic
                             List<Journal> journals = JournalManager.getJournalsForExperiment(submittedExperimentId != null ? submittedExperimentId : experimentAnnotationsId);
                             if (!journals.isEmpty())
                             {
-                                ActionURL url = new ActionURL("announcements", "thread", journals.get(0).getSupportContainer())
+                                ActionURL url = new ActionURL("announcements", "thread", journals.getFirst().getSupportContainer())
                                             .addParameter("rowId", announcementId);
                                 return url.getEncodedLocalURIString();
                             }

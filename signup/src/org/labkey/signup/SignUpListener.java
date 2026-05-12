@@ -16,60 +16,22 @@
 
 package org.labkey.signup;
 
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-import org.jetbrains.annotations.NotNull;
-import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager.ContainerListener;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 
 import java.beans.PropertyChangeEvent;
-import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Collections;
 
 public class SignUpListener implements ContainerListener, UserManager.UserListener
 {
-    private static final Logger _log = LogManager.getLogger(SignUpListener.class);
-
     @Override
     public void userDeletedFromSite(User user)
     {
-        try
-        {
-            SignUpManager.get().deleteUser(user.getEmail());
-        }
-        catch(SQLException e)
-        {
-            _log.error(e);
-        }
-    }
-
-    @Override
-    public void containerCreated(Container c, User user)
-    {
-    }
-
-    @Override
-    public void containerDeleted(Container c, User user)
-    {
+        SignUpManager.get().deleteUser(user.getEmail());
     }
 
     @Override
     public void propertyChange(PropertyChangeEvent evt)
     {
-    }
-
-    @Override
-    public void containerMoved(Container c, Container oldParent, User user)
-    {
-    }
-
-    @NotNull
-    @Override
-    public Collection<String> canMove(Container c, Container newParent, User user)
-    {
-        return Collections.emptyList();
     }
 }

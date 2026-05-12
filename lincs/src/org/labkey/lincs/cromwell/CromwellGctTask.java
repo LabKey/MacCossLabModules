@@ -38,7 +38,7 @@ public class CromwellGctTask extends PipelineJob.Task<CromwellGctTask.Factory>
         var job = getJob();
         LincsPspJobSupport support = job.getJobSupport(LincsPspJobSupport.class);
 
-        job.getLogger().info("Starting task to create L2 GCT for " + support.getRun().getFileName());
+        job.getLogger().info("Starting task to create L2 GCT for {}", support.getRun().getFileName());
 
         submitCromwellJob(support, job.getLogger());
 
@@ -53,7 +53,7 @@ public class CromwellGctTask extends PipelineJob.Task<CromwellGctTask.Factory>
 
         if(l2GctExistsForRun(run, container))
         {
-            log.info("L2 GCT for run " + run.getFileName() + " exists. Skipping Cromwell job submission.");
+            log.info("L2 GCT for run {} exists. Skipping Cromwell job submission.", run.getFileName());
             return;
         }
 
@@ -103,7 +103,7 @@ public class CromwellGctTask extends PipelineJob.Task<CromwellGctTask.Factory>
         int attempts = 5;
         String lastStatus = "";
 
-        log.info("Checking status of job at " + jobStatusUri);
+        log.info("Checking status of job at {}", jobStatusUri);
         while(true)
         {
             try
@@ -149,7 +149,7 @@ public class CromwellGctTask extends PipelineJob.Task<CromwellGctTask.Factory>
                 }
                 if(!lastStatus.equalsIgnoreCase(status.getJobStatus()))
                 {
-                    log.info("Cromwell job status: " + status.getJobStatus());
+                    log.info("Cromwell job status: {}", status.getJobStatus());
                     lastStatus = status.getJobStatus();
                 }
 

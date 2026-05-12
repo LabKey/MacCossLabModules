@@ -200,7 +200,7 @@ public abstract class UnimodMatchDisplayColumnFactory<T extends ExperimentModInf
             }
             if (list.size() > 1)
             {
-                list.remove(list.size() - 1); // remove the last <BR>
+                list.removeLast(); // remove the last <BR>
             }
             return list;
         }

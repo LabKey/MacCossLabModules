@@ -42,13 +42,13 @@ public class CromwellUtil
             builder.addPart("workflowOptions", new StringBody("{\"write_to_cache\": false, \"read_from_cache\": false}", ContentType.APPLICATION_JSON));
             HttpEntity entity = builder.build();
             post.setEntity(entity);
-            log.info("Submitting job to " + uri);
+            log.info("Submitting job to {}", uri);
 
             return executeRequest(log, client, post, "Submitting job");
         }
         catch (IOException | HttpException e)
         {
-            log.error("Could not submit job. Error was:" + e.getMessage(), e);
+            log.error("Could not submit job. Error was:{}", e.getMessage(), e);
             return null;
         }
     }
@@ -74,7 +74,7 @@ public class CromwellUtil
             CromwellJobStatus status = executeRequest(log, client, post, "Aborting job");
             if(status != null)
             {
-                log.info("Sent request to abort job. Returned status: " + status.getJobStatus());
+                log.info("Sent request to abort job. Returned status: {}", status.getJobStatus());
             }
         }
         catch (IOException | HttpException e)
@@ -99,7 +99,7 @@ public class CromwellUtil
             }
             else
             {
-                log.error(requestDesc + " failed. Response code was " + response.getCode() + " " +  response.getReasonPhrase());
+                log.error("{} failed. Response code was {} {}", requestDesc, response.getCode(), response.getReasonPhrase());
                 EntityUtils.consume(response.getEntity());
                 return null;
             }

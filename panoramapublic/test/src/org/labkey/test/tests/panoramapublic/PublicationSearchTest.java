@@ -309,7 +309,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
                 return null;
             }
             assertEquals("Expected at most one DatasetStatus row for experiment " + exptId, 1, rows.size());
-            return rows.get(0);
+            return rows.getFirst();
         }
         catch (IOException | CommandException e)
         {

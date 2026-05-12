@@ -347,13 +347,6 @@ public class PanoramaPublicModule extends SpringModule
 
     @Override
     @NotNull
-    public Collection<String> getSummary(Container c)
-    {
-        return Collections.emptyList();
-    }
-
-    @Override
-    @NotNull
     public Set<String> getSchemaNames()
     {
         return Collections.singleton(PanoramaPublicSchema.SCHEMA_NAME);

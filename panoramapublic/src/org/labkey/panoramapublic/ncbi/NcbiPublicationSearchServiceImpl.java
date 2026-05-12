@@ -146,7 +146,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (IOException e)
         {
-            log.error("Error submitting a request to NCBI Literature Citation Exporter. URL: " + queryUrl, e);
+            log.error("Error submitting a request to NCBI Literature Citation Exporter. URL: {}", queryUrl, e);
         }
         return null;
     }
@@ -174,7 +174,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (JSONException e)
         {
-            log.error("Error parsing response from NCBI Literature Citation Exporter for " + database.getLabel() + " ID " + publicationId, e);
+            log.error("Error parsing response from NCBI Literature Citation Exporter for {} ID {}", database.getLabel(), publicationId, e);
         }
         return null;
     }
@@ -183,7 +183,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     public PublicationMatch searchForPublication(@NotNull ExperimentAnnotations expAnnotations, @Nullable Logger logger)
     {
         List<PublicationMatch> matches = searchForPublication(expAnnotations, 1, logger, true);
-        return matches.isEmpty() ? null : matches.get(0);
+        return matches.isEmpty() ? null : matches.getFirst();
     }
 
     @Override
@@ -324,7 +324,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (IOException | JSONException e)
         {
-            log.error("Error searching " + database + " with query: " + query , e);
+            log.error("Error searching {} with query: {}", database, query, e);
             return Collections.emptyList();
         }
     }
@@ -958,13 +958,13 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             assertEquals("Abbatiello SE, Mani DR. Mol Cell Proteomics. 2013 Sep;12(9):2623-39. PMID: 23689285; PMCID: PMC3769335.", parseCitation(json, "23689285", DB.PubMed));
 
             // Missing nlm key
-            assertEquals(null, parseCitation("{\"ama\":{\"orig\":\"something\"}}", "23689285", DB.PubMed));
+            assertNull(parseCitation("{\"ama\":{\"orig\":\"something\"}}", "23689285", DB.PubMed));
 
             // Malformed JSON
-            assertEquals(null, parseCitation("not json", "23689285", DB.PubMed));
+            assertNull(parseCitation("not json", "23689285", DB.PubMed));
 
             // Empty nlm object (missing "orig" key)
-            assertEquals(null, parseCitation("{\"nlm\":{}}", "23689285", DB.PubMed));
+            assertNull(parseCitation("{\"nlm\":{}}", "23689285", DB.PubMed));
         }
 
         // -- isPreprint tests --
@@ -1345,14 +1345,14 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             PublicationMatch singleFieldMatch = createMatch("333", true, false, false, true, true, articleDate);
             result = applyPriorityFiltering(List.of(singleFieldMatch, multiFieldMatch), articleDate, LOG);
             assertEquals(1, result.size());
-            assertEquals("222", result.get(0).getPublicationId());
+            assertEquals("222", result.getFirst().getPublicationId());
 
             // Among single-ID matches, author+title both matching preferred
             PublicationMatch bothMatch = createMatch("444", true, false, false, true, true, articleDate);
             PublicationMatch authorOnly = createMatch("555", true, false, false, true, false, articleDate);
             result = applyPriorityFiltering(List.of(authorOnly, bothMatch), articleDate, LOG);
             assertEquals(1, result.size());
-            assertEquals("444", result.get(0).getPublicationId());
+            assertEquals("444", result.getFirst().getPublicationId());
         }
 
         @Test

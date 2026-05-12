@@ -1,6 +1,5 @@
 package org.labkey.panoramapublic;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.admin.AbstractFolderImportFactory;
@@ -82,7 +81,7 @@ public class PanoramaPublicMetadataImporter implements FolderImporter
             {
                 throw new PipelineJobException("More than one experiment found in the folder " + container.getPath());
             }
-            ExpExperiment experiment = experiments.get(0);
+            ExpExperiment experiment = experiments.getFirst();
 
             try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
             {

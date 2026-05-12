@@ -63,7 +63,7 @@ public class LincsPspUtil
         try
         {
             submitJob(run, endPoint, pspJob, log);
-            log.info("Sent POST request to " + endPoint.getUrl());
+            log.info("Sent POST request to {}", endPoint.getUrl());
         }
         catch (IOException e)
         {
@@ -102,14 +102,14 @@ public class LincsPspUtil
                 wr.flush();
             }
 
-            log.info("Sending POST request to " + server.getUrl());
+            log.info("Sending POST request to {}", server.getUrl());
             int responseCode = conn.getResponseCode();
-            log.info("Response code - " + responseCode);
+            log.info("Response code - {}", responseCode);
             String response;
             try (InputStream in = conn.getInputStream())
             {
                 response = IOUtils.toString(in, StandardCharsets.UTF_8);
-                log.info("Response from server: " + response);
+                log.info("Response from server: {}", response);
             }
 
             // String response = "{\"name\":\"LINCS_P100_DIA_Plate52y_annotated_minimized_2017-08-23_11-20-58\",\"assay\":\"P100\",\"status\":\"Waiting_To_Download\",\"id\":\"5c324f97b306063b135bf99c\",\"created\":\"2019-01-06T18:57:27.484Z\",\"last_modified\":\"2019-01-06T18:57:27.484Z\",\"level 2\":{\"panorama\":{\"method\":\"GET\",\"url\":\"https://panoramaweb-dr.gs.washington.edu/lincs/LINCS-DCIC/PSP/P100/runGCTReportApi.view?runId=32394&remote=true&reportName=GCT%20File%20P100\"}},\"level 3\":{\"panorama\":{\"method\":\"PUT\",\"url\":\"https://panoramaweb-dr.gs.washington.edu/_webdav/LINCS-DCIC/PSP/P100/%40files/GCT/LINCS_P100_DIA_Plate52y_annotated_minimized_2017-08-23_11-20-58_LVL3.gct\"}},\"level 4\":{\"panorama\":{\"method\":\"PUT\",\"url\":\"https://panoramaweb-dr.gs.washington.edu/_webdav/LINCS-DCIC/PSP/P100/%40files/GCT/LINCS_P100_DIA_Plate52y_annotated_minimized_2017-08-23_11-20-58_LVL4.gct\"}},\"config\":{\"panorama\":{\"method\":\"PUT\",\"url\":\"https://panoramaweb-dr.gs.washington.edu/_webdav/LINCS-DCIC/PSP/P100/%40files/GCT/LINCS_P100_DIA_Plate52y_annotated_minimized_2017-08-23_11-20-58.cfg\"}}}";
@@ -206,7 +206,7 @@ public class LincsPspUtil
 
     private static boolean jobExists(String name, PspEndpoint server, Logger log) throws LincsPspException
     {
-        log.info("Looking for existing job with name " + name);
+        log.info("Looking for existing job with name {}", name);
 
         HttpURLConnection conn = null;
         URL url = null;
@@ -230,8 +230,8 @@ public class LincsPspUtil
             }
             if (responseCode != 200)
             {
-                log.error("Server returned response code " + responseCode);
-                log.info("Response from server: " + response);
+                log.error("Server returned response code {}", responseCode);
+                log.info("Response from server: {}", response);
                 throw new LincsPspException("Error looking for job with name " + name + ". URL: " + url);
             }
             else
@@ -239,7 +239,7 @@ public class LincsPspUtil
                 JSONArray json = getJsonArray(response);
                 if(!json.isEmpty())
                 {
-                    log.info("Job with name " + name + "exists.");
+                    log.info("Job with name {}exists.", name);
                     return true;
                 }
             }

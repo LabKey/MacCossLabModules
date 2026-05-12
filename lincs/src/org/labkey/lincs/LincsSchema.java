@@ -16,9 +16,9 @@
 
 package org.labkey.lincs;
 
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONObject;
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.collections.CaseInsensitiveHashSet;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerFilter;
@@ -158,7 +158,7 @@ public class LincsSchema extends UserSchema
     }
 
     @Override
-    public QueryView createView(ViewContext context, @NotNull QuerySettings settings, BindException errors)
+    public @NotNull QueryView createView(ViewContext context, @NotNull QuerySettings settings, BindException errors)
     {
         if(LincsDataTable.NAME.equalsIgnoreCase(settings.getQueryName()))
         {

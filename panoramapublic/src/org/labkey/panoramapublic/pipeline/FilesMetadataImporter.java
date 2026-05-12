@@ -55,20 +55,20 @@ public class FilesMetadataImporter
 
     private void readXmlAndImport(Container container, VirtualFile vf, FileContentService fcs, ExperimentService expSvc, User user, Logger log) throws PipelineJobException
     {
-        log.debug(String.format("[%s]  Reading files metadata from %s", container.getPath(), vf.getLocation()));
+        log.debug("[{}]  Reading files metadata from {}", container.getPath(), vf.getLocation());
 
         try (InputStream is = vf.getInputStream(FilesMetadataWriter.FILENAME))
         {
             if (is == null)
             {
-                log.error(String.format("Could not find expected file %s in %s.", FilesMetadataWriter.FILENAME,  vf.getLocation()));
+                log.error("Could not find expected file {} in {}.", FilesMetadataWriter.FILENAME, vf.getLocation());
                 return;
             }
 
             Path fileRoot = fcs.getFileRootPath(container, FileContentService.ContentType.files);
             if (fileRoot == null)
             {
-                log.error("Could not get file root for " + container.getPath());
+                log.error("Could not get file root for {}", container.getPath());
                 return;
             }
 
@@ -93,7 +93,7 @@ public class FilesMetadataImporter
                             }
                             catch (ValidationException validationErrors)
                             {
-                                log.error("Error setting comment on " + data.getFilePath(), validationErrors);
+                                log.error("Error setting comment on {}", data.getFilePath(), validationErrors);
                             }
                         }
                     }

@@ -269,7 +269,7 @@ public class NextFlowController extends SpringActionController
             }
             // NextFlow operates on the full directory so show the list to the user, regardless of what they selected
             // from the file listing
-            FileLike inputDir = selectedFiles.get(0).getParent();
+            FileLike inputDir = selectedFiles.getFirst().getParent();
 
             List<FileLike> inputFiles = inputDir.getChildren().stream().filter(new PipelineProvider.FileTypesEntryFilter(NextFlowProtocol.INPUT_TYPES)).toList();
             if (inputFiles.isEmpty())

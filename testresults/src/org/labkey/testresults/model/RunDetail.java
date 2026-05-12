@@ -15,6 +15,7 @@
  */
 package org.labkey.testresults.model;
 
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.data.Container;
 import org.labkey.api.reader.Readers;
 
@@ -341,7 +342,7 @@ public class RunDetail implements Comparable<RunDetail>
     }
 
     @Override
-    public int compareTo(RunDetail other) {
+    public int compareTo(@NotNull RunDetail other) {
         if (this.posttime != null && other.posttime != null)
             return this.posttime.compareTo(other.posttime);
         return Integer.compare(this.id, other.id);

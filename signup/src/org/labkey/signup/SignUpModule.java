@@ -18,7 +18,6 @@ package org.labkey.signup;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.module.DefaultModule;
 import org.labkey.api.module.ModuleContext;
@@ -30,7 +29,6 @@ import org.labkey.api.view.JspView;
 import org.labkey.api.view.Portal;
 import org.labkey.api.view.ViewContext;
 import org.labkey.api.view.WebPartFactory;
-import org.labkey.api.view.WebPartView;
 import org.labkey.signup.SignUpController.SignupForm;
 
 import java.util.ArrayList;
@@ -100,13 +98,6 @@ public class SignUpModule extends DefaultModule
 
         // Add a link in the admin console
         AdminConsole.addLink(AdminConsole.SettingsLinkType.Configuration, "SignUp", SignUpController.getShowSignUpAdminUrl(), SiteAdminPermission.class);
-    }
-
-    @Override
-    @NotNull
-    public Collection<String> getSummary(Container c)
-    {
-        return Collections.emptyList();
     }
 
     @Override

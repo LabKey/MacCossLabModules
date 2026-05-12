@@ -16,7 +16,6 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.QueryForeignKey;
 import org.labkey.api.query.QueryUpdateService;
 import org.labkey.api.query.RowIdQueryUpdateService;
-import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.security.permissions.Permission;
@@ -148,13 +147,13 @@ public class DataValidationTableInfo extends PanoramaPublicTable
         }
 
         @Override
-        protected DataValidation insert(User user, Container container, DataValidation bean) throws ValidationException
+        protected DataValidation insert(User user, Container container, DataValidation bean)
         {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        protected DataValidation update(User user, Container container, DataValidation bean, Integer oldKey) throws ValidationException
+        protected DataValidation update(User user, Container container, DataValidation bean, Integer oldKey)
         {
             throw new UnsupportedOperationException();
         }

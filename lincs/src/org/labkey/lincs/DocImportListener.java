@@ -70,7 +70,7 @@ public class DocImportListener implements ExperimentListener, SkylineDocumentImp
                 }
                 catch (IOException e)
                 {
-                    _log.warn("LINCS: Error listing files in folder " + FileUtil.getAbsolutePath(gctDir), e);
+                    _log.warn("LINCS: Error listing files in folder {}", FileUtil.getAbsolutePath(gctDir), e);
                     return;
                 }
 
@@ -81,7 +81,7 @@ public class DocImportListener implements ExperimentListener, SkylineDocumentImp
                     }
                     catch (IOException e)
                     {
-                        _log.warn("LINCS: Error deleting file " + FileUtil.getAbsolutePath(path), e);
+                        _log.warn("LINCS: Error deleting file {}", FileUtil.getAbsolutePath(path), e);
                     }
                 });
             }
@@ -115,7 +115,7 @@ public class DocImportListener implements ExperimentListener, SkylineDocumentImp
         PipeRoot root = PipelineService.get().findPipelineRoot(container);
         if (root == null || !root.isValid())
         {
-            _log.error("LINCS: No valid pipeline root found for " + container.getPath());
+            _log.error("LINCS: No valid pipeline root found for {}", container.getPath());
             return;
         }
 
@@ -129,7 +129,7 @@ public class DocImportListener implements ExperimentListener, SkylineDocumentImp
         }
         catch (PipelineValidationException e)
         {
-            _log.error("Error adding LINCS pipeline job to queue. Message: " + e.getMessage(), e);
+            _log.error("Error adding LINCS pipeline job to queue. Message: {}", e.getMessage(), e);
             if(pspJob != null)
             {
                 LincsManager.get().deleteLincsPspJob(pspJob);
@@ -138,7 +138,7 @@ public class DocImportListener implements ExperimentListener, SkylineDocumentImp
         }
 
         long jobId = PipelineService.get().getJobId(user, container, job.getJobGUID());
-        _log.info("LINCS: Queued job Id " + jobId +" for creating GCT files for " + skylineRun.getFileName() + ". Container: " + container.getPath());
+        _log.info("LINCS: Queued job Id {} for creating GCT files for {}. Container: {}", jobId, skylineRun.getFileName(), container.getPath());
 
         pspJob.setPipelineJobId(jobId);
         LincsManager.get().updatePipelineJobId(pspJob);

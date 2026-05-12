@@ -144,11 +144,7 @@ public class RunDownBean extends TestsDataBean
             : new TestsDataBean(getStatRuns(), new User[0]);
         TestFailDetail[] failures = runs.getFailures();
         for(TestFailDetail fail: failures) {
-            List<TestFailDetail> list = m.get(fail.getTestName());
-            if (list == null) {
-                list = new ArrayList<>();
-                m.put(fail.getTestName(), list);
-            }
+            List<TestFailDetail> list = m.computeIfAbsent(fail.getTestName(), _ -> new ArrayList<>());
             list.add(fail);
         }
         Map.Entry<String, List<TestFailDetail>>[] entries = m.entrySet().toArray(new Map.Entry[0]);

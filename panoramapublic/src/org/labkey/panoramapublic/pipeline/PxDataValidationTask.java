@@ -49,7 +49,7 @@ public class PxDataValidationTask extends PipelineJob.Task<PxDataValidationTask.
                 throw new PipelineJobException(String.format("Could not find a data validation row for Id %d in folder '%s'.",
                         jobSupport.getValidationId(), exptAnnotations.getContainer().getPath()));
             }
-            log.info(String.format("Validating data for experiment Id: %d, validation Id: %d", exptAnnotations.getId(), validation.getId()));
+            log.info("Validating data for experiment Id: {}, validation Id: {}", exptAnnotations.getId(), validation.getId());
             Long pipelineJobId = (PipelineService.get().getJobId(job.getUser(), job.getContainer(), job.getJobGUID()));
             if (pipelineJobId != null && pipelineJobId != validation.getJobId())
             {
@@ -63,7 +63,7 @@ public class PxDataValidationTask extends PipelineJob.Task<PxDataValidationTask.
             DataValidator validator = new DataValidator(exptAnnotations, validation, listener);
             ValidatorStatus status = validator.validateExperiment(job.getUser());
 
-            log.info("Data validation is complete. Status is " + status.getValidation().getStatus());
+            log.info("Data validation is complete. Status is {}", status.getValidation().getStatus());
         }
         catch (CancelledException e)
         {

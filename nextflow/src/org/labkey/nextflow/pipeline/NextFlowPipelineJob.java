@@ -44,7 +44,7 @@ public class NextFlowPipelineJob extends AbstractFileAnalysisJob
 
     public static NextFlowPipelineJob create(ViewBackgroundInfo info, @NotNull PipeRoot root, Path templateConfig, List<FileLike> inputFiles) throws IOException
     {
-        FileLike parentDir = inputFiles.get(0).getParent();
+        FileLike parentDir = inputFiles.getFirst().getParent();
 
         String jobName = FileUtil.makeFileNameWithTimestamp("NextFlow");
         FileLike jobDir = parentDir.resolveChild(jobName);

@@ -59,7 +59,7 @@ public class PanoramaPublicFileImporter implements FolderImporter
 
         if (null == targetRoot)
         {
-            log.error("File copy target folder not found: " + ctx.getContainer().getPath());
+            log.error("File copy target folder not found: {}", ctx.getContainer().getPath());
             return;
         }
 
@@ -77,17 +77,17 @@ public class PanoramaPublicFileImporter implements FolderImporter
 
             if (!targetFiles.exists())
             {
-                log.warn("Panorama public file copy target not found. Creating directory: " + targetFiles);
+                log.warn("Panorama public file copy target not found. Creating directory: {}", targetFiles);
                 Files.createDirectories(targetFiles.toPath());
             }
 
             if (expJob.isMoveAndSymlink())
             {
-                log.info("Moving files to folder " + ctx.getContainer().getPath() + " and creating symlinks");
+                log.info("Moving files to folder {} and creating symlinks", ctx.getContainer().getPath());
             }
             else
             {
-                log.info("Copying files to folder " + ctx.getContainer().getPath());
+                log.info("Copying files to folder {}", ctx.getContainer().getPath());
             }
             PanoramaPublicSymlinkManager.get().moveAndSymLinkDirectory(expJob, ctx.getContainer(), sourceFiles, targetFiles, log);
 
@@ -98,7 +98,7 @@ public class PanoramaPublicFileImporter implements FolderImporter
 
     private void alignDataFileUrls(User user, Container targetContainer, Logger log) throws BatchValidationException, ImportException
     {
-        log.info("Aligning data files urls in folder: " + targetContainer.getPath());
+        log.info("Aligning data files urls in folder: {}", targetContainer.getPath());
 
         FileContentService fcs = FileContentService.get();
         if (null == fcs)
@@ -118,7 +118,7 @@ public class PanoramaPublicFileImporter implements FolderImporter
         {
             run.setFilePathRootPath(fileRootPath);
             run.save(user);
-            log.debug("Setting filePathRoot on copied run: " + run.getName() + " to: " + fileRootPath);
+            log.debug("Setting filePathRoot on copied run: {} to: {}", run.getName(), fileRootPath);
 
             for (ExpData data : run.getAllDataUsedByRun())
             {
@@ -135,17 +135,17 @@ public class PanoramaPublicFileImporter implements FolderImporter
                         {
                             data.setDataFileURI(newDataPath.toUri());
                             data.save(user);
-                            log.debug("Setting dataFileUri on copied data: " + data.getName() + " to: " + newDataPath);
+                            log.debug("Setting dataFileUri on copied data: {} to: {}", data.getName(), newDataPath);
                         }
                         else
                         {
-                            log.error("Data file not found: " + newDataPath.toUri());
+                            log.error("Data file not found: {}", newDataPath.toUri());
                             errors = true;
                         }
                     }
                     else
                     {
-                        log.error("Unexpected data file path. Could not align dataFileUri. " + data.getFilePath().toString());
+                        log.error("Unexpected data file path. Could not align dataFileUri. {}", data.getFilePath().toString());
                         errors = true;
                     }
                 }
@@ -177,9 +177,9 @@ public class PanoramaPublicFileImporter implements FolderImporter
      * This method finds a match and updates skydDataId in TargetedMSRun in the case where the skyDataId is not linked
      * to the ExpRun.
      */
-    private void updateSkydDataIds(User user, Container targetContainer, Logger log) throws BatchValidationException, ImportException
+    private void updateSkydDataIds(User user, Container targetContainer, Logger log) throws ImportException
     {
-        log.info("Updating skydDataIds in folder: " + targetContainer.getPath());
+        log.info("Updating skydDataIds in folder: {}", targetContainer.getPath());
 
         boolean errors = false;
         ExperimentService expService = ExperimentService.get();
@@ -197,7 +197,7 @@ public class PanoramaPublicFileImporter implements FolderImporter
             var skydData = expService.getExpData(skydDataId);
             if (skydData == null)
             {
-                log.error("Could not find a row for skydDataId " + skydDataId + " for run " + targetedmsRun.getFileName());
+                log.error("Could not find a row for skydDataId {} for run {}", skydDataId, targetedmsRun.getFileName());
                 errors = true;
             }
             else if (skydData.getRun() == null)
@@ -212,12 +212,12 @@ public class PanoramaPublicFileImporter implements FolderImporter
                 if (matchingData.isPresent())
                 {
                     ExpData data = matchingData.get();
-                    log.debug("Updating skydDataId for run " + targetedmsRun.getFileName() + " to " + data.getRowId());
+                    log.debug("Updating skydDataId for run {} to {}", targetedmsRun.getFileName(), data.getRowId());
                     tmsService.updateSkydDataId(targetedmsRun, data, user);
                 }
                 else
                 {
-                    log.error("Could not find matching skyData for run " + targetedmsRun.getFileName());
+                    log.error("Could not find matching skyData for run {}", targetedmsRun.getFileName());
                     errors = true;
                 }
             }

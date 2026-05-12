@@ -252,7 +252,7 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
         var cells = elementCache().getModificationRowCells(rowIdx);
         List<String> cellValues = new ArrayList<>();
         cells.forEach(cell -> cellValues.add(cell.getText()));
-        assertTrue(modName + " was not found in modification row " + rowIdx, cellValues.get(1).equals(modName));
+        assertEquals(modName + " was not found in modification row " + rowIdx, cellValues.get(1), modName);
 
         if (unimodId == null)
         {
@@ -263,7 +263,7 @@ public class DataValidationPage extends LabKeyPage<DataValidationPage.ElementCac
             String expectedUnimod = unimodId + (unimodId2 != null ? " + " + unimodId2 : "");
             assertTrue(cellValues + " does not contain " + expectedUnimod, cellValues.get(2).contains(expectedUnimod));
             String expectedUnimodName = unimodName + (unimodName2 != null ? " + " +unimodName2 : "");
-            assertTrue(cellValues + " does not contain " + expectedUnimodName, cellValues.get(3).equals(expectedUnimodName));
+            assertEquals(cellValues + " does not contain " + expectedUnimodName, cellValues.get(3), expectedUnimodName);
         }
     }
 

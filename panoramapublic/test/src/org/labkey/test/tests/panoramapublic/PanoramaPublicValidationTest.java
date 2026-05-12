@@ -331,8 +331,8 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
                 Collections.emptyList(), peptideIdSources);
 
         // Upload the .speclib file.
-        log("Uploading file " + peptideIdSources.get(0) + " to folder - " + folderName);
-        uploadToRawFiles(testFilesFolder + "/" + peptideIdSources.get(0));
+        log("Uploading file " + peptideIdSources.getFirst() + " to folder - " + folderName);
+        uploadToRawFiles(testFilesFolder + "/" + peptideIdSources.getFirst());
         log("Running data validation job; " + peptideIdSources.get(0) + " uploaded");
         validationPage = submitValidationJob();
         verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,
@@ -372,7 +372,7 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
         String subdir = "DIA-NN Results";
         goToRawDataTab();
         _fileBrowserHelper.createFolder(subdir);
-        _fileBrowserHelper.moveFile(peptideIdSources.get(0), subdir);
+        _fileBrowserHelper.moveFile(peptideIdSources.getFirst(), subdir);
         log("Running data validation job; Speclib file moved to subdirectory");
         validationPage = submitValidationJob();
         verifySpecLibSourceFiles(validationPage, libraryName, skylineDoc, librarySize,

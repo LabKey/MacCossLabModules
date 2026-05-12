@@ -117,7 +117,7 @@ public class JournalSubmission
      */
     public @Nullable Submission getLatestSubmission()
     {
-        return !submissions().isEmpty() ? submissions().get(0) : null;
+        return !submissions().isEmpty() ? submissions().getFirst() : null;
     }
 
     /**
@@ -142,7 +142,7 @@ public class JournalSubmission
     public @Nullable Submission getLatestCopiedSubmission()
     {
         List<Submission> copiedSubmissions = getCopiedSubmissions();
-        return !copiedSubmissions.isEmpty() ? copiedSubmissions.get(0) : null;
+        return !copiedSubmissions.isEmpty() ? copiedSubmissions.getFirst() : null;
     }
 
     /**

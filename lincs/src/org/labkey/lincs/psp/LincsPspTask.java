@@ -32,7 +32,7 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
         PipelineJob job = getJob();
         LincsPspJobSupport support = job.getJobSupport(LincsPspJobSupport.class);
 
-        job.getLogger().info("Running LINCS PSP pipeline for " + support.getRun().getBaseName());
+        job.getLogger().info("Running LINCS PSP pipeline for {}", support.getRun().getBaseName());
 
         postToPsp(support, job.getUser(), job.getLogger());
 
@@ -62,21 +62,21 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
         {
             if (oldPspJob != null)
             {
-                log.info("Resubmitting job for runId: " + run.getId() + ", name: " + run.getBaseName());
+                log.info("Resubmitting job for runId: {}, name: {}", run.getId(), run.getBaseName());
                 log.info("Old job details: ");
-                log.info("Id: " + oldPspJob.getId());
-                log.info("Pipeline job Id: " + oldPspJob.getPipelineJobId());
-                log.info("Run Id: " + oldPspJob.getRunId());
-                log.info("PSP Job Id: " + oldPspJob.getPspJobId());
-                log.info("PSP Job name: " + oldPspJob.getPspJobName());
-                log.info("PSP Job status: " + oldPspJob.getStatus());
-                log.info("JSON: " + oldPspJob.getJson());
+                log.info("Id: {}", oldPspJob.getId());
+                log.info("Pipeline job Id: {}", oldPspJob.getPipelineJobId());
+                log.info("Run Id: {}", oldPspJob.getRunId());
+                log.info("PSP Job Id: {}", oldPspJob.getPspJobId());
+                log.info("PSP Job name: {}", oldPspJob.getPspJobName());
+                log.info("PSP Job status: {}", oldPspJob.getStatus());
+                log.info("JSON: {}", oldPspJob.getJson());
 
                 log.info(("Resubmitting..."));
             }
             else
             {
-                log.info("Submitting job for runId: " + run.getId() + ", name: " + run.getBaseName());
+                log.info("Submitting job for runId: {}, name: {}", run.getId(), run.getBaseName());
             }
 
             if(pspJob.getPipelineJobId() == null)
@@ -89,7 +89,7 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
                     .getEffectiveValue(container);
 
             pspJob.setPspJobName(LincsPspUtil.getJobName(run, endpoint, suffix, log));
-            log.info("PSP job name: " + pspJob.getPspJobName());
+            log.info("PSP job name: {}", pspJob.getPspJobName());
 
             LincsPspUtil.submitPspJob(endpoint, pspJob, run, user, log);
         }
@@ -107,18 +107,18 @@ public class LincsPspTask extends PipelineJob.Task<LincsPspTask.Factory>
         {
             try
             {
-                log.info("Checking status of job " + pspJob.getPspJobId());
+                log.info("Checking status of job {}", pspJob.getPspJobId());
                 LincsPspUtil.updateJobStatus(endpoint, pspJob, user);
-                log.info("Status: " + pspJob.getStatus());
+                log.info("Status: {}", pspJob.getStatus());
 
                 if(pspJob.isSuccess())
                 {
-                    log.info("PSP job completed with status: " + pspJob.getStatus());
+                    log.info("PSP job completed with status: {}", pspJob.getStatus());
                     break;
                 }
                 if(pspJob.hasError())
                 {
-                    log.error("Error in PSP job. Error: " + pspJob.getError());
+                    log.error("Error in PSP job. Error: {}", pspJob.getError());
                     break;
                 }
             }

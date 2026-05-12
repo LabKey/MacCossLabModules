@@ -24,6 +24,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.jetbrains.annotations.NotNull;
 import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.NavTrailAction;
 import org.labkey.api.action.PermissionCheckable;
@@ -468,7 +469,7 @@ public class SkylineToolsStoreController extends SpringActionController
         }
 
         @Override
-        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
+        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
         {
             final String sender = httpServletRequest.getParameter("sender");
             final String updateTargetString = StringUtils.trimToNull(httpServletRequest.getParameter("updatetarget"));
@@ -703,7 +704,7 @@ public class SkylineToolsStoreController extends SpringActionController
         }
 
         @Override
-        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
+        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
         {
             final String suppTargetString = httpServletRequest.getParameter("supptarget");
             int suppTarget = NumberUtils.toInt(suppTargetString, -1);
@@ -765,7 +766,7 @@ public class SkylineToolsStoreController extends SpringActionController
         }
 
         @Override
-        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
+        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
         {
             final int suppTarget = Integer.parseInt(httpServletRequest.getParameter("supptarget"));
 
@@ -896,7 +897,7 @@ public class SkylineToolsStoreController extends SpringActionController
         private final Class REQ_PERMS = DeletePermission.class;
 
         @Override
-        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
+        public ModelAndView handleRequestInternal(@NotNull HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
         {
             int id;
             try {
@@ -961,7 +962,7 @@ public class SkylineToolsStoreController extends SpringActionController
         public static final String DOWNLOADED_COOKIE_PREFIX = "downloadtool";
 
         @Override
-        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
+        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
         {
             final int id = NumberUtils.toInt(httpServletRequest.getParameter("id"), -1);
             final String toolName = httpServletRequest.getParameter("name");
@@ -1239,7 +1240,7 @@ public class SkylineToolsStoreController extends SpringActionController
         }
 
         @Override
-        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
+        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
         {
             final String sender = httpServletRequest.getParameter("sender");
             final String updateTargetString = httpServletRequest.getParameter("updatetarget");
@@ -1312,7 +1313,7 @@ public class SkylineToolsStoreController extends SpringActionController
         private final Class REQ_PERMS = InsertPermission.class;
 
         @Override
-        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws Exception
+        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
         {
             final int id = Integer.parseInt(httpServletRequest.getParameter("id"));
 
@@ -1420,7 +1421,7 @@ public class SkylineToolsStoreController extends SpringActionController
     public class GetToolsApiAction extends AbstractController implements PermissionCheckable
     {
         @Override
-        public ModelAndView handleRequestInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) throws IOException
+        public ModelAndView handleRequestInternal(@NotNull HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws IOException
         {
             StringBuilder sb = new StringBuilder();
 
