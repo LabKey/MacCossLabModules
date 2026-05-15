@@ -50,6 +50,8 @@ public class TestsDataBean
     private String viewType;
     private Date startDate;
     private Date endDate;
+    private String username;
+    private String dataInclude;
     private Integer boundaryWarning;
     private Integer boundaryError;
 
@@ -97,6 +99,26 @@ public class TestsDataBean
     public void setViewType(String viewType)
     {
         this.viewType = viewType;
+    }
+
+    public String getUsername()
+    {
+        return username;
+    }
+
+    public void setUsername(String username)
+    {
+        this.username = username;
+    }
+
+    public String getDataInclude()
+    {
+        return dataInclude;
+    }
+
+    public void setDataInclude(String dataInclude)
+    {
+        this.dataInclude = dataInclude;
     }
 
     // Getters and Setters for fields

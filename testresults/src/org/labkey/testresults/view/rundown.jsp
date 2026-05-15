@@ -563,7 +563,7 @@ $(function() {
                 $(self).text(isTrain ? 'Untrain' : 'Train');
                 return;
             }
-            alert("Failure removing run. Contact Yuval");
+            alert("Failed to update training set." + (data.error ? " " + data.error : ""));
         }, "json");
     });
 

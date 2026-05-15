@@ -392,19 +392,31 @@ $(document).ready(function() {
     $("#problem-type-selection input").change(changeProblemType);
     $("#problem-type-selection input[value=" + <%=q(problemType)%> + "]").prop("checked", true).trigger("change");
 
-    // Initialize sortable table.
+    // Initialize sortable table. tablesorter 2.0.5b requires numeric column
+    // indices in `headers`, so look up the problem column's index from its ID
+    // — keeps the named selector as the source of truth if columns are reordered.
+    var problemColIdx = $("#failurestatstable thead th").index($("#col-problem"));
+    var headers = {};
+    if (problemColIdx >= 0) {
+        headers[problemColIdx] = { sorter: false };
+    } else {
+        console.warn("failureDetail.jsp: #col-problem header not found; problem column will be sortable.");
+    }
+    // Skip sortList/sortAppend on an empty tbody — tablesorter throws
+    // when asked to apply an initial sort with no rows to sort.
+    var hasRows = $("#failurestatstable tbody tr").length > 0;
     $("#failurestatstable").tablesorter({
         widthFixed : true,
         resizable: true,
         widgets: ['zebra'],
-        headers : { "#col-problem": { sorter: false } },
+        headers : headers,
         cssAsc: "headerSortUp",
         cssDesc: "headerSortDown",
         ignoreCase: true,
-        sortList: [[1, 1]], // initial sort by post time descending
-        sortAppend: {
+        sortList: hasRows ? [[1, 1]] : [], // initial sort by post time descending
+        sortAppend: hasRows ? {
             0: [[ 1, 'a' ]] // secondary sort by date ascending
-        },
+        } : {},
         theme: 'default'
     });
 });
