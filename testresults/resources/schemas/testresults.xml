@@ -27,7 +27,13 @@
     <table tableName="handleleaks" tableDbType="TABLE">
         <columns>
             <column columnName="id"/>
-            <column columnName="testrunid"/>
+            <column columnName="testrunid">
+                <fk>
+                    <fkDbSchema>testresults</fkDbSchema>
+                    <fkTable>testruns</fkTable>
+                    <fkColumnName>id</fkColumnName>
+                </fk>
+            </column>
             <column columnName="testname"/>
             <column columnName="handles"/>
             <column columnName="type"/>
@@ -36,7 +42,13 @@
     <table tableName="hangs" tableDbType="TABLE">
         <columns>
             <column columnName="id"/>
-            <column columnName="testrunid"/>
+            <column columnName="testrunid">
+                <fk>
+                    <fkDbSchema>testresults</fkDbSchema>
+                    <fkTable>testruns</fkTable>
+                    <fkColumnName>id</fkColumnName>
+                </fk>
+            </column>
             <column columnName="testname"/>
             <column columnName="pass"/>
             <column columnName="timestamp"/>
@@ -46,7 +58,13 @@
     <table tableName="memoryleaks" tableDbType="TABLE">
         <columns>
             <column columnName="id"/>
-            <column columnName="testrunid"/>
+            <column columnName="testrunid">
+                <fk>
+                    <fkDbSchema>testresults</fkDbSchema>
+                    <fkTable>testruns</fkTable>
+                    <fkColumnName>id</fkColumnName>
+                </fk>
+            </column>
             <column columnName="testname"/>
             <column columnName="bytes"/>
             <column columnName="type"/>
@@ -55,7 +73,13 @@
     <table tableName="testfails" tableDbType="TABLE">
         <columns>
             <column columnName="id"/>
-            <column columnName="testrunid"/>
+            <column columnName="testrunid">
+                <fk>
+                    <fkDbSchema>testresults</fkDbSchema>
+                    <fkTable>testruns</fkTable>
+                    <fkColumnName>id</fkColumnName>
+                </fk>
+            </column>
             <column columnName="testname"/>
             <column columnName="pass"/>
             <column columnName="testid"/>
@@ -67,7 +91,13 @@
     <table tableName="testpasses" tableDbType="TABLE">
         <columns>
             <column columnName="id"/>
-            <column columnName="testrunid"/>
+            <column columnName="testrunid">
+                <fk>
+                    <fkDbSchema>testresults</fkDbSchema>
+                    <fkTable>testruns</fkTable>
+                    <fkColumnName>id</fkColumnName>
+                </fk>
+            </column>
             <column columnName="testname"/>
             <column columnName="pass"/>
             <column columnName="testid"/>
@@ -91,7 +121,13 @@
             <column columnName="container"/>
             <column columnName="flagged"/>
             <column columnName="timestamp"/>
-            <column columnName="userid"/>
+            <column columnName="userid">
+                <fk>
+                    <fkDbSchema>testresults</fkDbSchema>
+                    <fkTable>user</fkTable>
+                    <fkColumnName>id</fkColumnName>
+                </fk>
+            </column>
             <column columnName="xml"/>
             <column columnName="pointsummary"/>
             <column columnName="passedtests"/>
@@ -105,7 +141,13 @@
     <table tableName="trainruns" tableDbType="TABLE">
         <columns>
             <column columnName="id"/>
-            <column columnName="runid"/>
+            <column columnName="runid">
+                <fk>
+                    <fkDbSchema>testresults</fkDbSchema>
+                    <fkTable>testruns</fkTable>
+                    <fkColumnName>id</fkColumnName>
+                </fk>
+            </column>
         </columns>
     </table>
     <table tableName="user" tableDbType="TABLE">
@@ -117,7 +159,13 @@
     <table tableName="userdata" tableDbType="TABLE">
         <columns>
             <column columnName="id"/>
-            <column columnName="userid"/>
+            <column columnName="userid">
+                <fk>
+                    <fkDbSchema>testresults</fkDbSchema>
+                    <fkTable>user</fkTable>
+                    <fkColumnName>id</fkColumnName>
+                </fk>
+            </column>
             <column columnName="container"/>
             <column columnName="meantestsrun"/>
             <column columnName="meanmemory"/>

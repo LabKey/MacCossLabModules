@@ -49,11 +49,11 @@
         win.document.write('<pre>' + data + '</pre>');
     };
     var showLog = function() {
-        $.get('<%=h(new ActionURL(TestResultsController.ViewLogAction.class, c).addParameter("runid", runId))%>', csrf_header,
+        $.get('<%=h(new ActionURL(TestResultsController.ViewLogAction.class, c).addParameter("runId", runId))%>', csrf_header,
             function(data) { popupData(data.log); }, "json");
     };
     var showXml = function() {
-        $.get('<%=h(new ActionURL(TestResultsController.ViewXmlAction.class, c).addParameter("runid", runId))%>', csrf_header,
+        $.get('<%=h(new ActionURL(TestResultsController.ViewXmlAction.class, c).addParameter("runId", runId))%>', csrf_header,
             function(data) { popupData(data.xml); }, "json");
     };
 </script>
@@ -85,7 +85,7 @@
     </h2>
     <p>
         Run Id: <%=run.getId()%><br>
-        User : <a href="<%=h(urlFor(TestResultsController.ShowUserAction.class).addParameter("user", run.getUserName()))%>"><%=h(run.getUserName())%></a><br>
+        User : <a href="<%=h(urlFor(TestResultsController.ShowUserAction.class).addParameter("username", run.getUserName()))%>"><%=h(run.getUserName())%></a><br>
         OS: <%=h(run.getOs())%><br>
         Revision: <%=h(run.getRevisionFull())%><br>
         Passed Tests : <%=run.getPasses().length%><br>
@@ -216,7 +216,7 @@ if (leaks.length > 0) { %>
             if (data.Success) {
                 location.reload();
             } else {
-                alert(data);
+                alert("Failed to update training set." + (data.error ? " " + data.error : ""));
             }
         }, "json");
     });

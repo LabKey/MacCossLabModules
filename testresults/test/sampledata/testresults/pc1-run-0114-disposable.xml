@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Disposable run: used by testDeleteRun. No failures or leaks so FK constraint is not hit. -->
+<nightly id="TEST-PC-1" os="Microsoft Windows NT 10.0.26200.0" start="01/14/2026 09:00:00 PM" duration="540" revision="26084" git_hash="abc1234de0" testsrun="2" failures="0" leaks="0">
+    <failures/>
+    <leaks/>
+    <pass id="1">
+        <test id="1" name="TestDisposableOne" language="fr" duration="60" managed="150.00" committed="45.00" total="300.00" user_gdi="10" handles="400" timestamp="21:01"/>
+        <test id="2" name="TestDisposableTwo" language="fr" duration="70" managed="152.00" committed="45.80" total="302.00" user_gdi="10" handles="402" timestamp="21:02"/>
+    </pass>
+</nightly>
