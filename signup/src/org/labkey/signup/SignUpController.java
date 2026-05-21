@@ -642,7 +642,7 @@ public class SignUpController extends SpringActionController
     }
 
     // On success returns null and clears the session attribute so the captcha cannot be replayed.
-    // On failure return a a user-facing error message.
+    // On failure return a user-facing error message.
     // Logging matches LoginController's RegisterUserAction.
     private String verifyCaptcha(String submittedText, String emailForLogging)
     {
@@ -655,7 +655,7 @@ public class SignUpController extends SpringActionController
         }
         if (!expected.equalsIgnoreCase(StringUtils.trimToNull(submittedText)))
         {
-            _log.warn("Captcha text did not match for signup attempt for " + emailForLogging);
+            _log.warn("Captcha text did not match for signup attempt for {}", emailForLogging);
             return "Verification text does not match, please retry.";
         }
         session.removeAttribute(LabKeyKaptchaServlet.SESSION_KEY_VALUE);
@@ -892,6 +892,7 @@ public class SignUpController extends SpringActionController
             validateSignupForm(signupForm, errors);
             if (errors.hasErrors())
             {
+                response.put("status", "ERROR");
                 response.put("error_message", errorsToMessages(errors));
                 return response;
             }
@@ -899,6 +900,7 @@ public class SignUpController extends SpringActionController
             ValidEmail email = parseAndValidateEmail(signupForm, errors);
             if (email == null)
             {
+                response.put("status", "ERROR");
                 response.put("error_message", errorsToMessages(errors));
                 return response;
             }
@@ -911,6 +913,7 @@ public class SignUpController extends SpringActionController
 
             if (!createUserAndSendEmail(signupForm, email, errors))
             {
+                response.put("status", "ERROR");
                 response.put("error_message", errorsToMessages(errors));
                 return response;
             }
