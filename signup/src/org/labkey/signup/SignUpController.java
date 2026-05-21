@@ -62,6 +62,7 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.HttpView;
 import org.labkey.api.view.JspView;
+import org.labkey.api.view.LabKeyKaptchaServlet;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.WebPartView;
 import org.springframework.validation.BindException;
@@ -719,6 +720,18 @@ public class SignUpController extends SpringActionController
         {
             _newSignUp = newSignUp;
         }
+
+        private String _kaptchaText;
+
+        public String getKaptchaText()
+        {
+            return _kaptchaText;
+        }
+
+        public void setKaptchaText(String kaptchaText)
+        {
+            _kaptchaText = kaptchaText;
+        }
     }
 
     @RequiresLogin
@@ -778,6 +791,22 @@ public class SignUpController extends SpringActionController
         {
             ApiSimpleResponse response = new ApiSimpleResponse();
 
+            String expectedKaptcha = (String) getViewContext().getRequest().getSession(true)
+                    .getAttribute(LabKeyKaptchaServlet.SESSION_KEY_VALUE);
+            if (expectedKaptcha == null)
+            {
+                _log.info("Captcha not initialized for signup attempt");
+                response.put("error_message", List.of("Captcha not initialized, please retry."));
+                return response;
+            }
+            if (!expectedKaptcha.equalsIgnoreCase(StringUtils.trimToNull(signupForm.getKaptchaText())))
+            {
+                _log.warn("Captcha text did not match for signup attempt for " + signupForm.getEmail());
+                response.put("error_message", List.of("Verification text does not match, please retry."));
+                return response;
+            }
+            getViewContext().getRequest().getSession(true).removeAttribute(LabKeyKaptchaServlet.SESSION_KEY_VALUE);
+
             ValidEmail email;
             try
             {
@@ -785,7 +814,7 @@ public class SignUpController extends SpringActionController
             }
             catch (ValidEmail.InvalidEmailException iee)
             {
-                errors.reject(ERROR_MSG, iee.getMessage());
+                response.put("error_message", List.of(iee.getMessage()));
                 return response;
             }
 
@@ -798,6 +827,10 @@ public class SignUpController extends SpringActionController
             validateSignupForm(signupForm, errors);
             if(errors.hasErrors())
             {
+                List<String> messages = errors.getAllErrors().stream()
+                        .map(e -> e.getDefaultMessage())
+                        .toList();
+                response.put("error_message", messages);
                 return response;
             }
 
