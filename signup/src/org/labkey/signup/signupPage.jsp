@@ -18,10 +18,10 @@
 
     <%-- Verification: standalone full-width block --%>
     <div style="margin-top:20px;"><strong>Verification</strong></div>
-    <p style="margin:8px 0 4px 0;">Please enter the six characters shown below (case-insensitive).</p>
+    <p style="margin:8px 0 4px 0;">Please enter the characters shown below (case-insensitive).</p>
     <p style="margin:0 0 8px 0;"><a id="kaptchaReload" href="#">Get a new image.</a></p>
     <img id="kaptchaImg" src="<%=h(contextPath)%>/kaptcha.jpg" alt="Captcha" width="200" height="50" style="border: 1px solid #ccc; display:block; margin-bottom:6px;"/>
-    <input type="text" id="kaptchaText" name="kaptchaText" style="width:200px;"/>
+    <input type="text" id="kaptchaText" name="kaptchaText" aria-label="Verification code" style="width:200px;"/>
 
     <div style="margin-top:20px; clear:both;">
         <button type="submit" class="btn btn-default labkey-button">Register</button>

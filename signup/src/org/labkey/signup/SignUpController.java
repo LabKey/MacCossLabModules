@@ -55,6 +55,7 @@ import org.labkey.api.security.ValidEmail;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.util.ButtonBuilder;
+import org.labkey.api.util.ConfigurationException;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
@@ -68,6 +69,7 @@ import org.labkey.api.view.NavTree;
 import org.labkey.api.view.WebPartView;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.util.ArrayList;
@@ -699,7 +701,7 @@ public class SignUpController extends SpringActionController
                         SecurityManager.getRegistrationMessage(null, false),
                         email.getEmailAddress(), confirmationUrl);
             }
-            catch (MessagingException e)
+            catch (MessagingException | ConfigurationException e)
             {
                 String systemEmail = LookAndFeelProperties.getInstance(getContainer()).getSystemEmailAddress();
                 errors.reject(ERROR_MSG, "Could not send new user registration email. Please contact your server administrator at " + systemEmail);
@@ -717,7 +719,7 @@ public class SignUpController extends SpringActionController
     private static List<String> errorsToMessages(Errors errors)
     {
         return errors.getAllErrors().stream()
-                .map(e -> e.getDefaultMessage())
+                .map(ObjectError::getDefaultMessage)
                 .toList();
     }
 
@@ -882,6 +884,7 @@ public class SignUpController extends SpringActionController
             String kaptchaError = verifyCaptcha(signupForm.getKaptchaText(), signupForm.getEmail());
             if (kaptchaError != null)
             {
+                response.put("status", "ERROR");
                 response.put("error_message", List.of(kaptchaError));
                 return response;
             }
