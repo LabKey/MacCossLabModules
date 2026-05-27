@@ -16,6 +16,7 @@
 
 package org.labkey.signup;
 
+import jakarta.mail.MessagingException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.logging.log4j.LogManager;
@@ -54,6 +55,7 @@ import org.labkey.api.security.ValidEmail;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.util.ButtonBuilder;
+import org.labkey.api.util.ConfigurationException;
 import org.labkey.api.util.DOM;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
@@ -62,10 +64,12 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.HttpView;
 import org.labkey.api.view.JspView;
+import org.labkey.api.view.LabKeyKaptchaServlet;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.WebPartView;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.util.ArrayList;
@@ -527,7 +531,8 @@ public class SignUpController extends SpringActionController
         @Override
         public void validateCommand(SignupForm form, Errors errors)
         {
-            validateSignupForm(form, errors);
+            // All validation happens in handlePost so the order matches SignUpApiAction
+            // (captcha first, then blank-field checks, then email parsing, etc.).
         }
 
         @Override
@@ -559,27 +564,26 @@ public class SignUpController extends SpringActionController
         @Override
         public boolean handlePost(SignupForm signupForm, BindException errors) throws Exception
         {
-            // Validate with EmailValidator first. ValidEmail(email) will not throw an exception if the domain is
-            // missing from the email. The default domain configured for the server is appended.
-            EmailValidator validator = EmailValidator.getInstance();
-            if(!validator.isValid(signupForm.getEmail()))
+            String kaptchaError = verifyCaptcha(signupForm.getKaptchaText(), signupForm.getEmail());
+            if (kaptchaError != null)
             {
-                errors.reject(ERROR_MSG,"'" + signupForm.getEmail() + "' is not a valid email address.");
+                errors.reject(ERROR_MSG, kaptchaError);
                 return false;
             }
 
-            ValidEmail email;
-            try
+            validateSignupForm(signupForm, errors);
+            if (errors.hasErrors())
             {
-                email = new ValidEmail(signupForm.getEmail());
-            }
-            catch (ValidEmail.InvalidEmailException iee)
-            {
-                errors.reject(ERROR_MSG, iee.getMessage());
                 return false;
             }
 
-            if(UserManager.userExists(email))
+            ValidEmail email = parseAndValidateEmail(signupForm, errors);
+            if (email == null)
+            {
+                return false;
+            }
+
+            if (UserManager.userExists(email))
             {
                 // If the user already exists forward them to a page where they can click on a link to recover their password, if required
                 signupForm.setAccountExists(true);
@@ -587,26 +591,23 @@ public class SignUpController extends SpringActionController
                 return false;
             }
 
-            // If the user does not exit in LabKey's core database, check in our temporaryusers table
-            TempUser tempUser = getTempUser(signupForm, email);
-
-            // Send email to the user.
-            ActionURL confirmationUrl = getConfirmationURL(getContainer(), email, tempUser.getKey());
             try
             {
-                User mockUser = new User();
-                mockUser.setEmail(email.getEmailAddress());
-                SecurityManager.sendEmail(getContainer(), mockUser, SecurityManager.getRegistrationMessage(null, false), email.getEmailAddress(), confirmationUrl);
+                createUserAndSendEmail(signupForm, email);
             }
-            catch(Exception e)
+            catch (MessagingException | ConfigurationException e)
             {
-                String systemEmail = LookAndFeelProperties.getInstance(getContainer()).getSystemEmailAddress();
-                errors.reject(ERROR_MSG, "Could not send new user registration email.  Please contact your server administrator at " + systemEmail);
-                errors.reject(ERROR_MSG, e.getMessage());
+                errors.reject(ERROR_MSG, sendEmailErrorMessage(getContainer()));
+                if (e.getMessage() != null)
+                {
+                    errors.reject(ERROR_MSG, e.getMessage());
+                }
                 return false;
             }
 
+            clearCaptcha();
 
+            // Re-render the JSP with the CONFIRMATION_SENT message.
             signupForm.setNewSignUp(false);
             return false;
         }
@@ -641,6 +642,94 @@ public class SignUpController extends SpringActionController
         {
             errors.reject(ERROR_MSG, "Email cannot be blank.");
         }
+        if(StringUtils.isBlank(form.getEmailConfirm()))
+        {
+            errors.reject(ERROR_MSG, "Confirm email cannot be blank.");
+        }
+        else if(!StringUtils.isBlank(form.getEmail()) && !form.getEmail().equalsIgnoreCase(form.getEmailConfirm()))
+        {
+            errors.reject(ERROR_MSG, "Email addresses do not match.");
+        }
+    }
+
+    // On success returns null. On failure returns a user-facing error message.
+    // Does not clear the session attribute — callers clear it after the full operation
+    // succeeds so the user can retry with the same captcha if a later step fails.
+    // Logging matches LoginController's RegisterUserAction.
+    private String verifyCaptcha(String submittedText, String emailForLogging)
+    {
+        var session = getViewContext().getRequest().getSession(true);
+        String expected = (String) session.getAttribute(LabKeyKaptchaServlet.SESSION_KEY_VALUE);
+        if (expected == null)
+        {
+            _log.info("Captcha not initialized for signup attempt");
+            return "Captcha not initialized, please retry.";
+        }
+        if (!expected.equalsIgnoreCase(StringUtils.trimToNull(submittedText)))
+        {
+            _log.warn("Captcha text did not match for signup attempt for {}", emailForLogging);
+            return "Verification text does not match, please retry.";
+        }
+        return null;
+    }
+
+    private void clearCaptcha()
+    {
+        getViewContext().getRequest().getSession(true).removeAttribute(LabKeyKaptchaServlet.SESSION_KEY_VALUE);
+    }
+
+    // Returns a parsed ValidEmail, or null if the address is invalid (errors populated).
+    // Uses EmailValidator first because ValidEmail's constructor does not throw on bare
+    // strings like "foo" - it silently appends the server's default domain.
+    private ValidEmail parseAndValidateEmail(SignupForm form, Errors errors)
+    {
+        EmailValidator validator = EmailValidator.getInstance();
+        if (!validator.isValid(form.getEmail()))
+        {
+            errors.reject(ERROR_MSG, "'" + form.getEmail() + "' is not a valid email address.");
+            return null;
+        }
+        try
+        {
+            return new ValidEmail(form.getEmail());
+        }
+        catch (ValidEmail.InvalidEmailException iee)
+        {
+            errors.reject(ERROR_MSG, iee.getMessage());
+            return null;
+        }
+    }
+
+    // Creates (or reuses) a TempUser row and sends the confirmation email in a single
+    // transaction. On send failure the exception propagates and the transaction rolls back
+    // automatically so a freshly inserted TempUser row does not persist.
+    private void createUserAndSendEmail(SignupForm form, ValidEmail email)
+            throws MessagingException, ConfigurationException, java.sql.SQLException
+    {
+        try (DbScope.Transaction transaction = SignUpManager.getSchema().getScope().ensureTransaction())
+        {
+            TempUser tempUser = getTempUser(form, email);
+            ActionURL confirmationUrl = getConfirmationURL(getContainer(), email, tempUser.getKey());
+            User mockUser = new User();
+            mockUser.setEmail(email.getEmailAddress());
+            SecurityManager.sendEmail(getContainer(), mockUser,
+                    SecurityManager.getRegistrationMessage(null, false),
+                    email.getEmailAddress(), confirmationUrl);
+            transaction.commit();
+        }
+    }
+
+    private static List<String> errorsToMessages(Errors errors)
+    {
+        return errors.getAllErrors().stream()
+                .map(ObjectError::getDefaultMessage)
+                .toList();
+    }
+
+    private static String sendEmailErrorMessage(Container container)
+    {
+        return "Could not send new user registration email. Please contact your server administrator at "
+                + LookAndFeelProperties.getInstance(container).getSystemEmailAddress();
     }
 
     public static ActionURL getConfirmationURL(Container c, ValidEmail email, String key)
@@ -657,6 +746,7 @@ public class SignUpController extends SpringActionController
         private String _lastName;
         private String _organization;
         private String _email;
+        private String _emailConfirm;
         private boolean _accountExists;
         private boolean _newSignUp = true;
 
@@ -700,6 +790,16 @@ public class SignUpController extends SpringActionController
             _email = email;
         }
 
+        public String getEmailConfirm()
+        {
+            return _emailConfirm;
+        }
+
+        public void setEmailConfirm(String emailConfirm)
+        {
+            _emailConfirm = emailConfirm;
+        }
+
         public boolean isAccountExists()
         {
             return _accountExists;
@@ -718,6 +818,18 @@ public class SignUpController extends SpringActionController
         public void setNewSignUp(boolean newSignUp)
         {
             _newSignUp = newSignUp;
+        }
+
+        private String _kaptchaText;
+
+        public String getKaptchaText()
+        {
+            return _kaptchaText;
+        }
+
+        public void setKaptchaText(String kaptchaText)
+        {
+            _kaptchaText = kaptchaText;
         }
     }
 
@@ -778,52 +890,56 @@ public class SignUpController extends SpringActionController
         {
             ApiSimpleResponse response = new ApiSimpleResponse();
 
-            ValidEmail email;
-            try
+            String kaptchaError = verifyCaptcha(signupForm.getKaptchaText(), signupForm.getEmail());
+            if (kaptchaError != null)
             {
-                email = new ValidEmail(signupForm.getEmail());
-            }
-            catch (ValidEmail.InvalidEmailException iee)
-            {
-                errors.reject(ERROR_MSG, iee.getMessage());
+                response.put("status", "ERROR");
+                response.put("error_message", List.of(kaptchaError));
                 return response;
             }
 
-            if(UserManager.userExists(email))
+            validateSignupForm(signupForm, errors);
+            if (errors.hasErrors())
+            {
+                response.put("status", "ERROR");
+                response.put("error_message", errorsToMessages(errors));
+                return response;
+            }
+
+            ValidEmail email = parseAndValidateEmail(signupForm, errors);
+            if (email == null)
+            {
+                response.put("status", "ERROR");
+                response.put("error_message", errorsToMessages(errors));
+                return response;
+            }
+
+            if (UserManager.userExists(email))
             {
                 response.put("status", "USER_EXISTS");
                 return response;
             }
 
-            validateSignupForm(signupForm, errors);
-            if(errors.hasErrors())
+            try
             {
+                createUserAndSendEmail(signupForm, email);
+            }
+            catch (MessagingException | ConfigurationException e)
+            {
+                response.put("status", "ERROR");
+                List<String> messages = new ArrayList<>();
+                messages.add(sendEmailErrorMessage(getContainer()));
+                if (e.getMessage() != null)
+                {
+                    messages.add(e.getMessage());
+                }
+                response.put("error_message", messages);
                 return response;
             }
 
-            TempUser tempUser = getTempUser(signupForm, email);
+            clearCaptcha();
 
-
-            // Send email to the user.
-            ActionURL confirmationUrl = getConfirmationURL(getContainer(), email, tempUser.getKey());
-            try
-            {
-                User mockUser = new User();
-                mockUser.setEmail(email.getEmailAddress());
-                SecurityManager.sendEmail(getContainer(), mockUser, SecurityManager.getRegistrationMessage(null, false), email.getEmailAddress(), confirmationUrl);
-            }
-            catch(Exception e)
-            {
-                String systemEmail = LookAndFeelProperties.getInstance(getContainer()).getSystemEmailAddress();
-                List<String> messages = new ArrayList<>();
-                messages.add("Could not send new user registration email.  Please contact your server administrator at " + systemEmail);
-                messages.add(e.getMessage());
-                response.put("error_message", messages);
-            }
-
-            signupForm.setNewSignUp(false); // TODO: Most likely not needed here
             response.put("status", "USER_ADDED");
-
             return response;
         }
     }
