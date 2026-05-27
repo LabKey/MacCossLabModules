@@ -591,10 +591,21 @@ public class SignUpController extends SpringActionController
                 return false;
             }
 
-            if (!createUserAndSendEmail(signupForm, email, errors))
+            try
             {
+                createUserAndSendEmail(signupForm, email);
+            }
+            catch (MessagingException | ConfigurationException e)
+            {
+                errors.reject(ERROR_MSG, sendEmailErrorMessage(getContainer()));
+                if (e.getMessage() != null)
+                {
+                    errors.reject(ERROR_MSG, e.getMessage());
+                }
                 return false;
             }
+
+            clearCaptcha();
 
             // Re-render the JSP with the CONFIRMATION_SENT message.
             signupForm.setNewSignUp(false);
@@ -635,14 +646,15 @@ public class SignUpController extends SpringActionController
         {
             errors.reject(ERROR_MSG, "Confirm email cannot be blank.");
         }
-        else if(form.getEmail() != null && !form.getEmail().equals(form.getEmailConfirm()))
+        else if(!StringUtils.isBlank(form.getEmail()) && !form.getEmail().equalsIgnoreCase(form.getEmailConfirm()))
         {
             errors.reject(ERROR_MSG, "Email addresses do not match.");
         }
     }
 
-    // On success returns null and clears the session attribute so the captcha cannot be replayed.
-    // On failure return a user-facing error message.
+    // On success returns null. On failure returns a user-facing error message.
+    // Does not clear the session attribute — callers clear it after the full operation
+    // succeeds so the user can retry with the same captcha if a later step fails.
     // Logging matches LoginController's RegisterUserAction.
     private String verifyCaptcha(String submittedText, String emailForLogging)
     {
@@ -658,8 +670,12 @@ public class SignUpController extends SpringActionController
             _log.warn("Captcha text did not match for signup attempt for {}", emailForLogging);
             return "Verification text does not match, please retry.";
         }
-        session.removeAttribute(LabKeyKaptchaServlet.SESSION_KEY_VALUE);
         return null;
+    }
+
+    private void clearCaptcha()
+    {
+        getViewContext().getRequest().getSession(true).removeAttribute(LabKeyKaptchaServlet.SESSION_KEY_VALUE);
     }
 
     // Returns a parsed ValidEmail, or null if the address is invalid (errors populated).
@@ -685,34 +701,21 @@ public class SignUpController extends SpringActionController
     }
 
     // Creates (or reuses) a TempUser row and sends the confirmation email in a single
-    // transaction. On send failure the transaction is rolled back so a freshly inserted
-    // TempUser row does not persist when the user never received a confirmation link.
-    private boolean createUserAndSendEmail(SignupForm form, ValidEmail email, Errors errors) throws java.sql.SQLException
+    // transaction. On send failure the exception propagates and the transaction rolls back
+    // automatically so a freshly inserted TempUser row does not persist.
+    private void createUserAndSendEmail(SignupForm form, ValidEmail email)
+            throws MessagingException, ConfigurationException, java.sql.SQLException
     {
         try (DbScope.Transaction transaction = SignUpManager.getSchema().getScope().ensureTransaction())
         {
             TempUser tempUser = getTempUser(form, email);
             ActionURL confirmationUrl = getConfirmationURL(getContainer(), email, tempUser.getKey());
-            try
-            {
-                User mockUser = new User();
-                mockUser.setEmail(email.getEmailAddress());
-                SecurityManager.sendEmail(getContainer(), mockUser,
-                        SecurityManager.getRegistrationMessage(null, false),
-                        email.getEmailAddress(), confirmationUrl);
-            }
-            catch (MessagingException | ConfigurationException e)
-            {
-                String systemEmail = LookAndFeelProperties.getInstance(getContainer()).getSystemEmailAddress();
-                errors.reject(ERROR_MSG, "Could not send new user registration email. Please contact your server administrator at " + systemEmail);
-                if (e.getMessage() != null)
-                {
-                    errors.reject(ERROR_MSG, e.getMessage());
-                }
-                return false;
-            }
+            User mockUser = new User();
+            mockUser.setEmail(email.getEmailAddress());
+            SecurityManager.sendEmail(getContainer(), mockUser,
+                    SecurityManager.getRegistrationMessage(null, false),
+                    email.getEmailAddress(), confirmationUrl);
             transaction.commit();
-            return true;
         }
     }
 
@@ -721,6 +724,12 @@ public class SignUpController extends SpringActionController
         return errors.getAllErrors().stream()
                 .map(ObjectError::getDefaultMessage)
                 .toList();
+    }
+
+    private static String sendEmailErrorMessage(Container container)
+    {
+        return "Could not send new user registration email. Please contact your server administrator at "
+                + LookAndFeelProperties.getInstance(container).getSystemEmailAddress();
     }
 
     public static ActionURL getConfirmationURL(Container c, ValidEmail email, String key)
@@ -911,12 +920,24 @@ public class SignUpController extends SpringActionController
                 return response;
             }
 
-            if (!createUserAndSendEmail(signupForm, email, errors))
+            try
+            {
+                createUserAndSendEmail(signupForm, email);
+            }
+            catch (MessagingException | ConfigurationException e)
             {
                 response.put("status", "ERROR");
-                response.put("error_message", errorsToMessages(errors));
+                List<String> messages = new ArrayList<>();
+                messages.add(sendEmailErrorMessage(getContainer()));
+                if (e.getMessage() != null)
+                {
+                    messages.add(e.getMessage());
+                }
+                response.put("error_message", messages);
                 return response;
             }
+
+            clearCaptcha();
 
             response.put("status", "USER_ADDED");
             return response;

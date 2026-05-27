@@ -1,4 +1,5 @@
 <%@ page import="org.labkey.api.view.HttpView" %>
+<%@ page import="org.labkey.signup.SignUpController.BeginAction" %>
 <%@ page import="org.labkey.signup.SignUpController.SignupForm" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
@@ -9,7 +10,7 @@
 
 <labkey:errors/>
 
-<labkey:form method="post" layout="horizontal" autoComplete="off" style="max-width:600px;">
+<labkey:form method="post" action="<%=urlFor(BeginAction.class)%>" layout="horizontal" autoComplete="off" style="max-width:600px;">
     <labkey:input name="firstName" id="firstName" label="First Name" isRequired="true" size="50" value="<%=form.getFirstName()%>"/>
     <labkey:input name="lastName" id="lastName" label="Last Name" isRequired="true" size="50" value="<%=form.getLastName()%>"/>
     <labkey:input name="organization" id="organization" label="Organization" isRequired="true" size="50" value="<%=form.getOrganization()%>"/>
