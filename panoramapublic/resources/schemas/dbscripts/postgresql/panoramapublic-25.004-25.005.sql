@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 LabKey Corporation
+ *
+ * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+ */
 -- Dropping ix_datasetstatus_experimentannotations [ExperimentAnnotationsId] because it overlaps with uq_datasetstatus_experimentannotations [ExperimentAnnotationsId]
 DROP INDEX panoramapublic.ix_datasetstatus_experimentannotations;
 -- Dropping ix_experimentannotations_shorturl [ShortUrl] because it overlaps with uq_experimentannotations_shorturl [ShortUrl]
