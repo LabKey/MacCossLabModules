@@ -79,7 +79,7 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
             FileLike dir = getJob().getLogFileLike().getParent();
             getJob().runSubProcess(secretsPB, dir);
 
-            ProcessBuilder executionPB = new ProcessBuilder(getArgs());
+            LabKeyProcessBuilder executionPB = new LabKeyProcessBuilder(getArgs());
             getJob().runSubProcess(executionPB, dir);
             log.info("Job Finished");
             NextFlowPipelineJob.LOG.info("Finished executing NextFlow: {}", getJob().getJsonJobInfo(true));
