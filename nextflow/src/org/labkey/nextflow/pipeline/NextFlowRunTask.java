@@ -14,6 +14,7 @@ import org.labkey.api.pipeline.WorkDirectoryTask;
 import org.labkey.api.security.SecurityManager;
 import org.labkey.api.targetedms.TargetedMSService;
 import org.labkey.api.util.FileType;
+import org.labkey.api.util.LabKeyProcessBuilder;
 import org.labkey.nextflow.NextFlowConfiguration;
 import org.labkey.nextflow.NextFlowManager;
 import org.labkey.vfs.FileLike;
@@ -73,7 +74,7 @@ public class NextFlowRunTask extends WorkDirectoryTask<NextFlowRunTask.Factory>
             }
 
             // Need to pass to the main process directly in the future to allow concurrent execution for different users
-            ProcessBuilder secretsPB = new ProcessBuilder("nextflow", "secrets", "set", "PANORAMA_API_KEY", apiKey);
+            LabKeyProcessBuilder secretsPB = new LabKeyProcessBuilder("nextflow", "secrets", "set", "PANORAMA_API_KEY", apiKey);
             log.info("Setting secrets");
             FileLike dir = getJob().getLogFileLike().getParent();
             getJob().runSubProcess(secretsPB, dir);
