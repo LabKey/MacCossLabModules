@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2017-2026 LabKey Corporation
+ *
+ * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+ */
 /* Set posttime to timestamp + duration for all runs where the original timestamp exists.  Really old runs don't have
 a timestamp so we just ignore. */
 UPDATE testresults.testruns tr

@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2020-2026 LabKey Corporation
+ *
+ * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+ */
 SELECT FolderDocs.Project,
 SUM(FolderDocs.Documents) AS TotalDocs,
 SUM((CASE WHEN FolderDocs.TargetedMSFolderType='Experiment' OR FolderDocs.TargetedMSFolderType IS NULL THEN FolderDocs.Documents ELSE 0 END)) AS ExpDocs,

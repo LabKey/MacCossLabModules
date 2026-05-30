@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2022-2026 LabKey Corporation
+ *
+ * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+ */
 -- Query for viewing modified precursor sequence and the associated isotope modification name, modified index and mass diff
 -- Precursors have an isotopeLabelId.  This is the database Id of the isotope label type (e.g. "heavy", "medium", etc.)
 -- Each isotope label type can be associated with one or more isotope modification. This information is saved in the
