@@ -27,6 +27,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.remoteapi.Connection;
+import org.labkey.remoteapi.query.Filter;
 import org.labkey.remoteapi.query.SelectRowsCommand;
 import org.labkey.remoteapi.query.SelectRowsResponse;
 import org.labkey.remoteapi.query.Sort;
@@ -48,6 +49,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -455,19 +458,18 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         toggleTrainingSet();
         assertTextPresent("Add to training set");
 
-        // After removal: the Remove link and the run's data row are gone, and
-        // the stats row now shows "RunCount:0". TEST-PC-1's section is still
-        // rendered in the training table though, because of a known bug in
-        // TrainRunAction: when the user's last training run is removed, the
-        // the stale UserData row (non-zero meanmemory / meantestsrun) is
-        // never cleared. trainingdata.jsp:158 only moves users to the
-        // "No Training Data --" list when both fields are 0, so the section
-        // stays. See TODO-LK-20260403_testresults-bugs.md.
+        // After removing the user's last training run, TrainRunAction deletes their
+        // UserData row, so TEST-PC-1 no longer has any training data: its section
+        // disappears from <table id="trainingdata"> and the user moves to the
+        // "No Training Data --" list (it now behaves like TEST-PC-2). Previously a
+        // stale UserData row left a lingering RunCount:0 section here.
         clickAndWait(Locator.linkWithText("Training Data"));
         assertElementNotPresent(removeLink);
         assertElementNotPresent(trainingTable.containing("2026-01-16 06:00"));
-        assertElementPresent(statsRow.containing("RunCount:0"));
-        assertTextPresent(COMPUTER_NAME_2, "No Training Data --");
+        assertElementNotPresent(trainingTable.descendant(
+                Locator.tagWithId("tr", "user-anchor-" + COMPUTER_NAME_1)));
+        assertElementNotPresent(statsRow);
+        assertTextPresent(COMPUTER_NAME_1, COMPUTER_NAME_2, "No Training Data --");
     }
 
     @Test
@@ -629,6 +631,13 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showFailures",
                 Map.of("end", "03-24-2026")));
         assertTextPresent("Invalid date format: 03-24-2026 (expected MM/dd/yyyy)");
+
+        // Strict parsing: an out-of-range but MM/dd/yyyy-shaped date like 13/45/2026 used to
+        // silently roll over to a valid date (02/14/2027) because the shared SimpleDateFormat
+        // was lenient. It must now be rejected like any other invalid date.
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "begin",
+                Map.of("end", "13/45/2026")));
+        assertTextPresent("Invalid date format: 13/45/2026 (expected MM/dd/yyyy)");
     }
 
     @Test
@@ -653,6 +662,38 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         clickAndWait(SUBMIT_BUTTON);
         assertElementPresent(Locator.css("input[name='runId']"));
         assertTextNotPresent("TestDisposableOne");
+    }
+
+    @Test
+    public void testDeleteRunWithChildRecordsRecomputesTraining()
+    {
+        // Post a fresh run that has both handle-leak and memory-leak child rows, then add it
+        // to the training set. Deleting it must (1) succeed despite the handleleaks and
+        // trainruns child rows that previously caused a foreign key violation, and (2) refresh
+        // the user's training stats so no stale UserData row is left behind.
+        int baselineUserData = userDataRowCount();
+
+        int runId = postAndGetNewRunId("testresults/pc1-run-0117-leaks.xml", COMPUTER_NAME_1);
+        assertTrue("Posted run should have handle-leak child rows", childRowCount("handleleaks", runId) > 0);
+        assertTrue("Posted run should have memory-leak child rows", childRowCount("memoryleaks", runId) > 0);
+
+        JSONObject trainResp = postApi("trainRun", Map.of("runId", String.valueOf(runId), "train", "true"));
+        assertTrue("trainRun should succeed: " + trainResp, trainResp.optBoolean("Success", false));
+        assertTrue("A UserData row should exist after adding a training run", userDataRowCount() >= 1);
+
+        // Without the fix this returned Success=false with a foreign key violation on
+        // handleleaks (and would also fail for the trainruns row).
+        JSONObject deleteResp = postApi("deleteRun", Map.of("runId", String.valueOf(runId)));
+        assertTrue("deleteRun should succeed without a foreign key violation: " + deleteResp,
+                deleteResp.optBoolean("Success", false));
+
+        // Child rows are cleaned up, and the training stats are refreshed: this was the run's
+        // only training run, so its UserData row is removed rather than left stale.
+        assertEquals("handleleaks child rows should be deleted", 0, childRowCount("handleleaks", runId));
+        assertEquals("memoryleaks child rows should be deleted", 0, childRowCount("memoryleaks", runId));
+        assertEquals("testpasses child rows should be deleted", 0, childRowCount("testpasses", runId));
+        assertEquals("Deleting the only training run should remove its UserData row",
+                baselineUserData, userDataRowCount());
     }
 
     // -------------------------------------------------------------------------
@@ -877,6 +918,67 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         catch (Exception e)
         {
             throw new RuntimeException("API call failed: " + action, e);
+        }
+    }
+
+    /**
+     * Posts a sample XML run and returns the id of the run it created, identified as the
+     * single new testruns row for the given computer (compared against the runs present
+     * before the post).
+     */
+    private int postAndGetNewRunId(String sampleDataRelativePath, String computerName)
+    {
+        Set<Integer> before = runIdsForComputer(computerName);
+        postSampleXml(sampleDataRelativePath);
+        Set<Integer> after = runIdsForComputer(computerName);
+        after.removeAll(before);
+        assertEquals("Expected exactly one new run for " + computerName, 1, after.size());
+        return after.iterator().next();
+    }
+
+    /**
+     * Returns the set of testruns ids posted by the given computer in this container.
+     */
+    private Set<Integer> runIdsForComputer(String computerName)
+    {
+        return queryRuns().stream()
+                .filter(r -> computerName.equals(r.get("userid/username")))
+                .map(r -> (Integer) r.get("id"))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Counts rows in a testresults child table that reference the given run via testrunid.
+     */
+    private int childRowCount(String table, int runId)
+    {
+        try
+        {
+            Connection connection = WebTestHelper.getRemoteApiConnection();
+            SelectRowsCommand cmd = new SelectRowsCommand("testresults", table);
+            cmd.addFilter(new Filter("testrunid", runId));
+            return cmd.execute(connection, PROJECT_NAME).getRows().size();
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Failed to count rows in " + table + " for run " + runId, e);
+        }
+    }
+
+    /**
+     * Counts UserData (training stats) rows in this container.
+     */
+    private int userDataRowCount()
+    {
+        try
+        {
+            Connection connection = WebTestHelper.getRemoteApiConnection();
+            SelectRowsCommand cmd = new SelectRowsCommand("testresults", "userdata");
+            return cmd.execute(connection, PROJECT_NAME).getRows().size();
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Failed to count userdata rows", e);
         }
     }
 

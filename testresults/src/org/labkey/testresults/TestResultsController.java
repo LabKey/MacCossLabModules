@@ -139,7 +139,18 @@ import static org.labkey.testresults.TestResultsModule.ViewType;
 public class TestResultsController extends SpringActionController
 {
     private static final Logger _log = LogManager.getLogger(TestResultsController.class);
-    private static final SimpleDateFormat MDYFormat = new SimpleDateFormat("MM/dd/yyyy");
+    private static final String MDY_PATTERN = "MM/dd/yyyy";
+
+    // SimpleDateFormat is not thread-safe and is lenient by default, so we never share a
+    // single static instance. Each caller gets a fresh, strict formatter: strict parsing
+    // makes nonsense dates like 13/45/2026 throw ParseException instead of silently rolling
+    // over to a valid-but-wrong date (month 13 -> +1 year, day 45 -> spill into next month).
+    private static SimpleDateFormat mdyFormat()
+    {
+        SimpleDateFormat format = new SimpleDateFormat(MDY_PATTERN);
+        format.setLenient(false);
+        return format;
+    }
 
     private static final String KEY_SUCCESS = "Success";
 
@@ -172,7 +183,63 @@ public class TestResultsController extends SpringActionController
 
     private static Date parseDate(String dateStr) throws ParseException
     {
-        return StringUtils.isNotBlank(dateStr) ? MDYFormat.parse(dateStr) : null;
+        return StringUtils.isNotBlank(dateStr) ? mdyFormat().parse(dateStr) : null;
+    }
+
+    /**
+     * Recomputes one user's training statistics (mean/stddev of tests-run and memory) in the
+     * given container from their remaining training runs. If the user has no training runs
+     * left, deletes their UserData row instead.
+     *
+     * The delete branch matters: the recompute groups by (userid, container), so an empty
+     * join produces zero output rows, ON CONFLICT never fires, and a stale UserData row would
+     * otherwise survive with its old mean/stddev values (leaving the user listed on the
+     * training-data page as if they still had training data). Callers must invoke this inside
+     * an open transaction.
+     */
+    private static void recomputeUserData(DbScope scope, int userid, Container container)
+    {
+        SQLFragment remainingFragment = new SQLFragment();
+        remainingFragment.append(
+            "SELECT COUNT(*) FROM " + TestResultsSchema.getTableInfoTestRuns() + " " +
+            "JOIN " + TestResultsSchema.getTableInfoTrain() +
+            "   ON " + TestResultsSchema.getTableInfoTestRuns() + ".id = " + TestResultsSchema.getTableInfoTrain() + ".runid " +
+            "WHERE userid = ? AND container = ?");
+        remainingFragment.add(userid);
+        remainingFragment.add(container.getEntityId());
+        long remainingTrainRuns = new SqlSelector(TestResultsSchema.getSchema(), remainingFragment).getObject(Long.class);
+
+        if (remainingTrainRuns == 0)
+        {
+            SQLFragment deleteFragment = new SQLFragment();
+            deleteFragment.append("DELETE FROM " + TestResultsSchema.getTableInfoUserData() + " WHERE userid = ? AND container = ?");
+            deleteFragment.add(userid);
+            deleteFragment.add(container.getEntityId());
+            new SqlExecutor(scope).execute(deleteFragment);
+        }
+        else
+        {
+            SQLFragment sqlFragmentUpdate = new SQLFragment();
+            sqlFragmentUpdate.append(
+                "INSERT INTO " + TestResultsSchema.getTableInfoUserData() + " " +
+                "   (userid, container, meantestsrun, meanmemory, stddevtestsrun, stddevmemory) " +
+                "SELECT ?, ?, avg(passedtests), avg(averagemem), stddev_pop(passedtests), stddev_pop(averagemem) " +
+                "FROM " + TestResultsSchema.getTableInfoTestRuns() + " " +
+                "JOIN " + TestResultsSchema.getTableInfoTrain() +
+                "   ON " + TestResultsSchema.getTableInfoTestRuns() + ".id = " + TestResultsSchema.getTableInfoTrain() + ".runid " +
+                "WHERE userid = ? AND container = ? " +
+                "GROUP BY userid, container " +
+                "ON CONFLICT(userid, container) DO UPDATE SET " +
+                "   meantestsrun = excluded.meantestsrun, " +
+                "   meanmemory = excluded.meanmemory, " +
+                "   stddevtestsrun = excluded.stddevtestsrun, " +
+                "   stddevmemory = excluded.stddevmemory");
+            sqlFragmentUpdate.add(userid);
+            sqlFragmentUpdate.add(container.getEntityId());
+            sqlFragmentUpdate.add(userid);
+            sqlFragmentUpdate.add(container.getEntityId());
+            new SqlExecutor(scope).execute(sqlFragmentUpdate);
+        }
     }
 
     // Form class for RetrainAllAction
@@ -537,27 +604,8 @@ public class TestResultsController extends SpringActionController
                     fragment.add(runId);
                     new SqlExecutor(scope).execute(fragment);
                 }
-                // update user table calculations
-                SQLFragment sqlFragmentUpdate = new SQLFragment();
-                sqlFragmentUpdate.append(
-                    "INSERT INTO " + TestResultsSchema.getTableInfoUserData() + " " +
-                    "   (userid, container, meantestsrun, meanmemory, stddevtestsrun, stddevmemory) " +
-                    "SELECT ?, ?, avg(passedtests), avg(averagemem), stddev_pop(passedtests), stddev_pop(averagemem) " +
-                    "FROM " + TestResultsSchema.getTableInfoTestRuns() + " " +
-                    "JOIN " + TestResultsSchema.getTableInfoTrain() +
-                    "   ON " + TestResultsSchema.getTableInfoTestRuns() + ".id = " + TestResultsSchema.getTableInfoTrain() + ".runid " +
-                    "WHERE userid = ? AND container = ? " +
-                    "GROUP BY userid, container " +
-                    "ON CONFLICT(userid, container) DO UPDATE SET " +
-                    "   meantestsrun = excluded.meantestsrun, " +
-                    "   meanmemory = excluded.meanmemory, " +
-                    "   stddevtestsrun = excluded.stddevtestsrun, " +
-                    "   stddevmemory = excluded.stddevmemory");
-                sqlFragmentUpdate.add(details[0].getUserid());
-                sqlFragmentUpdate.add(getContainer().getEntityId());
-                sqlFragmentUpdate.add(details[0].getUserid());
-                sqlFragmentUpdate.add(getContainer().getEntityId());
-                new SqlExecutor(scope).execute(sqlFragmentUpdate);
+                // Refresh this user's training statistics from their remaining training runs.
+                recomputeUserData(scope, details[0].getUserid(), getContainer());
                 transaction.commit();
             }
             return new ApiSimpleResponse(KEY_SUCCESS, true);
@@ -976,14 +1024,35 @@ public class TestResultsController extends SpringActionController
             }
 
             int rowId = form.getRunId();
+            // Look up the run's owner before deleting so we can refresh that user's training
+            // stats afterward: the run may have been part of their training set, so their
+            // baseline can change (or disappear) once it is gone.
+            RunDetail[] runs = new TableSelector(TestResultsSchema.getTableInfoTestRuns(),
+                    new SimpleFilter(FieldKey.fromParts("id"), rowId), null).getArray(RunDetail.class);
+            // Child tables keyed by testrunid -> testruns(id).
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("testrunid"), rowId);
-            try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction()) {
+            // trainruns keys the run via its "runid" column, not "testrunid".
+            SimpleFilter trainFilter = new SimpleFilter();
+            trainFilter.addCondition(FieldKey.fromParts("runid"), rowId);
+            DbScope scope = TestResultsSchema.getSchema().getScope();
+            try (DbScope.Transaction transaction = scope.ensureTransaction()) {
+                // Delete every child row that references this run before the parent, or the
+                // testruns delete fails on a foreign key constraint. handleleaks and trainruns
+                // were previously missed: deleting a run that had handle-leak records or was in
+                // the training set failed (e.g. fk_memoryleaks_testruns on table handleleaks).
                 Table.delete(TestResultsSchema.getTableInfoTestFails(), filter);
                 Table.delete(TestResultsSchema.getTableInfoTestPasses(), filter);
                 Table.delete(TestResultsSchema.getTableInfoMemoryLeaks(), filter);
+                Table.delete(TestResultsSchema.getTableInfoHandleLeaks(), filter);
                 Table.delete(TestResultsSchema.getTableInfoHangs(), filter);
+                Table.delete(TestResultsSchema.getTableInfoTrain(), trainFilter);
                 Table.delete(TestResultsSchema.getTableInfoTestRuns(), rowId); // delete run last because of foreign key
+                // If the deleted run belonged to a user, refresh their training stats now that
+                // it (and any trainruns row for it) is gone, so a removed training run does not
+                // leave a stale UserData row behind.
+                if (runs.length > 0)
+                    recomputeUserData(scope, runs[0].getUserid(), getContainer());
                 transaction.commit();
             } catch (Exception x) {
                 response.put(KEY_SUCCESS, false);
@@ -1950,7 +2019,7 @@ public class TestResultsController extends SpringActionController
                                 timestampDay = addDays(timestampDay, 1);
                             }
                             lastHour = hour;
-                            String originalDate = MDYFormat.format(timestampDay);
+                            String originalDate = mdyFormat().format(timestampDay);
                             try {
                                 timestamp = new SimpleDateFormat("MM/dd/yyyy HH:mm").parse(originalDate + " " + ts);
                             } catch (IllegalArgumentException e) {
@@ -2002,7 +2071,7 @@ public class TestResultsController extends SpringActionController
                             timestampDay = addDays(timestampDay, 1);
                         }
                         lastHour = hour;
-                        String originalDate = MDYFormat.format(timestampDay);
+                        String originalDate = mdyFormat().format(timestampDay);
                         try {
                             timestamp = new SimpleDateFormat("MM/dd/yyyy HH:mm").parse(originalDate + " " + ts);
                         } catch (IllegalArgumentException e) {
