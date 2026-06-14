@@ -21,7 +21,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -152,15 +155,24 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
 
     private JSONObject handleESearch(String url)
     {
-        boolean isPmc = url.contains("db=pmc");
+        boolean isPmc = "pmc".equals(extractQueryParam(url, "db"));
         Map<String, List<String>> searchMap = isPmc ? _pmcSearchResults : _pubmedSearchResults;
 
+        // Match registered search keys against the decoded ESearch query term only, not the whole
+        // URL, so a key cannot accidentally match part of another parameter (tool/email) or another
+        // key. The real ESearch term wraps the key in quotes (e.g. "PXD056793"), so contains() on
+        // the term is the right granularity.
+        String term = extractQueryParam(url, "term");
+
         JSONArray idList = new JSONArray();
-        for (Map.Entry<String, List<String>> entry : searchMap.entrySet())
+        if (term != null)
         {
-            if (url.contains(entry.getKey()))
+            for (Map.Entry<String, List<String>> entry : searchMap.entrySet())
             {
-                entry.getValue().forEach(idList::put);
+                if (term.contains(entry.getKey()))
+                {
+                    entry.getValue().forEach(idList::put);
+                }
             }
         }
 
@@ -171,13 +183,18 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
 
     private JSONObject handleESummary(String url)
     {
-        boolean isPmc = url.contains("db=pmc");
+        boolean isPmc = "pmc".equals(extractQueryParam(url, "db"));
         Map<String, JSONObject> metadataMap = isPmc ? _pmcMetadata : _pubmedMetadata;
+
+        // ESummary requests a comma-separated list of IDs in the "id" parameter. Match registered
+        // IDs against that list (exactly, not by substring), rather than scanning the whole URL.
+        String idParam = extractQueryParam(url, "id");
+        List<String> requestedIds = idParam == null ? List.of() : Arrays.asList(idParam.split(","));
 
         JSONObject result = new JSONObject();
         for (Map.Entry<String, JSONObject> entry : metadataMap.entrySet())
         {
-            if (url.contains(entry.getKey()))
+            if (requestedIds.contains(entry.getKey()))
             {
                 result.put(entry.getKey(), entry.getValue());
             }
@@ -193,25 +210,31 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
      */
     private JSONObject handleCitation(String url)
     {
-        // Extract the publication ID from the URL (last segment after "id=")
-        String id = null;
-        int idIdx = url.indexOf("id=");
-        if (idIdx >= 0)
-        {
-            id = url.substring(idIdx + 3);
-            // Remove any trailing query parameters
-            int ampIdx = id.indexOf('&');
-            if (ampIdx >= 0)
-            {
-                id = id.substring(0, ampIdx);
-            }
-        }
-
+        String id = extractQueryParam(url, "id");
         String citation = id != null ? _citations.get(id) : null;
         if (citation != null)
         {
             return new JSONObject().put("nlm", new JSONObject().put("orig", citation));
         }
         return new JSONObject();
+    }
+
+    /**
+     * Returns the URL-decoded value of the given query parameter, or null if it is not present.
+     * Used to scope mock matching to a specific parameter (db, term, id) instead of the whole URL.
+     */
+    private static @Nullable String extractQueryParam(String url, String name)
+    {
+        int queryStart = url.indexOf('?');
+        String query = queryStart >= 0 ? url.substring(queryStart + 1) : url;
+        for (String pair : query.split("&"))
+        {
+            int eq = pair.indexOf('=');
+            if (eq > 0 && pair.substring(0, eq).equals(name))
+            {
+                return URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8);
+            }
+        }
+        return null;
     }
 }
