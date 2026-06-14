@@ -259,35 +259,30 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertNotNull("Expected lastReminderDate for dataset 2", dsStatus2AfterPost.get("LastReminderDate"));
         assertNotNull("Expected citation to be cached for dataset 2", dsStatus2AfterPost.get("Citation"));
 
-        // Verify the NCBI API key setting round-trips (set -> save -> re-read). The helper asserts
-        // the saved value is reflected on the form. doCleanup restores the original settings.
+        // Verify the NCBI API key setting round-trips (set -> save -> re-read).
         savePrivateDataReminderSettings("2", "0", "0", true, "test-ncbi-api-key");
 
-        // Verify the configured key actually reaches the live eutils requests. NCBI rejects an
-        // invalid key with HTTP 400, so re-searching dataset 2 (which found a publication above)
-        // should now find nothing. Only meaningful against the real NCBI service: on TeamCity the
-        // mock service bypasses the key, so this runs only when not using the mock (i.e. on dev).
+        // Verify the configured key reaches the live eutils requests. NCBI rejects an invalid key
+        // with HTTP 400, so re-searching dataset 2, which found a publication above, should now
+        // find nothing. The mock service bypasses the key, so this runs only against real NCBI.
         if (!_useMockNcbi)
         {
             // Capture the server error count immediately before the deliberate bad-key search so the
-            // assertion below counts only its errors. Capturing at test start would also count any
-            // incidental transient NCBI errors (5xx) from the earlier real-NCBI steps, which the
-            // retry logic reduces but cannot eliminate, making the check flaky on a dev machine.
+            // assertion below only counts errors due to the bad-key search.
             int serverErrorCount = getServerErrorCount();
 
             searchPublicationsForDataset(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
             assertTextPresent("No publications found for this dataset.");
             assertTextNotPresent(PMID_2);
 
-            // The invalid key makes NCBI return HTTP 400. Verify the server log records the cause:
-            // this proves both that the key reached eutils and that the 400 response body is logged.
+            // The invalid key makes NCBI return HTTP 400, and errorDetail appends the response body
+            // to the logged message.
             assertTrue("Server log should record NCBI's invalid-key error",
                     getServerErrors().contains("API key invalid"));
 
-            // The bad-key search logs one error per failed NCBI call: 2 PMC strategy searches for
-            // dataset 2 (ProteomeXchange ID and Panorama URL) plus the PubMed fallback = 3.
-            // checkExpectedErrors verifies exactly these and clears them; unlike a bare resetErrors()
-            // it fails the test if any other unexpected errors occurred during the run.
+            // The bad-key search logs one error per failed NCBI call. Dataset 2 runs two PMC
+            // strategy searches, on ProteomeXchange ID and Panorama URL, plus the PubMed fallback.
+            // checkExpectedErrors clears exactly that many and fails on any others.
             checkExpectedErrors(serverErrorCount + 3);
         }
     }

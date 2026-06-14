@@ -33,7 +33,8 @@ import java.util.Map;
  * Mock implementation of {@link NcbiPublicationSearchService} that returns canned data registered by tests.
  * Used by Selenium tests when running on TeamCity.
  * Extends {@link NcbiPublicationSearchServiceImpl} and only overrides {@link #getString(String, Logger)},
- * the single method that makes HTTP calls to NCBI. All search logic, filtering, author/title
+ * the method every NCBI request passes through. The override takes the place of the real HTTP request
+ * in {@code executeGet()} and the retry loop around it. All search logic, filtering, author/title
  * verification, citation parsing, and priority filtering run through the real implementation code.
  * Tests register mock articles via {@link #register}, providing the database, ID, search key,
  * metadata fields, and citation. The mock builds internal lookup maps from this data and returns
@@ -54,7 +55,7 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
 
     /**
      * Register a mock article. The mock stores the data in internal lookup maps used by
-     * {@link #getString(String)}.
+     * {@link #getString(String, Logger)}.
      * @param database     "pmc" or "pubmed" — the NCBI database this article is in
      * @param id           the article ID in the given database (numeric ID for pmc or pubmed)
      * @param searchKey    what ESearch query term finds this article (e.g. PXD ID for PMC, author last name for PubMed)
@@ -158,10 +159,9 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
         boolean isPmc = "pmc".equals(extractQueryParam(url, "db"));
         Map<String, List<String>> searchMap = isPmc ? _pmcSearchResults : _pubmedSearchResults;
 
-        // Match registered search keys against the decoded ESearch query term only, not the whole
-        // URL, so a key cannot accidentally match part of another parameter (tool/email) or another
-        // key. The real ESearch term wraps the key in quotes (e.g. "PXD056793"), so contains() on
-        // the term is the right granularity.
+        // Match registered search keys against the decoded ESearch query term, so a key cannot
+        // match part of another parameter such as tool or email. The real ESearch term wraps the
+        // key in quotes (e.g. "PXD056793"), so contains() on the term is the right granularity.
         String term = extractQueryParam(url, "term");
 
         JSONArray idList = new JSONArray();
@@ -221,7 +221,6 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
 
     /**
      * Returns the URL-decoded value of the given query parameter, or null if it is not present.
-     * Used to scope mock matching to a specific parameter (db, term, id) instead of the whole URL.
      */
     private static @Nullable String extractQueryParam(String url, String name)
     {

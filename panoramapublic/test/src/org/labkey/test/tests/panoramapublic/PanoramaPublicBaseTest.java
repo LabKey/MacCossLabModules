@@ -660,7 +660,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     }
 
     /**
-     * @param ncbiApiKey value to enter in the NCBI API key field; pass null to leave the field untouched.
+     * @param ncbiApiKey value to enter in the NCBI API key field. Pass null to leave the field untouched.
      */
     protected void savePrivateDataReminderSettings(String extensionLength, String delayUntilFirstReminder, String reminderFrequency, boolean enablePublicationSearch, String ncbiApiKey)
     {
@@ -690,11 +690,12 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         assertEquals(String.valueOf(delayUntilFirstReminder), getFormElement(Locator.input("delayUntilFirstReminder")));
         assertEquals(String.valueOf(reminderFrequency), getFormElement(Locator.input("reminderFrequency")));
         assertEquals(String.valueOf(extensionLength), getFormElement(Locator.input("extensionLength")));
-        assertEquals("enablePublicationSearch should round-trip through save", enablePublicationSearch,
+        assertEquals("The saved publication search setting should be displayed on the form", enablePublicationSearch,
                 Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected());
         if (ncbiApiKey != null)
         {
-            assertEquals(ncbiApiKey, getFormElement(Locator.input("ncbiApiKey")));
+            assertEquals("The saved NCBI API key should be displayed on the form", ncbiApiKey,
+                    getFormElement(Locator.input("ncbiApiKey")));
         }
     }
 
