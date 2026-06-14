@@ -10146,6 +10146,7 @@ public class PanoramaPublicController extends SpringActionController
                 form.setExtensionLength(settings.getExtensionLength());
                 form.setEnablePublicationSearch(settings.isEnablePublicationSearch());
                 form.setPublicationSearchFrequency(settings.getPublicationSearchFrequency());
+                form.setNcbiApiKey(settings.getNcbiApiKey());
             }
 
             VBox view = new VBox();
@@ -10166,6 +10167,7 @@ public class PanoramaPublicController extends SpringActionController
             settings.setExtensionLength(form.getExtensionLength());
             settings.setEnablePublicationSearch(form.isEnablePublicationSearch());
             settings.setPublicationSearchFrequency(form.getPublicationSearchFrequency());
+            settings.setNcbiApiKey(form.getNcbiApiKey());
             PrivateDataReminderSettings.save(settings);
 
             PrivateDataMessageScheduler.getInstance().initialize(settings.isEnableReminders());
@@ -10205,6 +10207,7 @@ public class PanoramaPublicController extends SpringActionController
         private Integer _delayUntilFirstReminder;
         private boolean _enablePublicationSearch;
         private Integer _publicationSearchFrequency;
+        private String _ncbiApiKey;
 
         public boolean isEnabled()
         {
@@ -10274,6 +10277,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setPublicationSearchFrequency(Integer publicationSearchFrequency)
         {
             _publicationSearchFrequency = publicationSearchFrequency;
+        }
+
+        public String getNcbiApiKey()
+        {
+            return _ncbiApiKey;
+        }
+
+        public void setNcbiApiKey(String ncbiApiKey)
+        {
+            _ncbiApiKey = ncbiApiKey;
         }
     }
 

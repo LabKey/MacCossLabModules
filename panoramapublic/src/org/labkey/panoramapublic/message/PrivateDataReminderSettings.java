@@ -41,6 +41,7 @@ public class PrivateDataReminderSettings
     public static final String PROP_EXTENSION_LENGTH = "Extension duration (months)";
     public static final String PROP_ENABLE_PUBLICATION_SEARCH = "Enable publication search";
     public static final String PROP_PUBLICATION_SEARCH_FREQUENCY = "Publication search frequency (months)";
+    public static final String PROP_NCBI_API_KEY = "NCBI API key";
 
     private static final boolean DEFAULT_ENABLE_REMINDERS = false;
     public static final String DEFAULT_REMINDER_TIME = "8:00 AM";
@@ -61,6 +62,7 @@ public class PrivateDataReminderSettings
     private int _extensionLength;
     private boolean _enablePublicationSearch;
     private int _publicationSearchFrequency;
+    private String _ncbiApiKey;
 
     public static PrivateDataReminderSettings get()
     {
@@ -101,6 +103,8 @@ public class PrivateDataReminderSettings
                     ? DEFAULT_PUBLICATION_SEARCH_FREQUENCY
                     : Integer.valueOf(settingsMap.get(PROP_PUBLICATION_SEARCH_FREQUENCY));
             settings.setPublicationSearchFrequency(publicationSearchFrequency);
+
+            settings.setNcbiApiKey(settingsMap.get(PROP_NCBI_API_KEY));
         }
         else
         {
@@ -147,6 +151,7 @@ public class PrivateDataReminderSettings
         settingsMap.put(PROP_REMINDER_TIME, settings.getReminderTimeFormatted());
         settingsMap.put(PROP_ENABLE_PUBLICATION_SEARCH, String.valueOf(settings.isEnablePublicationSearch()));
         settingsMap.put(PROP_PUBLICATION_SEARCH_FREQUENCY, String.valueOf(settings.getPublicationSearchFrequency()));
+        settingsMap.put(PROP_NCBI_API_KEY, settings.getNcbiApiKey() != null ? settings.getNcbiApiKey() : "");
         settingsMap.save();
     }
 
@@ -223,6 +228,16 @@ public class PrivateDataReminderSettings
     public void setPublicationSearchFrequency(int publicationSearchFrequency)
     {
         _publicationSearchFrequency = publicationSearchFrequency;
+    }
+
+    public @Nullable String getNcbiApiKey()
+    {
+        return _ncbiApiKey;
+    }
+
+    public void setNcbiApiKey(@Nullable String ncbiApiKey)
+    {
+        _ncbiApiKey = ncbiApiKey;
     }
 
     public @Nullable Date getReminderValidUntilDate(@NotNull DatasetStatus status)

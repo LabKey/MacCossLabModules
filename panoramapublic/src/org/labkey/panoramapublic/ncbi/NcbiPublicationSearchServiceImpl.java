@@ -38,10 +38,12 @@ import org.labkey.api.util.Pair;
 import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.datacite.DataCiteService;
+import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
@@ -94,6 +96,11 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     // API parameters
     private static final int RATE_LIMIT_DELAY_MS = 400; // NCBI allows 3 requests/sec
     private static final int TIMEOUT_MS = 10000; // 10 seconds
+
+    // NCBI eutils intermittently returns transient 5xx errors and read timeouts, even well under
+    // the rate limit. Retry those a few times with exponential backoff before giving up.
+    private static final int MAX_HTTP_ATTEMPTS = 3; // initial try + 2 retries
+    private static final int RETRY_BASE_DELAY_MS = 500; // exponential backoff base
 
     // NCBI suggests using the 'tool' and 'email' parameters on E-utilities URLs
     // https://www.nlm.nih.gov/dataguide/eutilities/utilities.html
@@ -156,7 +163,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
         try
         {
-            String response = getString(queryUrl);
+            String response = getString(queryUrl, log);
             return parseCitation(response, publicationId, database, log);
         }
         catch (IOException e)
@@ -326,7 +333,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
         try
         {
-            JSONObject json = getJson(url);
+            JSONObject json = getJson(url, log);
             JSONObject eSearchResult = json.getJSONObject("esearchresult");
             JSONArray idList = eSearchResult.getJSONArray("idlist");
 
@@ -349,16 +356,42 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
      * @throws IOException if the request fails or the server returns a non-2xx response
      * @throws JSONException if the response body is not valid JSON
      */
-    protected JSONObject getJson(String url) throws IOException
+    protected JSONObject getJson(String url, Logger log) throws IOException
     {
-        return new JSONObject(getString(url));
+        return new JSONObject(getString(url, log));
     }
 
     /**
-     * Execute an HTTP GET request and return the response body as a string.
+     * Execute an HTTP GET request and return the response body as a string. Retry warnings are
+     * written to {@code log} so they land in the pipeline job log when invoked from the reminder
+     * job (and in the server log for UI-triggered searches, which pass the static logger).
      * @throws IOException if the request fails or the server returns a non-2xx response
      */
-    protected String getString(String url) throws IOException
+    protected String getString(String url, Logger log) throws IOException
+    {
+        // Retry transient NCBI failures (5xx, read timeouts) with exponential backoff;
+        // other failures (e.g. 4xx) are permanent and fail fast.
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return executeGet(url);
+            }
+            catch (IOException e)
+            {
+                if (attempt >= MAX_HTTP_ATTEMPTS || !isRetryable(e))
+                {
+                    throw e;
+                }
+                long delayMs = retryDelayMs(attempt);
+                getLog(log).warn("NCBI request failed (attempt {} of {}); retrying in {} ms. URL: {}; cause: {}",
+                        attempt, MAX_HTTP_ATTEMPTS, delayMs, url, e.toString());
+                sleepMs(delayMs);
+            }
+        }
+    }
+
+    private String executeGet(String url) throws IOException
     {
         ConnectionConfig connectionConfig = ConnectionConfig.custom()
             .setConnectTimeout(Timeout.ofMilliseconds(TIMEOUT_MS))
@@ -382,10 +415,66 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                 int status = response.getCode();
                 if (status < 200 || status >= 300)
                 {
-                    throw new HttpResponseException(status, response.getReasonPhrase());
+                    // Read the body only for client errors; 5xx bodies are typically large,
+                    // uninformative HTML error pages.
+                    String body = (status >= 400 && status < 500 && response.getEntity() != null)
+                            ? EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8)
+                            : null;
+                    throw new HttpResponseException(status, errorDetail(status, response.getReasonPhrase(), body));
                 }
                 return EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             });
+        }
+    }
+
+    /**
+     * Builds the message for a non-2xx HttpResponseException. For client errors (4xx) the response
+     * body is appended (e.g. NCBI's "API key invalid" message) so the cause is visible in the server
+     * log; for other statuses only the reason phrase is used (5xx bodies are uninformative HTML).
+     */
+    private static String errorDetail(int status, String reasonPhrase, @Nullable String body)
+    {
+        if (status >= 400 && status < 500 && !StringUtils.isBlank(body))
+        {
+            return reasonPhrase + " - " + StringUtils.abbreviate(body.strip(), 500);
+        }
+        return reasonPhrase;
+    }
+
+    /**
+     * Transient NCBI failures worth retrying: read timeouts and 5xx responses.
+     * 4xx and other errors are treated as permanent and fail fast.
+     */
+    private static boolean isRetryable(IOException e)
+    {
+        if (e instanceof SocketTimeoutException)
+        {
+            return true;
+        }
+        if (e instanceof HttpResponseException hre)
+        {
+            return hre.getStatusCode() >= 500;
+        }
+        return false;
+    }
+
+    // Exponential backoff: 500ms after the 1st failure, 1000ms after the 2nd, etc. No jitter is
+    // needed because both callers (the daily reminder job and the UI search) issue NCBI requests
+    // sequentially, so a retry never collides with a sibling request from the same caller.
+    private static long retryDelayMs(int attempt)
+    {
+        return (long) RETRY_BASE_DELAY_MS << (attempt - 1);
+    }
+
+    private static void sleepMs(long ms)
+    {
+        try
+        {
+            Thread.sleep(ms);
+        }
+        catch (InterruptedException e)
+        {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -420,7 +509,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
         try
         {
-            JSONObject json = getJson(url);
+            JSONObject json = getJson(url, log);
             JSONObject result = json.optJSONObject("result");
             if (result == null) return Collections.emptyMap();
 
@@ -921,14 +1010,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
      */
     private static void rateLimit()
     {
-        try
-        {
-            Thread.sleep(RATE_LIMIT_DELAY_MS);
-        }
-        catch (InterruptedException e)
-        {
-            Thread.currentThread().interrupt();
-        }
+        sleepMs(RATE_LIMIT_DELAY_MS);
     }
 
     /**
@@ -947,9 +1029,24 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
      */
     private static String buildCommonParams(String database)
     {
-        return "db=" + URLEncoder.encode(database, StandardCharsets.UTF_8) +
+        return buildCommonParams(database, PrivateDataReminderSettings.get().getNcbiApiKey());
+    }
+
+    // Builds the shared eutils query parameters. The API key is passed in (rather than looked up)
+    // so this can be unit tested without a running server.
+    private static String buildCommonParams(String database, @Nullable String apiKey)
+    {
+        String params = "db=" + URLEncoder.encode(database, StandardCharsets.UTF_8) +
             "&tool=" + URLEncoder.encode(TOOL, StandardCharsets.UTF_8) +
             "&email=" + URLEncoder.encode(EMAIL, StandardCharsets.UTF_8);
+
+        // An NCBI API key (configured in the Private Data Reminder Settings) raises the eutils
+        // rate limit from 3 to 10 requests/sec. Append it when one has been entered.
+        if (!StringUtils.isBlank(apiKey))
+        {
+            params += "&api_key=" + URLEncoder.encode(apiKey.trim(), StandardCharsets.UTF_8);
+        }
+        return params;
     }
 
     /**
@@ -1420,6 +1517,66 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             // Null match info
             restored = PublicationMatch.fromMatchInfo("11111", DB.PubMed, null);
             assertFalse(restored.matchesProteomeXchangeId());
+        }
+
+        // -- HTTP retry tests --
+
+        @Test
+        public void testIsRetryable()
+        {
+            // Read timeouts and 5xx responses are transient NCBI failures -> retry
+            assertTrue(isRetryable(new SocketTimeoutException("Read timed out")));
+            assertTrue(isRetryable(new HttpResponseException(500, "Internal Server Error")));
+            assertTrue(isRetryable(new HttpResponseException(503, "Service Unavailable")));
+
+            // 4xx and generic IO errors are permanent -> fail fast
+            assertFalse(isRetryable(new HttpResponseException(400, "Bad Request")));
+            assertFalse(isRetryable(new HttpResponseException(404, "Not Found")));
+            assertFalse(isRetryable(new IOException("connection reset")));
+        }
+
+        @Test
+        public void testRetryDelayMs()
+        {
+            // Exponential backoff: 500ms, 1000ms, 2000ms per attempt.
+            assertEquals(500, retryDelayMs(1));
+            assertEquals(1000, retryDelayMs(2));
+            assertEquals(2000, retryDelayMs(3));
+        }
+
+        @Test
+        public void testErrorDetail()
+        {
+            // 4xx: the response body is appended so the cause (e.g. an invalid API key) is logged
+            String detail = errorDetail(400, "Bad Request", "{\"error\":\"API key invalid\"}");
+            assertTrue(detail.contains("Bad Request"));
+            assertTrue(detail.contains("API key invalid"));
+
+            // 5xx: body omitted (uninformative)
+            assertEquals("Internal Server Error", errorDetail(500, "Internal Server Error", "<html>oops</html>"));
+
+            // 4xx with blank or null body: just the reason phrase, no trailing separator
+            assertEquals("Bad Request", errorDetail(400, "Bad Request", ""));
+            assertEquals("Bad Request", errorDetail(400, "Bad Request", null));
+        }
+
+        @Test
+        public void testBuildCommonParams()
+        {
+            // Always includes db, tool, email
+            String params = buildCommonParams("pmc", null);
+            assertTrue(params.contains("db=pmc"));
+            assertTrue(params.contains("tool=" + TOOL));
+            assertTrue(params.contains("email="));
+
+            // No api_key when the key is null, empty, or blank
+            assertFalse("api_key should be absent when no key is set", params.contains("api_key"));
+            assertFalse(buildCommonParams("pmc", "").contains("api_key"));
+            assertFalse(buildCommonParams("pmc", "   ").contains("api_key"));
+
+            // api_key appended (and trimmed) when a key is set
+            assertTrue(buildCommonParams("pubmed", "ABC123").contains("api_key=ABC123"));
+            assertTrue(buildCommonParams("pmc", "  ABC123  ").contains("api_key=ABC123"));
         }
 
         // -- Helper methods for building test JSON --

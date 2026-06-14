@@ -15,6 +15,7 @@
  */
 package org.labkey.panoramapublic.ncbi;
 
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -28,7 +29,7 @@ import java.util.Map;
 /**
  * Mock implementation of {@link NcbiPublicationSearchService} that returns canned data registered by tests.
  * Used by Selenium tests when running on TeamCity.
- * Extends {@link NcbiPublicationSearchServiceImpl} and only overrides {@link #getString(String)},
+ * Extends {@link NcbiPublicationSearchServiceImpl} and only overrides {@link #getString(String, Logger)},
  * the single method that makes HTTP calls to NCBI. All search logic, filtering, author/title
  * verification, citation parsing, and priority filtering run through the real implementation code.
  * Tests register mock articles via {@link #register}, providing the database, ID, search key,
@@ -132,7 +133,7 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
      * Handles ESearch, ESummary, and Citation Exporter URLs.
      */
     @Override
-    protected String getString(String url) throws IOException
+    protected String getString(String url, Logger log) throws IOException
     {
         if (url.contains("esearch.fcgi"))
         {

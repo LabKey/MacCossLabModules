@@ -170,6 +170,19 @@
                     </div>
                 </td>
             </tr>
+            <tr>
+                <td class="labkey-form-label">
+                    <span><%=h(PrivateDataReminderSettings.PROP_NCBI_API_KEY)%></span>
+                </td>
+                <td>
+                    <input style="padding:0 10px 0 0; width: 360px;" type="text" name="ncbiApiKey" value="<%=h(form.getNcbiApiKey())%>" />
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
+                        Optional. An NCBI API key raises the request rate limit for PubMed/PMC searches from 3 to 10 per second.
+                        <br/>
+                        Create one under Account settings at ncbi.nlm.nih.gov. Leave blank to search without a key.
+                    </div>
+                </td>
+            </tr>
             <tr><td colspan="2">
                 <%=button("Save").submit(true)%>
                 <%=button("Cancel").href(panoramaPublicAdminUrl)%>

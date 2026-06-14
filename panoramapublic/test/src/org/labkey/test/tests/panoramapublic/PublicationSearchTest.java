@@ -114,6 +114,15 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         // Step 1: Set up mock NCBI service if running on TeamCity
         setupMockNcbiService();
 
+        // Capture the existing reminder settings up front so doCleanup can restore them exactly.
+        // The dev machine may already have a real NCBI API key (and other non-default values) set.
+        _originalReminderSettings = getPrivateDataReminderSettings();
+
+        // Baseline server error count up front. The only errors this test should produce are the
+        // deliberate ones from the bad-key search at the end; checkExpectedErrors(baseline + n)
+        // verifies exactly that count and fails on any unexpected extras (rather than masking them).
+        int serverErrorCount = getServerErrorCount();
+
         // Step 2: Create dataset 1 folder, submit to Panorama Public, and copy
         String testProject = getProjectName();
         String shortAccessUrl1 = setupFolderSubmitAndCopy(testProject, FOLDER_1, TARGET_FOLDER_1,
@@ -190,8 +199,6 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertTextPresent("The user has already dismissed the publication suggestion PubMed ID " + PMID_1 + " for this dataset");
 
         // Step 9: Run reminders in TEST MODE — verify DatasetStatus is NOT updated
-        // Save current settings so they can be restored in doCleanup
-        _originalReminderSettings = getPrivateDataReminderSettings();
         savePrivateDataReminderSettings("2", "0", "0", true);
 
         // Post reminders in test mode with publication search enabled
@@ -256,6 +263,32 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertNotNull("Expected publicationType for dataset 2", dsStatus2AfterPost.get("PublicationType"));
         assertNotNull("Expected lastReminderDate for dataset 2", dsStatus2AfterPost.get("LastReminderDate"));
         assertNotNull("Expected citation to be cached for dataset 2", dsStatus2AfterPost.get("Citation"));
+
+        // Verify the NCBI API key setting round-trips (set -> save -> re-read). The helper asserts
+        // the saved value is reflected on the form. doCleanup restores the original settings.
+        savePrivateDataReminderSettings("2", "0", "0", true, "test-ncbi-api-key");
+
+        // Verify the configured key actually reaches the live eutils requests. NCBI rejects an
+        // invalid key with HTTP 400, so re-searching dataset 2 (which found a publication above)
+        // should now find nothing. Only meaningful against the real NCBI service: on TeamCity the
+        // mock service bypasses the key, so this runs only when not using the mock (i.e. on dev).
+        if (!_useMockNcbi)
+        {
+            searchPublicationsForDataset(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
+            assertTextPresent("No publications found for this dataset.");
+            assertTextNotPresent(PMID_2);
+
+            // The invalid key makes NCBI return HTTP 400. Verify the server log records the cause:
+            // this proves both that the key reached eutils and that the 400 response body is logged.
+            assertTrue("Server log should record NCBI's invalid-key error",
+                    getServerErrors().contains("API key invalid"));
+
+            // The bad-key search logs one error per failed NCBI call: 2 PMC strategy searches for
+            // dataset 2 (ProteomeXchange ID and Panorama URL) plus the PubMed fallback = 3.
+            // checkExpectedErrors verifies exactly these and clears them; unlike a bare resetErrors()
+            // it fails the test if any other unexpected errors occurred during the run.
+            checkExpectedErrors(serverErrorCount + 3);
+        }
     }
 
     /*
@@ -486,7 +519,8 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
                     _originalReminderSettings.get("extensionLength"),
                     _originalReminderSettings.get("delayUntilFirstReminder"),
                     _originalReminderSettings.get("reminderFrequency"),
-                    Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")));
+                    Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")),
+                    _originalReminderSettings.get("ncbiApiKey"));
         }
     }
 

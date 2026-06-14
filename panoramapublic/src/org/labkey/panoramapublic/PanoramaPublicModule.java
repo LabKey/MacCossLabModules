@@ -46,6 +46,7 @@ import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.bluesky.BlueskyApiClient;
 import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoResourceType;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentType;
+import org.labkey.panoramapublic.message.PrivateDataMessageScheduler;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchServiceImpl;
 import org.labkey.panoramapublic.model.Journal;
@@ -151,6 +152,9 @@ public class PanoramaPublicModule extends SpringModule
         {
             fileContentService.addFileListener(new PanoramaPublicFileListener());
         }
+
+        // Start the private data reminder job on server restart if it is enabled.
+        PrivateDataMessageScheduler.getInstance().initialize(PrivateDataReminderSettings.get().isEnableReminders());
     }
 
     @NotNull
