@@ -690,6 +690,8 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         assertEquals(String.valueOf(delayUntilFirstReminder), getFormElement(Locator.input("delayUntilFirstReminder")));
         assertEquals(String.valueOf(reminderFrequency), getFormElement(Locator.input("reminderFrequency")));
         assertEquals(String.valueOf(extensionLength), getFormElement(Locator.input("extensionLength")));
+        assertEquals("enablePublicationSearch should round-trip through save", enablePublicationSearch,
+                Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected());
         if (ncbiApiKey != null)
         {
             assertEquals(ncbiApiKey, getFormElement(Locator.input("ncbiApiKey")));
