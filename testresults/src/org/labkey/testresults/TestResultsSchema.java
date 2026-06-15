@@ -153,6 +153,9 @@ public class TestResultsSchema extends UserSchema
     /**
      * The user table has no container column and no FK to testruns. Filter it to users
      * referenced by at least one testrun in an allowed container.
+     *
+     * No getContainerFieldKey() override: a machine can post to several containers, so it
+     * has no single "home" container. applyContainerFilter() alone does the scoping.
      */
     private FilteredTable<TestResultsSchema> createUserTable(TableInfo dbTable, ContainerFilter cf)
     {
