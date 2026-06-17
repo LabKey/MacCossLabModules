@@ -411,6 +411,8 @@ public class TestResultsController extends SpringActionController
     }
 
     public static User[] getUsers(org.labkey.api.security.User user, Container trainingDataContainer, String username) {
+        if (trainingDataContainer == null)
+            throw new IllegalArgumentException("getUsers requires a folder; use findUserIdByName(username) for the no-folder lookup");
         // Scope the computer list to the current folder via the filtered "user" query table.
         TableInfo userTable = new TestResultsSchema(user, trainingDataContainer)
                 .getTable(TestResultsSchema.TABLE_USER, ContainerFilter.current(trainingDataContainer, user));
