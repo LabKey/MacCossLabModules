@@ -696,6 +696,45 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
                 baselineUserData, userDataRowCount());
     }
 
+    @Test
+    public void testRemoveTrainingRunRecomputesStatsWhenRunsRemain()
+    {
+        // Covers the recomputeUserData "update" branch: when a user still has training runs
+        // after one is removed, their UserData row must survive (not be deleted) and its stats
+        // must be recomputed from the remaining runs. The other tests only exercise the
+        // "delete" branch (removing a user's only/last training run).
+        int userId = getUserId(COMPUTER_NAME_1);
+        int baselineUserData = userDataRowCount();
+        double cleanMem = runAverageMem(_cleanRunId);
+        double leakMem = runAverageMem(_leakRunId);
+
+        try
+        {
+            // Add two TEST-PC-1 runs to the training set; both share one UserData row whose
+            // mean memory is the average of the two runs.
+            assertTrainRun(_cleanRunId, "true");
+            assertTrainRun(_leakRunId, "true");
+            assertEquals("Both training runs should share one UserData row",
+                    baselineUserData + 1, userDataRowCount());
+            assertEquals("Mean memory should be the average of both training runs",
+                    (cleanMem + leakMem) / 2, userDataMeanMemory(userId), 1.0);
+
+            // Remove one run: the row must remain (update branch, not delete) and its mean
+            // memory must be recomputed from the single remaining run.
+            assertTrainRun(_leakRunId, "false");
+            assertEquals("Removing one of two training runs must not delete the UserData row",
+                    baselineUserData + 1, userDataRowCount());
+            assertEquals("Mean memory should be recomputed from the remaining run",
+                    cleanMem, userDataMeanMemory(userId), 1.0);
+        }
+        finally
+        {
+            // Leave the training set empty for other tests (no-op if already removed).
+            postApi("trainRun", Map.of("runId", String.valueOf(_cleanRunId), "train", "false"));
+            postApi("trainRun", Map.of("runId", String.valueOf(_leakRunId), "train", "false"));
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
@@ -979,6 +1018,69 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         catch (Exception e)
         {
             throw new RuntimeException("Failed to count userdata rows", e);
+        }
+    }
+
+    /**
+     * Posts trainRun for the given run and asserts it succeeded. {@code train} is "true" to add
+     * to the training set or "false" to remove.
+     */
+    private void assertTrainRun(int runId, String train)
+    {
+        JSONObject resp = postApi("trainRun", Map.of("runId", String.valueOf(runId), "train", train));
+        assertTrue("trainRun(" + runId + ", " + train + ") should succeed: " + resp,
+                resp.optBoolean("Success", false));
+    }
+
+    /**
+     * Returns the testresults.user id for the given computer name.
+     */
+    private int getUserId(String computerName)
+    {
+        List<Map<String, Object>> rows = selectRows("user",
+                new Filter("username", computerName), "id");
+        assertEquals("Expected exactly one user row for " + computerName, 1, rows.size());
+        return ((Number) rows.get(0).get("id")).intValue();
+    }
+
+    /**
+     * Returns the stored average managed memory for a run.
+     */
+    private double runAverageMem(int runId)
+    {
+        List<Map<String, Object>> rows = selectRows("testruns",
+                new Filter("id", runId), "averagemem");
+        assertEquals("Expected exactly one testruns row for run " + runId, 1, rows.size());
+        return ((Number) rows.get(0).get("averagemem")).doubleValue();
+    }
+
+    /**
+     * Returns the recomputed mean memory from the single UserData row for the given user.
+     */
+    private double userDataMeanMemory(int userId)
+    {
+        List<Map<String, Object>> rows = selectRows("userdata",
+                new Filter("userid", userId), "meanmemory");
+        assertEquals("Expected exactly one userdata row for user " + userId, 1, rows.size());
+        return ((Number) rows.get(0).get("meanmemory")).doubleValue();
+    }
+
+    /**
+     * Runs a filtered SelectRows against a testresults query, returning the selected columns.
+     */
+    private List<Map<String, Object>> selectRows(String queryName, Filter filter, String... columns)
+    {
+        try
+        {
+            Connection connection = WebTestHelper.getRemoteApiConnection();
+            SelectRowsCommand cmd = new SelectRowsCommand("testresults", queryName);
+            cmd.addFilter(filter);
+            cmd.setColumns(List.of(columns));
+            return cmd.execute(connection, PROJECT_NAME).getRows();
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Failed to query " + queryName, e);
         }
     }
 
