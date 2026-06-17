@@ -722,6 +722,27 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
                 .map(r -> (String) r.get("username")).toList();
         assertTrue("Parent should see TEST-PC-1", parentUsernames.contains(COMPUTER_NAME_1));
         assertTrue("Parent should see TEST-PC-2", parentUsernames.contains(COMPUTER_NAME_2));
+
+        // The SelectRows checks above hit the "user" query table (the FilteredTable from
+        // TestResultsSchema.createUserTable) via the query API. The User-page dropdown is a
+        // separate code path - built by TestResultsController.getUsers() - so verify it is
+        // folder-scoped too: the subfolder lists only TEST-PC-1, the parent lists both.
+        assertUserDropdownContains(subFolderPath, List.of(COMPUTER_NAME_1), List.of(COMPUTER_NAME_2));
+        assertUserDropdownContains("/" + PROJECT_NAME, List.of(COMPUTER_NAME_1, COMPUTER_NAME_2), List.of());
+    }
+
+    /**
+     * Navigates to the User page (ShowUserAction) in the given folder and asserts the computer
+     * dropdown - populated by TestResultsController.getUsers() - lists the expected computers.
+     * This exercises the server-rendered getUsers() path, separate from the query "user" table.
+     */
+    private void assertUserDropdownContains(String containerPath, List<String> present, List<String> absent)
+    {
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", containerPath, "showUser"));
+        for (String name : present)
+            assertElementPresent(Locator.xpath("//select[@id='users']/option[@value='" + name + "']"));
+        for (String name : absent)
+            assertElementNotPresent(Locator.xpath("//select[@id='users']/option[@value='" + name + "']"));
     }
 
     /**
