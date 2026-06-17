@@ -25,6 +25,7 @@ import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.ReadOnlyApiAction;
@@ -410,7 +411,7 @@ public class TestResultsController extends SpringActionController
         }
     }
 
-    public static User[] getUsers(org.labkey.api.security.User user, Container trainingDataContainer, String username) {
+    public static User[] getUsers(@NotNull org.labkey.api.security.User user, @NotNull Container trainingDataContainer, @Nullable String username) {
         if (trainingDataContainer == null)
             throw new IllegalArgumentException("getUsers requires a folder; use findUserIdByName(username) for the no-folder lookup");
         // Scope the computer list to the current folder via the filtered "user" query table.
@@ -457,7 +458,7 @@ public class TestResultsController extends SpringActionController
      * row is global (no container column), and run ingestion (ParseAndStoreXML) runs anonymously
      * and may be the computer's first post to a given folder, so this lookup must not be container-scoped.
      */
-    private static int findUserIdByName(String username)
+    private static int findUserIdByName(@NotNull String username)
     {
         SQLFragment sql = new SQLFragment("SELECT id FROM testresults.user WHERE username = ? ORDER BY id", username);
         List<Integer> ids = new ArrayList<>();
@@ -1835,6 +1836,8 @@ public class TestResultsController extends SpringActionController
                 Element docElement = doc.getDocumentElement();
                 // USER ID
                 String username = docElement.getAttribute("id");
+                if (StringUtils.isBlank(username))
+                    throw new IllegalArgumentException("Posted run XML is missing the required computer name (id attribute)");
                 int userid = findUserIdByName(username);
                 if (userid == -1) {
                     User newUser = new User();
