@@ -24,10 +24,12 @@ import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.DbSchema;
 import org.labkey.api.data.DbSchemaType;
 import org.labkey.api.data.ForeignKey;
+import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.dialect.SqlDialect;
 import org.labkey.api.module.Module;
 import org.labkey.api.query.DefaultSchema;
+import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.QueryForeignKey;
 import org.labkey.api.query.QuerySchema;
@@ -86,7 +88,8 @@ public class TestResultsSchema extends UserSchema
     @Override
     public @Nullable TableInfo createTable(@NotNull String name, @NotNull ContainerFilter cf)
     {
-        TableInfo dbTable = switch (name.toLowerCase())
+        String lower = name.toLowerCase();
+        TableInfo dbTable = switch (lower)
         {
             case TABLE_TEST_RUNS       -> getTableInfoTestRuns();
             case TABLE_USER            -> getTableInfoUser();
@@ -102,10 +105,75 @@ public class TestResultsSchema extends UserSchema
         };
         if (dbTable == null)
             return null;
-        FilteredTable<TestResultsSchema> table = new FilteredTable<>(dbTable, this, cf);
+        FilteredTable<TestResultsSchema> table = switch (lower)
+        {
+            case TABLE_HANGS, TABLE_MEMORY_LEAKS, TABLE_HANDLE_LEAKS, TABLE_TEST_PASSES, TABLE_TEST_FAILS ->
+                    createRunChildTable(dbTable, cf, "testrunid");
+            case TABLE_TRAIN_RUNS ->
+                    createRunChildTable(dbTable, cf, "runid");
+            case TABLE_USER ->
+                    createUserTable(dbTable, cf);
+            default ->
+                    new FilteredTable<>(dbTable, this, cf);
+        };
         table.wrapAllColumns(true);
         resolveSchemaForeignKeys(table, cf);
         return table;
+    }
+
+    /**
+     * Filters a table that has no container column of its own by joining to testruns
+     * via fkColumn and applying the container filter to testruns.container.
+     */
+    private FilteredTable<TestResultsSchema> createRunChildTable(TableInfo dbTable, ContainerFilter cf, String fkColumn)
+    {
+        return new FilteredTable<>(dbTable, this, cf)
+        {
+            @Override
+            public FieldKey getContainerFieldKey()
+            {
+                return FieldKey.fromParts(fkColumn, "container");
+            }
+
+            @Override
+            protected void applyContainerFilter(ContainerFilter filter)
+            {
+                FieldKey containerFieldKey = FieldKey.fromParts("container");
+                clearConditions(containerFieldKey);
+                SQLFragment sql = new SQLFragment().appendIdentifier(fkColumn).append(" IN (SELECT tr.id FROM ");
+                sql.append(getTableInfoTestRuns(), "tr");
+                sql.append(" WHERE ");
+                sql.append(filter.getSQLFragment(getSchema(), new SQLFragment("tr.container")));
+                sql.append(")");
+                addCondition(sql, containerFieldKey);
+            }
+        };
+    }
+
+    /**
+     * The user table has no container column and no FK to testruns. Filter it to users
+     * referenced by at least one testrun in an allowed container.
+     *
+     * No getContainerFieldKey() override: a machine can post to several containers, so it
+     * has no single "home" container. applyContainerFilter() alone does the scoping.
+     */
+    private FilteredTable<TestResultsSchema> createUserTable(TableInfo dbTable, ContainerFilter cf)
+    {
+        return new FilteredTable<>(dbTable, this, cf)
+        {
+            @Override
+            protected void applyContainerFilter(ContainerFilter filter)
+            {
+                FieldKey containerFieldKey = FieldKey.fromParts("container");
+                clearConditions(containerFieldKey);
+                SQLFragment sql = new SQLFragment("id IN (SELECT tr.userid FROM ");
+                sql.append(getTableInfoTestRuns(), "tr");
+                sql.append(" WHERE ");
+                sql.append(filter.getSQLFragment(getSchema(), new SQLFragment("tr.container")));
+                sql.append(")");
+                addCondition(sql, containerFieldKey);
+            }
+        };
     }
 
     /**
