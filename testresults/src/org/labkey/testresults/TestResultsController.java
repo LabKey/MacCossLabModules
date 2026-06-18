@@ -25,6 +25,7 @@ import org.apache.commons.validator.routines.EmailValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.action.ApiSimpleResponse;
 import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.ReadOnlyApiAction;
@@ -34,6 +35,7 @@ import org.labkey.api.action.SpringActionController;
 import org.labkey.api.collections.IntHashMap;
 import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.JdbcType;
@@ -44,6 +46,7 @@ import org.labkey.api.data.Sort;
 import org.labkey.api.data.SqlExecutor;
 import org.labkey.api.data.SqlSelector;
 import org.labkey.api.data.Table;
+import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.notification.EmailMessage;
@@ -390,7 +393,7 @@ public class TestResultsController extends SpringActionController
 
         ensureRunDataCached(allRuns, false);
 
-        User[] users = getUsers(c, null);
+        User[] users = getUsers(user, c, null);
         return new RunDownBean(allRuns, users, viewType, null, endDate);
     }
 
@@ -475,48 +478,59 @@ public class TestResultsController extends SpringActionController
         }
     }
 
-    public static User[] getUsers(Container trainingDataContainer, String username) {
-        SQLFragment sqlFragment = new SQLFragment();
-        sqlFragment.append("SELECT id, username FROM testresults.user");
+    public static User[] getUsers(@NotNull org.labkey.api.security.User user, @NotNull Container trainingDataContainer, @Nullable String username) {
+        if (trainingDataContainer == null)
+            throw new IllegalArgumentException("getUsers requires a folder; use findUserIdByName(username) for the no-folder lookup");
+        // Scope the computer list to the current folder via the filtered "user" query table.
+        TableInfo userTable = new TestResultsSchema(user, trainingDataContainer)
+                .getTable(TestResultsSchema.TABLE_USER, ContainerFilter.current(trainingDataContainer, user));
+        SimpleFilter filter = new SimpleFilter();
         if (username != null && !username.isEmpty())
-        {
-            sqlFragment.append(" WHERE username = ?");
-            sqlFragment.add(username);
-        }
-        sqlFragment.append(" ORDER BY id");
+            filter.addCondition(FieldKey.fromParts("username"), username);
         List<User> users = new ArrayList<>();
-        new SqlSelector(TestResultsSchema.getSchema(), sqlFragment).forEach(rs -> {
+        new TableSelector(userTable, filter, new Sort("id")).forEach(rs -> {
             User u = new User();
             u.setId(rs.getInt("id"));
             u.setUsername(rs.getString("username"));
             users.add(u);
         });
 
-        if (trainingDataContainer != null)
-        {
-            sqlFragment = new SQLFragment();
-            sqlFragment.append(
-                "SELECT userid, meantestsrun, meanmemory, stddevtestsrun, stddevmemory, active " +
-                "FROM testresults.userdata " +
-                "WHERE container = ?");
-            sqlFragment.add(trainingDataContainer.getEntityId());
-            new SqlSelector(TestResultsSchema.getSchema(), sqlFragment).forEach(rs -> {
-                for (User u : users)
+        // Attach the training stats (userdata is keyed by container).
+        SQLFragment sqlFragment = new SQLFragment();
+        sqlFragment.append(
+            "SELECT userid, meantestsrun, meanmemory, stddevtestsrun, stddevmemory, active " +
+            "FROM testresults.userdata " +
+            "WHERE container = ?");
+        sqlFragment.add(trainingDataContainer.getEntityId());
+        new SqlSelector(TestResultsSchema.getSchema(), sqlFragment).forEach(rs -> {
+            for (User u : users)
+            {
+                if (u.getId() == rs.getInt("userid"))
                 {
-                    if (u.getId() == rs.getInt("userid"))
-                    {
-                        u.setMeantestsrun(rs.getDouble("meantestsrun"));
-                        u.setMeanmemory(rs.getDouble("meanmemory"));
-                        u.setStddevtestsrun(rs.getDouble("stddevtestsrun"));
-                        u.setStddevmemory(rs.getDouble("stddevmemory"));
-                        u.setContainer(trainingDataContainer);
-                        u.setActive(rs.getBoolean("active"));
-                        break;
-                    }
+                    u.setMeantestsrun(rs.getDouble("meantestsrun"));
+                    u.setMeanmemory(rs.getDouble("meanmemory"));
+                    u.setStddevtestsrun(rs.getDouble("stddevtestsrun"));
+                    u.setStddevmemory(rs.getDouble("stddevmemory"));
+                    u.setContainer(trainingDataContainer);
+                    u.setActive(rs.getBoolean("active"));
+                    break;
                 }
-            });
-        }
+            }
+        });
         return users.toArray(new User[0]);
+    }
+
+    /**
+     * Looks up a computer's id by exact name across all folders, or -1 if none exists. The "user"
+     * row is global (no container column), and run ingestion (ParseAndStoreXML) runs anonymously
+     * and may be the computer's first post to a given folder, so this lookup must not be container-scoped.
+     */
+    private static int findUserIdByName(@NotNull String username)
+    {
+        SQLFragment sql = new SQLFragment("SELECT id FROM testresults.user WHERE username = ? ORDER BY id", username);
+        List<Integer> ids = new ArrayList<>();
+        new SqlSelector(TestResultsSchema.getSchema(), sql).forEach(rs -> ids.add(rs.getInt("id")));
+        return ids.isEmpty() ? -1 : ids.get(0);
     }
 
     /**
@@ -541,7 +555,7 @@ public class TestResultsController extends SpringActionController
 
             ensureRunDataCached(runs, false);
 
-            User[] users = getUsers(getContainer(), null);
+            User[] users = getUsers(getUser(), getContainer(), null);
             TestsDataBean bean = new TestsDataBean(runs, users);
             JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/trainingdata.jsp", bean);
             view.setFrame(WebPartView.FrameType.PORTAL);
@@ -670,7 +684,7 @@ public class TestResultsController extends SpringActionController
             User user = null;
             if (StringUtils.isNotBlank(userName))
             {
-                User[] users = getUsers(getContainer(), userName);
+                User[] users = getUsers(getUser(), getContainer(), userName);
                 if (users.length == 1)
                     user = users[0];
             }
@@ -1890,19 +1904,18 @@ public class TestResultsController extends SpringActionController
 
                 Element docElement = doc.getDocumentElement();
                 // USER ID
-                int userid;
                 String username = docElement.getAttribute("id");
-                User[] details = getUsers(null, username);
-                if (details.length == 0) {
-                    User newUser =  new User();
+                if (StringUtils.isBlank(username))
+                    throw new IllegalArgumentException("Posted run XML is missing the required computer name (id attribute)");
+                int userid = findUserIdByName(username);
+                if (userid == -1) {
+                    User newUser = new User();
                     newUser.setUsername(username);
                     User u = Table.insert(null, TestResultsSchema.getTableInfoUser(), newUser);
                     if (u == null) {
                         throw new Exception();
                     }
                     userid = u.getId();
-                } else {
-                    userid = details[0].getId();
                 }
                 if (userid == -1)
                     throw new Exception("Issue with user/userid, may not be set");
