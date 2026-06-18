@@ -729,14 +729,19 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
                     baselineUserData + 1, userDataRowCount());
             assertEquals("Mean memory should be the average of both training runs",
                     (cleanMem + leakMem) / 2, userDataMeanMemory(userId), 1.0);
+            // Population stddev of two values {a, b} is |a - b| / 2.
+            assertEquals("Stddev memory should reflect both training runs",
+                    Math.abs(cleanMem - leakMem) / 2, userDataStdDevMemory(userId), 1.0);
 
-            // Remove one run: the row must remain (update branch, not delete) and its mean
-            // memory must be recomputed from the single remaining run.
+            // Remove one run: the row must remain (update branch, not delete) and its stats
+            // must be recomputed from the single remaining run.
             assertTrainRun(_leakRunId, "false");
             assertEquals("Removing one of two training runs must not delete the UserData row",
                     baselineUserData + 1, userDataRowCount());
             assertEquals("Mean memory should be recomputed from the remaining run",
                     cleanMem, userDataMeanMemory(userId), 1.0);
+            assertEquals("Stddev memory of a single remaining run should be zero",
+                    0.0, userDataStdDevMemory(userId), 1.0);
         }
         finally
         {
@@ -1184,6 +1189,18 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
                 new Filter("userid", userId), "meanmemory");
         assertEquals("Expected exactly one userdata row for user " + userId, 1, rows.size());
         return ((Number) rows.get(0).get("meanmemory")).doubleValue();
+    }
+
+    /**
+     * Returns the recomputed population stddev of memory from the single UserData row for the
+     * given user.
+     */
+    private double userDataStdDevMemory(int userId)
+    {
+        List<Map<String, Object>> rows = selectRows("userdata",
+                new Filter("userid", userId), "stddevmemory");
+        assertEquals("Expected exactly one userdata row for user " + userId, 1, rows.size());
+        return ((Number) rows.get(0).get("stddevmemory")).doubleValue();
     }
 
     /**

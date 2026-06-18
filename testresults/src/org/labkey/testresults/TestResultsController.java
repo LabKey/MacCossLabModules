@@ -599,13 +599,12 @@ public class TestResultsController extends SpringActionController
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("id"), runId);
             RunDetail[] details = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getArray(RunDetail.class);
-            if (!force)
-            {
-                if (details.length == 0)
-                    return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "run does not exist: " + runId));
-                else if ((train && !foundRuns.isEmpty()) || (!train && foundRuns.isEmpty()))
-                    return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "no action necessary"));
-            }
+            // The run must exist even on the force path: recomputeUserData below dereferences
+            // details[0] to get the userid, so an empty result would otherwise throw.
+            if (details.length == 0)
+                return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "run does not exist: " + runId));
+            if (!force && ((train && !foundRuns.isEmpty()) || (!train && foundRuns.isEmpty())))
+                return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "no action necessary"));
             DbScope scope = TestResultsSchema.getSchema().getScope();
             try (DbScope.Transaction transaction = scope.ensureTransaction())
             {
