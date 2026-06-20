@@ -67,6 +67,10 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     static final String COMPUTER_NAME_1 = "TEST-PC-1";
     static final String COMPUTER_NAME_2 = "TEST-PC-2";
 
+    // Training stats are exact (avg/stddev of integer averagemem), so this only absorbs the
+    // floating round-trip through the query API. It is not a real tolerance.
+    private static final double EPSILON = 1e-6;
+
     private static final Locator SUBMIT_BUTTON = Locator.css("input[type='submit'][value='Submit']");
 
     // XPath for the problems matrix table (header cell contains "Fail: | Leak: | Hang:")
@@ -600,6 +604,14 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         assertFalse(missingRun.optBoolean("Success", true));
         assertEquals("run does not exist: 999999", missingRun.optString("error"));
 
+        // TrainRunAction: force path also requires the run to exist. The existence check runs
+        // before the recompute regardless of force, so a bad runId reports not-found instead of
+        // throwing on an empty lookup.
+        JSONObject forceMissingRun = postApi("trainRun",
+                Map.of("runId", "999999", "train", "force"));
+        assertFalse(forceMissingRun.optBoolean("Success", true));
+        assertEquals("run does not exist: 999999", forceMissingRun.optString("error"));
+
         // SetUserActive: missing userId
         JSONObject noUserId = postApi("setUserActive", Map.of("active", "true"));
         assertEquals("userId is required", noUserId.optString("Message"));
@@ -728,10 +740,10 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
             assertEquals("Both training runs should share one UserData row",
                     baselineUserData + 1, userDataRowCount());
             assertEquals("Mean memory should be the average of both training runs",
-                    (cleanMem + leakMem) / 2, userDataMeanMemory(userId), 1.0);
+                    (cleanMem + leakMem) / 2, userDataMeanMemory(userId), EPSILON);
             // Population stddev of two values {a, b} is |a - b| / 2.
             assertEquals("Stddev memory should reflect both training runs",
-                    Math.abs(cleanMem - leakMem) / 2, userDataStdDevMemory(userId), 1.0);
+                    Math.abs(cleanMem - leakMem) / 2, userDataStdDevMemory(userId), EPSILON);
 
             // Remove one run: the row must remain (update branch, not delete) and its stats
             // must be recomputed from the single remaining run.
@@ -739,9 +751,9 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
             assertEquals("Removing one of two training runs must not delete the UserData row",
                     baselineUserData + 1, userDataRowCount());
             assertEquals("Mean memory should be recomputed from the remaining run",
-                    cleanMem, userDataMeanMemory(userId), 1.0);
+                    cleanMem, userDataMeanMemory(userId), EPSILON);
             assertEquals("Stddev memory of a single remaining run should be zero",
-                    0.0, userDataStdDevMemory(userId), 1.0);
+                    0.0, userDataStdDevMemory(userId), EPSILON);
         }
         finally
         {
