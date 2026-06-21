@@ -121,7 +121,7 @@ public class SendTestResultsEmail implements org.quartz.Job
             TestResultsController.ensureRunDataCached(runs, false);
             TestResultsController.populatePassesLeaksFails(runs);
 
-            User[] users = TestResultsController.getUsers(container, null);
+            User[] users = TestResultsController.getUsers(from, container, null);
 
             RunDownBean data = new RunDownBean(runs, users);
             RunProblems problems = new RunProblems(data.getRunsByDate(end));
