@@ -190,6 +190,19 @@ public class TestResultsController extends SpringActionController
     }
 
     /**
+     * Loads the run with the given id only if it belongs to the given container, otherwise returns
+     * null. Run ids are global and the raw testruns table has no query-layer container filter, so
+     * actions that look a run up by id must scope by container or a user could read or modify a run
+     * in another folder by guessing its id.
+     */
+    private static RunDetail getRunInContainer(int runId, Container container)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("id"), runId);
+        filter.addCondition(FieldKey.fromParts("container"), container.getEntityId());
+        return new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getObject(RunDetail.class);
+    }
+
+    /**
      * Recomputes one user's training statistics (mean/stddev of tests-run and memory) in the
      * given container from their remaining training runs. If the user has no training runs
      * left, deletes their UserData row instead.
@@ -596,12 +609,11 @@ public class TestResultsController extends SpringActionController
             SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
             List<Integer> foundRuns = new ArrayList<>();
             sqlSelector.forEach(rs -> foundRuns.add(rs.getInt("runid")));
-            SimpleFilter filter = new SimpleFilter();
-            filter.addCondition(FieldKey.fromParts("id"), runId);
-            RunDetail[] details = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getArray(RunDetail.class);
-            // The run must exist even on the force path: recomputeUserData below dereferences
-            // details[0] to get the userid, so an empty result would otherwise throw.
-            if (details.length == 0)
+            // The run must exist (in this folder) even on the force path: recomputeUserData below
+            // uses run.getUserid(), so a missing run would otherwise throw. Scoping by container
+            // also stops a run in another folder from being trained from here.
+            RunDetail run = getRunInContainer(runId, getContainer());
+            if (run == null)
                 return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "run does not exist: " + runId));
             if (!force && ((train && !foundRuns.isEmpty()) || (!train && foundRuns.isEmpty())))
                 return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "no action necessary"));
@@ -618,7 +630,7 @@ public class TestResultsController extends SpringActionController
                     new SqlExecutor(scope).execute(fragment);
                 }
                 // Refresh this user's training statistics from their remaining training runs.
-                recomputeUserData(scope, details[0].getUserid(), getContainer());
+                recomputeUserData(scope, run.getUserid(), getContainer());
                 transaction.commit();
             }
             return new ApiSimpleResponse(KEY_SUCCESS, true);
@@ -1037,11 +1049,17 @@ public class TestResultsController extends SpringActionController
             }
 
             int rowId = form.getRunId();
-            // Look up the run's owner before deleting so we can refresh that user's training
-            // stats afterward: the run may have been part of their training set, so their
-            // baseline can change (or disappear) once it is gone.
-            RunDetail[] runs = new TableSelector(TestResultsSchema.getTableInfoTestRuns(),
-                    new SimpleFilter(FieldKey.fromParts("id"), rowId), null).getArray(RunDetail.class);
+            // Look up the run (scoped to this folder) before deleting, both to reject a run in
+            // another folder and to refresh the owner's training stats afterward: the run may
+            // have been part of their training set, so their baseline can change (or disappear)
+            // once it is gone.
+            RunDetail run = getRunInContainer(rowId, getContainer());
+            if (run == null)
+            {
+                response.put(KEY_SUCCESS, false);
+                response.put("error", "run does not exist: " + rowId);
+                return response;
+            }
             // Child tables keyed by testrunid -> testruns(id).
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("testrunid"), rowId);
@@ -1061,11 +1079,9 @@ public class TestResultsController extends SpringActionController
                 Table.delete(TestResultsSchema.getTableInfoHangs(), filter);
                 Table.delete(TestResultsSchema.getTableInfoTrain(), trainFilter);
                 Table.delete(TestResultsSchema.getTableInfoTestRuns(), rowId); // delete run last because of foreign key
-                // If the deleted run belonged to a user, refresh their training stats now that
-                // it (and any trainruns row for it) is gone, so a removed training run does not
-                // leave a stale UserData row behind.
-                if (runs.length > 0)
-                    recomputeUserData(scope, runs[0].getUserid(), getContainer());
+                // Refresh the owner's training stats now that the run (and any trainruns row for
+                // it) is gone, so a removed training run does not leave a stale UserData row behind.
+                recomputeUserData(scope, run.getUserid(), getContainer());
                 transaction.commit();
             } catch (Exception x) {
                 response.put(KEY_SUCCESS, false);
@@ -1107,10 +1123,9 @@ public class TestResultsController extends SpringActionController
             int rowId = form.getRunId();
             boolean flag = form.getFlag() != null ? form.getFlag() : false;
 
-            SimpleFilter filter = new SimpleFilter();
-            filter.addCondition(FieldKey.fromParts("id"), rowId);
             try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction()) {
-                RunDetail detail = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getObject(RunDetail.class);
+                // Scoped to this folder so a run in another folder cannot be flagged from here.
+                RunDetail detail = getRunInContainer(rowId, getContainer());
                 if (detail == null)
                 {
                     response.put(KEY_SUCCESS, false);
@@ -1164,8 +1179,11 @@ public class TestResultsController extends SpringActionController
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
         {
+            // Scoped to this folder so the Flags page lists only flagged runs in the current folder,
+            // not flagged runs across every folder.
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("flagged"), true);
+            filter.addCondition(FieldKey.fromParts("container"), getContainer().getEntityId());
             RunDetail[] details = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getArray(RunDetail.class);
             JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/flagged.jsp", new TestsDataBean(details, new User[0]));
             view.setFrame(WebPartView.FrameType.PORTAL);
@@ -1264,9 +1282,11 @@ public class TestResultsController extends SpringActionController
             if (form.getRunId() == null)
                 return new ApiSimpleResponse("log", null);
             int runId = form.getRunId();
+            // Scoped to this folder so a run's log in another folder cannot be read by id.
             SQLFragment sqlFragment = new SQLFragment();
-            sqlFragment.append("SELECT log FROM testresults.testruns WHERE id = ?");
+            sqlFragment.append("SELECT log FROM testresults.testruns WHERE id = ? AND container = ?");
             sqlFragment.add(runId);
+            sqlFragment.add(getContainer().getEntityId());
             List<byte[]> logs = new ArrayList<>();
             SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
             sqlSelector.forEach(rs -> logs.add(rs.getBytes("log")));
@@ -1285,9 +1305,11 @@ public class TestResultsController extends SpringActionController
             if (form.getRunId() == null)
                 return new ApiSimpleResponse("xml", null);
             int runId = form.getRunId();
+            // Scoped to this folder so a run's XML in another folder cannot be read by id.
             SQLFragment sqlFragment = new SQLFragment();
-            sqlFragment.append("SELECT xml FROM testresults.testruns WHERE id = ?");
+            sqlFragment.append("SELECT xml FROM testresults.testruns WHERE id = ? AND container = ?");
             sqlFragment.add(runId);
+            sqlFragment.add(getContainer().getEntityId());
             List<byte[]> xmls = new ArrayList<>();
             SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
             sqlSelector.forEach(rs -> xmls.add(rs.getBytes("xml")));

@@ -57,6 +57,7 @@ import java.util.stream.Collectors;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @Category({External.class, MacCossLabModules.class})
@@ -761,6 +762,68 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
             postApi("trainRun", Map.of("runId", String.valueOf(_cleanRunId), "train", "false"));
             postApi("trainRun", Map.of("runId", String.valueOf(_leakRunId), "train", "false"));
         }
+    }
+
+    @Test
+    public void testRunAccessIsContainerScoped() throws IOException, CommandException
+    {
+        // Run ids are global, so the actions that look a run up by id must reject a run that lives
+        // in another folder. Put a run in a subfolder, then from the PARENT folder confirm that
+        // every run-by-id action refuses it, and that the run is still reachable from its own folder.
+        final String subFolder = "CrossFolderAccessTest";
+        final String subFolderPath = "/" + PROJECT_NAME + "/" + subFolder;
+        _containerHelper.createSubfolder(PROJECT_NAME, subFolder);
+        _containerHelper.enableModule(subFolderPath, "TestResults");
+        postSampleXml("testresults/pc1-run-0116-failures.xml", subFolderPath);
+
+        Connection conn = WebTestHelper.getRemoteApiConnection();
+        SelectRowsCommand runsCmd = new SelectRowsCommand("testresults", "testruns");
+        runsCmd.setColumns(List.of("id"));
+        SelectRowsResponse subRuns = runsCmd.execute(conn, subFolderPath);
+        assertEquals("Subfolder should have exactly 1 run", 1, subRuns.getRows().size());
+        int subRunId = ((Number) subRuns.getRows().getFirst().get("id")).intValue();
+
+        // --- Negative: act on the subfolder's run by id from the PARENT folder (PROJECT_NAME) ---
+
+        JSONObject del = postApi("deleteRun", Map.of("runId", String.valueOf(subRunId)));
+        assertFalse("Cross-folder deleteRun must fail: " + del, del.optBoolean("Success", true));
+        assertEquals("run does not exist: " + subRunId, del.optString("error"));
+
+        JSONObject train = postApi("trainRun", Map.of("runId", String.valueOf(subRunId), "train", "true"));
+        assertFalse("Cross-folder trainRun must fail: " + train, train.optBoolean("Success", true));
+        assertEquals("run does not exist: " + subRunId, train.optString("error"));
+
+        JSONObject flag = postApi("flagRun", Map.of("runId", String.valueOf(subRunId), "flag", "true"));
+        assertFalse("Cross-folder flagRun must fail: " + flag, flag.optBoolean("Success", true));
+        assertEquals("run not found: " + subRunId, flag.optString("error"));
+
+        assertNull("Cross-folder viewLog must not return content",
+                getApiString("viewLog", subRunId, "log"));
+        assertNull("Cross-folder viewXml must not return content",
+                getApiString("viewXml", subRunId, "xml"));
+
+        // showRun in the parent folder shows the "enter run ID" prompt, not the subfolder run.
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showRun",
+                Map.of("runId", String.valueOf(subRunId))));
+        assertElementPresent(Locator.css("input[name='runId']"));
+
+        // The run is untouched in its own folder (the cross-folder delete was a no-op there).
+        assertEquals("Subfolder run must be untouched", 1,
+                runsCmd.execute(conn, subFolderPath).getRows().size());
+
+        // --- Positive: the same run IS reachable from its own folder ---
+        // (deleteRun/trainRun/viewLog/viewXml in-folder are covered by the other tests, which all
+        // run in PROJECT_NAME and would fail if the container guard rejected same-folder access.)
+        JSONObject flagOwn = postApi("flagRun",
+                Map.of("runId", String.valueOf(subRunId), "flag", "true"), subFolderPath);
+        assertTrue("In-folder flagRun should succeed: " + flagOwn, flagOwn.optBoolean("Success", false));
+
+        // ShowFlaggedAction is folder-scoped: the flagged subfolder run shows on the subfolder's
+        // Flags page but not the parent's.
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", subFolderPath, "showFlagged"));
+        assertElementPresent(Locator.tag("a").startsWith("id: " + subRunId + " /"));
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showFlagged"));
+        assertElementNotPresent(Locator.tag("a").startsWith("id: " + subRunId + " /"));
     }
 
     /**
