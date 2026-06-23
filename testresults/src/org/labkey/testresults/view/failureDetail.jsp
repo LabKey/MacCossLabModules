@@ -269,7 +269,7 @@ $(document).ready(function() {
     // Only set explicit timeseries min/max when there are dates to plot. With an empty
     // dates array, dates[0] and dates[length - 1] are undefined and c3/d3 throws while
     // building the x-axis scale (e.g. when the active date range excludes all sample runs).
-    const chartDates = problemData.graphData.dates;
+    const chartDates = problemData?.graphData?.dates;
     const xAxis = {
         type: 'timeseries',
         localtime: false,
