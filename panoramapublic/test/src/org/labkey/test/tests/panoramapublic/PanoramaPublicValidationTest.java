@@ -269,6 +269,57 @@ public class PanoramaPublicValidationTest extends PanoramaPublicBaseTest
     }
 
     @Test
+    public void testSampleFileValidationWithSubfolders()
+    {
+        // Verify that the raw (sample) files referenced by a Skyline document are found when they were uploaded
+        // to another folder of the experiment (here, the parent experiment folder) rather than the document's own
+        // subfolder. See SkylineDocValidator.validateSampleFiles().
+        log("Creating experiment folder");
+        String projectName = getProjectName();
+        String folderName = "Sample File Validation With Subfolders";
+        setupSourceFolder(projectName, folderName, SUBMITTER);
+
+        log("Creating subfolder where the Skyline document will be uploaded");
+        String subfolderName = "Skyline Documents Folder";
+        setupSubfolder(projectName, folderName, subfolderName, FolderType.Experiment, SUBMITTER);
+
+        impersonate(SUBMITTER);
+        updateSubmitterAccountInfo("One");
+
+        // Import the document into the SUBFOLDER. Study9S_Site52_v1.sky.zip references WIFF_1 and WIFF_SCAN_1.
+        log("Importing Skyline document " + SKY_FILE_1 + " into subfolder " + folderName + "/" + subfolderName);
+        goToProjectFolder(projectName, folderName + "/" + subfolderName);
+        importData(SKY_FILE_1, 1);
+
+        // Create the TargetedMS Experiment in the PARENT folder and include subfolders.
+        log("Creating TargetedMS Experiment in folder " + folderName + " and including subfolders");
+        goToProjectFolder(projectName, folderName);
+        String experimentTitle = "This is an experiment to test cross-folder lookup of sample files";
+        TargetedMsExperimentWebPart expWebPart = createExperimentCompleteMetadata(experimentTitle);
+        goToDashboard();
+        expWebPart.clickMoreDetails();
+        clickButton("Include Subfolders");
+
+        // Before the raw files are uploaded anywhere, the sample files should be missing and the data cannot be
+        // assigned a PXD.
+        log("Running data validation before uploading raw files; expect sample files to be missing");
+        DataValidationPage validationPage = submitValidationJob();
+        validationPage.verifyInvalidStatus();
+        validationPage.verifySampleFileStatus(SKY_FILE_1, Collections.emptyList(), List.of(WIFF_1, WIFF_SCAN_1));
+
+        // Upload the raw files to the PARENT experiment folder, not the subfolder where the document lives.
+        log("Uploading raw files to the parent experiment folder " + folderName);
+        goToDashboard();
+        uploadToRawFiles(WIFF_1, WIFF_SCAN_1);
+
+        // The sample files should now be found even though they live in the parent folder while the document is in
+        // a subfolder. This is the cross-folder lookup under test.
+        log("Running data validation after uploading raw files to the parent folder; expect sample files to be found");
+        validationPage = submitValidationJob();
+        validationPage.verifySampleFileStatus(SKY_FILE_1, List.of(WIFF_1, WIFF_SCAN_1), Collections.emptyList());
+    }
+
+    @Test
     public void testDiannLibrarySources()
     {
         // Set up our source folder.

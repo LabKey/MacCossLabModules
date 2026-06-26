@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -24,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static org.labkey.panoramapublic.proteomexchange.validator.ValidatorSampleFile.*;
@@ -125,20 +127,74 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
     }
 
     /**
-     * Set the path on the sample files for this document, if the file is found on the server
+     * Set the path on the sample files for this document, if the file is found on the server.
+     * The document's own container is searched first. For any files not found there, the other
+     * folders of the experiment are searched (e.g. raw files shared in a parent folder while the
+     * document lives in a subfolder). The first folder that contains a file wins.
+     *
+     * @param experimentFolders all the folders included in the experiment (see
+     * {@code ExperimentAnnotationsManager.getExperimentFolders}). The document's own container is
+     * always searched first; the remaining folders are searched only for files not yet found.
      */
-    void validateSampleFiles(TargetedMSService svc)
+    void validateSampleFiles(TargetedMSService svc, Collection<Container> experimentFolders)
     {
         List<ISampleFile> sampleFiles = getSampleFiles().stream().map(ValidatorSampleFile::getSampleFile).collect(Collectors.toList());
-        List<SampleFilePath> paths = svc.getSampleFilePaths(sampleFiles, getRunContainer(), false);
-        Map<String, Path> pathMap = new HashMap<>();
-        paths.forEach(p -> pathMap.put(p.getSampleFile().getFileName(), p.getPath()));
+
+        List<Container> orderedFolders = orderedFolders(getRunContainer(), experimentFolders);
+        Map<String, Path> pathMap = resolveSampleFilePaths(sampleFiles, orderedFolders,
+                (files, container) -> svc.getSampleFilePaths(files, container, false));
 
         for (SkylineDocSampleFile sampleFile : getSampleFiles())
         {
             Path path = pathMap.get(sampleFile.getName());
             sampleFile.setPath(path != null ? path.toString() : DataFile.NOT_FOUND);
         }
+    }
+
+    /** The document's own container first, followed by the other experiment folders. */
+    private static List<Container> orderedFolders(Container runContainer, Collection<Container> experimentFolders)
+    {
+        List<Container> ordered = new ArrayList<>();
+        ordered.add(runContainer);
+        for (Container c : experimentFolders)
+        {
+            if (!c.equals(runContainer))
+            {
+                ordered.add(c);
+            }
+        }
+        return ordered;
+    }
+
+    /**
+     * Resolve a server path for each sample file by searching the given folders in order. A file is
+     * looked up only in folders up to and including the first one that contains it (first found wins);
+     * once every file has a path no further folders are searched. Returns a map from file name to the
+     * resolved path; files not found in any folder are absent from the map.
+     *
+     * <p>The folder lookup is injected as {@code resolver} (production binds it to
+     * {@code TargetedMSService.getSampleFilePaths}) so the iteration logic can be unit tested without a
+     * real filesystem, {@link Container}, or {@link TargetedMSService}.
+     */
+    static <C> Map<String, Path> resolveSampleFilePaths(List<ISampleFile> sampleFiles, List<C> orderedFolders,
+                                                        BiFunction<List<ISampleFile>, C, List<SampleFilePath>> resolver)
+    {
+        Map<String, Path> pathMap = new HashMap<>();
+        for (C folder : orderedFolders)
+        {
+            List<ISampleFile> missing = sampleFiles.stream()
+                    .filter(sf -> !pathMap.containsKey(sf.getFileName()))
+                    .collect(Collectors.toList());
+            if (missing.isEmpty())
+            {
+                break;
+            }
+            // putIfAbsent so that the first folder with a match for a given file name wins.
+            resolver.apply(missing, folder).stream()
+                    .filter(p -> p.getPath() != null)
+                    .forEach(p -> pathMap.putIfAbsent(p.getSampleFile().getFileName(), p.getPath()));
+        }
+        return pathMap;
     }
 
     public abstract static class AbstractSampleFile implements ISampleFile
@@ -375,6 +431,133 @@ public class SkylineDocValidator extends SkylineDocValidation<ValidatorSampleFil
                                                                                         // will add a Sciex2.wiff.scan
             assertEquals(expectedDuplicates.size(), duplicateNames.size());
             assertTrue(duplicateNames.containsAll(expectedDuplicates));
+        }
+
+        @Test
+        public void testResolveSampleFilesAcrossFolders()
+        {
+            ISampleFile fileA = sampleFile("A.raw");
+            ISampleFile fileB = sampleFile("B.raw");
+            ISampleFile fileC = sampleFile("C.raw");
+            ISampleFile fileD = sampleFile("D.raw");
+            List<ISampleFile> files = List.of(fileA, fileB, fileC, fileD);
+
+            // Which file names are present under each folder's RawFiles directory.
+            // "home" is the document's own container. B is present in both "parent" and "sibling".
+            Map<String, Set<String>> folderContents = new HashMap<>();
+            folderContents.put("home", Set.of("A.raw"));
+            folderContents.put("parent", Set.of("B.raw", "C.raw"));
+            folderContents.put("sibling", Set.of("B.raw", "D.raw"));
+
+            List<String> queried = new ArrayList<>();
+            var paths = resolveSampleFilePaths(files, List.of("home", "parent", "sibling"), recordingResolver(folderContents, queried));
+
+            assertEquals("A.raw should be found in the home folder", Path.of("home", "A.raw"), paths.get("A.raw"));
+            assertEquals("B.raw should be found in parent (first folder with a match wins over sibling)", Path.of("parent", "B.raw"), paths.get("B.raw"));
+            assertEquals("C.raw should be found in parent", Path.of("parent", "C.raw"), paths.get("C.raw"));
+            assertEquals("D.raw should be found in sibling", Path.of("sibling", "D.raw"), paths.get("D.raw"));
+            assertEquals("Folders should be searched in order until all files are found", List.of("home", "parent", "sibling"), queried);
+        }
+
+        @Test
+        public void testResolveSampleFilesEarlyBreak()
+        {
+            // All files are in the home folder, so no other folder should be searched.
+            List<ISampleFile> files = List.of(sampleFile("A.raw"), sampleFile("B.raw"));
+            Map<String, Set<String>> folderContents = Map.of("home", Set.of("A.raw", "B.raw"), "parent", Set.of("A.raw", "B.raw"));
+
+            List<String> queried = new ArrayList<>();
+            var paths = resolveSampleFilePaths(files, List.of("home", "parent"), recordingResolver(folderContents, queried));
+
+            assertEquals(Path.of("home", "A.raw"), paths.get("A.raw"));
+            assertEquals(Path.of("home", "B.raw"), paths.get("B.raw"));
+            assertEquals("Should stop searching once every file is found", List.of("home"), queried);
+        }
+
+        @Test
+        public void testResolveSampleFilesNotFound()
+        {
+            List<ISampleFile> files = List.of(sampleFile("A.raw"), sampleFile("Missing.raw"));
+            Map<String, Set<String>> folderContents = Map.of("home", Set.of("A.raw"), "parent", Set.of("A.raw"));
+
+            List<String> queried = new ArrayList<>();
+            var paths = resolveSampleFilePaths(files, List.of("home", "parent"), recordingResolver(folderContents, queried));
+
+            assertEquals(Path.of("home", "A.raw"), paths.get("A.raw"));
+            assertFalse("A file present in no folder should be absent from the map (caller marks it NOT_FOUND)", paths.containsKey("Missing.raw"));
+            assertEquals("All folders are searched while a file is still missing", List.of("home", "parent"), queried);
+        }
+
+        @Test
+        public void testResolveSampleFilesSingleFolder()
+        {
+            // includeSubfolders = false: the ordered folder list is just the document's own container.
+            List<ISampleFile> files = List.of(sampleFile("A.raw"), sampleFile("B.raw"));
+            Map<String, Set<String>> folderContents = Map.of("home", Set.of("A.raw"));
+
+            List<String> queried = new ArrayList<>();
+            var paths = resolveSampleFilePaths(files, List.of("home"), recordingResolver(folderContents, queried));
+
+            assertEquals(Path.of("home", "A.raw"), paths.get("A.raw"));
+            assertFalse("B.raw is not in the only folder, so it stays unresolved", paths.containsKey("B.raw"));
+            assertEquals(List.of("home"), queried);
+        }
+
+        // A resolver that reports a file as found (with a path of "<folder>/<fileName>") when the folder's
+        // contents include it, and records the folders it was asked to search so tests can assert search order.
+        private BiFunction<List<ISampleFile>, String, List<SampleFilePath>> recordingResolver(Map<String, Set<String>> folderContents, List<String> queried)
+        {
+            return (requested, folder) -> {
+                queried.add(folder);
+                Set<String> contents = folderContents.getOrDefault(folder, Set.of());
+                List<SampleFilePath> result = new ArrayList<>();
+                for (ISampleFile sf : requested)
+                {
+                    SampleFilePath path = new SampleFilePath(sf);
+                    if (contents.contains(sf.getFileName()))
+                    {
+                        path.setPath(Path.of(folder, sf.getFileName()));
+                    }
+                    result.add(path);
+                }
+                return result;
+            };
+        }
+
+        private ISampleFile sampleFile(String fileName)
+        {
+            return new AbstractSampleFile()
+            {
+                @Override
+                public String getFileName()
+                {
+                    return fileName;
+                }
+
+                @Override
+                public long getId()
+                {
+                    return 0;
+                }
+
+                @Override
+                public long getReplicateId()
+                {
+                    return 0;
+                }
+
+                @Override
+                public String getFilePath()
+                {
+                    return "D:\\Data\\" + fileName;
+                }
+
+                @Override
+                public Long getInstrumentId()
+                {
+                    return null;
+                }
+            };
         }
 
         private List<ValidatorSampleFile> getUniqueDocSampleFiles(List<ValidatorSampleFile> sampleFiles)

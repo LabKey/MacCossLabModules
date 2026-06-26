@@ -236,11 +236,16 @@ public class DataValidator
 
     private void validateSampleFiles(ValidatorStatus status, TargetedMSService svc, User user)
     {
+        // All the folders included in the experiment. Raw files for a document may have been uploaded to
+        // another folder of the experiment (e.g. a shared parent folder), so we search these as a fallback
+        // when a file is not found in the document's own container.
+        Set<Container> experimentFolders = ExperimentAnnotationsManager.getExperimentFolders(_expAnnotations, user);
+
         List<SkylineDocValidator> docs = status.getSkylineDocs();
         Map<Container, List<SkylineDocValidator>> containerDocs = docs.stream().collect(Collectors.groupingBy(SkylineDocValidator::getRunContainer));
         for (Container container: containerDocs.keySet())
         {
-            validateContainerSampleFiles(containerDocs.get(container), svc, user);
+            validateContainerSampleFiles(containerDocs.get(container), svc, user, experimentFolders);
         }
 
 
@@ -254,13 +259,13 @@ public class DataValidator
         }
     }
 
-    private void validateContainerSampleFiles(List<SkylineDocValidator> skylineDocs, TargetedMSService svc, User user)
+    private void validateContainerSampleFiles(List<SkylineDocValidator> skylineDocs, TargetedMSService svc, User user, Set<Container> experimentFolders)
     {
         Map<String, Set<SampleFileKey>> sampleFileNameAndKeys = new HashMap<>();
         for (SkylineDocValidator skyDoc: skylineDocs)
         {
             _listener.validatingDocument(skyDoc);
-            skyDoc.validateSampleFiles(svc);
+            skyDoc.validateSampleFiles(svc, experimentFolders);
             for (ValidatorSampleFile sampleFile: skyDoc.getSampleFiles())
             {
                 Set<SampleFileKey> sampleFileKeys = sampleFileNameAndKeys.computeIfAbsent(sampleFile.getFileName(), k -> new HashSet<>());
