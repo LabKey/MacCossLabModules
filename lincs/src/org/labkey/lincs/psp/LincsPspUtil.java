@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 public class LincsPspUtil
 {
@@ -54,6 +55,13 @@ public class LincsPspUtil
         if(StringUtils.isBlank(pspApiKey))
         {
             throw new LincsPspException("Could not find PSP API Key in the saved properties.");
+        }
+        // The API key is sent to this URL as a request header. Refuse to use a non-https endpoint so the
+        // key is never transmitted in clear text (CWE-319). This also guards configurations that were saved
+        // with an http:// URL before save-time validation was added.
+        if(!pspUrl.trim().toLowerCase(Locale.ROOT).startsWith("https://"))
+        {
+            throw new LincsPspException("PSP endpoint URL must use https so the API key is not transmitted in clear text.");
         }
         return new PspEndpoint(pspUrl, pspApiKey);
     }

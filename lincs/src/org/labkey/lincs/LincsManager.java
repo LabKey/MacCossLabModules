@@ -164,19 +164,23 @@ public class LincsManager
                 job.getPipelineJobId(), job.getId());
     }
 
-    public LincsPspJob getLincsPspJobForRun(int runId)
+    public LincsPspJob getLincsPspJobForRun(int runId, Container container)
     {
         // Get the most recent PSP job details
         Sort sort = new Sort();
         sort.appendSortColumn(FieldKey.fromParts("Modified"), Sort.SortDirection.DESC, true);
-        TableSelector ts = new TableSelector(getTableInfoLincsPspJob(), new SimpleFilter(FieldKey.fromParts("RunId"), runId), sort);
+        SimpleFilter filter = SimpleFilter.createContainerFilter(container);
+        filter.addCondition(FieldKey.fromParts("RunId"), runId);
+        TableSelector ts = new TableSelector(getTableInfoLincsPspJob(), filter, sort);
         ts.setMaxRows(1);
         return ts.getObject(LincsPspJob.class);
     }
 
-    public LincsPspJob getLincsPspJob(int id)
+    public LincsPspJob getLincsPspJob(int id, Container container)
     {
-        return new TableSelector(getTableInfoLincsPspJob(), new SimpleFilter(FieldKey.fromParts("Id"), id), null).getObject(LincsPspJob.class);
+        SimpleFilter filter = SimpleFilter.createContainerFilter(container);
+        filter.addCondition(FieldKey.fromParts("Id"), id);
+        return new TableSelector(getTableInfoLincsPspJob(), filter, null).getObject(LincsPspJob.class);
     }
 
     public void deleteLincsPspJobsForRun(long runId)

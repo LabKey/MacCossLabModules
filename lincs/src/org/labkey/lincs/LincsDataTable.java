@@ -20,6 +20,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.analytics.AnalyticsService;
 import org.labkey.api.data.ColumnInfo;
+import org.labkey.api.data.Container;
 import org.labkey.api.data.DataColumn;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.TableInfo;
@@ -154,7 +155,7 @@ public class LincsDataTable extends FilteredTable
                     out.write("NO_RUN_ID");
                     return;
                 }
-                LincsPspJob pspJob = LincsManager.get().getLincsPspJobForRun(runId);
+                LincsPspJob pspJob = LincsManager.get().getLincsPspJobForRun(runId, getContainer());
                 if(pspJob == null)
                 {
                     out.write("PSP job not found for runId: " + runId);
@@ -374,7 +375,7 @@ public class LincsDataTable extends FilteredTable
             String downloadFileName = getBaseName(fileName);
             String extension = LincsModule.getExt(getLevel());
             downloadFileName = downloadFileName + extension;
-            if(!fileAvailable(runId, downloadFileName))
+            if(!fileAvailable(runId, downloadFileName, ctx.getContainer()))
             {
                 out.write("NOT AVAILABLE");
                 return;
@@ -403,9 +404,9 @@ public class LincsDataTable extends FilteredTable
             ).appendTo(out);
         }
 
-        private boolean fileAvailable(Integer runId, String downloadFileName)
+        private boolean fileAvailable(Integer runId, String downloadFileName, Container container)
         {
-            LincsPspJob job = LincsManager.get().getLincsPspJobForRun(runId);
+            LincsPspJob job = LincsManager.get().getLincsPspJobForRun(runId, container);
             if(job != null)
             {
                 if(getLevel() == LincsModule.LincsLevel.Two && job.isLevel2Done())
