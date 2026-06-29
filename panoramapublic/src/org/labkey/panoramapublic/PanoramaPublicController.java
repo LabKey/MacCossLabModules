@@ -32,6 +32,7 @@ import org.labkey.api.action.ConfirmAction;
 import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.LabKeyError;
+import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.ReadOnlyApiAction;
 import org.labkey.api.action.ReturnUrlForm;
 import org.labkey.api.action.SimpleErrorView;
@@ -11233,34 +11234,47 @@ public class PanoramaPublicController extends SpringActionController
 
     // ======================== Support actions for Selenium tests ========================
 
+    // These actions swap the process-wide NCBI publication search service to a mock so that Selenium tests
+    // run without calling the live NCBI API. They must never be reachable on a production server (non-dev-mode)
+    private static void requireDevModeForMockNcbiService()
+    {
+        if (!AppProps.getInstance().isDevMode())
+        {
+            throw new NotFoundException("Mock NCBI publication search service actions are only available on a server running in dev mode.");
+        }
+    }
+
     @RequiresSiteAdmin
-    public static class SetupMockNcbiServiceAction extends ReadOnlyApiAction<Object>
+    public static class SetupMockNcbiServiceAction extends MutatingApiAction<Object>
     {
         @Override
         public Object execute(Object form, BindException errors)
         {
+            requireDevModeForMockNcbiService();
             NcbiPublicationSearchServiceImpl.setInstance(new MockNcbiPublicationSearchService());
             return new ApiSimpleResponse("mock", true);
         }
     }
 
     @RequiresSiteAdmin
-    public static class RestoreNcbiServiceAction extends ReadOnlyApiAction<Object>
+    public static class RestoreNcbiServiceAction extends MutatingApiAction<Object>
     {
         @Override
         public Object execute(Object form, BindException errors)
         {
+            requireDevModeForMockNcbiService();
             NcbiPublicationSearchServiceImpl.setInstance(new NcbiPublicationSearchServiceImpl());
             return new ApiSimpleResponse("restored", true);
         }
     }
 
     @RequiresSiteAdmin
-    public static class RegisterMockPublicationAction extends ReadOnlyApiAction<RegisterMockPublicationForm>
+    public static class RegisterMockPublicationAction extends MutatingApiAction<RegisterMockPublicationForm>
     {
         @Override
         public Object execute(RegisterMockPublicationForm form, BindException errors)
         {
+            requireDevModeForMockNcbiService();
             NcbiPublicationSearchService service = NcbiPublicationSearchServiceImpl.getInstance();
             if (!(service instanceof MockNcbiPublicationSearchService mock))
             {
