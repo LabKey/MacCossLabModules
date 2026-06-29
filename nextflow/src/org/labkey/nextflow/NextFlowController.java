@@ -223,6 +223,10 @@ public class NextFlowController extends SpringActionController
         @Override
         public boolean handlePost(EnabledForm form, BindException errors)
         {
+            if (!getUser().hasSiteAdminPermission())
+            {
+                throw new UnauthorizedException();
+            }
             NextFlowManager.get().saveEnabledState(getContainer(), form.getEnabled());
             return true;
         }
@@ -257,6 +261,10 @@ public class NextFlowController extends SpringActionController
             {
                 errors.reject(ERROR_MSG, "NextFlow is not enabled");
             }
+            else if (NextFlowManager.get().getConfiguration() == null)
+            {
+                errors.reject(ERROR_MSG, "NextFlow has not been configured");
+            }
         }
 
         @Override
@@ -278,7 +286,7 @@ public class NextFlowController extends SpringActionController
             }
 
             NextFlowConfiguration config = NextFlowManager.get().getConfiguration();
-            if (config.getNextFlowConfigFilePath() != null)
+            if (config != null && config.getNextFlowConfigFilePath() != null)
             {
                 File configDir = new File(config.getNextFlowConfigFilePath());
                 if (configDir.isDirectory())
@@ -311,6 +319,11 @@ public class NextFlowController extends SpringActionController
             }
 
             NextFlowConfiguration config = NextFlowManager.get().getConfiguration();
+            if (config == null || config.getNextFlowConfigFilePath() == null)
+            {
+                errors.reject(ERROR_MSG, "NextFlow has not been configured");
+                return false;
+            }
             File configDir = new File(config.getNextFlowConfigFilePath());
             File configFile = FileUtil.appendPath(configDir, Path.parse(form.getConfigFile()));
             if (!configFile.exists())
