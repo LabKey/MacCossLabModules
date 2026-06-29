@@ -183,9 +183,11 @@ public class LincsManager
         return new TableSelector(getTableInfoLincsPspJob(), filter, null).getObject(LincsPspJob.class);
     }
 
-    public void deleteLincsPspJobsForRun(long runId)
+    public void deleteLincsPspJobsForRun(long runId, Container container)
     {
-        Table.delete(getTableInfoLincsPspJob(), new SimpleFilter(FieldKey.fromParts("runId"), runId));
+        SimpleFilter filter = SimpleFilter.createContainerFilter(container);
+        filter.addCondition(FieldKey.fromParts("runId"), runId);
+        Table.delete(getTableInfoLincsPspJob(), filter);
     }
 
     public void deleteLincsPspJob(LincsPspJob job)
