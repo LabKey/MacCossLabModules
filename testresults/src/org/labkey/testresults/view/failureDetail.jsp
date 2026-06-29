@@ -332,9 +332,11 @@ $(document).ready(function() {
                 filterFunc = run => run.failures.length > 0;
                 headerName = "Failures";
                 displayFunc = run => {
+                    // f.language and f.trace come from stored failure data (originally from the
+                    // unauthenticated results upload), so HTML-encode them before building markup.
                     return "<ul>" + run.failures.map(f => "<li>" +
-                            "Pass " + f.pass.toString() + " (" + f.language + ") ---" +
-                            '<pre class="stack-trace">' + f.trace + "</pre>"+
+                            "Pass " + f.pass.toString() + " (" + LABKEY.Utils.encodeHtml(f.language) + ") ---" +
+                            '<pre class="stack-trace">' + LABKEY.Utils.encodeHtml(f.trace) + "</pre>"+
                             "</li>").join() + "</ul>";
                 };
                 jsonKey = "failures";
