@@ -68,7 +68,6 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.WebPartView;
-import org.labkey.testresults.model.GlobalSettings;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestFailDetail;
 import org.labkey.testresults.model.TestHandleLeakDetail;
@@ -1173,7 +1172,7 @@ public class TestResultsController extends SpringActionController
     /**
      * action to show all flagged runs flagged.jsp
      */
-    @RequiresNoPermission
+    @RequiresPermission(ReadPermission.class)
     public static class ShowFlaggedAction extends SimpleViewAction<Object>
     {
         @Override
@@ -1228,7 +1227,6 @@ public class TestResultsController extends SpringActionController
                 return new ApiSimpleResponse(res);
             }
 
-            GlobalSettings settings = new GlobalSettings(warningB, errorB);
             try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction())
             {
                 SQLFragment sqlFragment = new SQLFragment();
@@ -1898,14 +1896,14 @@ public class TestResultsController extends SpringActionController
             {
                 File f = makeFile(c, fileName);
                 if(f.exists()) {
-                    _log.info("A file by the name " + fileName + " is already stored.");
+                    _log.info("A file by the name {} is already stored.", fileName);
                     return "File not saved - file already exists in file system.";
                 }
                 file.transferTo(f);
             }
             catch (IOException e)
             {
-                _log.error("Failed to save " + fileName + ".", e);
+                _log.error("Failed to save {}.", fileName, e);
                 return "Failed to save the file.";
             }
             return "File saved to system.";
