@@ -30,6 +30,8 @@ import org.labkey.api.action.ReadOnlyApiAction;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
+import org.labkey.api.audit.AuditLogService;
+import org.labkey.api.audit.ClientApiAuditProvider;
 import org.labkey.api.data.ActionButton;
 import org.labkey.api.data.ButtonBar;
 import org.labkey.api.data.Container;
@@ -108,6 +110,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -720,8 +723,22 @@ public class LincsController extends SpringActionController
                 return new SimpleErrorView(errors, false);
             }
 
-            Path gctDir = getGCTDir(getContainer());
-            Path downloadFile = gctDir.resolve(form.getFileName());
+            // isAllowedFileName returns null when the name is acceptable, an error message otherwise.
+            String fileNameError = FileUtil.isAllowedFileName(form.getFileName(), false);
+            if(fileNameError != null)
+            {
+                errors.reject(ERROR_MSG, "Invalid fileName '" + form.getFileName() + "': " + fileNameError);
+                return new SimpleErrorView(errors, false);
+            }
+
+            Path gctDir = getGCTDir(getContainer()).normalize();
+            Path downloadFile = gctDir.resolve(form.getFileName()).normalize();
+            // Ensure the resolved path is still inside the GCT directory
+            if(!downloadFile.startsWith(gctDir))
+            {
+                errors.reject(ERROR_MSG, "Invalid fileName '" + form.getFileName() + "'.");
+                return new SimpleErrorView(errors, false);
+            }
             if(!Files.exists(downloadFile))
             {
                 errors.reject(ERROR_MSG, "File does not exist '" + form.getFileName() + "'.");
@@ -1011,15 +1028,28 @@ public class LincsController extends SpringActionController
     public static class ManageLincsClueCredentials extends FormViewAction<ClueCredentialsForm>
     {
         @Override
-        public void validateCommand(ClueCredentialsForm target, Errors errors) {}
+        public void validateCommand(ClueCredentialsForm form, Errors errors)
+        {
+            // The API key entered on this form will later be sent to this server URI as a request header,
+            // so reject a non-https URI at save time to keep the key out of clear text (CWE-319).
+            String uri = form.getServerUri();
+            if (StringUtils.isNotBlank(uri) && !uri.trim().toLowerCase(Locale.ROOT).startsWith("https://"))
+            {
+                errors.reject(ERROR_MSG, "Clue/PSP Server URI must use https so the API key is not transmitted in clear text.");
+            }
+        }
 
         @Override
         public boolean handlePost(ClueCredentialsForm form, BindException errors)
         {
             WritablePropertyMap map = PropertyManager.getEncryptedStore().getWritableProperties(getContainer(), LINCS_CLUE_CREDENTIALS, true);
-            map.put(CLUE_SERVER_URI, form.getServerUri());
+            map.put(CLUE_SERVER_URI, StringUtils.trim(form.getServerUri()));
             map.put(CLUE_API_KEY, form.getApiKey());
             map.save();
+
+            // Record an audit event noting the container and the user who changed the credentials.
+            AuditLogService.get().addEvent(getUser(),
+                    new ClientApiAuditProvider.ClientApiAuditEvent(getContainer(), "LINCS Clue/PSP server credentials updated."));
             return true;
         }
 
@@ -1106,6 +1136,10 @@ public class LincsController extends SpringActionController
                 return false;
             }
             config.save(getContainer());
+
+            // Record an audit event noting the container and the user who changed the Cromwell configuration.
+            AuditLogService.get().addEvent(getUser(),
+                    new ClientApiAuditProvider.ClientApiAuditEvent(getContainer(), "LINCS Cromwell configuration updated."));
             return true;
         }
 
@@ -1188,7 +1222,7 @@ public class LincsController extends SpringActionController
         {
             int runId = form.getRunId();
 
-            LincsPspJob pspJob = LincsManager.get().getLincsPspJobForRun(runId);
+            LincsPspJob pspJob = LincsManager.get().getLincsPspJobForRun(runId, getContainer());
             if(pspJob == null)
             {
                 errors.addError(new LabKeyError("Could not find a PSP job for runId: " + runId));
@@ -1333,7 +1367,7 @@ public class LincsController extends SpringActionController
         {
             int jobId = form.getJobId();
 
-            LincsPspJob pspJob = LincsManager.get().getLincsPspJob(jobId);
+            LincsPspJob pspJob = LincsManager.get().getLincsPspJob(jobId, getContainer());
             if(pspJob == null)
             {
                 errors.addError(new LabKeyError("Could not find a PSP job for id: " + jobId));
@@ -1411,7 +1445,7 @@ public class LincsController extends SpringActionController
             int jobId = form.getJobId();
             _runId = form.getRunId();
 
-            LincsPspJob pspJob = LincsManager.get().getLincsPspJob(jobId);
+            LincsPspJob pspJob = LincsManager.get().getLincsPspJob(jobId, getContainer());
             if(pspJob == null)
             {
                 errors.reject(ERROR_MSG, "Could not find a PSP job for id: " + jobId);
@@ -1537,7 +1571,7 @@ public class LincsController extends SpringActionController
 
             LincsManager lincsManager = LincsManager.get();
 
-            LincsPspJob oldPspJob = lincsManager.getLincsPspJobForRun(runId);
+            LincsPspJob oldPspJob = lincsManager.getLincsPspJobForRun(runId, container);
             LincsPspJob newPspJob = lincsManager.saveNewLincsPspJob(skylineRun, getUser());
 
             ViewBackgroundInfo info = new ViewBackgroundInfo(container, getUser(), null);

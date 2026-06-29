@@ -41,11 +41,11 @@ public class DocImportListener implements ExperimentListener, SkylineDocumentImp
             return;
         }
 
-        ITargetedMSRun tRun = TargetedMSService.get().getRunByFileName(run.getName(), run.getContainer());
+        ITargetedMSRun tRun = TargetedMSService.get().getRunByFileName(run.getName(), c);
         if(tRun != null)
         {
             // Delete saved entries in lincs.lincspspjob table for this runId
-            LincsManager.get().deleteLincsPspJobsForRun(tRun.getId());
+            LincsManager.get().deleteLincsPspJobsForRun(tRun.getId(), c);
         }
 
         // Get the file root for the container
