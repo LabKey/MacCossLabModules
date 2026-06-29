@@ -1229,22 +1229,24 @@ public class TestResultsController extends SpringActionController
             }
 
             GlobalSettings settings = new GlobalSettings(warningB, errorB);
-            DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction();
-            SQLFragment sqlFragment = new SQLFragment();
-            sqlFragment.append("select exists(select 1 from " + TestResultsSchema.getTableInfoGlobalSettings() + ") ");
-            SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
-            List<Boolean> values = new ArrayList<>();
-            sqlSelector.forEach(rs -> values.add(rs.getBoolean(1)));
+            try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction())
+            {
+                SQLFragment sqlFragment = new SQLFragment();
+                sqlFragment.append("select exists(select 1 from " + TestResultsSchema.getTableInfoGlobalSettings() + ") ");
+                SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
+                List<Boolean> values = new ArrayList<>();
+                sqlSelector.forEach(rs -> values.add(rs.getBoolean(1)));
 
-            if (values.get(0)) {
-                SQLFragment sqlFragmentDelete = new SQLFragment();
-                sqlFragmentDelete.append("DELETE FROM " + TestResultsSchema.getTableInfoGlobalSettings());
-                new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentDelete);
+                if (values.get(0)) {
+                    SQLFragment sqlFragmentDelete = new SQLFragment();
+                    sqlFragmentDelete.append("DELETE FROM " + TestResultsSchema.getTableInfoGlobalSettings());
+                    new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentDelete);
+                }
+                SQLFragment sqlFragmentInsert = new SQLFragment();
+                sqlFragmentInsert.append("INSERT INTO " + TestResultsSchema.getTableInfoGlobalSettings() + " (warningb, errorb) VALUES (" + warningB + ", " + errorB +")");
+                new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentInsert);
+                transaction.commit();
             }
-            SQLFragment sqlFragmentInsert = new SQLFragment();
-            sqlFragmentInsert.append("INSERT INTO " + TestResultsSchema.getTableInfoGlobalSettings() + " (warningb, errorb) VALUES (" + warningB + ", " + errorB +")");
-            new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentInsert);
-            transaction.commit();
             res.put("Message", "success!");
             return new ApiSimpleResponse(res);
         }
@@ -1779,6 +1781,8 @@ public class TestResultsController extends SpringActionController
                 _log.info("Attempting to save file for a future post attempt");
                 res.put(KEY_SUCCESS, false);
                 res.put("Message", "Error Parsing XML attempting to save the XML file...   " + NIGHTLY_POSTER.SaveXML(file, getContainer()));
+                // The stack trace is intentionally returned to the caller (SkylineTester) so posting
+                // failures can be diagnosed from the client without server log access.
                 res.put("Exception", e + NIGHTLY_POSTER.getStackTraceText(e));
                 return new ApiSimpleResponse(res);
             }
@@ -1848,6 +1852,8 @@ public class TestResultsController extends SpringActionController
                     f.delete();
                     res.put(f.getName(), "Success!");
                 } catch (Exception e) {
+                    // The stack trace is intentionally returned to the caller so a failed re-post can be
+                    // diagnosed from the client without server log access.
                     res.put(f.getName(), Arrays.toString(e.getStackTrace()));
                 }
             }
