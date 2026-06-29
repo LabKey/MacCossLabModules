@@ -325,6 +325,11 @@ public class NextFlowController extends SpringActionController
                 errors.reject(ERROR_MSG, "NextFlow has not been configured");
                 return false;
             }
+            if (StringUtils.isBlank(form.getConfigFile()))
+            {
+                errors.reject(ERROR_MSG, "No config file specified");
+                return false;
+            }
             File configDir = new File(config.getNextFlowConfigFilePath());
             File configFile;
             try
