@@ -45,6 +45,7 @@ import org.springframework.validation.Errors;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.io.File;
+import java.nio.file.InvalidPathException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -325,7 +326,17 @@ public class NextFlowController extends SpringActionController
                 return false;
             }
             File configDir = new File(config.getNextFlowConfigFilePath());
-            File configFile = FileUtil.appendPath(configDir, Path.parse(form.getConfigFile()));
+            File configFile;
+            try
+            {
+                // appendPath normalizes and enforces that the resolved path stays within configDir, rejecting traversal
+                configFile = FileUtil.appendPath(configDir, Path.parse(form.getConfigFile()));
+            }
+            catch (InvalidPathException e)
+            {
+                errors.reject(ERROR_MSG, "Invalid config file");
+                return false;
+            }
             if (!configFile.exists())
             {
                 errors.reject(ERROR_MSG, "Config file does not exist");
