@@ -517,6 +517,28 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     }
 
     @Test
+    public void testViewLogPopup()
+    {
+        // Verify the popup actually displays the stored log.
+        navigateToRunById(_cleanRunId);
+        click(Locator.lkButton("View Log"));
+        switchToWindow(1);
+        try
+        {
+            waitForElement(Locator.tag("pre"));
+            String popupText = getText(Locator.tag("pre"));
+            assertTrue("Log popup should show the nightly header, was: " + popupText,
+                    popupText.contains("# Nightly started Thursday, January 15, 2026 9:00 PM"));
+            assertTrue("Log popup should show test entries", popupText.contains("TestAlpha"));
+        }
+        finally
+        {
+            closeExtraWindows();
+            switchToMainWindow();
+        }
+    }
+
+    @Test
     public void testChangeBoundaries()
     {
         // Navigate to Training Data page and select the Error/Warning edits action

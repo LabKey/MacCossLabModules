@@ -288,12 +288,13 @@
             var win = window.open("", data.subject,
                 "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes," +
                 "width=800,height=600");
-            // data.HTML is a rendered email containing stored run/user/test names (originally from the
-            // unauthenticated results upload). Render it in a sandboxed iframe (no allow-scripts, opaque
-            // origin) so any markup it contains is displayed but cannot execute as script in our origin.
+            // data.HTML is a rendered email containing stored run/user/test names. Render it in a sandboxed iframe
+            // (no allow-scripts, opaque origin) so any markup it contains is displayed but cannot execute as script.
             var iframe = win.document.createElement('iframe');
             iframe.setAttribute('sandbox', '');
-            iframe.style.cssText = 'border:0;width:100%;height:100%;';
+            // Use viewport height: a percentage height would resolve against the popup body
+            // (which has no defined height) and collapse the iframe to zero, showing nothing.
+            iframe.style.cssText = 'border:0;width:100%;height:100vh;display:block;';
             iframe.srcdoc = data.HTML;
             win.document.body.style.margin = '0';
             win.document.body.appendChild(iframe);

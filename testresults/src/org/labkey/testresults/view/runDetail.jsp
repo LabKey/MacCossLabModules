@@ -46,8 +46,8 @@
         var win = window.open("", "Log file",
                 "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes," +
                 "width=800,height=600");
-        // The log/xml is stored run content (originally from the unauthenticated results upload).
-        // Set it as text rather than writing it as HTML so it cannot execute as markup in the popup.
+        // The log/xml is stored run content. Set it as text rather than writing it as HTML so it cannot execute as
+        // markup in the popup.
         var pre = win.document.createElement('pre');
         pre.textContent = data;
         win.document.body.appendChild(pre);
