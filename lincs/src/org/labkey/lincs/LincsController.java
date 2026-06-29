@@ -733,8 +733,7 @@ public class LincsController extends SpringActionController
 
             Path gctDir = getGCTDir(getContainer()).normalize();
             Path downloadFile = gctDir.resolve(form.getFileName()).normalize();
-            // Defense in depth: ensure the resolved path is still inside the GCT directory before
-            // reading or deleting it, so a traversal sequence cannot escape the container's folder.
+            // Ensure the resolved path is still inside the GCT directory
             if(!downloadFile.startsWith(gctDir))
             {
                 errors.reject(ERROR_MSG, "Invalid fileName '" + form.getFileName() + "'.");
@@ -1031,8 +1030,8 @@ public class LincsController extends SpringActionController
         @Override
         public void validateCommand(ClueCredentialsForm form, Errors errors)
         {
-            // The API key is sent to this server as a request header. Require https so the key is
-            // never transmitted in clear text (CWE-319).
+            // The API key entered on this form will later be sent to this server URI as a request header,
+            // so reject a non-https URI at save time to keep the key out of clear text (CWE-319).
             String uri = form.getServerUri();
             if (StringUtils.isNotBlank(uri) && !uri.trim().toLowerCase(Locale.ROOT).startsWith("https://"))
             {
@@ -1138,7 +1137,7 @@ public class LincsController extends SpringActionController
             }
             config.save(getContainer());
 
-            // Record an audit event noting who changed the Cromwell configuration.
+            // Record an audit event noting the container and the user who changed the Cromwell configuration.
             AuditLogService.get().addEvent(getUser(),
                     new ClientApiAuditProvider.ClientApiAuditEvent(getContainer(), "LINCS Cromwell configuration updated."));
             return true;

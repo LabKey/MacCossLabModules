@@ -11,6 +11,7 @@
     LincsController.ClueCredentialsForm form = ((JspView<LincsController.ClueCredentialsForm>) HttpView.currentView()).getModelBean();
  %>
 
+<labkey:errors/>
 <labkey:form method="post">
     <table>
         <tr>
