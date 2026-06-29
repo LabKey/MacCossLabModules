@@ -450,7 +450,7 @@ public class TestResultsController extends SpringActionController
                     }
                     catch (IOException e)
                     {
-                        e.printStackTrace();
+                        _log.error("Failed to encode run pass summary", e);
                     }
                     int avgMem = 0;
                     if (passes.length != 0)
@@ -1243,7 +1243,9 @@ public class TestResultsController extends SpringActionController
                     new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentDelete);
                 }
                 SQLFragment sqlFragmentInsert = new SQLFragment();
-                sqlFragmentInsert.append("INSERT INTO " + TestResultsSchema.getTableInfoGlobalSettings() + " (warningb, errorb) VALUES (" + warningB + ", " + errorB +")");
+                sqlFragmentInsert.append("INSERT INTO " + TestResultsSchema.getTableInfoGlobalSettings() + " (warningb, errorb) VALUES (?, ?)");
+                sqlFragmentInsert.add(warningB);
+                sqlFragmentInsert.add(errorB);
                 new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentInsert);
                 transaction.commit();
             }
@@ -1903,8 +1905,7 @@ public class TestResultsController extends SpringActionController
             }
             catch (IOException e)
             {
-                _log.error("Failed to save " + fileName + ".");
-                e.printStackTrace();
+                _log.error("Failed to save " + fileName + ".", e);
                 return "Failed to save the file.";
             }
             return "File saved to system.";

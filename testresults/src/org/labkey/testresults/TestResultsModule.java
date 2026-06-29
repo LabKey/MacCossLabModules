@@ -16,9 +16,11 @@
 
 package org.labkey.testresults;
 
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
+import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.module.DefaultModule;
 import org.labkey.api.module.ModuleContext;
@@ -42,6 +44,8 @@ import java.util.Set;
 
 public class TestResultsModule extends DefaultModule
 {
+    private static final Logger LOG = LogHelper.getLogger(TestResultsModule.class, "Test results module");
+
     public static final WebPartFactory _testResultsFactory = new TestResultsWebPart();
     public static final String JOB_NAME = "TestResultsEmailTrigger";
     public static final String JOB_GROUP = "TestResultsGroup";
@@ -127,7 +131,7 @@ public class TestResultsModule extends DefaultModule
         }
         catch (SchedulerException e)
         {
-            e.printStackTrace();
+            LOG.error("Failed to start the test results email scheduler", e);
         }
 
     }

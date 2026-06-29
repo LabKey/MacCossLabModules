@@ -15,8 +15,10 @@
  */
 package org.labkey.testresults.model;
 
+import org.apache.logging.log4j.Logger;
 import org.labkey.api.data.Container;
 import org.labkey.api.reader.Readers;
+import org.labkey.api.util.logging.LogHelper;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -34,6 +36,8 @@ import java.util.zip.GZIPInputStream;
  */
 public class RunDetail implements Comparable<RunDetail>
 {
+    private static final Logger LOG = LogHelper.getLogger(RunDetail.class, "Test results run detail");
+
     public final static int HANG_MILLISECONDS = 30*60*1000; // 30 minutes
 
     private int id;
@@ -275,7 +279,7 @@ public class RunDetail implements Comparable<RunDetail>
         }
         catch (IOException e1)
         {
-            e1.printStackTrace();
+            LOG.error("Error reading gzipped run log", e1);
         }
         return out.toString();
     }
