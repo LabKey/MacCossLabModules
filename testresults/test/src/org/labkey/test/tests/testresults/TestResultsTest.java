@@ -28,6 +28,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.remoteapi.CommandException;
 import org.labkey.remoteapi.Connection;
+import org.labkey.remoteapi.query.Filter;
 import org.labkey.remoteapi.query.SelectRowsCommand;
 import org.labkey.remoteapi.query.SelectRowsResponse;
 import org.labkey.remoteapi.query.Sort;
@@ -50,10 +51,13 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @Category({External.class, MacCossLabModules.class})
@@ -63,6 +67,10 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
     private static final String PROJECT_NAME = "TestResultsTest" + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
     static final String COMPUTER_NAME_1 = "TEST-PC-1";
     static final String COMPUTER_NAME_2 = "TEST-PC-2";
+
+    // Training stats are exact (avg/stddev of integer averagemem), so this only absorbs the
+    // floating round-trip through the query API. It is not a real tolerance.
+    private static final double EPSILON = 1e-6;
 
     private static final Locator SUBMIT_BUTTON = Locator.css("input[type='submit'][value='Submit']");
 
@@ -466,19 +474,18 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         toggleTrainingSet();
         assertTextPresent("Add to training set");
 
-        // After removal: the Remove link and the run's data row are gone, and
-        // the stats row now shows "RunCount:0". TEST-PC-1's section is still
-        // rendered in the training table though, because of a known bug in
-        // TrainRunAction: when the user's last training run is removed, the
-        // the stale UserData row (non-zero meanmemory / meantestsrun) is
-        // never cleared. trainingdata.jsp:158 only moves users to the
-        // "No Training Data --" list when both fields are 0, so the section
-        // stays. See TODO-LK-20260403_testresults-bugs.md.
+        // After removing the user's last training run, TrainRunAction deletes their
+        // UserData row, so TEST-PC-1 no longer has any training data: its section
+        // disappears from <table id="trainingdata"> and the user moves to the
+        // "No Training Data --" list (it now behaves like TEST-PC-2). Previously a
+        // stale UserData row left a lingering RunCount:0 section here.
         clickAndWait(Locator.linkWithText("Training Data"));
         assertElementNotPresent(removeLink);
         assertElementNotPresent(trainingTable.containing("2026-01-16 06:00"));
-        assertElementPresent(statsRow.containing("RunCount:0"));
-        assertTextPresent(COMPUTER_NAME_2, "No Training Data --");
+        assertElementNotPresent(trainingTable.descendant(
+                Locator.tagWithId("tr", "user-anchor-" + COMPUTER_NAME_1)));
+        assertElementNotPresent(statsRow);
+        assertTextPresent(COMPUTER_NAME_1, COMPUTER_NAME_2, "No Training Data --");
     }
 
     @Test
@@ -598,6 +605,14 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         assertFalse(missingRun.optBoolean("Success", true));
         assertEquals("run does not exist: 999999", missingRun.optString("error"));
 
+        // TrainRunAction: force path also requires the run to exist. The existence check runs
+        // before the recompute regardless of force, so a bad runId reports not-found instead of
+        // throwing on an empty lookup.
+        JSONObject forceMissingRun = postApi("trainRun",
+                Map.of("runId", "999999", "train", "force"));
+        assertFalse(forceMissingRun.optBoolean("Success", true));
+        assertEquals("run does not exist: 999999", forceMissingRun.optString("error"));
+
         // SetUserActive: missing userId
         JSONObject noUserId = postApi("setUserActive", Map.of("active", "true"));
         assertEquals("userId is required", noUserId.optString("Message"));
@@ -640,6 +655,13 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showFailures",
                 Map.of("end", "03-24-2026")));
         assertTextPresent("Invalid date format: 03-24-2026 (expected MM/dd/yyyy)");
+
+        // Strict parsing: an out-of-range but MM/dd/yyyy-shaped date like 13/45/2026 used to
+        // silently roll over to a valid date (02/14/2027) because the shared SimpleDateFormat
+        // was lenient. It must now be rejected like any other invalid date.
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "begin",
+                Map.of("end", "13/45/2026")));
+        assertTextPresent("Invalid date format: 13/45/2026 (expected MM/dd/yyyy)");
     }
 
     @Test
@@ -664,6 +686,144 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         clickAndWait(SUBMIT_BUTTON);
         assertElementPresent(Locator.css("input[name='runId']"));
         assertTextNotPresent("TestDisposableOne");
+    }
+
+    @Test
+    public void testDeleteRunWithChildRecordsRecomputesTraining()
+    {
+        // Post a fresh run that has both handle-leak and memory-leak child rows, then add it
+        // to the training set. Deleting it must (1) succeed despite the handleleaks and
+        // trainruns child rows that previously caused a foreign key violation, and (2) refresh
+        // the user's training stats so no stale UserData row is left behind.
+        int baselineUserData = userDataRowCount();
+
+        int runId = postAndGetNewRunId("testresults/pc1-run-0117-leaks.xml", COMPUTER_NAME_1);
+        assertTrue("Posted run should have handle-leak child rows", childRowCount("handleleaks", runId) > 0);
+        assertTrue("Posted run should have memory-leak child rows", childRowCount("memoryleaks", runId) > 0);
+
+        JSONObject trainResp = postApi("trainRun", Map.of("runId", String.valueOf(runId), "train", "true"));
+        assertTrue("trainRun should succeed: " + trainResp, trainResp.optBoolean("Success", false));
+        assertTrue("A UserData row should exist after adding a training run", userDataRowCount() >= 1);
+
+        // Without the fix this returned Success=false with a foreign key violation on
+        // handleleaks (and would also fail for the trainruns row).
+        JSONObject deleteResp = postApi("deleteRun", Map.of("runId", String.valueOf(runId)));
+        assertTrue("deleteRun should succeed without a foreign key violation: " + deleteResp,
+                deleteResp.optBoolean("Success", false));
+
+        // Child rows are cleaned up, and the training stats are refreshed: this was the run's
+        // only training run, so its UserData row is removed rather than left stale.
+        assertEquals("handleleaks child rows should be deleted", 0, childRowCount("handleleaks", runId));
+        assertEquals("memoryleaks child rows should be deleted", 0, childRowCount("memoryleaks", runId));
+        assertEquals("testpasses child rows should be deleted", 0, childRowCount("testpasses", runId));
+        assertEquals("Deleting the only training run should remove its UserData row",
+                baselineUserData, userDataRowCount());
+    }
+
+    @Test
+    public void testRemoveTrainingRunRecomputesStatsWhenRunsRemain()
+    {
+        // Covers the recomputeUserData "update" branch: when a user still has training runs
+        // after one is removed, their UserData row must survive (not be deleted) and its stats
+        // must be recomputed from the remaining runs. The other tests only exercise the
+        // "delete" branch (removing a user's only/last training run).
+        int userId = getUserId(COMPUTER_NAME_1);
+        int baselineUserData = userDataRowCount();
+        double cleanMem = runAverageMem(_cleanRunId);
+        double leakMem = runAverageMem(_leakRunId);
+
+        try
+        {
+            // Add two TEST-PC-1 runs to the training set; both share one UserData row whose
+            // mean memory is the average of the two runs.
+            assertTrainRun(_cleanRunId, "true");
+            assertTrainRun(_leakRunId, "true");
+            assertEquals("Both training runs should share one UserData row",
+                    baselineUserData + 1, userDataRowCount());
+            assertEquals("Mean memory should be the average of both training runs",
+                    (cleanMem + leakMem) / 2, userDataMeanMemory(userId), EPSILON);
+            // Population stddev of two values {a, b} is |a - b| / 2.
+            assertEquals("Stddev memory should reflect both training runs",
+                    Math.abs(cleanMem - leakMem) / 2, userDataStdDevMemory(userId), EPSILON);
+
+            // Remove one run: the row must remain (update branch, not delete) and its stats
+            // must be recomputed from the single remaining run.
+            assertTrainRun(_leakRunId, "false");
+            assertEquals("Removing one of two training runs must not delete the UserData row",
+                    baselineUserData + 1, userDataRowCount());
+            assertEquals("Mean memory should be recomputed from the remaining run",
+                    cleanMem, userDataMeanMemory(userId), EPSILON);
+            assertEquals("Stddev memory of a single remaining run should be zero",
+                    0.0, userDataStdDevMemory(userId), EPSILON);
+        }
+        finally
+        {
+            // Leave the training set empty for other tests (no-op if already removed).
+            postApi("trainRun", Map.of("runId", String.valueOf(_cleanRunId), "train", "false"));
+            postApi("trainRun", Map.of("runId", String.valueOf(_leakRunId), "train", "false"));
+        }
+    }
+
+    @Test
+    public void testRunAccessIsContainerScoped() throws IOException, CommandException
+    {
+        // Run ids are global, so the actions that look a run up by id must reject a run that lives
+        // in another folder. Put a run in a subfolder, then from the PARENT folder confirm that
+        // every run-by-id action refuses it, and that the run is still reachable from its own folder.
+        final String subFolder = "CrossFolderAccessTest";
+        final String subFolderPath = "/" + PROJECT_NAME + "/" + subFolder;
+        _containerHelper.createSubfolder(PROJECT_NAME, subFolder);
+        _containerHelper.enableModule(subFolderPath, "TestResults");
+        postSampleXml("testresults/pc1-run-0116-failures.xml", subFolderPath);
+
+        Connection conn = WebTestHelper.getRemoteApiConnection();
+        SelectRowsCommand runsCmd = new SelectRowsCommand("testresults", "testruns");
+        runsCmd.setColumns(List.of("id"));
+        SelectRowsResponse subRuns = runsCmd.execute(conn, subFolderPath);
+        assertEquals("Subfolder should have exactly 1 run", 1, subRuns.getRows().size());
+        int subRunId = ((Number) subRuns.getRows().getFirst().get("id")).intValue();
+
+        // --- Negative: act on the subfolder's run by id from the PARENT folder (PROJECT_NAME) ---
+
+        JSONObject del = postApi("deleteRun", Map.of("runId", String.valueOf(subRunId)));
+        assertFalse("Cross-folder deleteRun must fail: " + del, del.optBoolean("Success", true));
+        assertEquals("run does not exist: " + subRunId, del.optString("error"));
+
+        JSONObject train = postApi("trainRun", Map.of("runId", String.valueOf(subRunId), "train", "true"));
+        assertFalse("Cross-folder trainRun must fail: " + train, train.optBoolean("Success", true));
+        assertEquals("run does not exist: " + subRunId, train.optString("error"));
+
+        JSONObject flag = postApi("flagRun", Map.of("runId", String.valueOf(subRunId), "flag", "true"));
+        assertFalse("Cross-folder flagRun must fail: " + flag, flag.optBoolean("Success", true));
+        assertEquals("run not found: " + subRunId, flag.optString("error"));
+
+        assertNull("Cross-folder viewLog must not return content",
+                getApiString("viewLog", subRunId, "log"));
+        assertNull("Cross-folder viewXml must not return content",
+                getApiString("viewXml", subRunId, "xml"));
+
+        // showRun in the parent folder shows the "enter run ID" prompt, not the subfolder run.
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showRun",
+                Map.of("runId", String.valueOf(subRunId))));
+        assertElementPresent(Locator.css("input[name='runId']"));
+
+        // The run is untouched in its own folder (the cross-folder delete was a no-op there).
+        assertEquals("Subfolder run must be untouched", 1,
+                runsCmd.execute(conn, subFolderPath).getRows().size());
+
+        // --- Positive: the same run IS reachable from its own folder ---
+        // (deleteRun/trainRun/viewLog/viewXml in-folder are covered by the other tests, which all
+        // run in PROJECT_NAME and would fail if the container guard rejected same-folder access.)
+        JSONObject flagOwn = postApi("flagRun",
+                Map.of("runId", String.valueOf(subRunId), "flag", "true"), subFolderPath);
+        assertTrue("In-folder flagRun should succeed: " + flagOwn, flagOwn.optBoolean("Success", false));
+
+        // ShowFlaggedAction is folder-scoped: the flagged subfolder run shows on the subfolder's
+        // Flags page but not the parent's.
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", subFolderPath, "showFlagged"));
+        assertElementPresent(Locator.tag("a").startsWith("id: " + subRunId + " /"));
+        beginAt(WebTestHelper.buildRelativeUrl("testresults", PROJECT_NAME, "showFlagged"));
+        assertElementNotPresent(Locator.tag("a").startsWith("id: " + subRunId + " /"));
     }
 
     /**
@@ -998,6 +1158,142 @@ public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTe
         catch (Exception e)
         {
             throw new RuntimeException("API call failed: " + action, e);
+        }
+    }
+
+    /**
+     * Posts a sample XML run and returns the id of the run it created, identified as the
+     * single new testruns row for the given computer (compared against the runs present
+     * before the post).
+     */
+    private int postAndGetNewRunId(String sampleDataRelativePath, String computerName)
+    {
+        Set<Integer> before = runIdsForComputer(computerName);
+        postSampleXml(sampleDataRelativePath);
+        Set<Integer> after = runIdsForComputer(computerName);
+        after.removeAll(before);
+        assertEquals("Expected exactly one new run for " + computerName, 1, after.size());
+        return after.iterator().next();
+    }
+
+    /**
+     * Returns the set of testruns ids posted by the given computer in this container.
+     */
+    private Set<Integer> runIdsForComputer(String computerName)
+    {
+        return queryRuns().stream()
+                .filter(r -> computerName.equals(r.get("userid/username")))
+                .map(r -> (Integer) r.get("id"))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Counts rows in a testresults child table that reference the given run via testrunid.
+     */
+    private int childRowCount(String table, int runId)
+    {
+        try
+        {
+            Connection connection = WebTestHelper.getRemoteApiConnection();
+            SelectRowsCommand cmd = new SelectRowsCommand("testresults", table);
+            cmd.addFilter(new Filter("testrunid", runId));
+            return cmd.execute(connection, PROJECT_NAME).getRows().size();
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Failed to count rows in " + table + " for run " + runId, e);
+        }
+    }
+
+    /**
+     * Counts UserData (training stats) rows in this container.
+     */
+    private int userDataRowCount()
+    {
+        try
+        {
+            Connection connection = WebTestHelper.getRemoteApiConnection();
+            SelectRowsCommand cmd = new SelectRowsCommand("testresults", "userdata");
+            return cmd.execute(connection, PROJECT_NAME).getRows().size();
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Failed to count userdata rows", e);
+        }
+    }
+
+    /**
+     * Posts trainRun for the given run and asserts it succeeded. {@code train} is "true" to add
+     * to the training set or "false" to remove.
+     */
+    private void assertTrainRun(int runId, String train)
+    {
+        JSONObject resp = postApi("trainRun", Map.of("runId", String.valueOf(runId), "train", train));
+        assertTrue("trainRun(" + runId + ", " + train + ") should succeed: " + resp,
+                resp.optBoolean("Success", false));
+    }
+
+    /**
+     * Returns the testresults.user id for the given computer name.
+     */
+    private int getUserId(String computerName)
+    {
+        List<Map<String, Object>> rows = selectRows("user",
+                new Filter("username", computerName), "id");
+        assertEquals("Expected exactly one user row for " + computerName, 1, rows.size());
+        return ((Number) rows.get(0).get("id")).intValue();
+    }
+
+    /**
+     * Returns the stored average managed memory for a run.
+     */
+    private double runAverageMem(int runId)
+    {
+        List<Map<String, Object>> rows = selectRows("testruns",
+                new Filter("id", runId), "averagemem");
+        assertEquals("Expected exactly one testruns row for run " + runId, 1, rows.size());
+        return ((Number) rows.get(0).get("averagemem")).doubleValue();
+    }
+
+    /**
+     * Returns the recomputed mean memory from the single UserData row for the given user.
+     */
+    private double userDataMeanMemory(int userId)
+    {
+        List<Map<String, Object>> rows = selectRows("userdata",
+                new Filter("userid", userId), "meanmemory");
+        assertEquals("Expected exactly one userdata row for user " + userId, 1, rows.size());
+        return ((Number) rows.get(0).get("meanmemory")).doubleValue();
+    }
+
+    /**
+     * Returns the recomputed population stddev of memory from the single UserData row for the
+     * given user.
+     */
+    private double userDataStdDevMemory(int userId)
+    {
+        List<Map<String, Object>> rows = selectRows("userdata",
+                new Filter("userid", userId), "stddevmemory");
+        assertEquals("Expected exactly one userdata row for user " + userId, 1, rows.size());
+        return ((Number) rows.get(0).get("stddevmemory")).doubleValue();
+    }
+
+    /**
+     * Runs a filtered SelectRows against a testresults query, returning the selected columns.
+     */
+    private List<Map<String, Object>> selectRows(String queryName, Filter filter, String... columns)
+    {
+        try
+        {
+            Connection connection = WebTestHelper.getRemoteApiConnection();
+            SelectRowsCommand cmd = new SelectRowsCommand("testresults", queryName);
+            cmd.addFilter(filter);
+            cmd.setColumns(List.of(columns));
+            return cmd.execute(connection, PROJECT_NAME).getRows();
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Failed to query " + queryName, e);
         }
     }
 

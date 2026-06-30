@@ -278,6 +278,19 @@ $(document).ready(function() {
     const problemData = <%=json(problemData, 0)%>;
 
     // Generate date chart.
+    // Only set explicit timeseries min/max when there are dates to plot. With an empty
+    // dates array, dates[0] and dates[length - 1] are undefined and c3/d3 throws while
+    // building the x-axis scale (e.g. when the active date range excludes all sample runs).
+    const chartDates = problemData?.graphData?.dates;
+    const xAxis = {
+        type: 'timeseries',
+        localtime: false,
+        tick: { fit: true, format: '%m/%d' }
+    };
+    if (chartDates.length > 0) {
+        xAxis.min = chartDates[0];
+        xAxis.max = chartDates[chartDates.length - 1];
+    }
     let dateChart = c3.generate({
         bindto: '#failGraph',
         data: {
@@ -289,13 +302,7 @@ $(document).ready(function() {
         bar: { width: { ratio: 0.3 } },
         subchart: { show: false, size: { height: 20 } },
         axis: {
-            x: {
-                min: problemData.graphData.dates[0],
-                max: problemData.graphData.dates[problemData.graphData.dates.length - 1],
-                type: 'timeseries',
-                localtime: false,
-                tick: { fit: true, format: '%m/%d' }
-            },
+            x: xAxis,
             // y: { tick: { values: %=graphYTicks.getJavaScriptFragment(0)% } }
         }
     });

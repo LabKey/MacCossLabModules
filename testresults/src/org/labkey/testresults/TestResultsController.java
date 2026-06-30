@@ -143,7 +143,18 @@ import static org.labkey.testresults.TestResultsModule.ViewType;
 public class TestResultsController extends SpringActionController
 {
     private static final Logger _log = LogManager.getLogger(TestResultsController.class);
-    private static final SimpleDateFormat MDYFormat = new SimpleDateFormat("MM/dd/yyyy");
+    private static final String MDY_PATTERN = "MM/dd/yyyy";
+
+    // SimpleDateFormat is not thread-safe and is lenient by default, so we never share a
+    // single static instance. Each caller gets a fresh, strict formatter: strict parsing
+    // makes nonsense dates like 13/45/2026 throw ParseException instead of silently rolling
+    // over to a valid-but-wrong date (month 13 -> +1 year, day 45 -> spill into next month).
+    private static SimpleDateFormat mdyFormat()
+    {
+        SimpleDateFormat format = new SimpleDateFormat(MDY_PATTERN);
+        format.setLenient(false);
+        return format;
+    }
 
     private static final String KEY_SUCCESS = "Success";
 
@@ -176,7 +187,76 @@ public class TestResultsController extends SpringActionController
 
     private static Date parseDate(String dateStr) throws ParseException
     {
-        return StringUtils.isNotBlank(dateStr) ? MDYFormat.parse(dateStr) : null;
+        return StringUtils.isNotBlank(dateStr) ? mdyFormat().parse(dateStr) : null;
+    }
+
+    /**
+     * Loads the run with the given id only if it belongs to the given container, otherwise returns
+     * null. Run ids are global and the raw testruns table has no query-layer container filter, so
+     * actions that look a run up by id must scope by container or a user could read or modify a run
+     * in another folder by guessing its id.
+     */
+    private static RunDetail getRunInContainer(int runId, Container container)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("id"), runId);
+        filter.addCondition(FieldKey.fromParts("container"), container.getEntityId());
+        return new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getObject(RunDetail.class);
+    }
+
+    /**
+     * Recomputes one user's training statistics (mean/stddev of tests-run and memory) in the
+     * given container from their remaining training runs. If the user has no training runs
+     * left, deletes their UserData row instead.
+     *
+     * The delete branch matters: the recompute groups by (userid, container), so an empty
+     * join produces zero output rows, ON CONFLICT never fires, and a stale UserData row would
+     * otherwise survive with its old mean/stddev values (leaving the user listed on the
+     * training-data page as if they still had training data). Callers must invoke this inside
+     * an open transaction.
+     */
+    private static void recomputeUserData(DbScope scope, int userid, Container container)
+    {
+        SQLFragment remainingFragment = new SQLFragment();
+        remainingFragment.append(
+            "SELECT COUNT(*) FROM " + TestResultsSchema.getTableInfoTestRuns() + " " +
+            "JOIN " + TestResultsSchema.getTableInfoTrain() +
+            "   ON " + TestResultsSchema.getTableInfoTestRuns() + ".id = " + TestResultsSchema.getTableInfoTrain() + ".runid " +
+            "WHERE userid = ? AND container = ?");
+        remainingFragment.add(userid);
+        remainingFragment.add(container.getEntityId());
+        long remainingTrainRuns = new SqlSelector(TestResultsSchema.getSchema(), remainingFragment).getObject(Long.class);
+
+        if (remainingTrainRuns == 0)
+        {
+            SQLFragment deleteFragment = new SQLFragment();
+            deleteFragment.append("DELETE FROM " + TestResultsSchema.getTableInfoUserData() + " WHERE userid = ? AND container = ?");
+            deleteFragment.add(userid);
+            deleteFragment.add(container.getEntityId());
+            new SqlExecutor(scope).execute(deleteFragment);
+        }
+        else
+        {
+            SQLFragment sqlFragmentUpdate = new SQLFragment();
+            sqlFragmentUpdate.append(
+                "INSERT INTO " + TestResultsSchema.getTableInfoUserData() + " " +
+                "   (userid, container, meantestsrun, meanmemory, stddevtestsrun, stddevmemory) " +
+                "SELECT ?, ?, avg(passedtests), avg(averagemem), stddev_pop(passedtests), stddev_pop(averagemem) " +
+                "FROM " + TestResultsSchema.getTableInfoTestRuns() + " " +
+                "JOIN " + TestResultsSchema.getTableInfoTrain() +
+                "   ON " + TestResultsSchema.getTableInfoTestRuns() + ".id = " + TestResultsSchema.getTableInfoTrain() + ".runid " +
+                "WHERE userid = ? AND container = ? " +
+                "GROUP BY userid, container " +
+                "ON CONFLICT(userid, container) DO UPDATE SET " +
+                "   meantestsrun = excluded.meantestsrun, " +
+                "   meanmemory = excluded.meanmemory, " +
+                "   stddevtestsrun = excluded.stddevtestsrun, " +
+                "   stddevmemory = excluded.stddevmemory");
+            sqlFragmentUpdate.add(userid);
+            sqlFragmentUpdate.add(container.getEntityId());
+            sqlFragmentUpdate.add(userid);
+            sqlFragmentUpdate.add(container.getEntityId());
+            new SqlExecutor(scope).execute(sqlFragmentUpdate);
+        }
     }
 
     // Form class for RetrainAllAction
@@ -530,16 +610,14 @@ public class TestResultsController extends SpringActionController
             SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
             List<Integer> foundRuns = new ArrayList<>();
             sqlSelector.forEach(rs -> foundRuns.add(rs.getInt("runid")));
-            SimpleFilter filter = new SimpleFilter();
-            filter.addCondition(FieldKey.fromParts("id"), runId);
-            RunDetail[] details = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getArray(RunDetail.class);
-            if (!force)
-            {
-                if (details.length == 0)
-                    return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "run does not exist: " + runId));
-                else if ((train && !foundRuns.isEmpty()) || (!train && foundRuns.isEmpty()))
-                    return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "no action necessary"));
-            }
+            // The run must exist (in this folder) even on the force path: recomputeUserData below
+            // uses run.getUserid(), so a missing run would otherwise throw. Scoping by container
+            // also stops a run in another folder from being trained from here.
+            RunDetail run = getRunInContainer(runId, getContainer());
+            if (run == null)
+                return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "run does not exist: " + runId));
+            if (!force && ((train && !foundRuns.isEmpty()) || (!train && foundRuns.isEmpty())))
+                return new ApiSimpleResponse(Map.of(KEY_SUCCESS, false, "error", "no action necessary"));
             DbScope scope = TestResultsSchema.getSchema().getScope();
             try (DbScope.Transaction transaction = scope.ensureTransaction())
             {
@@ -552,27 +630,8 @@ public class TestResultsController extends SpringActionController
                     fragment.add(runId);
                     new SqlExecutor(scope).execute(fragment);
                 }
-                // update user table calculations
-                SQLFragment sqlFragmentUpdate = new SQLFragment();
-                sqlFragmentUpdate.append(
-                    "INSERT INTO " + TestResultsSchema.getTableInfoUserData() + " " +
-                    "   (userid, container, meantestsrun, meanmemory, stddevtestsrun, stddevmemory) " +
-                    "SELECT ?, ?, avg(passedtests), avg(averagemem), stddev_pop(passedtests), stddev_pop(averagemem) " +
-                    "FROM " + TestResultsSchema.getTableInfoTestRuns() + " " +
-                    "JOIN " + TestResultsSchema.getTableInfoTrain() +
-                    "   ON " + TestResultsSchema.getTableInfoTestRuns() + ".id = " + TestResultsSchema.getTableInfoTrain() + ".runid " +
-                    "WHERE userid = ? AND container = ? " +
-                    "GROUP BY userid, container " +
-                    "ON CONFLICT(userid, container) DO UPDATE SET " +
-                    "   meantestsrun = excluded.meantestsrun, " +
-                    "   meanmemory = excluded.meanmemory, " +
-                    "   stddevtestsrun = excluded.stddevtestsrun, " +
-                    "   stddevmemory = excluded.stddevmemory");
-                sqlFragmentUpdate.add(details[0].getUserid());
-                sqlFragmentUpdate.add(getContainer().getEntityId());
-                sqlFragmentUpdate.add(details[0].getUserid());
-                sqlFragmentUpdate.add(getContainer().getEntityId());
-                new SqlExecutor(scope).execute(sqlFragmentUpdate);
+                // Refresh this user's training statistics from their remaining training runs.
+                recomputeUserData(scope, run.getUserid(), getContainer());
                 transaction.commit();
             }
             return new ApiSimpleResponse(KEY_SUCCESS, true);
@@ -991,14 +1050,39 @@ public class TestResultsController extends SpringActionController
             }
 
             int rowId = form.getRunId();
+            // Look up the run (scoped to this folder) before deleting, both to reject a run in
+            // another folder and to refresh the owner's training stats afterward: the run may
+            // have been part of their training set, so their baseline can change (or disappear)
+            // once it is gone.
+            RunDetail run = getRunInContainer(rowId, getContainer());
+            if (run == null)
+            {
+                response.put(KEY_SUCCESS, false);
+                response.put("error", "run does not exist: " + rowId);
+                return response;
+            }
+            // Child tables keyed by testrunid -> testruns(id).
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("testrunid"), rowId);
-            try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction()) {
+            // trainruns keys the run via its "runid" column, not "testrunid".
+            SimpleFilter trainFilter = new SimpleFilter();
+            trainFilter.addCondition(FieldKey.fromParts("runid"), rowId);
+            DbScope scope = TestResultsSchema.getSchema().getScope();
+            try (DbScope.Transaction transaction = scope.ensureTransaction()) {
+                // Delete every child row that references this run before the parent, or the
+                // testruns delete fails on a foreign key constraint. handleleaks and trainruns
+                // were previously missed: deleting a run that had handle-leak records or was in
+                // the training set failed (e.g. fk_memoryleaks_testruns on table handleleaks).
                 Table.delete(TestResultsSchema.getTableInfoTestFails(), filter);
                 Table.delete(TestResultsSchema.getTableInfoTestPasses(), filter);
                 Table.delete(TestResultsSchema.getTableInfoMemoryLeaks(), filter);
+                Table.delete(TestResultsSchema.getTableInfoHandleLeaks(), filter);
                 Table.delete(TestResultsSchema.getTableInfoHangs(), filter);
+                Table.delete(TestResultsSchema.getTableInfoTrain(), trainFilter);
                 Table.delete(TestResultsSchema.getTableInfoTestRuns(), rowId); // delete run last because of foreign key
+                // Refresh the owner's training stats now that the run (and any trainruns row for
+                // it) is gone, so a removed training run does not leave a stale UserData row behind.
+                recomputeUserData(scope, run.getUserid(), getContainer());
                 transaction.commit();
             } catch (Exception x) {
                 response.put(KEY_SUCCESS, false);
@@ -1040,10 +1124,9 @@ public class TestResultsController extends SpringActionController
             int rowId = form.getRunId();
             boolean flag = form.getFlag() != null ? form.getFlag() : false;
 
-            SimpleFilter filter = new SimpleFilter();
-            filter.addCondition(FieldKey.fromParts("id"), rowId);
             try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction()) {
-                RunDetail detail = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getObject(RunDetail.class);
+                // Scoped to this folder so a run in another folder cannot be flagged from here.
+                RunDetail detail = getRunInContainer(rowId, getContainer());
                 if (detail == null)
                 {
                     response.put(KEY_SUCCESS, false);
@@ -1097,8 +1180,11 @@ public class TestResultsController extends SpringActionController
         @Override
         public ModelAndView getView(Object o, BindException errors) throws Exception
         {
+            // Scoped to this folder so the Flags page lists only flagged runs in the current folder,
+            // not flagged runs across every folder.
             SimpleFilter filter = new SimpleFilter();
             filter.addCondition(FieldKey.fromParts("flagged"), true);
+            filter.addCondition(FieldKey.fromParts("container"), getContainer().getEntityId());
             RunDetail[] details = new TableSelector(TestResultsSchema.getTableInfoTestRuns(), filter, null).getArray(RunDetail.class);
             JspView<TestsDataBean> view = new JspView<>("/org/labkey/testresults/view/flagged.jsp", new TestsDataBean(details, new User[0]));
             view.setFrame(WebPartView.FrameType.PORTAL);
@@ -1197,9 +1283,11 @@ public class TestResultsController extends SpringActionController
             if (form.getRunId() == null)
                 return new ApiSimpleResponse("log", null);
             int runId = form.getRunId();
+            // Scoped to this folder so a run's log in another folder cannot be read by id.
             SQLFragment sqlFragment = new SQLFragment();
-            sqlFragment.append("SELECT log FROM testresults.testruns WHERE id = ?");
+            sqlFragment.append("SELECT log FROM testresults.testruns WHERE id = ? AND container = ?");
             sqlFragment.add(runId);
+            sqlFragment.add(getContainer().getEntityId());
             List<byte[]> logs = new ArrayList<>();
             SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
             sqlSelector.forEach(rs -> logs.add(rs.getBytes("log")));
@@ -1218,9 +1306,11 @@ public class TestResultsController extends SpringActionController
             if (form.getRunId() == null)
                 return new ApiSimpleResponse("xml", null);
             int runId = form.getRunId();
+            // Scoped to this folder so a run's XML in another folder cannot be read by id.
             SQLFragment sqlFragment = new SQLFragment();
-            sqlFragment.append("SELECT xml FROM testresults.testruns WHERE id = ?");
+            sqlFragment.append("SELECT xml FROM testresults.testruns WHERE id = ? AND container = ?");
             sqlFragment.add(runId);
+            sqlFragment.add(getContainer().getEntityId());
             List<byte[]> xmls = new ArrayList<>();
             SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
             sqlSelector.forEach(rs -> xmls.add(rs.getBytes("xml")));
@@ -1964,7 +2054,7 @@ public class TestResultsController extends SpringActionController
                                 timestampDay = addDays(timestampDay, 1);
                             }
                             lastHour = hour;
-                            String originalDate = MDYFormat.format(timestampDay);
+                            String originalDate = mdyFormat().format(timestampDay);
                             try {
                                 timestamp = new SimpleDateFormat("MM/dd/yyyy HH:mm").parse(originalDate + " " + ts);
                             } catch (IllegalArgumentException e) {
@@ -2016,7 +2106,7 @@ public class TestResultsController extends SpringActionController
                             timestampDay = addDays(timestampDay, 1);
                         }
                         lastHour = hour;
-                        String originalDate = MDYFormat.format(timestampDay);
+                        String originalDate = mdyFormat().format(timestampDay);
                         try {
                             timestamp = new SimpleDateFormat("MM/dd/yyyy HH:mm").parse(originalDate + " " + ts);
                         } catch (IllegalArgumentException e) {
