@@ -5,7 +5,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.remoteapi.CommandException;
 import org.labkey.remoteapi.Connection;
-import org.labkey.remoteapi.SimpleGetCommand;
+import org.labkey.remoteapi.SimplePostCommand;
 import org.labkey.remoteapi.query.Filter;
 import org.labkey.remoteapi.query.SelectRowsCommand;
 import org.labkey.remoteapi.query.SelectRowsResponse;
@@ -341,7 +341,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         try
         {
             Connection connection = createDefaultConnection();
-            SimpleGetCommand command = new SimpleGetCommand("panoramapublic", "setupMockNcbiService");
+            SimplePostCommand command = new SimplePostCommand("panoramapublic", "setupMockNcbiService");
             command.execute(connection, "/");
             _useMockNcbi = true;
             log("Using mock NCBI service");
@@ -417,7 +417,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         try
         {
             Connection connection = createDefaultConnection();
-            SimpleGetCommand command = new SimpleGetCommand("panoramapublic", "registerMockPublication");
+            SimplePostCommand command = new SimplePostCommand("panoramapublic", "registerMockPublication");
             Map<String, Object> params = new HashMap<>();
             params.put("database", database);
             params.put("id", id);
@@ -447,7 +447,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         try
         {
             Connection connection = createDefaultConnection();
-            SimpleGetCommand command = new SimpleGetCommand("panoramapublic", "restoreNcbiService");
+            SimplePostCommand command = new SimplePostCommand("panoramapublic", "restoreNcbiService");
             command.execute(connection, "/");
             log("Restored real NCBI service");
         }
