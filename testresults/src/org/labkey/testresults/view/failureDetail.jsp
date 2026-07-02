@@ -333,8 +333,8 @@ $(document).ready(function() {
                 headerName = "Failures";
                 displayFunc = run => {
                     return "<ul>" + run.failures.map(f => "<li>" +
-                            "Pass " + f.pass.toString() + " (" + f.language + ") ---" +
-                            '<pre class="stack-trace">' + f.trace + "</pre>"+
+                            "Pass " + f.pass.toString() + " (" + LABKEY.Utils.encodeHtml(f.language) + ") ---" +
+                            '<pre class="stack-trace">' + LABKEY.Utils.encodeHtml(f.trace) + "</pre>"+
                             "</li>").join() + "</ul>";
                 };
                 jsonKey = "failures";

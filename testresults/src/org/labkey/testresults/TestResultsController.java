@@ -68,7 +68,6 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.WebPartView;
-import org.labkey.testresults.model.GlobalSettings;
 import org.labkey.testresults.model.RunDetail;
 import org.labkey.testresults.model.TestFailDetail;
 import org.labkey.testresults.model.TestHandleLeakDetail;
@@ -450,7 +449,7 @@ public class TestResultsController extends SpringActionController
                     }
                     catch (IOException e)
                     {
-                        e.printStackTrace();
+                        _log.error("Failed to encode run pass summary", e);
                     }
                     int avgMem = 0;
                     if (passes.length != 0)
@@ -1173,7 +1172,7 @@ public class TestResultsController extends SpringActionController
     /**
      * action to show all flagged runs flagged.jsp
      */
-    @RequiresNoPermission
+    @RequiresPermission(ReadPermission.class)
     public static class ShowFlaggedAction extends SimpleViewAction<Object>
     {
         @Override
@@ -1228,23 +1227,26 @@ public class TestResultsController extends SpringActionController
                 return new ApiSimpleResponse(res);
             }
 
-            GlobalSettings settings = new GlobalSettings(warningB, errorB);
-            DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction();
-            SQLFragment sqlFragment = new SQLFragment();
-            sqlFragment.append("select exists(select 1 from " + TestResultsSchema.getTableInfoGlobalSettings() + ") ");
-            SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
-            List<Boolean> values = new ArrayList<>();
-            sqlSelector.forEach(rs -> values.add(rs.getBoolean(1)));
+            try (DbScope.Transaction transaction = TestResultsSchema.getSchema().getScope().ensureTransaction())
+            {
+                SQLFragment sqlFragment = new SQLFragment();
+                sqlFragment.append("select exists(select 1 from " + TestResultsSchema.getTableInfoGlobalSettings() + ") ");
+                SqlSelector sqlSelector = new SqlSelector(TestResultsSchema.getSchema(), sqlFragment);
+                List<Boolean> values = new ArrayList<>();
+                sqlSelector.forEach(rs -> values.add(rs.getBoolean(1)));
 
-            if (values.get(0)) {
-                SQLFragment sqlFragmentDelete = new SQLFragment();
-                sqlFragmentDelete.append("DELETE FROM " + TestResultsSchema.getTableInfoGlobalSettings());
-                new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentDelete);
+                if (values.get(0)) {
+                    SQLFragment sqlFragmentDelete = new SQLFragment();
+                    sqlFragmentDelete.append("DELETE FROM " + TestResultsSchema.getTableInfoGlobalSettings());
+                    new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentDelete);
+                }
+                SQLFragment sqlFragmentInsert = new SQLFragment();
+                sqlFragmentInsert.append("INSERT INTO " + TestResultsSchema.getTableInfoGlobalSettings() + " (warningb, errorb) VALUES (?, ?)");
+                sqlFragmentInsert.add(warningB);
+                sqlFragmentInsert.add(errorB);
+                new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentInsert);
+                transaction.commit();
             }
-            SQLFragment sqlFragmentInsert = new SQLFragment();
-            sqlFragmentInsert.append("INSERT INTO " + TestResultsSchema.getTableInfoGlobalSettings() + " (warningb, errorb) VALUES (" + warningB + ", " + errorB +")");
-            new SqlExecutor(TestResultsSchema.getSchema()).execute(sqlFragmentInsert);
-            transaction.commit();
             res.put("Message", "success!");
             return new ApiSimpleResponse(res);
         }
@@ -1779,6 +1781,8 @@ public class TestResultsController extends SpringActionController
                 _log.info("Attempting to save file for a future post attempt");
                 res.put(KEY_SUCCESS, false);
                 res.put("Message", "Error Parsing XML attempting to save the XML file...   " + NIGHTLY_POSTER.SaveXML(file, getContainer()));
+                // The stack trace is intentionally returned to the caller (SkylineTester) so posting
+                // failures can be diagnosed from the client without server log access.
                 res.put("Exception", e + NIGHTLY_POSTER.getStackTraceText(e));
                 return new ApiSimpleResponse(res);
             }
@@ -1848,6 +1852,8 @@ public class TestResultsController extends SpringActionController
                     f.delete();
                     res.put(f.getName(), "Success!");
                 } catch (Exception e) {
+                    // The stack trace is intentionally returned to the caller so a failed re-post can be
+                    // diagnosed from the client without server log access.
                     res.put(f.getName(), Arrays.toString(e.getStackTrace()));
                 }
             }
@@ -1890,15 +1896,14 @@ public class TestResultsController extends SpringActionController
             {
                 File f = makeFile(c, fileName);
                 if(f.exists()) {
-                    _log.info("A file by the name " + fileName + " is already stored.");
+                    _log.info("A file by the name {} is already stored.", fileName);
                     return "File not saved - file already exists in file system.";
                 }
                 file.transferTo(f);
             }
             catch (IOException e)
             {
-                _log.error("Failed to save " + fileName + ".");
-                e.printStackTrace();
+                _log.error("Failed to save {}.", fileName, e);
                 return "Failed to save the file.";
             }
             return "File saved to system.";

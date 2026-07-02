@@ -223,7 +223,7 @@ public class SendTestResultsEmail implements org.quartz.Job
                             .append("\n<td style='padding: 6px; " + (highlightDuration ? style : "") + "'>" + run.getDuration() + (run.getHang() != null ? " (hang)" : "") + "</td>")
                             .append("\n<td style='padding: 6px; " + (run.getFailedtests() > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getFailedtests() + "</td>")
                             .append("\n<td style='padding: 6px; " + (run.getLeaks().length > 0 ? getBackgroundStyle(BackgroundColor.error) : "") + "'>" + run.getLeaks().length + "</td>")
-                            .append("\n<td style='padding: 6px;'> " + run.getGitHash() + "</td>")
+                            .append("\n<td style='padding: 6px;'> " + PageFlowUtil.filter(run.getGitHash()) + "</td>")
                             .append("</tr>");
                     }
                 }
@@ -237,7 +237,7 @@ public class SendTestResultsEmail implements org.quartz.Job
             for (User u : missingUsers)
             {
                 message.append("<tr style='border-bottom: 1px solid grey;'>")
-                    .append("\n<td style='" + getBackgroundStyle(BackgroundColor.error) + " padding: 6px;' colspan='7'>Missing " + u.getUsername() + "</td>")
+                    .append("\n<td style='" + getBackgroundStyle(BackgroundColor.error) + " padding: 6px;' colspan='7'>Missing " + PageFlowUtil.filter(u.getUsername()) + "</td>")
                     .append("</tr>");
             }
             message.append("<tr>")
@@ -267,13 +267,13 @@ public class SendTestResultsEmail implements org.quartz.Job
                             "</td>");
                 RunDetail[] problemRuns = problems.getRuns();
                 for (RunDetail run : problemRuns)
-                    message.append("\n<td style='max-width: 60px; width: 60px; overflow: hidden; text-overflow: ellipsis; padding: 3px; border: 1px solid #ccc;'>" + run.getUserName() + "</td>");
+                    message.append("\n<td style='max-width: 60px; width: 60px; overflow: hidden; text-overflow: ellipsis; padding: 3px; border: 1px solid #ccc;'>" + PageFlowUtil.filter(run.getUserName()) + "</td>");
                 message.append("\n</tr>");
 
                 for (String test : problems.getTestNames())
                 {
                     message.append("\n<tr>")
-                        .append("\n<td style='overflow: hidden; text-overflow: ellipsis; padding: 3px; border: 1px solid #ccc;'>" + test + "</td>");
+                        .append("\n<td style='overflow: hidden; text-overflow: ellipsis; padding: 3px; border: 1px solid #ccc;'>" + PageFlowUtil.filter(test) + "</td>");
                     for (RunDetail run : problemRuns)
                     {
                         message.append("\n<td style='width: 60px; overflow: hidden; padding: 3px; border: 1px solid #ccc;'>");
