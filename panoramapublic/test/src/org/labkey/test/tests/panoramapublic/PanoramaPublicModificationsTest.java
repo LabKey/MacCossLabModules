@@ -5,18 +5,25 @@ import org.junit.experimental.categories.Category;
 import org.labkey.api.util.Pair;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
+import org.labkey.test.WebTestHelper;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.components.WebPart;
+import org.labkey.test.components.html.BootstrapMenu;
 import org.labkey.test.components.panoramapublic.TargetedMsExperimentWebPart;
 import org.labkey.test.pages.panoramapublic.DataValidationPage;
 import org.labkey.test.util.DataRegionTable;
+import org.labkey.test.util.EscapeUtil;
 import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.TextSearcher;
+import org.openqa.selenium.WebElement;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -92,6 +99,12 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         testCustomizeGrid(STRUCTURAL_MOD, true);
         testCustomizeGrid(ISOTOPE_MOD, true);
 
+        // The web part title links to the full query grid. It must not let a caller widen the
+        // scope to all folders.
+        verifyModificationQueryScopeIsRestricted();
+        // The standalone web part grid on this page must not be widened by a URL either.
+        verifyModificationWebPartScopeIsRestricted();
+
         // Match structural modification
         goToExperimentDetailsPage();
         testSaveMatchForStructuralMod(propionylation, List.of(propionyl, new Unimod(206, "Delta:H(4)C(3)O(1)", propionyl.getFormula())),
@@ -111,6 +124,65 @@ public class PanoramaPublicModificationsTest extends PanoramaPublicBaseTest
         testWildCardModifications();
 
         testCopy(projectName, folderName, experimentTitle,  folderName + " Copy");
+    }
+
+    // CreateView on these queries restricts the grids to the current folder or the current folder and subfolders.
+    // Check that a wider scope asked for in the URL is restricted, and that an allowed scope still works.
+    private void verifyModificationQueryScopeIsRestricted()
+    {
+        for (String queryName : List.of("IsotopeModifications", "StructuralModifications"))
+        {
+            // The Folder Filter dropdown offers the narrow scopes but not All Folders.
+            assertFolderFilterMenuHidesAllFolders(queryName);
+            // A URL asking for All Folders is restricted to the current and subfolders.
+            assertContainerFilterScope(queryName, "AllFolders", DataRegionTable.ContainerFilterType.CURRENT_AND_SUBFOLDERS);
+            // "Current and Subfolders" is allowed.
+            assertContainerFilterScope(queryName, "CurrentAndSubfolders", DataRegionTable.ContainerFilterType.CURRENT_AND_SUBFOLDERS);
+        }
+    }
+
+    // The standalone modification web parts (added to a folder page, not the experiment details page)
+    // read the scope straight from the URL. Check that a wider folder scope in the URL is restricted there too.
+    private void verifyModificationWebPartScopeIsRestricted()
+    {
+        for (String webPartName : List.of(STRUCTURAL_MOD, ISOTOPE_MOD))
+        {
+            // Go to the dashboard tab that holds the web parts, then re-request the same page with a
+            // "AllFolders" filter in the URL. The web part's data region is named after its title.
+            goToDashboard();
+            String url = getCurrentRelativeURL();
+            url += (url.contains("?") ? "&" : "?") + EscapeUtil.encode(webPartName) + ".containerFilterName=AllFolders";
+            beginAt(url);
+            var grid = new DataRegionTable(webPartName, this);
+            assertEquals("Standalone '" + webPartName + "' web part should restrict an All Folders URL to the current and subfolders",
+                    DataRegionTable.ContainerFilterType.CURRENT_AND_SUBFOLDERS, grid.getContainerFilter());
+        }
+    }
+
+    private void assertFolderFilterMenuHidesAllFolders(String queryName)
+    {
+        beginAt(WebTestHelper.buildURL("query", getCurrentContainerPath(), "executeQuery",
+                Map.of("schemaName", "panoramapublic", "query.queryName", queryName)));
+        BootstrapMenu viewsMenu = new DataRegionTable("query", this).getViewsMenu();
+        viewsMenu.openMenuTo("Folder Filter", "Folder Filter");
+        List<String> options = viewsMenu.findVisibleMenuItems().stream().map(WebElement::getText).map(String::trim).toList();
+        // The allowed scope is present. This also guards against an empty menu making the check below pass for free.
+        assertTrue("Folder Filter for query '" + queryName + "' should offer 'Current folder and subfolders'. Found: " + options,
+                options.contains(DataRegionTable.ContainerFilterType.CURRENT_AND_SUBFOLDERS.getLabel()));
+        // All Folders is not offered.
+        assertFalse("Folder Filter for query '" + queryName + "' must not offer 'All Folders'. Found: " + options,
+                options.contains(DataRegionTable.ContainerFilterType.ALL_FOLDERS.getLabel()));
+    }
+
+    private void assertContainerFilterScope(String queryName, String requestedFilterName, DataRegionTable.ContainerFilterType expected)
+    {
+        beginAt(WebTestHelper.buildURL("query", getCurrentContainerPath(), "executeQuery",
+                Map.of("schemaName", "panoramapublic",
+                        "query.queryName", queryName,
+                        "query.containerFilterName", requestedFilterName)));
+        var grid = new DataRegionTable("query", this);
+        assertEquals("Folder Filter for query '" + queryName + "' requested as '" + requestedFilterName + "' was not the expected scope",
+                expected, grid.getContainerFilter());
     }
 
     private void testNoMatchForStructuralMod(String modificationName)
