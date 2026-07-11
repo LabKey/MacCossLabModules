@@ -32,6 +32,8 @@ import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
 import org.labkey.api.action.SpringActionController;
 import org.labkey.api.admin.AdminUrls;
+import org.labkey.api.audit.AuditLogService;
+import org.labkey.api.audit.ClientApiAuditProvider;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.CoreSchema;
@@ -52,6 +54,7 @@ import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.ValidEmail;
+import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.ReadPermission;
 import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.util.ButtonBuilder;
@@ -153,6 +156,8 @@ public class SignUpController extends SpringActionController
            }
            m.put(SignUpModule.SIGNUP_GROUP_NAME, addPropertyForm.getGroupName());
            m.save();
+           AuditLogService.get().addEvent(getUser(),
+                   new ClientApiAuditProvider.ClientApiAuditEvent(c, "Signup target group set to '" + addPropertyForm.getGroupName() + "'."));
            return true;
        }
 
@@ -184,6 +189,8 @@ public class SignUpController extends SpringActionController
             WritablePropertyMap m = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, true);
             m.remove(SignUpModule.SIGNUP_GROUP_NAME);
             m.save();
+            AuditLogService.get().addEvent(getUser(),
+                    new ClientApiAuditProvider.ClientApiAuditEvent(c, "Signup target group property removed."));
 
             return true;
         }
@@ -221,6 +228,10 @@ public class SignUpController extends SpringActionController
             m.put(String.valueOf(addGroupChangeForm.getOldgroup()), newProperties);
 
             m.save();
+            AuditLogService.get().addEvent(getUser(),
+                    new ClientApiAuditProvider.ClientApiAuditEvent(ContainerManager.getRoot(),
+                            "Signup group-change rule added: members of group " + addGroupChangeForm.getOldgroup()
+                                    + " may move to group " + addGroupChangeForm.getNewgroup() + "."));
             return true;
         }
 
@@ -259,6 +270,10 @@ public class SignUpController extends SpringActionController
                 m.remove(oldgroup);
 
             m.save();
+            AuditLogService.get().addEvent(getUser(),
+                    new ClientApiAuditProvider.ClientApiAuditEvent(ContainerManager.getRoot(),
+                            "Signup group-change rule removed: members of group " + oldgroup
+                                    + " may no longer move to group " + newgroup + "."));
             return true;
         }
 
@@ -547,17 +562,9 @@ public class SignUpController extends SpringActionController
             }
             else
             {
-                String message = form.isAccountExists() ? SignUpManager.USER_ALREADY_EXISTS : SignUpManager.CONFIRMATION_SENT;
-                message = String.format(message, form.getEmail());
-                if(form.isAccountExists())
-                {
-                    errors.addError(new LabKeyError(message));
-                    return new SimpleErrorView(errors);
-                }
-                else
-                {
-                    return HtmlView.of(message);
-                }
+                // Same response whether or not the account already exists (avoids user enumeration).
+                String message = String.format(SignUpManager.CONFIRMATION_SENT, form.getEmail());
+                return HtmlView.of(message);
             }
         }
 
@@ -585,8 +592,9 @@ public class SignUpController extends SpringActionController
 
             if (UserManager.userExists(email))
             {
-                // If the user already exists forward them to a page where they can click on a link to recover their password, if required
-                signupForm.setAccountExists(true);
+                // Do not reveal whether an account already exists (avoids user enumeration).
+                // Show the same "confirmation sent" response as a new signup, without sending an email.
+                clearCaptcha();
                 signupForm.setNewSignUp(false);
                 return false;
             }
@@ -597,11 +605,10 @@ public class SignUpController extends SpringActionController
             }
             catch (MessagingException | ConfigurationException e)
             {
+                // Log the underlying SMTP/configuration error server-side only; do not leak it to
+                // the (unauthenticated) caller.
+                _log.error("Failed to send signup confirmation email", e);
                 errors.reject(ERROR_MSG, sendEmailErrorMessage(getContainer()));
-                if (e.getMessage() != null)
-                {
-                    errors.reject(ERROR_MSG, e.getMessage());
-                }
                 return false;
             }
 
@@ -732,6 +739,26 @@ public class SignUpController extends SpringActionController
                 + LookAndFeelProperties.getInstance(container).getSystemEmailAddress();
     }
 
+    // Returns null if the requested self-service group change is allowed, otherwise a short reason
+    // (for server-side logging). Both groups must be project groups in the same project, and the
+    // target must not carry admin rights. This bounds the damage if an admin maps a low-privilege
+    // group to a privileged or site group in the transition rule map.
+    private static String validateGroupChangeTarget(Group oldgroup, Group newgroup)
+    {
+        if (oldgroup == null || newgroup == null)
+            return "source or target group no longer exists";
+        if (!oldgroup.isProjectGroup() || !newgroup.isProjectGroup())
+            return "site groups are not valid for self-service changes";
+        if (!newgroup.getContainer().equals(oldgroup.getContainer()))
+            return "target group is in a different project than the source group";
+        Container project = ContainerManager.getForId(newgroup.getContainer());
+        if (project == null)
+            return "target group's project no longer exists";
+        if (project.hasPermission(newgroup, AdminPermission.class))
+            return "target group carries administrative permission";
+        return null;
+    }
+
     public static ActionURL getConfirmationURL(Container c, ValidEmail email, String key)
     {
         ActionURL url = new ActionURL(ConfirmAction.class, c);
@@ -747,7 +774,6 @@ public class SignUpController extends SpringActionController
         private String _organization;
         private String _email;
         private String _emailConfirm;
-        private boolean _accountExists;
         private boolean _newSignUp = true;
 
         public String getFirstName()
@@ -798,16 +824,6 @@ public class SignUpController extends SpringActionController
         public void setEmailConfirm(String emailConfirm)
         {
             _emailConfirm = emailConfirm;
-        }
-
-        public boolean isAccountExists()
-        {
-            return _accountExists;
-        }
-
-        public void setAccountExists(boolean accountExists)
-        {
-            _accountExists = accountExists;
         }
 
         public boolean isNewSignUp()
@@ -861,17 +877,30 @@ public class SignUpController extends SpringActionController
                 response.put("status", "NO_PERMISSIONS");
                 return response;
             }
-            // once reached here we can assume that group a and b exist and that a rule exists allowing
-            // a user to change from group a to group b
+            // A matching rule exists, but the rule map is admin-configured and could point at a
+            // privileged target. Re-validate the resolved groups before mutating membership so a
+            // misconfigured rule cannot be used to self-escalate (see validateGroupChangeTarget).
+            final Group oldgroup = SecurityManager.getGroup(addGroupChangeForm.getOldgroup());
+            final Group newgroup = SecurityManager.getGroup(addGroupChangeForm.getNewgroup());
+            String denyReason = validateGroupChangeTarget(oldgroup, newgroup);
+            if (denyReason != null)
+            {
+                _log.warn("Rejected self-service group change for user {} (group {} -> {}): {}",
+                        user.getEmail(), addGroupChangeForm.getOldgroup(), addGroupChangeForm.getNewgroup(), denyReason);
+                response.put("status", "NO_PERMISSIONS");
+                return response;
+            }
             try (DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
             {
-                final Group oldgroup = SecurityManager.getGroup(addGroupChangeForm.getOldgroup());
-                final Group newgroup = SecurityManager.getGroup(addGroupChangeForm.getNewgroup());
                 SecurityManager.addMember(newgroup, user);
                 SecurityManager.deleteMember(oldgroup, user);
                 UserManager.updateUser(user, user);
                 addGroupChangeForm.setLabkeyUserId(user.getUserId());
                 Table.insert(user, SignUpSchema.getTableInfoMovedUsers(), addGroupChangeForm);
+                AuditLogService.get().addEvent(user,
+                        new ClientApiAuditProvider.ClientApiAuditEvent(getContainer(),
+                                "Self-service group change: user " + user.getEmail() + " moved from group "
+                                        + oldgroup.getName() + " to group " + newgroup.getName() + "."));
                 response.put("status", "USER_MOVED_SUCCESS");  // success status
                 transaction.commit();
             }
@@ -916,7 +945,10 @@ public class SignUpController extends SpringActionController
 
             if (UserManager.userExists(email))
             {
-                response.put("status", "USER_EXISTS");
+                // Do not reveal whether an account already exists (avoids user enumeration).
+                // Return the same response as a successful new signup, without sending an email.
+                clearCaptcha();
+                response.put("status", "USER_ADDED");
                 return response;
             }
 
@@ -926,14 +958,11 @@ public class SignUpController extends SpringActionController
             }
             catch (MessagingException | ConfigurationException e)
             {
+                // Log the underlying SMTP/configuration error server-side only; do not leak it to
+                // the (unauthenticated) caller.
+                _log.error("Failed to send signup confirmation email", e);
                 response.put("status", "ERROR");
-                List<String> messages = new ArrayList<>();
-                messages.add(sendEmailErrorMessage(getContainer()));
-                if (e.getMessage() != null)
-                {
-                    messages.add(e.getMessage());
-                }
-                response.put("error_message", messages);
+                response.put("error_message", List.of(sendEmailErrorMessage(getContainer())));
                 return response;
             }
 
