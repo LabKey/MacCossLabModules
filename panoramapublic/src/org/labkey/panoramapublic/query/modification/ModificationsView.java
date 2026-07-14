@@ -55,6 +55,14 @@ public class ModificationsView extends QueryView
         return settings;
     }
 
+    @Override
+    protected ContainerFilter getContainerFilter()
+    {
+        // The standalone web part grid reads the container scope from the URL, which could be set to "AllFolders".
+        // Restrict it the same way createView does.
+        return PanoramaPublicSchema.limitContainerScope(super.getContainerFilter(), getContainer(), getUser());
+    }
+
     public static class StructuralModsView extends ModificationsView
     {
         public StructuralModsView(ViewContext portalCtx)
@@ -64,7 +72,7 @@ public class ModificationsView extends QueryView
 
         public StructuralModsView(ViewContext portalCtx, @Nullable ExperimentAnnotations exptAnnotations)
         {
-            super(portalCtx, "StructuralModifications", "Structural Modifications", "ExperimentStructuralModInfo", exptAnnotations);
+            super(portalCtx, PanoramaPublicSchema.QUERY_STRUCTURAL_MODIFICATIONS, "Structural Modifications", "ExperimentStructuralModInfo", exptAnnotations);
         }
     }
 
@@ -77,7 +85,7 @@ public class ModificationsView extends QueryView
 
         public IsotopeModsView(ViewContext portalCtx, @Nullable ExperimentAnnotations exptAnnotations)
         {
-            super(portalCtx, "IsotopeModifications", "Isotope Modifications", "ExperimentIsotopeModInfo", exptAnnotations);
+            super(portalCtx, PanoramaPublicSchema.QUERY_ISOTOPE_MODIFICATIONS, "Isotope Modifications", "ExperimentIsotopeModInfo", exptAnnotations);
         }
     }
 }
