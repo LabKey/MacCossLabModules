@@ -92,6 +92,11 @@ public class PanoramaPublicSchema extends UserSchema
     public static final String TABLE_EXPT_ISOTOPE_MOD_INFO = "ExperimentIsotopeModInfo";
     public static final String TABLE_ISOTOPE_UNIMOD_INFO = "IsotopeUnimodInfo";
 
+    // Queries behind the Structural and Isotope modification web parts. Both aggregate over
+    // container-scoped targetedms tables, so they must stay scoped to the current folder tree.
+    public static final String QUERY_STRUCTURAL_MODIFICATIONS = "StructuralModifications";
+    public static final String QUERY_ISOTOPE_MODIFICATIONS = "IsotopeModifications";
+
     public static final String TABLE_LIB_DEPENDENCY_TYPE = "SpecLibDependencyType";
     public static final String TABLE_LIB_SOURCE_TYPE = "SpecLibSourceType";
 
@@ -430,7 +435,37 @@ public class PanoramaPublicSchema extends UserSchema
             };
         }
 
+        else if (QUERY_ISOTOPE_MODIFICATIONS.equalsIgnoreCase(settings.getQueryName())
+                || QUERY_STRUCTURAL_MODIFICATIONS.equalsIgnoreCase(settings.getQueryName()))
+        {
+            // The modification web part title links to this query grid. Restrict it to the current folder tree.
+            // The standalone web part grid is restricted the same way in ModificationsView.
+            QueryView view = new QueryView(this, settings, errors)
+            {
+                @Override
+                protected ContainerFilter getContainerFilter()
+                {
+                    return limitContainerScope(super.getContainerFilter(), getContainer(), getUser());
+                }
+            };
+            view.setAllowableContainerFilterTypes(ContainerFilter.Type.Current, ContainerFilter.Type.CurrentAndSubfolders);
+            return view;
+        }
+
         return super.createView(context, settings, errors);
+    }
+
+    // Limit the modification queries to the current folder tree. setAllowableContainerFilterTypes only applies
+    // to the options in the Folder Filter menu. query.containerFilterName=AllFolders in the URL still gets applied.
+    public static ContainerFilter limitContainerScope(ContainerFilter cf, Container container, User user)
+    {
+        if (cf != null
+                && cf.getType() != ContainerFilter.Type.Current
+                && cf.getType() != ContainerFilter.Type.CurrentAndSubfolders)
+        {
+            return ContainerFilter.Type.CurrentAndSubfolders.create(container, user);
+        }
+        return cf;
     }
 
     @Override
