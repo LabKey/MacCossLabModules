@@ -36,6 +36,7 @@ import org.labkey.api.audit.AuditLogService;
 import org.labkey.api.audit.ClientApiAuditProvider;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
+import org.labkey.api.data.ContainerType;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
@@ -739,10 +740,10 @@ public class SignUpController extends SpringActionController
                 + LookAndFeelProperties.getInstance(container).getSystemEmailAddress();
     }
 
-    // Returns null if the requested self-service group change is allowed, otherwise a short reason
-    // (for server-side logging). Both groups must be project groups in the same project, and the
-    // target must not carry admin rights. This bounds the damage if an admin maps a low-privilege
-    // group to a privileged or site group in the transition rule map.
+    // Returns null if the requested self-service group change is allowed, otherwise a short reason.
+    // Both groups must be project groups in the same project, and the target must not carry admin rights.
+    // This bounds the damage if an admin maps a low-privilege group to a privileged or site group in the
+    // transition rule map.
     private static String validateGroupChangeTarget(Group oldgroup, Group newgroup)
     {
         if (oldgroup == null || newgroup == null)
@@ -753,9 +754,16 @@ public class SignUpController extends SpringActionController
             return "target group is in a different project than the source group";
         Container project = ContainerManager.getForId(newgroup.getContainer());
         if (project == null)
-            return "target group's project no longer exists";
-        if (project.hasPermission(newgroup, AdminPermission.class))
-            return "target group carries administrative permission";
+            return "project no longer exists";
+        // Check the project and subfolders for admin permission. Skip folders that inherit
+        // their parent's policy - they have no assignment of their own to catch.
+        for (Container c : ContainerManager.getAllChildren(project))
+        {
+            if (!c.isContainerFor(ContainerType.DataType.permissions))
+                continue;
+            if (c.hasPermission(newgroup, AdminPermission.class))
+                return "target group carries administrative permission";
+        }
         return null;
     }
 
