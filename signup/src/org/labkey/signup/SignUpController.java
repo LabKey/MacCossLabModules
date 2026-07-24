@@ -794,6 +794,7 @@ public class SignUpController extends SpringActionController
             if (!c.isContainerFor(ContainerType.DataType.permissions))
                 continue;
             if (c.hasPermission(newgroup, AdminPermission.class))
+
                 return "target group carries administrative permission";
         }
         return null;
@@ -927,7 +928,11 @@ public class SignUpController extends SpringActionController
             {
                 _log.warn("Rejected self-service group change for user {} (group {} -> {}): {}",
                         user.getEmail(), addGroupChangeForm.getOldgroup(), addGroupChangeForm.getNewgroup(), denyReason);
-                response.put("status", "NO_PERMISSIONS");
+                // A configured rule points at a target the self-service flow must never grant (privileged,
+                // site, or other-project). Report this with its own status so a refused misconfiguration is
+                // distinguishable from an ineligible caller (NO_PERMISSIONS above). The specific reason is
+                // logged server-side only, not returned to the caller.
+                response.put("status", "TARGET_NOT_ALLOWED");
                 return response;
             }
             try (DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
