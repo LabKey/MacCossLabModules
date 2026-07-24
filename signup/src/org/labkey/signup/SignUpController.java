@@ -47,6 +47,7 @@ import org.labkey.api.security.AuthenticationManager.AuthenticationResult;
 import org.labkey.api.security.DbLoginService;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.LoginManager;
+import org.labkey.api.security.LoginUrls;
 import org.labkey.api.security.RequiresLogin;
 import org.labkey.api.security.RequiresNoPermission;
 import org.labkey.api.security.RequiresPermission;
@@ -61,6 +62,7 @@ import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.util.ButtonBuilder;
 import org.labkey.api.util.ConfigurationException;
 import org.labkey.api.util.DOM;
+import org.labkey.api.util.MailHelper;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.CsrfInput;
@@ -594,7 +596,8 @@ public class SignUpController extends SpringActionController
             if (UserManager.userExists(email))
             {
                 // Do not reveal whether an account already exists (avoids user enumeration).
-                // Show the same "confirmation sent" response as a new signup, without sending an email.
+                // Notify the real owner and show the same "confirmation sent" response as a new signup.
+                sendExistingAccountEmail(email);
                 clearCaptcha();
                 signupForm.setNewSignUp(false);
                 return false;
@@ -724,6 +727,35 @@ public class SignUpController extends SpringActionController
                     SecurityManager.getRegistrationMessage(null, false),
                     email.getEmailAddress(), confirmationUrl);
             transaction.commit();
+        }
+    }
+
+    // Sends an informational email to the owner of an already-registered address when someone
+    // submits the signup form for that address. Both the new-signup and existing-account paths
+    // now send an email. The existing account is never modified. Send failures are logged and
+    // swallowed so the caller still returns the same success response as a new signup.
+    private void sendExistingAccountEmail(ValidEmail email)
+    {
+        Container c = getContainer();
+        try
+        {
+            String siteName = LookAndFeelProperties.getInstance(c).getShortName();
+            ActionURL loginUrl = PageFlowUtil.urlProvider(LoginUrls.class).getLoginURL(c, null);
+            String body = "We received a request to create an account on " + siteName
+                    + " using this email address. An account already exists for " + email.getEmailAddress() + ".\n\n"
+                    + "If this was you and you have forgotten your password, go to the sign-in page and use "
+                    + "the \"Forgot your password?\" link to reset it:\n" + loginUrl.getURIString() + "\n\n"
+                    + "If you did not make this request, you can ignore this email.";
+            MailHelper.ViewMessage m = MailHelper.createMessage(
+                    LookAndFeelProperties.getInstance(c).getSystemEmailAddress(), email.getEmailAddress());
+            m.setSubject("You already have an account on " + siteName);
+            m.setText(body);
+            MailHelper.send(m, getUser(), c);
+        }
+        catch (Exception e)
+        {
+            // Log and continue so the response stays identical to the new-signup case.
+            _log.error("Failed to send existing-account email", e);
         }
     }
 
@@ -954,9 +986,10 @@ public class SignUpController extends SpringActionController
             if (UserManager.userExists(email))
             {
                 // Do not reveal whether an account already exists (avoids user enumeration).
-                // Return the same response as a successful new signup, without sending an email.
+                // Notify the account owner and return the same response as a successful new signup.
+                sendExistingAccountEmail(email);
                 clearCaptcha();
-                response.put("status", "USER_ADDED");
+                response.put("status", "SUCCESS");
                 return response;
             }
 
@@ -976,7 +1009,7 @@ public class SignUpController extends SpringActionController
 
             clearCaptcha();
 
-            response.put("status", "USER_ADDED");
+            response.put("status", "SUCCESS");
             return response;
         }
     }
