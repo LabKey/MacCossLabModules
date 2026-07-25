@@ -593,25 +593,21 @@ public class SignUpController extends SpringActionController
                 return false;
             }
 
-            if (UserManager.userExists(email))
-            {
-                // Do not reveal whether an account already exists (avoids user enumeration).
-                // Notify the real owner and show the same "confirmation sent" response as a new signup.
-                sendExistingAccountEmail(email);
-                clearCaptcha();
-                signupForm.setNewSignUp(false);
-                return false;
-            }
-
             try
             {
-                createUserAndSendEmail(signupForm, email);
+                // Do not reveal whether an account already exists (avoids user enumeration): both paths send
+                // an email and re-render the same "confirmation sent" message. On a send failure both reject
+                // with the same generic error, so the outcome never depends on whether the account existed.
+                if (UserManager.userExists(email))
+                    sendExistingAccountEmail(email);        // never modifies the existing account
+                else
+                    createUserAndSendEmail(signupForm, email);
             }
             catch (MessagingException | ConfigurationException e)
             {
                 // Log the underlying SMTP/configuration error server-side only; do not leak it to
                 // the (unauthenticated) caller.
-                _log.error("Failed to send signup confirmation email", e);
+                _log.error("Failed to send signup email", e);
                 errors.reject(ERROR_MSG, sendEmailErrorMessage(getContainer()));
                 return false;
             }
@@ -730,33 +726,25 @@ public class SignUpController extends SpringActionController
         }
     }
 
-    // Sends an informational email to the owner of an already-registered address when someone
-    // submits the signup form for that address. Both the new-signup and existing-account paths
-    // now send an email. The existing account is never modified. Send failures are logged and
-    // swallowed so the caller still returns the same success response as a new signup.
-    private void sendExistingAccountEmail(ValidEmail email)
+    // Sends an informational email to the owner of an already-registered address when someone submits the
+    // signup form for that address. The existing account is never modified. A send failure propagates to the
+    // caller, which returns the same generic error as a failed new-signup send, so the response stays uniform
+    // whether or not the account exists (avoids user enumeration).
+    private void sendExistingAccountEmail(ValidEmail email) throws MessagingException
     {
         Container c = getContainer();
-        try
-        {
-            String siteName = LookAndFeelProperties.getInstance(c).getShortName();
-            ActionURL loginUrl = PageFlowUtil.urlProvider(LoginUrls.class).getLoginURL(c, null);
-            String body = "We received a request to create an account on " + siteName
-                    + " using this email address. An account already exists for " + email.getEmailAddress() + ".\n\n"
-                    + "If this was you and you have forgotten your password, go to the sign-in page and use "
-                    + "the \"Forgot your password?\" link to reset it:\n" + loginUrl.getURIString() + "\n\n"
-                    + "If you did not make this request, you can ignore this email.";
-            MailHelper.ViewMessage m = MailHelper.createMessage(
-                    LookAndFeelProperties.getInstance(c).getSystemEmailAddress(), email.getEmailAddress());
-            m.setSubject("You already have an account on " + siteName);
-            m.setText(body);
-            MailHelper.send(m, getUser(), c);
-        }
-        catch (Exception e)
-        {
-            // Log and continue so the response stays identical to the new-signup case.
-            _log.error("Failed to send existing-account email", e);
-        }
+        String siteName = LookAndFeelProperties.getInstance(c).getShortName();
+        ActionURL loginUrl = PageFlowUtil.urlProvider(LoginUrls.class).getLoginURL(c, null);
+        String body = "We received a request to create an account on " + siteName
+                + " using this email address. An account already exists for " + email.getEmailAddress() + ".\n\n"
+                + "If this was you and you have forgotten your password, go to the sign-in page and use "
+                + "the \"Forgot your password?\" link to reset it:\n" + loginUrl.getURIString() + "\n\n"
+                + "If you did not make this request, you can ignore this email.";
+        MailHelper.ViewMessage m = MailHelper.createMessage(
+                LookAndFeelProperties.getInstance(c).getSystemEmailAddress(), email.getEmailAddress());
+        m.setSubject("You already have an account on " + siteName);
+        m.setText(body);
+        MailHelper.send(m, getUser(), c);
     }
 
     private static List<String> errorsToMessages(Errors errors)
@@ -768,7 +756,7 @@ public class SignUpController extends SpringActionController
 
     private static String sendEmailErrorMessage(Container container)
     {
-        return "Could not send new user registration email. Please contact your server administrator at "
+        return "Could not send email. Please contact your server administrator at "
                 + LookAndFeelProperties.getInstance(container).getSystemEmailAddress();
     }
 
@@ -988,25 +976,21 @@ public class SignUpController extends SpringActionController
                 return response;
             }
 
-            if (UserManager.userExists(email))
-            {
-                // Do not reveal whether an account already exists (avoids user enumeration).
-                // Notify the account owner and return the same response as a successful new signup.
-                sendExistingAccountEmail(email);
-                clearCaptcha();
-                response.put("status", "SUCCESS");
-                return response;
-            }
-
             try
             {
-                createUserAndSendEmail(signupForm, email);
+                // Do not reveal whether an account already exists (avoids user enumeration): both paths send
+                // an email and return the same response. On a send failure both return the same generic ERROR,
+                // so the outcome never depends on whether the account existed.
+                if (UserManager.userExists(email))
+                    sendExistingAccountEmail(email);        // never modifies the existing account
+                else
+                    createUserAndSendEmail(signupForm, email);
             }
             catch (MessagingException | ConfigurationException e)
             {
                 // Log the underlying SMTP/configuration error server-side only; do not leak it to
                 // the (unauthenticated) caller.
-                _log.error("Failed to send signup confirmation email", e);
+                _log.error("Failed to send signup email", e);
                 response.put("status", "ERROR");
                 response.put("error_message", List.of(sendEmailErrorMessage(getContainer())));
                 return response;

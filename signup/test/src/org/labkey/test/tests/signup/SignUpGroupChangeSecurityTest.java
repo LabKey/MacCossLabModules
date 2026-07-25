@@ -28,9 +28,14 @@ import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.labkey.remoteapi.CommandException;
 import org.labkey.remoteapi.CommandResponse;
 import org.labkey.remoteapi.Connection;
 import org.labkey.remoteapi.SimplePostCommand;
+import org.labkey.remoteapi.query.ContainerFilter;
+import org.labkey.remoteapi.query.Filter;
+import org.labkey.remoteapi.query.SelectRowsCommand;
+import org.labkey.remoteapi.query.SelectRowsResponse;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.WebTestHelper;
 import org.labkey.test.categories.External;
@@ -65,6 +70,8 @@ import static org.labkey.test.util.PermissionsHelper.FOLDER_ADMIN_ROLE;
  * This test plants each of those dangerous rules on purpose, then confirms that a non-admin member of
  * the source group is refused every escalating move (and is neither added to the target nor removed from
  * the source), while a legitimate move to a plain non-admin project group in the same project still works.
+ * It also checks the audit log: a successful move is recorded as a "Client API Actions" event, and a
+ * refused move is not.
  *
  * Each escalating case needs its transition rule planted so the attempt gets past the "rule exists" gate and
  * actually reaches validateGroupChangeTarget. A target with no rule is refused before that check, with
@@ -187,6 +194,7 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
     private void assertMoveRejected(Connection userConnection, int targetId, String targetGroup,
                                     String targetContainer, String because) throws Exception
     {
+        int auditBefore = countMoveAuditEvents(targetGroup);
         String status = postGroupChange(userConnection, idSource, targetId);
         assertEquals("Escalating move should be refused with TARGET_NOT_ALLOWED because " + because,
                 "TARGET_NOT_ALLOWED", status);
@@ -196,6 +204,8 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
                 perms.isUserInGroup(USER, targetGroup, targetContainer, PrincipalType.USER));
         assertTrue("User must remain in the source group after a refused move (" + because + ")",
                 perms.isUserInGroup(USER, GROUP_SOURCE, PROJECT_1, PrincipalType.USER));
+        assertEquals("A refused move to " + targetGroup + " must not add an audit event (" + because + ")",
+                auditBefore, countMoveAuditEvents(targetGroup));
     }
 
     // A move rejected before the group transition validation runs (e.g. no rule configured, or caller not in
@@ -203,6 +213,7 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
     private void assertMoveNotEligible(Connection userConnection, int targetId, String targetGroup,
                                        String because) throws Exception
     {
+        int auditBefore = countMoveAuditEvents(targetGroup);
         String status = postGroupChange(userConnection, idSource, targetId);
         assertEquals("Move should be refused with NO_PERMISSIONS because " + because, "NO_PERMISSIONS", status);
 
@@ -211,10 +222,13 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
                 perms.isUserInGroup(USER, targetGroup, PROJECT_1, PrincipalType.USER));
         assertTrue("User must remain in the source group after a refused move (" + because + ")",
                 perms.isUserInGroup(USER, GROUP_SOURCE, PROJECT_1, PrincipalType.USER));
+        assertEquals("A refused move to " + targetGroup + " must not add an audit event (" + because + ")",
+                auditBefore, countMoveAuditEvents(targetGroup));
     }
 
     private void assertMoveSucceeded(Connection userConnection, int targetId, String targetGroup) throws Exception
     {
+        int auditBefore = countMoveAuditEvents(targetGroup);
         String status = postGroupChange(userConnection, idSource, targetId);
         assertEquals("A legitimate move to a non-admin project group should succeed", "USER_MOVED_SUCCESS", status);
 
@@ -223,6 +237,23 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
                 perms.isUserInGroup(USER, targetGroup, PROJECT_1, PrincipalType.USER));
         assertFalse("User should have been removed from the source group",
                 perms.isUserInGroup(USER, GROUP_SOURCE, PROJECT_1, PrincipalType.USER));
+        assertEquals("The successful move to " + targetGroup + " should add one audit event",
+                auditBefore + 1, countMoveAuditEvents(targetGroup));
+    }
+
+    // Counts existing audit-log entries for a self-service group change to targetGroup by this test's user.
+    // ChangeGroupsApiAction writes its "Client API Actions" event in the root container, which survives this
+    // test's project cleanup, so events from earlier runs remain. Callers take this count before and after a
+    // move and compare the two, so leftover events do not affect the result.
+    private int countMoveAuditEvents(String targetGroup) throws IOException, CommandException
+    {
+        SelectRowsCommand command = new SelectRowsCommand("auditLog", "Client API Actions");
+        command.setColumns(List.of("Comment"));
+        command.setContainerFilter(ContainerFilter.AllFolders);
+        command.addFilter("Comment", USER, Filter.Operator.CONTAINS);
+        command.addFilter("Comment", targetGroup, Filter.Operator.CONTAINS);
+        SelectRowsResponse response = command.execute(createDefaultConnection(), "/");
+        return response.getRows().size();
     }
 
     // Posts to ChangeGroupsApi as the user and returns the response status string.
