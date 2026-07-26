@@ -36,7 +36,6 @@ import org.labkey.api.audit.AuditLogService;
 import org.labkey.api.audit.ClientApiAuditProvider;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
-import org.labkey.api.data.ContainerType;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.PropertyManager;
@@ -78,6 +77,7 @@ import org.springframework.validation.Errors;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.servlet.ModelAndView;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -233,8 +233,8 @@ public class SignUpController extends SpringActionController
             m.save();
             AuditLogService.get().addEvent(getUser(),
                     new ClientApiAuditProvider.ClientApiAuditEvent(ContainerManager.getRoot(),
-                            "Signup group-change rule added: members of group " + addGroupChangeForm.getOldgroup()
-                                    + " may move to group " + addGroupChangeForm.getNewgroup() + "."));
+                            "Signup group-change rule added: members of group " + groupLabel(addGroupChangeForm.getOldgroup())
+                                    + " may move to group " + groupLabel(addGroupChangeForm.getNewgroup()) + "."));
             return true;
         }
 
@@ -263,6 +263,8 @@ public class SignUpController extends SpringActionController
                 return false;
             WritablePropertyMap m = PropertyManager.getWritableProperties(SignUpModule.SIGNUP_GROUP_TO_GROUP, true);
             String existingRules = m.get(String.valueOf(oldgroup));
+            if(existingRules == null) // no rules configured for this source group - nothing to remove
+                return false;
             ArrayList<String> rules = new ArrayList<>(Arrays.asList(existingRules.split(",")));
             if(!rules.contains(String.valueOf(newgroup)))
                 return false;
@@ -270,13 +272,13 @@ public class SignUpController extends SpringActionController
             String newProperties = StringUtils.join(rules, ',');
             m.put(String.valueOf(oldgroup), newProperties);
             if(rules.isEmpty() || (rules.size() == 1 && rules.contains("")))
-                m.remove(oldgroup);
+                m.remove(String.valueOf(oldgroup)); // keys are stored as String.valueOf(oldgroup)
 
             m.save();
             AuditLogService.get().addEvent(getUser(),
                     new ClientApiAuditProvider.ClientApiAuditEvent(ContainerManager.getRoot(),
-                            "Signup group-change rule removed: members of group " + oldgroup
-                                    + " may no longer move to group " + newgroup + "."));
+                            "Signup group-change rule removed: members of group " + groupLabel(oldgroup)
+                                    + " may no longer move to group " + groupLabel(newgroup) + "."));
             return true;
         }
 
@@ -596,18 +598,18 @@ public class SignUpController extends SpringActionController
             try
             {
                 // Do not reveal whether an account already exists (avoids user enumeration): both paths send
-                // an email and re-render the same "confirmation sent" message. On a send failure both reject
-                // with the same generic error, so the outcome never depends on whether the account existed.
+                // an email and re-render the same "confirmation sent" message. Any failure is caught below and
+                // turned into the same generic error, so the outcome never depends on whether the account existed.
                 if (UserManager.userExists(email))
                     sendExistingAccountEmail(email);        // never modifies the existing account
                 else
                     createUserAndSendEmail(signupForm, email);
             }
-            catch (MessagingException | ConfigurationException e)
+            catch (MessagingException | ConfigurationException | SQLException e)
             {
-                // Log the underlying SMTP/configuration error server-side only; do not leak it to
-                // the (unauthenticated) caller.
-                _log.error("Failed to send signup email", e);
+                // Same generic response for any of these failures, so the outcome never reveals whether the
+                // account existed. Logged server-side only, never leaked to the caller.
+                _log.error("Signup submission failed", e);
                 errors.reject(ERROR_MSG, sendEmailErrorMessage(getContainer()));
                 return false;
             }
@@ -775,17 +777,20 @@ public class SignUpController extends SpringActionController
         Container project = ContainerManager.getForId(newgroup.getContainer());
         if (project == null)
             return "project no longer exists";
-        // Check the project and subfolders for admin permission. Skip folders that inherit
-        // their parent's policy - they have no assignment of their own to catch.
+        // Reject a target group with admin permission anywhere in the project.
         for (Container c : ContainerManager.getAllChildren(project))
         {
-            if (!c.isContainerFor(ContainerType.DataType.permissions))
-                continue;
             if (c.hasPermission(newgroup, AdminPermission.class))
-
                 return "target group carries administrative permission";
         }
         return null;
+    }
+
+    // Renders a group id as "name (id)" for audit messages, falling back to just the id if the group is gone.
+    private static String groupLabel(int groupId)
+    {
+        Group group = SecurityManager.getGroup(groupId);
+        return group != null ? group.getName() + " (" + groupId + ")" : "(" + groupId + ")";
     }
 
     public static ActionURL getConfirmationURL(Container c, ValidEmail email, String key)
@@ -979,18 +984,18 @@ public class SignUpController extends SpringActionController
             try
             {
                 // Do not reveal whether an account already exists (avoids user enumeration): both paths send
-                // an email and return the same response. On a send failure both return the same generic ERROR,
-                // so the outcome never depends on whether the account existed.
+                // an email and return the same response. Any failure is caught below and turned into the same
+                // generic ERROR, so the outcome never depends on whether the account existed.
                 if (UserManager.userExists(email))
                     sendExistingAccountEmail(email);        // never modifies the existing account
                 else
                     createUserAndSendEmail(signupForm, email);
             }
-            catch (MessagingException | ConfigurationException e)
+            catch (MessagingException | ConfigurationException | SQLException e)
             {
-                // Log the underlying SMTP/configuration error server-side only; do not leak it to
-                // the (unauthenticated) caller.
-                _log.error("Failed to send signup email", e);
+                // Same generic response for any of these failures, so the outcome never reveals whether the
+                // account existed. Logged server-side only, never leaked to the caller.
+                _log.error("Signup submission failed", e);
                 response.put("status", "ERROR");
                 response.put("error_message", List.of(sendEmailErrorMessage(getContainer())));
                 return response;

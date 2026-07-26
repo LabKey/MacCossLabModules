@@ -96,6 +96,7 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
     private static final String GROUP_SOURCE = "SignupSource";
     private static final String GROUP_TARGET_OK = "SignupTargetOk";
     private static final String GROUP_TARGET_ADMIN = "SignupTargetAdmin";
+    private static final String GROUP_TARGET_NESTED = "SignupTargetNested";
     private static final String GROUP_TARGET_SUBADMIN = "SignupTargetSubAdmin";
     private static final String GROUP_TARGET_CROSS = "SignupTargetCross";
     private static final String SITE_GROUP = "SignupSiteGroup";
@@ -104,6 +105,7 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
     private static int idSource;
     private static int idTargetOk;
     private static int idTargetAdmin;
+    private static int idTargetNested;
     private static int idTargetSubAdmin;
     private static int idTargetCross;
     private static int idSiteGroup;
@@ -140,6 +142,7 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
         idSource = perms.createProjectGroup(GROUP_SOURCE, PROJECT_1);
         idTargetOk = perms.createProjectGroup(GROUP_TARGET_OK, PROJECT_1);
         idTargetAdmin = perms.createProjectGroup(GROUP_TARGET_ADMIN, PROJECT_1);
+        idTargetNested = perms.createProjectGroup(GROUP_TARGET_NESTED, PROJECT_1);
         idTargetSubAdmin = perms.createProjectGroup(GROUP_TARGET_SUBADMIN, PROJECT_1);
         idTargetCross = perms.createProjectGroup(GROUP_TARGET_CROSS, PROJECT_2);
         idSiteGroup = perms.createGlobalPermissionsGroup(SITE_GROUP);
@@ -149,6 +152,12 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
         // inheritance), which is what the subfolder branch of validateGroupChangeTarget looks for.
         perms.addMemberToRole(idTargetAdmin, FOLDER_ADMIN_ROLE, "/" + PROJECT_1);
         perms.addMemberToRole(idTargetSubAdmin, FOLDER_ADMIN_ROLE, "/" + PROJECT_1 + "/" + SUBFOLDER);
+
+        // TargetNested is a plain non-admin project group, but it is a MEMBER of TargetAdmin, so it inherits
+        // admin through nested group membership. validateGroupChangeTarget must catch this via hasPermission's
+        // group expansion, not only direct role assignments. (addUserToProjGroup adds the named group as a
+        // member when the name isn't a user.)
+        perms.addUserToProjGroup(GROUP_TARGET_NESTED, PROJECT_1, GROUP_TARGET_ADMIN);
 
         // A non-admin user who is a member of the source group. All rejection cases depend on the user
         // being in Source, because the action checks source-group membership before it validates the target.
@@ -164,6 +173,7 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
         // actually reaches validateGroupChangeTarget. TargetOk's rule is planted later, just before the
         // happy path, so it can first stand in for the "no rule configured" case below.
         addTransitionRule(idSource, idTargetAdmin);
+        addTransitionRule(idSource, idTargetNested);
         addTransitionRule(idSource, idTargetSubAdmin);
         addTransitionRule(idSource, idTargetCross);
         addTransitionRule(idSource, idSiteGroup);
@@ -179,6 +189,8 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
         // leave membership untouched and report TARGET_NOT_ALLOWED.
         assertMoveRejected(userConnection, idTargetAdmin, GROUP_TARGET_ADMIN, PROJECT_1,
                 "target group carries admin permission in its project");
+        assertMoveRejected(userConnection, idTargetNested, GROUP_TARGET_NESTED, PROJECT_1,
+                "target group inherits admin via membership in an admin group");
         assertMoveRejected(userConnection, idTargetSubAdmin, GROUP_TARGET_SUBADMIN, PROJECT_1,
                 "target group carries admin permission in a subfolder");
         assertMoveRejected(userConnection, idTargetCross, GROUP_TARGET_CROSS, PROJECT_2,
