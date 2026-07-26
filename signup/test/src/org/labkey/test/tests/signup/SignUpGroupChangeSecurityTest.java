@@ -43,7 +43,6 @@ import org.labkey.test.categories.MacCossLabModules;
 import org.labkey.test.util.APITestHelper;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.LogMethod;
-import org.labkey.test.util.PermissionsHelper.MemberType;
 import org.labkey.test.util.PermissionsHelper.PrincipalType;
 
 import java.io.IOException;
