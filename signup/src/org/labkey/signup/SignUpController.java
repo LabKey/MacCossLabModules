@@ -786,11 +786,16 @@ public class SignUpController extends SpringActionController
         return null;
     }
 
-    // Renders a group id as "name (id)" for audit messages, falling back to just the id if the group is gone.
+    // Renders a group as "name (id)" for audit messages.
+    private static String groupLabel(Group group)
+    {
+        return group.getName() + " (" + group.getUserId() + ")";
+    }
+
     private static String groupLabel(int groupId)
     {
         Group group = SecurityManager.getGroup(groupId);
-        return group != null ? group.getName() + " (" + groupId + ")" : "(" + groupId + ")";
+        return group != null ? groupLabel(group) : "(" + groupId + ")";
     }
 
     public static ActionURL getConfirmationURL(Container c, ValidEmail email, String key)
@@ -938,7 +943,7 @@ public class SignUpController extends SpringActionController
                 AuditLogService.get().addEvent(user,
                         new ClientApiAuditProvider.ClientApiAuditEvent(getContainer(),
                                 "Self-service group change: user " + user.getEmail() + " moved from group "
-                                        + oldgroup.getName() + " to group " + newgroup.getName() + "."));
+                                        + groupLabel(oldgroup) + " to group " + groupLabel(newgroup) + "."));
                 response.put("status", "USER_MOVED_SUCCESS");  // success status
                 transaction.commit();
             }
