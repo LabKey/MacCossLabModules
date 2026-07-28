@@ -56,7 +56,10 @@ import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.ValidEmail;
 import org.labkey.api.security.permissions.AdminPermission;
+import org.labkey.api.security.permissions.DeletePermission;
+import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.permissions.ReadPermission;
+import org.labkey.api.security.permissions.UpdatePermission;
 import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.util.ButtonBuilder;
 import org.labkey.api.util.ConfigurationException;
@@ -260,14 +263,23 @@ public class SignUpController extends SpringActionController
             int oldgroup = addGroupChangeForm.getOldgroup();
             int newgroup = addGroupChangeForm.getNewgroup();
             if(oldgroup == 0 || newgroup == 0)
+            {
+                errors.addError(new LabKeyError("Please select both a source and a target group."));
                 return false;
+            }
             WritablePropertyMap m = PropertyManager.getWritableProperties(SignUpModule.SIGNUP_GROUP_TO_GROUP, true);
             String existingRules = m.get(String.valueOf(oldgroup));
             if(existingRules == null) // no rules configured for this source group - nothing to remove
+            {
+                errors.addError(new LabKeyError("No group-change rule exists for the selected source group."));
                 return false;
+            }
             ArrayList<String> rules = new ArrayList<>(Arrays.asList(existingRules.split(",")));
             if(!rules.contains(String.valueOf(newgroup)))
+            {
+                errors.addError(new LabKeyError("No group-change rule exists from the selected source group to the selected target group."));
                 return false;
+            }
             rules.remove(String.valueOf(newgroup));
             String newProperties = StringUtils.join(rules, ',');
             m.put(String.valueOf(oldgroup), newProperties);
@@ -763,9 +775,9 @@ public class SignUpController extends SpringActionController
     }
 
     // Returns null if the requested self-service group change is allowed, otherwise a short reason.
-    // Both groups must be project groups in the same project, and the target must not carry admin rights.
-    // This bounds the damage if an admin maps a low-privilege group to a privileged or site group in the
-    // transition rule map.
+    // Both groups must be project groups in the same project, and the target must grant no more than
+    // read access. This bounds the damage if an admin maps a low-privilege group to a privileged,
+    // write-enabled, or site group in the transition rule map.
     private static String validateGroupChangeTarget(Group oldgroup, Group newgroup)
     {
         if (oldgroup == null || newgroup == null)
@@ -777,11 +789,16 @@ public class SignUpController extends SpringActionController
         Container project = ContainerManager.getForId(newgroup.getContainer());
         if (project == null)
             return "project no longer exists";
-        // Reject a target group with admin permission anywhere in the project.
+        // The self-service flow may only drop a user into a read-only group. Reject a target that carries
+        // write (Editor/Author/Submitter) or admin access anywhere in the project tree, so a misconfigured
+        // rule cannot be used to gain more than read access.
         for (Container c : ContainerManager.getAllChildren(project))
         {
-            if (c.hasPermission(newgroup, AdminPermission.class))
-                return "target group carries administrative permission";
+            if (c.hasPermission(newgroup, AdminPermission.class)
+                    || c.hasPermission(newgroup, InsertPermission.class)
+                    || c.hasPermission(newgroup, UpdatePermission.class)
+                    || c.hasPermission(newgroup, DeletePermission.class))
+                return "target group grants more than read access";
         }
         return null;
     }
@@ -927,10 +944,10 @@ public class SignUpController extends SpringActionController
                 _log.warn("Rejected self-service group change for user {} (group {} -> {}): {}",
                         user.getEmail(), addGroupChangeForm.getOldgroup(), addGroupChangeForm.getNewgroup(), denyReason);
                 // A configured rule points at a target the self-service flow must never grant (privileged,
-                // site, or other-project). Report this with its own status so a refused misconfiguration is
-                // distinguishable from an ineligible caller (NO_PERMISSIONS above). The specific reason is
-                // logged server-side only, not returned to the caller.
-                response.put("status", "TARGET_NOT_ALLOWED");
+                // write-enabled, site, or other-project). Return the same generic NO_PERMISSIONS as an
+                // ineligible caller so the response does not reveal which rules are misconfigured; the
+                // specific reason is logged server-side only, not returned to the caller.
+                response.put("status", "NO_PERMISSIONS");
                 return response;
             }
             try (DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())

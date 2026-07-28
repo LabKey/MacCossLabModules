@@ -53,6 +53,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.labkey.test.util.PermissionsHelper.EDITOR_ROLE;
 import static org.labkey.test.util.PermissionsHelper.FOLDER_ADMIN_ROLE;
 
 /**
@@ -60,22 +61,23 @@ import static org.labkey.test.util.PermissionsHelper.FOLDER_ADMIN_ROLE;
  *
  * The transition rule map (the site-global "group A may move to group B" list) is admin-configured
  * and could be pointed at a privileged target by mistake. ChangeGroupsApiAction therefore re-validates
- * the resolved groups with validateGroupChangeTarget before it changes any membership, and rejects the
- * move with status TARGET_NOT_ALLOWED when the target:
+ * the resolved groups with validateGroupChangeTarget before it changes any membership, and refuses the
+ * move (status NO_PERMISSIONS) when the target:
  *  - is a site group rather than a project group,
  *  - is in a different project than the source group, or
- *  - carries administrative permission anywhere in its project or its subfolders.
+ *  - grants more than read access (write or admin) anywhere in its project or its subfolders.
  *
  * This test plants each of those dangerous rules on purpose, then confirms that a non-admin member of
  * the source group is refused every escalating move (and is neither added to the target nor removed from
- * the source), while a legitimate move to a plain non-admin project group in the same project still works.
+ * the source), while a legitimate move to a plain read-only project group in the same project still works.
  * It also checks the audit log: a successful move is recorded as a "Client API Actions" event, and a
  * refused move is not.
  *
- * Each escalating case needs its transition rule planted so the attempt gets past the "rule exists" gate and
- * actually reaches validateGroupChangeTarget. A target with no rule is refused before that check, with
- * NO_PERMISSIONS. The test drives a no-rule move on purpose and asserts NO_PERMISSIONS, so that path stays
- * distinguishable from the TARGET_NOT_ALLOWED path.
+ * A refused move and an ineligible caller both return the generic NO_PERMISSIONS so the response never
+ * reveals which configured rules are misconfigured; the specific reason is logged server-side only. Each
+ * escalating case still needs its transition rule planted so the attempt gets past the "rule exists" gate
+ * and actually reaches validateGroupChangeTarget (a target with no rule is refused earlier, also with
+ * NO_PERMISSIONS). The test drives a no-rule move on purpose as a contrast case.
  *
  * Design notes:
  *  - The live client (a skyline.ms wiki page) is not in the module, so this drives the server actions
@@ -98,6 +100,7 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
     private static final String GROUP_TARGET_NESTED = "SignupTargetNested";
     private static final String GROUP_TARGET_SUBADMIN = "SignupTargetSubAdmin";
     private static final String GROUP_TARGET_CROSS = "SignupTargetCross";
+    private static final String GROUP_TARGET_EDITOR = "SignupTargetEditor";
     private static final String SITE_GROUP = "SignupSiteGroup";
 
     // Group ids captured during setup, used both for the rule map and for the ChangeGroupsApi params.
@@ -107,6 +110,7 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
     private static int idTargetNested;
     private static int idTargetSubAdmin;
     private static int idTargetCross;
+    private static int idTargetEditor;
     private static int idSiteGroup;
 
     private static final String USER = "signup_user@signupsecurity.test";
@@ -144,6 +148,7 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
         idTargetNested = perms.createProjectGroup(GROUP_TARGET_NESTED, PROJECT_1);
         idTargetSubAdmin = perms.createProjectGroup(GROUP_TARGET_SUBADMIN, PROJECT_1);
         idTargetCross = perms.createProjectGroup(GROUP_TARGET_CROSS, PROJECT_2);
+        idTargetEditor = perms.createProjectGroup(GROUP_TARGET_EDITOR, PROJECT_1);
         idSiteGroup = perms.createGlobalPermissionsGroup(SITE_GROUP);
 
         // TargetAdmin carries admin in the P1 project; TargetSubAdmin carries admin only in the P1/Sub
@@ -151,6 +156,10 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
         // inheritance), which is what the subfolder branch of validateGroupChangeTarget looks for.
         perms.addMemberToRole(idTargetAdmin, FOLDER_ADMIN_ROLE, "/" + PROJECT_1);
         perms.addMemberToRole(idTargetSubAdmin, FOLDER_ADMIN_ROLE, "/" + PROJECT_1 + "/" + SUBFOLDER);
+
+        // TargetEditor is a plain project group but is granted Editor (write) access in P1. The self-service
+        // flow may only move a user into a read-only group, so this write-enabled target must be refused too.
+        perms.addMemberToRole(idTargetEditor, EDITOR_ROLE, "/" + PROJECT_1);
 
         // TargetNested is a plain non-admin project group, but it is a MEMBER of TargetAdmin, so it inherits
         // admin through nested group membership. validateGroupChangeTarget must catch this via hasPermission's
@@ -175,17 +184,18 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
         addTransitionRule(idSource, idTargetNested);
         addTransitionRule(idSource, idTargetSubAdmin);
         addTransitionRule(idSource, idTargetCross);
+        addTransitionRule(idSource, idTargetEditor);
         addTransitionRule(idSource, idSiteGroup);
 
         Connection userConnection = new Connection(WebTestHelper.getBaseURL(), USER, userPassword);
 
-        // Contrast case: a valid same-project non-admin target with no rule configured is rejected before
-        // validateGroupChangeTarget, with NO_PERMISSIONS. Asserting this keeps the two rejection reasons distinguishable.
+        // Contrast case: a valid same-project read-only target with no rule configured is refused before
+        // validateGroupChangeTarget even runs, with the same generic NO_PERMISSIONS. This pins the no-rule path.
         assertMoveNotEligible(userConnection, idTargetOk, GROUP_TARGET_OK,
                 "no transition rule is configured for the target");
 
         // Group transition validation rejections. Run these while the user is still in Source; each must
-        // leave membership untouched and report TARGET_NOT_ALLOWED.
+        // leave membership untouched and report NO_PERMISSIONS.
         assertMoveRejected(userConnection, idTargetAdmin, GROUP_TARGET_ADMIN, PROJECT_1,
                 "target group carries admin permission in its project");
         assertMoveRejected(userConnection, idTargetNested, GROUP_TARGET_NESTED, PROJECT_1,
@@ -194,6 +204,8 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
                 "target group carries admin permission in a subfolder");
         assertMoveRejected(userConnection, idTargetCross, GROUP_TARGET_CROSS, PROJECT_2,
                 "target group is in a different project");
+        assertMoveRejected(userConnection, idTargetEditor, GROUP_TARGET_EDITOR, PROJECT_1,
+                "target group carries write (Editor) permission");
         assertMoveRejected(userConnection, idSiteGroup, SITE_GROUP, "/",
                 "target is a site group, not a project group");
 
@@ -207,8 +219,8 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
     {
         int auditBefore = countMoveAuditEvents(targetGroup);
         String status = postGroupChange(userConnection, idSource, targetId);
-        assertEquals("Escalating move should be refused with TARGET_NOT_ALLOWED because " + because,
-                "TARGET_NOT_ALLOWED", status);
+        assertEquals("Escalating move should be refused with NO_PERMISSIONS because " + because,
+                "NO_PERMISSIONS", status);
 
         ApiPermissionsHelper perms = new ApiPermissionsHelper(this);
         assertFalse("User must not have been added to " + targetGroup + " (" + because + ")",
@@ -220,7 +232,8 @@ public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
     }
 
     // A move rejected before the group transition validation runs (e.g. no rule configured, or caller not in
-    // the source group) reports NO_PERMISSIONS, distinct from the validation's TARGET_NOT_ALLOWED.
+    // the source group) reports NO_PERMISSIONS -- the same generic status a validation rejection returns, so
+    // the response never distinguishes the two. This contrast case pins the no-rule path.
     private void assertMoveNotEligible(Connection userConnection, int targetId, String targetGroup,
                                        String because) throws Exception
     {
