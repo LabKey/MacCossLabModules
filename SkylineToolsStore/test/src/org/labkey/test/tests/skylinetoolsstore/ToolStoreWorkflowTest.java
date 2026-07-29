@@ -219,7 +219,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         impersonate(TOOL_AUTHOR);
         try
         {
-            int status = uploadSupplementaryFile(v2RowId);
+            int status = uploadSupplementaryFile(v2Folder, v2RowId);
             assertTrue("Supplementary upload should be accepted, got HTTP " + status, status < 400);
         }
         finally
@@ -310,19 +310,23 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         MultipartEntityBuilder entity = MultipartEntityBuilder.create()
                 .addBinaryBody("toolZip", zip, ContentType.create("application/zip"), zip.getName());
         if (updateTarget >= 0)
-            entity.addTextBody("updatetarget", String.valueOf(updateTarget));
+            entity.addTextBody("toolId", String.valueOf(updateTarget));
         if (toolOwners != null)
             entity.addTextBody("toolOwners", toolOwners);
         request.setEntity(entity.build());
         execute(request);
     }
 
-    private int uploadSupplementaryFile(int toolRowId)
+    /**
+     * insertSupplement is addressed to the tool's own container, so its permission annotation checks
+     * the folder that holds the tool. The author holds Editor there and nothing on the store folder.
+     */
+    private int uploadSupplementaryFile(String toolContainerPath, int toolRowId)
     {
         File pdf = TestFileUtils.getSampleData(SUPP_FILE);
-        HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", PROJECT_NAME, "insertSupplement"));
+        HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", toolContainerPath, "insertSupplement"));
         request.setEntity(MultipartEntityBuilder.create()
-                .addTextBody("supptarget", String.valueOf(toolRowId))
+                .addTextBody("toolId", String.valueOf(toolRowId))
                 .addBinaryBody("suppFile", pdf, ContentType.create("application/pdf"), pdf.getName())
                 .build());
         return execute(request);
@@ -332,7 +336,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
     {
         HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", PROJECT_NAME, "setOwners"));
         request.setEntity(MultipartEntityBuilder.create()
-                .addTextBody("updatetarget", String.valueOf(toolRowId))
+                .addTextBody("toolId", String.valueOf(toolRowId))
                 .addTextBody("toolOwners", owner)
                 .build());
         return execute(request);

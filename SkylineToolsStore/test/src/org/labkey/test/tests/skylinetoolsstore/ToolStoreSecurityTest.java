@@ -193,7 +193,7 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
 
     private List<NameValuePair> ownerParams(String newOwner)
     {
-        return List.of(new BasicNameValuePair("updatetarget", String.valueOf(currentRowId())),
+        return List.of(new BasicNameValuePair("toolId", String.valueOf(currentRowId())),
                 new BasicNameValuePair("toolOwners", newOwner));
     }
 
@@ -292,7 +292,7 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
         String originalDescription = getOurTool().getString("Description");
         String forged = "forged-by-csrf-" + System.nanoTime();
 
-        int status = post("updateProperty", descriptionParams(forged), true, false);
+        int status = postTo(currentFolderPath(), "updateProperty", descriptionParams(forged), true, false);
 
         assertEquals("SECURITY: updateProperty accepted a POST with no CSRF token (HTTP " + status + ")",
                 originalDescription, getOurTool().getString("Description"));
@@ -308,7 +308,7 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
     {
         String newDescription = "edited-with-token-" + System.nanoTime();
 
-        int status = post("updateProperty", descriptionParams(newDescription), true, true);
+        int status = postTo(currentFolderPath(), "updateProperty", descriptionParams(newDescription), true, true);
 
         assertTrue("An authenticated updateProperty with a CSRF token should succeed, got HTTP " + status,
                 status < 400);
@@ -318,7 +318,7 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
 
     private List<NameValuePair> descriptionParams(String description)
     {
-        return List.of(new BasicNameValuePair("id", String.valueOf(currentRowId())),
+        return List.of(new BasicNameValuePair("toolId", String.valueOf(currentRowId())),
                 new BasicNameValuePair("propName", "Description"),
                 new BasicNameValuePair("propValue", description));
     }
@@ -338,22 +338,22 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
 
         assertEquals("insertSupplement with an unknown tool id should be a 404",
                 404, post("insertSupplement",
-                        List.of(new BasicNameValuePair("supptarget", String.valueOf(absentId))), true, true));
+                        List.of(new BasicNameValuePair("toolId", String.valueOf(absentId))), true, true));
 
         assertEquals("deleteSupplement with an unknown tool id should be a 404",
-                404, post("deleteSupplement",
-                        List.of(new BasicNameValuePair("supptarget", String.valueOf(absentId)),
+                404, postTo(currentFolderPath(), "deleteSupplement",
+                        List.of(new BasicNameValuePair("toolId", String.valueOf(absentId)),
                                 new BasicNameValuePair("suppFile", "whatever.pdf")), true, true));
 
         assertEquals("updateProperty with an unknown tool id should be a 404",
-                404, post("updateProperty",
-                        List.of(new BasicNameValuePair("id", String.valueOf(absentId)),
+                404, postTo(currentFolderPath(), "updateProperty",
+                        List.of(new BasicNameValuePair("toolId", String.valueOf(absentId)),
                                 new BasicNameValuePair("propName", "Description"),
                                 new BasicNameValuePair("propValue", "x")), true, true));
 
         assertEquals("deleteLatest with an unknown tool id should be a 404",
                 404, post("deleteLatest",
-                        List.of(new BasicNameValuePair("id", String.valueOf(absentId))), true, true));
+                        List.of(new BasicNameValuePair("toolId", String.valueOf(absentId))), true, true));
     }
 
     /**
@@ -363,13 +363,13 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
     public void testDeletingSomethingThatIsNotASupplementaryFileIsNotFound()
     {
         assertEquals("Deleting a non-existent supplementary file should be a 404",
-                404, post("deleteSupplement",
-                        List.of(new BasicNameValuePair("supptarget", String.valueOf(currentRowId())),
+                404, postTo(currentFolderPath(), "deleteSupplement",
+                        List.of(new BasicNameValuePair("toolId", String.valueOf(currentRowId())),
                                 new BasicNameValuePair("suppFile", "no-such-file.pdf")), true, true));
 
         assertEquals("The tool's own icon is not a supplementary file",
-                404, post("deleteSupplement",
-                        List.of(new BasicNameValuePair("supptarget", String.valueOf(currentRowId())),
+                404, postTo(currentFolderPath(), "deleteSupplement",
+                        List.of(new BasicNameValuePair("toolId", String.valueOf(currentRowId())),
                                 new BasicNameValuePair("suppFile", "icon.png")), true, true));
     }
 
@@ -438,7 +438,7 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
         MultipartEntityBuilder entity = MultipartEntityBuilder.create()
                 .addBinaryBody("toolZip", zip, ContentType.create("application/zip"), zip.getName());
         if (updateTarget >= 0)
-            entity.addTextBody("updatetarget", String.valueOf(updateTarget));
+            entity.addTextBody("toolId", String.valueOf(updateTarget));
         request.setEntity(entity.build());
 
         int status = execute(request, true, true);
@@ -488,7 +488,17 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
 
     private int post(String action, List<NameValuePair> params, boolean withSession, boolean withCsrfToken)
     {
-        HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", PROJECT_NAME, action));
+        return postTo(PROJECT_NAME, action, params, withSession, withCsrfToken);
+    }
+
+    /**
+     * Actions that operate on a single tool are addressed to the tool's OWN container, so their
+     * permission annotation checks the folder that holds the tool. Use currentFolderPath() for those.
+     */
+    private int postTo(String containerPath, String action, List<NameValuePair> params,
+                       boolean withSession, boolean withCsrfToken)
+    {
+        HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", containerPath, action));
         request.setEntity(new UrlEncodedFormEntity(new ArrayList<>(params)));
         return execute(request, withSession, withCsrfToken);
     }

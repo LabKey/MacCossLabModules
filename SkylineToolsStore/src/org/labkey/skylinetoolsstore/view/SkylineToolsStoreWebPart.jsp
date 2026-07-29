@@ -106,7 +106,7 @@
 <% if (admin) { %>
 <div style="float: left;">
     <button type="button" id="add-new-tool-btn" class="styled-button">Add New Tool</button>
-    <% addHandler("add-new-tool-btn", "click", "$('#uploadPopOwners').show(); $('#updatetarget').val(''); $('#uploadPop').dialog('open')"); %>
+    <% addHandler("add-new-tool-btn", "click", "$('#uploadPopOwners').show(); $('#uploadFormToolId').val(''); $('#uploadPop').dialog('open')"); %>
 </div>
 <% } %>
 <!--Manage Tool Owners Form-->
@@ -116,7 +116,7 @@
             <label for="toolOwnersManage">Tool owners </label><br />
             <input type="text" id="toolOwnersManage" class="toolOwners" name="toolOwners" /><br /><br />
             <input type="hidden" name="sender" value="<%= h(getActionURL()) %>" />
-            <input type="hidden" id="updatetargetOwners" name="updatetarget" value="" />
+            <input type="hidden" id="ownersFormToolId" name="toolId" value="" />
             <input type="submit" value="Update Tool Owners" />
         </p>
     </labkey:form>
@@ -132,18 +132,20 @@
                 <input type="text" id="toolOwnersNew" class="toolOwners" name="toolOwners" /><br /><br /><br />
             </span>
             <input type="hidden" name="sender" value="<%= h(getActionURL()) %>" />
-            <input type="hidden" id="updatetarget" name="updatetarget" value="" />
+            <input type="hidden" id="uploadFormToolId" name="toolId" value="" />
             <input type="submit" value="Upload Tool" />
         </p>
     </labkey:form>
 </div>
 <!--Upload Supplementary File Form-->
 <div id="uploadSuppPop" title="Upload supplementary file" style="display:none;">
-    <labkey:form action="<%=urlFor(SkylineToolsStoreController.InsertSupplementAction.class)%>" enctype="multipart/form-data" method="post">
+    <%-- One dialog serves every tool, so the action is set per tool in the menu handler below.
+         insertSupplement is addressed to the tool's own container. --%>
+    <labkey:form id="uploadSuppForm" enctype="multipart/form-data" method="post">
         <p>
             Browse to the supplementary file you would like to upload.<br/><br/>
             <input type="file" name="suppFile" /><br /><br />
-            <input type="hidden" id="supptarget" name="supptarget" value="" />
+            <input type="hidden" id="suppFormToolId" name="toolId" value="" />
             <input type="submit" value="Upload Supplementary File" />
         </p>
     </labkey:form>
@@ -200,8 +202,11 @@
                 <div class="menuMouseArea sprocket" alt="<%= h(tool.getName()) %>">
                     <img src="<%= h(imgDir) %>gear.png" title="Settings" />
                     <ul class="dropMenu">
-                        <li><%=simpleLink("Upload new version").onClick("$('#uploadPopOwners').hide(); $('#updatetarget').val(" + tool.getRowId() + "); $('#uploadPop').dialog('open')")%></li>
-                        <li><%=simpleLink("Upload supplementary file").onClick("$('#supptarget').val(" + tool.getRowId() + "); $('#uploadSuppPop').dialog('open')")%></li>
+                        <li><%=simpleLink("Upload new version").onClick("$('#uploadPopOwners').hide(); $('#uploadFormToolId').val(" + tool.getRowId() + "); $('#uploadPop').dialog('open')")%></li>
+                        <li><%=simpleLink("Upload supplementary file").onClick(
+                                "$('#uploadSuppForm').attr('action', " +
+                                q(SkylineToolStoreUrls.getInsertSupplementUrl(tool)) + "); " +
+                                "$('#suppFormToolId').val(" + tool.getRowId() + "); $('#uploadSuppPop').dialog('open')")%></li>
 <% if (multipleVersions) { %>
                         <li><%=simpleLink("Delete latest version").onClick("delToolLatest($(this))")%></li>
 <% } %>
@@ -331,7 +336,7 @@
     $(".toolOwners").each(function() {autocomplete($(this), <%=users%>);});
 
     function popToolOwners(id) {
-        $('#updatetargetOwners').val(id);
+        $('#ownersFormToolId').val(id);
         $('#manageOwnersPop').dialog('open');
         var ownersTxt = $("#toolOwnersManage");
         ownersTxt.focus();
@@ -374,7 +379,7 @@
                 $(this).html("<p>Please wait...</p>");
                 var toolTable = $(this).data("toolTable");
                 $.post("<%=h(urlFor(SkylineToolsStoreController.DeleteAction.class))%>", {
-                    "id": toolTable.attr("data-toolId"),
+                    "toolId": toolTable.attr("data-toolId"),
                     "X-LABKEY-CSRF": LABKEY.CSRF
                 }).done(function() {
                     $("#delToolAllDlg").dialog("close");
@@ -400,7 +405,7 @@
                 $(this).html("<p>Please wait...</p>");
                 var toolTable = $(this).data("toolTable");
                 $.post("<%=h(urlFor(SkylineToolsStoreController.DeleteLatestAction.class))%>", {
-                    "id": toolTable.attr("data-toolId"),
+                    "toolId": toolTable.attr("data-toolId"),
                     "X-LABKEY-CSRF": LABKEY.CSRF
                 }).done(function(data) {
                     var newToolTable = extractToolTable(data, toolTable.attr("data-toolLsid"));

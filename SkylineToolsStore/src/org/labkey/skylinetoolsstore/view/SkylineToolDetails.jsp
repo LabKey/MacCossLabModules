@@ -249,7 +249,7 @@ a { text-decoration: none; }
             <label for="toolOwners">Tool owners </label><br />
             <input type="text" id="toolOwners" name="toolOwners" /><br /><br />
             <input type="hidden" name="sender" value="<%= h(toolDetailsUrl) %>" />
-            <input type="hidden" name="updatetarget" value="<%= h(tool.getRowId()) %>" />
+            <input type="hidden" name="toolId" value="<%= h(tool.getRowId()) %>" />
             <input type="submit" value="Update Tool Owners" />
         </p>
     </labkey:form>
@@ -261,19 +261,19 @@ a { text-decoration: none; }
             Browse to the zip file containing the tool you would like to upload.<br/><br/>
             <input type="file" size="50" name="toolZip" /><br /><br />
             <input type="hidden" name="sender" value="<%= h(toolDetailsUrl) %>" />
-            <input type="hidden" name="updatetarget" value="<%= h(tool.getRowId()) %>" />
+            <input type="hidden" name="toolId" value="<%= h(tool.getRowId()) %>" />
             <input type="submit" value="Upload Tool" />
         </p>
     </labkey:form>
 </div>
 <!--Upload Supplementary File Form-->
 <div id="uploadSuppPop" title="Upload supplementary file" style="display:none;">
-    <labkey:form action="<%=urlFor(SkylineToolsStoreController.InsertSupplementAction.class)%>" enctype="multipart/form-data" method="post">
+    <labkey:form action="<%=SkylineToolStoreUrls.getInsertSupplementUrl(tool)%>" enctype="multipart/form-data" method="post">
         <p>
             Browse to the supplementary file you would like to upload.<br/><br/>
             <input type="file" size="50" name="suppFile" /><br /><br />
             <input type="hidden" name="sender" value="<%= h(toolDetailsUrl) %>" />
-            <input type="hidden" name="supptarget" value="<%= h(tool.getRowId()) %>" />
+            <input type="hidden" name="toolId" value="<%= h(tool.getRowId()) %>" />
             <input type="submit" value="Upload Supplementary File" />
         </p>
     </labkey:form>
@@ -449,8 +449,8 @@ a { text-decoration: none; }
                 (ui.draggable).offset({top: offset.top, left: offset.left});
                 return;
             }
-            $.post("<%=h(urlFor(SkylineToolsStoreController.DeleteSupplementAction.class))%>", {
-                "supptarget": <%= h(tool.getRowId()) %>,
+            $.post("<%=h(SkylineToolStoreUrls.getDeleteSupplementUrl(tool))%>", {
+                "toolId": <%= h(tool.getRowId()) %>,
                 "suppFile": targetDel,
                 "X-LABKEY-CSRF": LABKEY.CSRF
             }).done(function() {
@@ -548,7 +548,7 @@ a { text-decoration: none; }
                 var csrf = LABKEY.CSRF;
                 var form = $('<form action="' + url + '" method="post"> ' +
                         '<input type="hidden" name="X-LABKEY-CSRF" value="' +  csrf + '" /> ' +
-                        '<input type="hidden" name="id" value="' + <%=tool.getRowId()%> + '" />' + '</form>');
+                        '<input type="hidden" name="toolId" value="' + <%=tool.getRowId()%> + '" />' + '</form>');
                 $('body').append(form);
                 form.submit();
             },
@@ -588,13 +588,13 @@ a { text-decoration: none; }
                 if (!isIcon) {
                     propValue = $(this).children("input:text:visible, textarea:visible").first().val().replace(/r?\n/g, "\r\n").replace(/\\*$/, "");
                     postData = {
-                        "id": <%= tool.getRowId() %>,
+                        "toolId": <%= tool.getRowId() %>,
                         "propName": propName,
                         "propValue": propValue
                     };
                 } else {
                     postData = new FormData();
-                    postData.append("id", <%= tool.getRowId() %>);
+                    postData.append("toolId", <%= tool.getRowId() %>);
                     postData.append("propName", propName);
                     postData.append("propValue", document.getElementById("editIconFile").files[0]);
                 }
@@ -608,7 +608,7 @@ a { text-decoration: none; }
                 $.ajax({
                     type: "POST",
                     headers: {"X-LABKEY-CSRF": LABKEY.CSRF},
-                    url: "<%=h(urlFor(SkylineToolsStoreController.UpdatePropertyAction.class))%>",
+                    url: "<%=h(SkylineToolStoreUrls.getUpdatePropertyUrl(tool))%>",
                     data: postData,
                     success: function() {
                         $("#editToolDlg").dialog("close");

@@ -47,7 +47,7 @@
     final String imgDir = contextPath + "/skylinetoolsstore/img/";
 
     final String sender = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "sender");
-    final String updateTarget = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "updatetarget");
+    final String updateTarget = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "toolId");
     final String toolOwners = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "toolowners");
 
     final boolean admin = getUser().hasSiteAdminPermission();
@@ -67,7 +67,7 @@
         <input style="width: 400px; max-width: 80%;" type="text" id="toolOwners" name="toolOwners" value="<%= h(toolOwners) %>" /><br /><br />
         <br />
 <% } else { %>
-        <input type="hidden" name="updatetarget" value="<%= h(updateTarget) %>" />
+        <input type="hidden" name="toolId" value="<%= h(updateTarget) %>" />
 <% } %>
         <input type="submit" value="Upload Tool" />
     </p>

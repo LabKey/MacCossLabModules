@@ -135,7 +135,7 @@ public class ToolStoreTestHelper
             HttpPost request = new HttpPost(
                     WebTestHelper.buildURL("skyts", storeContainerOf(tool), "delete"));
             request.setEntity(MultipartEntityBuilder.create()
-                    .addTextBody("id", String.valueOf(rowId(tool)))
+                    .addTextBody("toolId", String.valueOf(rowId(tool)))
                     .build());
             APITestHelper.injectCookies(request);
             try (CloseableHttpClient client = WebTestHelper.getHttpClient())

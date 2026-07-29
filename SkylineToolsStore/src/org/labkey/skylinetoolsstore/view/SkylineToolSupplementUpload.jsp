@@ -15,26 +15,25 @@
  * limitations under the License.
  */
 %>
-<%@ page import="org.springframework.validation.BindingResult" %>
-<%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreController" %>
 <%@ page import="org.labkey.api.util.PageFlowUtil" %>
+<%@ page import="org.labkey.api.view.HttpView" %>
+<%@ page import="org.labkey.api.view.JspView" %>
+<%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreController" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
-    Object errorAttribute = request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "form");
-    if (errorAttribute != null)
-    {
-%><p class="labkey-error"><%= h(errorAttribute.toString()) %></p><%
-    }
-
-    final String suppTarget = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "supptarget");
+    JspView<SkylineToolsStoreController.SupplementUploadForm> me =
+            (JspView<SkylineToolsStoreController.SupplementUploadForm>) HttpView.currentView();
+    SkylineToolsStoreController.SupplementUploadForm form = me.getModelBean();
 %>
+
+<labkey:errors/>
 
 <labkey:form action="<%= urlFor(SkylineToolsStoreController.InsertSupplementAction.class) %>" enctype="multipart/form-data" method="post">
     <p>
         Browse to the supplementary file you would like to upload.<br/><br/>
         <input type="file" size="50" name="suppFile" /><br /><br />
-        <input type="hidden" name="supptarget" value="<%= h(suppTarget) %>" />
+        <input type="hidden" name="toolId" value="<%= form.getToolId() %>" />
         <input type="submit" value="Upload Supplementary File" />
     </p>
 </labkey:form>

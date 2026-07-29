@@ -27,6 +27,7 @@ import org.json.JSONObject;
 import org.jetbrains.annotations.NotNull;
 import org.labkey.api.action.ApiUsageException;
 import org.labkey.api.action.FormHandlerAction;
+import org.labkey.api.action.FormViewAction;
 import org.labkey.api.action.NavTrailAction;
 import org.labkey.api.action.PermissionCheckable;
 import org.labkey.api.action.PermissionCheckableAction;
@@ -271,6 +272,18 @@ public class SkylineToolsStoreController extends SpringActionController
         return getLocalPath(c).resolve(FileUtil.makeLegalName(filename)).toFile();
     }
 
+    /**
+     * Resolves a tool row id and confirms the tool lives in the given container.
+     */
+    private static SkylineTool requireToolInContainer(int toolId, Container c)
+    {
+        SkylineTool tool = SkylineToolsStoreManager.get().getTool(toolId);
+        if (tool == null || !c.equals(tool.lookupContainer()))
+            throw new NotFoundException("Could not find tool with Id " + toolId + " in this folder.");
+        return tool;
+    }
+
+
 
     public static Path getLocalPath(Container c)
     {
@@ -479,7 +492,7 @@ public class SkylineToolsStoreController extends SpringActionController
         public ModelAndView handleRequest(HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
         {
             final String sender = httpServletRequest.getParameter("sender");
-            final String updateTargetString = StringUtils.trimToNull(httpServletRequest.getParameter("updatetarget"));
+            final String updateTargetString = StringUtils.trimToNull(httpServletRequest.getParameter("toolId"));
             final int updateTarget = (updateTargetString != null) ? Integer.parseInt(updateTargetString) : -1;
             final String toolOwners = httpServletRequest.getParameter("toolOwners");
 
@@ -575,7 +588,7 @@ public class SkylineToolsStoreController extends SpringActionController
                             ActionURL url = getURL();
                             // Add these parameters so that they are available after the redirect.
                             url.addParameter("sender", sender);
-                            url.addParameter("updatetarget", updateTargetString);
+                            url.addParameter("toolId", updateTargetString);
                             url.addParameter("toolowners", toolOwners);
                             redirectToToolStoreContainer(existingVersion, url);
                         }
@@ -684,7 +697,7 @@ public class SkylineToolsStoreController extends SpringActionController
         private ModelAndView renderUploadForm(String sender, String updateTargetString, String toolOwners)
         {
             getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "sender", sender);
-            getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "updatetarget", updateTargetString);
+            getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "toolId", updateTargetString);
             getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "toolowners", toolOwners);
             return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", null);
         }
@@ -718,110 +731,144 @@ public class SkylineToolsStoreController extends SpringActionController
         }
     }
 
-    @RequiresNoPermission
-    public class InsertSupplementAction extends PermissionCheckableAction
+    /**
+     * Uploads one supplementary file for a tool. Addressed to the tool's own container.
+     */
+    @RequiresPermission(InsertPermission.class)
+    public static class InsertSupplementAction extends FormViewAction<SupplementUploadForm>
     {
-        private final Class REQ_PERMS = InsertPermission.class;
+        private SkylineTool _tool;
 
-        private static final String NO_FILE = "You did not submit a file.";
-        private static final String SUPPLEMENT_ALREADY_EXISTS = "The supplementary file already exists.";
-        private static final String INVALID_TOOL_ID = "Invalid tool Id in request: ";
-
-        public InsertSupplementAction()
+        @Override
+        public void validateCommand(SupplementUploadForm form, Errors errors)
         {
         }
 
         @Override
-        public ModelAndView handleRequest(HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
+        public ModelAndView getView(SupplementUploadForm form, boolean reshow, BindException errors)
         {
-            final String suppTargetString = httpServletRequest.getParameter("supptarget");
-            int suppTarget = NumberUtils.toInt(suppTargetString, -1);
+            return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolSupplementUpload.jsp", form, errors);
+        }
 
-            if(suppTarget == -1)
+        @Override
+        public boolean handlePost(SupplementUploadForm form, BindException errors) throws Exception
+        {
+            _tool = requireToolInContainer(form.getToolId(), getContainer());
+
+            // Uploaded files are multipart parts, not request parameters, so they do not bind to the form.
+            MultipartFile suppFile = getFileMap().get("suppFile");
+            if (suppFile == null || StringUtils.isEmpty(suppFile.getOriginalFilename()))
             {
-                httpServletRequest.setAttribute(BindingResult.MODEL_KEY_PREFIX + "form", INVALID_TOOL_ID + " " + suppTargetString);
-                httpServletRequest.setAttribute(BindingResult.MODEL_KEY_PREFIX + "supptarget", suppTargetString);
-                return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolSupplementUpload.jsp", null);
+                errors.reject(ERROR_MSG, "Please submit a file.");
+                return false;
             }
 
-            SkylineTool tool = SkylineToolsStoreManager.get().getTool(suppTarget);
-            if (tool == null)
-                throw new NotFoundException("Could not find tool with Id " + suppTarget);
-
-            final Container c = tool.lookupContainer();
-            if (c == null)
-                throw new NotFoundException("Failed to look up the tool's container: " + tool.getName());
-            if (!c.hasPermission(getUser(), REQ_PERMS))
-                throw new UnauthorizedException("User does not have permission to add files to this tool.");
-
-            Map<?, ?> fileMap = ((MultipartHttpServletRequest)httpServletRequest).getFileMap();
-            MultipartFile suppFile = (MultipartFile)(fileMap.get("suppFile"));
-
-            if (!suppFile.getOriginalFilename().isEmpty())
+            File targetFile = makeFile(getContainer(), FileUtil.makeLegalName(suppFile.getOriginalFilename()));
+            if (targetFile.exists())
             {
-                File targetFile = makeFile(c, FileUtil.makeLegalName(suppFile.getOriginalFilename()));
-                if (targetFile.exists())
-                {
-                    // Can't upload supplementary file if the file already exists
-                    getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                        SUPPLEMENT_ALREADY_EXISTS);
-                }
-                else
-                {
-                    suppFile.transferTo(targetFile);
-                    return HttpView.redirect(SkylineToolStoreUrls.getToolDetailsUrl(tool));
-                }
-            }
-            else
-            {
-                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                    NO_FILE);
+                errors.reject(ERROR_MSG, "A supplementary file with that name already exists.");
+                return false;
             }
 
-            getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "supptarget", suppTargetString);
-            return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolSupplementUpload.jsp", null);
+            suppFile.transferTo(targetFile);
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(SupplementUploadForm form)
+        {
+            return SkylineToolStoreUrls.getToolDetailsUrl(_tool);
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild(getToolStoreNav(getContainer()));
+            root.addChild("Upload Supplementary File");
         }
     }
 
-    @RequiresNoPermission
-    public class DeleteSupplementAction extends PermissionCheckableAction
+    public static class SupplementUploadForm
     {
-        private final Class REQ_PERMS = DeletePermission.class;
+        private int _toolId;
 
-        public DeleteSupplementAction()
+        public int getToolId()
+        {
+            return _toolId;
+        }
+
+        public void setToolId(int toolId)
+        {
+            _toolId = toolId;
+        }
+    }
+
+    /**
+     * Deletes one supplementary file from a tool.
+     *
+     * Addressed to the TOOL's own container, not the store folder, so @RequiresPermission checks the
+     * folder that actually holds the file. Callers must build the URL with
+     * SkylineToolStoreUrls.getToolActionUrl.
+     */
+    @RequiresPermission(DeletePermission.class)
+    public static class DeleteSupplementAction extends FormHandlerAction<SupplementForm>
+    {
+        private SkylineTool _tool;
+
+        @Override
+        public void validateCommand(SupplementForm form, Errors errors)
         {
         }
 
         @Override
-        public ModelAndView handleRequest(HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
+        public boolean handlePost(SupplementForm form, BindException errors) throws Exception
         {
-            final int suppTarget = Integer.parseInt(httpServletRequest.getParameter("supptarget"));
+            _tool = requireToolInContainer(form.getToolId(), getContainer());
 
-            final String suppFile = httpServletRequest.getParameter("suppFile");
-
-            final SkylineTool tool = SkylineToolsStoreManager.get().getTool(suppTarget);
-            if (tool == null)
-                throw new NotFoundException("Could not find tool with Id " + suppTarget);
-
-            final Container c = tool.lookupContainer();
-            if (c == null)
-                throw new NotFoundException("Failed to look up the tool's container: " + tool.getName());
-            if (!c.hasPermission(getUser(), REQ_PERMS))
-                throw new UnauthorizedException("User does not have permission to delete files from this tool.");
-
-            File targetDel = makeFile(c, suppFile);
+            File targetDel = makeFile(getContainer(), form.getSuppFile());
 
             // The tool's own zip and icon are not supplementary files, so they are not deletable here.
             if (!targetDel.isFile() ||
                 targetDel.getName().equalsIgnoreCase("icon.png") ||
-                targetDel.getName().equalsIgnoreCase(tool.getZipName()))
+                targetDel.getName().equalsIgnoreCase(_tool.getZipName()))
             {
-                throw new NotFoundException("No supplementary file named " + suppFile +
-                        " for tool " + tool.getName());
+                throw new NotFoundException("No supplementary file named " + form.getSuppFile() +
+                        " for tool " + _tool.getName());
             }
             targetDel.delete();
+            return true;
+        }
 
-            return HttpView.redirect(SkylineToolStoreUrls.getToolDetailsUrl(tool));
+        @Override
+        public URLHelper getSuccessURL(SupplementForm form)
+        {
+            return SkylineToolStoreUrls.getToolDetailsUrl(_tool);
+        }
+    }
+
+    public static class SupplementForm
+    {
+        private int _toolId;
+        private String _suppFile;
+
+        public int getToolId()
+        {
+            return _toolId;
+        }
+
+        public void setToolId(int toolId)
+        {
+            _toolId = toolId;
+        }
+
+        public String getSuppFile()
+        {
+            return _suppFile;
+        }
+
+        public void setSuppFile(String suppFile)
+        {
+            _suppFile = suppFile;
         }
     }
 
@@ -837,11 +884,11 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public boolean handlePost(IdForm idForm, BindException errors) throws Exception
         {
-            final SkylineTool tool = SkylineToolsStoreManager.get().getTool(idForm.getId());
+            final SkylineTool tool = SkylineToolsStoreManager.get().getTool(idForm.getToolId());
 
             if(tool == null)
             {
-                errors.reject(ERROR_MSG, "Tool with id " + idForm.getId() + " does not exist.");
+                errors.reject(ERROR_MSG, "Tool with id " + idForm.getToolId() + " does not exist.");
                 return false;
             }
 
@@ -890,7 +937,7 @@ public class SkylineToolsStoreController extends SpringActionController
     public static class IdForm extends ReturnUrlForm
     {
         private String _name;
-        private int _id;
+        private int _toolId;
 
         public IdForm()
         {
@@ -906,14 +953,14 @@ public class SkylineToolsStoreController extends SpringActionController
             _name = name;
         }
 
-        public int getId()
+        public int getToolId()
         {
-            return _id;
+            return _toolId;
         }
 
-        public void setId(int id)
+        public void setToolId(int toolId)
         {
-            _id = id;
+            _toolId = toolId;
         }
     }
 
@@ -942,9 +989,9 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public boolean handlePost(DeleteLatestForm form, BindException errors) throws Exception
         {
-            final SkylineTool tool = SkylineToolsStoreManager.get().getTool(form.getId());
+            final SkylineTool tool = SkylineToolsStoreManager.get().getTool(form.getToolId());
             if (tool == null)
-                throw new NotFoundException("Could not find tool with Id " + form.getId());
+                throw new NotFoundException("Could not find tool with Id " + form.getToolId());
 
             Container toolContainer = tool.lookupContainer();
             if (toolContainer == null)
@@ -1300,111 +1347,162 @@ public class SkylineToolsStoreController extends SpringActionController
     }
 
     @RequiresSiteAdmin
-    public class SetOwnersAction extends PermissionCheckableAction
+    /**
+     * Replaces the set of users holding Editor on a tool's folder.
+     *
+     * Stays addressed to the store folder rather than the tool's, because @RequiresSiteAdmin is
+     * checked against the whole site and not a container, so there is nothing to gain by moving it.
+     */
+    public class SetOwnersAction extends FormViewAction<SetOwnersForm>
     {
-        private static final String UNKNOWN_USERS = "The following users are unknown: ";
+        private URLHelper _successURL;
 
-        public SetOwnersAction()
+        @Override
+        public void validateCommand(SetOwnersForm form, Errors errors)
         {
         }
 
         @Override
-        public ModelAndView handleRequest(HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
+        public ModelAndView getView(SetOwnersForm form, boolean reshow, BindException errors)
         {
-            final String sender = httpServletRequest.getParameter("sender");
-            final String updateTargetString = httpServletRequest.getParameter("updatetarget");
-            final int updateTarget = Integer.parseInt(updateTargetString);
+            return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolManageOwners.jsp", form, errors);
+        }
 
-            final String toolOwners = httpServletRequest.getParameter("toolOwners");
-
-            Pair<ArrayList<User>, ArrayList<String>> parsedOwners = parseToolOwnerString(toolOwners);
+        @Override
+        public boolean handlePost(SetOwnersForm form, BindException errors) throws Exception
+        {
+            Pair<ArrayList<User>, ArrayList<String>> parsedOwners = parseToolOwnerString(form.getToolOwners());
             ArrayList<User> toolOwnersUsers = parsedOwners.first;
             ArrayList<String> toolOwnersInvalid = parsedOwners.second;
 
-            if (toolOwnersInvalid.isEmpty())
+            if (!toolOwnersInvalid.isEmpty())
             {
-                final SkylineTool tool = SkylineToolsStoreManager.get().getTool(updateTarget);
-                if (tool == null)
-                    throw new NotFoundException("Could not find tool with Id " + updateTarget);
-                final Container c = tool.lookupContainer();
+                errors.reject(ERROR_MSG, "The following users are unknown: " +
+                        StringUtils.join(toolOwnersInvalid, ", "));
+                return false;
+            }
 
-                ArrayList<User> newToolEditors = new ArrayList<>();
-                for (User u : toolOwnersUsers)
-                    newToolEditors.add(u);
+            final SkylineTool tool = SkylineToolsStoreManager.get().getTool(form.getToolId());
+            if (tool == null)
+                throw new NotFoundException("Could not find tool with Id " + form.getToolId());
+            final Container c = tool.lookupContainer();
+            if (c == null)
+                throw new NotFoundException("Failed to look up the tool's container: " + tool.getName());
 
-                for (RoleAssignment assignment : c.getPolicy().getAssignments())
+            ArrayList<User> newToolEditors = new ArrayList<>(toolOwnersUsers);
+
+            for (RoleAssignment assignment : c.getPolicy().getAssignments())
+            {
+                if (assignment.getRole() != RoleManager.getRole(FolderAdminRole.class) &&
+                    assignment.getRole() != RoleManager.getRole(EditorRole.class))
+                    continue;
+                for (int i = 0; i < newToolEditors.size(); ++i)
                 {
-                    if (assignment.getRole() != RoleManager.getRole(FolderAdminRole.class) &&
-                        assignment.getRole() != RoleManager.getRole(EditorRole.class))
-                        continue;
-                    for (int i = 0; i < newToolEditors.size(); ++i)
+                    if (newToolEditors.get(i).getUserId() == assignment.getUserId())
                     {
-                        if (newToolEditors.get(i).getUserId() == assignment.getUserId())
-                        {
-                            newToolEditors.remove(i);
-                            break;
-                        }
+                        newToolEditors.remove(i);
+                        break;
                     }
                 }
-
-                MutableSecurityPolicy policy = copyPolicy(c, c.getPolicy());
-                for (User u : newToolEditors)
-                    policy.addRoleAssignment(u, RoleManager.getRole(EditorRole.class));
-                policy = filterPolicy(policy, toolOwnersUsers, new Role[]{RoleManager.getRole(EditorRole.class), RoleManager.getRole(FolderAdminRole.class)});
-                SecurityPolicyManager.savePolicy(policy, User.getAdminServiceUser());
-
-                Container toolStoreContainer = tool.getContainerParent() != null ? tool.getContainerParent() : getContainer();
-
-                return HttpView.redirect((sender != null) ? new ActionURL(sender) :
-                        SkylineToolStoreUrls.getToolStoreHomeUrl(toolStoreContainer, getUser()));
-            }
-            else
-            {
-                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                    UNKNOWN_USERS + StringUtils.join(toolOwnersInvalid, ", "));
             }
 
-            getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "toolowners", toolOwners);
-            getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "sender", sender);
-            getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "updatetarget", updateTargetString);
-            return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolManageOwners.jsp", null);
+            MutableSecurityPolicy policy = copyPolicy(c, c.getPolicy());
+            for (User u : newToolEditors)
+                policy.addRoleAssignment(u, RoleManager.getRole(EditorRole.class));
+            policy = filterPolicy(policy, toolOwnersUsers, new Role[]{RoleManager.getRole(EditorRole.class), RoleManager.getRole(FolderAdminRole.class)});
+            SecurityPolicyManager.savePolicy(policy, User.getAdminServiceUser());
+
+            Container toolStoreContainer = tool.getContainerParent() != null ? tool.getContainerParent() : getContainer();
+            _successURL = form.getSender() != null ? new ActionURL(form.getSender())
+                    : SkylineToolStoreUrls.getToolStoreHomeUrl(toolStoreContainer, getUser());
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(SetOwnersForm form)
+        {
+            return _successURL;
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild(getToolStoreNav(getContainer()));
+            root.addChild("Manage Tool Owners");
         }
     }
 
-    @RequiresNoPermission
-    public class UpdatePropertyAction extends PermissionCheckableAction
+    public static class SetOwnersForm
     {
-        private final Class REQ_PERMS = InsertPermission.class;
+        private int _toolId;
+        private String _toolOwners;
+        private String _sender;
+
+        public int getToolId()
+        {
+            return _toolId;
+        }
+
+        public void setToolId(int toolId)
+        {
+            _toolId = toolId;
+        }
+
+        public String getToolOwners()
+        {
+            return _toolOwners;
+        }
+
+        public void setToolOwners(String toolOwners)
+        {
+            _toolOwners = toolOwners;
+        }
+
+        public String getSender()
+        {
+            return _sender;
+        }
+
+        public void setSender(String sender)
+        {
+            _sender = sender;
+        }
+    }
+
+    /**
+     * Edits one property of a tool, or replaces its icon, rewriting tool-inf/info.properties inside
+     * the stored zip so the file and the database row stay in step.
+     *
+     * Addressed to the TOOL's own container - see DeleteSupplementAction.
+     */
+    @RequiresPermission(InsertPermission.class)
+    public static class UpdatePropertyAction extends FormHandlerAction<UpdatePropertyForm>
+    {
+        private SkylineTool _tool;
 
         @Override
-        public ModelAndView handleRequest(HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
+        public void validateCommand(UpdatePropertyForm form, Errors errors)
         {
-            final int id = Integer.parseInt(httpServletRequest.getParameter("id"));
+        }
 
-            final SkylineTool tool = SkylineToolsStoreManager.get().getTool(id);
-            if (tool == null)
-                throw new NotFoundException("Could not find tool with Id " + id);
+        @Override
+        public boolean handlePost(UpdatePropertyForm form, BindException errors) throws Exception
+        {
+            _tool = requireToolInContainer(form.getToolId(), getContainer());
+            final SkylineTool tool = _tool;
+            final Container container = getContainer();
 
-            final Container container = tool.lookupContainer();
-            if (container == null)
-                throw new NotFoundException("Failed to look up the tool's container: " + tool.getName());
-            if (!container.hasPermission(getUser(), REQ_PERMS))
-                throw new UnauthorizedException("User does not have permissions to edit tool properties.");
-
-            final String propName = httpServletRequest.getParameter("propName");
+            final String propName = form.getPropName();
             String propValue = "";
-            final MultipartFile icon = (httpServletRequest.getMethod().equalsIgnoreCase("post") &&
-                httpServletRequest instanceof MultipartHttpServletRequest) ?
-                (MultipartFile)((Map<?, ?>)(((MultipartHttpServletRequest)httpServletRequest).getFileMap())).get("propValue")
-                : null;
 
+            // An icon is uploaded as a file part also named propValue. Files do not bind to the form.
+            final MultipartFile icon = getFileMap().get("propValue");
 
             if (icon == null)
             {
-                String submitted = httpServletRequest.getParameter("propValue");
-                if (propName == null || submitted == null)
+                if (propName == null || form.getPropValue() == null)
                     throw new ApiUsageException("Both propName and propValue are required.");
-                propValue = submitted.replace("\r", "").replace("\n", "\r\n");
+                propValue = form.getPropValue().replace("\r", "").replace("\n", "\r\n");
                 tool.setProperty(propName, propValue);
             }
             else
@@ -1479,11 +1577,54 @@ public class SkylineToolsStoreController extends SpringActionController
             }
 
             if (icon == null)
-                SkylineToolsStoreManager.get().updateTool(tool.lookupContainer(), getUser(), tool);
+                SkylineToolsStoreManager.get().updateTool(container, getUser(), tool);
             else
-                tool.writeIconToFile(makeFile(tool.lookupContainer(), "icon.png"), "png");
+                tool.writeIconToFile(makeFile(container, "icon.png"), "png");
 
-            return HttpView.redirect(SkylineToolStoreUrls.getToolDetailsUrl(tool));
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(UpdatePropertyForm form)
+        {
+            return SkylineToolStoreUrls.getToolDetailsUrl(_tool);
+        }
+    }
+
+    public static class UpdatePropertyForm
+    {
+        private int _toolId;
+        private String _propName;
+        private String _propValue;
+
+        public int getToolId()
+        {
+            return _toolId;
+        }
+
+        public void setToolId(int toolId)
+        {
+            _toolId = toolId;
+        }
+
+        public String getPropName()
+        {
+            return _propName;
+        }
+
+        public void setPropName(String propName)
+        {
+            _propName = propName;
+        }
+
+        public String getPropValue()
+        {
+            return _propValue;
+        }
+
+        public void setPropValue(String propValue)
+        {
+            _propValue = propValue;
         }
     }
 

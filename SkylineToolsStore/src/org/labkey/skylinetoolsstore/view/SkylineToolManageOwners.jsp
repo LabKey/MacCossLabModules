@@ -15,34 +15,35 @@
  * limitations under the License.
  */
 %>
-<%@ page import="org.springframework.validation.BindingResult" %>
+<%@ page import="org.apache.commons.lang3.StringUtils" %>
 <%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreController" %>
 <%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page import="org.labkey.api.util.HtmlString" %>
 <%@ page import="org.labkey.api.util.SafeToRender" %>
+<%@ page import="org.labkey.api.view.HttpView" %>
+<%@ page import="org.labkey.api.view.JspView" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
-    Object errorAttribute = request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "form");
-    if (errorAttribute != null)
-    {
-%><p class="labkey-error"><%= h(errorAttribute.toString()) %></p><%
-    }
+    JspView<SkylineToolsStoreController.SetOwnersForm> me =
+            (JspView<SkylineToolsStoreController.SetOwnersForm>) HttpView.currentView();
+    SkylineToolsStoreController.SetOwnersForm form = me.getModelBean();
 
     final String contextPath = AppProps.getInstance().getContextPath();
     final String cssDir = contextPath + "/skylinetoolsstore/css/";
     final String imgDir = contextPath + "/skylinetoolsstore/img/";
     final String jsDir = contextPath + "/skylinetoolsstore/js/";
 
-    final String toolOwners = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "toolowners");
-    final String sender = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "sender");
-    final String updateTarget = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "updatetarget");
+    final String toolOwners = StringUtils.trimToEmpty(form.getToolOwners());
+    final String sender = form.getSender();
 
     final boolean admin = getUser().hasSiteAdminPermission();
     final SafeToRender autocompleteUsers = admin ? SkylineToolsStoreController.getUsersForAutocomplete() : HtmlString.unsafe("\"\"");
     pageContext.setAttribute("autocompleteUsers", autocompleteUsers);
 %>
+
+<labkey:errors/>
 
 <labkey:form action="<%= urlFor(SkylineToolsStoreController.SetOwnersAction.class) %>" enctype="multipart/form-data" method="post">
     <p>
@@ -52,7 +53,7 @@
 <% if (sender != null) { %>
         <input type="hidden" name="sender" value="<%= h(sender) %>" />
 <% } %>
-        <input type="hidden" name="updatetarget" value="<%= h(updateTarget) %>" />
+        <input type="hidden" name="toolId" value="<%= form.getToolId() %>" />
         <input type="submit" value="Update Tool Owners" />
     </p>
 </labkey:form>
