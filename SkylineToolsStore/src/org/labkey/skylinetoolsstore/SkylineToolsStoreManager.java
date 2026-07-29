@@ -26,6 +26,8 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
 import org.labkey.skylinetoolsstore.model.SkylineTool;
 
+import java.util.List;
+
 public class SkylineToolsStoreManager
 {
     private static final SkylineToolsStoreManager _instance = new SkylineToolsStoreManager();
@@ -67,10 +69,39 @@ public class SkylineToolsStoreManager
                                  filter, new Sort("Name")).getArray(SkylineTool.class);
     }
 
+    /**
+     * Every tool on the server, latest version only, regardless of container.
+     *
+     * Deliberately NOT container-scoped. Skyline hardcodes a container in its catalog and download
+     * URLs that is not the tool store folder, so it only reaches tools because these lookups ignore
+     * the request container. Adding a filter here would break tool installation in every shipped
+     * Skyline version. Use getToolsLatestInSubfolders for anything user-facing.
+     */
     public SkylineTool[] getToolsLatest()
     {
         SimpleFilter filter = new SimpleFilter();
         filter.addCondition(FieldKey.fromParts("Latest"), true);
+        return getTools(filter);
+    }
+
+    /**
+     * Latest version of every tool stored in a subfolder of the given container. Tools live in a
+     * child folder per version, so a store folder's own tools are exactly those of its children.
+     *
+     * This is the listing query. It is safe to scope because Skyline never reads it - the client
+     * calls getToolsApi, which uses getToolsLatest.
+     */
+    public SkylineTool[] getToolsLatestInSubfolders(Container parent)
+    {
+        List<String> childIds = parent.getChildren().stream()
+                .map(Container::getId)
+                .toList();
+        if (childIds.isEmpty())
+            return new SkylineTool[0];
+
+        SimpleFilter filter = new SimpleFilter();
+        filter.addCondition(FieldKey.fromParts("Latest"), true);
+        filter.addInClause(FieldKey.fromParts("Container"), childIds);
         return getTools(filter);
     }
 

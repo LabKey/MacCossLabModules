@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 %>
+<%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%@ page import="org.apache.commons.lang3.StringUtils" %>
 <%@ page import="org.labkey.api.data.Container" %>
 <%@ page import="org.labkey.api.data.ContainerManager" %>
@@ -243,7 +244,7 @@ a { text-decoration: none; }
 </div>
 <!--Manage Tool Owners Form-->
 <div id="manageOwnersPop" title="Manage tool owners" style="display:none;">
-    <form action="<%=h(urlFor(SkylineToolsStoreController.SetOwnersAction.class))%>" method="post">
+    <labkey:form action="<%=urlFor(SkylineToolsStoreController.SetOwnersAction.class)%>" method="post">
         <p>
             <label for="toolOwners">Tool owners </label><br />
             <input type="text" id="toolOwners" name="toolOwners" /><br /><br />
@@ -251,11 +252,11 @@ a { text-decoration: none; }
             <input type="hidden" name="updatetarget" value="<%= h(tool.getRowId()) %>" />
             <input type="submit" value="Update Tool Owners" />
         </p>
-    </form>
+    </labkey:form>
 </div>
 <!--Upload New Version Form-->
 <div id="uploadPop" title="Upload tool zip file" style="display:none;">
-    <form action="<%=h(urlFor(SkylineToolsStoreController.InsertAction.class))%>" enctype="multipart/form-data" method="post">
+    <labkey:form action="<%=urlFor(SkylineToolsStoreController.InsertAction.class)%>" enctype="multipart/form-data" method="post">
         <p>
             Browse to the zip file containing the tool you would like to upload.<br/><br/>
             <input type="file" size="50" name="toolZip" /><br /><br />
@@ -263,11 +264,11 @@ a { text-decoration: none; }
             <input type="hidden" name="updatetarget" value="<%= h(tool.getRowId()) %>" />
             <input type="submit" value="Upload Tool" />
         </p>
-    </form>
+    </labkey:form>
 </div>
 <!--Upload Supplementary File Form-->
 <div id="uploadSuppPop" title="Upload supplementary file" style="display:none;">
-    <form action="<%=h(urlFor(SkylineToolsStoreController.InsertSupplementAction.class))%>" enctype="multipart/form-data" method="post">
+    <labkey:form action="<%=urlFor(SkylineToolsStoreController.InsertSupplementAction.class)%>" enctype="multipart/form-data" method="post">
         <p>
             Browse to the supplementary file you would like to upload.<br/><br/>
             <input type="file" size="50" name="suppFile" /><br /><br />
@@ -275,7 +276,7 @@ a { text-decoration: none; }
             <input type="hidden" name="supptarget" value="<%= h(tool.getRowId()) %>" />
             <input type="submit" value="Upload Supplementary File" />
         </p>
-    </form>
+    </labkey:form>
 </div>
 <!--Delete Tool Dialog-->
 <div id="delToolAllDlg" title="Delete" style="display:none;">
@@ -450,7 +451,8 @@ a { text-decoration: none; }
             }
             $.post("<%=h(urlFor(SkylineToolsStoreController.DeleteSupplementAction.class))%>", {
                 "supptarget": <%= h(tool.getRowId()) %>,
-                "suppFile": targetDel
+                "suppFile": targetDel,
+                "X-LABKEY-CSRF": LABKEY.CSRF
             }).done(function() {
                 (ui.draggable).hide("explode");
                 if ($("#documentationbox").children(".suppfile:visible").length <= 1)
@@ -558,7 +560,18 @@ a { text-decoration: none; }
         buttons: {
             Ok: function() {
                 setButtonsEnabled(false);
-                window.location = <%=q(urlFor(SkylineToolsStoreController.DeleteLatestAction.class).addParameter("id", tool.getRowId()).addParameter("sender", toolDetailsLatestUrl.getLocalURIString()))%>
+                // Submit a POST rather than navigating. DeleteLatestAction deletes a container, so it
+                // must not be reachable by GET, and the CSRF token cannot ride on a navigation.
+                // Attributes are set via .attr() rather than built into an HTML string so the sender
+                // URL cannot break out of the markup.
+                var form = $('<form method="post"></form>')
+                        .attr('action', <%=q(urlFor(SkylineToolsStoreController.DeleteLatestAction.class))%>);
+                $('<input type="hidden">').attr('name', 'X-LABKEY-CSRF').attr('value', LABKEY.CSRF).appendTo(form);
+                $('<input type="hidden">').attr('name', 'id').attr('value', <%=tool.getRowId()%>).appendTo(form);
+                $('<input type="hidden">').attr('name', 'sender')
+                        .attr('value', <%=q(toolDetailsLatestUrl.getLocalURIString())%>).appendTo(form);
+                $('body').append(form);
+                form.submit();
             },
             Cancel: function() {$(this).dialog("close");}
         }
@@ -587,8 +600,14 @@ a { text-decoration: none; }
                 }
 
                 $(this).html("<p>Please wait...</p>");
+                // Raw jQuery does not attach the CSRF token the way LABKEY.Ajax does, so send it
+                // explicitly. FormData posts carry it as a field, url-encoded posts as a header.
+                if (isIcon) {
+                    postData.append("X-LABKEY-CSRF", LABKEY.CSRF);
+                }
                 $.ajax({
                     type: "POST",
+                    headers: {"X-LABKEY-CSRF": LABKEY.CSRF},
                     url: "<%=h(urlFor(SkylineToolsStoreController.UpdatePropertyAction.class))%>",
                     data: postData,
                     success: function() {

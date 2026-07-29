@@ -22,6 +22,7 @@
 <%@ page import="org.labkey.api.util.SafeToRender" %>
 <%@ page import="org.labkey.api.util.HtmlString" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
+<%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -54,7 +55,7 @@
     SafeToRender users = SkylineToolsStoreController.getUsersForAutocomplete();
 %>
 
-<form action="<%= h(urlFor(SkylineToolsStoreController.InsertAction.class)) %>" enctype="multipart/form-data" method="post">
+<labkey:form action="<%= urlFor(SkylineToolsStoreController.InsertAction.class) %>" enctype="multipart/form-data" method="post">
     <p>
         Browse to the zip file containing the tool you would like to upload.<br/><br/>
         <input type="file" size="50" name="toolZip" /><br /><br />
@@ -70,7 +71,7 @@
 <% } %>
         <input type="submit" value="Upload Tool" />
     </p>
-</form>
+</labkey:form>
 
 <br />
 <%= PageFlowUtil.generateBackButton() %>

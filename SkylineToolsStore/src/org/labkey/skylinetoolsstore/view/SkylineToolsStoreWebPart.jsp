@@ -111,7 +111,7 @@
 <% } %>
 <!--Manage Tool Owners Form-->
 <div id="manageOwnersPop" title="Manage tool owners" style="display:none;">
-    <form action="<%=h(urlFor(SkylineToolsStoreController.SetOwnersAction.class))%>" method="post">
+    <labkey:form action="<%=urlFor(SkylineToolsStoreController.SetOwnersAction.class)%>" method="post">
         <p>
             <label for="toolOwnersManage">Tool owners </label><br />
             <input type="text" id="toolOwnersManage" class="toolOwners" name="toolOwners" /><br /><br />
@@ -119,11 +119,11 @@
             <input type="hidden" id="updatetargetOwners" name="updatetarget" value="" />
             <input type="submit" value="Update Tool Owners" />
         </p>
-    </form>
+    </labkey:form>
 </div>
 <!--Add Tool / Upload New Version Form-->
 <div id="uploadPop" title="Upload tool zip file" style="display:none;">
-    <form action="<%=h(urlFor(SkylineToolsStoreController.InsertAction.class))%>" enctype="multipart/form-data" method="post">
+    <labkey:form action="<%=urlFor(SkylineToolsStoreController.InsertAction.class)%>" enctype="multipart/form-data" method="post">
         <p>
             Browse to the zip file containing the tool you would like to upload.<br/><br />
             <input type="file" name="toolZip" /><br /><br />
@@ -135,18 +135,18 @@
             <input type="hidden" id="updatetarget" name="updatetarget" value="" />
             <input type="submit" value="Upload Tool" />
         </p>
-    </form>
+    </labkey:form>
 </div>
 <!--Upload Supplementary File Form-->
 <div id="uploadSuppPop" title="Upload supplementary file" style="display:none;">
-    <form action="<%=h(urlFor(SkylineToolsStoreController.InsertSupplementAction.class))%>" enctype="multipart/form-data" method="post">
+    <labkey:form action="<%=urlFor(SkylineToolsStoreController.InsertSupplementAction.class)%>" enctype="multipart/form-data" method="post">
         <p>
             Browse to the supplementary file you would like to upload.<br/><br/>
             <input type="file" name="suppFile" /><br /><br />
             <input type="hidden" id="supptarget" name="supptarget" value="" />
             <input type="submit" value="Upload Supplementary File" />
         </p>
-    </form>
+    </labkey:form>
 </div>
 <!-- Delete Tool Dialog -->
 <div id="delToolAllDlg" title="Delete" style="display:none;"></div>
@@ -400,7 +400,8 @@
                 $(this).html("<p>Please wait...</p>");
                 var toolTable = $(this).data("toolTable");
                 $.post("<%=h(urlFor(SkylineToolsStoreController.DeleteLatestAction.class))%>", {
-                    "id": toolTable.attr("data-toolId")
+                    "id": toolTable.attr("data-toolId"),
+                    "X-LABKEY-CSRF": LABKEY.CSRF
                 }).done(function(data) {
                     var newToolTable = extractToolTable(data, toolTable.attr("data-toolLsid"));
                     newToolTable.hide();

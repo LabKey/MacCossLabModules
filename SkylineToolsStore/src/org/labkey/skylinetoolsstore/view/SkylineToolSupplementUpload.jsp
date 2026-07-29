@@ -18,6 +18,7 @@
 <%@ page import="org.springframework.validation.BindingResult" %>
 <%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreController" %>
 <%@ page import="org.labkey.api.util.PageFlowUtil" %>
+<%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     Object errorAttribute = request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "form");
@@ -29,14 +30,14 @@
     final String suppTarget = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "supptarget");
 %>
 
-<form action="<%= h(urlFor(SkylineToolsStoreController.InsertSupplementAction.class)) %>" enctype="multipart/form-data" method="post">
+<labkey:form action="<%= urlFor(SkylineToolsStoreController.InsertSupplementAction.class) %>" enctype="multipart/form-data" method="post">
     <p>
         Browse to the supplementary file you would like to upload.<br/><br/>
         <input type="file" size="50" name="suppFile" /><br /><br />
         <input type="hidden" name="supptarget" value="<%= h(suppTarget) %>" />
         <input type="submit" value="Upload Supplementary File" />
     </p>
-</form>
+</labkey:form>
 
 <br />
 <%= PageFlowUtil.generateBackButton() %>

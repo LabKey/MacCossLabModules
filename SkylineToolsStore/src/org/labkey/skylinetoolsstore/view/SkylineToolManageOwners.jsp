@@ -21,6 +21,7 @@
 <%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page import="org.labkey.api.util.HtmlString" %>
 <%@ page import="org.labkey.api.util.SafeToRender" %>
+<%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 <%
     Object errorAttribute = request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "form");
@@ -43,7 +44,7 @@
     pageContext.setAttribute("autocompleteUsers", autocompleteUsers);
 %>
 
-<form action="<%= h(urlFor(SkylineToolsStoreController.SetOwnersAction.class)) %>" enctype="multipart/form-data" method="post">
+<labkey:form action="<%= urlFor(SkylineToolsStoreController.SetOwnersAction.class) %>" enctype="multipart/form-data" method="post">
     <p>
         <label for="toolOwners">Tool owners </label><br />
         <input style="width: 400px; max-width: 80%;" type="text" id="toolOwners" name="toolOwners" /><br /><br />
@@ -54,7 +55,7 @@
         <input type="hidden" name="updatetarget" value="<%= h(updateTarget) %>" />
         <input type="submit" value="Update Tool Owners" />
     </p>
-</form>
+</labkey:form>
 
 <br />
 <%= PageFlowUtil.generateBackButton() %>

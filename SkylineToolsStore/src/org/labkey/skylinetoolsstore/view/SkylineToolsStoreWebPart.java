@@ -29,10 +29,12 @@ public class SkylineToolsStoreWebPart extends JspView<List<SkylineTool>>
     public SkylineToolsStoreWebPart()
     {
         super("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreWebPart.jsp", null);
-        setModelBean(Arrays.asList(SkylineToolsStoreManager.get().getToolsLatest()));
         setTitle("Skyline Tool Store");
         Container container = getViewContext().getContainer();
         User user = getViewContext().getUser();
+        // Only this store's own tools. Each tool version lives in a child folder, so listing the
+        // subfolders keeps one store folder from displaying another's tools.
+        setModelBean(Arrays.asList(SkylineToolsStoreManager.get().getToolsLatestInSubfolders(container)));
         setTitleHref(SkylineToolStoreUrls.getToolStoreHomeUrl(container, user));
     }
 }
