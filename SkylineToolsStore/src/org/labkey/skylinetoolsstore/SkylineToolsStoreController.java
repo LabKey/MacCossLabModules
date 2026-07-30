@@ -128,6 +128,7 @@ public class SkylineToolsStoreController extends SpringActionController
 {
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(SkylineToolsStoreController.class);
     private static final String[] VALID_ICON_EXTENSIONS = new String[] { "png", "jpg", "jpeg", "gif" };
+    private static final String STORE_NOT_AVAILABLE = "The Skyline Tool Store is not available in this folder.";
 
     public SkylineToolsStoreController()
     {
@@ -483,8 +484,7 @@ public class SkylineToolsStoreController extends SpringActionController
      * an admin adds it.
      *
      * Split from the old combined InsertAction because adding a tool and publishing a new tool version
-     * need different permissions on different containers, so no single annotation could express
-     * both. See UpdateToolAction.
+     * need different permissions on different containers. See UpdateToolAction.
      */
     @RequiresSiteAdmin
     @ActionNames("insertTool, insert")
@@ -495,14 +495,18 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public void validateCommand(ToolUploadForm form, Errors errors)
         {
+            // validateCommand runs on POST only, so this is what stops a hand-posted upload. The
+            // matching check in getView is what stops the form being drawn in the first place.
+            if (!getContainer().hasActiveModuleByName(SkylineToolsStoreModule.NAME))
+                errors.reject(ERROR_MSG, STORE_NOT_AVAILABLE);
         }
 
         @Override
         public ModelAndView getView(ToolUploadForm form, boolean reshow, BindException errors)
         {
-            if (!getContainer().getActiveModules().contains(
-                    ModuleLoader.getInstance().getModule(SkylineToolsStoreModule.class)))
-                return HtmlView.of("The Skyline Tool Store is not available in this folder.");
+            // On a reshow the message is already in errors, so let the JSP render it there.
+            if (!reshow && !getContainer().hasActiveModuleByName(SkylineToolsStoreModule.NAME))
+                return HtmlView.of(STORE_NOT_AVAILABLE);
 
             return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", form, errors);
         }
@@ -510,13 +514,6 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public boolean handlePost(ToolUploadForm form, BindException errors) throws Exception
         {
-            if (!getContainer().getActiveModules().contains(
-                    ModuleLoader.getInstance().getModule(SkylineToolsStoreModule.class)))
-            {
-                errors.reject(ERROR_MSG, "The Skyline Tool Store is not available in this folder.");
-                return false;
-            }
-
             Pair<ArrayList<User>, ArrayList<String>> parsedOwners = parseToolOwnerString(form.getToolOwners());
             if (!parsedOwners.second.isEmpty())
             {
