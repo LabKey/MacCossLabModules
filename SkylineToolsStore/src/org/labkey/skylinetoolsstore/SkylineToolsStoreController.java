@@ -25,6 +25,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.action.ApiUsageException;
 import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.FormViewAction;
@@ -117,6 +118,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
@@ -469,250 +471,288 @@ public class SkylineToolsStoreController extends SpringActionController
     // checkPermissions(). The framework now enforces it, which also restores CSRF validation.
     // The per-container Insert/Update checks still happen inline below, against the TOOL's container
     // rather than the request container.
-    @RequiresLogin
-    public class InsertAction extends PermissionCheckableAction implements NavTrailAction
+    /**
+     * Adds a brand-new tool to this store folder.
+     *
+     * Site admin only, matching the "Add New Tool" button, which is the only way in. Outside authors
+     * do not upload here at all - they attach a zip to a message board post and an admin adds it.
+     *
+     * Split from the old combined InsertAction because adding a tool and publishing a new version of
+     * one need different permissions on different containers, so no single annotation could express
+     * both. See UpdateToolAction.
+     */
+    @RequiresSiteAdmin
+    @ActionNames("insertTool, insert")
+    public class InsertToolAction extends FormViewAction<ToolUploadForm>
     {
-        private static final String NO_FILE = "You did not submit a file.";
-        private static final String INVALID_TOOL_FILE = "The file was not a valid Skyline Tool zip file.";
-        private static final String MISSING_REQUIRED_PROPERTIES = "The tool was missing the following properties: ";
-        private static final String TOOL_DOES_NOT_EXIST = "The Skyline Tool being updated does not exist.";
-        private static final String TOOL_ALREADY_EXISTS = "The Skyline Tool you are trying to add already exists.";
-        private static final String WRONG_TOOL = "The Skyline Tool zip file did not contain the Skyline Tool being updated.";
-        private static final String SAME_VERSION = "The Skyline Tool zip file contained the same version of the tool being updated.";
-        private static final String OLD_VERSION = "The Skyline Tool zip file contained an older version of the tool.";
-        private static final String NO_UPDATE_PERMISSIONS = "You do not have permission to update that Skyline Tool.";
-        private static final String NO_INSERT_PERMISSIONS = "You do not have permission to add a new Skyline Tool.";
-        private static final String UNKNOWN_USERS = "The following users are unknown: ";
+        private SkylineTool _tool;
 
-        public InsertAction()
+        @Override
+        public void validateCommand(ToolUploadForm form, Errors errors)
         {
         }
 
         @Override
-        public ModelAndView handleRequest(HttpServletRequest httpServletRequest, @NotNull HttpServletResponse httpServletResponse) throws Exception
+        public ModelAndView getView(ToolUploadForm form, boolean reshow, BindException errors)
         {
-            final String sender = httpServletRequest.getParameter("sender");
-            final String updateTargetString = StringUtils.trimToNull(httpServletRequest.getParameter("toolId"));
-            final int updateTarget = (updateTargetString != null) ? Integer.parseInt(updateTargetString) : -1;
-            final String toolOwners = httpServletRequest.getParameter("toolOwners");
-
-            if(updateTarget == -1 &&
-               !getContainer().getActiveModules().contains(ModuleLoader.getInstance().getModule(SkylineToolsStoreModule.class)))
-            {
-                // Make sure that the tool store module is enabled in the folder where the user is trying
-                // to insert the new tool.
+            if (!getContainer().getActiveModules().contains(
+                    ModuleLoader.getInstance().getModule(SkylineToolsStoreModule.class)))
                 return HtmlView.of("The Skyline Tool Store is not available in this folder.");
-            }
 
-            if (httpServletRequest.getMethod().equalsIgnoreCase("post") &&
-                httpServletRequest instanceof MultipartHttpServletRequest)
-            {
-                // Authorize before reading anything the caller supplied. The owner list and the zip
-                // are both attacker-controlled, so resolving them first let any logged-in user
-                // enumerate accounts through the "unknown users" message and make the server unzip
-                // arbitrary input.
-                //
-                // This stays inline rather than becoming a class annotation because the two paths
-                // check different containers:
-                // * new tool - site admin, matching the "Add New Tool" button in the web part
-                // * new version - Update on the TOOL's own folder, where an owner holds Editor and
-                //   holds nothing on the parent store folder
-                SkylineTool updateTargetTool = null;
-                if (updateTarget >= 0)
-                {
-                    updateTargetTool = SkylineToolsStoreManager.get().getTool(updateTarget);
-                    if (updateTargetTool == null)
-                    {
-                        getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                            TOOL_DOES_NOT_EXIST);
-                        return renderUploadForm(sender, updateTargetString, toolOwners);
-                    }
-                    Container updateTargetContainer = updateTargetTool.lookupContainer();
-                    if (updateTargetContainer == null ||
-                        !updateTargetContainer.hasPermission(getUser(), UpdatePermission.class))
-                    {
-                        getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                            NO_UPDATE_PERMISSIONS);
-                        return renderUploadForm(sender, updateTargetString, toolOwners);
-                    }
-                }
-                else if (!getUser().hasSiteAdminPermission())
-                {
-                    getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                        NO_INSERT_PERMISSIONS);
-                    return renderUploadForm(sender, updateTargetString, toolOwners);
-                }
-
-                Map<?, ?> fileMap = ((MultipartHttpServletRequest)httpServletRequest).getFileMap();
-                MultipartFile zip = (MultipartFile)(fileMap.get("toolZip"));
-
-                Pair<ArrayList<User>, ArrayList<String>> parsedOwners = parseToolOwnerString(toolOwners);
-                ArrayList<User> toolOwnersUsers = parsedOwners.first;
-                ArrayList<String> toolOwnersInvalid = parsedOwners.second;
-
-                if (!toolOwnersInvalid.isEmpty())
-                {
-                    getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                        UNKNOWN_USERS + StringUtils.join(toolOwnersInvalid, ", "));
-                }
-                else if (!zip.getOriginalFilename().isEmpty())
-                {
-                    SkylineTool tool = getToolFromZip(zip);
-                    String folderName = (tool != null && tool.getName() != null) ? "_tool_" +
-                        FileUtil.getBaseName(FileUtil.makeLegalName(tool.getName())) + "_" +
-                        FileUtil.makeLegalName(tool.getVersion()) : "";
-                    Container existingVersionContainer = null;
-                    boolean addTool = false;
-                    HashSet<String> copyFiles = null; // Paths of files to copy to the new tool's container
-
-                    if (tool == null)
-                    {
-                        getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                            INVALID_TOOL_FILE);
-                    }
-                    else if (!tool.getMissingValues().isEmpty())
-                    {
-                        getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                            MISSING_REQUIRED_PROPERTIES + StringUtils.join(tool.getMissingValues(), ", "));
-                    }
-                    else if (updateTarget >= 0)
-                    {
-                        // Updating tool with rowId == updateTarget. Looked up and permission-checked
-                        // above, before the upload was read.
-                        SkylineTool existingVersion = updateTargetTool;
-
-                        // If the container in the request URL does not match the parent of the container associated
-                        // with the tool, redirect to a URL with the correct container path.
-                        if(!getContainer().equals(existingVersion.getContainerParent()))
-                        {
-                            ActionURL url = getURL();
-                            // Add these parameters so that they are available after the redirect.
-                            url.addParameter("sender", sender);
-                            url.addParameter("toolId", updateTargetString);
-                            url.addParameter("toolowners", toolOwners);
-                            redirectToToolStoreContainer(existingVersion, url);
-                        }
-
-                        if (!tool.getIdentifier().equalsIgnoreCase(existingVersion.getIdentifier()))
-                        {
-                            getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                                WRONG_TOOL);
-                        }
-                        else if (tool.getVersion().equalsIgnoreCase(existingVersion.getVersion()))
-                        {
-                            getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                                SAME_VERSION);
-                        }
-                        else
-                        {
-                            addTool = true;
-                            for (SkylineTool checkTool : SkylineToolsStoreManager.get().getToolsByIdentifier(tool.getIdentifier()))
-                            {
-                                if (checkTool.getVersion().equalsIgnoreCase(tool.getVersion()))
-                                {
-                                    addTool = false;
-                                    getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                                        OLD_VERSION);
-                                    break;
-                                }
-                            }
-
-                            if (addTool)
-                            {
-                                existingVersion.setLatest(false);
-                                existingVersionContainer = existingVersion.lookupContainer();
-
-                                SkylineToolsStoreManager.get().updateTool(existingVersionContainer, getUser(), existingVersion);
-
-                                copyFiles = getSupplementaryFileBasenames(existingVersion);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Adding a new tool. Site-admin check happened above, before the upload was read.
-                        addTool = true;
-
-                        for (SkylineTool checkTool : SkylineToolsStoreManager.get().getToolsLatest())
-                        {
-                            if (tool.getIdentifier().equalsIgnoreCase(checkTool.getIdentifier()))
-                            {
-                                addTool = false;
-                                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                                    TOOL_ALREADY_EXISTS);
-                                break;
-                            }
-                        }
-
-                        for (Container checkContainer : getContainer().getChildren())
-                        {
-                            if (checkContainer.getName().equalsIgnoreCase(folderName))
-                            {
-                                addTool = false;
-                                getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                                    TOOL_ALREADY_EXISTS);
-                                break;
-                            }
-                        }
-                    }
-
-                    if (addTool)
-                    {
-                        Container c = makeContainer(getContainer(), folderName, toolOwnersUsers, RoleManager.getRole(EditorRole.class));
-                        copyContainerPermissions(existingVersionContainer, c);
-                        File storedZip = makeFile(c, zip.getOriginalFilename());
-                        zip.transferTo(storedZip);
-                        tool.writeIconToFile(makeFile(c, "icon.png"), "png");
-
-                        // Extract docs from tool-inf/docs/ in the ZIP; carry forward from previous version if absent
-                        boolean hasDocs = extractDocsFromZip(storedZip.toPath(), getLocalPath(c));
-                        if (!hasDocs && existingVersionContainer != null)
-                        {
-                            Path oldDocs = getLocalPath(existingVersionContainer).resolve("docs");
-                            if (Files.isDirectory(oldDocs))
-                                FileUtil.copyDirectory(oldDocs, getLocalPath(c).resolve("docs"));
-                        }
-
-                        if (copyFiles != null && existingVersionContainer != null)
-                            for (String copyFile : copyFiles)
-                                FileUtils.copyFile(makeFile(existingVersionContainer, copyFile), makeFile(c, copyFile), true);
-
-                        tool.setLatest(true);
-                        SkylineToolsStoreManager.get().insertTool(c, getUser(), tool);
-
-                        return HttpView.redirect(SkylineToolStoreUrls.getToolDetailsUrl(tool));
-                    }
-                }
-                else
-                {
-                    getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "form",
-                        NO_FILE);
-                }
-            }
-
-            return renderUploadForm(sender, updateTargetString, toolOwners);
+            return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", form, errors);
         }
 
-        /** Renders the upload form, carrying the request values and any error already set, back to the user. */
-        private ModelAndView renderUploadForm(String sender, String updateTargetString, String toolOwners)
+        @Override
+        public boolean handlePost(ToolUploadForm form, BindException errors) throws Exception
         {
-            getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "sender", sender);
-            getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "toolId", updateTargetString);
-            getViewContext().getRequest().setAttribute(BindingResult.MODEL_KEY_PREFIX + "toolowners", toolOwners);
-            return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", null);
+            if (!getContainer().getActiveModules().contains(
+                    ModuleLoader.getInstance().getModule(SkylineToolsStoreModule.class)))
+            {
+                errors.reject(ERROR_MSG, "The Skyline Tool Store is not available in this folder.");
+                return false;
+            }
+
+            Pair<ArrayList<User>, ArrayList<String>> parsedOwners = parseToolOwnerString(form.getToolOwners());
+            if (!parsedOwners.second.isEmpty())
+            {
+                errors.reject(ERROR_MSG, "The following users are unknown: " +
+                        StringUtils.join(parsedOwners.second, ", "));
+                return false;
+            }
+
+            SkylineTool tool = readToolFromUpload(getFileMap().get("toolZip"), errors);
+            if (tool == null)
+                return false;
+
+            // Identifiers are unique across the whole server, since Skyline keys on them.
+            for (SkylineTool existing : SkylineToolsStoreManager.get().getToolsLatest())
+            {
+                if (tool.getIdentifier().equalsIgnoreCase(existing.getIdentifier()))
+                {
+                    errors.reject(ERROR_MSG, "The Skyline Tool you are trying to add already exists.");
+                    return false;
+                }
+            }
+            for (Container child : getContainer().getChildren())
+            {
+                if (child.getName().equalsIgnoreCase(toolFolderName(tool)))
+                {
+                    errors.reject(ERROR_MSG, "The Skyline Tool you are trying to add already exists.");
+                    return false;
+                }
+            }
+
+            _tool = storeToolVersion(getContainer(), tool, getFileMap().get("toolZip"),
+                    parsedOwners.first, null);
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(ToolUploadForm form)
+        {
+            return SkylineToolStoreUrls.getToolDetailsUrl(_tool);
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
             root.addChild(getToolStoreNav(getContainer()));
-            root.addChild("Upload Tool", getURL());
+            root.addChild("Upload Tool");
+        }
+    }
+
+    /**
+     * Publishes a new version of an existing tool.
+     *
+     * Addressed to the TOOL's own container, so @RequiresPermission checks the folder where the
+     * owner holds Editor. This is what lets a tool author maintain their tool without an admin.
+     *
+     * The old combined action redirected on a container mismatch, which silently lost the uploaded
+     * zip because a browser follows a 302 after POST with a GET. Addressing the action to the tool's
+     * container removes the mismatch case entirely.
+     */
+    @RequiresPermission(UpdatePermission.class)
+    public class UpdateToolAction extends FormViewAction<ToolUploadForm>
+    {
+        private SkylineTool _tool;
+
+        @Override
+        public void validateCommand(ToolUploadForm form, Errors errors)
+        {
         }
 
-        public ActionURL getURL()
+        @Override
+        public ModelAndView getView(ToolUploadForm form, boolean reshow, BindException errors)
         {
-            return new ActionURL(InsertAction.class, getContainer());
+            return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", form, errors);
         }
+
+        @Override
+        public boolean handlePost(ToolUploadForm form, BindException errors) throws Exception
+        {
+            SkylineTool previousVersion = requireToolInContainer(form.getToolId(), getContainer());
+
+            SkylineTool tool = readToolFromUpload(getFileMap().get("toolZip"), errors);
+            if (tool == null)
+                return false;
+
+            if (!tool.getIdentifier().equalsIgnoreCase(previousVersion.getIdentifier()))
+            {
+                errors.reject(ERROR_MSG, "The Skyline Tool zip file did not contain the Skyline Tool being updated.");
+                return false;
+            }
+            if (tool.getVersion().equalsIgnoreCase(previousVersion.getVersion()))
+            {
+                errors.reject(ERROR_MSG, "The Skyline Tool zip file contained the same version of the tool being updated.");
+                return false;
+            }
+            for (SkylineTool existing : SkylineToolsStoreManager.get().getToolsByIdentifier(tool.getIdentifier()))
+            {
+                if (existing.getVersion().equalsIgnoreCase(tool.getVersion()))
+                {
+                    errors.reject(ERROR_MSG, "The Skyline Tool zip file contained an older version of the tool.");
+                    return false;
+                }
+            }
+
+            previousVersion.setLatest(false);
+            SkylineToolsStoreManager.get().updateTool(getContainer(), getUser(), previousVersion);
+
+            // We are in the tool's own folder, so the store folder that holds every version is its parent.
+            // Owners are not passed - copyContainerPermissions carries the previous version's policy over.
+            _tool = storeToolVersion(getContainer().getParent(), tool, getFileMap().get("toolZip"),
+                    Collections.emptyList(), previousVersion);
+            return true;
+        }
+
+        @Override
+        public URLHelper getSuccessURL(ToolUploadForm form)
+        {
+            return SkylineToolStoreUrls.getToolDetailsUrl(_tool);
+        }
+
+        @Override
+        public void addNavTrail(NavTree root)
+        {
+            root.addChild(getToolStoreNav(getContainer()));
+            root.addChild("Upload New Version");
+        }
+    }
+
+    /**
+     * Shared by both upload actions. InsertToolAction ignores toolId, UpdateToolAction ignores
+     * toolOwners - a new version inherits its owners from the version it supersedes.
+     */
+    public static class ToolUploadForm
+    {
+        private int _toolId;
+        private String _toolOwners;
+        private String _sender;
+
+        public int getToolId()
+        {
+            return _toolId;
+        }
+
+        public void setToolId(int toolId)
+        {
+            _toolId = toolId;
+        }
+
+        public String getToolOwners()
+        {
+            return _toolOwners;
+        }
+
+        public void setToolOwners(String toolOwners)
+        {
+            _toolOwners = toolOwners;
+        }
+
+        public String getSender()
+        {
+            return _sender;
+        }
+
+        public void setSender(String sender)
+        {
+            _sender = sender;
+        }
+    }
+
+
+    /**
+     * Creates the child folder for a tool version and stores its zip, icon and docs, then inserts the
+     * row. Shared by InsertToolAction and UpdateToolAction, which differ only in what they check first.
+     *
+     * @param storeContainer  the tool store folder to create the version's folder under
+     * @param previousVersion the version being superseded, or null for a brand-new tool. Supplies the
+     *                        permissions, supplementary files and docs that carry forward, which is
+     *                        how a tool's owners keep their access across versions.
+     */
+    private SkylineTool storeToolVersion(Container storeContainer, SkylineTool tool, MultipartFile zip,
+                                         List<User> owners, @Nullable SkylineTool previousVersion)
+            throws IOException
+    {
+        Container previousContainer = previousVersion != null ? previousVersion.lookupContainer() : null;
+        Set<String> carryForward = previousVersion != null
+                ? getSupplementaryFileBasenames(previousVersion) : Collections.emptySet();
+
+        Container c = makeContainer(storeContainer, toolFolderName(tool), owners,
+                RoleManager.getRole(EditorRole.class));
+        copyContainerPermissions(previousContainer, c);
+
+        File storedZip = makeFile(c, zip.getOriginalFilename());
+        zip.transferTo(storedZip);
+        tool.writeIconToFile(makeFile(c, "icon.png"), "png");
+
+        // Docs come from tool-inf/docs/ in the zip, or carry forward from the previous version.
+        boolean hasDocs = extractDocsFromZip(storedZip.toPath(), getLocalPath(c));
+        if (!hasDocs && previousContainer != null)
+        {
+            Path oldDocs = getLocalPath(previousContainer).resolve("docs");
+            if (Files.isDirectory(oldDocs))
+                FileUtil.copyDirectory(oldDocs, getLocalPath(c).resolve("docs"));
+        }
+
+        if (previousContainer != null)
+            for (String copyFile : carryForward)
+                FileUtils.copyFile(makeFile(previousContainer, copyFile), makeFile(c, copyFile), true);
+
+        tool.setLatest(true);
+        SkylineToolsStoreManager.get().insertTool(c, getUser(), tool);
+        return tool;
+    }
+
+    /** The child folder a tool version lives in, for example _tool_MSstats_4.0 */
+    private static String toolFolderName(SkylineTool tool)
+    {
+        return "_tool_" + FileUtil.getBaseName(FileUtil.makeLegalName(tool.getName())) + "_" +
+                FileUtil.makeLegalName(tool.getVersion());
+    }
+
+    /** Reads the uploaded zip, rejecting anything that is not a usable tool. Null if rejected. */
+    private SkylineTool readToolFromUpload(MultipartFile zip, BindException errors) throws IOException
+    {
+        if (zip == null || StringUtils.isEmpty(zip.getOriginalFilename()))
+        {
+            errors.reject(ERROR_MSG, "You did not submit a file.");
+            return null;
+        }
+
+        SkylineTool tool = getToolFromZip(zip);
+        if (tool == null)
+        {
+            errors.reject(ERROR_MSG, "The file was not a valid Skyline Tool zip file.");
+            return null;
+        }
+        if (!tool.getMissingValues().isEmpty())
+        {
+            errors.reject(ERROR_MSG, "The tool was missing the following properties: " +
+                    StringUtils.join(tool.getMissingValues(), ", "));
+            return null;
+        }
+        return tool;
     }
 
     private void redirectToToolStoreContainer(SkylineTool tool, ActionURL originalUrl)

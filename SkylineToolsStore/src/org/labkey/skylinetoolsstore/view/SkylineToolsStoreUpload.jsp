@@ -15,12 +15,13 @@
  * limitations under the License.
  */
 %>
-<%@ page import="org.springframework.validation.BindingResult" %>
+<%@ page import="org.apache.commons.lang3.StringUtils" %>
 <%@ page import="org.labkey.skylinetoolsstore.SkylineToolsStoreController" %>
 <%@ page import="org.labkey.api.util.PageFlowUtil" %>
 <%@ page import="org.labkey.api.settings.AppProps" %>
 <%@ page import="org.labkey.api.util.SafeToRender" %>
-<%@ page import="org.labkey.api.util.HtmlString" %>
+<%@ page import="org.labkey.api.view.HttpView" %>
+<%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
@@ -37,37 +38,38 @@
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/smoothness/jquery-ui.min.css">
 
 <%
-    Object errorAttribute = request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "form");
-    if (errorAttribute != null)
-    {
-%><p class="labkey-error"><%= h(errorAttribute.toString()) %></p><%
-    }
+    JspView<SkylineToolsStoreController.ToolUploadForm> me =
+            (JspView<SkylineToolsStoreController.ToolUploadForm>) HttpView.currentView();
+    SkylineToolsStoreController.ToolUploadForm form = me.getModelBean();
 
     final String contextPath = AppProps.getInstance().getContextPath();
     final String imgDir = contextPath + "/skylinetoolsstore/img/";
 
-    final String sender = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "sender");
-    final String updateTarget = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "toolId");
-    final String toolOwners = (String)request.getAttribute(BindingResult.MODEL_KEY_PREFIX + "toolowners");
+    // Shared by both upload actions. A toolId means we are publishing a new version of that tool, so
+    // the form posts to the tool's own container. Otherwise it is a brand-new tool in this folder.
+    final boolean isNewVersion = form.getToolId() > 0;
+    final String sender = form.getSender();
 
-    final boolean admin = getUser().hasSiteAdminPermission();
-    final SafeToRender autocompleteUsers = admin ? SkylineToolsStoreController.getUsersForAutocomplete() : HtmlString.unsafe("\"\"");
     SafeToRender users = SkylineToolsStoreController.getUsersForAutocomplete();
 %>
 
-<labkey:form action="<%= urlFor(SkylineToolsStoreController.InsertAction.class) %>" enctype="multipart/form-data" method="post">
+<labkey:errors/>
+
+<labkey:form action="<%= isNewVersion ? urlFor(SkylineToolsStoreController.UpdateToolAction.class)
+                                      : urlFor(SkylineToolsStoreController.InsertToolAction.class) %>"
+             enctype="multipart/form-data" method="post">
     <p>
         Browse to the zip file containing the tool you would like to upload.<br/><br/>
         <input type="file" size="50" name="toolZip" /><br /><br />
 <% if (sender != null) { %>
         <input type="hidden" name="sender" value="<%= h(sender) %>" />
 <% } %>
-<% if (updateTarget == null) { %>
-        <label for="toolOwners">Tool owners </label><br />
-        <input style="width: 400px; max-width: 80%;" type="text" id="toolOwners" name="toolOwners" value="<%= h(toolOwners) %>" /><br /><br />
-        <br />
+<% if (isNewVersion) { %>
+        <input type="hidden" name="toolId" value="<%= form.getToolId() %>" />
 <% } else { %>
-        <input type="hidden" name="toolId" value="<%= h(updateTarget) %>" />
+        <label for="toolOwners">Tool owners </label><br />
+        <input style="width: 400px; max-width: 80%;" type="text" id="toolOwners" name="toolOwners" value="<%= h(StringUtils.trimToEmpty(form.getToolOwners())) %>" /><br /><br />
+        <br />
 <% } %>
         <input type="submit" value="Upload Tool" />
     </p>

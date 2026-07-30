@@ -226,11 +226,11 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
     public void testInsertRejectsNonAdminNewTool()
     {
         Set<String> before = catalogIdentifiers();
-        String reply;
+        int status;
         impersonate(CONTRIBUTOR);
         try
         {
-            reply = uploadToolExpectingRefusal(TOOL_OTHER);
+            status = uploadToolExpectingRefusal(TOOL_OTHER);
         }
         finally
         {
@@ -239,8 +239,9 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
 
         assertEquals("SECURITY: a folder Editor who is not a site admin added a tool to the store",
                 before, catalogIdentifiers());
-        assertTrue("Expected the site-admin refusal, got: " + StringUtils.abbreviate(reply, 300),
-                reply.contains(NO_INSERT_PERMISSIONS_MESSAGE));
+        // @RequiresSiteAdmin on InsertToolAction means the framework rejects this before the action
+        // body runs, so the refusal is a status rather than a message rendered into the form.
+        assertTrue("Expected the site-admin refusal, got HTTP " + status, status >= 400);
     }
 
     /**
@@ -269,14 +270,10 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
         assertFalse("SECURITY: the reply reported which accounts are unknown, which lets any " +
                         "logged-in user test whether an address is registered",
                 reply.contains(UNKNOWN_USERS_MESSAGE));
-        assertTrue("A non-admin should be refused before the owner list is read",
-                reply.contains(NO_INSERT_PERMISSIONS_MESSAGE));
     }
 
-    // Copies of the InsertAction messages. The action keeps them private.
+    // Copy of the InsertToolAction message. The action keeps it private.
     private static final String UNKNOWN_USERS_MESSAGE = "The following users are unknown";
-    private static final String NO_INSERT_PERMISSIONS_MESSAGE =
-            "You do not have permission to add a new Skyline Tool.";
 
     // -------------------------------------------------------------------------
     // STS-9 - CSRF validation is skipped on the mutating actions
@@ -424,20 +421,24 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
     }
 
     /**
-     * Uploads a tool zip through InsertAction as the site admin, using a multipart POST. The status
-     * code proves little, since InsertAction returns 200 on failure, so callers verify the effect.
+     * Uploads a tool zip as the site admin. The status code proves little, since a rejected upload
+     * re-renders the form with a 200, so callers verify the effect.
      *
-     * @param updateTarget row id of the tool being updated, or -1 for a brand-new tool. Without it
-     *                     the new-tool path rejects a zip whose identifier already exists.
+     * @param updateTarget row id of the tool being updated, or -1 for a brand-new tool. A new version
+     *                     goes to updateTool in the TOOL's own container; a new tool goes to
+     *                     insertTool in the store folder.
      */
     @LogMethod
     private void uploadTool(String sampleDataRelativePath, int updateTarget)
     {
         File zip = TestFileUtils.getSampleData(sampleDataRelativePath);
-        HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", PROJECT_NAME, "insert"));
+        boolean newVersion = updateTarget >= 0;
+        String container = newVersion ? currentFolderPath() : PROJECT_NAME;
+        HttpPost request = new HttpPost(
+                WebTestHelper.buildURL("skyts", container, newVersion ? "updateTool" : "insertTool"));
         MultipartEntityBuilder entity = MultipartEntityBuilder.create()
                 .addBinaryBody("toolZip", zip, ContentType.create("application/zip"), zip.getName());
-        if (updateTarget >= 0)
+        if (newVersion)
             entity.addTextBody("toolId", String.valueOf(updateTarget));
         request.setEntity(entity.build());
 
@@ -445,25 +446,15 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
         assertTrue("Tool upload failed for " + zip.getName() + ", HTTP " + status, status < 400);
     }
 
-    /**
-     * Uploads as the current (possibly impersonated) user and returns the response body.
-     */
-    private String uploadToolExpectingRefusal(String sampleDataRelativePath)
+    /** Attempts to add a new tool as the current (possibly impersonated) user, returning the status. */
+    private int uploadToolExpectingRefusal(String sampleDataRelativePath)
     {
         File zip = TestFileUtils.getSampleData(sampleDataRelativePath);
-        HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", PROJECT_NAME, "insert"));
+        HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", PROJECT_NAME, "insertTool"));
         request.setEntity(MultipartEntityBuilder.create()
                 .addBinaryBody("toolZip", zip, ContentType.create("application/zip"), zip.getName())
                 .build());
-        APITestHelper.injectCookies(request);
-        try (CloseableHttpClient client = WebTestHelper.getHttpClient())
-        {
-            return client.execute(request, response -> EntityUtils.toString(response.getEntity()));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException("Upload request failed", e);
-        }
+        return execute(request, true, true);
     }
 
     /**
@@ -471,7 +462,7 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
      */
     private String postOwnersOnly(String owner)
     {
-        HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", PROJECT_NAME, "insert"));
+        HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", PROJECT_NAME, "insertTool"));
         request.setEntity(MultipartEntityBuilder.create()
                 .addTextBody("toolOwners", owner)
                 .build());

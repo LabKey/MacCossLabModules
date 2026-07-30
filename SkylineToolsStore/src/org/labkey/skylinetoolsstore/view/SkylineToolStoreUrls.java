@@ -49,6 +49,17 @@ public class SkylineToolStoreUrls
         return new ActionURL(SkylineToolsStoreController.DetailsAction.class, tool.getContainerParent()).addParameter("name", tool.getName());
     }
 
+    /** Adding a new tool happens in the store folder, so this takes a container rather than a tool. */
+    public static ActionURL getInsertToolUrl(Container storeContainer)
+    {
+        return new ActionURL(SkylineToolsStoreController.InsertToolAction.class, storeContainer);
+    }
+
+    public static ActionURL getUpdateToolUrl(SkylineTool tool)
+    {
+        return getToolActionUrl(SkylineToolsStoreController.UpdateToolAction.class, tool);
+    }
+
     public static ActionURL getInsertSupplementUrl(SkylineTool tool)
     {
         return getToolActionUrl(SkylineToolsStoreController.InsertSupplementAction.class, tool);

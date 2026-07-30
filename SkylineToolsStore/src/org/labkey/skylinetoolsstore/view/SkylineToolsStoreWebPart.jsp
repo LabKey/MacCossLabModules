@@ -106,7 +106,9 @@
 <% if (admin) { %>
 <div style="float: left;">
     <button type="button" id="add-new-tool-btn" class="styled-button">Add New Tool</button>
-    <% addHandler("add-new-tool-btn", "click", "$('#uploadPopOwners').show(); $('#uploadFormToolId').val(''); $('#uploadPop').dialog('open')"); %>
+    <% addHandler("add-new-tool-btn", "click",
+            "$('#uploadForm').attr('action', " + q(SkylineToolStoreUrls.getInsertToolUrl(getContainer())) + "); " +
+            "$('#uploadPopOwners').show(); $('#uploadFormToolId').val(''); $('#uploadPop').dialog('open')"); %>
 </div>
 <% } %>
 <!--Manage Tool Owners Form-->
@@ -123,7 +125,9 @@
 </div>
 <!--Add Tool / Upload New Version Form-->
 <div id="uploadPop" title="Upload tool zip file" style="display:none;">
-    <labkey:form action="<%=urlFor(SkylineToolsStoreController.InsertAction.class)%>" enctype="multipart/form-data" method="post">
+    <%-- Serves both "Add New Tool" and per-tool "Upload new version", which are different actions in
+         different containers, so each handler below sets the action. Defaults to adding a new tool. --%>
+    <labkey:form id="uploadForm" action="<%=SkylineToolStoreUrls.getInsertToolUrl(getContainer())%>" enctype="multipart/form-data" method="post">
         <p>
             Browse to the zip file containing the tool you would like to upload.<br/><br />
             <input type="file" name="toolZip" /><br /><br />
@@ -202,7 +206,9 @@
                 <div class="menuMouseArea sprocket" alt="<%= h(tool.getName()) %>">
                     <img src="<%= h(imgDir) %>gear.png" title="Settings" />
                     <ul class="dropMenu">
-                        <li><%=simpleLink("Upload new version").onClick("$('#uploadPopOwners').hide(); $('#uploadFormToolId').val(" + tool.getRowId() + "); $('#uploadPop').dialog('open')")%></li>
+                        <li><%=simpleLink("Upload new version").onClick(
+                                "$('#uploadForm').attr('action', " + q(SkylineToolStoreUrls.getUpdateToolUrl(tool)) + "); " +
+                                "$('#uploadPopOwners').hide(); $('#uploadFormToolId').val(" + tool.getRowId() + "); $('#uploadPop').dialog('open')")%></li>
                         <li><%=simpleLink("Upload supplementary file").onClick(
                                 "$('#uploadSuppForm').attr('action', " +
                                 q(SkylineToolStoreUrls.getInsertSupplementUrl(tool)) + "); " +

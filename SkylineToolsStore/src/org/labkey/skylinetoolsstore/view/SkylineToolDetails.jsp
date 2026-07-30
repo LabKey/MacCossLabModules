@@ -256,7 +256,7 @@ a { text-decoration: none; }
 </div>
 <!--Upload New Version Form-->
 <div id="uploadPop" title="Upload tool zip file" style="display:none;">
-    <labkey:form action="<%=urlFor(SkylineToolsStoreController.InsertAction.class)%>" enctype="multipart/form-data" method="post">
+    <labkey:form action="<%=SkylineToolStoreUrls.getUpdateToolUrl(tool)%>" enctype="multipart/form-data" method="post">
         <p>
             Browse to the zip file containing the tool you would like to upload.<br/><br/>
             <input type="file" size="50" name="toolZip" /><br /><br />

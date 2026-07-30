@@ -171,7 +171,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         impersonate(TOOL_AUTHOR);
         try
         {
-            uploadTool(TOOL_V1, -1, null);
+            uploadTool(TOOL_V1, null);
         }
         finally
         {
@@ -181,7 +181,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
                 beforeAdminAdd, catalogIdentifiers());
 
         log("A site admin adds the tool and names the author as an owner");
-        uploadTool(TOOL_V1, -1, TOOL_AUTHOR);
+        uploadTool(TOOL_V1, TOOL_AUTHOR);
         JSONObject tool = onlyToolInThisStore();
         String identifier = tool.getString("Identifier");
         String v1Folder = toolFolderPath(tool);
@@ -197,7 +197,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         impersonate(TOOL_AUTHOR);
         try
         {
-            uploadTool(TOOL_V2, v1RowId, null);
+            uploadNewVersion(v1Folder, TOOL_V2, v1RowId);
         }
         finally
         {
@@ -234,7 +234,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         impersonate(TOOL_AUTHOR);
         try
         {
-            uploadTool(TOOL_OTHER, -1, null);
+            uploadTool(TOOL_OTHER, null);
             setOwners(v2RowId, PasswordUtilUsername());
         }
         finally
@@ -291,9 +291,16 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         return execute(request);
     }
 
-    private void uploadTool(String sampleDataRelativePath, int updateTarget, String toolOwners)
+    /** Adds a brand-new tool to this store folder. */
+    private int uploadTool(String sampleDataRelativePath, String toolOwners)
     {
-        uploadToolTo(PROJECT_NAME, sampleDataRelativePath, updateTarget, toolOwners);
+        return uploadToolTo(PROJECT_NAME, sampleDataRelativePath, -1, toolOwners);
+    }
+
+    /** Publishes a new version, which is addressed to the tool's own folder. */
+    private int uploadNewVersion(String toolContainerPath, String sampleDataRelativePath, int toolId)
+    {
+        return uploadToolTo(toolContainerPath, sampleDataRelativePath, toolId, null);
     }
 
     private void uploadToolTo(String containerPath, String sampleDataRelativePath)
@@ -301,20 +308,27 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         uploadToolTo(containerPath, sampleDataRelativePath, -1, null);
     }
 
+    /**
+     * @param containerPath  the store folder for a new tool, or the TOOL's own folder for a new
+     *                       version - the two actions are addressed to different containers
+     * @param updateTarget   row id of the tool being updated, or -1 for a brand-new tool
+     */
     @LogMethod
-    private void uploadToolTo(String containerPath, String sampleDataRelativePath, int updateTarget,
-                              String toolOwners)
+    private int uploadToolTo(String containerPath, String sampleDataRelativePath, int updateTarget,
+                             String toolOwners)
     {
         File zip = TestFileUtils.getSampleData(sampleDataRelativePath);
-        HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", containerPath, "insert"));
+        boolean newVersion = updateTarget >= 0;
+        HttpPost request = new HttpPost(
+                WebTestHelper.buildURL("skyts", containerPath, newVersion ? "updateTool" : "insertTool"));
         MultipartEntityBuilder entity = MultipartEntityBuilder.create()
                 .addBinaryBody("toolZip", zip, ContentType.create("application/zip"), zip.getName());
-        if (updateTarget >= 0)
+        if (newVersion)
             entity.addTextBody("toolId", String.valueOf(updateTarget));
         if (toolOwners != null)
             entity.addTextBody("toolOwners", toolOwners);
         request.setEntity(entity.build());
-        execute(request);
+        return execute(request);
     }
 
     /**
