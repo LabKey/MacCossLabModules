@@ -41,9 +41,14 @@ import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.WikiHelper;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -63,6 +68,13 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
 {
     private static final String PROJECT_NAME = "ToolStoreWorkflowTest";
     private static final String OTHER_STORE = "ToolStoreWorkflowTestOtherStore";
+    // Its own store so the tools this test adds cannot disturb the single-tool assertions elsewhere.
+    private static final String FORMS_STORE = "ToolStoreWorkflowTestForms";
+
+    private static final String FORMS_TOOL_NAME = "FormBindingProbe";
+    private static final String FORMS_TOOL_IDENTIFIER = "URN:LSID:toolstore.test:formbinding";
+    private static File _formsToolV1;
+    private static File _formsToolV2;
 
     // An ordinary site user. Gets Editor on their tool's folder only after the admin names them.
     private static final String TOOL_AUTHOR = "toolstore_author@toolstore.test";
@@ -104,8 +116,12 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
 
         _userHelper.createUser(TOOL_AUTHOR);
 
+        _formsToolV1 = writeMinimalToolZip("1.0");
+        _formsToolV2 = writeMinimalToolZip("2.0");
+
         ToolStoreTestHelper.removeToolsFromCatalog(PROJECT_NAME,
-                TestFileUtils.getSampleData(TOOL_V1), TestFileUtils.getSampleData(TOOL_OTHER));
+                TestFileUtils.getSampleData(TOOL_V1), TestFileUtils.getSampleData(TOOL_OTHER),
+                _formsToolV1);
 
         // wikiVisualBody=false so the HTML goes in through the source tab. The visual editor is not
         // interactable for raw markup.
@@ -191,9 +207,26 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         goToProjectHome(PROJECT_NAME);
         assertTextPresent(tool.getString("Name"));
 
-        log("The author publishes a new version without admin help");
+        log("The author can attach a supplementary file to their own tool");
         int v1RowId = rowId(tool);
         String v1Version = tool.getString("Version");
+        impersonate(TOOL_AUTHOR);
+        try
+        {
+            int status = uploadSupplementaryFile(v1Folder, v1RowId);
+            assertTrue("Supplementary upload should be accepted, got HTTP " + status, status < 400);
+        }
+        finally
+        {
+            stopImpersonating();
+        }
+        goToProjectHome(PROJECT_NAME);
+        assertTextPresent("test.pdf");
+
+        // The supplementary file is attached BEFORE the new version is published on purpose. A new
+        // version copies the previous version's supplementary files into its own folder, and that
+        // copy loop only runs when the previous version has some.
+        log("The author publishes a new version without admin help");
         impersonate(TOOL_AUTHOR);
         try
         {
@@ -211,21 +244,11 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
 
         log("Ownership carries forward to the new version's folder");
         String v2Folder = toolFolderPath(latest);
+        int v2RowId = rowId(latest);
         assertNotEquals(v1Folder, v2Folder);
         assertTrue("The author should own the new version too", hasEditorRole(v2Folder, TOOL_AUTHOR));
 
-        log("The author can attach a supplementary file to their own tool");
-        int v2RowId = rowId(latest);
-        impersonate(TOOL_AUTHOR);
-        try
-        {
-            int status = uploadSupplementaryFile(v2Folder, v2RowId);
-            assertTrue("Supplementary upload should be accepted, got HTTP " + status, status < 400);
-        }
-        finally
-        {
-            stopImpersonating();
-        }
+        log("The supplementary file carries forward to the new version");
         goToProjectHome(PROJECT_NAME);
         assertTextPresent("test.pdf");
 
@@ -273,9 +296,106 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
                 catalogIdentifiers().contains(otherTool.getString("Identifier")));
     }
 
+    /**
+     * Drives the store's own dialogs instead of building the POST by hand.
+     *
+     * The other tests name every parameter themselves, so a field renamed in a JSP but not in its
+     * form bean - or the reverse - cannot fail them. Submitting the real forms is the only way that
+     * drift shows up, since a name the bean does not bind either silently stays at its default or
+     * fails to convert.
+     */
+    @Test
+    public void testStoreDialogsPostWhatTheActionsBind()
+    {
+        _containerHelper.createProject(FORMS_STORE, "Collaboration");
+        _containerHelper.enableModule(FORMS_STORE, "SkylineToolsStore");
+        new PortalHelper(this).addWebPart("Skyline Tool Store");
+
+        log("Add a tool through the web part's Add New Tool dialog");
+        goToProjectHome(FORMS_STORE);
+        click(Locator.id("add-new-tool-btn"));
+        setFormElement(Locator.css("#uploadPop input[name='toolZip']"), _formsToolV1);
+        clickAndWait(Locator.css("#uploadPop input[type='submit']"));
+
+        goToProjectHome(FORMS_STORE);
+        assertTextPresent(FORMS_TOOL_NAME);
+        assertEquals("The dialog should have added exactly one tool", 1, toolsInStore(FORMS_STORE));
+
+        log("Publish a new version through the details page dialog");
+        clickAndWait(Locator.linkWithText(FORMS_TOOL_NAME));
+        clickSprocketMenuItem("Upload new version");
+        setFormElement(Locator.css("#uploadPop input[name='toolZip']"), _formsToolV2);
+        clickAndWait(Locator.css("#uploadPop input[type='submit']"));
+
+        assertEquals("The dialog should have published 2.0",
+                "2.0", onlyToolInStore(FORMS_STORE).getString("Version"));
+        assertEquals("Publishing a version must not add a second tool", 1, toolsInStore(FORMS_STORE));
+
+        log("Delete the newest version through the details page dialog");
+        clickSprocketMenuItem("Delete latest version");
+        // Scoped to this dialog's own wrapper. The page holds several jQuery UI dialogs and the
+        // hidden ones have an Ok button too.
+        Locator.XPathLocator ok = Locator.xpath(
+                "//div[contains(@class,'ui-dialog')][.//div[@id='delToolLatestDlg']]" +
+                "//div[contains(@class,'ui-dialog-buttonpane')]//button[normalize-space()='Ok']");
+        waitForElement(ok.notHidden());
+        clickAndWait(ok.notHidden());
+
+        // Read the version from the catalog rather than the page - the details page carries script
+        // constants that a bare text search for a version number picks up.
+        assertEquals("Deleting the newest version should leave 1.0 as the latest",
+                "1.0", onlyToolInStore(FORMS_STORE).getString("Version"));
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    /** Opens the gear menu on the tool details page and clicks one of its items. */
+    private void clickSprocketMenuItem(String item)
+    {
+        click(Locator.css(".menuMouseArea.sprocket"));
+
+        // The menu slides open, so the item is in the DOM before it is visible, and once a tool has
+        // more than one version the menu is long enough to run past the bottom of the window.
+        Locator.XPathLocator link = Locator.linkWithText(item);
+        waitForElement(link.notHidden());
+        scrollIntoView(link.notHidden());
+        click(link.notHidden());
+    }
+
+    /** Number of tools the given store folder lists. */
+    private int toolsInStore(String storeContainerPath)
+    {
+        return toolsInStoreJson(storeContainerPath).length();
+    }
+
+    /**
+     * A tool zip holding nothing but tool-inf/info.properties. Name, Version and Identifier are the
+     * only required properties, and the sample zips in this module are tens of megabytes, so this
+     * test builds its own rather than adding more of those to the repository.
+     */
+    private static File writeMinimalToolZip(String version)
+    {
+        try
+        {
+            File zip = File.createTempFile("toolstore-forms-" + version + "-", ".zip");
+            zip.deleteOnExit();
+            try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(zip)))
+            {
+                out.putNextEntry(new ZipEntry("tool-inf/info.properties"));
+                out.write(("Name = " + FORMS_TOOL_NAME + "\n" +
+                           "Version = " + version + "\n" +
+                           "Identifier = " + FORMS_TOOL_IDENTIFIER + "\n").getBytes(StandardCharsets.UTF_8));
+                out.closeEntry();
+            }
+            return zip;
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException("Could not build the test tool zip", e);
+        }
+    }
 
     /** Posts a tool zip to the folder's message board, the way the wiki form does. */
     private int submitToolToMessageBoard(String sampleDataRelativePath)
@@ -388,6 +508,21 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         return onlyToolInStore(PROJECT_NAME);
     }
 
+    /** Every tool whose folder sits under the given store, read from the global catalog. */
+    private JSONArray toolsInStoreJson(String containerPath)
+    {
+        JSONArray tools = toolsFromApi();
+        JSONArray inStore = new JSONArray();
+        for (int i = 0; i < tools.length(); i++)
+        {
+            JSONObject tool = tools.getJSONObject(i);
+            if (tool.optString("IconUrl").contains("/" + containerPath + "/") ||
+                tool.optString("DownloadUrl").contains("/" + containerPath + "/"))
+                inStore.put(tool);
+        }
+        return inStore;
+    }
+
     /** The single tool whose folder sits under the given store, read from the global catalog. */
     private JSONObject onlyToolInStore(String containerPath)
     {
@@ -433,6 +568,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
     {
         _containerHelper.deleteProject(PROJECT_NAME, afterTest);
         _containerHelper.deleteProject(OTHER_STORE, false);
+        _containerHelper.deleteProject(FORMS_STORE, false);
         _userHelper.deleteUsers(false, TOOL_AUTHOR);
     }
 

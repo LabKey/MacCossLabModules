@@ -567,7 +567,7 @@ a { text-decoration: none; }
                 var form = $('<form method="post"></form>')
                         .attr('action', <%=q(urlFor(SkylineToolsStoreController.DeleteLatestAction.class))%>);
                 $('<input type="hidden">').attr('name', 'X-LABKEY-CSRF').attr('value', LABKEY.CSRF).appendTo(form);
-                $('<input type="hidden">').attr('name', 'id').attr('value', <%=tool.getRowId()%>).appendTo(form);
+                $('<input type="hidden">').attr('name', 'toolId').attr('value', <%=tool.getRowId()%>).appendTo(form);
                 $('<input type="hidden">').attr('name', 'sender')
                         .attr('value', <%=q(toolDetailsLatestUrl.getLocalURIString())%>).appendTo(form);
                 $('body').append(form);

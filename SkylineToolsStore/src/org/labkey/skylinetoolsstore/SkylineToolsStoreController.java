@@ -175,6 +175,15 @@ public class SkylineToolsStoreController extends SpringActionController
         return new NavTree("Skyline Tool Store", new ActionURL(BeginAction.class, container));
     }
 
+    /**
+     * Nav trail link for an action that runs in a tool's own folder. We need to link back to The main
+     * tool store folder that is the tool folder's parent.
+     */
+    private static NavTree getToolStoreNavFromToolFolder(Container toolContainer)
+    {
+        return getToolStoreNav(toolContainer.getParent());
+    }
+
     protected SkylineTool getToolFromZip(MultipartFile zip) throws IOException
     {
         SkylineTool tool = null;
@@ -467,18 +476,14 @@ public class SkylineToolsStoreController extends SpringActionController
         return suppFiles;
     }
 
-    // @RequiresLogin replaces the former @RequiresNoPermission plus a hand-rolled guest check in
-    // checkPermissions(). The framework now enforces it, which also restores CSRF validation.
-    // The per-container Insert/Update checks still happen inline below, against the TOOL's container
-    // rather than the request container.
     /**
      * Adds a brand-new tool to this store folder.
      *
-     * Site admin only, matching the "Add New Tool" button, which is the only way in. Outside authors
-     * do not upload here at all - they attach a zip to a message board post and an admin adds it.
+     * Site admin only. Tool authors do not upload here - they attach a zip to a message board post and
+     * an admin adds it.
      *
-     * Split from the old combined InsertAction because adding a tool and publishing a new version of
-     * one need different permissions on different containers, so no single annotation could express
+     * Split from the old combined InsertAction because adding a tool and publishing a new tool version
+     * need different permissions on different containers, so no single annotation could express
      * both. See UpdateToolAction.
      */
     @RequiresSiteAdmin
@@ -584,6 +589,11 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public ModelAndView getView(ToolUploadForm form, boolean reshow, BindException errors)
         {
+            // The shared JSP decides which form to draw from toolId, so a request without one would
+            // render the add-a-new-tool form pointed at this folder. There is no such thing as
+            // updating an unnamed tool, so fail instead.
+            requireToolInContainer(form.getToolId(), getContainer());
+
             return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", form, errors);
         }
 
@@ -634,7 +644,7 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild(getToolStoreNav(getContainer()));
+            root.addChild(getToolStoreNavFromToolFolder(getContainer()));
             root.addChild("Upload New Version");
         }
     }
@@ -823,7 +833,7 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild(getToolStoreNav(getContainer()));
+            root.addChild(getToolStoreNavFromToolFolder(getContainer()));
             root.addChild("Upload Supplementary File");
         }
     }
@@ -1467,7 +1477,7 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild(getToolStoreNav(getContainer()));
+            root.addChild(getToolStoreNavFromToolFolder(getContainer()));
             root.addChild("Manage Tool Owners");
         }
     }
@@ -1540,9 +1550,12 @@ public class SkylineToolsStoreController extends SpringActionController
 
             if (icon == null)
             {
-                if (propName == null || form.getPropValue() == null)
-                    throw new ApiUsageException("Both propName and propValue are required.");
-                propValue = form.getPropValue().replace("\r", "").replace("\n", "\r\n");
+                if (propName == null)
+                    throw new ApiUsageException("propName is required.");
+                // Form binding turns an empty value into null. Blanking a property is a normal edit,
+                // so treat null as an empty value rather than a missing parameter.
+                String submitted = form.getPropValue() == null ? "" : form.getPropValue();
+                propValue = submitted.replace("\r", "").replace("\n", "\r\n");
                 tool.setProperty(propName, propValue);
             }
             else

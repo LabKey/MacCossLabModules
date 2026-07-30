@@ -108,7 +108,7 @@
     <button type="button" id="add-new-tool-btn" class="styled-button">Add New Tool</button>
     <% addHandler("add-new-tool-btn", "click",
             "$('#uploadForm').attr('action', " + q(SkylineToolStoreUrls.getInsertToolUrl(getContainer())) + "); " +
-            "$('#uploadPopOwners').show(); $('#uploadFormToolId').val(''); $('#uploadPop').dialog('open')"); %>
+            "$('#uploadPopOwners').show(); $('#uploadFormToolId').val('0'); $('#uploadPop').dialog('open')"); %>
 </div>
 <% } %>
 <!--Manage Tool Owners Form-->
@@ -118,7 +118,9 @@
             <label for="toolOwnersManage">Tool owners </label><br />
             <input type="text" id="toolOwnersManage" class="toolOwners" name="toolOwners" /><br /><br />
             <input type="hidden" name="sender" value="<%= h(getActionURL()) %>" />
-            <input type="hidden" id="ownersFormToolId" name="toolId" value="" />
+            <%-- Set per tool when the dialog opens. Zero rather than blank, because an empty string
+                 will not bind to the form's int and would fail before the action ever runs. --%>
+            <input type="hidden" id="ownersFormToolId" name="toolId" value="0" />
             <input type="submit" value="Update Tool Owners" />
         </p>
     </labkey:form>
@@ -136,7 +138,9 @@
                 <input type="text" id="toolOwnersNew" class="toolOwners" name="toolOwners" /><br /><br /><br />
             </span>
             <input type="hidden" name="sender" value="<%= h(getActionURL()) %>" />
-            <input type="hidden" id="uploadFormToolId" name="toolId" value="" />
+            <%-- Zero for "Add New Tool", which InsertToolAction ignores. A blank value would not
+                 bind to the form's int, so the upload would fail before reaching the action. --%>
+            <input type="hidden" id="uploadFormToolId" name="toolId" value="0" />
             <input type="submit" value="Upload Tool" />
         </p>
     </labkey:form>
@@ -149,7 +153,8 @@
         <p>
             Browse to the supplementary file you would like to upload.<br/><br/>
             <input type="file" name="suppFile" /><br /><br />
-            <input type="hidden" id="suppFormToolId" name="toolId" value="" />
+            <%-- Set per tool when the dialog opens. See the note on ownersFormToolId above. --%>
+            <input type="hidden" id="suppFormToolId" name="toolId" value="0" />
             <input type="submit" value="Upload Supplementary File" />
         </p>
     </labkey:form>
@@ -371,6 +376,14 @@
         return $(parsedData).find('.tablewrap[data-toolLsid="' + lsid + '"]:first');
     }
 
+    function showDeleteLatestError(toolTable) {
+        $("#delToolLatestDlg").empty().append($("<p></p>").text(
+                "An error occurred trying to delete the latest version of " +
+                toolTable.attr("data-toolName") + "."));
+        $(".ui-dialog-buttonpane button:contains('Ok')").button().hide();
+        setButtonsEnabled(true);
+    }
+
     var DLG_EFFECT_SHOW = "fade";
     var DLG_EFFECT_HIDE = "fade";
 
@@ -415,6 +428,13 @@
                     "X-LABKEY-CSRF": LABKEY.CSRF
                 }).done(function(data) {
                     var newToolTable = extractToolTable(data, toolTable.attr("data-toolLsid"));
+                    // A rejected delete comes back as an error view with status 200, so .fail()
+                    // does not run and the tool's row is absent from the response. Without this
+                    // the row would be replaced by nothing and the tool would appear deleted.
+                    if (newToolTable.length === 0) {
+                        showDeleteLatestError(toolTable);
+                        return;
+                    }
                     newToolTable.hide();
                     newToolTable.find(".menuMouseArea").each(function() {initMenu($(this));});
                     $("#delToolLatestDlg").dialog("close");
@@ -425,9 +445,7 @@
                         });
                     });
                 }).fail(function() {
-                    $("#delToolLatestDlg").html("<p>An error occurred trying to delete the latest version of " + toolTable.attr("data-toolName") + ".</p>");
-                    $(".ui-dialog-buttonpane button:contains('Ok')").button().hide();
-                    setButtonsEnabled(true);
+                    showDeleteLatestError(toolTable);
                 });
             },
             Cancel: function() {$(this).dialog("close");}

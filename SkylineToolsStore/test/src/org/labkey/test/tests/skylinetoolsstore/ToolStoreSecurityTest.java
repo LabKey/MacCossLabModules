@@ -398,7 +398,9 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
         assertTrue("The second version folder should exist before the GET",
                 _containerHelper.doesContainerExist(latestFolderPath));
 
-        String url = WebTestHelper.buildURL("skyts", PROJECT_NAME, "deleteLatest") + "?id=" + latestRowId;
+        // Must be the parameter the form actually binds. With a name the form ignores, the action
+        // would look up tool 0 and delete nothing, so the assertions below would pass either way.
+        String url = WebTestHelper.buildURL("skyts", PROJECT_NAME, "deleteLatest") + "?toolId=" + latestRowId;
         int status = execute(new HttpGet(url), true, true);
 
         assertTrue("SECURITY: a GET to deleteLatest deleted tool folder " + latestFolderPath +
