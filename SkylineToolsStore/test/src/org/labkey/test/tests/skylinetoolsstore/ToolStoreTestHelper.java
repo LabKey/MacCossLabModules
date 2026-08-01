@@ -114,15 +114,30 @@ public class ToolStoreTestHelper
         }
     }
 
+    /** The LSID namespace every sample tool zip in this module uses. */
+    private static final String TEST_IDENTIFIER_PREFIX = "URN:LSID:toolstore.test:";
+
     /**
-     * Deletes every tool in the catalog whose identifier matches one of the given zips, wherever it
-     * lives, so a test starts from a known state. Runs as the current user, who must be a site admin.
+     * Deletes tools in the given project whose identifier matches one of the given zips, so a test
+     * starts from a known state. Runs as the current user, who must be a site admin.
      */
     public static void removeToolsFromCatalog(String containerPath, File... zips)
     {
+        // getToolsApi is deliberately not container scoped, so the loop below sees every tool on the
+        // server, and DeleteAction removes the container of every version of whatever it matches.
+        // The only thing separating a fixture from a real tool is the identifier, so refuse to run
+        // at all against a zip from outside the test namespace rather than deleting someone's tool.
+        // Do not try to tell them apart by folder name - a real store folder can be called anything.
         Set<String> wanted = new HashSet<>();
         for (File zip : zips)
-            wanted.add(identifierOf(zip));
+        {
+            String identifier = identifierOf(zip);
+            assertTrue("Refusing to clean up " + zip.getName() + ". Its identifier " + identifier +
+                            " is outside " + TEST_IDENTIFIER_PREFIX + ", and this deletes every " +
+                            "version's folder wherever it lives, so it must only run on fixtures.",
+                    identifier.startsWith(TEST_IDENTIFIER_PREFIX));
+            wanted.add(identifier);
+        }
 
         JSONArray tools = toolsFromApi(containerPath);
         for (int i = 0; i < tools.length(); i++)

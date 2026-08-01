@@ -1414,6 +1414,17 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public ModelAndView getView(SetOwnersForm form, boolean reshow, BindException errors)
         {
+            // Fail before the form is drawn, and fill it with the owners the tool already has. An
+            // empty box here is not harmless - handlePost replaces the whole owner list, so
+            // submitting a blank form strips every Editor and FolderAdmin off the tool's folder.
+            // This action runs in the store folder and the tool lives in a child of it, so
+            // requireToolInContainer is not the right check here.
+            SkylineTool tool = SkylineToolsStoreManager.get().getTool(form.getToolId());
+            if (tool == null)
+                throw new NotFoundException("Could not find tool with Id " + form.getToolId());
+            if (!reshow)
+                form.setToolOwners(StringUtils.join(getToolOwners(tool), ", "));
+
             return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolManageOwners.jsp", form, errors);
         }
 
@@ -1529,6 +1540,15 @@ public class SkylineToolsStoreController extends SpringActionController
     @RequiresPermission(InsertPermission.class)
     public static class UpdatePropertyAction extends FormHandlerAction<UpdatePropertyForm>
     {
+        /**
+         * The properties the details page lets an owner edit. SkylineTool.setProperty also accepts
+         * name, version and identifier, and those three are left out on purpose. They identify the
+         * tool to shipped Skyline clients, so changing one can leave two rows sharing an identifier,
+         * and getToolLatestByIdentifier then matches neither and downloads stop working.
+         */
+        private static final Set<String> EDITABLE_PROPERTIES =
+                Set.of("author", "description", "languages", "organization", "provider");
+
         private SkylineTool _tool;
 
         @Override
@@ -1553,6 +1573,11 @@ public class SkylineToolsStoreController extends SpringActionController
             {
                 if (propName == null)
                     throw new ApiUsageException("propName is required.");
+                if (!EDITABLE_PROPERTIES.contains(propName.toLowerCase()))
+                {
+                    errors.reject(ERROR_MSG, "The property " + propName + " cannot be edited here.");
+                    return false;
+                }
                 // Form binding turns an empty value into null. Blanking a property is a normal edit,
                 // so treat null as an empty value rather than a missing parameter.
                 String submitted = form.getPropValue() == null ? "" : form.getPropValue();
