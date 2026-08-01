@@ -74,10 +74,15 @@
 
     final String toolOwners = StringUtils.join(SkylineToolsStoreController.getToolOwners(tool), ", ");
 
-    final boolean toolEditor = admin || tool.lookupContainer().hasPermission(getUser(), InsertPermission.class);
+    // lookupContainer returns null when the tool's folder has gone but its row has not. Treat that
+    // as holding no rights rather than dereferencing it, so the page still renders read-only.
+    final Container toolContainer = tool.lookupContainer();
+    // A tool owner is granted the Editor role on the tool's own folder, which carries Insert, Update
+    // and Delete together, so one check covers every control in the settings menu.
+    final boolean toolEditor = admin ||
+            (toolContainer != null && toolContainer.hasPermission(getUser(), InsertPermission.class));
     final SkylineTool[] allVersions = SkylineToolsStoreController.sortToolsByCreateDate(SkylineToolsStoreManager.get().getToolsByIdentifier(tool.getIdentifier()));
     final boolean multipleVersions = allVersions.length > 1;
-    final boolean isLatestVersion = SkylineToolsStoreManager.get().getToolLatestByIdentifier(tool.getIdentifier()).getVersion().equals(tool.getVersion());
     final int numDownloads = Arrays.stream(allVersions).mapToInt(SkylineTool::getDownloads).sum();
 
     ActionURL toolDetailsUrl = SkylineToolStoreUrls.getToolDetailsUrl(tool);
@@ -439,7 +444,7 @@ a { text-decoration: none; }
         $("#editIcon").position({my: "right bottom", at: "right bottom", of: $("#editIcon").siblings(".logoWrap:first")});
     });
 
-<% if (tool.lookupContainer().hasPermission(getUser(), DeletePermission.class)) { %>
+<% if (toolContainer != null && toolContainer.hasPermission(getUser(), DeletePermission.class)) { %>
     $("#trashcan").droppable({
         accept: ".suppfile",
         drop: function(event, ui) {
@@ -601,11 +606,8 @@ a { text-decoration: none; }
                 }
 
                 $(this).html("<p>Please wait...</p>");
-                // Raw jQuery does not attach the CSRF token the way LABKEY.Ajax does, so send it
-                // explicitly. FormData posts carry it as a field, url-encoded posts as a header.
-                if (isIcon) {
-                    postData.append("X-LABKEY-CSRF", LABKEY.CSRF);
-                }
+                // Raw jQuery does not attach the CSRF token the way LABKEY.Ajax does, so the header
+                // below sends it explicitly. That covers both the FormData and url-encoded cases.
                 $.ajax({
                     type: "POST",
                     headers: {"X-LABKEY-CSRF": LABKEY.CSRF},

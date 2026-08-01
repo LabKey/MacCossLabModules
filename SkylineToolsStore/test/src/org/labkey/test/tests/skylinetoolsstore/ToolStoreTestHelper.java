@@ -15,6 +15,7 @@
  */
 package org.labkey.test.tests.skylinetoolsstore;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
@@ -89,7 +90,34 @@ public class ToolStoreTestHelper
     public static String storeContainerOf(JSONObject tool)
     {
         String url = tool.getString("DownloadUrl");
-        return url.substring(1, url.indexOf("/skyts-"));
+        String path = url.substring(0, url.indexOf("/skyts-"));
+
+        // DownloadUrl comes from ActionURL.getPath(), which includes the servlet context path, while
+        // buildURL adds that back. Leaving it in produces /labkey/labkey/<container> on a deployment
+        // that uses one.
+        String contextPath = WebTestHelper.getContextPath();
+        if (!contextPath.isEmpty() && path.startsWith(contextPath))
+            path = path.substring(contextPath.length());
+
+        return StringUtils.strip(path, "/");
+    }
+
+    /**
+     * The folder name SkylineToolsStoreController.toolFolderName builds for a tool version.
+     *
+     * The controller passes the name through FileUtil.getBaseName, which drops everything from the
+     * last dot on, so a tool called "MSstats 3.5" lives in _tool_MSstats 3_1.0. Rebuilding the path
+     * by plain concatenation pointed at a folder that does not exist, and a role check against a
+     * missing container just returns nothing, so the failure read as a permissions problem.
+     *
+     * The controller also applies makeLegalName, which is not repeated here. No sample tool name
+     * contains a character it rewrites, and the setup asserts the folder exists, so a fixture that
+     * broke that assumption would fail loudly rather than silently.
+     */
+    public static String toolFolderName(String toolName, String version)
+    {
+        int lastDot = toolName.lastIndexOf('.');
+        return "_tool_" + (lastDot >= 0 ? toolName.substring(0, lastDot) : toolName) + "_" + version;
     }
 
     /** Reads the Identifier out of tool-inf/info.properties inside a tool zip. */

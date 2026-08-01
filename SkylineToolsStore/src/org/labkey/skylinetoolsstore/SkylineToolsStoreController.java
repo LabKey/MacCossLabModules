@@ -29,9 +29,7 @@ import org.jetbrains.annotations.Nullable;
 import org.labkey.api.action.ApiUsageException;
 import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.FormViewAction;
-import org.labkey.api.action.NavTrailAction;
 import org.labkey.api.action.PermissionCheckable;
-import org.labkey.api.action.PermissionCheckableAction;
 import org.labkey.api.action.ReturnUrlForm;
 import org.labkey.api.action.SimpleErrorView;
 import org.labkey.api.action.SimpleViewAction;
@@ -75,7 +73,6 @@ import org.labkey.api.util.SafeToRender;
 import org.labkey.api.util.URLHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
-import org.labkey.api.view.HttpView;
 import org.labkey.api.view.JspView;
 import org.labkey.api.view.NavTree;
 import org.labkey.api.view.NotFoundException;
@@ -88,10 +85,8 @@ import org.labkey.skylinetoolsstore.view.SkylineToolDetails;
 import org.labkey.skylinetoolsstore.view.SkylineToolStoreUrls;
 import org.labkey.skylinetoolsstore.view.SkylineToolsStoreWebPart;
 import org.springframework.validation.BindException;
-import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.AbstractController;
 
@@ -572,6 +567,7 @@ public class SkylineToolsStoreController extends SpringActionController
      * container removes the mismatch case entirely.
      */
     @RequiresPermission(UpdatePermission.class)
+
     public class UpdateToolAction extends FormViewAction<ToolUploadForm>
     {
         private SkylineTool _tool;

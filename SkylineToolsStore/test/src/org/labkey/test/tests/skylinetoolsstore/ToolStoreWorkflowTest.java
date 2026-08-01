@@ -549,7 +549,8 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
 
     private String toolFolderPath(JSONObject tool)
     {
-        return "/" + PROJECT_NAME + "/_tool_" + tool.getString("Name") + "_" + tool.getString("Version");
+        return "/" + PROJECT_NAME + "/" +
+                ToolStoreTestHelper.toolFolderName(tool.getString("Name"), tool.getString("Version"));
     }
 
     private boolean hasEditorRole(String containerPath, String user)

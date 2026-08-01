@@ -45,7 +45,6 @@ import org.labkey.test.util.PostgresOnlyTest;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -538,25 +537,12 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
     /**
      * Reads the public JSON API. Returns the latest version of every tool in the store.
      */
+    // These three wrap ToolStoreTestHelper rather than repeating it, so a change to the getToolsApi
+    // response shape is made once. Kept as methods because the tests read better without the class
+    // name and the container argument repeated at every call site.
     private JSONArray getToolsFromApi()
     {
-        String url = WebTestHelper.buildURL("skyts", PROJECT_NAME, "getToolsApi");
-        try (CloseableHttpClient client = WebTestHelper.getHttpClient())
-        {
-            HttpGet request = new HttpGet(url);
-            APITestHelper.injectCookies(request);
-            String body = client.execute(request, response -> EntityUtils.toString(response.getEntity()))
-                    .trim();
-            // The response is empty for an empty store, a bare object for one tool, an array otherwise.
-            if (body.isEmpty())
-                return new JSONArray();
-            return body.startsWith("[") ? new JSONArray(body)
-                    : new JSONArray().put(new JSONObject(body));
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException("Failed to read getToolsApi", e);
-        }
+        return ToolStoreTestHelper.toolsFromApi(PROJECT_NAME);
     }
 
     /**
@@ -576,11 +562,7 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
 
     private Set<String> catalogIdentifiers()
     {
-        JSONArray tools = getToolsFromApi();
-        Set<String> identifiers = new HashSet<>();
-        for (int i = 0; i < tools.length(); i++)
-            identifiers.add(tools.getJSONObject(i).optString("Identifier"));
-        return identifiers;
+        return ToolStoreTestHelper.catalogIdentifiers(PROJECT_NAME);
     }
 
     /**
@@ -588,18 +570,12 @@ public class ToolStoreSecurityTest extends BaseWebDriverTest implements Postgres
      */
     private int extractRowIdFromDownloadUrl(String downloadUrl)
     {
-        int idx = downloadUrl.indexOf("id=");
-        assertTrue("DownloadUrl should carry an id parameter: " + downloadUrl, idx >= 0);
-        String tail = downloadUrl.substring(idx + 3);
-        int amp = tail.indexOf('&');
-        return Integer.parseInt(amp >= 0 ? tail.substring(0, amp) : tail);
+        return ToolStoreTestHelper.rowId(new JSONObject().put("DownloadUrl", downloadUrl));
     }
 
-    // Mirrors the folder name InsertAction builds. The sample tool names contain no characters that
-    // makeLegalName rewrites, so plain concatenation matches, and doSetup asserts the folder exists.
     private String toolFolderPath(String toolName, String version)
     {
-        return "/" + PROJECT_NAME + "/_tool_" + toolName + "_" + version;
+        return "/" + PROJECT_NAME + "/" + ToolStoreTestHelper.toolFolderName(toolName, version);
     }
 
     private boolean hasEditorRole(String containerPath, String user)
