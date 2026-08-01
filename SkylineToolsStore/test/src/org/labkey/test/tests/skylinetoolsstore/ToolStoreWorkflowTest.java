@@ -59,8 +59,8 @@ import static org.junit.Assert.assertTrue;
  * The real Skyline Tool Store workflow, end to end.
  *
  * Outside authors cannot upload to the store. They attach a zip to a message board post via a wiki
- * page, a site admin reviews it and adds the tool naming the author as an owner, and the author can
- * then maintain their own tool without further admin help.
+ * page, a site admin adds the tool naming the author as an owner, and the author can then maintain
+ * their own tool without further admin help.
  */
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 10)
@@ -157,7 +157,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
      * order test methods.
      */
     @Test
-    public void testSubmitReviewAndMaintainATool()
+    public void testSubmitPublishAndMaintainATool()
     {
         log("The wiki page offers the submission form to a logged-in user");
         goToProjectHome(PROJECT_NAME);
