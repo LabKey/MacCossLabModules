@@ -138,9 +138,10 @@ public class ToolStoreTestHelper
                     .addTextBody("toolId", String.valueOf(rowId(tool)))
                     .build());
             APITestHelper.injectCookies(request);
+            int status;
             try (CloseableHttpClient client = WebTestHelper.getHttpClient())
             {
-                client.execute(request, response -> {
+                status = client.execute(request, response -> {
                     EntityUtils.consumeQuietly(response.getEntity());
                     return response.getCode();
                 });
@@ -149,6 +150,15 @@ public class ToolStoreTestHelper
             {
                 throw new RuntimeException("Failed to remove leftover tool " + tool.optString("Name"), e);
             }
+            assertTrue("Deleting leftover tool " + tool.optString("Name") + " returned HTTP " + status,
+                    status < 400);
         }
+
+        // DeleteAction renders a refusal as an error view with status 200, so the status above does
+        // not prove anything went away. Read the catalog back and fail here rather than leaving the
+        // next upload to fail as TOOL_ALREADY_EXISTS somewhere unrelated.
+        Set<String> stillPresent = new HashSet<>(catalogIdentifiers(containerPath));
+        stillPresent.retainAll(wanted);
+        assertTrue("Tools still in the catalog after cleanup: " + stillPresent, stillPresent.isEmpty());
     }
 }
