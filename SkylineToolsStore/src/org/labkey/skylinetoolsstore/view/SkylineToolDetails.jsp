@@ -544,11 +544,12 @@ a { text-decoration: none; }
         buttons: {
             Ok: function() {
                 setButtonsEnabled(false);
-                var url = "<%=h(urlFor(SkylineToolsStoreController.DeleteAction.class))%>";
-                var csrf = LABKEY.CSRF;
-                var form = $('<form action="' + url + '" method="post"> ' +
-                        '<input type="hidden" name="X-LABKEY-CSRF" value="' +  csrf + '" /> ' +
-                        '<input type="hidden" name="toolId" value="' + <%=tool.getRowId()%> + '" />' + '</form>');
+                // Attributes are set via .attr() rather than built into an HTML string, so a value
+                // cannot break out of the markup. Same pattern as the delete-latest dialog below.
+                var form = $('<form method="post"></form>')
+                        .attr('action', <%=q(urlFor(SkylineToolsStoreController.DeleteAction.class))%>);
+                $('<input type="hidden">').attr('name', 'X-LABKEY-CSRF').attr('value', LABKEY.CSRF).appendTo(form);
+                $('<input type="hidden">').attr('name', 'toolId').attr('value', <%=tool.getRowId()%>).appendTo(form);
                 $('body').append(form);
                 form.submit();
             },

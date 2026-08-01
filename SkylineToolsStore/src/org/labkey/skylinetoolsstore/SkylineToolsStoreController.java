@@ -295,8 +295,6 @@ public class SkylineToolsStoreController extends SpringActionController
         return tool;
     }
 
-
-
     public static Path getLocalPath(Container c)
     {
         return FileContentService.get().getFileRootPath(c, FileContentService.ContentType.files);
@@ -794,6 +792,10 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public ModelAndView getView(SupplementUploadForm form, boolean reshow, BindException errors)
         {
+            // Fail before the form is drawn. Otherwise a request with no tool id renders a working
+            // looking upload form and the file is thrown away on post.
+            requireToolInContainer(form.getToolId(), getContainer());
+
             return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolSupplementUpload.jsp", form, errors);
         }
 
@@ -1393,13 +1395,13 @@ public class SkylineToolsStoreController extends SpringActionController
         }
     }
 
-    @RequiresSiteAdmin
     /**
      * Replaces the set of users holding Editor on a tool's folder.
      *
      * Stays addressed to the store folder rather than the tool's, because @RequiresSiteAdmin is
      * checked against the whole site and not a container, so there is nothing to gain by moving it.
      */
+    @RequiresSiteAdmin
     public class SetOwnersAction extends FormViewAction<SetOwnersForm>
     {
         private URLHelper _successURL;
@@ -1474,7 +1476,9 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild(getToolStoreNavFromToolFolder(getContainer()));
+            // This action runs in the store folder, not a tool folder, so the store is getContainer()
+            // itself rather than its parent.
+            root.addChild(getToolStoreNav(getContainer()));
             root.addChild("Manage Tool Owners");
         }
     }
