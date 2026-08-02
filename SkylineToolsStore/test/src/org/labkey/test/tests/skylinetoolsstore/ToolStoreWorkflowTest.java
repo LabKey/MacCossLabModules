@@ -41,14 +41,10 @@ import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.WikiHelper;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -377,24 +373,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
      */
     private static File writeMinimalToolZip(String version)
     {
-        try
-        {
-            File zip = File.createTempFile("toolstore-forms-" + version + "-", ".zip");
-            zip.deleteOnExit();
-            try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(zip)))
-            {
-                out.putNextEntry(new ZipEntry("tool-inf/info.properties"));
-                out.write(("Name = " + FORMS_TOOL_NAME + "\n" +
-                           "Version = " + version + "\n" +
-                           "Identifier = " + FORMS_TOOL_IDENTIFIER + "\n").getBytes(StandardCharsets.UTF_8));
-                out.closeEntry();
-            }
-            return zip;
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException("Could not build the test tool zip", e);
-        }
+        return ToolStoreTestHelper.writeMinimalToolZip(FORMS_TOOL_NAME, FORMS_TOOL_IDENTIFIER, version);
     }
 
     /** Posts a tool zip to the folder's message board, the way the wiki form does. */
