@@ -68,19 +68,17 @@
 
     final SafeToRender autocompleteUsers = admin ? SkylineToolsStoreController.getUsersForAutocomplete() : HtmlString.unsafe("\"\"");
 
+    final Container toolContainer = tool.lookupContainer(); // Cannot be null here
+
     // Get supporting files in map <url, icon url>
     HashMap<String, String> suppFiles = SkylineToolsStoreController.getSupplementaryFiles(tool);
     Iterator suppIter = suppFiles.entrySet().iterator();
 
     final String toolOwners = StringUtils.join(SkylineToolsStoreController.getToolOwners(tool), ", ");
 
-    // lookupContainer returns null when the tool's folder has gone but its row has not. Treat that
-    // as holding no rights rather than dereferencing it, so the page still renders read-only.
-    final Container toolContainer = tool.lookupContainer();
     // A tool owner is granted the Editor role on the tool's own folder, which carries Insert, Update
     // and Delete together, so one check covers every control in the settings menu.
-    final boolean toolEditor = admin ||
-            (toolContainer != null && toolContainer.hasPermission(getUser(), InsertPermission.class));
+    final boolean toolEditor = admin || toolContainer.hasPermission(getUser(), InsertPermission.class);
     final SkylineTool[] allVersions = SkylineToolsStoreController.sortToolsByCreateDate(SkylineToolsStoreManager.get().getToolsByIdentifier(tool.getIdentifier()));
     final boolean multipleVersions = allVersions.length > 1;
     final int numDownloads = Arrays.stream(allVersions).mapToInt(SkylineTool::getDownloads).sum();
@@ -444,7 +442,7 @@ a { text-decoration: none; }
         $("#editIcon").position({my: "right bottom", at: "right bottom", of: $("#editIcon").siblings(".logoWrap:first")});
     });
 
-<% if (toolContainer != null && toolContainer.hasPermission(getUser(), DeletePermission.class)) { %>
+<% if (toolContainer.hasPermission(getUser(), DeletePermission.class)) { %>
     $("#trashcan").droppable({
         accept: ".suppfile",
         drop: function(event, ui) {

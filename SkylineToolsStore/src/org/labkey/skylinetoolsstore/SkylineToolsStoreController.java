@@ -567,7 +567,6 @@ public class SkylineToolsStoreController extends SpringActionController
      * container removes the mismatch case entirely.
      */
     @RequiresPermission(UpdatePermission.class)
-
     public class UpdateToolAction extends FormViewAction<ToolUploadForm>
     {
         private SkylineTool _tool;
@@ -1344,6 +1343,13 @@ public class SkylineToolsStoreController extends SpringActionController
             // If the container in the request URL does not match the parent of the container associated
             // with the tool, redirect to the correct URL
             redirectToToolStoreContainer(_tool, getViewContext().getActionURL());
+
+            if (_tool.lookupContainer() == null)
+            {
+                errors.reject(SpringActionController.ERROR_MSG, "The folder holding " + _tool.getName() +
+                        " no longer exists, so its details cannot be shown.");
+                return new SimpleErrorView(errors);
+            }
 
             return new SkylineToolDetails(_tool);
         }

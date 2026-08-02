@@ -82,7 +82,11 @@ public class ToolStoreTestHelper
     public static int rowId(JSONObject tool)
     {
         String url = tool.getString("DownloadUrl");
-        String tail = url.substring(url.indexOf("id=") + 3);
+        int idx = url.indexOf("id=");
+        // Without this the substring below silently starts two characters in and the parse fails with
+        // a NumberFormatException naming whatever it found, which says nothing about the real problem.
+        assertTrue("DownloadUrl should carry an id parameter: " + url, idx >= 0);
+        String tail = url.substring(idx + 3);
         int amp = tail.indexOf('&');
         return Integer.parseInt(amp >= 0 ? tail.substring(0, amp) : tail);
     }
@@ -95,8 +99,10 @@ public class ToolStoreTestHelper
         // DownloadUrl comes from ActionURL.getPath(), which includes the servlet context path, while
         // buildURL adds that back. Leaving it in produces /labkey/labkey/<container> on a deployment
         // that uses one.
+        // Compared on a segment boundary, or a context path of /labkey would also strip the front of
+        // a project actually named labkeyFoo.
         String contextPath = WebTestHelper.getContextPath();
-        if (!contextPath.isEmpty() && path.startsWith(contextPath))
+        if (!contextPath.isEmpty() && (path.equals(contextPath) || path.startsWith(contextPath + "/")))
             path = path.substring(contextPath.length());
 
         return StringUtils.strip(path, "/");
