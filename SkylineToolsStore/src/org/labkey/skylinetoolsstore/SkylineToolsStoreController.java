@@ -166,8 +166,44 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
-            root.addChild(getToolStoreNav(getContainer()));
+            // In a tool's own folder this page lists just that tool, so the trail has to lead back
+            // to the store rather than to the page you are already on. Nothing links here, but the
+            // module is enabled in every tool folder, so the folder menu reaches it.
+            Container storeContainer = getStoreContainerFor(getContainer());
+            if (storeContainer == null)
+            {
+                root.addChild(getToolStoreNav(getContainer()));
+                return;
+            }
+
+            // The last entry is drawn as the page title rather than as a link, so the store entry
+            // only becomes clickable with a second one after it naming this page.
+            root.addChild("Skyline Tool Store",
+                    SkylineToolStoreUrls.getToolStoreHomeUrl(storeContainer, getUser()));
+            SkylineTool[] toolsHere = SkylineToolsStoreManager.get().getTools(getContainer());
+            root.addChild(toolsHere.length == 1
+                    ? toolsHere[0].getName() + " " + toolsHere[0].getVersion()
+                    : getContainer().getName());
         }
+    }
+
+    /**
+     * The store folder above a tool's own folder, or null when this container is not one.
+     *
+     * A tool version's folder has no children, while a store folder holds one per version, so a
+     * container with children is treated as the store and keeps its own link. Without that a store
+     * whose own parent also has the module enabled would send the trail one level too far up.
+     *
+     * Decided by the parent having the module enabled rather than by the folder's name, so a folder
+     * that merely looks like a tool folder does not point the trail somewhere unrelated.
+     */
+    private static Container getStoreContainerFor(Container container)
+    {
+        Container parent = container.getParent();
+        if (parent == null || parent.isRoot() || !container.getChildren().isEmpty())
+            return null;
+        return parent.getActiveModules().contains(
+                ModuleLoader.getInstance().getModule(SkylineToolsStoreModule.class)) ? parent : null;
     }
 
     public static NavTree getToolStoreNav(Container container)

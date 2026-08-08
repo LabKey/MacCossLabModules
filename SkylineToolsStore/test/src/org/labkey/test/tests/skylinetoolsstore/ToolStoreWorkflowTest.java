@@ -85,6 +85,11 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
     private static final String OLDER_TOOL_NAME = "OlderVersionProbe";
     private static final String OLDER_TOOL_IDENTIFIER = "URN:LSID:toolstore.test:olderversion";
 
+    // Its own store, because it enables the module in a tool folder, which the other stores do not.
+    private static final String FOLDER_STORE = "ToolStoreWorkflowTestToolFolder";
+    private static final String FOLDER_TOOL_NAME = "ToolFolderProbe";
+    private static final String FOLDER_TOOL_IDENTIFIER = "URN:LSID:toolstore.test:toolfolder";
+
     // An ordinary site user. Gets Editor on their tool's folder only after the admin names them.
     private static final String TOOL_AUTHOR = "toolstore_author@toolstore.test";
 
@@ -410,6 +415,50 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
                 sprocketHasItem("Upload supplementary file"));
     }
 
+    /**
+     * A tool's own folder must list the tool it holds, not an empty store.
+     *
+     * The listing is scoped to the container and its children so one store cannot show another's
+     * tools. A tool version folder has no children, so scoping to children alone left it rendering
+     * a heading and nothing else. The module is enabled in every tool folder on skyline.ms, so the
+     * folder menu reaches these pages even though nothing links to them.
+     */
+    @Test
+    public void testAToolsOwnFolderListsThatToolAndLinksBackToTheStore()
+    {
+        _containerHelper.createProject(FOLDER_STORE, "Collaboration");
+        _containerHelper.enableModule(FOLDER_STORE, "SkylineToolsStore");
+        new PortalHelper(this).addWebPart("Skyline Tool Store");
+
+        uploadToolFileTo(FOLDER_STORE, ToolStoreTestHelper.writeMinimalToolZip(
+                FOLDER_TOOL_NAME, FOLDER_TOOL_IDENTIFIER, "1.0"));
+        String toolFolder = "/" + FOLDER_STORE + "/" +
+                ToolStoreTestHelper.toolFolderName(FOLDER_TOOL_NAME, "1.0");
+        _containerHelper.enableModule(toolFolder, "SkylineToolsStore");
+
+        assertEquals("The store folder lists its one tool", 1, toolsInStore(FOLDER_STORE));
+
+        // Counting the rendered rows, not searching for the tool's name. The folder is named after
+        // the tool, and a LabKey folder name appears on every page in that folder, so a text search
+        // would pass whether or not the web part listed anything.
+        beginAt(WebTestHelper.buildURL("skyts", toolFolder, "begin"));
+        assertEquals("The tool's own folder should list the tool it holds", 1, toolRowsOnPage());
+
+        // Back to the store, not to the page we are already on. Asserted on the href rather than by
+        // clicking, because the web part's own title is a second "Skyline Tool Store" link and it
+        // points at the container being viewed.
+        assertTrue("The trail should link back to the store folder",
+                Locator.linkWithText("Skyline Tool Store")
+                        .withAttributeContaining("href", "/" + FOLDER_STORE + "/project-begin.view")
+                        .existsIn(getDriver()));
+    }
+
+    /** Tool rows the web part actually rendered on the current page. */
+    private int toolRowsOnPage()
+    {
+        return Locator.css("table.tablewrap[data-toolLsid]").findElements(getDriver()).size();
+    }
+
     /** Whether the details page gear menu carries an item, without clicking it. */
     private boolean sprocketHasItem(String item)
     {
@@ -675,6 +724,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         _containerHelper.deleteProject(FORMS_STORE, false);
         _containerHelper.deleteProject(RETRY_STORE, false);
         _containerHelper.deleteProject(OLDER_STORE, false);
+        _containerHelper.deleteProject(FOLDER_STORE, false);
         _userHelper.deleteUsers(false, TOOL_AUTHOR);
     }
 

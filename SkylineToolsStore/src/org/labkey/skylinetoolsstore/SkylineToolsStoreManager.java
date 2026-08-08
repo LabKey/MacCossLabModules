@@ -26,6 +26,7 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.security.User;
 import org.labkey.skylinetoolsstore.model.SkylineTool;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class SkylineToolsStoreManager
@@ -75,7 +76,7 @@ public class SkylineToolsStoreManager
      * Deliberately NOT container-scoped. Skyline hardcodes a container in its catalog and download
      * URLs that is not the tool store folder, so it only reaches tools because these lookups ignore
      * the request container. Adding a filter here would break tool installation in every shipped
-     * Skyline version. Use getToolsLatestInSubfolders for anything user-facing.
+     * Skyline version. Use getToolsLatestForStoreListing for anything user-facing.
      */
     public SkylineTool[] getToolsLatest()
     {
@@ -85,23 +86,24 @@ public class SkylineToolsStoreManager
     }
 
     /**
-     * Latest version of every tool stored in a subfolder of the given container. Tools live in a
-     * child folder per version, so a store folder's own tools are exactly those of its children.
+     * Latest version of every tool stored in the given container or one of its direct children.
+     *
+     * A store folder holds its tools in a child folder per version, so the children are what it
+     * lists. The container itself is included so a tool's own folder shows the tool it holds rather
+     * than an empty store - a tool folder has no children of its own.
      *
      * This is the listing query. It is safe to scope because Skyline never reads it - the client
      * calls getToolsApi, which uses getToolsLatest.
      */
-    public SkylineTool[] getToolsLatestInSubfolders(Container parent)
+    public SkylineTool[] getToolsLatestForStoreListing(Container container)
     {
-        List<String> childIds = parent.getChildren().stream()
-                .map(Container::getId)
-                .toList();
-        if (childIds.isEmpty())
-            return new SkylineTool[0];
+        List<String> containerIds = new ArrayList<>();
+        containerIds.add(container.getId());
+        container.getChildren().forEach(child -> containerIds.add(child.getId()));
 
         SimpleFilter filter = new SimpleFilter();
         filter.addCondition(FieldKey.fromParts("Latest"), true);
-        filter.addInClause(FieldKey.fromParts("Container"), childIds);
+        filter.addInClause(FieldKey.fromParts("Container"), containerIds);
         return getTools(filter);
     }
 
