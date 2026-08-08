@@ -160,7 +160,7 @@
     </labkey:form>
 </div>
 <!-- Delete Tool Dialog -->
-<div id="delToolAllDlg" title="Delete" style="display:none;"></div>
+<div id="delToolAllDlg" title="Delete tool from store" style="display:none;"></div>
 <!-- Delete Tool Latest Version Dialog -->
 <div id="delToolLatestDlg" title="Delete latest version" style="display:none;"></div>
 
@@ -222,7 +222,7 @@
                         <li><%=simpleLink("Delete latest version").onClick("delToolLatest($(this))")%></li>
 <% } %>
 <% if (admin) { %>
-                        <li><%=simpleLink("Delete").onClick("delToolAll($(this))")%></li>
+                        <li><%=simpleLink("Delete tool from store").onClick("delToolAll($(this))")%></li>
                         <li><%=simpleLink("Manage tool owners").onClick("popToolOwners(" + tool.getRowId() + ")")%></li>
 <% } %>
                     </ul>

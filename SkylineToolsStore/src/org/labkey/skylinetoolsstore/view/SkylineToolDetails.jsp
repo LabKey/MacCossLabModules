@@ -282,7 +282,7 @@ a { text-decoration: none; }
     </labkey:form>
 </div>
 <!--Delete Tool Dialog-->
-<div id="delToolAllDlg" title="Delete" style="display:none;">
+<div id="delToolAllDlg" title="Delete tool from store" style="display:none;">
     <p>Are you sure you want to completely delete <%= h(tool.getName()) %>?</p>
 </div>
 <!--Delete Tool Latest Version Dialog-->
@@ -342,7 +342,7 @@ a { text-decoration: none; }
             <li><%=simpleLink("Delete latest version").onClick("$('#delToolLatestDlg').dialog('open')")%></li>
 <% } %>
 <% if (admin) { %>
-            <li><%=simpleLink("Delete").onClick("$('#delToolAllDlg').dialog('open')")%></li>
+            <li><%=simpleLink("Delete tool from store").onClick("$('#delToolAllDlg').dialog('open')")%></li>
             <li><%=simpleLink("Manage tool owners").onClick("popToolOwners()")%></li>
 <% } %>
         </ul>
