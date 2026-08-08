@@ -44,6 +44,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -78,6 +79,11 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
     private static final String RETRY_TOOL_NAME = "PartialUploadProbe";
     private static final String RETRY_TOOL_IDENTIFIER = "URN:LSID:toolstore.test:partialupload";
     private static final String RETRY_TOOL_VERSION = "1.0";
+
+    // Its own store, because it needs a tool with two versions and the other stores assert on one.
+    private static final String OLDER_STORE = "ToolStoreWorkflowTestOlderVersion";
+    private static final String OLDER_TOOL_NAME = "OlderVersionProbe";
+    private static final String OLDER_TOOL_IDENTIFIER = "URN:LSID:toolstore.test:olderversion";
 
     // An ordinary site user. Gets Editor on their tool's folder only after the admin names them.
     private static final String TOOL_AUTHOR = "toolstore_author@toolstore.test";
@@ -367,6 +373,52 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         click(link.notHidden());
     }
 
+    /**
+     * An older version's page must not offer to publish a new version. UpdateToolAction refuses
+     * anything but the latest, so offering it there spent the owner's whole upload before saying so.
+     *
+     * Supplementary files are per version and the action accepts them on any version, so that item
+     * has to stay. Checked here as well, to keep a later change from hiding the whole menu.
+     */
+    @Test
+    public void testAnOlderVersionPageOffersOnlyWhatItCanDo()
+    {
+        _containerHelper.createProject(OLDER_STORE, "Collaboration");
+        _containerHelper.enableModule(OLDER_STORE, "SkylineToolsStore");
+        new PortalHelper(this).addWebPart("Skyline Tool Store");
+
+        uploadToolFileTo(OLDER_STORE, ToolStoreTestHelper.writeMinimalToolZip(
+                OLDER_TOOL_NAME, OLDER_TOOL_IDENTIFIER, "1.0"));
+        int v1RowId = rowId(onlyToolInStore(OLDER_STORE));
+        String v1Folder = "/" + OLDER_STORE + "/" +
+                ToolStoreTestHelper.toolFolderName(OLDER_TOOL_NAME, "1.0");
+        uploadToolFileTo(v1Folder, ToolStoreTestHelper.writeMinimalToolZip(
+                OLDER_TOOL_NAME, OLDER_TOOL_IDENTIFIER, "2.0"), v1RowId);
+
+        log("The latest version's page offers both items");
+        beginAt(WebTestHelper.buildURL("skyts", OLDER_STORE, "details",
+                Map.of("name", OLDER_TOOL_NAME)));
+        assertTrue("The latest version should still offer Upload new version",
+                sprocketHasItem("Upload new version"));
+
+        log("The older version's page offers only the supplementary file item");
+        beginAt(WebTestHelper.buildURL("skyts", OLDER_STORE, "details",
+                Map.of("name", OLDER_TOOL_NAME, "version", "1.0")));
+        assertFalse("Upload new version must not be offered where the action would refuse it",
+                sprocketHasItem("Upload new version"));
+        assertTrue("Upload supplementary file works on any version and must stay",
+                sprocketHasItem("Upload supplementary file"));
+    }
+
+    /** Whether the details page gear menu carries an item, without clicking it. */
+    private boolean sprocketHasItem(String item)
+    {
+        // Gated in the JSP, so an item that does not apply is absent from the page rather than
+        // hidden by CSS. A DOM check needs no hover and cannot race the menu animation.
+        return Locator.tagWithClass("ul", "dropMenu").append(Locator.linkWithText(item))
+                .existsIn(getDriver());
+    }
+
     /** Number of tools the given store folder lists. */
     private int toolsInStore(String storeContainerPath)
     {
@@ -421,10 +473,20 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
     /** Like uploadToolTo, for a zip this test built rather than one from sample data. */
     private int uploadToolFileTo(String containerPath, File zip)
     {
-        HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", containerPath, "insertTool"));
-        request.setEntity(MultipartEntityBuilder.create()
-                .addBinaryBody("toolZip", zip, ContentType.create("application/zip"), zip.getName())
-                .build());
+        return uploadToolFileTo(containerPath, zip, -1);
+    }
+
+    /** @param updateTarget row id of the tool getting a new version, or -1 for a brand-new tool */
+    private int uploadToolFileTo(String containerPath, File zip, int updateTarget)
+    {
+        boolean newVersion = updateTarget >= 0;
+        HttpPost request = new HttpPost(
+                WebTestHelper.buildURL("skyts", containerPath, newVersion ? "updateTool" : "insertTool"));
+        MultipartEntityBuilder entity = MultipartEntityBuilder.create()
+                .addBinaryBody("toolZip", zip, ContentType.create("application/zip"), zip.getName());
+        if (newVersion)
+            entity.addTextBody("toolId", String.valueOf(updateTarget));
+        request.setEntity(entity.build());
         return execute(request);
     }
 
@@ -612,6 +674,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         _containerHelper.deleteProject(OTHER_STORE, false);
         _containerHelper.deleteProject(FORMS_STORE, false);
         _containerHelper.deleteProject(RETRY_STORE, false);
+        _containerHelper.deleteProject(OLDER_STORE, false);
         _userHelper.deleteUsers(false, TOOL_AUTHOR);
     }
 
