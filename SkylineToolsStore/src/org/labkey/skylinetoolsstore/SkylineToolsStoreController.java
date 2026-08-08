@@ -745,6 +745,10 @@ public class SkylineToolsStoreController extends SpringActionController
      * discardVersionFolder if that transaction does not commit. None of the work here is
      * transactional, so it must not sit inside one - it creates a container and moves the zip.
      *
+     * Either returns a folder holding the whole version or leaves nothing behind. The caller's
+     * cleanup cannot cover a failure in here, because it has no folder to clean up until this
+     * returns, so this removes its own partial work before rethrowing.
+     *
      * @param storeContainer  the tool store folder to create the version's folder under
      * @param previousVersion the version being superseded, or null for a brand-new tool. Supplies the
      *                        permissions, supplementary files and docs that carry forward, which is
@@ -771,26 +775,40 @@ public class SkylineToolsStoreController extends SpringActionController
                     " for this version. Check whether a folder by that name already exists.");
             return null;
         }
-        copyContainerPermissions(previousContainer, c);
-
-        File storedZip = makeFile(c, zip.getOriginalFilename());
-        zip.transferTo(storedZip);
-        tool.writeIconToFile(makeFile(c, "icon.png"), "png");
-
-        // Docs come from tool-inf/docs/ in the zip, or carry forward from the previous version.
-        boolean hasDocs = extractDocsFromZip(storedZip.toPath(), getLocalPath(c));
-        if (!hasDocs && previousContainer != null)
+        // The folder exists from here on, and every step below can throw - a zip that cannot be
+        // written, an icon ImageIO cannot decode, a carried-forward name that is a directory. The
+        // caller's cleanup only runs after this method returns, so without this a throw would leave
+        // the folder behind and makeContainer would refuse this version's name from then on.
+        boolean populated = false;
+        try
         {
-            Path oldDocs = getLocalPath(previousContainer).resolve("docs");
-            if (Files.isDirectory(oldDocs))
-                FileUtil.copyDirectory(oldDocs, getLocalPath(c).resolve("docs"));
+            copyContainerPermissions(previousContainer, c);
+
+            File storedZip = makeFile(c, zip.getOriginalFilename());
+            zip.transferTo(storedZip);
+            tool.writeIconToFile(makeFile(c, "icon.png"), "png");
+
+            // Docs come from tool-inf/docs/ in the zip, or carry forward from the previous version.
+            boolean hasDocs = extractDocsFromZip(storedZip.toPath(), getLocalPath(c));
+            if (!hasDocs && previousContainer != null)
+            {
+                Path oldDocs = getLocalPath(previousContainer).resolve("docs");
+                if (Files.isDirectory(oldDocs))
+                    FileUtil.copyDirectory(oldDocs, getLocalPath(c).resolve("docs"));
+            }
+
+            if (previousContainer != null)
+                for (String copyFile : carryForward)
+                    FileUtils.copyFile(makeFile(previousContainer, copyFile), makeFile(c, copyFile), true);
+
+            populated = true;
+            return c;
         }
-
-        if (previousContainer != null)
-            for (String copyFile : carryForward)
-                FileUtils.copyFile(makeFile(previousContainer, copyFile), makeFile(c, copyFile), true);
-
-        return c;
+        finally
+        {
+            if (!populated)
+                discardVersionFolder(c);
+        }
     }
 
     /**

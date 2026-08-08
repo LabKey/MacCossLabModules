@@ -72,6 +72,13 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
     private static File _formsToolV1;
     private static File _formsToolV2;
 
+    // Its own store, because this test deliberately fails an upload and then retries the same
+    // version, which would disturb the single-tool assertions in the other stores.
+    private static final String RETRY_STORE = "ToolStoreWorkflowTestFailedUpload";
+    private static final String RETRY_TOOL_NAME = "PartialUploadProbe";
+    private static final String RETRY_TOOL_IDENTIFIER = "URN:LSID:toolstore.test:partialupload";
+    private static final String RETRY_TOOL_VERSION = "1.0";
+
     // An ordinary site user. Gets Editor on their tool's folder only after the admin names them.
     private static final String TOOL_AUTHOR = "toolstore_author@toolstore.test";
 
@@ -367,6 +374,61 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
     }
 
     /**
+     * An upload that fails after the version folder has been created must not leave the folder
+     * behind. makeContainer refuses a name that is already taken, so an orphan blocks that same
+     * version from then on - the owner retries with a good zip and is told the tool already exists,
+     * with nothing to say the folder is the reason.
+     *
+     * Asserts the effect rather than the status. A refusal here renders as an error view with
+     * status 200, so a status alone proves nothing.
+     */
+    @Test
+    public void testAnUploadThatFailsPartWayLeavesNoFolderBehind()
+    {
+        _containerHelper.createProject(RETRY_STORE, "Collaboration");
+        _containerHelper.enableModule(RETRY_STORE, "SkylineToolsStore");
+        new PortalHelper(this).addWebPart("Skyline Tool Store");
+
+        // resetErrorMark is server wide, so consuming this upload's errors below consumes everything
+        // logged since the last mark. checkErrors() runs after every test method, so nothing should
+        // be pending here - assert that rather than let the reset hide an error silently.
+        assertEquals("Server errors were already pending before this test",
+                0, getServerErrorCount());
+
+        // Its icon is not a decodable image, so storing the version throws in writeIconToFile, which
+        // runs after the folder has been made.
+        uploadToolFileTo(RETRY_STORE, ToolStoreTestHelper.writeToolZipWithUnreadableIcon(
+                RETRY_TOOL_NAME, RETRY_TOOL_IDENTIFIER, RETRY_TOOL_VERSION));
+
+        // The failure has to reach the log as a server error, because an exception escaping the
+        // action is what skips the cleanup and strands the folder. Counted rather than named,
+        // because one failure writes more than one ERROR line. If this zip ever starts being
+        // refused gracefully, this fails rather than passing for the wrong reason - the test would
+        // no longer be exercising a throw part way through storing the version.
+        assertTrue("The upload was supposed to fail with a server error", getServerErrorCount() > 0);
+        resetErrors();
+
+        assertFalse("The upload was supposed to fail while storing the version",
+                ToolStoreTestHelper.catalogIdentifiers(RETRY_STORE).contains(RETRY_TOOL_IDENTIFIER));
+
+        // Same name and version, so it needs the folder name the failed upload already used.
+        uploadToolFileTo(RETRY_STORE, ToolStoreTestHelper.writeMinimalToolZip(
+                RETRY_TOOL_NAME, RETRY_TOOL_IDENTIFIER, RETRY_TOOL_VERSION));
+        assertTrue("A failed upload left its folder behind, blocking this version for good",
+                ToolStoreTestHelper.catalogIdentifiers(RETRY_STORE).contains(RETRY_TOOL_IDENTIFIER));
+    }
+
+    /** Like uploadToolTo, for a zip this test built rather than one from sample data. */
+    private int uploadToolFileTo(String containerPath, File zip)
+    {
+        HttpPost request = new HttpPost(WebTestHelper.buildURL("skyts", containerPath, "insertTool"));
+        request.setEntity(MultipartEntityBuilder.create()
+                .addBinaryBody("toolZip", zip, ContentType.create("application/zip"), zip.getName())
+                .build());
+        return execute(request);
+    }
+
+    /**
      * A tool zip holding nothing but tool-inf/info.properties. Name, Version and Identifier are the
      * only required properties, and the sample zips in this module are tens of megabytes, so this
      * test builds its own rather than adding more of those to the repository.
@@ -549,6 +611,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         _containerHelper.deleteProject(PROJECT_NAME, afterTest);
         _containerHelper.deleteProject(OTHER_STORE, false);
         _containerHelper.deleteProject(FORMS_STORE, false);
+        _containerHelper.deleteProject(RETRY_STORE, false);
         _userHelper.deleteUsers(false, TOOL_AUTHOR);
     }
 

@@ -158,6 +158,38 @@ public class ToolStoreTestHelper
         }
     }
 
+    /**
+     * A tool zip whose tool-inf icon is not a decodable image. The controller picks the icon by file
+     * extension and stores the bytes without decoding them, so this passes upload parsing and then
+     * fails in writeIconToFile, which is after the version folder has been created. That is what
+     * makes it a fixture for an upload failing part way through storing a version.
+     */
+    public static File writeToolZipWithUnreadableIcon(String name, String identifier, String version)
+    {
+        try
+        {
+            File zip = File.createTempFile("ts-badicon-" + version + "-", ".zip");
+            zip.deleteOnExit();
+            try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(zip)))
+            {
+                out.putNextEntry(new ZipEntry("tool-inf/info.properties"));
+                out.write(("Name = " + name + "\n" +
+                           "Version = " + version + "\n" +
+                           "Identifier = " + identifier + "\n").getBytes(StandardCharsets.UTF_8));
+                out.closeEntry();
+
+                out.putNextEntry(new ZipEntry("tool-inf/icon.png"));
+                out.write("This is not an image.".getBytes(StandardCharsets.UTF_8));
+                out.closeEntry();
+            }
+            return zip;
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException("Could not build the test tool zip", e);
+        }
+    }
+
     /** Reads the Identifier out of tool-inf/info.properties inside a tool zip. */
     public static String identifierOf(File zip)
     {
