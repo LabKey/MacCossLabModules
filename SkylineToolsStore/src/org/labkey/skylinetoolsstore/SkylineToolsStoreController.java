@@ -160,47 +160,58 @@ public class SkylineToolsStoreController extends SpringActionController
                     }
                 }
             }
+            // A tool version's folder is not a store. The module is enabled in every one of them, so
+            // the folder menu reaches this page, and the listing's controls are addressed to the
+            // container being viewed rather than to the store.
+            Container storeContainer = getStoreContainerFor(getContainer());
+            if (storeContainer != null)
+            {
+                ActionURL redirectUrl = getViewContext().getActionURL().clone();
+                redirectUrl.setContainer(storeContainer);
+                throw new RedirectException(redirectUrl);
+            }
             return new SkylineToolsStoreWebPart();
         }
 
         @Override
         public void addNavTrail(NavTree root)
         {
-            // In a tool's own folder this page lists just that tool, so the trail has to lead back
-            // to the store rather than to the page you are already on. Nothing links here, but the
-            // module is enabled in every tool folder, so the folder menu reaches it.
-            Container storeContainer = getStoreContainerFor(getContainer());
-            if (storeContainer == null)
-            {
-                root.addChild(getToolStoreNav(getContainer()));
-                return;
-            }
-
-            // The last entry is drawn as the page title rather than as a link, so the store entry
-            // only becomes clickable with a second one after it naming this page.
-            root.addChild("Skyline Tool Store",
-                    SkylineToolStoreUrls.getToolStoreHomeUrl(storeContainer, getUser()));
-            SkylineTool[] toolsHere = SkylineToolsStoreManager.get().getTools(getContainer());
-            root.addChild(toolsHere.length == 1
-                    ? toolsHere[0].getName() + " " + toolsHere[0].getVersion()
-                    : getContainer().getName());
+            root.addChild(getToolStoreNav(getContainer()));
         }
+    }
+
+    /**
+     * True when this container holds a tool's own row, which is what a tool version folder is.
+     *
+     * storeToolVersion inserts the row into the version folder it creates, so a store folder never
+     * holds a row of its own, not even one that has no tools in it yet.
+     */
+    private static boolean holdsToolRow(Container container)
+    {
+        return SkylineToolsStoreManager.get().getTools(container).length > 0;
+    }
+
+    /**
+     * True when a tool can be added to this container.
+     *
+     * The module is enabled in every tool version folder as well as in the store, so an active
+     * module on its own does not make a container a store.
+     */
+    private static boolean isStoreContainer(Container container)
+    {
+        return container.hasActiveModuleByName(SkylineToolsStoreModule.NAME) && !holdsToolRow(container);
     }
 
     /**
      * The store folder above a tool's own folder, or null when this container is not one.
      *
-     * A tool version's folder has no children, while a store folder holds one per version, so a
-     * container with children is treated as the store and keeps its own link. Without that a store
-     * whose own parent also has the module enabled would send the trail one level too far up.
-     *
      * Decided by the parent having the module enabled rather than by the folder's name, so a folder
-     * that merely looks like a tool folder does not point the trail somewhere unrelated.
+     * that merely looks like a tool folder does not point somewhere unrelated.
      */
     private static Container getStoreContainerFor(Container container)
     {
         Container parent = container.getParent();
-        if (parent == null || parent.isRoot() || !container.getChildren().isEmpty())
+        if (parent == null || parent.isRoot() || !holdsToolRow(container))
             return null;
         return parent.getActiveModules().contains(
                 ModuleLoader.getInstance().getModule(SkylineToolsStoreModule.class)) ? parent : null;
@@ -530,7 +541,9 @@ public class SkylineToolsStoreController extends SpringActionController
         {
             // validateCommand runs on POST only, so this is what stops a hand-posted upload. The
             // matching check in getView is what stops the form being drawn in the first place.
-            if (!getContainer().hasActiveModuleByName(SkylineToolsStoreModule.NAME))
+            // storeToolVersion creates the version folder under the container the action runs in, so
+            // uploading from a tool's own folder would file the new tool inside another tool.
+            if (!isStoreContainer(getContainer()))
                 errors.reject(ERROR_MSG, STORE_NOT_AVAILABLE);
         }
 
@@ -538,7 +551,7 @@ public class SkylineToolsStoreController extends SpringActionController
         public ModelAndView getView(ToolUploadForm form, boolean reshow, BindException errors)
         {
             // On a reshow the message is already in errors, so let the JSP render it there.
-            if (!reshow && !getContainer().hasActiveModuleByName(SkylineToolsStoreModule.NAME))
+            if (!reshow && !isStoreContainer(getContainer()))
                 return HtmlView.of(STORE_NOT_AVAILABLE);
 
             return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", form, errors);

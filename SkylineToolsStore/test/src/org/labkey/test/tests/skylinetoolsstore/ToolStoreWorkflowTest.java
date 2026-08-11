@@ -89,6 +89,13 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
     private static final String FOLDER_STORE = "ToolStoreWorkflowTestToolFolder";
     private static final String FOLDER_TOOL_NAME = "ToolFolderProbe";
     private static final String FOLDER_TOOL_IDENTIFIER = "URN:LSID:toolstore.test:toolfolder";
+    // Its own store, because it too enables the module in a tool folder.
+    private static final String NESTED_STORE = "ToolStoreWorkflowTestNestedInsert";
+    private static final String NESTED_HOST_TOOL_NAME = "NestedHostProbe";
+    private static final String NESTED_HOST_TOOL_IDENTIFIER = "URN:LSID:toolstore.test:nestedhost";
+    // Never expected to exist. The upload that would create it is posted at a tool's own folder.
+    private static final String NESTED_TOOL_NAME = "NestedToolProbe";
+    private static final String NESTED_TOOL_IDENTIFIER = "URN:LSID:toolstore.test:nested";
 
     // An ordinary site user. Gets Editor on their tool's folder only after the admin names them.
     private static final String TOOL_AUTHOR = "toolstore_author@toolstore.test";
@@ -416,15 +423,14 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
     }
 
     /**
-     * A tool's own folder must list the tool it holds, not an empty store.
+     * A tool's own folder is not a store, so its store page leads back to the store above it.
      *
-     * The listing is scoped to the container and its children so one store cannot show another's
-     * tools. A tool version folder has no children, so scoping to children alone left it rendering
-     * a heading and nothing else. The module is enabled in every tool folder on skyline.ms, so the
-     * folder menu reaches these pages even though nothing links to them.
+     * The module is enabled in every tool folder on skyline.ms, so the folder menu reaches that page
+     * even though nothing links to it. The listing's Add New Tool button and its per-tool menu are
+     * addressed to the container being viewed, so left rendering there they act on the wrong folder.
      */
     @Test
-    public void testAToolsOwnFolderListsThatToolAndLinksBackToTheStore()
+    public void testAToolsOwnFolderRedirectsToTheStore()
     {
         _containerHelper.createProject(FOLDER_STORE, "Collaboration");
         _containerHelper.enableModule(FOLDER_STORE, "SkylineToolsStore");
@@ -438,25 +444,39 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
 
         assertEquals("The store folder lists its one tool", 1, toolsInStore(FOLDER_STORE));
 
-        // Counting the rendered rows, not searching for the tool's name. The folder is named after
-        // the tool, and a LabKey folder name appears on every page in that folder, so a text search
-        // would pass whether or not the web part listed anything.
+        // Asserted on the container the page ended up in rather than on the rendered markup, because
+        // the store's own page and a tool folder's page are the same view.
         beginAt(WebTestHelper.buildURL("skyts", toolFolder, "begin"));
-        assertEquals("The tool's own folder should list the tool it holds", 1, toolRowsOnPage());
-
-        // Back to the store, not to the page we are already on. Asserted on the href rather than by
-        // clicking, because the web part's own title is a second "Skyline Tool Store" link and it
-        // points at the container being viewed.
-        assertTrue("The trail should link back to the store folder",
-                Locator.linkWithText("Skyline Tool Store")
-                        .withAttributeContaining("href", "/" + FOLDER_STORE + "/project-begin.view")
-                        .existsIn(getDriver()));
+        assertEquals("A tool folder's store page should redirect to the store folder",
+                "/" + FOLDER_STORE, getCurrentContainerPath());
     }
 
-    /** Tool rows the web part actually rendered on the current page. */
-    private int toolRowsOnPage()
+    /**
+     * A tool's own folder refuses an upload posted straight at it.
+     *
+     * storeToolVersion creates the version folder under the container the action runs in, and the
+     * module is enabled in every tool folder, so an upload from one would file the new tool inside
+     * another tool, where the store listing cannot reach it. Separate from the redirect above
+     * because the redirect only removes the button, not the URL.
+     */
+    @Test
+    public void testAToolCannotBeAddedFromInsideAnotherToolsFolder()
     {
-        return Locator.css("table.tablewrap[data-toolLsid]").findElements(getDriver()).size();
+        _containerHelper.createProject(NESTED_STORE, "Collaboration");
+        _containerHelper.enableModule(NESTED_STORE, "SkylineToolsStore");
+        new PortalHelper(this).addWebPart("Skyline Tool Store");
+
+        uploadToolFileTo(NESTED_STORE, ToolStoreTestHelper.writeMinimalToolZip(
+                NESTED_HOST_TOOL_NAME, NESTED_HOST_TOOL_IDENTIFIER, "1.0"));
+        String toolFolder = "/" + NESTED_STORE + "/" +
+                ToolStoreTestHelper.toolFolderName(NESTED_HOST_TOOL_NAME, "1.0");
+        _containerHelper.enableModule(toolFolder, "SkylineToolsStore");
+
+        // Verifying the effect rather than the status, because a refusal renders 200.
+        uploadToolFileTo(toolFolder, ToolStoreTestHelper.writeMinimalToolZip(
+                NESTED_TOOL_NAME, NESTED_TOOL_IDENTIFIER, "1.0"));
+        assertFalse("A tool must not be added from inside another tool's folder",
+                ToolStoreTestHelper.catalogIdentifiers(NESTED_STORE).contains(NESTED_TOOL_IDENTIFIER));
     }
 
     /** Whether the details page gear menu carries an item, without clicking it. */
@@ -725,6 +745,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         _containerHelper.deleteProject(RETRY_STORE, false);
         _containerHelper.deleteProject(OLDER_STORE, false);
         _containerHelper.deleteProject(FOLDER_STORE, false);
+        _containerHelper.deleteProject(NESTED_STORE, false);
         _userHelper.deleteUsers(false, TOOL_AUTHOR);
     }
 

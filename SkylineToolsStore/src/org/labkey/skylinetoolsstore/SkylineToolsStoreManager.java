@@ -86,20 +86,23 @@ public class SkylineToolsStoreManager
     }
 
     /**
-     * Latest version of every tool stored in the given container or one of its direct children.
+     * Latest version of every tool stored in a direct child of the given container.
      *
-     * A store folder holds its tools in a child folder per version, so the children are what it
-     * lists. The container itself is included so a tool's own folder shows the tool it holds rather
-     * than an empty store - a tool folder has no children of its own.
+     * A store folder holds its tools in a child folder per version, so a store folder's own tools
+     * are exactly those of its children.
      *
      * This is the listing query. It is safe to scope because Skyline never reads it - the client
      * calls getToolsApi, which uses getToolsLatest.
      */
     public SkylineTool[] getToolsLatestForStoreListing(Container container)
     {
+        List<Container> children = container.getChildren();
+        // An empty IN clause is not valid SQL, and a folder with no children holds no tools anyway.
+        if (children.isEmpty())
+            return new SkylineTool[0];
+
         List<String> containerIds = new ArrayList<>();
-        containerIds.add(container.getId());
-        container.getChildren().forEach(child -> containerIds.add(child.getId()));
+        children.forEach(child -> containerIds.add(child.getId()));
 
         SimpleFilter filter = new SimpleFilter();
         filter.addCondition(FieldKey.fromParts("Latest"), true);
