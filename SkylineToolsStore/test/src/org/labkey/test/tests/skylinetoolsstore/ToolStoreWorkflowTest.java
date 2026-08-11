@@ -97,6 +97,11 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
     private static final String NESTED_TOOL_NAME = "NestedToolProbe";
     private static final String NESTED_TOOL_IDENTIFIER = "URN:LSID:toolstore.test:nested";
 
+    // Its own store, because the upload it makes is meant to be refused before a tool is created.
+    private static final String CORRUPT_STORE = "ToolStoreWorkflowTestCorruptZip";
+    private static final String CORRUPT_TOOL_NAME = "CorruptZipProbe";
+    private static final String CORRUPT_TOOL_IDENTIFIER = "URN:LSID:toolstore.test:corruptzip";
+
     // An ordinary site user. Gets Editor on their tool's folder only after the admin names them.
     private static final String TOOL_AUTHOR = "toolstore_author@toolstore.test";
 
@@ -479,6 +484,36 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
                 ToolStoreTestHelper.catalogIdentifiers(NESTED_STORE).contains(NESTED_TOOL_IDENTIFIER));
     }
 
+    /**
+     * A corrupt tool zip is refused with a message rather than a server error.
+     *
+     * unzip returned null when reading the entry threw, and getToolFromZip then dereferenced it. An
+     * NPE is not an IOException, so readToolFromUpload's catch never saw it and the upload died as a
+     * server error rather than naming the file.
+     */
+    @Test
+    public void testACorruptZipIsRefusedWithoutAServerError()
+    {
+        _containerHelper.createProject(CORRUPT_STORE, "Collaboration");
+        _containerHelper.enableModule(CORRUPT_STORE, "SkylineToolsStore");
+        new PortalHelper(this).addWebPart("Skyline Tool Store");
+
+        assertEquals("Server errors were already pending before this test", 0, getServerErrorCount());
+
+        uploadToolFileTo(CORRUPT_STORE, ToolStoreTestHelper.writeTruncatedToolZip(
+                CORRUPT_TOOL_NAME, CORRUPT_TOOL_IDENTIFIER, "1.0"));
+
+        // Read and cleared before asserting, so a failure here leaves nothing pending for whichever
+        // test runs next. resetErrors is server wide.
+        int errorsLogged = getServerErrorCount();
+        resetErrors();
+
+        assertEquals("A corrupt zip must be refused with a message, not a server error",
+                0, errorsLogged);
+        assertFalse("A corrupt zip must not add a tool",
+                ToolStoreTestHelper.catalogIdentifiers(CORRUPT_STORE).contains(CORRUPT_TOOL_IDENTIFIER));
+    }
+
     /** Whether the details page gear menu carries an item, without clicking it. */
     private boolean sprocketHasItem(String item)
     {
@@ -746,6 +781,7 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         _containerHelper.deleteProject(OLDER_STORE, false);
         _containerHelper.deleteProject(FOLDER_STORE, false);
         _containerHelper.deleteProject(NESTED_STORE, false);
+        _containerHelper.deleteProject(CORRUPT_STORE, false);
         _userHelper.deleteUsers(false, TOOL_AUTHOR);
     }
 

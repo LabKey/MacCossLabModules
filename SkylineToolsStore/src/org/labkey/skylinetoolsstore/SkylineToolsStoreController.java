@@ -275,7 +275,12 @@ public class SkylineToolsStoreController extends SpringActionController
         return tool;
     }
 
-    protected byte[] unzip(ZipInputStream stream)
+    /**
+     * Reads the current zip entry. A corrupt or truncated zip throws from read, and the caller turns
+     * that into the message naming the file. Returning null instead left getToolFromZip
+     * dereferencing it, and the NPE is not an IOException, so the upload died as a server error.
+     */
+    protected byte[] unzip(ZipInputStream stream) throws IOException
     {
         final int BUFFER_SIZE = 2048;
 
@@ -286,10 +291,6 @@ public class SkylineToolsStoreController extends SpringActionController
             while ((bytesRead = stream.read(bytes, 0, BUFFER_SIZE)) != -1)
                 unzipBytes.write(bytes, 0, bytesRead);
             return unzipBytes.toByteArray();
-        }
-        catch (Exception e)
-        {
-            return null;
         }
     }
 

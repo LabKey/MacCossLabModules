@@ -31,6 +31,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
@@ -155,6 +157,35 @@ public class ToolStoreTestHelper
         catch (IOException e)
         {
             throw new RuntimeException("Could not build the test tool zip", e);
+        }
+    }
+
+    /**
+     * A tool zip cut off part way through the compressed data of its only entry.
+     *
+     * The local header survives, so the entry is still found and reading it is still attempted, and
+     * that read then runs off the end of the stream. A file that is no kind of zip would be turned
+     * away earlier, by the no-entries path, and would never reach the read.
+     */
+    public static File writeTruncatedToolZip(String name, String identifier, String version)
+    {
+        try
+        {
+            byte[] full = Files.readAllBytes(writeMinimalToolZip(name, identifier, version).toPath());
+            // A local header is 30 bytes plus the entry name and extra field, whose lengths are held
+            // at offsets 26 and 28. Keeping a little past it leaves the compressed data unfinished.
+            int nameLength = (full[26] & 0xFF) | ((full[27] & 0xFF) << 8);
+            int extraLength = (full[28] & 0xFF) | ((full[29] & 0xFF) << 8);
+            int keep = Math.min(30 + nameLength + extraLength + 8, full.length);
+
+            File zip = File.createTempFile("ts-cut-" + version + "-", ".zip");
+            zip.deleteOnExit();
+            Files.write(zip.toPath(), Arrays.copyOf(full, keep));
+            return zip;
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException("Could not build the truncated test tool zip", e);
         }
     }
 
