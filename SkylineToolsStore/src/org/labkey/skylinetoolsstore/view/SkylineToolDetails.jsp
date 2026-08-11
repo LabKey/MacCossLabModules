@@ -40,7 +40,6 @@
 <%@ page import="java.util.Iterator" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Map" %>
-<%@ page import="java.util.Objects" %>
 <%@ page import="static org.labkey.api.util.DOM.IMG" %>
 <%@ page import="static org.labkey.api.util.DOM.Attribute.src" %>
 <%@ page import="static org.labkey.api.util.DOM.Attribute.alt" %>
@@ -82,9 +81,9 @@
     final boolean toolEditor = admin || toolContainer.hasPermission(getUser(), InsertPermission.class);
     final SkylineTool[] allVersions = SkylineToolsStoreController.sortToolsByCreateDate(SkylineToolsStoreManager.get().getToolsByIdentifier(tool.getIdentifier()));
     final boolean multipleVersions = allVersions.length > 1;
-    // sortToolsByCreateDate puts the newest first, the same order DeleteLatestAction uses.
-    // getRowId returns an Integer, so compare values rather than references.
-    final boolean isLatestVersion = Objects.equals(tool.getRowId(), allVersions[0].getRowId());
+    // UpdateToolAction refuses to publish unless the row carries the Latest flag, so the menu gates
+    // on that same flag rather than on which version was created most recently.
+    final boolean isLatestVersion = tool.getLatest();
     final int numDownloads = Arrays.stream(allVersions).mapToInt(SkylineTool::getDownloads).sum();
 
     ActionURL toolDetailsUrl = SkylineToolStoreUrls.getToolDetailsUrl(tool);
