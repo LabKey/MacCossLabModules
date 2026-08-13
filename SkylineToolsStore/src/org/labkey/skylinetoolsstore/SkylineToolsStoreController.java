@@ -66,7 +66,6 @@ import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.JavaScriptFragment;
-import org.labkey.api.util.NetworkDrive;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
 import org.labkey.api.util.SafeToRender;
@@ -1345,78 +1344,6 @@ public class SkylineToolsStoreController extends SpringActionController
 
         }
     }
-
-    @RequiresNoPermission
-    @ActionNames("downloadFile")
-    public static class DownloadToolFileAction extends SimpleViewAction<DownloadFileForm> implements PermissionCheckable
-    {
-        @Override
-        public ModelAndView getView(DownloadFileForm form, BindException errors) throws Exception
-        {
-            if (StringUtils.trimToNull(form.getTool()) == null)
-                errors.reject(SpringActionController.ERROR_MSG, "Could not find tool name in request.");
-            if (StringUtils.trimToNull(form.getFile()) == null)
-                errors.reject(SpringActionController.ERROR_MSG, "Could not find filename in request");
-            if (errors.hasErrors())
-                return new SimpleErrorView(errors);
-
-            SkylineTool tool = SkylineToolsStoreManager.get().getLatestTool(form.getTool().trim());
-            if (tool != null)
-            {
-                String fileName = form.getFile().trim();
-
-                Container toolContainer = tool.lookupContainer();
-                File downloadFile = makeFile(toolContainer, fileName);
-                if (!NetworkDrive.exists(downloadFile))
-                {
-                    errors.reject(SpringActionController.ERROR_MSG, "File " + fileName +
-                            " does not exist in the " + tool.getName() + " " + tool.getVersion() + " directory.");
-                }
-                else
-                {
-                    PageFlowUtil.streamFile(getViewContext().getResponse(), downloadFile.toPath(), true);
-                    return null;
-                }
-            }
-            else
-            {
-                errors.reject(SpringActionController.ERROR_MSG, "Could not find tool with name " + form.getTool());
-            }
-
-            return new SimpleErrorView(errors);
-        }
-
-        @Override
-        public void addNavTrail(NavTree root)
-        {
-        }
-    }
-    public static class DownloadFileForm
-    {
-        private String _tool;
-        private String _file;
-
-        public String getTool()
-        {
-            return _tool;
-        }
-
-        public void setTool(String tool)
-        {
-            _tool = tool;
-        }
-
-        public String getFile()
-        {
-            return _file;
-        }
-
-        public void setFile(String file)
-        {
-            _file = file;
-        }
-    }
-
 
     @RequiresNoPermission
     @ActionNames("details, toolDetails")
