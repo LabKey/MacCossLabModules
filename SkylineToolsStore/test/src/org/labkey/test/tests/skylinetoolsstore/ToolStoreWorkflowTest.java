@@ -394,6 +394,10 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
      * An older version's page must not offer to publish a new version. UpdateToolAction refuses
      * anything but the latest, so offering it there spent the owner's whole upload before saying so.
      *
+     * Nor may it offer to delete the latest version, because DeleteLatestAction removes the newest
+     * version whatever page it was clicked from, so from here it acts on a version other than the
+     * one being viewed.
+     *
      * Supplementary files are per version and the action accepts them on any version, so that item
      * has to stay. Checked here as well, to keep a later change from hiding the whole menu.
      */
@@ -417,12 +421,16 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
                 Map.of("name", OLDER_TOOL_NAME)));
         assertTrue("The latest version should still offer Upload new version",
                 sprocketHasItem("Upload new version"));
+        assertTrue("The latest version is the one Delete latest version acts on, so it belongs here",
+                sprocketHasItem("Delete latest version"));
 
         log("The older version's page offers only the supplementary file item");
         beginAt(WebTestHelper.buildURL("skyts", OLDER_STORE, "details",
                 Map.of("name", OLDER_TOOL_NAME, "version", "1.0")));
         assertFalse("Upload new version must not be offered where the action would refuse it",
                 sprocketHasItem("Upload new version"));
+        assertFalse("Delete latest version must not be offered where it would act on another version",
+                sprocketHasItem("Delete latest version"));
         assertTrue("Upload supplementary file works on any version and must stay",
                 sprocketHasItem("Upload supplementary file"));
     }

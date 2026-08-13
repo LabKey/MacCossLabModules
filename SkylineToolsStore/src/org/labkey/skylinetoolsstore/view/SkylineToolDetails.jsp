@@ -344,7 +344,9 @@ a { text-decoration: none; }
             <li><%=simpleLink("Upload new version").onClick("$('#uploadPop').dialog('open')")%></li>
 <% } %>
             <li><%=simpleLink("Upload supplementary file").onClick("$('#uploadSuppPop').dialog('open')")%></li>
-<% if (multipleVersions) { %>
+<%-- This removes the newest version whatever page it is clicked from, so on an older version's
+     page it would delete a version other than the one being viewed. --%>
+<% if (isLatestVersion && multipleVersions) { %>
             <li><%=simpleLink("Delete latest version").onClick("$('#delToolLatestDlg').dialog('open')")%></li>
 <% } %>
 <% if (admin) { %>
@@ -574,10 +576,13 @@ a { text-decoration: none; }
                 // must not be reachable by GET, and the CSRF token cannot ride on a navigation.
                 // Attributes are set via .attr() rather than built into an HTML string so the sender
                 // URL cannot break out of the markup.
+                // Built from allVersions[0], not the version being viewed. This item is offered on
+                // an older version's page too, and the action always removes the newest one, so both
+                // the URL and the id have to name that version.
                 var form = $('<form method="post"></form>')
-                        .attr('action', <%=q(urlFor(SkylineToolsStoreController.DeleteLatestAction.class))%>);
+                        .attr('action', <%=q(SkylineToolStoreUrls.getDeleteLatestUrl(allVersions[0]).getLocalURIString())%>);
                 $('<input type="hidden">').attr('name', 'X-LABKEY-CSRF').attr('value', LABKEY.CSRF).appendTo(form);
-                $('<input type="hidden">').attr('name', 'toolId').attr('value', <%=tool.getRowId()%>).appendTo(form);
+                $('<input type="hidden">').attr('name', 'toolId').attr('value', <%=allVersions[0].getRowId()%>).appendTo(form);
                 $('<input type="hidden">').attr('name', 'sender')
                         .attr('value', <%=q(toolDetailsLatestUrl.getLocalURIString())%>).appendTo(form);
                 $('body').append(form);

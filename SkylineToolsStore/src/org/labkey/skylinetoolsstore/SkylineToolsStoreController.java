@@ -45,7 +45,6 @@ import org.labkey.api.module.FolderTypeManager;
 import org.labkey.api.security.ActionNames;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.MutableSecurityPolicy;
-import org.labkey.api.security.RequiresLogin;
 import org.labkey.api.security.RequiresNoPermission;
 import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.RequiresSiteAdmin;
@@ -1043,7 +1042,14 @@ public class SkylineToolsStoreController extends SpringActionController
         }
     }
 
-    @RequiresLogin
+    /**
+     * Removes a tool and every one of its versions.
+     *
+     * Site admin rather than @RequiresPermission, because this deletes a folder per version and no
+     * single container covers them all. Both menus already offer it to site admins only, so the
+     * annotation now says what the UI has always done.
+     */
+    @RequiresSiteAdmin
     public static class DeleteAction extends FormHandlerAction<IdForm>
     {
         @Override
@@ -1083,12 +1089,6 @@ public class SkylineToolsStoreController extends SpringActionController
                 errors.reject(ERROR_MSG, "Failed to look up tool's container: " + tool.getName());
                 return false;
             }
-            if(!toolContainer.hasPermission(getUser(), DeletePermission.class))
-            {
-                errors.reject(ERROR_MSG, "User does not have permission to delete the tool." + tool.getName());
-                return false;
-            }
-
             // TODO: Should be in a transaction
             for (SkylineTool toDelete : SkylineToolsStoreManager.get().getToolsByIdentifier(tool.getIdentifier()))
             {
@@ -1147,7 +1147,7 @@ public class SkylineToolsStoreController extends SpringActionController
      * as PR #608 correctly did for DownloadToolAction's download counter, would hide the warning and
      * leave the delete reachable by GET.
      */
-    @RequiresLogin
+    @RequiresPermission(DeletePermission.class)
     public static class DeleteLatestAction extends FormHandlerAction<DeleteLatestForm>
     {
         private URLHelper _successURL;
@@ -1160,15 +1160,9 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public boolean handlePost(DeleteLatestForm form, BindException errors) throws Exception
         {
-            final SkylineTool tool = SkylineToolsStoreManager.get().getTool(form.getToolId());
-            if (tool == null)
-                throw new NotFoundException("Could not find tool with Id " + form.getToolId());
-
-            Container toolContainer = tool.lookupContainer();
-            if (toolContainer == null)
-                throw new NotFoundException("Failed to look up the tool's container: " + tool.getName());
-            if (!toolContainer.hasPermission(getUser(), DeletePermission.class))
-                throw new UnauthorizedException("User does not have permission to delete the tool.");
+            // The form names the row and the URL decides which folder the permission is checked
+            // against, so the two have to agree. The check below covers the folder this deletes.
+            final SkylineTool tool = requireToolInContainer(form.getToolId(), getContainer());
 
             ActionURL senderUrl = form.getSender() != null ? new ActionURL(form.getSender()) : null;
 
@@ -1185,7 +1179,17 @@ public class SkylineToolsStoreController extends SpringActionController
                 return false;
             }
 
-            ContainerManager.delete(tools[0].lookupContainer(), getUser());
+            // @RequiresPermission checked Delete on the container in the URL, so that container has
+            // to be the one this removes. Without this the caller could address an older version's
+            // folder, be authorized against it, and have the newest version deleted instead.
+            Container latestContainer = tools[0].lookupContainer();
+            if (latestContainer == null)
+                throw new NotFoundException("Failed to look up the folder holding " + tools[0].getName() +
+                        " version " + tools[0].getVersion() + ".");
+            if (!getContainer().equals(latestContainer))
+                throw new NotFoundException("This action has to be addressed to the version it deletes.");
+
+            ContainerManager.delete(latestContainer, getUser());
 
             if (senderUrl != null)
             {

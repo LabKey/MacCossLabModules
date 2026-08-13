@@ -76,6 +76,15 @@ public class SkylineToolStoreUrls
     }
 
     /**
+     * Takes the newest version rather than the tool being viewed, because that is the folder the
+     * action removes and so the folder its permission has to be checked against.
+     */
+    public static ActionURL getDeleteLatestUrl(SkylineTool latestVersion)
+    {
+        return getToolActionUrl(SkylineToolsStoreController.DeleteLatestAction.class, latestVersion);
+    }
+
+    /**
      * URL for an action targeting the tool's own container rather than the tool store container.
      *
      * Actions that operate on a single tool are annotated with the permission they need, and the

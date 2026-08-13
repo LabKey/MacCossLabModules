@@ -202,7 +202,10 @@
 
 <table id="<%= h(tableId) %>" class="tablewrap"
        data-toolId="<%= tool.getRowId() %>" data-toolName="<%= h(tool.getName()) %>" data-toolVersion="<%= h(tool.getVersion()) %>" data-toolLsid="<%= h(tool.getIdentifier()) %>"
-       data-toolDownloads="<%= numDownloads %>">
+       data-toolDownloads="<%= numDownloads %>"
+       <%-- One dialog serves every row, so the delete URL rides on the row. It names this tool's
+            own folder, which is the folder DeleteLatestAction removes. --%>
+       data-deleteLatestUrl="<%= h(SkylineToolStoreUrls.getDeleteLatestUrl(tool)) %>">
     <tr>
         <td class="leftfill"></td>
         <td class="contentleft">
@@ -427,7 +430,7 @@
                 setButtonsEnabled(false);
                 $(this).html("<p>Please wait...</p>");
                 var toolTable = $(this).data("toolTable");
-                $.post("<%=h(urlFor(SkylineToolsStoreController.DeleteLatestAction.class))%>", {
+                $.post(toolTable.attr("data-deleteLatestUrl"), {
                     "toolId": toolTable.attr("data-toolId"),
                     "X-LABKEY-CSRF": LABKEY.CSRF
                 }).done(function(data) {
