@@ -76,7 +76,7 @@ public class SkylineToolsStoreManager
      * Deliberately NOT container-scoped. Skyline hardcodes a container in its catalog and download
      * URLs that is not the tool store folder, so it only reaches tools because these lookups ignore
      * the request container. Adding a filter here would break tool installation in every shipped
-     * Skyline version. Use getToolsLatestForStoreListing for anything user-facing.
+     * Skyline version. Use getToolsLatestForStoreListing for anything user-facing in the browser.
      */
     public SkylineTool[] getToolsLatest()
     {
@@ -88,16 +88,12 @@ public class SkylineToolsStoreManager
     /**
      * Latest version of every tool stored in a direct child of the given container.
      *
-     * A store folder holds its tools in a child folder per version, so a store folder's own tools
-     * are exactly those of its children.
-     *
-     * This is the listing query. It is safe to scope because Skyline never reads it - the client
-     * calls getToolsApi, which uses getToolsLatest.
+     * A store folder holds all its tools in a child folder per version. This is the listing query scoped to the
+     * tool store container. Skyline never calls it. It calls getToolsApi, which uses getToolsLatest instead.
      */
     public SkylineTool[] getToolsLatestForStoreListing(Container container)
     {
         List<Container> children = container.getChildren();
-        // An empty IN clause is not valid SQL, and a folder with no children holds no tools anyway.
         if (children.isEmpty())
             return new SkylineTool[0];
 

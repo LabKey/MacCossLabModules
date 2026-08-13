@@ -54,6 +54,10 @@
 
     final boolean admin = getUser().hasSiteAdminPermission();
     final boolean loggedIn = !getUser().isGuest();
+    // This web part can be added to any folder's page, including a tool's own version folder,
+    // where InsertToolAction refuses an upload. Hide the button rather than offer one that
+    // cannot work.
+    final boolean canAddTool = admin && SkylineToolsStoreController.isStoreContainer(getContainer());
 
     final String contextPath = AppProps.getInstance().getContextPath();
     final String imgDir = contextPath + "/skylinetoolsstore/img/";
@@ -103,7 +107,7 @@
 
 </style>
 
-<% if (admin) { %>
+<% if (canAddTool) { %>
 <div style="float: left;">
     <button type="button" id="add-new-tool-btn" class="styled-button">Add New Tool</button>
     <% addHandler("add-new-tool-btn", "click",

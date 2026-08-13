@@ -32,9 +32,7 @@ public class SkylineToolsStoreWebPart extends JspView<List<SkylineTool>>
         setTitle("Skyline Tool Store");
         Container container = getViewContext().getContainer();
         User user = getViewContext().getUser();
-        // Only this store's own tools. Each tool version lives in a child folder, so listing the
-        // children keeps one store folder from displaying another's tools. The container itself is
-        // included so a tool's own folder lists the tool it holds rather than nothing at all.
+        // Each tool version lives in a child folder of the store folder. Display only the tools contained in this store.
         setModelBean(Arrays.asList(SkylineToolsStoreManager.get().getToolsLatestForStoreListing(container)));
         setTitleHref(SkylineToolStoreUrls.getToolStoreHomeUrl(container, user));
     }

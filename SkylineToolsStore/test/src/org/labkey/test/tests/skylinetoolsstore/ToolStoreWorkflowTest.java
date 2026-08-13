@@ -428,14 +428,14 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
     }
 
     /**
-     * A tool's own folder is not a store, so its store page leads back to the store above it.
+     * A tool's own folder shows that tool rather than an empty store.
      *
-     * The module is enabled in every tool folder on skyline.ms, so the folder menu reaches that page
-     * even though nothing links to it. The listing's Add New Tool button and its per-tool menu are
-     * addressed to the container being viewed, so left rendering there they act on the wrong folder.
+     * The module is enabled in every tool folder on skyline.ms, and a version folder has no children,
+     * so a listing there has nothing to show. The folder holds exactly one tool row, so its store
+     * page stands in for that tool's details page.
      */
     @Test
-    public void testAToolsOwnFolderRedirectsToTheStore()
+    public void testAToolsOwnFolderShowsThatTool()
     {
         _containerHelper.createProject(FOLDER_STORE, "Collaboration");
         _containerHelper.enableModule(FOLDER_STORE, "SkylineToolsStore");
@@ -449,11 +449,22 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
 
         assertEquals("The store folder lists its one tool", 1, toolsInStore(FOLDER_STORE));
 
-        // Asserted on the container the page ended up in rather than on the rendered markup, because
-        // the store's own page and a tool folder's page are the same view.
+        log("The store folder itself still lists its tools and offers Add New Tool");
+        beginAt(WebTestHelper.buildURL("skyts", FOLDER_STORE, "begin"));
+        assertElementPresent(Locator.id("add-new-tool-btn"));
+
+        log("The tool's own folder lands on that tool's details page");
         beginAt(WebTestHelper.buildURL("skyts", toolFolder, "begin"));
-        assertEquals("A tool folder's store page should redirect to the store folder",
-                "/" + FOLDER_STORE, getCurrentContainerPath());
+        // download-tool-btn belongs to the details page. The listing has no element with that id,
+        // so this separates a details page from a store page showing the same tool.
+        assertElementPresent(Locator.id("download-tool-btn"));
+        assertTextPresent(FOLDER_TOOL_NAME);
+
+        // The redirect makes this page somewhere a user lands rather than somewhere they clicked
+        // through to, so it needs its own way back. The details page carries this text only in
+        // the nav trail.
+        assertElementPresent("The details page needs a link back to the store",
+                Locator.linkWithText("Skyline Tool Store"), 1);
     }
 
     /**
@@ -461,8 +472,8 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
      *
      * storeToolVersion creates the version folder under the container the action runs in, and the
      * module is enabled in every tool folder, so an upload from one would file the new tool inside
-     * another tool, where the store listing cannot reach it. Separate from the redirect above
-     * because the redirect only removes the button, not the URL.
+     * another tool, where the store listing cannot reach it. Separate from the test above because
+     * neither the redirect nor the hidden button stops a post sent straight to the URL.
      */
     @Test
     public void testAToolCannotBeAddedFromInsideAnotherToolsFolder()
@@ -556,13 +567,15 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
         uploadToolFileTo(RETRY_STORE, ToolStoreTestHelper.writeToolZipWithUnreadableIcon(
                 RETRY_TOOL_NAME, RETRY_TOOL_IDENTIFIER, RETRY_TOOL_VERSION));
 
-        // The failure has to reach the log as a server error, because an exception escaping the
-        // action is what skips the cleanup and strands the folder. Counted rather than named,
-        // because one failure writes more than one ERROR line. If this zip ever starts being
-        // refused gracefully, this fails rather than passing for the wrong reason - the test would
-        // no longer be exercising a throw part way through storing the version.
-        assertTrue("The upload was supposed to fail with a server error", getServerErrorCount() > 0);
+        // storeToolVersion turns the failure into a message on the form, so nothing should reach the
+        // log as a server error. writeIconToFile used to let an IllegalArgumentException out, which
+        // is not the IOException it declares, so no catch saw it and the upload died as a 500.
+        // Read and cleared before asserting, so a failure here leaves nothing pending for the next
+        // test. resetErrors is server wide.
+        int errorsLogged = getServerErrorCount();
         resetErrors();
+        assertEquals("An unreadable icon must be refused with a message, not a server error",
+                0, errorsLogged);
 
         assertFalse("The upload was supposed to fail while storing the version",
                 ToolStoreTestHelper.catalogIdentifiers(RETRY_STORE).contains(RETRY_TOOL_IDENTIFIER));

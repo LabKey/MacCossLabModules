@@ -42,8 +42,6 @@ public class SkylineToolsStoreModule extends DefaultModule
 {
     public static final String CONTROLLER_NAME = "skyts";
 
-    // Do not change this value. It identifies the module to the server, including which folders have
-    // it enabled and its schema version history.
     public static final String NAME = "SkylineToolsStore";
 
     @Override

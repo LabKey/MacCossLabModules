@@ -76,18 +76,11 @@ public class SkylineToolStoreUrls
     }
 
     /**
-     * URL for an action addressed to the tool's OWN container rather than the store folder.
+     * URL for an action targeting the tool's own container rather than the tool store container.
      *
      * Actions that operate on a single tool are annotated with the permission they need, and the
      * annotation is checked against the container in the URL. Since a tool lives in its own child
      * folder, the URL has to name that folder for the annotation to check the right thing.
-     *
-     * Private on purpose. Each per-tool action gets a named method above, so callers - mostly JSPs -
-     * do not repeat the action class, and adding a new one is a deliberate step.
-     *
-     * Takes PermissionCheckableAction rather than Spring's Controller so this cannot be used for an
-     * action that skips LabKey's permission check, which would leave no annotation to evaluate
-     * against the container.
      */
     private static ActionURL getToolActionUrl(Class<? extends PermissionCheckableAction> action, SkylineTool tool)
     {

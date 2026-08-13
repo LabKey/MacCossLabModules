@@ -76,13 +76,11 @@
 
     final String toolOwners = StringUtils.join(SkylineToolsStoreController.getToolOwners(tool), ", ");
 
-    // A tool owner is granted the Editor role on the tool's own folder, which carries Insert, Update
-    // and Delete together, so one check covers every control in the settings menu.
     final boolean toolEditor = admin || toolContainer.hasPermission(getUser(), InsertPermission.class);
     final SkylineTool[] allVersions = SkylineToolsStoreController.sortToolsByCreateDate(SkylineToolsStoreManager.get().getToolsByIdentifier(tool.getIdentifier()));
     final boolean multipleVersions = allVersions.length > 1;
-    // UpdateToolAction refuses to publish unless the row carries the Latest flag, so the menu gates
-    // on that same flag rather than on which version was created most recently.
+    // UpdateToolAction refuses to update the tool unless the tool carries the Latest flag. Display the menu item to
+    // update tool only if we are looking at the latest version.
     final boolean isLatestVersion = tool.getLatest();
     final int numDownloads = Arrays.stream(allVersions).mapToInt(SkylineTool::getDownloads).sum();
 

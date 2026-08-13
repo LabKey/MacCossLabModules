@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -300,11 +301,13 @@ public class SkylineTool extends Entity
         try (ByteArrayInputStream iconInputStream = new ByteArrayInputStream(_icon);
              FileOutputStream iconOutputStream = new FileOutputStream(file))
         {
-            ImageIO.write(ImageIO.read(iconInputStream), format, iconOutputStream);
-        }
-        catch (IOException e)
-        {
-            throw e;
+            BufferedImage image = ImageIO.read(iconInputStream);
+            // read returns null when nothing can decode the bytes, and write then throws
+            // IllegalArgumentException, which is not the IOException this method declares. Callers
+            // catch IOException, so the unchecked one escaped them and became a server error.
+            if (image == null)
+                throw new IOException("The tool's icon is not an image this server can read.");
+            ImageIO.write(image, format, iconOutputStream);
         }
     }
 

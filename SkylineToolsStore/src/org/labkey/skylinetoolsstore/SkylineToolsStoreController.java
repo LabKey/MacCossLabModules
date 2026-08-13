@@ -22,7 +22,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -30,6 +29,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.action.FormHandlerAction;
 import org.labkey.api.action.FormViewAction;
+import org.labkey.api.action.LabKeyError;
 import org.labkey.api.action.PermissionCheckable;
 import org.labkey.api.action.ReturnUrlForm;
 import org.labkey.api.action.SimpleErrorView;
@@ -42,7 +42,6 @@ import org.labkey.api.data.DbScope;
 import org.labkey.api.data.NormalContainerType;
 import org.labkey.api.files.FileContentService;
 import org.labkey.api.module.FolderTypeManager;
-import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.security.ActionNames;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.MutableSecurityPolicy;
@@ -73,6 +72,7 @@ import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.Pair;
 import org.labkey.api.util.SafeToRender;
 import org.labkey.api.util.URLHelper;
+import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.HtmlView;
 import org.labkey.api.view.JspView;
@@ -124,10 +124,12 @@ import java.util.zip.ZipOutputStream;
 
 public class SkylineToolsStoreController extends SpringActionController
 {
-    private static final Logger LOG = LogManager.getLogger(SkylineToolsStoreController.class);
+    private static final Logger LOG = LogHelper.getLogger(SkylineToolsStoreController.class, "SkylineToolsStoreController requests");
     private static final DefaultActionResolver _actionResolver = new DefaultActionResolver(SkylineToolsStoreController.class);
     private static final String[] VALID_ICON_EXTENSIONS = new String[] { "png", "jpg", "jpeg", "gif" };
+
     private static final String STORE_NOT_AVAILABLE = "The Skyline Tool Store is not available in this folder.";
+    private static final String TOOL_ALREADY_EXISTS = "The Skyline Tool you are trying to add already exists.";
 
     public SkylineToolsStoreController()
     {
@@ -138,38 +140,16 @@ public class SkylineToolsStoreController extends SpringActionController
     public static class BeginAction extends SimpleViewAction<Object>
     {
         @Override
-        public ModelAndView getView(Object o, BindException errors) throws Exception
+        public ModelAndView getView(Object o, BindException errors)
         {
-            ModuleLoader moduleLoader = ModuleLoader.getInstance();
-            if(!getContainer().getActiveModules().contains(moduleLoader.getModule(SkylineToolsStoreModule.class)))
-            {
-                // If the toolstore module is not enabled in the container look for a container
-                // that has tools.
-                SkylineTool[] tools = SkylineToolsStoreManager.get().getToolsLatest();
-                if (tools != null && tools.length > 0)
-                {
-                    Container toolsHomeContainer = tools[0].getContainerParent();
-                    // NOTE: This returns the first container that contains tools. We have only one such container
-                    // on the skyline website.
-                    // TODO: Need to look into why the tool store module is enabled in the individual tool sub-folders.
-                    if (!getContainer().equals(toolsHomeContainer))
-                    {
-                        ActionURL redirectUrl = getViewContext().getActionURL();
-                        redirectUrl.setContainer(toolsHomeContainer);
-                        throw new RedirectException(redirectUrl);
-                    }
-                }
-            }
-            // A tool version's folder is not a store. The module is enabled in every one of them, so
-            // the folder menu reaches this page, and the listing's controls are addressed to the
-            // container being viewed rather than to the store.
-            Container storeContainer = getStoreContainerFor(getContainer());
-            if (storeContainer != null)
-            {
-                ActionURL redirectUrl = getViewContext().getActionURL().clone();
-                redirectUrl.setContainer(storeContainer);
-                throw new RedirectException(redirectUrl);
-            }
+            if (!getContainer().hasActiveModuleByName(SkylineToolsStoreModule.NAME))
+                throw new NotFoundException(STORE_NOT_AVAILABLE);
+
+            // If this container has a tool, redirect to the tool details page.
+            SkylineTool[] ownTools = SkylineToolsStoreManager.get().getTools(getContainer());
+            if (ownTools.length > 0)
+                throw new RedirectException(SkylineToolStoreUrls.getToolDetailsUrl(ownTools[0]));
+
             return new SkylineToolsStoreWebPart();
         }
 
@@ -181,40 +161,12 @@ public class SkylineToolsStoreController extends SpringActionController
     }
 
     /**
-     * True when this container holds a tool's own row, which is what a tool version folder is.
-     *
-     * storeToolVersion inserts the row into the version folder it creates, so a store folder never
-     * holds a row of its own, not even one that has no tools in it yet.
+     * True when a tool can be added to this container. The module should be enabled, and it should not contain a tool.
      */
-    private static boolean holdsToolRow(Container container)
+    public static boolean isStoreContainer(Container container)
     {
-        return SkylineToolsStoreManager.get().getTools(container).length > 0;
-    }
-
-    /**
-     * True when a tool can be added to this container.
-     *
-     * The module is enabled in every tool version folder as well as in the store, so an active
-     * module on its own does not make a container a store.
-     */
-    private static boolean isStoreContainer(Container container)
-    {
-        return container.hasActiveModuleByName(SkylineToolsStoreModule.NAME) && !holdsToolRow(container);
-    }
-
-    /**
-     * The store folder above a tool's own folder, or null when this container is not one.
-     *
-     * Decided by the parent having the module enabled rather than by the folder's name, so a folder
-     * that merely looks like a tool folder does not point somewhere unrelated.
-     */
-    private static Container getStoreContainerFor(Container container)
-    {
-        Container parent = container.getParent();
-        if (parent == null || parent.isRoot() || !holdsToolRow(container))
-            return null;
-        return parent.getActiveModules().contains(
-                ModuleLoader.getInstance().getModule(SkylineToolsStoreModule.class)) ? parent : null;
+        return container.hasActiveModuleByName(SkylineToolsStoreModule.NAME)
+                && SkylineToolsStoreManager.get().getTools(container).length == 0;
     }
 
     public static NavTree getToolStoreNav(Container container)
@@ -259,10 +211,6 @@ public class SkylineToolsStoreController extends SpringActionController
                     }
                 }
             }
-        }
-        catch (Exception e)
-        {
-            throw e;
         }
 
         if (tool != null)
@@ -532,7 +480,6 @@ public class SkylineToolsStoreController extends SpringActionController
      * need different permissions on different containers. See UpdateToolAction.
      */
     @RequiresSiteAdmin
-    @ActionNames("insertTool, insert")
     public class InsertToolAction extends FormViewAction<ToolUploadForm>
     {
         private SkylineTool _tool;
@@ -540,10 +487,7 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public void validateCommand(ToolUploadForm form, Errors errors)
         {
-            // validateCommand runs on POST only, so this is what stops a hand-posted upload. The
-            // matching check in getView is what stops the form being drawn in the first place.
-            // storeToolVersion creates the version folder under the container the action runs in, so
-            // uploading from a tool's own folder would file the new tool inside another tool.
+            // This action should only be called from a tool store container
             if (!isStoreContainer(getContainer()))
                 errors.reject(ERROR_MSG, STORE_NOT_AVAILABLE);
         }
@@ -553,7 +497,10 @@ public class SkylineToolsStoreController extends SpringActionController
         {
             // On a reshow the message is already in errors, so let the JSP render it there.
             if (!reshow && !isStoreContainer(getContainer()))
-                return HtmlView.of(STORE_NOT_AVAILABLE);
+            {
+                errors.addError(new LabKeyError(STORE_NOT_AVAILABLE));
+                return new SimpleErrorView(errors);
+            }
 
             return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", form, errors);
         }
@@ -578,7 +525,7 @@ public class SkylineToolsStoreController extends SpringActionController
             {
                 if (tool.getIdentifier().equalsIgnoreCase(existing.getIdentifier()))
                 {
-                    errors.reject(ERROR_MSG, "The Skyline Tool you are trying to add already exists.");
+                    errors.reject(ERROR_MSG, TOOL_ALREADY_EXISTS);
                     return false;
                 }
             }
@@ -586,13 +533,14 @@ public class SkylineToolsStoreController extends SpringActionController
             {
                 if (child.getName().equalsIgnoreCase(toolFolderName(tool)))
                 {
-                    errors.reject(ERROR_MSG, "The Skyline Tool you are trying to add already exists.");
+                    errors.reject(ERROR_MSG, TOOL_ALREADY_EXISTS);
                     return false;
                 }
             }
 
             Container versionContainer = storeToolVersion(getContainer(), tool,
                     getFileMap().get("toolZip"), parsedOwners.first, null, errors);
+            // storeToolVersion has already rejected with the reason.
             if (versionContainer == null)
                 return false;
 
@@ -628,12 +576,8 @@ public class SkylineToolsStoreController extends SpringActionController
     /**
      * Publishes a new version of an existing tool.
      *
-     * Addressed to the TOOL's own container, so @RequiresPermission checks the folder where the
+     * Should target the tool's own container, so @RequiresPermission checks the folder where the
      * owner holds Editor. This is what lets a tool author maintain their tool without an admin.
-     *
-     * The old combined action redirected on a container mismatch, which silently lost the uploaded
-     * zip because a browser follows a 302 after POST with a GET. Addressing the action to the tool's
-     * container removes the mismatch case entirely.
      */
     @RequiresPermission(UpdatePermission.class)
     public class UpdateToolAction extends FormViewAction<ToolUploadForm>
@@ -680,7 +624,7 @@ public class SkylineToolsStoreController extends SpringActionController
 
             if (!tool.getIdentifier().equalsIgnoreCase(previousVersion.getIdentifier()))
             {
-                errors.reject(ERROR_MSG, "The Skyline Tool zip file did not contain the Skyline Tool being updated.");
+                errors.reject(ERROR_MSG, "The Skyline Tool zip file did not contain the Skyline tool being updated.");
                 return false;
             }
             if (tool.getVersion().equalsIgnoreCase(previousVersion.getVersion()))
@@ -697,10 +641,10 @@ public class SkylineToolsStoreController extends SpringActionController
                 }
             }
 
-            // We are in the tool's own folder, so the store folder that holds every version is its parent.
-            // Owners are not passed - copyContainerPermissions carries the previous version's policy over.
+            // Create the child folder for the tool version and store its zip, icon and docs
             Container versionContainer = storeToolVersion(getContainer().getParent(), tool,
                     getFileMap().get("toolZip"), Collections.emptyList(), previousVersion, errors);
+            // storeToolVersion has already rejected with the reason.
             if (versionContainer == null)
                 return false;
 
@@ -797,41 +741,44 @@ public class SkylineToolsStoreController extends SpringActionController
      *
      * Either returns a folder holding the whole version or leaves nothing behind. The caller's
      * cleanup cannot cover a failure in here, because it has no folder to clean up until this
-     * returns, so this removes its own partial work before rethrowing.
+     * returns, so this removes its own partial work before returning null.
      *
      * @param storeContainer  the tool store folder to create the version's folder under
      * @param previousVersion the version being superseded, or null for a brand-new tool. Supplies the
      *                        permissions, supplementary files and docs that carry forward, which is
      *                        how a tool's owners keep their access across versions.
-     * @return the new version's folder, or null if it could not be created, in which case the reason
-     *         has been added to errors.
+     * @return the new version's folder, or null if it could not be stored, in which case the reason
+     *         has been added to errors. Does not throw - an IOException on the way is reported the
+     *         same way, so the caller never has to tell the two apart.
      */
     private Container storeToolVersion(Container storeContainer, SkylineTool tool, MultipartFile zip,
                                        List<User> owners, @Nullable SkylineTool previousVersion,
                                        BindException errors)
-            throws IOException
     {
-        Container previousContainer = previousVersion != null ? previousVersion.lookupContainer() : null;
-        Set<String> carryForward = previousVersion != null
-                ? getSupplementaryFileBasenames(previousVersion) : Collections.emptySet();
-
-        Container c = makeContainer(storeContainer, toolFolderName(tool), owners,
-                RoleManager.getRole(EditorRole.class));
-        // makeContainer returns null rather than throwing when the folder name is not legal or is
-        // already taken, for example by a folder left behind by an upload that failed part way.
-        if (c == null)
-        {
-            errors.reject(ERROR_MSG, "Could not create a folder named " + toolFolderName(tool) +
-                    " for this version. Check whether a folder by that name already exists.");
-            return null;
-        }
-        // The folder exists from here on, and every step below can throw - a zip that cannot be
-        // written, an icon ImageIO cannot decode, a carried-forward name that is a directory. The
-        // caller's cleanup only runs after this method returns, so without this a throw would leave
-        // the folder behind and makeContainer would refuse this version's name from then on.
+        // The folder exists from partway through this, and every step can throw - a zip that cannot
+        // be written, an icon ImageIO cannot decode, a carried-forward name that is a directory. The
+        // caller's cleanup only runs after this method returns, so without the finally below a throw
+        // would leave the folder behind and makeContainer would refuse this version's name from then
+        // on.
+        Container c = null;
         boolean populated = false;
         try
         {
+            Container previousContainer = previousVersion != null ? previousVersion.lookupContainer() : null;
+            Set<String> carryForward = previousVersion != null
+                    ? getSupplementaryFileBasenames(previousVersion) : Collections.emptySet();
+
+            c = makeContainer(storeContainer, toolFolderName(tool), owners,
+                    RoleManager.getRole(EditorRole.class));
+            // makeContainer returns null rather than throwing when the folder name is not legal or is
+            // already taken, for example by a folder left behind by an upload that failed part way.
+            if (c == null)
+            {
+                errors.reject(ERROR_MSG, "Could not create a folder named " + toolFolderName(tool) +
+                        " for this version. Check whether a folder by that name already exists.");
+                return null;
+            }
+
             copyContainerPermissions(previousContainer, c);
 
             File storedZip = makeFile(c, zip.getOriginalFilename());
@@ -854,9 +801,19 @@ public class SkylineToolsStoreController extends SpringActionController
             populated = true;
             return c;
         }
+        catch (IOException e)
+        {
+            // As in readToolFromUpload, an IOException message here names a path on the server,
+            // which a tool owner should not see, so the detail goes to the log only. Logged at warn
+            // because the upload was refused rather than left broken - error would report it as a
+            // server fault.
+            LOG.warn("Could not store version {} of {}", tool.getVersion(), tool.getName(), e);
+            errors.reject(ERROR_MSG, "The tool version could not be stored.");
+            return null;
+        }
         finally
         {
-            if (!populated)
+            if (c != null && !populated)
                 discardVersionFolder(c);
         }
     }
@@ -866,8 +823,7 @@ public class SkylineToolsStoreController extends SpringActionController
      * does not leave one behind. An orphan folder is not harmless - makeContainer refuses to create a
      * folder whose name is already taken, so it would block the next attempt at the same version.
      *
-     * Failing to clean up must not replace the failure that brought us here, so this logs rather than
-     * throws.
+     * Failing to clean up logs rather than throws.
      */
     private void discardVersionFolder(Container versionContainer)
     {
@@ -1528,6 +1484,11 @@ public class SkylineToolsStoreController extends SpringActionController
         @Override
         public void addNavTrail(NavTree root)
         {
+            // redirectToToolStoreContainer sends this action to the store folder, so the store is
+            // getContainer() itself rather than its parent. Null when the lookup above failed.
+            root.addChild(getToolStoreNav(getContainer()));
+            if (_tool != null)
+                root.addChild(_tool.getName());
         }
     }
 
