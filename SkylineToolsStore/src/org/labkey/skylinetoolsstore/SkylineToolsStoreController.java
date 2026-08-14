@@ -278,6 +278,16 @@ public class SkylineToolsStoreController extends SpringActionController
     }
 
     /**
+     * Shared by the two places that refuse to publish from a version that is not the latest, so the
+     * form and the post cannot tell the owner two different things.
+     */
+    private static String notLatestVersionMessage(SkylineTool tool)
+    {
+        return "Version " + tool.getVersion() + " is not the latest version of " + tool.getName() +
+                ". Publish a new version from the latest one.";
+    }
+
+    /**
      * Resolves a tool row id and confirms the tool lives in the given container.
      */
     private static SkylineTool requireToolInContainer(int toolId, Container c)
@@ -593,7 +603,16 @@ public class SkylineToolsStoreController extends SpringActionController
             // The shared JSP decides which form to draw from toolId, so a request without one would
             // render the add-a-new-tool form pointed at this folder. There is no such thing as
             // updating an unnamed tool, so fail instead.
-            requireToolInContainer(form.getToolId(), getContainer());
+            SkylineTool tool = requireToolInContainer(form.getToolId(), getContainer());
+
+            // handlePost refuses anything but the latest, and by then the owner has uploaded the
+            // whole zip. Both menus hide the item on an older version, so getting here means the
+            // URL was built by hand, but the form should still not be drawn.
+            if (!tool.getLatest())
+            {
+                errors.reject(ERROR_MSG, notLatestVersionMessage(tool));
+                return new SimpleErrorView(errors);
+            }
 
             return new JspView<>("/org/labkey/skylinetoolsstore/view/SkylineToolsStoreUpload.jsp", form, errors);
         }
@@ -610,9 +629,7 @@ public class SkylineToolsStoreController extends SpringActionController
             // inherited the older version's owners, docs and supplementary files.
             if (!previousVersion.getLatest())
             {
-                errors.reject(ERROR_MSG, "Version " + previousVersion.getVersion() + " is not the " +
-                        "latest version of " + previousVersion.getName() + ". Publish a new version " +
-                        "from the latest one.");
+                errors.reject(ERROR_MSG, notLatestVersionMessage(previousVersion));
                 return false;
             }
 

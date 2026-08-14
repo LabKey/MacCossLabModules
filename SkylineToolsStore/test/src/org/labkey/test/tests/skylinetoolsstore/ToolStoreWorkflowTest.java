@@ -400,6 +400,10 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
      *
      * Supplementary files are per version and the action accepts them on any version, so that item
      * has to stay. Checked here as well, to keep a later change from hiding the whole menu.
+     *
+     * The last block covers the URL rather than the menu. Hiding an item only removes the way in
+     * that the UI offers, and UpdateToolAction used to draw its upload form for any version and
+     * refuse at the post, which spends the owner's whole upload before telling them no.
      */
     @Test
     public void testAnOlderVersionPageOffersOnlyWhatItCanDo()
@@ -433,6 +437,13 @@ public class ToolStoreWorkflowTest extends BaseWebDriverTest implements Postgres
                 sprocketHasItem("Delete latest version"));
         assertTrue("Upload supplementary file works on any version and must stay",
                 sprocketHasItem("Upload supplementary file"));
+
+        log("The URL behind the hidden item refuses before drawing the form");
+        beginAt(WebTestHelper.buildURL("skyts", v1Folder, "updateTool",
+                Map.of("toolId", String.valueOf(v1RowId))));
+        assertElementNotPresent("The upload form must not be drawn where the post would be refused",
+                Locator.css("input[name='toolZip']"));
+        assertTextPresent("is not the latest version of");
     }
 
     /**
