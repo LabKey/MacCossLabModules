@@ -44,7 +44,6 @@ import org.labkey.test.util.LogMethod;
 import org.labkey.test.util.LoggedParam;
 import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PortalHelper;
-import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.TextSearcher;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -64,7 +63,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.labkey.test.util.PermissionsHelper.FOLDER_ADMIN_ROLE;
 
-public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOnlyTest
+public class PanoramaPublicBaseTest extends TargetedMSTest
 {
     static String PANORAMA_PUBLIC = "Panorama Public " + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
     static final String PANORAMA_PUBLIC_GROUP = "panoramapublictest";
