@@ -42,7 +42,6 @@ import org.labkey.test.util.APIContainerHelper;
 import org.labkey.test.util.APITestHelper;
 import org.labkey.test.util.LogMethod;
 import org.labkey.test.util.PortalHelper;
-import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.TextSearcher;
 
 import java.io.File;
@@ -62,7 +61,7 @@ import static org.junit.Assert.assertTrue;
 
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 5)
-public class TestResultsTest extends BaseWebDriverTest implements PostgresOnlyTest
+public class TestResultsTest extends BaseWebDriverTest
 {
     private static final String PROJECT_NAME = "TestResultsTest" + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
     static final String COMPUTER_NAME_1 = "TEST-PC-1";
