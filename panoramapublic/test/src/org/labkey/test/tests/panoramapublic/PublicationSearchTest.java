@@ -259,32 +259,44 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertNotNull("Expected lastReminderDate for dataset 2", dsStatus2AfterPost.get("LastReminderDate"));
         assertNotNull("Expected citation to be cached for dataset 2", dsStatus2AfterPost.get("Citation"));
 
-        // Verify the NCBI API key setting round-trips (set -> save -> re-read).
-        savePrivateDataReminderSettings("2", "0", "0", true, "test-ncbi-api-key");
+        verifyNcbiApiKeySettings();
+    }
 
-        // Verify the configured key reaches the live eutils requests. NCBI rejects an invalid key
-        // with HTTP 400, so re-searching dataset 2, which found a publication above, should now
-        // find nothing. The mock service bypasses the key, so this runs only against real NCBI.
+    /**
+     * The saved key is a credential, so the form reports only whether one is stored. Guards the two
+     * ways that has gone wrong, displaying the key and erasing it when the field is left blank.
+     */
+    private void verifyNcbiApiKeySettings()
+    {
+        if (Boolean.parseBoolean(_originalReminderSettings.get("ncbiApiKeySaved")))
+        {
+            // A saved key cannot be read back, so a test that overwrote it could not put it back.
+            log("An NCBI API key is already saved on this server. Skipping the key settings checks.");
+            return;
+        }
+
+        savePrivateDataReminderSettings("2", "0", "0", true, "test-ncbi-api-key");
+        assertEquals("The key itself must never be rendered into the form", "",
+                getFormElement(Locator.input("ncbiApiKey")));
+
+        // Saving with the field left blank must keep the stored key. Every other field on this page
+        // is edited routinely, so a blank field cannot mean "remove the key".
+        savePrivateDataReminderSettings("3", "0", "0", true, "");
+        assertEquals("A blank key field must leave the saved key alone", "true",
+                getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
+
         if (!_useMockNcbi)
         {
-            // Capture the server error count immediately before the deliberate bad-key search so the
-            // assertion below only counts errors due to the bad-key search.
-            int serverErrorCount = getServerErrorCount();
-
-            searchPublicationsForDataset(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
-            assertTextPresent("No publications found for this dataset.");
-            assertTextNotPresent(PMID_2);
-
-            // The invalid key makes NCBI return HTTP 400, and errorDetail appends the response body
-            // to the logged message.
-            assertTrue("Server log should record NCBI's invalid-key error",
-                    getServerErrors().contains("API key invalid"));
-
-            // The bad-key search logs one error per failed NCBI call. Dataset 2 runs two PMC
-            // strategy searches, on ProteomeXchange ID and Panorama URL, plus the PubMed fallback.
-            // checkExpectedErrors clears exactly that many and fails on any others.
-            checkExpectedErrors(serverErrorCount + 3);
+            // Only real NCBI can reject a key. The mock never sends one.
+            click(Locator.tagWithClass("button", "labkey-button").withText("Validate"));
+            waitForElement(Locator.id("ncbiApiKeyValidationResult").containing("NCBI rejected this key"));
         }
+
+        // Removing the key takes the explicit checkbox.
+        checkCheckbox(Locator.checkboxByName("clearNcbiApiKey"));
+        clickButton("Save");
+        assertEquals("The saved key should be gone after Remove the saved key", "false",
+                getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
     }
 
     /*
@@ -515,8 +527,10 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
                     _originalReminderSettings.get("extensionLength"),
                     _originalReminderSettings.get("delayUntilFirstReminder"),
                     _originalReminderSettings.get("reminderFrequency"),
+                    // The test removes the key it saved, and a key saved before the run cannot be
+                    // read back to restore it, so leave the key field alone here.
                     Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")),
-                    _originalReminderSettings.get("ncbiApiKey"));
+                    null);
         }
     }
 

@@ -15,6 +15,7 @@
  */
 package org.labkey.panoramapublic.message;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
@@ -30,6 +31,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Date;
+import java.util.Map;
 
 public class PrivateDataReminderSettings
 {
@@ -42,6 +44,7 @@ public class PrivateDataReminderSettings
     public static final String PROP_ENABLE_PUBLICATION_SEARCH = "Enable publication search";
     public static final String PROP_PUBLICATION_SEARCH_FREQUENCY = "Publication search frequency (months)";
     public static final String PROP_NCBI_API_KEY = "NCBI API key";
+    public static final String PROP_NCBI_CREDENTIALS = "Panorama Public NCBI credentials";
 
     private static final boolean DEFAULT_ENABLE_REMINDERS = false;
     public static final String DEFAULT_REMINDER_TIME = "8:00 AM";
@@ -104,7 +107,7 @@ public class PrivateDataReminderSettings
                     : Integer.valueOf(settingsMap.get(PROP_PUBLICATION_SEARCH_FREQUENCY));
             settings.setPublicationSearchFrequency(publicationSearchFrequency);
 
-            settings.setNcbiApiKey(settingsMap.get(PROP_NCBI_API_KEY));
+            settings.setNcbiApiKey(getNcbiApiKeyValue());
         }
         else
         {
@@ -151,8 +154,41 @@ public class PrivateDataReminderSettings
         settingsMap.put(PROP_REMINDER_TIME, settings.getReminderTimeFormatted());
         settingsMap.put(PROP_ENABLE_PUBLICATION_SEARCH, String.valueOf(settings.isEnablePublicationSearch()));
         settingsMap.put(PROP_PUBLICATION_SEARCH_FREQUENCY, String.valueOf(settings.getPublicationSearchFrequency()));
-        settingsMap.put(PROP_NCBI_API_KEY, settings.getNcbiApiKey() != null ? settings.getNcbiApiKey() : "");
+        // The API key is a credential and is saved separately, in the encrypted store. Saving the
+        // rest of the settings must never change it.
+        settingsMap.remove(PROP_NCBI_API_KEY);
         settingsMap.save();
+    }
+
+    /**
+     * Save the NCBI API key, or remove it when the key is blank. The key lives in the encrypted
+     * store, like the other credentials this module holds.
+     */
+    public static void saveNcbiApiKey(@Nullable String apiKey)
+    {
+        PropertyManager.WritablePropertyMap credentials =
+                PropertyManager.getEncryptedStore().getWritableProperties(PROP_NCBI_CREDENTIALS, true);
+        if (StringUtils.isBlank(apiKey))
+        {
+            credentials.remove(PROP_NCBI_API_KEY);
+        }
+        else
+        {
+            credentials.put(PROP_NCBI_API_KEY, apiKey.trim());
+        }
+        credentials.save();
+    }
+
+    public static boolean hasNcbiApiKey()
+    {
+        return !StringUtils.isBlank(getNcbiApiKeyValue());
+    }
+
+    private static @Nullable String getNcbiApiKeyValue()
+    {
+        Map<String, String> credentials =
+                PropertyManager.getEncryptedStore().getProperties(PROP_NCBI_CREDENTIALS);
+        return credentials.get(PROP_NCBI_API_KEY);
     }
 
     public void setEnableReminders(boolean enableReminders)

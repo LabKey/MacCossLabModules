@@ -41,6 +41,7 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
+import org.labkey.panoramapublic.ncbi.NcbiSearchException;
 import org.labkey.panoramapublic.ncbi.PublicationMatch;
 import org.labkey.panoramapublic.query.DatasetStatusManager;
 import org.labkey.panoramapublic.query.ExperimentAnnotationsManager;
@@ -251,6 +252,12 @@ public class PrivateDataReminderJob extends PipelineJob
                         return null;
                     }
                 }
+                catch (NcbiSearchException e)
+                {
+                    // A search that could not run must not reset the deferral, which would record it
+                    // as having found no new publication.
+                    throw e;
+                }
                 catch (Exception e)
                 {
                     log.error("Error re-searching publication for experiment {}: {}", expAnnotations.getId(), e.getMessage(), e);
@@ -271,6 +278,12 @@ public class PrivateDataReminderJob extends PipelineJob
         try
         {
             return NcbiPublicationSearchService.get().searchForPublication(expAnnotations, log);
+        }
+        catch (NcbiSearchException e)
+        {
+            // The caller records this as a failed search. Returning null here would make it
+            // indistinguishable from a dataset with no published paper.
+            throw e;
         }
         catch (Exception e)
         {
@@ -384,8 +397,17 @@ public class PrivateDataReminderJob extends PipelineJob
             return;
         }
 
-        // Check for publications if enabled
-        PublicationMatch publicationResult = searchForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, getUser(), context.isTestMode(), processingResults._log);
+        // Check for publications if enabled. A search that could not run still gets a reminder, since
+        // the reminder is about the data being private, not about the paper.
+        PublicationMatch publicationResult = null;
+        try
+        {
+            publicationResult = searchForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, getUser(), context.isTestMode(), processingResults._log);
+        }
+        catch (NcbiSearchException e)
+        {
+            processingResults.addPublicationSearchFailed(experimentAnnotationsId, e);
+        }
 
         if (!context.isTestMode())
         {
@@ -662,6 +684,7 @@ public class PrivateDataReminderJob extends PipelineJob
         private final List<Integer> _submissionNotFound = new ArrayList<>();
         private final List<Integer> _announcementNotFound = new ArrayList<>();
         private final List<Integer> _submitterNotFound = new ArrayList<>();
+        private final List<Integer> _publicationSearchFailed = new ArrayList<>();
         private final List<Integer> _skipped = new ArrayList<>();
         private int _processed = 0;
         private final int _total;
@@ -702,6 +725,12 @@ public class PrivateDataReminderJob extends PipelineJob
             _log.error("Could not find a submitter user for experiment Id: {}.", experimentId);
         }
 
+        public void addPublicationSearchFailed(Integer experimentId, Exception e)
+        {
+            _publicationSearchFailed.add(experimentId);
+            _log.error("Publication search failed for experiment Id: {}. A reminder was still posted. {}", experimentId, e.getMessage(), e);
+        }
+
         public void addSkipped(Integer experimentId, ReminderDecision decision)
         {
             _skipped.add(experimentId);
@@ -737,6 +766,11 @@ public class PrivateDataReminderJob extends PipelineJob
             if (!_announcementNotFound.isEmpty())
             {
                 log.error("Support message threads were not found for the following experiment Ids: {}", StringUtils.join(_announcementNotFound, ", "));
+            }
+
+            if (!_publicationSearchFailed.isEmpty())
+            {
+                log.error("Publication search failed for the following experiment Ids: {}. Check the NCBI API key in the Private Data Reminder Settings.", StringUtils.join(_publicationSearchFailed, ", "));
             }
 
             if (!_submitterNotFound.isEmpty())

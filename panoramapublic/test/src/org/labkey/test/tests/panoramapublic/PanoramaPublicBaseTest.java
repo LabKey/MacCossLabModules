@@ -645,7 +645,9 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         settings.put("reminderFrequency", getFormElement(Locator.input("reminderFrequency")));
         settings.put("enablePublicationSearch", String.valueOf(Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected()));
         settings.put("publicationSearchFrequency", getFormElement(Locator.input("publicationSearchFrequency")));
-        settings.put("ncbiApiKey", getFormElement(Locator.input("ncbiApiKey")));
+        // The saved key is never displayed. The placeholder is the only signal that one is stored.
+        settings.put("ncbiApiKeySaved", String.valueOf(
+                Locator.input("ncbiApiKey").findElement(getDriver()).getDomAttribute("placeholder").startsWith("A key is saved")));
         return settings;
     }
 
@@ -694,8 +696,8 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
                 Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected());
         if (ncbiApiKey != null)
         {
-            assertEquals("The saved NCBI API key should be displayed on the form", ncbiApiKey,
-                    getFormElement(Locator.input("ncbiApiKey")));
+            assertEquals("The form should report that a key is saved", "true",
+                    getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
         }
     }
 

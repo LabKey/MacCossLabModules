@@ -16,6 +16,7 @@
 
 package org.labkey.panoramapublic;
 
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.admin.FolderSerializationRegistry;
@@ -34,6 +35,7 @@ import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.settings.AdminConsole;
 import org.labkey.api.targetedms.TargetedMSService;
+import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.BaseWebPartFactory;
 import org.labkey.api.view.HtmlView;
@@ -83,6 +85,8 @@ import static org.labkey.api.util.DOM.DIV;
 
 public class PanoramaPublicModule extends SpringModule
 {
+    private static final Logger LOG = LogHelper.getLogger(PanoramaPublicModule.class, "Panorama Public module");
+
     public static final String NAME = "PanoramaPublic";
     public static final String DOWNLOAD_DATA_INFO_WP = "Download Data";
 
@@ -153,8 +157,21 @@ public class PanoramaPublicModule extends SpringModule
             fileContentService.addFileListener(new PanoramaPublicFileListener());
         }
 
-        // Start the private data reminder job on server restart if it is enabled.
-        PrivateDataMessageScheduler.getInstance().initialize(PrivateDataReminderSettings.get().isEnableReminders());
+    }
+
+    @Override
+    public void startBackgroundThreads()
+    {
+        // Re-establish the reminder schedule on every startup. Reminder messages contain absolute
+        // URLs, which are only safe to build once this method is called.
+        try
+        {
+            PrivateDataMessageScheduler.getInstance().initialize(PrivateDataReminderSettings.get().isEnableReminders());
+        }
+        catch (RuntimeException e)
+        {
+            LOG.error("Failed to schedule the Panorama Public private data reminder job", e);
+        }
     }
 
     @NotNull

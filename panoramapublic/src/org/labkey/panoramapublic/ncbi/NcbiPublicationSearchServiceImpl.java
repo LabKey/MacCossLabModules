@@ -59,6 +59,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.labkey.panoramapublic.ncbi.PublicationMatch.MATCH_DOI;
@@ -101,6 +103,9 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     // the rate limit. Retry those a few times with exponential backoff before giving up.
     private static final int MAX_HTTP_ATTEMPTS = 3; // initial try + 2 retries
     private static final int RETRY_BASE_DELAY_MS = 500; // exponential backoff base
+
+    private static final String REDACTED = "REDACTED";
+    private static final Pattern API_KEY_PARAM = Pattern.compile("api_key=([^&\\s]*)");
 
     // NCBI suggests using the 'tool' and 'email' parameters on E-utilities URLs
     // https://www.nlm.nih.gov/dataguide/eutilities/utilities.html
@@ -347,7 +352,24 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         catch (IOException | JSONException e)
         {
             log.error("Error searching {} with query: {}", database, query, e);
-            return Collections.emptyList();
+            throw new NcbiSearchException("Error searching " + database + " with query: " + query, e);
+        }
+    }
+
+    @Override
+    public @Nullable String validateApiKey(@Nullable String apiKey)
+    {
+        // A minimal ESearch request. NCBI answers a rejected key with 400 and a reason, which the
+        // retry loop does not retry, so this returns quickly either way.
+        String url = ESEARCH_URL + "?" + buildCommonParams("pubmed", apiKey) + "&term=labkey&retmax=1&retmode=json";
+        try
+        {
+            getString(url, LOG);
+            return null;
+        }
+        catch (IOException e)
+        {
+            return redactApiKey(e.getMessage(), apiKey);
         }
     }
 
@@ -383,7 +405,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                 }
                 long delayMs = retryDelayMs(attempt);
                 getLog(log).warn("NCBI request failed (attempt {} of {}). Retrying in {} ms. URL: {}. Cause: {}",
-                        attempt, MAX_HTTP_ATTEMPTS, delayMs, url, e.toString());
+                        attempt, MAX_HTTP_ATTEMPTS, delayMs, redactApiKey(url, apiKeyFrom(url)), e.toString());
                 sleepMs(delayMs);
             }
         }
@@ -419,7 +441,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                     String body = (status >= 400 && status < 500 && response.getEntity() != null)
                             ? EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8)
                             : null;
-                    throw new HttpResponseException(status, errorDetail(status, response.getReasonPhrase(), body));
+                    throw new HttpResponseException(status,
+                            errorDetail(status, response.getReasonPhrase(), body, apiKeyFrom(url)));
                 }
                 return EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             });
@@ -429,15 +452,44 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Build the message for a non-2xx HttpResponseException. For client errors (4xx) the response
      * body is appended, so NCBI's reason (e.g. "API key invalid") reaches the log. Other statuses
-     * use only the reason phrase.
+     * use only the reason phrase. The body is third-party text on its way to a log, so any
+     * occurrence of the API key is removed from it.
      */
-    private static String errorDetail(int status, String reasonPhrase, @Nullable String body)
+    static String errorDetail(int status, String reasonPhrase, @Nullable String body, @Nullable String apiKey)
     {
         if (status >= 400 && status < 500 && !StringUtils.isBlank(body))
         {
-            return reasonPhrase + " - " + StringUtils.abbreviate(body.strip(), 500);
+            return reasonPhrase + " - " + redactApiKey(StringUtils.abbreviate(body.strip(), 500), apiKey);
         }
         return reasonPhrase;
+    }
+
+    /**
+     * Replace the NCBI API key wherever it appears in text that is about to be logged. The key is a
+     * query parameter on every eutils URL. When the reminder job runs, the log is the pipeline job
+     * log, which is readable by anyone with read access to the folder the job ran in.
+     */
+    static String redactApiKey(@Nullable String text, @Nullable String apiKey)
+    {
+        if (text == null)
+        {
+            return null;
+        }
+        String redacted = text.replaceAll("(api_key=)[^&\\s]*", "$1" + REDACTED);
+        if (!StringUtils.isBlank(apiKey))
+        {
+            redacted = redacted.replace(apiKey.trim(), REDACTED);
+        }
+        return redacted;
+    }
+
+    /**
+     * Returns the value of the api_key query parameter in the given URL, or null if there is none.
+     */
+    static @Nullable String apiKeyFrom(String url)
+    {
+        Matcher matcher = API_KEY_PARAM.matcher(url);
+        return matcher.find() ? matcher.group(1) : null;
     }
 
     /**
@@ -527,7 +579,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         catch (IOException | JSONException e)
         {
             log.error("Error fetching {} metadata for IDs: {}", database, ids, e);
-            return Collections.emptyMap();
+            throw new NcbiSearchException("Error fetching " + database + " metadata for IDs: " + ids, e);
         }
     }
 
@@ -1547,16 +1599,43 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         public void testErrorDetail()
         {
             // 4xx: the response body is appended so the cause (e.g. an invalid API key) is logged
-            String detail = errorDetail(400, "Bad Request", "{\"error\":\"API key invalid\"}");
+            String detail = errorDetail(400, "Bad Request", "{\"error\":\"API key invalid\"}", null);
             assertTrue(detail.contains("Bad Request"));
             assertTrue(detail.contains("API key invalid"));
 
             // 5xx: body omitted (uninformative)
-            assertEquals("Internal Server Error", errorDetail(500, "Internal Server Error", "<html>oops</html>"));
+            assertEquals("Internal Server Error", errorDetail(500, "Internal Server Error", "<html>oops</html>", null));
 
             // 4xx with blank or null body: just the reason phrase, no trailing separator
-            assertEquals("Bad Request", errorDetail(400, "Bad Request", ""));
-            assertEquals("Bad Request", errorDetail(400, "Bad Request", null));
+            assertEquals("Bad Request", errorDetail(400, "Bad Request", "", null));
+            assertEquals("Bad Request", errorDetail(400, "Bad Request", null, null));
+
+            // A body that quotes the request back must not carry the key into the log
+            String echoed = errorDetail(400, "Bad Request", "invalid key SECRET123 for api_key=SECRET123", "SECRET123");
+            assertFalse("errorDetail must not put the API key in the message", echoed.contains("SECRET123"));
+        }
+
+        @Test
+        public void testRedactApiKey()
+        {
+            // The key is stripped from an eutils URL, and the rest of the URL is left intact
+            String url = "https://eutils.ncbi.nlm.nih.gov/esearch.fcgi?db=pmc&api_key=SECRET123&term=PXD001";
+            String redacted = redactApiKey(url, "SECRET123");
+            assertFalse("The redacted URL must not contain the key", redacted.contains("SECRET123"));
+            assertTrue("The redacted URL must keep its other parameters", redacted.contains("term=PXD001"));
+            assertTrue(redacted.contains("db=pmc"));
+
+            // The key is stripped even when it appears without the api_key= prefix
+            assertFalse(redactApiKey("rejected key SECRET123", "SECRET123").contains("SECRET123"));
+
+            // A URL with no key is unchanged, and null text stays null
+            String noKey = "https://eutils.ncbi.nlm.nih.gov/esearch.fcgi?db=pmc&term=PXD001";
+            assertEquals(noKey, redactApiKey(noKey, null));
+            assertNull(redactApiKey(null, "SECRET123"));
+
+            // The key is recovered from the URL so callers do not have to read the settings
+            assertEquals("SECRET123", apiKeyFrom(url));
+            assertNull(apiKeyFrom(noKey));
         }
 
         @Test
