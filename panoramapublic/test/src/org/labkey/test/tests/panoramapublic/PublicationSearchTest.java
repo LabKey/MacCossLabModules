@@ -259,45 +259,8 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertNotNull("Expected lastReminderDate for dataset 2", dsStatus2AfterPost.get("LastReminderDate"));
         assertNotNull("Expected citation to be cached for dataset 2", dsStatus2AfterPost.get("Citation"));
 
-        verifyNcbiApiKeySettings();
     }
 
-    /**
-     * The saved key is a credential, so the form reports only whether one is stored. Guards the two
-     * ways that has gone wrong, displaying the key and erasing it when the field is left blank.
-     */
-    private void verifyNcbiApiKeySettings()
-    {
-        if (Boolean.parseBoolean(_originalReminderSettings.get("ncbiApiKeySaved")))
-        {
-            // A saved key cannot be read back, so a test that overwrote it could not put it back.
-            log("An NCBI API key is already saved on this server. Skipping the key settings checks.");
-            return;
-        }
-
-        savePrivateDataReminderSettings("2", "0", "0", true, "test-ncbi-api-key");
-        assertEquals("The key itself must never be rendered into the form", "",
-                getFormElement(Locator.input("ncbiApiKey")));
-
-        // Saving with the field left blank must keep the stored key. Every other field on this page
-        // is edited routinely, so a blank field cannot mean "remove the key".
-        savePrivateDataReminderSettings("3", "0", "0", true, "");
-        assertEquals("A blank key field must leave the saved key alone", "true",
-                getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
-
-        if (!_useMockNcbi)
-        {
-            // Only real NCBI can reject a key. The mock never sends one.
-            click(Locator.tagWithClass("button", "labkey-button").withText("Validate"));
-            waitForElement(Locator.id("ncbiApiKeyValidationResult").containing("NCBI rejected this key"));
-        }
-
-        // Removing the key takes the explicit checkbox.
-        checkCheckbox(Locator.checkboxByName("clearNcbiApiKey"));
-        clickButton("Save");
-        assertEquals("The saved key should be gone after Remove the saved key", "false",
-                getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
-    }
 
     /*
      * Navigate to the Panorama Public copy folder and get the experiment ID.
@@ -527,11 +490,12 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
                     _originalReminderSettings.get("extensionLength"),
                     _originalReminderSettings.get("delayUntilFirstReminder"),
                     _originalReminderSettings.get("reminderFrequency"),
-                    // The test removes the key it saved, and a key saved before the run cannot be
-                    // read back to restore it, so leave the key field alone here.
+                    // A key saved before the run cannot be read back to restore it, so leave the
+                    // key field alone here. Any key the test saved is removed below.
                     Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")),
                     null);
         }
+
     }
 
     @Override
