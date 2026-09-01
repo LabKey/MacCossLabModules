@@ -114,8 +114,8 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         // Step 1: Set up mock NCBI service if running on TeamCity
         setupMockNcbiService();
 
-        // Capture the existing reminder settings up front so doCleanup can restore them exactly.
-        // The dev machine may already have a real NCBI API key (and other non-default values) set.
+        // Capture the existing reminder settings up front so resetAfterTest can put them back. A dev
+        // machine may have non-default values set.
         _originalReminderSettings = getPrivateDataReminderSettings();
 
         // Step 2: Create dataset 1 folder, submit to Panorama Public, and copy

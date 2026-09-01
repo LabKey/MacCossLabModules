@@ -631,7 +631,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
     /**
      * Navigate to the Private Data Reminder Settings page and read the current form values.
-     * Returns a map with keys: extensionLength, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch, publicationSearchFrequency, ncbiApiKey.
+     * Returns a map with keys: extensionLength, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch, publicationSearchFrequency, ncbiApiKeySaved.
      */
     protected Map<String, String> getPrivateDataReminderSettings()
     {

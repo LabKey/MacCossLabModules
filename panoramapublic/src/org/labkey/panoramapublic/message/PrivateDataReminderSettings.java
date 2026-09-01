@@ -409,92 +409,130 @@ public class PrivateDataReminderSettings
 
         private void testExtensionIsValid(PrivateDataReminderSettings settings, int monthsOffset)
         {
-            testExtensionIsValid(settings, monthsOffset, 0, null, true);
+            testExtensionIsValid(settings, monthsOffset, true);
         }
 
         private void testExtensionIsExpired(PrivateDataReminderSettings settings, int monthsOffset)
         {
-            testExtensionIsValid(settings, monthsOffset, 0, null, false);
+            testExtensionIsValid(settings, monthsOffset, false);
         }
 
         private void testExtensionIsValidAsOf(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset)
         {
-            testExtensionIsValid(settings, monthsOffset, minutesOffset, dateFromNow(), true);
+            testExtensionAtExpiry(settings, monthsOffset, minutesOffset, true);
+        }
+
+        /**
+         * Checks the boundary at the moment an extension expires. The current date comes from the
+         * expiry the settings calculate, not from today. Subtracting months and adding them back does
+         * not always return to the same day, because a shorter target month clamps the day, so a date
+         * built from today can sit on the wrong side of the boundary. On 31 August, subtracting six
+         * months gives 28 February and adding six back gives 28 August.
+         *
+         * @param minutesBeforeExpiry how long before the expiry to check. Zero is the expiry itself,
+         * and a negative value is after it.
+         */
+        private void testExtensionAtExpiry(PrivateDataReminderSettings settings, int monthsOffset,
+                                           int minutesBeforeExpiry, boolean expectedValid)
+        {
+            DatasetStatus datasetStatus = new DatasetStatus();
+            datasetStatus.setExtensionRequestedDate(dateFromNow(monthsOffset, 0, 0));
+
+            Date expiry = settings.getExtensionValidUntilDate(datasetStatus);
+            Date currentDate = Date.from(expiry.toInstant().minusSeconds(minutesBeforeExpiry * 60L));
+
+            String failureMessage = String.format(
+                    "Extension is %s; Extension Length: %d; Extension Requested On: %s; Valid Until: %s; Current Date: %s",
+                    expectedValid ? "valid" : "expired", settings.getExtensionLength(),
+                    datasetStatus.getExtensionRequestedDate(), expiry, currentDate);
+
+            boolean isValid = settings.isExtensionValidAsOf(datasetStatus, currentDate);
+            if (expectedValid) assertTrue(failureMessage, isValid);
+            else assertFalse(failureMessage, isValid);
         }
 
         private void testExtensionIsExpiredAsOf(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset)
         {
-            testExtensionIsValid(settings, monthsOffset, minutesOffset, dateFromNow(), false);
+            testExtensionAtExpiry(settings, monthsOffset, minutesOffset, false);
         }
 
-        private void testExtensionIsValid(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset,
-                                              Date currentDate, boolean expectedValid)
+        private void testExtensionIsValid(PrivateDataReminderSettings settings, int monthsOffset, boolean expectedValid)
         {
-            Date extensionDate = dateFromNow(monthsOffset, 0, minutesOffset);
-
             DatasetStatus datasetStatus = new DatasetStatus();
-            datasetStatus.setExtensionRequestedDate(extensionDate);
+            datasetStatus.setExtensionRequestedDate(dateFromNow(monthsOffset, 0, 0));
 
             String failureMessage = String.format("Extension is %s; Extension Length: %d; Extension Requested On: %s; Valid Until: %s",
                     expectedValid ? "valid" : "expired",
                     settings.getExtensionLength(),
                     datasetStatus.getExtensionRequestedDate(),
                     settings.getExtensionValidUntilDate(datasetStatus));
-            if (currentDate != null)
-            {
-                failureMessage += String.format("; Current Date: %s", currentDate);
-            }
 
-            boolean isValid = currentDate == null
-                        ? settings.isExtensionValid(datasetStatus)
-                        : settings.isExtensionValidAsOf(datasetStatus, currentDate);
+            boolean isValid = settings.isExtensionValid(datasetStatus);
             if (expectedValid) assertTrue(failureMessage, isValid);
             else assertFalse(failureMessage, isValid);
         }
 
         private void testReminderIsRecent(PrivateDataReminderSettings settings, int daysOffset)
         {
-            testReminderIsRecent(settings, 0, daysOffset, 0, null, true);
+            testReminderIsRecent(settings, daysOffset, true);
         }
 
         private void testReminderIsOld(PrivateDataReminderSettings settings, int daysOffset)
         {
-            testReminderIsRecent(settings, 0, daysOffset, 0, null, false);
+            testReminderIsRecent(settings, daysOffset, false);
         }
 
         private void testReminderIsRecentAsOf(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset)
         {
-            testReminderIsRecent(settings, monthsOffset, 0, minutesOffset, dateFromNow(), true);
+            testReminderAtExpiry(settings, monthsOffset, minutesOffset, true);
         }
 
         private void testReminderIsOldAsOf(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset)
         {
-            testReminderIsRecent(settings, monthsOffset, 0, minutesOffset, dateFromNow(), false);
+            testReminderAtExpiry(settings, monthsOffset, minutesOffset, false);
         }
 
-        private void testReminderIsRecent(PrivateDataReminderSettings settings, int monthsOffset, int daysOffset, int minutesOffset,
-                                              Date currentDate, boolean expectedRecent)
+        /**
+         * Checks the boundary at the moment a reminder stops counting as recent. The current date
+         * comes from the date the settings calculate, for the reason given on
+         * {@link #testExtensionAtExpiry}.
+         *
+         * @param minutesBeforeExpiry how long before that date to check. Zero is the date itself, and
+         * a negative value is after it.
+         */
+        private void testReminderAtExpiry(PrivateDataReminderSettings settings, int monthsOffset,
+                                          int minutesBeforeExpiry, boolean expectedRecent)
         {
-            Date reminderDate = dateFromNow(monthsOffset, daysOffset, minutesOffset);
-
             DatasetStatus datasetStatus = new DatasetStatus();
-            datasetStatus.setLastReminderDate(reminderDate);
+            datasetStatus.setLastReminderDate(dateFromNow(monthsOffset, 0, 0));
+
+            Date expiry = settings.getReminderValidUntilDate(datasetStatus);
+            Date currentDate = Date.from(expiry.toInstant().minusSeconds(minutesBeforeExpiry * 60L));
+
+            String failureMessage = String.format(
+                    "Reminder is %s; Reminder Frequency: %d; Reminder Sent On: %s; Valid Until: %s; Current Date: %s",
+                    expectedRecent ? "recent" : "old", settings.getReminderFrequency(),
+                    datasetStatus.getLastReminderDate(), expiry, currentDate);
+
+            boolean isRecent = settings.isLastReminderRecentAsOf(datasetStatus, currentDate);
+            if (expectedRecent) assertTrue(failureMessage, isRecent);
+            else assertFalse(failureMessage, isRecent);
+        }
+
+        private void testReminderIsRecent(PrivateDataReminderSettings settings, int daysOffset, boolean expectedRecent)
+        {
+            DatasetStatus datasetStatus = new DatasetStatus();
+            datasetStatus.setLastReminderDate(dateFromNow(0, daysOffset, 0));
 
             String failureMessage = String.format("Reminder is %s; Reminder Frequency: %d; Reminder Sent On: %s; Valid Until: %s",
                     expectedRecent ? "recent" : "old",
                     settings.getReminderFrequency(),
                     datasetStatus.getLastReminderDate(),
                     settings.getReminderValidUntilDate(datasetStatus));
-            if (currentDate != null)
-            {
-                failureMessage += String.format("; Current Date: %s", currentDate);
-            }
 
-            boolean isValid = currentDate == null
-                    ? settings.isLastReminderRecent(datasetStatus)
-                    : settings.isLastReminderRecentAsOf(datasetStatus, currentDate);
-            if (expectedRecent) assertTrue(failureMessage, isValid);
-            else assertFalse(failureMessage, isValid);
+            boolean isRecent = settings.isLastReminderRecent(datasetStatus);
+            if (expectedRecent) assertTrue(failureMessage, isRecent);
+            else assertFalse(failureMessage, isRecent);
         }
 
         private PrivateDataReminderSettings createTestSettingsExtensionLength(int extensionLength)
