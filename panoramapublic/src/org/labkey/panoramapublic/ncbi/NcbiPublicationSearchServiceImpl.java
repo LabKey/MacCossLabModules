@@ -562,7 +562,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
      * @return false if the thread was interrupted, in which case the caller should stop rather than
      * carry on without the delay it asked for.
      */
-    private static boolean sleepMs(long ms)
+    protected boolean sleepMs(long ms)
     {
         try
         {
@@ -1106,7 +1106,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Rate limiting: wait 400ms between API requests
      */
-    private static void rateLimit()
+    private void rateLimit()
     {
         sleepMs(RATE_LIMIT_DELAY_MS);
     }
@@ -1715,7 +1715,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         {
             // executeGet returns a 5xx twice, then succeeds. getString should retry and return the body.
             int[] attempts = {0};
-            NcbiPublicationSearchServiceImpl service = new NcbiPublicationSearchServiceImpl()
+            NoWaitService service = new NoWaitService()
             {
                 @Override
                 protected String executeGet(String url) throws IOException
@@ -1727,6 +1727,23 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             };
             assertEquals("body", service.getString("http://test", LOG));
             assertEquals("Should retry until the 3rd attempt succeeds", 3, attempts[0]);
+            assertEquals("The loop should wait 500ms then 1000ms", List.of(500L, 1000L), service.sleeps);
+        }
+
+        /**
+         * Runs the retry loop without waiting, and records the delays it asked for. A test can then
+         * check the delays the loop used, which retryDelayMs on its own cannot show.
+         */
+        private static class NoWaitService extends NcbiPublicationSearchServiceImpl
+        {
+            private final List<Long> sleeps = new ArrayList<>();
+
+            @Override
+            protected boolean sleepMs(long ms)
+            {
+                sleeps.add(ms);
+                return true;
+            }
         }
 
         @Test
@@ -1752,7 +1769,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
         private NcbiApiKeyCheck checkApiKeyAgainst(IOException failure, String apiKey)
         {
-            NcbiPublicationSearchServiceImpl service = new NcbiPublicationSearchServiceImpl()
+            NcbiPublicationSearchServiceImpl service = new NoWaitService()
             {
                 @Override
                 protected String executeGet(String url) throws IOException
@@ -1795,7 +1812,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             }
             finally
             {
-                // Clear the flag so it cannot affect the tests that run after this one.
+                // Clear the flag so it cannot reach whatever test runs next.
                 Thread.interrupted();
             }
         }
@@ -1805,7 +1822,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         {
             // executeGet always returns a 5xx. getString should try MAX_HTTP_ATTEMPTS times, then rethrow.
             int[] attempts = {0};
-            NcbiPublicationSearchServiceImpl service = new NcbiPublicationSearchServiceImpl()
+            NoWaitService service = new NoWaitService()
             {
                 @Override
                 protected String executeGet(String url) throws IOException
@@ -1828,6 +1845,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                 fail("Expected HttpResponseException, got " + e);
             }
             assertEquals("Should attempt exactly MAX_HTTP_ATTEMPTS times", MAX_HTTP_ATTEMPTS, attempts[0]);
+            assertEquals("One wait fewer than attempts, and no wait after the last", List.of(500L, 1000L), service.sleeps);
         }
 
         @Test
@@ -1835,7 +1853,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         {
             // A 4xx is permanent. getString should fail immediately without retrying.
             int[] attempts = {0};
-            NcbiPublicationSearchServiceImpl service = new NcbiPublicationSearchServiceImpl()
+            NoWaitService service = new NoWaitService()
             {
                 @Override
                 protected String executeGet(String url) throws IOException
@@ -1858,6 +1876,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                 fail("Expected HttpResponseException, got " + e);
             }
             assertEquals("4xx must not be retried", 1, attempts[0]);
+            assertTrue("A 4xx must not wait", service.sleeps.isEmpty());
         }
 
         // -- Helper methods for building test JSON --
