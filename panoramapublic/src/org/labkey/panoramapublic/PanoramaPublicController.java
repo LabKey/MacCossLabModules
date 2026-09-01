@@ -158,6 +158,7 @@ import org.labkey.panoramapublic.datacite.DoiMetadata;
 import org.labkey.panoramapublic.message.PrivateDataMessageScheduler;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.ncbi.MockNcbiPublicationSearchService;
+import org.labkey.panoramapublic.ncbi.NcbiApiKeyCheck;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchServiceImpl;
 import org.labkey.panoramapublic.ncbi.PublicationMatch;
@@ -10107,9 +10108,9 @@ public class PanoramaPublicController extends SpringActionController
                 return response;
             }
 
-            String error = NcbiPublicationSearchService.get().validateApiKey(apiKey);
-            response.put("valid", error == null);
-            if (error == null)
+            NcbiApiKeyCheck check = NcbiPublicationSearchService.get().checkApiKey(apiKey);
+            response.put("valid", check.isValid());
+            if (check.isValid())
             {
                 // Validating does not store anything, so say so. Otherwise "accepted" reads as
                 // confirmation that the key is now in effect.
@@ -10122,9 +10123,12 @@ public class PanoramaPublicController extends SpringActionController
             {
                 // The short message goes beside the field. NCBI's own words are offered separately,
                 // since the admin holding the key is the one who has to act on them.
-                response.put("message", "NCBI rejected this key.");
-                response.put("detail", error);
-                LOG.warn("NCBI rejected an API key entered on the Private Data Reminder Settings page. {}", error);
+                response.put("message", check.isRejected()
+                        ? "NCBI rejected this key."
+                        : "Could not reach NCBI to check this key.");
+                response.put("detail", check.getMessage());
+                LOG.warn("Could not confirm an API key entered on the Private Data Reminder Settings page. {}",
+                        check.getMessage());
             }
             return response;
         }

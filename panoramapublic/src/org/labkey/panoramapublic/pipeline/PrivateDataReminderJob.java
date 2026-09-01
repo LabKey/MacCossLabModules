@@ -40,6 +40,7 @@ import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalSubmission;
+import org.labkey.panoramapublic.ncbi.NcbiApiKeyCheck;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
 import org.labkey.panoramapublic.ncbi.NcbiSearchException;
 import org.labkey.panoramapublic.ncbi.PublicationMatch;
@@ -303,9 +304,50 @@ public class PrivateDataReminderJob extends PipelineJob
             return;
         }
 
+        if (!ncbiApiKeyAccepted())
+        {
+            setStatus(TaskStatus.error);
+            return;
+        }
+
         postMessage(_experimentAnnotationsIds, _panoramaPublic);
 
         setStatus(TaskStatus.complete);
+    }
+
+    /**
+     * Check a configured NCBI API key before any dataset is touched. A key NCBI rejects would fail the
+     * publication search for every dataset, so the job stops with nothing posted. The job goes ahead
+     * when the check could not be completed, since that says nothing about the key.
+     */
+    private boolean ncbiApiKeyAccepted()
+    {
+        PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
+        if (!settings.isEnablePublicationSearch() && !_forcePublicationCheck)
+        {
+            return true;
+        }
+
+        String apiKey = settings.getNcbiApiKey();
+        if (StringUtils.isBlank(apiKey))
+        {
+            // Searches run without a key, at NCBI's lower request rate.
+            return true;
+        }
+
+        NcbiApiKeyCheck check = NcbiPublicationSearchService.get().checkApiKey(apiKey);
+        if (check.isRejected())
+        {
+            getLogger().error("NCBI rejected the API key, so no reminders were posted. Correct the key on the Private Data Reminder Settings page and run the job again. {}",
+                    check.getMessage());
+            return false;
+        }
+
+        if (!check.isValid())
+        {
+            getLogger().warn("Could not reach NCBI to check the API key. Continuing. {}", check.getMessage());
+        }
+        return true;
     }
 
     private void postMessage(List<Integer> expAnnotationIds, Journal panoramaPublic)
@@ -778,7 +820,7 @@ public class PrivateDataReminderJob extends PipelineJob
 
             if (!_publicationSearchFailed.isEmpty())
             {
-                log.error("Publication search failed for the following experiment Ids: {}. Check the NCBI API key in the Private Data Reminder Settings.", StringUtils.join(_publicationSearchFailed, ", "));
+                log.error("Publication search failed for the following experiment Ids: {}. NCBI's reason is in the error logged for each one.", StringUtils.join(_publicationSearchFailed, ", "));
             }
 
             if (!_submitterNotFound.isEmpty())

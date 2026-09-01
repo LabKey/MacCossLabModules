@@ -361,7 +361,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     @Override
-    public @Nullable String validateApiKey(@Nullable String apiKey)
+    public @NotNull NcbiApiKeyCheck checkApiKey(@Nullable String apiKey)
     {
         // A minimal ESearch request. NCBI answers a rejected key with 400 and a reason, which the
         // retry loop does not retry, so this returns quickly either way.
@@ -369,11 +369,20 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         try
         {
             getString(url, LOG);
-            return null;
+            return NcbiApiKeyCheck.valid();
+        }
+        catch (HttpResponseException e)
+        {
+            // NCBI rejects a key it does not recognise with a 4xx. A 5xx says nothing about the key,
+            // so the caller is told the key could not be checked rather than that it is bad.
+            String message = redactApiKey(e.getMessage(), apiKey);
+            return e.getStatusCode() >= 400 && e.getStatusCode() < 500
+                    ? NcbiApiKeyCheck.rejected(message)
+                    : NcbiApiKeyCheck.unconfirmed(message);
         }
         catch (IOException e)
         {
-            return redactApiKey(e.getMessage(), apiKey);
+            return NcbiApiKeyCheck.unconfirmed(redactApiKey(e.getMessage(), apiKey));
         }
     }
 
@@ -1718,6 +1727,44 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             };
             assertEquals("body", service.getString("http://test", LOG));
             assertEquals("Should retry until the 3rd attempt succeeds", 3, attempts[0]);
+        }
+
+        @Test
+        public void testCheckApiKey()
+        {
+            // NCBI rejects a key it does not recognise with a 4xx. The reminder job stops for that,
+            // so a 5xx has to be reported as a check that could not be completed.
+            assertEquals(NcbiApiKeyCheck.Status.REJECTED, checkApiKeyAgainst(new HttpResponseException(400, "Bad Request")).getStatus());
+            assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new HttpResponseException(503, "Service Unavailable")).getStatus());
+            assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new SocketTimeoutException("Read timed out")).getStatus());
+            assertEquals(NcbiApiKeyCheck.Status.VALID, checkApiKeyAgainst(null).getStatus());
+
+            // The key must not travel back to the caller in NCBI's reason
+            NcbiApiKeyCheck rejected = checkApiKeyAgainst(
+                    new HttpResponseException(400, "Bad Request - invalid key SECRET123"), "SECRET123");
+            assertFalse("A rejection must not carry the key", rejected.getMessage().contains("SECRET123"));
+        }
+
+        private NcbiApiKeyCheck checkApiKeyAgainst(IOException failure)
+        {
+            return checkApiKeyAgainst(failure, "test-key");
+        }
+
+        private NcbiApiKeyCheck checkApiKeyAgainst(IOException failure, String apiKey)
+        {
+            NcbiPublicationSearchServiceImpl service = new NcbiPublicationSearchServiceImpl()
+            {
+                @Override
+                protected String executeGet(String url) throws IOException
+                {
+                    if (failure != null)
+                    {
+                        throw failure;
+                    }
+                    return "{\"esearchresult\":{\"idlist\":[]}}";
+                }
+            };
+            return service.checkApiKey(apiKey);
         }
 
         @Test

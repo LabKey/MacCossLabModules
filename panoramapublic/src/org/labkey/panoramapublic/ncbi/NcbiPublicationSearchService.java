@@ -40,9 +40,8 @@ public interface NcbiPublicationSearchService
 
     /**
      * Send a minimal request to NCBI with the given key.
-     * @return null if NCBI accepted the key, otherwise the reason it gave.
      */
-    @Nullable String validateApiKey(@Nullable String apiKey);
+    @NotNull NcbiApiKeyCheck checkApiKey(@Nullable String apiKey);
 
     @Nullable Pair<String, String> getPubMedLinkAndCitation(String pubmedId);
 
