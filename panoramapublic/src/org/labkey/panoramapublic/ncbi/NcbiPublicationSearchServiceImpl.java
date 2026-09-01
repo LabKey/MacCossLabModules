@@ -363,8 +363,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     @Override
     public @NotNull NcbiApiKeyCheck checkApiKey(@Nullable String apiKey)
     {
-        // A minimal ESearch request. NCBI answers a rejected key with 400 and a reason, which the
-        // retry loop does not retry, so this returns quickly either way.
+        // A minimal ESearch request. A rejected key comes back as a 400 on the first attempt, while
+        // a 5xx or 429 is retried like any other request before it is called unconfirmed.
         String url = ESEARCH_URL + "?" + buildCommonParams("pubmed", apiKey) + "&term=labkey&retmax=1&retmode=json";
         try
         {
@@ -373,12 +373,12 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (HttpResponseException e)
         {
-            // NCBI rejects a key it does not recognise with a 4xx. A 5xx says nothing about the key,
-            // so the caller is told the key could not be checked rather than that it is bad.
+            // NCBI rejects a key it does not recognise with a 4xx. A 429 is the request rate and a
+            // 5xx is NCBI's own failure, so neither counts as a rejection.
             String message = redactApiKey(e.getMessage(), apiKey);
-            return e.getStatusCode() >= 400 && e.getStatusCode() < 500
-                    ? NcbiApiKeyCheck.rejected(message)
-                    : NcbiApiKeyCheck.unconfirmed(message);
+            boolean rejected = e.getStatusCode() >= 400 && e.getStatusCode() < 500
+                    && e.getStatusCode() != TOO_MANY_REQUESTS;
+            return rejected ? NcbiApiKeyCheck.rejected(message) : NcbiApiKeyCheck.unconfirmed(message);
         }
         catch (IOException e)
         {
@@ -1753,6 +1753,10 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             // so a 5xx has to be reported as a check that could not be completed.
             assertEquals(NcbiApiKeyCheck.Status.REJECTED, checkApiKeyAgainst(new HttpResponseException(400, "Bad Request")).getStatus());
             assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new HttpResponseException(503, "Service Unavailable")).getStatus());
+
+            // A 429 is the request rate, not a bad key. Calling it a rejection would stop the
+            // reminder job and send an admin to correct a key that works.
+            assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new HttpResponseException(429, "Too Many Requests")).getStatus());
             assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new SocketTimeoutException("Read timed out")).getStatus());
             assertEquals(NcbiApiKeyCheck.Status.VALID, checkApiKeyAgainst(null).getStatus());
 
