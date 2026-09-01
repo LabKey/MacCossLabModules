@@ -341,6 +341,14 @@ public class PrivateDataReminderJob extends PipelineJob
         }
         for (Integer experimentAnnotationsId : exptIds)
         {
+            if (Thread.currentThread().isInterrupted())
+            {
+                // Cancelling the job clears the NCBI rate limiter, because every sleep from here on
+                // throws at once. Stop instead of running the rest at full speed.
+                log.warn("Job was interrupted. Stopping before experiment {}.", experimentAnnotationsId);
+                break;
+            }
+
             try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
             {
                 processExperiment(experimentAnnotationsId, context, processingResults);

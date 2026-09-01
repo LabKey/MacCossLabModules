@@ -24,6 +24,7 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.io.BasicHttpClientConnectionManager;
 import org.apache.hc.client5.http.HttpResponseException;
+import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.util.Timeout;
 import org.apache.logging.log4j.Logger;
@@ -103,6 +104,9 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     // the rate limit. Retry those a few times with exponential backoff before giving up.
     private static final int MAX_HTTP_ATTEMPTS = 3; // initial try + 2 retries
     private static final int RETRY_BASE_DELAY_MS = 500; // exponential backoff base
+
+    private static final int TOO_MANY_REQUESTS = 429; // NCBI's answer when the request rate is exceeded
+    private static final int MAX_ERROR_BODY_CHARS = 500;
 
     private static final String REDACTED = "REDACTED";
     private static final Pattern API_KEY_PARAM = Pattern.compile("api_key=([^&\\s]*)");
@@ -406,7 +410,12 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                 long delayMs = retryDelayMs(attempt);
                 getLog(log).warn("NCBI request failed (attempt {} of {}). Retrying in {} ms. URL: {}. Cause: {}",
                         attempt, MAX_HTTP_ATTEMPTS, delayMs, redactApiKey(url, apiKeyFrom(url)), e.toString());
-                sleepMs(delayMs);
+                if (!sleepMs(delayMs))
+                {
+                    // The thread was interrupted. Retrying now would run the remaining attempts with
+                    // no delay, because every later sleep throws at once.
+                    throw e;
+                }
             }
         }
     }
@@ -429,6 +438,9 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         try (CloseableHttpClient client = HttpClientBuilder.create()
                 .setDefaultRequestConfig(requestConfig)
                 .setConnectionManager(connectionManager)
+                // HttpClient retries 429 and 503 once on its own, which would make MAX_HTTP_ATTEMPTS
+                // cost twice the requests it names. getString is the only retry.
+                .disableAutomaticRetries()
                 .build())
         {
             HttpGet getRequest = new HttpGet(url);
@@ -436,16 +448,35 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                 int status = response.getCode();
                 if (status < 200 || status >= 300)
                 {
-                    // 5xx bodies are large, uninformative HTML error pages, so only client error
-                    // bodies are read.
-                    String body = (status >= 400 && status < 500 && response.getEntity() != null)
-                            ? EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8)
-                            : null;
                     throw new HttpResponseException(status,
-                            errorDetail(status, response.getReasonPhrase(), body, apiKeyFrom(url)));
+                            errorDetail(status, response.getReasonPhrase(), readErrorBody(status, response),
+                                    apiKeyFrom(url)));
                 }
                 return EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             });
+        }
+    }
+
+    /**
+     * Read the body of a client error response. 5xx bodies are large, uninformative HTML error
+     * pages, so only client error bodies are read, and only the first {@link #MAX_ERROR_BODY_CHARS}
+     * characters. A body that cannot be read or parsed returns null, because losing NCBI's text is
+     * better than losing the status code the caller decides on.
+     */
+    private static @Nullable String readErrorBody(int status, ClassicHttpResponse response)
+    {
+        if (status < 400 || status >= 500 || response.getEntity() == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8, MAX_ERROR_BODY_CHARS);
+        }
+        catch (IOException | org.apache.hc.core5.http.ParseException e)
+        {
+            return null;
         }
     }
 
@@ -493,7 +524,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Read timeouts and 5xx responses are transient NCBI failures worth retrying. 4xx and other
+     * Read timeouts, 5xx responses and 429 are transient NCBI failures worth retrying. NCBI answers
+     * 429 when the request rate is exceeded, which is the failure backoff exists for. Other 4xx
      * errors are permanent.
      */
     private static boolean isRetryable(IOException e)
@@ -504,7 +536,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         if (e instanceof HttpResponseException hre)
         {
-            return hre.getStatusCode() >= 500;
+            return hre.getStatusCode() >= 500 || hre.getStatusCode() == TOO_MANY_REQUESTS;
         }
         return false;
     }
@@ -517,15 +549,21 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         return (long) RETRY_BASE_DELAY_MS << (attempt - 1);
     }
 
-    private static void sleepMs(long ms)
+    /**
+     * @return false if the thread was interrupted, in which case the caller should stop rather than
+     * carry on without the delay it asked for.
+     */
+    private static boolean sleepMs(long ms)
     {
         try
         {
             Thread.sleep(ms);
+            return true;
         }
         catch (InterruptedException e)
         {
             Thread.currentThread().interrupt();
+            return false;
         }
     }
 
@@ -1580,7 +1618,10 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             assertTrue(isRetryable(new HttpResponseException(500, "Internal Server Error")));
             assertTrue(isRetryable(new HttpResponseException(503, "Service Unavailable")));
 
-            // 4xx and generic IO errors are permanent -> fail fast
+            // 429 is NCBI's answer when the request rate is exceeded, which backoff is for
+            assertTrue(isRetryable(new HttpResponseException(429, "Too Many Requests")));
+
+            // Other 4xx and generic IO errors are permanent -> fail fast
             assertFalse(isRetryable(new HttpResponseException(400, "Bad Request")));
             assertFalse(isRetryable(new HttpResponseException(404, "Not Found")));
             assertFalse(isRetryable(new IOException("connection reset")));
@@ -1589,10 +1630,13 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         @Test
         public void testRetryDelayMs()
         {
-            // Exponential backoff of 500ms, 1000ms, 2000ms per attempt.
+            // Exponential backoff of 500ms then 1000ms. With MAX_HTTP_ATTEMPTS at 3 the loop sleeps
+            // after the first two failures and rethrows after the third, so those are the only
+            // delays a request can wait.
             assertEquals(500, retryDelayMs(1));
             assertEquals(1000, retryDelayMs(2));
-            assertEquals(2000, retryDelayMs(3));
+            assertEquals("A request sleeps once per failed attempt except the last, so only the"
+                    + " delays asserted above are reachable", 2, MAX_HTTP_ATTEMPTS - 1);
         }
 
         @Test
@@ -1674,6 +1718,39 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             };
             assertEquals("body", service.getString("http://test", LOG));
             assertEquals("Should retry until the 3rd attempt succeeds", 3, attempts[0]);
+        }
+
+        @Test
+        public void testGetStringStopsWhenInterrupted()
+        {
+            // An interrupted thread cannot wait, so retrying would send the remaining attempts back
+            // to back. getString should give up after the first failure instead.
+            int[] attempts = {0};
+            NcbiPublicationSearchServiceImpl service = new NcbiPublicationSearchServiceImpl()
+            {
+                @Override
+                protected String executeGet(String url) throws IOException
+                {
+                    attempts[0]++;
+                    Thread.currentThread().interrupt();
+                    throw new HttpResponseException(503, "Service Unavailable");
+                }
+            };
+
+            try
+            {
+                service.getString("http://test", LOG);
+                fail("Expected the interrupted request to be rethrown");
+            }
+            catch (IOException expected)
+            {
+                assertEquals("An interrupted request should not be retried", 1, attempts[0]);
+            }
+            finally
+            {
+                // Clear the flag so it cannot affect the tests that run after this one.
+                Thread.interrupted();
+            }
         }
 
         @Test
