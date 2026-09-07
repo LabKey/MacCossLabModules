@@ -48,16 +48,15 @@ public interface NcbiPublicationSearchService
     /**
      * Searches PMC and PubMed for a publication associated with the experiment.
      * Returns the top match (highest priority) if multiple matches are found, or null if none.
-     */
-    /**
-     * @throws NcbiSearchException if a request to NCBI fails. An empty result therefore means no
-     * publication was found, not that the search could not be run.
+     *
+     * @throws NcbiSearchException if no publication was found and one or more NCBI requests failed. A
+     * null result therefore means no publication was found, not that the search could not be run.
      */
     @Nullable PublicationMatch searchForPublication(@NotNull ExperimentAnnotations expAnnotations, @Nullable Logger logger);
 
     /**
-     * @throws NcbiSearchException if a request to NCBI fails. An empty result therefore means no
-     * publication was found, not that the search could not be run.
+     * @throws NcbiSearchException if no publication was found and one or more NCBI requests failed. An
+     * empty result therefore means no publication was found, not that the search could not be run.
      */
     List<PublicationMatch> searchForPublication(@NotNull ExperimentAnnotations expAnnotations, int maxResults, @Nullable Logger logger, boolean getCitations);
 }

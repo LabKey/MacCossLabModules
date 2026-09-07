@@ -100,12 +100,13 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     private static final int RATE_LIMIT_DELAY_MS = 400; // NCBI allows 3 requests/sec without an API key
     private static final int TIMEOUT_MS = 10000; // 10 seconds
 
-    // NCBI eutils intermittently returns transient 5xx errors and read timeouts, even well under
-    // the rate limit. Retry those a few times with exponential backoff before giving up.
+    // NCBI eutils fails intermittently, even well under the rate limit. Retry the transient
+    // failures listed on isRetryable a few times with exponential backoff before giving up.
     private static final int MAX_HTTP_ATTEMPTS = 3; // initial try + 2 retries
     private static final int RETRY_BASE_DELAY_MS = 500; // exponential backoff base
 
-    private static final int TOO_MANY_REQUESTS = 429; // NCBI's answer when the request rate is exceeded
+    private static final int BAD_REQUEST = 400; // NCBI's response when the API key is not recognised
+    private static final int TOO_MANY_REQUESTS = 429; // NCBI's response when the request rate is exceeded
     private static final int MAX_ERROR_BODY_CHARS = 500;
 
     private static final String REDACTED = "REDACTED";
@@ -177,7 +178,9 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (IOException e)
         {
-            log.error("Error submitting a request to NCBI Literature Citation Exporter. URL: {}", queryUrl, e);
+            // A missing citation does not fail the match. getCitation returns null and the caller
+            // displays the publication ID instead.
+            log.warn("Request to the NCBI Literature Citation Exporter did not complete. URL: {}", queryUrl, e);
         }
         return null;
     }
@@ -224,19 +227,34 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         maxResults = Math.max(1, Math.min(maxResults, NcbiPublicationSearchService.MAX_RESULTS));
         log.info("Starting publication search for experiment: {}", expAnnotations.getId());
 
+        // NCBI requests that failed after retries. An empty result is returned only when every request
+        // completed, so a caller can tell a search that found no publication from one that could not run.
+        List<String> failedRequests = new ArrayList<>();
+
         // Search PubMed Central first
-        List<PublicationMatch> matchedArticles = searchPmc(expAnnotations, log);
+        List<PublicationMatch> matchedArticles = searchPmc(expAnnotations, log, failedRequests);
 
         // If no PMC results, fall back to PubMed
         if (matchedArticles.isEmpty())
         {
             log.info("No PMC articles found, trying PubMed fallback");
-            matchedArticles = searchPubMed(expAnnotations, log);
+            matchedArticles = searchPubMed(expAnnotations, log, failedRequests);
+        }
+
+        if (!failedRequests.isEmpty())
+        {
+            log.warn("Some NCBI requests did not complete for experiment {}. Failed requests: {}",
+                    expAnnotations.getId(), StringUtils.join(failedRequests, ", "));
         }
 
         // Build and return result
         if (matchedArticles.isEmpty())
         {
+            if (!failedRequests.isEmpty())
+            {
+                throw new NcbiSearchException("Publication search for experiment " + expAnnotations.getId()
+                        + " did not complete. Failed requests: " + StringUtils.join(failedRequests, ", "));
+            }
             log.info("No publications found");
             return Collections.emptyList();
         }
@@ -263,7 +281,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Search PubMed Central
      */
-    private @NotNull List<PublicationMatch> searchPmc(@NotNull ExperimentAnnotations expAnnotations, Logger log)
+    private @NotNull List<PublicationMatch> searchPmc(@NotNull ExperimentAnnotations expAnnotations, Logger log,
+                                                      List<String> failedRequests)
     {
         Map<String, String> searchTermsByStrategy = buildSearchTerms(expAnnotations);
 
@@ -274,11 +293,20 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             String strategy = entry.getKey();
             String searchTerm = entry.getValue();
             log.debug("Searching PMC by {}: {}", strategy, searchTerm);
-            List<String> ids = searchPmc(quote(searchTerm), log);
-            if (!ids.isEmpty())
+            try
             {
-                pmcIdsByStrategy.put(strategy, ids);
-                log.debug("Found {} PMC articles by {}", ids.size(), strategy);
+                List<String> ids = searchPmc(quote(searchTerm), log);
+                if (!ids.isEmpty())
+                {
+                    pmcIdsByStrategy.put(strategy, ids);
+                    log.debug("Found {} PMC articles by {}", ids.size(), strategy);
+                }
+            }
+            catch (NcbiSearchException e)
+            {
+                // NCBI responds inconsistently to the same query, so the remaining strategies are
+                // still worth running. executeSearch has already logged the query and the cause.
+                failedRequests.add("PMC search by " + strategy);
             }
             rateLimit();
         }
@@ -291,7 +319,17 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         log.info("Total unique PMC IDs found: {}", idToStrategies.size());
 
         // Fetch and verify PMC articles
-        List<PublicationMatch> pmcArticles = fetchAndVerifyPmcArticles(idToStrategies.keySet(), idToStrategies, expAnnotations, log);
+        List<PublicationMatch> pmcArticles;
+        try
+        {
+            pmcArticles = fetchAndVerifyPmcArticles(idToStrategies.keySet(), idToStrategies, expAnnotations, log);
+        }
+        catch (NcbiSearchException e)
+        {
+            // The IDs cannot be verified without their metadata, so PMC has no usable result.
+            failedRequests.add("PMC metadata fetch");
+            return Collections.emptyList();
+        }
 
         // Apply priority filtering
         return applyPriorityFiltering(pmcArticles, expAnnotations.getCreated(), log);
@@ -355,7 +393,9 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (IOException | JSONException e)
         {
-            log.error("Error searching {} with query: {}", database, query, e);
+            // One request, not the outcome for the dataset. The search methods catch this per request
+            // and carry on with the remaining ones.
+            log.warn("Search of {} did not complete for query: {}", database, query, e);
             throw new NcbiSearchException("Error searching " + database + " with query: " + query, e);
         }
     }
@@ -373,12 +413,12 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (HttpResponseException e)
         {
-            // NCBI rejects a key it does not recognise with a 4xx. A 429 is the request rate and a
-            // 5xx is NCBI's own failure, so neither counts as a rejection.
+            // NCBI rejects a key it does not recognise with a 400. Any other status says nothing about
+            // the key, including a 403 or 404 from a proxy between the server and NCBI.
             String message = redactApiKey(e.getMessage(), apiKey);
-            boolean rejected = e.getStatusCode() >= 400 && e.getStatusCode() < 500
-                    && e.getStatusCode() != TOO_MANY_REQUESTS;
-            return rejected ? NcbiApiKeyCheck.rejected(message) : NcbiApiKeyCheck.unconfirmed(message);
+            return e.getStatusCode() == BAD_REQUEST
+                    ? NcbiApiKeyCheck.rejected(message)
+                    : NcbiApiKeyCheck.unconfirmed(message);
         }
         catch (IOException e)
         {
@@ -421,8 +461,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                         attempt, MAX_HTTP_ATTEMPTS, delayMs, redactApiKey(url, apiKeyFrom(url)), e.toString());
                 if (!sleepMs(delayMs))
                 {
-                    // The thread was interrupted. Retrying now would run the remaining attempts with
-                    // no delay, because every later sleep throws at once.
+                    // An interrupted thread cannot wait, so the remaining attempts would run back to
+                    // back. Give up instead.
                     throw e;
                 }
             }
@@ -499,7 +539,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     {
         if (status >= 400 && status < 500 && !StringUtils.isBlank(body))
         {
-            return reasonPhrase + " - " + redactApiKey(StringUtils.abbreviate(body.strip(), 500), apiKey);
+            return reasonPhrase + " - " + redactApiKey(StringUtils.abbreviate(body.strip(), MAX_ERROR_BODY_CHARS), apiKey);
         }
         return reasonPhrase;
     }
@@ -509,7 +549,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
      * query parameter on every eutils URL. When the reminder job runs, the log is the pipeline job
      * log, which is readable by anyone with read access to the folder the job ran in.
      */
-    static String redactApiKey(@Nullable String text, @Nullable String apiKey)
+    static @Nullable String redactApiKey(@Nullable String text, @Nullable String apiKey)
     {
         if (text == null)
         {
@@ -533,7 +573,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Read timeouts, 5xx responses and 429 are transient NCBI failures worth retrying. NCBI answers
+     * Read timeouts, 5xx responses and 429 are transient NCBI failures worth retrying. NCBI returns
      * 429 when the request rate is exceeded, which is the failure backoff exists for. Other 4xx
      * errors are permanent.
      */
@@ -550,9 +590,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         return false;
     }
 
-    // 500ms after the first failure, then doubling. Jitter is not needed. Both callers, the daily
-    // reminder job and the UI search, issue NCBI requests sequentially, so a retry never collides
-    // with a sibling request.
+    // 500ms after the first failure, then doubling. No jitter. Each caller issues its NCBI requests
+    // sequentially. Retries collide only when the reminder job and a UI search overlap, which is rare.
     private static long retryDelayMs(int attempt)
     {
         return (long) RETRY_BASE_DELAY_MS << (attempt - 1);
@@ -625,7 +664,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (IOException | JSONException e)
         {
-            log.error("Error fetching {} metadata for IDs: {}", database, ids, e);
+            log.warn("Metadata fetch from {} did not complete for IDs: {}", database, ids, e);
             throw new NcbiSearchException("Error fetching " + database + " metadata for IDs: " + ids, e);
         }
     }
@@ -766,7 +805,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Fall back to PubMed search if PMC finds nothing
      */
-    private List<PublicationMatch> searchPubMed(ExperimentAnnotations expAnnotations, Logger log)
+    private List<PublicationMatch> searchPubMed(ExperimentAnnotations expAnnotations, Logger log,
+                                                List<String> failedRequests)
     {
         String firstName = expAnnotations.getSubmitterUser() != null
             ? expAnnotations.getSubmitterUser().getFirstName() : null;
@@ -788,7 +828,16 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             stripQuerySpecialChars(lastName), stripQuerySpecialChars(firstName), stripQuerySpecialChars(title));
 
         log.debug("PubMed fallback query: {}", query);
-        List<String> pmids = searchPubMed(query, log);
+        List<String> pmids;
+        try
+        {
+            pmids = searchPubMed(query, log);
+        }
+        catch (NcbiSearchException e)
+        {
+            failedRequests.add("PubMed search");
+            return Collections.emptyList();
+        }
 
         if (pmids.isEmpty())
         {
@@ -799,7 +848,18 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         log.info("PubMed fallback found {} result(s), verifying...", pmids.size());
 
         // Fetch metadata and verify
-        Map<String, JSONObject> metadata = fetchPubMedMetadata(pmids, log);
+        Map<String, JSONObject> metadata;
+        try
+        {
+            metadata = fetchPubMedMetadata(pmids, log);
+        }
+        catch (NcbiSearchException e)
+        {
+            // Author and title cannot be verified without the metadata, and an unverified PMID is not
+            // a match.
+            failedRequests.add("PubMed metadata fetch");
+            return Collections.emptyList();
+        }
 
         List<PublicationMatch> articles = new ArrayList<>();
         for (String pmid : pmids)
@@ -1627,7 +1687,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             assertTrue(isRetryable(new HttpResponseException(500, "Internal Server Error")));
             assertTrue(isRetryable(new HttpResponseException(503, "Service Unavailable")));
 
-            // 429 is NCBI's answer when the request rate is exceeded, which backoff is for
+            // 429 is NCBI's response when the request rate is exceeded, which backoff is for
             assertTrue(isRetryable(new HttpResponseException(429, "Too Many Requests")));
 
             // Other 4xx and generic IO errors are permanent -> fail fast
@@ -1749,10 +1809,15 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         @Test
         public void testCheckApiKey()
         {
-            // NCBI rejects a key it does not recognise with a 4xx. The reminder job stops for that,
+            // NCBI rejects a key it does not recognise with a 400. The reminder job stops for that,
             // so a 5xx has to be reported as a check that could not be completed.
             assertEquals(NcbiApiKeyCheck.Status.REJECTED, checkApiKeyAgainst(new HttpResponseException(400, "Bad Request")).getStatus());
             assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new HttpResponseException(503, "Service Unavailable")).getStatus());
+
+            // A 403 or 404 can come from a proxy between the server and NCBI, which says nothing about
+            // the key. Calling either a rejection would stop the reminder job on a key that works.
+            assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new HttpResponseException(403, "Forbidden")).getStatus());
+            assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new HttpResponseException(404, "Not Found")).getStatus());
 
             // A 429 is the request rate, not a bad key. Calling it a rejection would stop the
             // reminder job and send an admin to correct a key that works.

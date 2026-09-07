@@ -99,8 +99,7 @@
         const link = document.createElement("a");
         link.href = "#";
         link.textContent = "Details";
-        // The handler is attached here rather than with an onclick attribute, which the Content
-        // Security Policy blocks. NCBI's reply is encoded because it is third party text.
+        // NCBI's response is encoded because it is third party text.
         link.addEventListener("click", function (e)
         {
             e.preventDefault();
@@ -119,7 +118,7 @@
         LABKEY.Ajax.request({
             url: LABKEY.ActionURL.buildURL("panoramapublic", "validateNcbiApiKey.api"),
             method: "POST",
-            // An empty value asks the server to check the saved key, which this form never displays.
+            // An empty value requests a check of the saved key, which this form never displays.
             jsonData: {ncbiApiKey: input ? input.value : ""},
             success: LABKEY.Utils.getCallbackWrapper(function (response)
             {
@@ -228,6 +227,7 @@
                 </td>
                 <td>
                     <input style="padding:0 10px 0 0; width: 360px;" type="password" name="ncbiApiKey" autocomplete="off"
+                           data-key-saved="<%=form.isNcbiApiKeySet()%>"
                            placeholder="<%=h(form.isNcbiApiKeySet() ? "A key is saved. Enter a new key to replace it." : "No key saved.")%>" />
                     <%=button("Validate").onClick("validateNcbiApiKey(); return false;")%>
                     <span id="ncbiApiKeyValidationResult" style="margin-left: 8px;"></span>

@@ -154,9 +154,6 @@ public class PrivateDataReminderSettings
         settingsMap.put(PROP_REMINDER_TIME, settings.getReminderTimeFormatted());
         settingsMap.put(PROP_ENABLE_PUBLICATION_SEARCH, String.valueOf(settings.isEnablePublicationSearch()));
         settingsMap.put(PROP_PUBLICATION_SEARCH_FREQUENCY, String.valueOf(settings.getPublicationSearchFrequency()));
-        // The API key is a credential and is saved separately, in the encrypted store. Saving the
-        // rest of the settings must never change it.
-        settingsMap.remove(PROP_NCBI_API_KEY);
         settingsMap.save();
     }
 

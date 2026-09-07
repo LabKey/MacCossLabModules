@@ -159,9 +159,9 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
         boolean isPmc = "pmc".equals(extractQueryParam(url, "db"));
         Map<String, List<String>> searchMap = isPmc ? _pmcSearchResults : _pubmedSearchResults;
 
-        // Match registered search keys against the decoded ESearch query term, so a key cannot
-        // match part of another parameter such as tool or email. The real ESearch term wraps the
-        // key in quotes (e.g. "PXD056793"), so contains() on the term is the right granularity.
+        // Match search keys against the decoded ESearch query term, so a key cannot match part of
+        // another parameter such as tool or email. A key is only part of the term - PMC quotes it,
+        // as in "PXD056793" - so contains() on the term is the right granularity.
         String term = extractQueryParam(url, "term");
 
         JSONArray idList = new JSONArray();

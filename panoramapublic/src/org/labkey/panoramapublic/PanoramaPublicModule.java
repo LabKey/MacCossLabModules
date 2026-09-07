@@ -156,7 +156,6 @@ public class PanoramaPublicModule extends SpringModule
         {
             fileContentService.addFileListener(new PanoramaPublicFileListener());
         }
-
     }
 
     @Override

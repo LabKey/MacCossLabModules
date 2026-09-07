@@ -27,8 +27,10 @@ import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 
 import java.io.IOException;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 /**
@@ -47,16 +49,21 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
 
     private boolean _savedTestApiKey = false;
     private boolean _useMockNcbi = false;
+    private Map<String, String> _originalReminderSettings;
 
     @Test
     public void testNcbiApiKeySettings()
     {
         setupMockNcbiService();
 
+        // Capture the existing reminder settings up front so removeTestApiKey can put them back. A dev
+        // machine may have non-default values set.
+        _originalReminderSettings = getPrivateDataReminderSettings();
+
         assertEquals("An NCBI API key is saved on this server. This test saves its own key and cannot"
                         + " restore yours, because a saved key is never readable. Remove the key on the"
                         + " Private Data Reminder Settings page, run this test, then enter the key again.",
-                "false", getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
+                "false", _originalReminderSettings.get("ncbiApiKeySaved"));
 
         _savedTestApiKey = true;
         savePrivateDataReminderSettings("2", "0", "0", true, TEST_API_KEY);
@@ -81,16 +88,33 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
     }
 
     /**
-     * Covers the button, the request it sends and the message it displays. The mock answers every
-     * request, so it reports the key as accepted. Only real NCBI rejects one.
+     * Covers the button, the request it sends and the message it displays. The mock responds to every
+     * request, so it reports the key as accepted.
      */
     private void verifyValidateButton()
     {
         setFormElement(Locator.input("ncbiApiKey"), "not-a-real-key");
         click(Locator.lkButton("Validate"));
 
-        String expected = _useMockNcbi ? "NCBI accepted this key" : "NCBI rejected this key";
-        waitForElement(Locator.id("ncbiApiKeyValidationResult").containing(expected));
+        Locator result = Locator.id("ncbiApiKeyValidationResult");
+        if (_useMockNcbi)
+        {
+            waitForElement(result.containing("NCBI accepted this key"));
+        }
+        else
+        {
+            // NCBI rejects this key with a 400, or returns a 5xx and the check is unconfirmed.
+            // Neither reports the key as accepted. The retries mean a live check can take half a minute.
+            waitFor(() -> {
+                        String text = result.findElement(getDriver()).getText();
+                        return !text.isEmpty() && !text.startsWith("Checking");
+                    },
+                    "NCBI validation result was not displayed", WAIT_FOR_PAGE);
+
+            String message = result.findElement(getDriver()).getText();
+            assertFalse("A key NCBI does not recognise must not be reported as accepted. Message: " + message,
+                    message.contains("accepted"));
+        }
 
         setFormElement(Locator.input("ncbiApiKey"), "");
     }
@@ -148,6 +172,18 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
             getPrivateDataReminderSettings();
             checkCheckbox(Locator.checkboxByName("clearNcbiApiKey"));
             clickButton("Save");
+        }
+
+        if (_originalReminderSettings != null)
+        {
+            // The reminder settings are site wide. Restore the values this test overwrote.
+            savePrivateDataReminderSettings(
+                    _originalReminderSettings.get("extensionLength"),
+                    _originalReminderSettings.get("delayUntilFirstReminder"),
+                    _originalReminderSettings.get("reminderFrequency"),
+                    Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")),
+                    // A key saved before the run cannot be read back, so leave the key field alone.
+                    null);
         }
     }
 }

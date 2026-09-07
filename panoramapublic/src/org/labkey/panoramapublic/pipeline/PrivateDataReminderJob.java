@@ -255,8 +255,7 @@ public class PrivateDataReminderJob extends PipelineJob
                 }
                 catch (NcbiSearchException e)
                 {
-                    // A search that could not run must not reset the deferral, which would record it
-                    // as having found no new publication.
+                    // Rethrow so that the caller can record this as a failed NCBI search.
                     throw e;
                 }
                 catch (Exception e)
@@ -282,8 +281,7 @@ public class PrivateDataReminderJob extends PipelineJob
         }
         catch (NcbiSearchException e)
         {
-            // The caller records this as a failed search. Returning null here would make it
-            // indistinguishable from a dataset with no published paper.
+            // Rethrow so that the caller can record this as a failed NCBI search.
             throw e;
         }
         catch (Exception e)
@@ -301,6 +299,7 @@ public class PrivateDataReminderJob extends PipelineJob
         if (_panoramaPublic == null)
         {
             getLogger().error("Panorama Public project does not exist.");
+            setStatus(TaskStatus.error);
             return;
         }
 
@@ -310,9 +309,7 @@ public class PrivateDataReminderJob extends PipelineJob
             return;
         }
 
-        postMessage(_experimentAnnotationsIds, _panoramaPublic);
-
-        setStatus(TaskStatus.complete);
+        setStatus(postMessage(_experimentAnnotationsIds, _panoramaPublic));
     }
 
     /**
@@ -350,13 +347,17 @@ public class PrivateDataReminderJob extends PipelineJob
         return true;
     }
 
-    private void postMessage(List<Integer> expAnnotationIds, Journal panoramaPublic)
+    /**
+     * @return complete when every dataset was processed, error when the job could not start, and
+     * cancelled when it was interrupted partway.
+     */
+    private TaskStatus postMessage(List<Integer> expAnnotationIds, Journal panoramaPublic)
     {
         int total = expAnnotationIds.size();
         if (total == 0)
         {
             getLogger().info("No private datasets were found.");
-            return;
+            return TaskStatus.complete;
         }
         Logger log = getLogger();
 
@@ -364,15 +365,19 @@ public class PrivateDataReminderJob extends PipelineJob
         if(!context.isValid())
         {
             context.logErrors(log);
-            return;
+            return TaskStatus.error;
         }
         ProcessingResults processingResults = new ProcessingResults(expAnnotationIds.size(), log);
 
-        processExperiments(_experimentAnnotationsIds, context, processingResults, log);
-
+        return processExperiments(expAnnotationIds, context, processingResults, log)
+                ? TaskStatus.complete
+                : TaskStatus.cancelled;
     }
 
-    private void processExperiments(List<Integer> expAnnotationIds, ProcessingContext context, ProcessingResults processingResults, Logger log)
+    /**
+     * @return false if the job was interrupted before every dataset was processed.
+     */
+    private boolean processExperiments(List<Integer> expAnnotationIds, ProcessingContext context, ProcessingResults processingResults, Logger log)
     {
         log.info("Posting reminder message to: {} message threads.", expAnnotationIds.size());
 
@@ -381,13 +386,15 @@ public class PrivateDataReminderJob extends PipelineJob
         {
             log.info("RUNNING IN TEST MODE - MESSAGES WILL NOT BE POSTED.");
         }
+        boolean completed = true;
         for (Integer experimentAnnotationsId : exptIds)
         {
             if (Thread.currentThread().isInterrupted())
             {
-                // Cancelling the job clears the NCBI rate limiter, because every sleep from here on
-                // throws at once. Stop instead of running the rest at full speed.
+                // An interrupted thread cannot wait, so the NCBI requests would no longer be spaced.
+                // The remaining datasets would run back to back.
                 log.warn("Job was interrupted. Stopping before experiment {}.", experimentAnnotationsId);
+                completed = false;
                 break;
             }
 
@@ -403,6 +410,7 @@ public class PrivateDataReminderJob extends PipelineJob
         }
 
         processingResults.logResults(log);
+        return completed;
     }
 
     private void processExperiment(Integer experimentAnnotationsId, ProcessingContext context, ProcessingResults processingResults)
@@ -447,8 +455,7 @@ public class PrivateDataReminderJob extends PipelineJob
             return;
         }
 
-        // Check for publications if enabled. A search that could not run still gets a reminder, since
-        // the reminder is about the data being private, not about the paper.
+        // Check for publications if enabled. Send a reminder even if the search fails for any reason.
         PublicationMatch publicationResult = null;
         try
         {
@@ -820,7 +827,8 @@ public class PrivateDataReminderJob extends PipelineJob
 
             if (!_publicationSearchFailed.isEmpty())
             {
-                log.error("Publication search failed for the following experiment Ids: {}. NCBI's reason is in the error logged for each one.", StringUtils.join(_publicationSearchFailed, ", "));
+                log.error("Publication search failed for {} of {} datasets. Experiment Ids: {}. The NCBI requests that failed are logged as warnings above.",
+                        _publicationSearchFailed.size(), _total, StringUtils.join(_publicationSearchFailed, ", "));
             }
 
             if (!_submitterNotFound.isEmpty())

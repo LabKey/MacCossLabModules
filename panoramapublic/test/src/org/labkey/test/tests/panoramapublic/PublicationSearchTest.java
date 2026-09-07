@@ -258,9 +258,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertNotNull("Expected publicationType for dataset 2", dsStatus2AfterPost.get("PublicationType"));
         assertNotNull("Expected lastReminderDate for dataset 2", dsStatus2AfterPost.get("LastReminderDate"));
         assertNotNull("Expected citation to be cached for dataset 2", dsStatus2AfterPost.get("Citation"));
-
     }
-
 
     /*
      * Navigate to the Panorama Public copy folder and get the experiment ID.
@@ -495,7 +493,6 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
                     Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")),
                     null);
         }
-
     }
 
     @Override
