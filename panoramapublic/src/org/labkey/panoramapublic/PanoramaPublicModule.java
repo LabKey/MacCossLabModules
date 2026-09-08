@@ -54,6 +54,7 @@ import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchServiceImpl;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
+import org.labkey.panoramapublic.pipeline.PrivateDataReminderJob;
 import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
 import org.labkey.panoramapublic.proteomexchange.Formula;
@@ -397,6 +398,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(CatalogEntryManager.TestCase.class);
         set.add(BlueskyApiClient.TestCase.class);
         set.add(PrivateDataReminderSettings.TestCase.class);
+        set.add(PrivateDataReminderJob.TestCase.class);
         set.add(NcbiPublicationSearchServiceImpl.TestCase.class);
         set.add(NcbiUtils.TestCase.class);
 

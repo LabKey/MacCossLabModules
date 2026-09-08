@@ -19,6 +19,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.Assert;
+import org.junit.Test;
 import org.labkey.api.announcements.api.Announcement;
 import org.labkey.api.announcements.api.AnnouncementService;
 import org.labkey.api.data.Container;
@@ -32,6 +34,7 @@ import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.api.util.URLHelper;
+import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.ViewBackgroundInfo;
 import org.labkey.panoramapublic.PanoramaPublicManager;
 import org.labkey.panoramapublic.PanoramaPublicNotification;
@@ -39,6 +42,7 @@ import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.model.DatasetStatus;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.model.Journal;
+import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.ncbi.NcbiApiKeyCheck;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
@@ -61,6 +65,20 @@ import java.util.Set;
 
 public class PrivateDataReminderJob extends PipelineJob
 {
+    // Below this many datasets the failure rate says too little to act on.
+    private static final int MIN_DATASETS_FOR_FAILURE = 3;
+    private static final double PUBLICATION_SEARCH_FAILURE_THRESHOLD = 0.5;
+
+    /**
+     * @return true when the publication search failure rate exceeds the threshold, which suggests a
+     * problem with searching NCBI rather than with one dataset.
+     */
+    static boolean publicationSearchFailingWidely(int failed, int attempted)
+    {
+        return attempted >= MIN_DATASETS_FOR_FAILURE
+                && failed > attempted * PUBLICATION_SEARCH_FAILURE_THRESHOLD;
+    }
+
     private boolean _test;
     private boolean _forcePublicationCheck;
     private List<Integer> _experimentAnnotationsIds;
@@ -189,22 +207,24 @@ public class PrivateDataReminderJob extends PipelineJob
         public boolean shouldPost() { return shouldPost; }
         public String getReason() { return reason; }
     }
-    
+
     /**
-     * Checks for publications associated with the experiment if enabled in settings
-     * @param expAnnotations The experiment to check
-     * @param settings The reminder settings
-     * @param forceCheck Force publication check regardless of global setting
-     * @param log Logger for diagnostic messages
-     * @return NcbiArticleMatch with search result
+     * Finds the publication to report for the experiment, from the dataset's cached match or by
+     * searching NCBI.
+     *
+     * @return null when there is nothing new to report, which includes a search that found only the
+     * publication the submitter has already dismissed
+     * @throws NcbiSearchException if a search ran and could not complete
      */
     private PublicationMatch searchForPublication(@NotNull ExperimentAnnotations expAnnotations,
                                                          @NotNull PrivateDataReminderSettings settings,
                                                          boolean forceCheck,
                                                          @NotNull User user,
                                                          boolean testMode,
-                                                         @NotNull Logger log)
+                                                         @NotNull ProcessingResults results)
     {
+        Logger log = results._log;
+
         // Check if publication checking is enabled (either globally or forced for this run)
         if (!forceCheck && !settings.isEnablePublicationSearch())
         {
@@ -230,6 +250,7 @@ public class PrivateDataReminderJob extends PipelineJob
                 log.info("Search deferral expired for experiment {} (dismissed {}); re-searching NCBI", expAnnotations.getId(), dismissedDate);
                 try
                 {
+                    results.addPublicationSearchAttempted();
                     PublicationMatch newMatch = NcbiPublicationSearchService.get().searchForPublication(expAnnotations, log);
                     if (newMatch != null && !newMatch.getPublicationId().equals(datasetStatus.getPotentialPublicationId()))
                     {
@@ -260,7 +281,8 @@ public class PrivateDataReminderJob extends PipelineJob
                 }
                 catch (Exception e)
                 {
-                    log.error("Error re-searching publication for experiment {}: {}", expAnnotations.getId(), e.getMessage(), e);
+                    // The reminder is still posted, so this costs the paper information and nothing else.
+                    log.warn("Error re-searching publication for experiment {}: {}", expAnnotations.getId(), e.getMessage(), e);
                     return null;
                 }
             }
@@ -277,6 +299,7 @@ public class PrivateDataReminderJob extends PipelineJob
         log.info("Searching for publications for experiment {}", expAnnotations.getId());
         try
         {
+            results.addPublicationSearchAttempted();
             return NcbiPublicationSearchService.get().searchForPublication(expAnnotations, log);
         }
         catch (NcbiSearchException e)
@@ -286,7 +309,8 @@ public class PrivateDataReminderJob extends PipelineJob
         }
         catch (Exception e)
         {
-            log.error("Error searching for publication for experiment {}: {}", expAnnotations.getId(), e.getMessage(), e);
+            // The reminder is still posted, so this costs the paper information and nothing else.
+            log.warn("Error searching for publication for experiment {}: {}", expAnnotations.getId(), e.getMessage(), e);
             return null;
         }
     }
@@ -348,8 +372,9 @@ public class PrivateDataReminderJob extends PipelineJob
     }
 
     /**
-     * @return complete when every dataset was processed, error when the job could not start, and
-     * cancelled when it was interrupted partway.
+     * @return error when the job could not start, a dataset that should have been sent a reminder was
+     * not, or the publication search failed for most of the datasets it ran for. Cancelled when the
+     * job was interrupted with nothing else to report, and complete otherwise.
      */
     private TaskStatus postMessage(List<Integer> expAnnotationIds, Journal panoramaPublic)
     {
@@ -369,9 +394,15 @@ public class PrivateDataReminderJob extends PipelineJob
         }
         ProcessingResults processingResults = new ProcessingResults(expAnnotationIds.size(), log);
 
-        return processExperiments(expAnnotationIds, context, processingResults, log)
-                ? TaskStatus.complete
-                : TaskStatus.cancelled;
+        boolean completed = processExperiments(expAnnotationIds, context, processingResults, log);
+
+        // An ERROR logged through the job's logger sets the status to error, and the status set here
+        // would overwrite it. Report the errors the run recorded instead.
+        if (processingResults.getTotalErrors() > 0 || processingResults.publicationSearchFailingWidely())
+        {
+            return TaskStatus.error;
+        }
+        return completed ? TaskStatus.complete : TaskStatus.cancelled;
     }
 
     /**
@@ -405,7 +436,7 @@ public class PrivateDataReminderJob extends PipelineJob
             }
             catch (Exception e)
             {
-                log.error("Error processing experiment {}: {}", experimentAnnotationsId, e.getMessage(), e);
+                processingResults.addProcessingFailed(experimentAnnotationsId, e);
             }
         }
 
@@ -459,7 +490,7 @@ public class PrivateDataReminderJob extends PipelineJob
         PublicationMatch publicationResult = null;
         try
         {
-            publicationResult = searchForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, getUser(), context.isTestMode(), processingResults._log);
+            publicationResult = searchForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, getUser(), context.isTestMode(), processingResults);
         }
         catch (NcbiSearchException e)
         {
@@ -740,8 +771,11 @@ public class PrivateDataReminderJob extends PipelineJob
         private final List<Integer> _experimentNotFound = new ArrayList<>();
         private final List<Integer> _submissionNotFound = new ArrayList<>();
         private final List<Integer> _announcementNotFound = new ArrayList<>();
+        private final List<Integer> _noSupportThread = new ArrayList<>();
         private final List<Integer> _submitterNotFound = new ArrayList<>();
         private final List<Integer> _publicationSearchFailed = new ArrayList<>();
+        private int _publicationSearchAttempted = 0;
+        private final List<Integer> _processingFailed = new ArrayList<>();
         private final List<Integer> _skipped = new ArrayList<>();
         private int _processed = 0;
         private final int _total;
@@ -772,6 +806,13 @@ public class PrivateDataReminderJob extends PipelineJob
 
         public void addAnnouncementNotFound(Integer experimentId, JournalSubmission submission, Container announcementsFolder)
         {
+            if (submission.getAnnouncementId() == null)
+            {
+                // Data submitted before Panorama Public started posting submission requests to a
+                // message board.
+                _noSupportThread.add(experimentId);
+                return;
+            }
             _announcementNotFound.add(experimentId);
             _log.error("Could not find the message thread for experiment Id: {}; announcement Id: {} in the folder {}.", experimentId, submission.getAnnouncementId(), announcementsFolder.getPath());
         }
@@ -782,10 +823,21 @@ public class PrivateDataReminderJob extends PipelineJob
             _log.error("Could not find a submitter user for experiment Id: {}.", experimentId);
         }
 
+        public void addPublicationSearchAttempted()
+        {
+            _publicationSearchAttempted++;
+        }
+
         public void addPublicationSearchFailed(Integer experimentId, Exception e)
         {
             _publicationSearchFailed.add(experimentId);
-            _log.error("Publication search failed for experiment Id: {}. A reminder was still posted. {}", experimentId, e.getMessage(), e);
+            _log.warn("Publication search failed for experiment Id: {}. A reminder was still posted. {}", experimentId, e.getMessage(), e);
+        }
+
+        public void addProcessingFailed(Integer experimentId, Exception e)
+        {
+            _processingFailed.add(experimentId);
+            _log.error("Error processing experiment {}: {}", experimentId, e.getMessage(), e);
         }
 
         public void addSkipped(Integer experimentId, ReminderDecision decision)
@@ -825,10 +877,28 @@ public class PrivateDataReminderJob extends PipelineJob
                 log.error("Support message threads were not found for the following experiment Ids: {}", StringUtils.join(_announcementNotFound, ", "));
             }
 
+            if (!_noSupportThread.isEmpty())
+            {
+                log.warn("The following experiment Ids were submitted before Panorama Public posted submission requests to a message board, so they have no support message thread and cannot be sent a reminder: {}",
+                        StringUtils.join(_noSupportThread, ", "));
+            }
+
             if (!_publicationSearchFailed.isEmpty())
             {
-                log.error("Publication search failed for {} of {} datasets. Experiment Ids: {}. The NCBI requests that failed are logged as warnings above.",
-                        _publicationSearchFailed.size(), _total, StringUtils.join(_publicationSearchFailed, ", "));
+                String message = "Publication search failed for {} of the {} datasets a search was run for. Experiment Ids: {}. The NCBI requests that failed are logged as warnings above.";
+                if (publicationSearchFailingWidely())
+                {
+                    log.error(message, _publicationSearchFailed.size(), _publicationSearchAttempted, StringUtils.join(_publicationSearchFailed, ", "));
+                }
+                else
+                {
+                    log.warn(message, _publicationSearchFailed.size(), _publicationSearchAttempted, StringUtils.join(_publicationSearchFailed, ", "));
+                }
+            }
+
+            if (!_processingFailed.isEmpty())
+            {
+                log.error("Processing failed for the following experiment Ids: {}", StringUtils.join(_processingFailed, ", "));
             }
 
             if (!_submitterNotFound.isEmpty())
@@ -842,12 +912,23 @@ public class PrivateDataReminderJob extends PipelineJob
             }
         }
 
+        public boolean publicationSearchFailingWidely()
+        {
+            return PrivateDataReminderJob.publicationSearchFailingWidely(
+                    _publicationSearchFailed.size(), _publicationSearchAttempted);
+        }
+
+        /**
+         * @return the number of datasets that should have been sent a reminder and were not. Datasets
+         * whose publication search failed are not counted, because the reminder was still posted.
+         */
         public int getTotalErrors()
         {
             return _experimentNotFound.size() +
                     _submissionNotFound.size() +
                     _announcementNotFound.size() +
-                    _submitterNotFound.size();
+                    _submitterNotFound.size() +
+                    _processingFailed.size();
         }
         public void logSummary(Logger log)
         {
@@ -861,7 +942,72 @@ public class PrivateDataReminderJob extends PipelineJob
                 log.info("Successfully processed {}.", StringUtilsLabKey.pluralize(_processed, "experiment"));
             }
 
-            log.info("Processing complete: {} total, {} processed, {} skipped, {} errors", _total, _processed, _skipped.size(), getTotalErrors());
+            log.info("Processing complete: {} total, {} processed, {} skipped, {} with no support message thread, {} errors",
+                    _total, _processed, _skipped.size(), _noSupportThread.size(), getTotalErrors());
+        }
+    }
+
+    public static class TestCase extends Assert
+    {
+        private static final Logger TEST_LOG = LogHelper.getLogger(TestCase.class, "Private data reminder job tests");
+
+        @Test
+        public void testPublicationSearchFailingWidely()
+        {
+            // Below the floor the rate says too little to act on, even when every search failed.
+            assertFalse("2 of 2 is under the floor", publicationSearchFailingWidely(2, 2));
+
+            // At the floor, more than half the searches that ran.
+            assertTrue("2 of 3 is over half", publicationSearchFailingWidely(2, 3));
+            assertFalse("1 of 3 is not over half", publicationSearchFailingWidely(1, 3));
+
+            // Exactly half is not enough. The comparison is strict.
+            assertFalse("2 of 4 is exactly half", publicationSearchFailingWidely(2, 4));
+            assertTrue("3 of 4 is over half", publicationSearchFailingWidely(3, 4));
+
+            assertFalse("No failures", publicationSearchFailingWidely(0, 10));
+            assertFalse("No searches ran", publicationSearchFailingWidely(0, 0));
+        }
+
+        @Test
+        public void testGetTotalErrors()
+        {
+            ProcessingResults results = new ProcessingResults(10, TEST_LOG);
+            assertEquals("A run with nothing recorded has no errors", 0, results.getTotalErrors());
+
+            results.addExperimentNotFound(1);
+            results.addSubmissionNotFound(2);
+            results.addLatestSubmissionNotFound(3);
+            results.addSubmitterNotFound(4);
+            results.addProcessingFailed(5, new IllegalStateException("test"));
+            assertEquals("Each dataset that missed its reminder is counted once", 5, results.getTotalErrors());
+
+            // The reminder was still posted for these, so they are not errors.
+            results.addPublicationSearchFailed(6, new NcbiSearchException("test"));
+            assertEquals("A failed publication search is not a missed reminder", 5, results.getTotalErrors());
+        }
+
+        @Test
+        public void testAnnouncementNotFoundSplitsOnAnnouncementId()
+        {
+            ProcessingResults results = new ProcessingResults(10, TEST_LOG);
+            Container container = ContainerManager.getRoot();
+
+            // No announcement id means the data predates the support message board. It cannot be sent
+            // a reminder and is not an error.
+            results.addAnnouncementNotFound(1, submissionWithAnnouncementId(null), container);
+            assertEquals("A dataset that never had a thread is not an error", 0, results.getTotalErrors());
+
+            // An announcement id whose thread could not be read is worth investigating.
+            results.addAnnouncementNotFound(2, submissionWithAnnouncementId(99), container);
+            assertEquals("A thread that went missing is an error", 1, results.getTotalErrors());
+        }
+
+        private static JournalSubmission submissionWithAnnouncementId(Integer announcementId)
+        {
+            JournalExperiment journalExperiment = new JournalExperiment();
+            journalExperiment.setAnnouncementId(announcementId);
+            return new JournalSubmission(journalExperiment);
         }
     }
 }

@@ -208,7 +208,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (JSONException e)
         {
-            log.error("Error parsing response from NCBI Literature Citation Exporter for {} ID {}", database.getLabel(), publicationId, e);
+            log.warn("Error parsing response from NCBI Literature Citation Exporter for {} ID {}", database.getLabel(), publicationId, e);
         }
         return null;
     }
