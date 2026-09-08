@@ -81,6 +81,57 @@
         }
         window.location = LABKEY.ActionURL.buildURL("panoramapublic", "searchPublications.view", folderPath);
     }
+
+    function showValidationResult(result, message, detail)
+    {
+        while (result.firstChild)
+        {
+            result.removeChild(result.firstChild);
+        }
+        result.appendChild(document.createTextNode(message));
+
+        if (!detail)
+        {
+            return;
+        }
+
+        result.appendChild(document.createTextNode(" "));
+        const link = document.createElement("a");
+        link.href = "#";
+        link.textContent = "Details";
+        // NCBI's response is encoded because it is third party text.
+        link.addEventListener("click", function (e)
+        {
+            e.preventDefault();
+            Ext4.Msg.alert("NCBI response", Ext4.String.htmlEncode(detail));
+        });
+        result.appendChild(link);
+    }
+
+    function validateNcbiApiKey()
+    {
+        const input = document.getElementsByName("ncbiApiKey")[0];
+        const result = document.getElementById("ncbiApiKeyValidationResult");
+        result.style.color = "";
+        result.textContent = "Checking with NCBI...";
+
+        LABKEY.Ajax.request({
+            url: LABKEY.ActionURL.buildURL("panoramapublic", "validateNcbiApiKey.api"),
+            method: "POST",
+            // An empty value requests a check of the saved key, which this form never displays.
+            jsonData: {ncbiApiKey: input ? input.value : ""},
+            success: LABKEY.Utils.getCallbackWrapper(function (response)
+            {
+                result.style.color = response.valid ? "green" : "red";
+                showValidationResult(result, response.message, response.detail);
+            }),
+            failure: LABKEY.Utils.getCallbackWrapper(function ()
+            {
+                result.style.color = "red";
+                showValidationResult(result, "Could not reach the server to validate the key.", null);
+            })
+        });
+    }
 </script>
 
 <labkey:errors/>
@@ -167,6 +218,26 @@
                         Number of months to wait after a user dismisses a publication suggestion before re-searching.
                         <br/>
                         If a different publication is found after this delay, the submitter will be notified again.
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="labkey-form-label">
+                    <span><%=h(PrivateDataReminderSettings.PROP_NCBI_API_KEY)%></span>
+                </td>
+                <td>
+                    <input style="padding:0 10px 0 0; width: 360px;" type="password" name="ncbiApiKey" autocomplete="off"
+                           data-key-saved="<%=form.isNcbiApiKeySet()%>"
+                           placeholder="<%=h(form.isNcbiApiKeySet() ? "A key is saved. Enter a new key to replace it." : "No key saved.")%>" />
+                    <%=button("Validate").onClick("validateNcbiApiKey(); return false;")%>
+                    <span id="ncbiApiKeyValidationResult" style="margin-left: 8px;"></span>
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
+                        Optional. An NCBI API key raises the request rate limit for PubMed/PMC searches from 3 to 10 per second.
+                        <br/>
+                        Create one under Account settings at ncbi.nlm.nih.gov. The saved key is not displayed. Leaving this
+                        blank keeps the key that is already saved.
+                        <br/>
+                        <label><input type="checkbox" name="clearNcbiApiKey" value="true" /> Remove the saved key</label>
                     </div>
                 </td>
             </tr>

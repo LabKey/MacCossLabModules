@@ -16,6 +16,7 @@
 
 package org.labkey.panoramapublic;
 
+import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.admin.FolderSerializationRegistry;
@@ -34,6 +35,7 @@ import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.roles.RoleManager;
 import org.labkey.api.settings.AdminConsole;
 import org.labkey.api.targetedms.TargetedMSService;
+import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.BaseWebPartFactory;
 import org.labkey.api.view.HtmlView;
@@ -46,11 +48,13 @@ import org.labkey.api.view.WebPartView;
 import org.labkey.panoramapublic.bluesky.BlueskyApiClient;
 import org.labkey.panoramapublic.bluesky.PanoramaPublicLogoResourceType;
 import org.labkey.panoramapublic.catalog.CatalogImageAttachmentType;
+import org.labkey.panoramapublic.message.PrivateDataMessageScheduler;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchServiceImpl;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
+import org.labkey.panoramapublic.pipeline.PrivateDataReminderJob;
 import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
 import org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter;
 import org.labkey.panoramapublic.proteomexchange.Formula;
@@ -82,6 +86,8 @@ import static org.labkey.api.util.DOM.DIV;
 
 public class PanoramaPublicModule extends SpringModule
 {
+    private static final Logger LOG = LogHelper.getLogger(PanoramaPublicModule.class, "Panorama Public module");
+
     public static final String NAME = "PanoramaPublic";
     public static final String DOWNLOAD_DATA_INFO_WP = "Download Data";
 
@@ -150,6 +156,21 @@ public class PanoramaPublicModule extends SpringModule
         if (null != fileContentService)
         {
             fileContentService.addFileListener(new PanoramaPublicFileListener());
+        }
+    }
+
+    @Override
+    public void startBackgroundThreads()
+    {
+        // Re-establish the reminder schedule on every startup. Reminder messages contain absolute
+        // URLs, which are only safe to build once this method is called.
+        try
+        {
+            PrivateDataMessageScheduler.getInstance().initialize(PrivateDataReminderSettings.get().isEnableReminders());
+        }
+        catch (RuntimeException e)
+        {
+            LOG.error("Failed to schedule the Panorama Public private data reminder job", e);
         }
     }
 
@@ -377,6 +398,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(CatalogEntryManager.TestCase.class);
         set.add(BlueskyApiClient.TestCase.class);
         set.add(PrivateDataReminderSettings.TestCase.class);
+        set.add(PrivateDataReminderJob.TestCase.class);
         set.add(NcbiPublicationSearchServiceImpl.TestCase.class);
         set.add(NcbiUtils.TestCase.class);
 

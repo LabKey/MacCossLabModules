@@ -38,13 +38,25 @@ public interface NcbiPublicationSearchService
 
     @Nullable String getCitation(String publicationId, DB database);
 
+    /**
+     * Send a minimal request to NCBI with the given key.
+     */
+    @NotNull NcbiApiKeyCheck checkApiKey(@Nullable String apiKey);
+
     @Nullable Pair<String, String> getPubMedLinkAndCitation(String pubmedId);
 
     /**
      * Searches PMC and PubMed for a publication associated with the experiment.
      * Returns the top match (highest priority) if multiple matches are found, or null if none.
+     *
+     * @throws NcbiSearchException if no publication was found and one or more NCBI requests failed. A
+     * null result therefore means no publication was found, not that the search could not be run.
      */
     @Nullable PublicationMatch searchForPublication(@NotNull ExperimentAnnotations expAnnotations, @Nullable Logger logger);
 
+    /**
+     * @throws NcbiSearchException if no publication was found and one or more NCBI requests failed. An
+     * empty result therefore means no publication was found, not that the search could not be run.
+     */
     List<PublicationMatch> searchForPublication(@NotNull ExperimentAnnotations expAnnotations, int maxResults, @Nullable Logger logger, boolean getCitations);
 }

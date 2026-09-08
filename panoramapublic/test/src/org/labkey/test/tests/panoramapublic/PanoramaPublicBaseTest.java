@@ -631,7 +631,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
     /**
      * Navigate to the Private Data Reminder Settings page and read the current form values.
-     * Returns a map with keys: extensionLength, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch, publicationSearchFrequency.
+     * Returns a map with keys: extensionLength, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch, publicationSearchFrequency, ncbiApiKeySaved.
      */
     protected Map<String, String> getPrivateDataReminderSettings()
     {
@@ -645,6 +645,9 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         settings.put("reminderFrequency", getFormElement(Locator.input("reminderFrequency")));
         settings.put("enablePublicationSearch", String.valueOf(Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected()));
         settings.put("publicationSearchFrequency", getFormElement(Locator.input("publicationSearchFrequency")));
+        // The saved key is never displayed. data-key-saved on the field reports whether one is stored.
+        settings.put("ncbiApiKeySaved",
+                Locator.input("ncbiApiKey").findElement(getDriver()).getDomAttribute("data-key-saved"));
         return settings;
     }
 
@@ -655,6 +658,14 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
     protected void savePrivateDataReminderSettings(String extensionLength, String delayUntilFirstReminder, String reminderFrequency, boolean enablePublicationSearch)
     {
+        savePrivateDataReminderSettings(extensionLength, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch, null);
+    }
+
+    /**
+     * @param ncbiApiKey value to enter in the NCBI API key field. Pass null to leave the field untouched.
+     */
+    protected void savePrivateDataReminderSettings(String extensionLength, String delayUntilFirstReminder, String reminderFrequency, boolean enablePublicationSearch, String ncbiApiKey)
+    {
         goToAdminConsole().goToSettingsSection();
         clickAndWait(Locator.linkWithText("Panorama Public"));
         clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
@@ -662,6 +673,10 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         setFormElement(Locator.input("delayUntilFirstReminder"), delayUntilFirstReminder);
         setFormElement(Locator.input("reminderFrequency"), reminderFrequency);
         setFormElement(Locator.input("extensionLength"), extensionLength);
+        if (ncbiApiKey != null)
+        {
+            setFormElement(Locator.input("ncbiApiKey"), ncbiApiKey);
+        }
         if (enablePublicationSearch)
         {
             checkCheckbox(Locator.checkboxByName("enablePublicationSearch"));
@@ -677,6 +692,13 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         assertEquals(String.valueOf(delayUntilFirstReminder), getFormElement(Locator.input("delayUntilFirstReminder")));
         assertEquals(String.valueOf(reminderFrequency), getFormElement(Locator.input("reminderFrequency")));
         assertEquals(String.valueOf(extensionLength), getFormElement(Locator.input("extensionLength")));
+        assertEquals("The saved publication search setting should be displayed on the form", enablePublicationSearch,
+                Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected());
+        if (ncbiApiKey != null)
+        {
+            assertEquals("The form should report that a key is saved", "true",
+                    getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
+        }
     }
 
     protected void goToSendRemindersPage(String projectName)

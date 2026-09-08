@@ -114,6 +114,10 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         // Step 1: Set up mock NCBI service if running on TeamCity
         setupMockNcbiService();
 
+        // Capture the existing reminder settings up front so resetAfterTest can put them back. A dev
+        // machine may have non-default values set.
+        _originalReminderSettings = getPrivateDataReminderSettings();
+
         // Step 2: Create dataset 1 folder, submit to Panorama Public, and copy
         String testProject = getProjectName();
         String shortAccessUrl1 = setupFolderSubmitAndCopy(testProject, FOLDER_1, TARGET_FOLDER_1,
@@ -190,8 +194,6 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertTextPresent("The user has already dismissed the publication suggestion PubMed ID " + PMID_1 + " for this dataset");
 
         // Step 9: Run reminders in TEST MODE — verify DatasetStatus is NOT updated
-        // Save current settings so they can be restored in doCleanup
-        _originalReminderSettings = getPrivateDataReminderSettings();
         savePrivateDataReminderSettings("2", "0", "0", true);
 
         // Post reminders in test mode with publication search enabled
@@ -486,7 +488,10 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
                     _originalReminderSettings.get("extensionLength"),
                     _originalReminderSettings.get("delayUntilFirstReminder"),
                     _originalReminderSettings.get("reminderFrequency"),
-                    Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")));
+                    // A key saved before the run cannot be read back to restore it, so leave the
+                    // key field alone here. Any key the test saved is removed below.
+                    Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")),
+                    null);
         }
     }
 
