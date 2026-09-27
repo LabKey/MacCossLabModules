@@ -46,6 +46,8 @@ public class PrivateDataReminderSettings
     public static final String PROP_PUBLICATION_SEARCH_FREQUENCY = "Publication search frequency (months)";
     public static final String PROP_NCBI_API_KEY = "NCBI API key";
     public static final String PROP_NCBI_CREDENTIALS = "Panorama Public NCBI credentials";
+    public static final String NCBI_API_KEY_REQUIRES_ENCRYPTION = "An NCBI API key cannot be saved because this server"
+            + " has no encryption key configured.";
 
     private static final boolean DEFAULT_ENABLE_REMINDERS = false;
     public static final String DEFAULT_REMINDER_TIME = "8:00 AM";

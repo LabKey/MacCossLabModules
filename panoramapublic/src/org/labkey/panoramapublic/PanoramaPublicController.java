@@ -95,6 +95,7 @@ import org.labkey.api.query.QuerySettings;
 import org.labkey.api.query.QueryView;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.AdminConsoleAction;
+import org.labkey.api.security.Encryption;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.LoginManager;
 import org.labkey.api.security.MutableSecurityPolicy;
@@ -10181,6 +10182,12 @@ public class PanoramaPublicController extends SpringActionController
             if (form.isClearNcbiApiKey() && !StringUtils.isBlank(form.getNcbiApiKey()))
             {
                 errors.reject(ERROR_MSG, "Enter a new NCBI API key or select 'Remove the saved key', not both.");
+            }
+            // saveNcbiApiKey throws without an encryption key. Reject here, before handlePost saves the other settings.
+            if ((form.isClearNcbiApiKey() || !StringUtils.isBlank(form.getNcbiApiKey()))
+                    && !Encryption.isEncryptionPassPhraseSpecified())
+            {
+                errors.reject(ERROR_MSG, PrivateDataReminderSettings.NCBI_API_KEY_REQUIRES_ENCRYPTION);
             }
         }
 

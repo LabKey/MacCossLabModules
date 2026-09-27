@@ -16,6 +16,7 @@
      */
 %>
 <%@ taglib prefix="labkey" uri="http://www.labkey.org/taglib" %>
+<%@ page import="org.labkey.api.security.Encryption" %>
 <%@ page import="org.labkey.api.view.HttpView" %>
 <%@ page import="org.labkey.api.view.JspView" %>
 <%@ page import="org.labkey.api.view.template.ClientDependencies" %>
@@ -226,6 +227,9 @@
                     <span><%=h(PrivateDataReminderSettings.PROP_NCBI_API_KEY)%></span>
                 </td>
                 <td>
+                    <% if (!Encryption.isEncryptionPassPhraseSpecified()) { %>
+                    <div style="margin: 4px 0 6px 0;"><%=h(PrivateDataReminderSettings.NCBI_API_KEY_REQUIRES_ENCRYPTION)%></div>
+                    <% } else { %>
                     <input style="padding:0 10px 0 0; width: 360px;" type="password" name="ncbiApiKey" autocomplete="new-password"
                            data-key-saved="<%=form.isNcbiApiKeySet()%>"
                            placeholder="<%=h(form.isNcbiApiKeySet() ? "A key is saved. Enter a new key to replace it." : "No key saved.")%>" />
@@ -241,6 +245,7 @@
                         <label><input type="checkbox" name="clearNcbiApiKey" value="true" /> Remove the saved key</label>
                         <% } %>
                     </div>
+                    <% } %>
                 </td>
             </tr>
             <tr><td colspan="2">
