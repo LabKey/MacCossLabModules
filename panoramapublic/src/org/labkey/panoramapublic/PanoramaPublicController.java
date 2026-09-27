@@ -95,6 +95,7 @@ import org.labkey.api.query.QuerySettings;
 import org.labkey.api.query.QueryView;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.AdminConsoleAction;
+import org.labkey.api.security.Encryption;
 import org.labkey.api.security.Group;
 import org.labkey.api.security.LoginManager;
 import org.labkey.api.security.MutableSecurityPolicy;
@@ -158,6 +159,7 @@ import org.labkey.panoramapublic.datacite.DoiMetadata;
 import org.labkey.panoramapublic.message.PrivateDataMessageScheduler;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.ncbi.MockNcbiPublicationSearchService;
+import org.labkey.panoramapublic.ncbi.NcbiApiKeyCheck;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchServiceImpl;
 import org.labkey.panoramapublic.ncbi.PublicationMatch;
@@ -10085,6 +10087,59 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresPermission(AdminOperationsPermission.class)
+    public static class ValidateNcbiApiKeyAction extends MutatingApiAction<PrivateDataReminderSettingsForm>
+    {
+        @Override
+        public Object execute(PrivateDataReminderSettingsForm form, BindException errors)
+        {
+            ApiSimpleResponse response = new ApiSimpleResponse();
+            response.put("success", true);
+
+            if (!Encryption.isEncryptionPassPhraseSpecified())
+            {
+                response.put("valid", false);
+                response.put("message", PrivateDataReminderSettings.NCBI_API_KEY_REQUIRES_ENCRYPTION);
+                return response;
+            }
+
+            // An empty field means check the key that is already saved.
+            boolean checkingSavedKey = StringUtils.isBlank(form.getNcbiApiKey());
+            String apiKey = checkingSavedKey
+                    ? PrivateDataReminderSettings.get().getNcbiApiKey()
+                    : form.getNcbiApiKey().trim();
+
+            if (StringUtils.isBlank(apiKey))
+            {
+                response.put("valid", false);
+                response.put("message", "Enter a key to validate, or save one first.");
+                return response;
+            }
+
+            NcbiApiKeyCheck check = NcbiPublicationSearchService.get().checkApiKey(apiKey, LOG);
+            response.put("valid", check.isValid());
+            if (check.isValid())
+            {
+                // Validating does not save the key. Inform the user that the key needs to be saved.
+                response.put("message", checkingSavedKey
+                        ? "NCBI accepted the saved key."
+                        : "NCBI accepted this key. Click Save to store it.");
+                LOG.info("NCBI accepted an API key entered on the Private Data Reminder Settings page.");
+            }
+            else
+            {
+                // The short message is displayed next to the field. NCBI's own message is displayed separately.
+                response.put("message", check.isRejected()
+                        ? "NCBI rejected this key."
+                        : "Could not reach NCBI to check this key.");
+                response.put("detail", check.getMessage());
+                LOG.warn("Could not confirm an API key entered on the Private Data Reminder Settings page. {}",
+                        check.getMessage());
+            }
+            return response;
+        }
+    }
+
+    @RequiresPermission(AdminOperationsPermission.class)
     public static class PrivateDataReminderSettingsAction extends FormViewAction<PrivateDataReminderSettingsForm>
     {
         @Override
@@ -10131,6 +10186,16 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, String.format("'Reminder time' could not be parsed. It must be in the format - %s, e.g. %s.",
                         PrivateDataReminderSettings.REMINDER_TIME_FORMAT, PrivateDataReminderSettings.DEFAULT_REMINDER_TIME));
             }
+            if (form.isClearNcbiApiKey() && !StringUtils.isBlank(form.getNcbiApiKey()))
+            {
+                errors.reject(ERROR_MSG, "Enter a new NCBI API key or select 'Remove the saved key', not both.");
+            }
+            // saveNcbiApiKey throws without an encryption key. Reject here, before handlePost saves the other settings.
+            if ((form.isClearNcbiApiKey() || !StringUtils.isBlank(form.getNcbiApiKey()))
+                    && !Encryption.isEncryptionPassPhraseSpecified())
+            {
+                errors.reject(ERROR_MSG, PrivateDataReminderSettings.NCBI_API_KEY_REQUIRES_ENCRYPTION);
+            }
         }
 
         @Override
@@ -10147,6 +10212,9 @@ public class PanoramaPublicController extends SpringActionController
                 form.setEnablePublicationSearch(settings.isEnablePublicationSearch());
                 form.setPublicationSearchFrequency(settings.getPublicationSearchFrequency());
             }
+
+            // Rendered as an attribute, not an input, so the form does not post it back. Set on every render.
+            form.setNcbiApiKeySet(PrivateDataReminderSettings.hasNcbiApiKey());
 
             VBox view = new VBox();
             view.addView(new JspView<>("/org/labkey/panoramapublic/view/privateDataRemindersSettingsForm.jsp", form, errors));
@@ -10167,6 +10235,17 @@ public class PanoramaPublicController extends SpringActionController
             settings.setEnablePublicationSearch(form.isEnablePublicationSearch());
             settings.setPublicationSearchFrequency(form.getPublicationSearchFrequency());
             PrivateDataReminderSettings.save(settings);
+
+            // A blank field leaves the saved key alone, so editing the reminder schedule cannot
+            // erase it. Removing a key takes the explicit checkbox.
+            if (form.isClearNcbiApiKey())
+            {
+                PrivateDataReminderSettings.saveNcbiApiKey(null);
+            }
+            else if (!StringUtils.isBlank(form.getNcbiApiKey()))
+            {
+                PrivateDataReminderSettings.saveNcbiApiKey(form.getNcbiApiKey());
+            }
 
             PrivateDataMessageScheduler.getInstance().initialize(settings.isEnableReminders());
             return true;
@@ -10205,6 +10284,9 @@ public class PanoramaPublicController extends SpringActionController
         private Integer _delayUntilFirstReminder;
         private boolean _enablePublicationSearch;
         private Integer _publicationSearchFrequency;
+        private String _ncbiApiKey;
+        private boolean _clearNcbiApiKey;
+        private boolean _ncbiApiKeySet;
 
         public boolean isEnabled()
         {
@@ -10274,6 +10356,36 @@ public class PanoramaPublicController extends SpringActionController
         public void setPublicationSearchFrequency(Integer publicationSearchFrequency)
         {
             _publicationSearchFrequency = publicationSearchFrequency;
+        }
+
+        public String getNcbiApiKey()
+        {
+            return _ncbiApiKey;
+        }
+
+        public void setNcbiApiKey(String ncbiApiKey)
+        {
+            _ncbiApiKey = ncbiApiKey;
+        }
+
+        public boolean isClearNcbiApiKey()
+        {
+            return _clearNcbiApiKey;
+        }
+
+        public void setClearNcbiApiKey(boolean clearNcbiApiKey)
+        {
+            _clearNcbiApiKey = clearNcbiApiKey;
+        }
+
+        public boolean isNcbiApiKeySet()
+        {
+            return _ncbiApiKeySet;
+        }
+
+        public void setNcbiApiKeySet(boolean ncbiApiKeySet)
+        {
+            _ncbiApiKeySet = ncbiApiKeySet;
         }
     }
 
