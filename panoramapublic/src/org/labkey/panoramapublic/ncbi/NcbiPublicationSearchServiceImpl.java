@@ -389,13 +389,13 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     @Override
-    public @NotNull NcbiApiKeyCheck checkApiKey(@Nullable String apiKey)
+    public @NotNull NcbiApiKeyCheck checkApiKey(@Nullable String apiKey, @Nullable Logger logger)
     {
         // A minimal ESearch request. getString retries a transient failure before the check gives up.
         String url = ESEARCH_URL + "?" + buildCommonParams("pubmed", apiKey) + "&term=labkey&retmax=1&retmode=json";
         try
         {
-            getString(url, LOG);
+            getString(url, logger);
             return NcbiApiKeyCheck.valid();
         }
         catch (HttpResponseException e)
@@ -1532,6 +1532,14 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             NcbiApiKeyCheck rejected = checkApiKeyAgainst(
                     new HttpResponseException(400, "Bad Request - invalid key SECRET123"), "SECRET123");
             assertFalse("A rejection must not carry the key", rejected.getMessage().contains("SECRET123"));
+
+            // The service's requests go through the retry loop in NcbiHttpClient.getString
+            int[] attempts = {0};
+            checkApiKeyAgainst(new HttpResponseException(503, "Service Unavailable"), "test-key", attempts);
+            assertEquals("A 503 from the key check should be tried 3 times", 3, attempts[0]);
+            attempts[0] = 0;
+            checkApiKeyAgainst(new HttpResponseException(400, "Bad Request"), "test-key", attempts);
+            assertEquals("A 400 from the key check should be tried once", 1, attempts[0]);
         }
 
         private NcbiApiKeyCheck checkApiKeyAgainst(IOException failure)
@@ -1541,11 +1549,17 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
         private NcbiApiKeyCheck checkApiKeyAgainst(IOException failure, String apiKey)
         {
+            return checkApiKeyAgainst(failure, apiKey, new int[1]);
+        }
+
+        private NcbiApiKeyCheck checkApiKeyAgainst(IOException failure, String apiKey, int[] attempts)
+        {
             NcbiHttpClient client = new NcbiHttpClient.TestCase.NoWaitClient()
             {
                 @Override
                 protected String executeGet(String url) throws IOException
                 {
+                    attempts[0]++;
                     if (failure != null)
                     {
                         throw failure;
@@ -1553,7 +1567,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                     return "{\"esearchresult\":{\"idlist\":[]}}";
                 }
             };
-            return new NcbiPublicationSearchServiceImpl(client).checkApiKey(apiKey);
+            return new NcbiPublicationSearchServiceImpl(client).checkApiKey(apiKey, null);
         }
 
         @Test
@@ -1570,7 +1584,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             assertNull("The mock should return no citation for an ID that was not registered",
                     mock.getCitation("67890", DB.PubMed));
             assertEquals("The mock should report any API key as valid", NcbiApiKeyCheck.Status.VALID,
-                    mock.checkApiKey("test-key").getStatus());
+                    mock.checkApiKey("test-key", null).getStatus());
         }
 
         // -- Helper methods for building test JSON --

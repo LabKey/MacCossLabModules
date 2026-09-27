@@ -46,8 +46,8 @@ public class PrivateDataReminderSettings
     public static final String PROP_PUBLICATION_SEARCH_FREQUENCY = "Publication search frequency (months)";
     public static final String PROP_NCBI_API_KEY = "NCBI API key";
     public static final String PROP_NCBI_CREDENTIALS = "Panorama Public NCBI credentials";
-    public static final String NCBI_API_KEY_REQUIRES_ENCRYPTION = "An NCBI API key cannot be saved because this server"
-            + " has no encryption key configured.";
+    public static final String NCBI_API_KEY_REQUIRES_ENCRYPTION = "An NCBI API key cannot be saved or removed because"
+            + " this server has no encryption key configured.";
 
     private static final boolean DEFAULT_ENABLE_REMINDERS = false;
     public static final String DEFAULT_REMINDER_TIME = "8:00 AM";
@@ -166,8 +166,17 @@ public class PrivateDataReminderSettings
      */
     public static void saveNcbiApiKey(@Nullable String apiKey)
     {
-        PropertyManager.WritablePropertyMap credentials =
-                PropertyManager.getEncryptedStore().getWritableProperties(PROP_NCBI_CREDENTIALS, true);
+        PropertyManager.WritablePropertyMap credentials;
+        try
+        {
+            credentials = PropertyManager.getEncryptedStore().getWritableProperties(PROP_NCBI_CREDENTIALS, true);
+        }
+        catch (Encryption.DecryptionException e)
+        {
+            // The saved key cannot be decrypted, for example after the encryption key changed. Delete it and start over.
+            PropertyManager.getEncryptedStore().deletePropertySet(PROP_NCBI_CREDENTIALS);
+            credentials = PropertyManager.getEncryptedStore().getWritableProperties(PROP_NCBI_CREDENTIALS, true);
+        }
         if (StringUtils.isBlank(apiKey))
         {
             credentials.remove(PROP_NCBI_API_KEY);
@@ -191,9 +200,17 @@ public class PrivateDataReminderSettings
         {
             return null;
         }
-        Map<String, String> credentials =
-                PropertyManager.getEncryptedStore().getProperties(PROP_NCBI_CREDENTIALS);
-        return credentials.get(PROP_NCBI_API_KEY);
+        try
+        {
+            Map<String, String> credentials =
+                    PropertyManager.getEncryptedStore().getProperties(PROP_NCBI_CREDENTIALS);
+            return credentials.get(PROP_NCBI_API_KEY);
+        }
+        catch (Encryption.DecryptionException e)
+        {
+            // The key was saved under a different encryption key. Run without it until an admin saves a new one.
+            return null;
+        }
     }
 
     public void setEnableReminders(boolean enableReminders)

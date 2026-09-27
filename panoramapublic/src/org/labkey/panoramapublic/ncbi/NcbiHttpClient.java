@@ -49,8 +49,6 @@ import java.util.regex.Pattern;
  */
 public class NcbiHttpClient
 {
-    private static final Logger LOG = LogHelper.getLogger(NcbiHttpClient.class, "HTTP requests to NCBI for the Panorama Public publication search");
-
     private static final int TIMEOUT_MS = 10000; // 10 seconds
 
     // NCBI eutils fails intermittently, even well under the rate limit. Retry the transient
@@ -242,6 +240,8 @@ public class NcbiHttpClient
 
     public static class TestCase extends Assert
     {
+        private static final Logger LOG = LogHelper.getLogger(TestCase.class, "NcbiHttpClient tests");
+
         @Test
         public void testIsRetryable()
         {

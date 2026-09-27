@@ -647,8 +647,10 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         settings.put("enablePublicationSearch", String.valueOf(Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected()));
         settings.put("publicationSearchFrequency", getFormElement(Locator.input("publicationSearchFrequency")));
         // The saved key is never displayed. data-key-saved on the field reports whether one is stored.
-        settings.put("ncbiApiKeySaved",
-                Locator.input("ncbiApiKey").findElement(getDriver()).getDomAttribute("data-key-saved"));
+        // The field is not rendered on a server with no encryption key, where no key can be saved.
+        settings.put("ncbiApiKeySaved", Locator.input("ncbiApiKey").findOptionalElement(getDriver())
+                .map(field -> field.getDomAttribute("data-key-saved"))
+                .orElse("false"));
         return settings;
     }
 

@@ -351,7 +351,7 @@ public class PrivateDataReminderJob extends PipelineJob
             return true;
         }
 
-        NcbiApiKeyCheck check = NcbiPublicationSearchService.get().checkApiKey(apiKey);
+        NcbiApiKeyCheck check = NcbiPublicationSearchService.get().checkApiKey(apiKey, getLogger());
         if (check.isRejected())
         {
             getLogger().error("NCBI rejected the API key, so no reminders were posted. Correct the key on the Private Data Reminder Settings page and run the job again. {}",

@@ -39,9 +39,10 @@ public interface NcbiPublicationSearchService
     @Nullable String getCitation(String publicationId, DB database);
 
     /**
-     * Send a minimal request to NCBI with the given key.
+     * Send a minimal request to NCBI with the given key. Retry warnings are written to {@code logger}, or to
+     * the service's own logger if it is null.
      */
-    @NotNull NcbiApiKeyCheck checkApiKey(@Nullable String apiKey);
+    @NotNull NcbiApiKeyCheck checkApiKey(@Nullable String apiKey, @Nullable Logger logger);
 
     @Nullable Pair<String, String> getPubMedLinkAndCitation(String pubmedId);
 

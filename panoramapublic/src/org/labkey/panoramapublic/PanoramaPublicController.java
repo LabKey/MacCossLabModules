@@ -10095,6 +10095,13 @@ public class PanoramaPublicController extends SpringActionController
             ApiSimpleResponse response = new ApiSimpleResponse();
             response.put("success", true);
 
+            if (!Encryption.isEncryptionPassPhraseSpecified())
+            {
+                response.put("valid", false);
+                response.put("message", PrivateDataReminderSettings.NCBI_API_KEY_REQUIRES_ENCRYPTION);
+                return response;
+            }
+
             // An empty field means check the key that is already saved.
             boolean checkingSavedKey = StringUtils.isBlank(form.getNcbiApiKey());
             String apiKey = checkingSavedKey
@@ -10108,7 +10115,7 @@ public class PanoramaPublicController extends SpringActionController
                 return response;
             }
 
-            NcbiApiKeyCheck check = NcbiPublicationSearchService.get().checkApiKey(apiKey);
+            NcbiApiKeyCheck check = NcbiPublicationSearchService.get().checkApiKey(apiKey, LOG);
             response.put("valid", check.isValid());
             if (check.isValid())
             {
