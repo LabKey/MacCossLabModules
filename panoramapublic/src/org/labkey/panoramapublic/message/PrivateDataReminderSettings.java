@@ -21,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.junit.Test;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.security.Encryption;
 import org.labkey.api.util.DateUtil;
 import org.labkey.panoramapublic.model.DatasetStatus;
 
@@ -183,6 +184,11 @@ public class PrivateDataReminderSettings
 
     private static @Nullable String getNcbiApiKeyValue()
     {
+        // The encrypted store throws when no encryption key is configured. Return null in this case.
+        if (!Encryption.isEncryptionPassPhraseSpecified())
+        {
+            return null;
+        }
         Map<String, String> credentials =
                 PropertyManager.getEncryptedStore().getProperties(PROP_NCBI_CREDENTIALS);
         return credentials.get(PROP_NCBI_API_KEY);
