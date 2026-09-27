@@ -373,7 +373,7 @@ public class PrivateDataReminderJob extends PipelineJob
     /**
      * @return error when the job could not start, a dataset that should have been sent a reminder was
      * not, or the publication search failed for half or more of the datasets it ran for. Cancelled when
-     * the job was interrupted with nothing else to report, and complete otherwise.
+     * the job was cancelled with nothing else to report, and complete otherwise.
      */
     private TaskStatus postMessage(List<Integer> expAnnotationIds, Journal panoramaPublic)
     {
@@ -405,7 +405,7 @@ public class PrivateDataReminderJob extends PipelineJob
     }
 
     /**
-     * @return false if the job was interrupted before every dataset was processed.
+     * @return false if the job was cancelled before every dataset was processed.
      */
     private boolean processExperiments(List<Integer> expAnnotationIds, ProcessingContext context, ProcessingResults processingResults, Logger log)
     {
@@ -419,11 +419,10 @@ public class PrivateDataReminderJob extends PipelineJob
         boolean completed = true;
         for (Integer experimentAnnotationsId : exptIds)
         {
-            if (Thread.currentThread().isInterrupted())
+            if (checkInterrupted() // checkInterrupted is set by Cancel in the pipeline UI.
+                    || Thread.currentThread().isInterrupted())
             {
-                // An interrupted thread cannot wait, so the NCBI requests would no longer be spaced.
-                // The remaining datasets would run back to back.
-                log.warn("Job was interrupted. Stopping before experiment {}.", experimentAnnotationsId);
+                log.warn("Job was cancelled. Stopping before experiment {}.", experimentAnnotationsId);
                 completed = false;
                 break;
             }
@@ -583,6 +582,12 @@ public class PrivateDataReminderJob extends PipelineJob
     public String getDescription()
     {
         return "Post private data reminder messages";
+    }
+
+    @Override
+    protected boolean canInterrupt()
+    {
+        return true;
     }
 
     private static class  ProcessingContext
