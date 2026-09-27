@@ -488,8 +488,6 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
                     _originalReminderSettings.get("extensionLength"),
                     _originalReminderSettings.get("delayUntilFirstReminder"),
                     _originalReminderSettings.get("reminderFrequency"),
-                    // A key saved before the run cannot be read back to restore it, so leave the
-                    // key field alone here. Any key the test saved is removed below.
                     Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")),
                     null);
         }

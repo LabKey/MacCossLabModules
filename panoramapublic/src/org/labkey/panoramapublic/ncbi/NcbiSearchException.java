@@ -16,8 +16,8 @@
 package org.labkey.panoramapublic.ncbi;
 
 /**
- * Lets a caller tell a failed NCBI request from a search that found nothing. Without it a rejected
- * API key and a dataset with no published paper both arrive as an empty result.
+ * Lets a caller distinguish a failed NCBI request from a search that found nothing.
+ * searchForPublication throws it when no publication was found and at least one request failed.
  */
 public class NcbiSearchException extends RuntimeException
 {

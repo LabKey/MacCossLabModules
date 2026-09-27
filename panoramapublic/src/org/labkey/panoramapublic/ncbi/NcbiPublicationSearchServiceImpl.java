@@ -44,6 +44,7 @@ import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
 
 import java.io.IOException;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -105,7 +106,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     private static final int MAX_HTTP_ATTEMPTS = 3; // initial try + 2 retries
     private static final int RETRY_BASE_DELAY_MS = 500; // exponential backoff base
 
-    private static final int BAD_REQUEST = 400; // NCBI's response when the API key is not recognised
+    private static final int BAD_REQUEST = 400; // NCBI's response when the API key is not recognized
     private static final int TOO_MANY_REQUESTS = 429; // NCBI's response when the request rate is exceeded
     private static final int MAX_ERROR_BODY_CHARS = 500;
 
@@ -178,8 +179,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (IOException e)
         {
-            // A missing citation does not fail the match. getCitation returns null and the caller
-            // displays the publication ID instead.
+            // A missing citation does not fail the match. The caller displays the publication ID instead.
             log.warn("Request to the NCBI Literature Citation Exporter did not complete. URL: {}", queryUrl, e);
         }
         return null;
@@ -228,7 +228,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         log.info("Starting publication search for experiment: {}", expAnnotations.getId());
 
         // NCBI requests that failed after retries. An empty result is returned only when every request
-        // completed, so a caller can tell a search that found no publication from one that could not run.
+        // completed, so a caller can distinguish a search that found no publication from one that failed to run.
         List<String> failedRequests = new ArrayList<>();
 
         // Search PubMed Central first
@@ -304,8 +304,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             }
             catch (NcbiSearchException e)
             {
-                // NCBI responds inconsistently to the same query, so the remaining strategies are
-                // still worth running. executeSearch has already logged the query and the cause.
+                // Each strategy is a separate request, so the remaining ones are still worth
+                // running. Not logged here, executeSearch logs the query and the cause.
                 failedRequests.add("PMC search by " + strategy);
             }
             rateLimit();
@@ -393,8 +393,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (IOException | JSONException e)
         {
-            // One request, not the outcome for the dataset. The search methods catch this per request
-            // and carry on with the remaining ones.
+            // One failed request, not the outcome for the dataset. The caller carries on with the rest.
             log.warn("Search of {} did not complete for query: {}", database, query, e);
             throw new NcbiSearchException("Error searching " + database + " with query: " + query, e);
         }
@@ -403,8 +402,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     @Override
     public @NotNull NcbiApiKeyCheck checkApiKey(@Nullable String apiKey)
     {
-        // A minimal ESearch request. A rejected key comes back as a 400 on the first attempt, while
-        // a 5xx or 429 is retried like any other request before it is called unconfirmed.
+        // A minimal ESearch request. getString retries a transient failure before the check gives up.
         String url = ESEARCH_URL + "?" + buildCommonParams("pubmed", apiKey) + "&term=labkey&retmax=1&retmode=json";
         try
         {
@@ -413,8 +411,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (HttpResponseException e)
         {
-            // NCBI rejects a key it does not recognise with a 400. Any other status says nothing about
-            // the key, including a 403 or 404 from a proxy between the server and NCBI.
+            // NCBI rejects an unrecognized key with a 400. Any other status says nothing about the
+            // key, including a 403 or 404 from a proxy between the server and NCBI.
             String message = redactApiKey(e.getMessage(), apiKey);
             return e.getStatusCode() == BAD_REQUEST
                     ? NcbiApiKeyCheck.rejected(message)
@@ -438,8 +436,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
     /**
      * Execute an HTTP GET request and return the response body as a string. Retry warnings are
-     * written to {@code log}. The reminder job passes its pipeline job logger, and UI-triggered
-     * searches pass the static server logger.
+     * written to {@code log}.
      * @throws IOException if the request fails or the server returns a non-2xx response
      */
     protected String getString(String url, Logger log) throws IOException
@@ -487,8 +484,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         try (CloseableHttpClient client = HttpClientBuilder.create()
                 .setDefaultRequestConfig(requestConfig)
                 .setConnectionManager(connectionManager)
-                // HttpClient retries 429 and 503 once on its own, which would make MAX_HTTP_ATTEMPTS
-                // cost twice the requests it names. getString is the only retry.
+                // Without this, the number of requests would be up to twice MAX_HTTP_ATTEMPTS. isRetryable
+                // has to cover what this turns off.
                 .disableAutomaticRetries()
                 .build())
         {
@@ -507,10 +504,9 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Read the body of a client error response. 5xx bodies are large, uninformative HTML error
-     * pages, so only client error bodies are read, and only the first {@link #MAX_ERROR_BODY_CHARS}
-     * characters. A body that cannot be read or parsed returns null, because losing NCBI's text is
-     * better than losing the status code the caller decides on.
+     * Read the body of a client error response, up to {@link #MAX_ERROR_BODY_CHARS} characters.
+     * 5xx bodies are large, uninformative HTML error pages, so they are skipped. Returns null if
+     * the body cannot be read.
      */
     private static @Nullable String readErrorBody(int status, ClassicHttpResponse response)
     {
@@ -530,10 +526,9 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Build the message for a non-2xx HttpResponseException. For client errors (4xx) the response
-     * body is appended, so NCBI's reason (e.g. "API key invalid") reaches the log. Other statuses
-     * use only the reason phrase. The body is third-party text on its way to a log, so any
-     * occurrence of the API key is removed from it.
+     * Build the message for a non-2xx HttpResponseException. A 4xx appends the response body, so
+     * NCBI's reason (e.g. "API key invalid") reaches the log. Other statuses use only the reason
+     * phrase. The API key is removed from the body, which is third-party text bound for a log.
      */
     static String errorDetail(int status, String reasonPhrase, @Nullable String body, @Nullable String apiKey)
     {
@@ -545,9 +540,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Replace the NCBI API key wherever it appears in text that is about to be logged. The key is a
-     * query parameter on every eutils URL. When the reminder job runs, the log is the pipeline job
-     * log, which is readable by anyone with read access to the folder the job ran in.
+     * Replace the NCBI API key wherever it appears in text bound for a log.
      */
     static @Nullable String redactApiKey(@Nullable String text, @Nullable String apiKey)
     {
@@ -573,13 +566,12 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Read timeouts, 5xx responses and 429 are transient NCBI failures worth retrying. NCBI returns
-     * 429 when the request rate is exceeded, which is the failure backoff exists for. Other 4xx
-     * errors are permanent.
+     * Read timeouts, connection resets, 5xx responses and 429 are transient NCBI failures worth
+     * retrying. Other 4xx errors are permanent.
      */
     private static boolean isRetryable(IOException e)
     {
-        if (e instanceof SocketTimeoutException)
+        if (e instanceof SocketTimeoutException || e instanceof SocketException)
         {
             return true;
         }
@@ -590,8 +582,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         return false;
     }
 
-    // 500ms after the first failure, then doubling. No jitter. Each caller issues its NCBI requests
-    // sequentially. Retries collide only when the reminder job and a UI search overlap, which is rare.
+    // 500ms after the first failure, then doubling.
     private static long retryDelayMs(int attempt)
     {
         return (long) RETRY_BASE_DELAY_MS << (attempt - 1);
@@ -855,8 +846,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (NcbiSearchException e)
         {
-            // Author and title cannot be verified without the metadata, and an unverified PMID is not
-            // a match.
+            // Metadata is required to confirm that a PMID is a match.
             failedRequests.add("PubMed metadata fetch");
             return Collections.emptyList();
         }
@@ -1198,8 +1188,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             "&tool=" + URLEncoder.encode(TOOL, StandardCharsets.UTF_8) +
             "&email=" + URLEncoder.encode(EMAIL, StandardCharsets.UTF_8);
 
-        // An NCBI API key (configured in the Private Data Reminder Settings) raises the eutils
-        // rate limit from 3 to 10 requests/sec.
+        // An API key raises the eutils rate limit from 3 to 10 requests/sec.
         if (!StringUtils.isBlank(apiKey))
         {
             params += "&api_key=" + URLEncoder.encode(apiKey.trim(), StandardCharsets.UTF_8);
@@ -1809,7 +1798,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         @Test
         public void testCheckApiKey()
         {
-            // NCBI rejects a key it does not recognise with a 400. The reminder job stops for that,
+            // NCBI rejects a key it does not recognize with a 400. The reminder job stops for that,
             // so a 5xx has to be reported as a check that could not be completed.
             assertEquals(NcbiApiKeyCheck.Status.REJECTED, checkApiKeyAgainst(new HttpResponseException(400, "Bad Request")).getStatus());
             assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new HttpResponseException(503, "Service Unavailable")).getStatus());

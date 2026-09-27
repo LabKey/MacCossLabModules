@@ -662,7 +662,9 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     }
 
     /**
-     * @param ncbiApiKey value to enter in the NCBI API key field. Pass null to leave the field untouched.
+     * Saves the site wide Private Data Reminder Settings. A null ncbiApiKey leaves the key field blank,
+     * which keeps the key already saved on the server. The page never displays a saved key, so a test
+     * restoring settings it captured earlier cannot restore the key and should pass null.
      */
     protected void savePrivateDataReminderSettings(String extensionLength, String delayUntilFirstReminder, String reminderFrequency, boolean enablePublicationSearch, String ncbiApiKey)
     {

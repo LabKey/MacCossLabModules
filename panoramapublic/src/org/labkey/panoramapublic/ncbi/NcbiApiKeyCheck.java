@@ -18,8 +18,8 @@ package org.labkey.panoramapublic.ncbi;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * The outcome of checking an NCBI API key. A rejected key is a configuration problem an admin has to
- * correct. A check that could not be completed is not, so callers need to tell the two apart.
+ * The outcome of checking an NCBI API key, which means sending NCBI a request that carries the key
+ * and reading the status it returns.
  */
 public class NcbiApiKeyCheck
 {

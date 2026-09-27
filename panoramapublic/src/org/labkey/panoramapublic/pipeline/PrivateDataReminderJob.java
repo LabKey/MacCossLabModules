@@ -65,18 +65,17 @@ import java.util.Set;
 
 public class PrivateDataReminderJob extends PipelineJob
 {
-    // Below this many datasets the failure rate says too little to act on.
     private static final int MIN_DATASETS_FOR_FAILURE = 3;
     private static final double PUBLICATION_SEARCH_FAILURE_THRESHOLD = 0.5;
 
     /**
-     * @return true when the publication search failure rate exceeds the threshold, which suggests a
+     * @return true when the publication search failure rate reaches the threshold, which suggests a
      * problem with searching NCBI rather than with one dataset.
      */
     static boolean publicationSearchFailingWidely(int failed, int attempted)
     {
         return attempted >= MIN_DATASETS_FOR_FAILURE
-                && failed > attempted * PUBLICATION_SEARCH_FAILURE_THRESHOLD;
+                && failed >= attempted * PUBLICATION_SEARCH_FAILURE_THRESHOLD;
     }
 
     private boolean _test;
@@ -373,8 +372,8 @@ public class PrivateDataReminderJob extends PipelineJob
 
     /**
      * @return error when the job could not start, a dataset that should have been sent a reminder was
-     * not, or the publication search failed for most of the datasets it ran for. Cancelled when the
-     * job was interrupted with nothing else to report, and complete otherwise.
+     * not, or the publication search failed for half or more of the datasets it ran for. Cancelled when
+     * the job was interrupted with nothing else to report, and complete otherwise.
      */
     private TaskStatus postMessage(List<Integer> expAnnotationIds, Journal panoramaPublic)
     {
@@ -397,7 +396,7 @@ public class PrivateDataReminderJob extends PipelineJob
         boolean completed = processExperiments(expAnnotationIds, context, processingResults, log);
 
         // An ERROR logged through the job's logger sets the status to error, and the status set here
-        // would overwrite it. Report the errors the run recorded instead.
+        // would overwrite it. Report the errors the job recorded instead.
         if (processingResults.getTotalErrors() > 0 || processingResults.publicationSearchFailingWidely())
         {
             return TaskStatus.error;
@@ -957,13 +956,13 @@ public class PrivateDataReminderJob extends PipelineJob
             // Below the floor the rate says too little to act on, even when every search failed.
             assertFalse("2 of 2 is under the floor", publicationSearchFailingWidely(2, 2));
 
-            // At the floor, more than half the searches that ran.
+            // At the floor, half or more of the searches that ran.
             assertTrue("2 of 3 is over half", publicationSearchFailingWidely(2, 3));
-            assertFalse("1 of 3 is not over half", publicationSearchFailingWidely(1, 3));
+            assertFalse("1 of 3 is under half", publicationSearchFailingWidely(1, 3));
 
-            // Exactly half is not enough. The comparison is strict.
-            assertFalse("2 of 4 is exactly half", publicationSearchFailingWidely(2, 4));
-            assertTrue("3 of 4 is over half", publicationSearchFailingWidely(3, 4));
+            // Exactly half is enough.
+            assertTrue("2 of 4 is exactly half", publicationSearchFailingWidely(2, 4));
+            assertFalse("1 of 4 is under half", publicationSearchFailingWidely(1, 4));
 
             assertFalse("No failures", publicationSearchFailingWidely(0, 10));
             assertFalse("No searches ran", publicationSearchFailingWidely(0, 0));

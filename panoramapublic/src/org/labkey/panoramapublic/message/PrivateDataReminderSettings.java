@@ -106,8 +106,6 @@ public class PrivateDataReminderSettings
                     ? DEFAULT_PUBLICATION_SEARCH_FREQUENCY
                     : Integer.valueOf(settingsMap.get(PROP_PUBLICATION_SEARCH_FREQUENCY));
             settings.setPublicationSearchFrequency(publicationSearchFrequency);
-
-            settings.setNcbiApiKey(getNcbiApiKeyValue());
         }
         else
         {
@@ -119,6 +117,9 @@ public class PrivateDataReminderSettings
             settings.setEnablePublicationSearch(DEFAULT_ENABLE_PUBLICATION_SEARCH);
             settings.setPublicationSearchFrequency(DEFAULT_PUBLICATION_SEARCH_FREQUENCY);
         }
+
+        // Read the key from its own property set.
+        settings.setNcbiApiKey(getNcbiApiKeyValue());
 
         return settings;
     }
@@ -158,8 +159,7 @@ public class PrivateDataReminderSettings
     }
 
     /**
-     * Save the NCBI API key, or remove it when the key is blank. The key lives in the encrypted
-     * store, like the other credentials this module holds.
+     * Save the NCBI API key, or remove it when the key is blank. The key lives in the encrypted store.
      */
     public static void saveNcbiApiKey(@Nullable String apiKey)
     {
@@ -414,26 +414,30 @@ public class PrivateDataReminderSettings
             testExtensionIsValid(settings, monthsOffset, false);
         }
 
-        private void testExtensionIsValidAsOf(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset)
+        private void testExtensionIsValidAsOf(PrivateDataReminderSettings settings, int monthsOffset,
+                                              int minutesBeforeExpiry)
         {
-            testExtensionAtExpiry(settings, monthsOffset, minutesOffset, true);
+            testExtensionNearExpiry(settings, monthsOffset, minutesBeforeExpiry, true);
+        }
+
+        private void testExtensionIsExpiredAsOf(PrivateDataReminderSettings settings, int monthsOffset,
+                                                int minutesBeforeExpiry)
+        {
+            testExtensionNearExpiry(settings, monthsOffset, minutesBeforeExpiry, false);
         }
 
         /**
-         * Checks the boundary at the moment an extension expires. The current date comes from the
-         * expiry the settings calculate, not from today. Subtracting months and adding them back does
-         * not always return to the same day, because a shorter target month clamps the day, so a date
-         * built from today can sit on the wrong side of the boundary. On 31 August, subtracting six
-         * months gives 28 February and adding six back gives 28 August.
+         * Checks the boundary at the moment an extension expires. The current date comes from the expiry
+         * the settings calculate, because subtracting months and adding them back does not always return
+         * to the same day. From 31 August, six months back is 28 February, and six months on is 28 August.
          *
-         * @param minutesBeforeExpiry how long before the expiry to check. Zero is the expiry itself,
-         * and a negative value is after it.
+         * @param minutesBeforeExpiry zero is the expiry itself, and a negative value is after it.
          */
-        private void testExtensionAtExpiry(PrivateDataReminderSettings settings, int monthsOffset,
-                                           int minutesBeforeExpiry, boolean expectedValid)
+        private void testExtensionNearExpiry(PrivateDataReminderSettings settings, int monthsOffset,
+                                             int minutesBeforeExpiry, boolean expectedValid)
         {
             DatasetStatus datasetStatus = new DatasetStatus();
-            datasetStatus.setExtensionRequestedDate(dateFromNow(monthsOffset, 0, 0));
+            datasetStatus.setExtensionRequestedDate(dateFromNow(monthsOffset, 0));
 
             Date expiry = settings.getExtensionValidUntilDate(datasetStatus);
             Date currentDate = Date.from(expiry.toInstant().minusSeconds(minutesBeforeExpiry * 60L));
@@ -448,15 +452,10 @@ public class PrivateDataReminderSettings
             else assertFalse(failureMessage, isValid);
         }
 
-        private void testExtensionIsExpiredAsOf(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset)
-        {
-            testExtensionAtExpiry(settings, monthsOffset, minutesOffset, false);
-        }
-
         private void testExtensionIsValid(PrivateDataReminderSettings settings, int monthsOffset, boolean expectedValid)
         {
             DatasetStatus datasetStatus = new DatasetStatus();
-            datasetStatus.setExtensionRequestedDate(dateFromNow(monthsOffset, 0, 0));
+            datasetStatus.setExtensionRequestedDate(dateFromNow(monthsOffset, 0));
 
             String failureMessage = String.format("Extension is %s; Extension Length: %d; Extension Requested On: %s; Valid Until: %s",
                     expectedValid ? "valid" : "expired",
@@ -479,29 +478,29 @@ public class PrivateDataReminderSettings
             testReminderIsRecent(settings, daysOffset, false);
         }
 
-        private void testReminderIsRecentAsOf(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset)
+        private void testReminderIsRecentAsOf(PrivateDataReminderSettings settings, int monthsOffset,
+                                              int minutesBeforeExpiry)
         {
-            testReminderAtExpiry(settings, monthsOffset, minutesOffset, true);
+            testReminderNearExpiry(settings, monthsOffset, minutesBeforeExpiry, true);
         }
 
-        private void testReminderIsOldAsOf(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset)
+        private void testReminderIsOldAsOf(PrivateDataReminderSettings settings, int monthsOffset,
+                                           int minutesBeforeExpiry)
         {
-            testReminderAtExpiry(settings, monthsOffset, minutesOffset, false);
+            testReminderNearExpiry(settings, monthsOffset, minutesBeforeExpiry, false);
         }
 
         /**
-         * Checks the boundary at the moment a reminder stops counting as recent. The current date
-         * comes from the date the settings calculate, for the reason given on
-         * {@link #testExtensionAtExpiry}.
+         * Checks the boundary at the moment a reminder stops counting as recent. The current date comes
+         * from the expiry, as {@link #testExtensionNearExpiry} explains.
          *
-         * @param minutesBeforeExpiry how long before that date to check. Zero is the date itself, and
-         * a negative value is after it.
+         * @param minutesBeforeExpiry zero is the expiry itself, and a negative value is after it.
          */
-        private void testReminderAtExpiry(PrivateDataReminderSettings settings, int monthsOffset,
-                                          int minutesBeforeExpiry, boolean expectedRecent)
+        private void testReminderNearExpiry(PrivateDataReminderSettings settings, int monthsOffset,
+                                            int minutesBeforeExpiry, boolean expectedRecent)
         {
             DatasetStatus datasetStatus = new DatasetStatus();
-            datasetStatus.setLastReminderDate(dateFromNow(monthsOffset, 0, 0));
+            datasetStatus.setLastReminderDate(dateFromNow(monthsOffset, 0));
 
             Date expiry = settings.getReminderValidUntilDate(datasetStatus);
             Date currentDate = Date.from(expiry.toInstant().minusSeconds(minutesBeforeExpiry * 60L));
@@ -519,7 +518,7 @@ public class PrivateDataReminderSettings
         private void testReminderIsRecent(PrivateDataReminderSettings settings, int daysOffset, boolean expectedRecent)
         {
             DatasetStatus datasetStatus = new DatasetStatus();
-            datasetStatus.setLastReminderDate(dateFromNow(0, daysOffset, 0));
+            datasetStatus.setLastReminderDate(dateFromNow(0, daysOffset));
 
             String failureMessage = String.format("Reminder is %s; Reminder Frequency: %d; Reminder Sent On: %s; Valid Until: %s",
                     expectedRecent ? "recent" : "old",
@@ -550,19 +549,13 @@ public class PrivateDataReminderSettings
             return testSettings;
         }
 
-        private Date dateFromNow()
-        {
-            return dateFromNow(0, 0, 0);
-        }
-
-        private Date dateFromNow(int monthsOffset, int daysOffset, int minutesOffset)
+        private Date dateFromNow(int monthsOffset, int daysOffset)
         {
             return Date.from(
                     LocalDate.now()
                             .plusMonths(monthsOffset)
                             .plusDays(daysOffset)
                             .atStartOfDay(ZoneId.systemDefault())
-                            .plusMinutes(minutesOffset)
                             .toInstant()
             );
         }

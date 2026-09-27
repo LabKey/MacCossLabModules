@@ -162,8 +162,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public void startBackgroundThreads()
     {
-        // Re-establish the reminder schedule on every startup. Reminder messages contain absolute
-        // URLs, which are only safe to build once this method is called.
+        // Re-establish the reminder schedule on every startup.
         try
         {
             PrivateDataMessageScheduler.getInstance().initialize(PrivateDataReminderSettings.get().isEnableReminders());

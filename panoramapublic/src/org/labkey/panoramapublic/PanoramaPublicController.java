@@ -10094,8 +10094,7 @@ public class PanoramaPublicController extends SpringActionController
             ApiSimpleResponse response = new ApiSimpleResponse();
             response.put("success", true);
 
-            // An empty field means check the key that is already saved, since the form never
-            // displays it.
+            // An empty field means check the key that is already saved.
             boolean checkingSavedKey = StringUtils.isBlank(form.getNcbiApiKey());
             String apiKey = checkingSavedKey
                     ? PrivateDataReminderSettings.get().getNcbiApiKey()
@@ -10112,8 +10111,7 @@ public class PanoramaPublicController extends SpringActionController
             response.put("valid", check.isValid());
             if (check.isValid())
             {
-                // Validating does not store anything, so say so. Otherwise "accepted" reads as
-                // confirmation that the key is now in effect.
+                // Validating does not save the key. Inform the user that the key needs to be saved.
                 response.put("message", checkingSavedKey
                         ? "NCBI accepted the saved key."
                         : "NCBI accepted this key. Click Save to store it.");
@@ -10121,8 +10119,7 @@ public class PanoramaPublicController extends SpringActionController
             }
             else
             {
-                // The short message goes beside the field. NCBI's own words are offered separately,
-                // since the admin holding the key is the one who has to act on them.
+                // The short message is displayed next to the field. NCBI's own message is displayed separately.
                 response.put("message", check.isRejected()
                         ? "NCBI rejected this key."
                         : "Could not reach NCBI to check this key.");
@@ -10181,6 +10178,10 @@ public class PanoramaPublicController extends SpringActionController
                 errors.reject(ERROR_MSG, String.format("'Reminder time' could not be parsed. It must be in the format - %s, e.g. %s.",
                         PrivateDataReminderSettings.REMINDER_TIME_FORMAT, PrivateDataReminderSettings.DEFAULT_REMINDER_TIME));
             }
+            if (form.isClearNcbiApiKey() && !StringUtils.isBlank(form.getNcbiApiKey()))
+            {
+                errors.reject(ERROR_MSG, "Enter a new NCBI API key or select 'Remove the saved key', not both.");
+            }
         }
 
         @Override
@@ -10196,9 +10197,10 @@ public class PanoramaPublicController extends SpringActionController
                 form.setExtensionLength(settings.getExtensionLength());
                 form.setEnablePublicationSearch(settings.isEnablePublicationSearch());
                 form.setPublicationSearchFrequency(settings.getPublicationSearchFrequency());
-                // Do not put the saved key in the form. The JSP shows only whether one is stored.
-                form.setNcbiApiKeySet(PrivateDataReminderSettings.hasNcbiApiKey());
             }
+
+            // Rendered as an attribute, not an input, so the form does not post it back. Set on every render.
+            form.setNcbiApiKeySet(PrivateDataReminderSettings.hasNcbiApiKey());
 
             VBox view = new VBox();
             view.addView(new JspView<>("/org/labkey/panoramapublic/view/privateDataRemindersSettingsForm.jsp", form, errors));

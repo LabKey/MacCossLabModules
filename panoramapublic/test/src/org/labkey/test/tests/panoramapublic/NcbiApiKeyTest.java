@@ -112,7 +112,7 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
                     "NCBI validation result was not displayed", WAIT_FOR_PAGE);
 
             String message = result.findElement(getDriver()).getText();
-            assertFalse("A key NCBI does not recognise must not be reported as accepted. Message: " + message,
+            assertFalse("A key NCBI does not recognize must not be reported as accepted. Message: " + message,
                     message.contains("accepted"));
         }
 
@@ -182,7 +182,6 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
                     _originalReminderSettings.get("delayUntilFirstReminder"),
                     _originalReminderSettings.get("reminderFrequency"),
                     Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")),
-                    // A key saved before the run cannot be read back, so leave the key field alone.
                     null);
         }
     }
