@@ -16,7 +16,9 @@
 package org.labkey.panoramapublic.pipeline;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
@@ -326,12 +328,6 @@ public class PrivateDataReminderJob extends PipelineJob
             return;
         }
 
-        if (!ncbiApiKeyAccepted())
-        {
-            setStatus(TaskStatus.error);
-            return;
-        }
-
         setStatus(postMessage(_experimentAnnotationsIds, _panoramaPublic));
     }
 
@@ -383,6 +379,10 @@ public class PrivateDataReminderJob extends PipelineJob
             getLogger().info("No private datasets were found.");
             return TaskStatus.complete;
         }
+        if (!ncbiApiKeyAccepted())
+        {
+            return TaskStatus.error;
+        }
         Logger log = getLogger();
 
         ProcessingContext context = ProcessingContext.create(panoramaPublic, getUser(), _test);
@@ -427,10 +427,9 @@ public class PrivateDataReminderJob extends PipelineJob
                 break;
             }
 
-            try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
+            try
             {
                 processExperiment(experimentAnnotationsId, context, processingResults);
-                transaction.commit();
             }
             catch (Exception e)
             {
@@ -497,9 +496,13 @@ public class PrivateDataReminderJob extends PipelineJob
 
         if (!context.isTestMode())
         {
-            postReminderMessage(expAnnotations, submission, announcement, submitter, publicationResult, context);
-
-            updateDatasetStatus(expAnnotations, publicationResult);
+            // The NCBI requests above run outside the transaction, so it is not held open while they wait.
+            try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
+            {
+                postReminderMessage(expAnnotations, submission, announcement, submitter, publicationResult, context);
+                updateDatasetStatus(expAnnotations, publicationResult);
+                transaction.commit();
+            }
         }
 
         processingResults.addProcessed(expAnnotations, announcement);
@@ -954,6 +957,12 @@ public class PrivateDataReminderJob extends PipelineJob
     public static class TestCase extends Assert
     {
         private static final Logger TEST_LOG = LogHelper.getLogger(TestCase.class, "Private data reminder job tests");
+
+        static
+        {
+            // The tests record failures on purpose. Keep their ERROR lines out of the server log.
+            Configurator.setLevel(TEST_LOG.getName(), Level.OFF);
+        }
 
         @Test
         public void testPublicationSearchFailingWidely()

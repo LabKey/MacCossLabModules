@@ -226,7 +226,7 @@
                     <span><%=h(PrivateDataReminderSettings.PROP_NCBI_API_KEY)%></span>
                 </td>
                 <td>
-                    <input style="padding:0 10px 0 0; width: 360px;" type="password" name="ncbiApiKey" autocomplete="off"
+                    <input style="padding:0 10px 0 0; width: 360px;" type="password" name="ncbiApiKey" autocomplete="new-password"
                            data-key-saved="<%=form.isNcbiApiKeySet()%>"
                            placeholder="<%=h(form.isNcbiApiKeySet() ? "A key is saved. Enter a new key to replace it." : "No key saved.")%>" />
                     <%=button("Validate").onClick("validateNcbiApiKey(); return false;")%>
@@ -236,8 +236,10 @@
                         <br/>
                         Create one under Account settings at ncbi.nlm.nih.gov. The saved key is not displayed. Leaving this
                         blank keeps the key that is already saved.
+                        <% if (form.isNcbiApiKeySet()) { %>
                         <br/>
                         <label><input type="checkbox" name="clearNcbiApiKey" value="true" /> Remove the saved key</label>
+                        <% } %>
                     </div>
                 </td>
             </tr>

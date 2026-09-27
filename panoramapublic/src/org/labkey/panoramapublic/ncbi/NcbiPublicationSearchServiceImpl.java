@@ -25,6 +25,7 @@ import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.io.BasicHttpClientConnectionManager;
 import org.apache.hc.client5.http.HttpResponseException;
 import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.NoHttpResponseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.util.Timeout;
 import org.apache.logging.log4j.Logger;
@@ -109,6 +110,9 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     private static final int BAD_REQUEST = 400; // NCBI's response when the API key is not recognized
     private static final int TOO_MANY_REQUESTS = 429; // NCBI's response when the request rate is exceeded
     private static final int MAX_ERROR_BODY_CHARS = 500;
+    // Read past the logged length by more than the length of an NCBI API key (36 characters), so a key
+    // that crosses the cut is read whole and can be redacted.
+    private static final int MAX_ERROR_BODY_READ_CHARS = MAX_ERROR_BODY_CHARS + 100;
 
     private static final String REDACTED = "REDACTED";
     private static final Pattern API_KEY_PARAM = Pattern.compile("api_key=([^&\\s]*)");
@@ -504,7 +508,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Read the body of a client error response, up to {@link #MAX_ERROR_BODY_CHARS} characters.
+     * Read the body of a client error response, up to {@link #MAX_ERROR_BODY_READ_CHARS} characters.
      * 5xx bodies are large, uninformative HTML error pages, so they are skipped. Returns null if
      * the body cannot be read.
      */
@@ -517,7 +521,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
         try
         {
-            return EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8, MAX_ERROR_BODY_CHARS);
+            return EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8, MAX_ERROR_BODY_READ_CHARS);
         }
         catch (IOException | org.apache.hc.core5.http.ParseException e)
         {
@@ -534,7 +538,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     {
         if (status >= 400 && status < 500 && !StringUtils.isBlank(body))
         {
-            return reasonPhrase + " - " + redactApiKey(StringUtils.abbreviate(body.strip(), MAX_ERROR_BODY_CHARS), apiKey);
+            return reasonPhrase + " - " + StringUtils.abbreviate(redactApiKey(body.strip(), apiKey), MAX_ERROR_BODY_CHARS);
         }
         return reasonPhrase;
     }
@@ -566,12 +570,12 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Read timeouts, connection resets, 5xx responses and 429 are transient NCBI failures worth
-     * retrying. Other 4xx errors are permanent.
+     * Read timeouts, connection resets, closed connections, 5xx responses and 429 are transient NCBI
+     * failures worth retrying. Other 4xx errors are permanent.
      */
     private static boolean isRetryable(IOException e)
     {
-        if (e instanceof SocketTimeoutException || e instanceof SocketException)
+        if (e instanceof SocketTimeoutException || e instanceof SocketException || e instanceof NoHttpResponseException)
         {
             return true;
         }
@@ -1676,13 +1680,18 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             assertTrue(isRetryable(new HttpResponseException(500, "Internal Server Error")));
             assertTrue(isRetryable(new HttpResponseException(503, "Service Unavailable")));
 
+            // A connection reset or closed by the server is transient -> retry
+            assertTrue("A connection reset should be retried", isRetryable(new SocketException("Connection reset")));
+            assertTrue("A connection closed without a response should be retried",
+                    isRetryable(new NoHttpResponseException("The target server failed to respond")));
+
             // 429 is NCBI's response when the request rate is exceeded, which backoff is for
             assertTrue(isRetryable(new HttpResponseException(429, "Too Many Requests")));
 
             // Other 4xx and generic IO errors are permanent -> fail fast
             assertFalse(isRetryable(new HttpResponseException(400, "Bad Request")));
             assertFalse(isRetryable(new HttpResponseException(404, "Not Found")));
-            assertFalse(isRetryable(new IOException("connection reset")));
+            assertFalse(isRetryable(new IOException("Stream closed")));
         }
 
         @Test
@@ -1715,6 +1724,11 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             // A body that quotes the request back must not carry the key into the log
             String echoed = errorDetail(400, "Bad Request", "invalid key SECRET123 for api_key=SECRET123", "SECRET123");
             assertFalse("errorDetail must not put the API key in the message", echoed.contains("SECRET123"));
+
+            // A key that spans the truncation point must not leave its prefix in the message
+            String padding = "x".repeat(MAX_ERROR_BODY_CHARS - 10);
+            String spanning = errorDetail(400, "Bad Request", padding + " SECRET123456789 trailing", "SECRET123456789");
+            assertFalse("errorDetail must not put part of the API key in the message", spanning.contains("SECRET"));
         }
 
         @Test

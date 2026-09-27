@@ -85,6 +85,8 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
         _savedTestApiKey = false;
         assertEquals("Remove the saved key should remove it", "false",
                 getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
+        assertElementNotPresent("Remove the saved key should be offered only when a key is saved",
+                Locator.checkboxByName("clearNcbiApiKey"));
     }
 
     /**

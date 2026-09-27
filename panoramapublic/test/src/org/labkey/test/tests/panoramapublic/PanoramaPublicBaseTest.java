@@ -16,6 +16,7 @@
 package org.labkey.test.tests.panoramapublic;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -696,7 +697,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         assertEquals(String.valueOf(extensionLength), getFormElement(Locator.input("extensionLength")));
         assertEquals("The saved publication search setting should be displayed on the form", enablePublicationSearch,
                 Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected());
-        if (ncbiApiKey != null)
+        if (!StringUtils.isBlank(ncbiApiKey))
         {
             assertEquals("The form should report that a key is saved", "true",
                     getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
