@@ -11350,12 +11350,13 @@ public class PanoramaPublicController extends SpringActionController
     // ======================== Support actions for Selenium tests ========================
 
     // These actions swap the process-wide NCBI publication search service to a mock so that Selenium tests
-    // run without calling the live NCBI API. They must never be reachable on a production server (non-dev-mode)
-    private static void requireDevModeForMockNcbiService()
+    // run without calling the live NCBI API, and restore the settings a test changed. They must never be
+    // reachable on a production server (non-dev-mode)
+    private static void requireDevModeForTestSupport()
     {
         if (!AppProps.getInstance().isDevMode())
         {
-            throw new NotFoundException("Mock NCBI publication search service actions are only available on a server running in dev mode.");
+            throw new NotFoundException("Selenium test support actions are only available on a server running in dev mode.");
         }
     }
 
@@ -11365,7 +11366,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public Object execute(Object form, BindException errors)
         {
-            requireDevModeForMockNcbiService();
+            requireDevModeForTestSupport();
             NcbiPublicationSearchServiceImpl.setInstance(new MockNcbiPublicationSearchService());
             return new ApiSimpleResponse("mock", true);
         }
@@ -11377,7 +11378,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public Object execute(Object form, BindException errors)
         {
-            requireDevModeForMockNcbiService();
+            requireDevModeForTestSupport();
             NcbiPublicationSearchServiceImpl.setInstance(new NcbiPublicationSearchServiceImpl());
             return new ApiSimpleResponse("restored", true);
         }
@@ -11389,7 +11390,7 @@ public class PanoramaPublicController extends SpringActionController
         @Override
         public Object execute(RegisterMockPublicationForm form, BindException errors)
         {
-            requireDevModeForMockNcbiService();
+            requireDevModeForTestSupport();
             NcbiPublicationSearchService service = NcbiPublicationSearchServiceImpl.getInstance();
             if (!(service instanceof MockNcbiPublicationSearchService mock))
             {
@@ -11446,6 +11447,77 @@ public class PanoramaPublicController extends SpringActionController
 
         public String getCitation() { return _citation; }
         public void setCitation(String citation) { _citation = citation; }
+    }
+
+    /**
+     * Restores the Private Data Reminder Settings a Selenium test changed, without loading a page, so a test's
+     * cleanup leaves the failed page in the browser for the failure screenshot. Only the settings that are
+     * passed in are changed.
+     */
+    @RequiresSiteAdmin
+    public static class RestorePrivateDataReminderSettingsAction extends MutatingApiAction<RestorePrivateDataReminderSettingsForm>
+    {
+        @Override
+        public Object execute(RestorePrivateDataReminderSettingsForm form, BindException errors)
+        {
+            requireDevModeForTestSupport();
+            PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
+            if (form.getExtensionLength() != null)
+            {
+                settings.setExtensionLength(form.getExtensionLength());
+            }
+            if (form.getDelayUntilFirstReminder() != null)
+            {
+                settings.setDelayUntilFirstReminder(form.getDelayUntilFirstReminder());
+            }
+            if (form.getReminderFrequency() != null)
+            {
+                settings.setReminderFrequency(form.getReminderFrequency());
+            }
+            if (form.getEnablePublicationSearch() != null)
+            {
+                settings.setEnablePublicationSearch(form.getEnablePublicationSearch());
+            }
+            if (form.getPublicationSearchFrequency() != null)
+            {
+                settings.setPublicationSearchFrequency(form.getPublicationSearchFrequency());
+            }
+            PrivateDataReminderSettings.save(settings);
+            // hasNcbiApiKey is false on a server with no encryption key, where saveNcbiApiKey throws.
+            if (form.isClearNcbiApiKey() && PrivateDataReminderSettings.hasNcbiApiKey())
+            {
+                PrivateDataReminderSettings.saveNcbiApiKey(null);
+            }
+            return new ApiSimpleResponse("restored", true);
+        }
+    }
+
+    public static class RestorePrivateDataReminderSettingsForm
+    {
+        private Integer _extensionLength;
+        private Integer _delayUntilFirstReminder;
+        private Integer _reminderFrequency;
+        private Boolean _enablePublicationSearch;
+        private Integer _publicationSearchFrequency;
+        private boolean _clearNcbiApiKey;
+
+        public Integer getExtensionLength() { return _extensionLength; }
+        public void setExtensionLength(Integer extensionLength) { _extensionLength = extensionLength; }
+
+        public Integer getDelayUntilFirstReminder() { return _delayUntilFirstReminder; }
+        public void setDelayUntilFirstReminder(Integer delayUntilFirstReminder) { _delayUntilFirstReminder = delayUntilFirstReminder; }
+
+        public Integer getReminderFrequency() { return _reminderFrequency; }
+        public void setReminderFrequency(Integer reminderFrequency) { _reminderFrequency = reminderFrequency; }
+
+        public Boolean getEnablePublicationSearch() { return _enablePublicationSearch; }
+        public void setEnablePublicationSearch(Boolean enablePublicationSearch) { _enablePublicationSearch = enablePublicationSearch; }
+
+        public Integer getPublicationSearchFrequency() { return _publicationSearchFrequency; }
+        public void setPublicationSearchFrequency(Integer publicationSearchFrequency) { _publicationSearchFrequency = publicationSearchFrequency; }
+
+        public boolean isClearNcbiApiKey() { return _clearNcbiApiKey; }
+        public void setClearNcbiApiKey(boolean clearNcbiApiKey) { _clearNcbiApiKey = clearNcbiApiKey; }
     }
 
     public static class TestCase extends AbstractActionPermissionTest

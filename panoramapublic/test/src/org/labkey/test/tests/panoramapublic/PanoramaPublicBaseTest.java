@@ -27,6 +27,7 @@ import org.labkey.remoteapi.CommandException;
 import org.labkey.remoteapi.CommandResponse;
 import org.labkey.remoteapi.Connection;
 import org.labkey.remoteapi.SimpleGetCommand;
+import org.labkey.remoteapi.SimplePostCommand;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
@@ -703,6 +704,33 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         {
             assertEquals("The form should report that a key is saved", "true",
                     getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
+        }
+    }
+
+    /**
+     * Restores the settings read by getPrivateDataReminderSettings through an API call, which loads no page. For
+     * use in an @After method, where loading a page would replace the failed page in the failure screenshot.
+     * @param clearNcbiApiKey true to remove the saved NCBI API key
+     */
+    protected void restorePrivateDataReminderSettings(Map<String, String> original, boolean clearNcbiApiKey)
+    {
+        Map<String, Object> params = new HashMap<>();
+        params.put("extensionLength", original.get("extensionLength"));
+        params.put("delayUntilFirstReminder", original.get("delayUntilFirstReminder"));
+        params.put("reminderFrequency", original.get("reminderFrequency"));
+        params.put("enablePublicationSearch", original.get("enablePublicationSearch"));
+        params.put("publicationSearchFrequency", original.get("publicationSearchFrequency"));
+        params.put("clearNcbiApiKey", clearNcbiApiKey);
+
+        SimplePostCommand command = new SimplePostCommand("panoramapublic", "restorePrivateDataReminderSettings");
+        command.setParameters(params);
+        try
+        {
+            command.execute(createDefaultConnection(), "/");
+        }
+        catch (IOException | CommandException e)
+        {
+            throw new RuntimeException("Failed to restore the Private Data Reminder Settings", e);
         }
     }
 

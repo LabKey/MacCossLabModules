@@ -49,7 +49,6 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
     // MockNcbiPublicationSearchService.UNCHECKED_API_KEY. The mock responds to it with a 503.
     private static final String UNCHECKED_API_KEY = "mock-unchecked-ncbi-api-key";
 
-    private boolean _savedTestApiKey = false;
     private boolean _useMockNcbi = false;
     private Map<String, String> _originalReminderSettings;
 
@@ -58,7 +57,7 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
     {
         setupMockNcbiService();
 
-        // Capture the existing reminder settings up front so removeTestApiKey can put them back. A dev
+        // Capture the existing reminder settings up front so restoreAfterTest can put them back. A dev
         // machine may have non-default values set.
         _originalReminderSettings = getPrivateDataReminderSettings();
 
@@ -70,7 +69,6 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
         verifyKeyNotSaved(REJECTED_API_KEY, "NCBI rejected this API key, so it was not saved.");
         verifyKeyNotSaved(UNCHECKED_API_KEY, "Could not check this API key with NCBI, so it was not saved.");
 
-        _savedTestApiKey = true;
         savePrivateDataReminderSettings("2", "0", "0", true, TEST_API_KEY);
 
         assertEquals("The saved key must never be rendered into the form", "",
@@ -87,7 +85,6 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
         // Removing a key takes the explicit checkbox.
         checkCheckbox(Locator.checkboxByName("clearNcbiApiKey"));
         clickButton("Save");
-        _savedTestApiKey = false;
         assertEquals("Remove the saved key should remove it", "false",
                 getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
         assertElementNotPresent("Remove the saved key should be offered only when a key is saved",
@@ -161,31 +158,19 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
     }
 
     @After
-    public void removeTestApiKey()
+    public void restoreAfterTest()
     {
         if (_useMockNcbi)
         {
             restoreNcbiService();
         }
 
-        if (_savedTestApiKey)
-        {
-            // Remove the key even when the test failed before its own removal step. A key NCBI
-            // rejects makes every publication search on this server fail, including the next run's.
-            getPrivateDataReminderSettings();
-            checkCheckbox(Locator.checkboxByName("clearNcbiApiKey"));
-            clickButton("Save");
-        }
-
         if (_originalReminderSettings != null)
         {
-            // The reminder settings are site wide. Restore the values this test overwrote.
-            savePrivateDataReminderSettings(
-                    _originalReminderSettings.get("extensionLength"),
-                    _originalReminderSettings.get("delayUntilFirstReminder"),
-                    _originalReminderSettings.get("reminderFrequency"),
-                    Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")),
-                    null);
+            // The reminder settings are site wide. Restore the values this test overwrote, and remove any key the
+            // test saved. A key that was saved before the test cannot be read back, so it is left in place.
+            restorePrivateDataReminderSettings(_originalReminderSettings,
+                    "false".equals(_originalReminderSettings.get("ncbiApiKeySaved")));
         }
     }
 }

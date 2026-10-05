@@ -15,6 +15,7 @@
  */
 package org.labkey.test.tests.panoramapublic;
 
+import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.test.BaseWebDriverTest;
@@ -27,6 +28,7 @@ import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.labkey.test.util.PermissionsHelper.READER_ROLE;
@@ -49,10 +51,14 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
     private static final String DELETION_MESSAGE_TITLE = "Title: Data Deletion Requested - ";
     private static final String MESSAGE_PAGE_TITLE = "Submitted - ";
 
+    private Map<String, String> _originalReminderSettings;
 
     @Test
     public void testPrivateDataReminder()
     {
+        // Capture the site wide reminder settings so restoreReminderSettings can put them back.
+        _originalReminderSettings = getPrivateDataReminderSettings();
+
         String panoramaPublicProject = PANORAMA_PUBLIC;
         goToProjectHome(panoramaPublicProject);
         ApiPermissionsHelper permissionsHelper = new ApiPermissionsHelper(this);
@@ -371,6 +377,15 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         }
     }
 
+
+    @After
+    public void restoreReminderSettings()
+    {
+        if (_originalReminderSettings != null)
+        {
+            restorePrivateDataReminderSettings(_originalReminderSettings, false);
+        }
+    }
 
     @Override
     protected void doCleanup(boolean afterTest) throws TestTimeoutException

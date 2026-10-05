@@ -484,12 +484,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
 
         if (_originalReminderSettings != null)
         {
-            savePrivateDataReminderSettings(
-                    _originalReminderSettings.get("extensionLength"),
-                    _originalReminderSettings.get("delayUntilFirstReminder"),
-                    _originalReminderSettings.get("reminderFrequency"),
-                    Boolean.parseBoolean(_originalReminderSettings.get("enablePublicationSearch")),
-                    null);
+            restorePrivateDataReminderSettings(_originalReminderSettings, false);
         }
     }
 
