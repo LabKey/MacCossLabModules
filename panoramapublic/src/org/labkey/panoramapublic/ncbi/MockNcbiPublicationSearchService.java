@@ -15,6 +15,7 @@
  */
 package org.labkey.panoramapublic.ncbi;
 
+import org.apache.hc.client5.http.HttpResponseException;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -30,7 +31,7 @@ import java.util.Map;
 
 /**
  * Mock implementation of {@link NcbiPublicationSearchService} that returns canned data registered by tests.
- * Used by Selenium tests when running on TeamCity.
+ * Used by NcbiApiKeyTest on every server, and by PublicationSearchTest on TeamCity.
  * Extends {@link NcbiPublicationSearchServiceImpl} and gives it an {@link NcbiHttpClient} whose
  * {@code executeGet()} returns canned responses in place of the real HTTP request. The retry loop in
  * {@link NcbiHttpClient#getString}, and all search logic, filtering, author/title verification, citation
@@ -41,6 +42,13 @@ import java.util.Map;
  */
 public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServiceImpl
 {
+    // The mock responds to a request carrying this API key with a 400, which is NCBI's response to a key it
+    // does not recognize. NcbiApiKeyTest uses the same value.
+    public static final String REJECTED_API_KEY = "mock-rejected-ncbi-api-key";
+    // The mock responds to a request carrying this API key with a 503, so the key check cannot be completed.
+    // NcbiApiKeyTest uses the same value.
+    public static final String UNCHECKED_API_KEY = "mock-unchecked-ncbi-api-key";
+
     private final CannedResponses _responses;
 
     public MockNcbiPublicationSearchService()
@@ -153,6 +161,14 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
         @Override
         protected String executeGet(String url) throws IOException
         {
+            if (REJECTED_API_KEY.equals(apiKeyFrom(url)))
+            {
+                throw new HttpResponseException(400, "Bad Request - API key invalid");
+            }
+            if (UNCHECKED_API_KEY.equals(apiKeyFrom(url)))
+            {
+                throw new HttpResponseException(503, "Service Unavailable");
+            }
             if (url.contains("esearch.fcgi"))
             {
                 return handleESearch(url).toString();

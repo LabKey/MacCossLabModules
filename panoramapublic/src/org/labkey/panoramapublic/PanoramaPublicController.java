@@ -10196,6 +10196,23 @@ public class PanoramaPublicController extends SpringActionController
             {
                 errors.reject(ERROR_MSG, PrivateDataReminderSettings.NCBI_API_KEY_REQUIRES_ENCRYPTION);
             }
+            // Save a new key only if NCBI accepts it.
+            if (!errors.hasErrors() && !form.isClearNcbiApiKey() && !StringUtils.isBlank(form.getNcbiApiKey()))
+            {
+                NcbiApiKeyCheck check = NcbiPublicationSearchService.get().checkApiKey(form.getNcbiApiKey().trim(), LOG);
+                String detail = StringUtils.defaultString(check.getMessage());
+                if (check.isRejected())
+                {
+                    LOG.warn("NCBI rejected an API key entered on the Private Data Reminder Settings page. {}", detail);
+                    errors.reject(ERROR_MSG, "NCBI rejected this API key, so it was not saved. " + detail);
+                }
+                else if (!check.isValid())
+                {
+                    LOG.warn("Could not check an API key entered on the Private Data Reminder Settings page. {}", detail);
+                    errors.reject(ERROR_MSG, "Could not check this API key with NCBI, so it was not saved."
+                            + " Try again later. " + detail);
+                }
+            }
         }
 
         @Override

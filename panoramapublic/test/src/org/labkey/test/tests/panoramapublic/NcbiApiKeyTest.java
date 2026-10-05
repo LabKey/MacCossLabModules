@@ -22,7 +22,6 @@ import org.labkey.remoteapi.CommandException;
 import org.labkey.remoteapi.SimplePostCommand;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
-import org.labkey.test.TestProperties;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 
@@ -30,7 +29,6 @@ import java.io.IOException;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 /**
@@ -46,6 +44,10 @@ import static org.junit.Assert.fail;
 public class NcbiApiKeyTest extends PanoramaPublicBaseTest
 {
     private static final String TEST_API_KEY = "test-ncbi-api-key";
+    // MockNcbiPublicationSearchService.REJECTED_API_KEY. The mock responds to it with a 400.
+    private static final String REJECTED_API_KEY = "mock-rejected-ncbi-api-key";
+    // MockNcbiPublicationSearchService.UNCHECKED_API_KEY. The mock responds to it with a 503.
+    private static final String UNCHECKED_API_KEY = "mock-unchecked-ncbi-api-key";
 
     private boolean _savedTestApiKey = false;
     private boolean _useMockNcbi = false;
@@ -64,6 +66,9 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
                         + " restore yours, because a saved key is never readable. Remove the key on the"
                         + " Private Data Reminder Settings page, run this test, then enter the key again.",
                 "false", _originalReminderSettings.get("ncbiApiKeySaved"));
+
+        verifyKeyNotSaved(REJECTED_API_KEY, "NCBI rejected this API key, so it was not saved.");
+        verifyKeyNotSaved(UNCHECKED_API_KEY, "Could not check this API key with NCBI, so it was not saved.");
 
         _savedTestApiKey = true;
         savePrivateDataReminderSettings("2", "0", "0", true, TEST_API_KEY);
@@ -90,48 +95,44 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
     }
 
     /**
-     * Covers the button, the request it sends and the message it displays. The mock responds to every
-     * request, so it reports the key as accepted.
+     * Save checks a new key with NCBI. A key NCBI has not accepted should not be saved, and the form should
+     * display the reason.
+     */
+    private void verifyKeyNotSaved(String apiKey, String expectedMessage)
+    {
+        getPrivateDataReminderSettings();
+        setFormElement(Locator.input("ncbiApiKey"), apiKey);
+        clickButton("Save");
+        assertTextPresent(expectedMessage);
+        assertEquals("A key NCBI has not accepted should not be saved", "false",
+                getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
+    }
+
+    /**
+     * Covers the button, the request it sends and the message it displays for a key the mock accepts and
+     * a key it rejects.
      */
     private void verifyValidateButton()
     {
+        Locator result = Locator.id("ncbiApiKeyValidationResult");
+
         setFormElement(Locator.input("ncbiApiKey"), "not-a-real-key");
         click(Locator.lkButton("Validate"));
+        waitForElement(result.containing("NCBI accepted this key"));
 
-        Locator result = Locator.id("ncbiApiKeyValidationResult");
-        if (_useMockNcbi)
-        {
-            waitForElement(result.containing("NCBI accepted this key"));
-        }
-        else
-        {
-            // NCBI rejects this key with a 400, or returns a 5xx and the check is unconfirmed.
-            // Neither reports the key as accepted. The retries mean a live check can take half a minute.
-            waitFor(() -> {
-                        String text = result.findElement(getDriver()).getText();
-                        return !text.isEmpty() && !text.startsWith("Checking");
-                    },
-                    "NCBI validation result was not displayed", WAIT_FOR_PAGE);
-
-            String message = result.findElement(getDriver()).getText();
-            assertFalse("A key NCBI does not recognize must not be reported as accepted. Message: " + message,
-                    message.contains("accepted"));
-        }
+        setFormElement(Locator.input("ncbiApiKey"), REJECTED_API_KEY);
+        click(Locator.lkButton("Validate"));
+        waitForElement(result.containing("NCBI rejected this key"));
 
         setFormElement(Locator.input("ncbiApiKey"), "");
     }
 
     /*
-     * On TeamCity, route NCBI requests through the mock so this test does not depend on NCBI being
-     * reachable. On a development machine, use the real service so a key can actually be rejected.
+     * Route NCBI requests through the mock, so the test does not depend on NCBI being reachable and a key
+     * can be rejected on demand.
      */
     private void setupMockNcbiService()
     {
-        if (!TestProperties.isTestRunningOnTeamCity())
-        {
-            return;
-        }
-
         try
         {
             SimplePostCommand command = new SimplePostCommand("panoramapublic", "setupMockNcbiService");
