@@ -21,13 +21,30 @@ package org.labkey.panoramapublic.ncbi;
  */
 public class NcbiSearchException extends RuntimeException
 {
+    private final boolean _allRequestsFailed;
+
     public NcbiSearchException(String message, Throwable cause)
     {
         super(message, cause);
+        _allRequestsFailed = false;
     }
 
     public NcbiSearchException(String message)
     {
+        this(message, false);
+    }
+
+    public NcbiSearchException(String message, boolean allRequestsFailed)
+    {
         super(message);
+        _allRequestsFailed = allRequestsFailed;
+    }
+
+    /**
+     * @return true if every NCBI request for the search failed, which suggests NCBI is unavailable.
+     */
+    public boolean isAllRequestsFailed()
+    {
+        return _allRequestsFailed;
     }
 }

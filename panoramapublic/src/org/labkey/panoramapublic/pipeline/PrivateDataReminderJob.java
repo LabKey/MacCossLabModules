@@ -69,6 +69,8 @@ public class PrivateDataReminderJob extends PipelineJob
 {
     private static final int MIN_DATASETS_FOR_FAILURE = 3;
     private static final double PUBLICATION_SEARCH_FAILURE_THRESHOLD = 0.5;
+    // Consecutive datasets with all NCBI requests failed before the search is stopped for the run.
+    private static final int MAX_CONSECUTIVE_ALL_FAILED = 3;
 
     /**
      * @return true when the publication search failure rate reaches the threshold, which suggests a
@@ -247,12 +249,21 @@ public class PrivateDataReminderJob extends PipelineJob
                     return null;
                 }
 
+                if (results.isPublicationSearchStopped())
+                {
+                    // The search deferral is not reset, so the next run searches again.
+                    log.info("Publication search is stopped for this run. Not re-searching for experiment {}", expAnnotations.getId());
+                    results.addPublicationSearchSkipped(expAnnotations.getId());
+                    return null;
+                }
+
                 // Search deferral expired — re-search NCBI
                 log.info("Search deferral expired for experiment {} (dismissed {}); re-searching NCBI", expAnnotations.getId(), dismissedDate);
                 try
                 {
                     results.addPublicationSearchAttempted();
                     PublicationMatch newMatch = NcbiPublicationSearchService.get().searchForPublication(expAnnotations, log);
+                    results.addPublicationSearchCompleted();
                     if (newMatch != null && !newMatch.getPublicationId().equals(datasetStatus.getPotentialPublicationId()))
                     {
                         // Different publication found — return it (caller will save and notify)
@@ -296,12 +307,21 @@ public class PrivateDataReminderJob extends PipelineJob
             }
         }
 
+        if (results.isPublicationSearchStopped())
+        {
+            log.info("Publication search is stopped for this run. Not searching for experiment {}", expAnnotations.getId());
+            results.addPublicationSearchSkipped(expAnnotations.getId());
+            return null;
+        }
+
         // Perform the publication search
         log.info("Searching for publications for experiment {}", expAnnotations.getId());
         try
         {
             results.addPublicationSearchAttempted();
-            return NcbiPublicationSearchService.get().searchForPublication(expAnnotations, log);
+            PublicationMatch match = NcbiPublicationSearchService.get().searchForPublication(expAnnotations, log);
+            results.addPublicationSearchCompleted();
+            return match;
         }
         catch (NcbiSearchException e)
         {
@@ -368,8 +388,8 @@ public class PrivateDataReminderJob extends PipelineJob
 
     /**
      * @return error when the job could not start, a dataset that should have been sent a reminder was
-     * not, or the publication search failed for half or more of the datasets it ran for. Cancelled when
-     * the job was cancelled with nothing else to report, and complete otherwise.
+     * not, or the publication search failed for half or more of the datasets it ran for or was stopped. Cancelled
+     * when the job was cancelled with nothing else to report, and complete otherwise.
      */
     private TaskStatus postMessage(List<Integer> expAnnotationIds, Journal panoramaPublic)
     {
@@ -397,7 +417,8 @@ public class PrivateDataReminderJob extends PipelineJob
 
         // An ERROR logged through the job's logger sets the status to error, and the status set here
         // would overwrite it. Report the errors the job recorded instead.
-        if (processingResults.getTotalErrors() > 0 || processingResults.publicationSearchFailingWidely())
+        if (processingResults.getTotalErrors() > 0 || processingResults.publicationSearchFailingWidely()
+                || processingResults.isPublicationSearchStopped())
         {
             return TaskStatus.error;
         }
@@ -782,6 +803,9 @@ public class PrivateDataReminderJob extends PipelineJob
         private final List<Integer> _submitterNotFound = new ArrayList<>();
         private final List<Integer> _publicationSearchFailed = new ArrayList<>();
         private int _publicationSearchAttempted = 0;
+        private int _consecutiveAllFailed = 0;
+        private boolean _publicationSearchStopped = false;
+        private final List<Integer> _publicationSearchSkipped = new ArrayList<>();
         private final List<Integer> _processingFailed = new ArrayList<>();
         private final List<Integer> _skipped = new ArrayList<>();
         private int _processed = 0;
@@ -835,10 +859,34 @@ public class PrivateDataReminderJob extends PipelineJob
             _publicationSearchAttempted++;
         }
 
-        public void addPublicationSearchFailed(Integer experimentId, Exception e)
+        public void addPublicationSearchCompleted()
+        {
+            _consecutiveAllFailed = 0;
+        }
+
+        public void addPublicationSearchFailed(Integer experimentId, NcbiSearchException e)
         {
             _publicationSearchFailed.add(experimentId);
             _log.warn("Publication search failed for experiment Id: {}. A reminder was still posted. {}", experimentId, e.getMessage(), e);
+
+            // Some requests completing means NCBI is responding, so the failure is intermittent.
+            _consecutiveAllFailed = e.isAllRequestsFailed() ? _consecutiveAllFailed + 1 : 0;
+            if (!_publicationSearchStopped && _consecutiveAllFailed >= MAX_CONSECUTIVE_ALL_FAILED)
+            {
+                _publicationSearchStopped = true;
+                _log.error("Every NCBI request failed for {} datasets in a row. The publication search is stopped for the rest of this run. Reminders are still posted.",
+                        _consecutiveAllFailed);
+            }
+        }
+
+        public boolean isPublicationSearchStopped()
+        {
+            return _publicationSearchStopped;
+        }
+
+        public void addPublicationSearchSkipped(Integer experimentId)
+        {
+            _publicationSearchSkipped.add(experimentId);
         }
 
         public void addProcessingFailed(Integer experimentId, Exception e)
@@ -901,6 +949,13 @@ public class PrivateDataReminderJob extends PipelineJob
                 {
                     log.warn(message, _publicationSearchFailed.size(), _publicationSearchAttempted, StringUtils.join(_publicationSearchFailed, ", "));
                 }
+            }
+
+            if (_publicationSearchStopped)
+            {
+                log.error("The publication search was stopped after every NCBI request failed for {} datasets in a row. Reminders were still posted. Experiment Ids not searched: {}",
+                        MAX_CONSECUTIVE_ALL_FAILED,
+                        _publicationSearchSkipped.isEmpty() ? "none" : StringUtils.join(_publicationSearchSkipped, ", "));
             }
 
             if (!_processingFailed.isEmpty())
@@ -998,6 +1053,38 @@ public class PrivateDataReminderJob extends PipelineJob
             // The reminder was still posted for these, so they are not errors.
             results.addPublicationSearchFailed(6, new NcbiSearchException("test"));
             assertEquals("A failed publication search is not a missed reminder", 5, results.getTotalErrors());
+        }
+
+        @Test
+        public void testPublicationSearchStopped()
+        {
+            ProcessingResults results = new ProcessingResults(10, TEST_LOG);
+
+            // Two datasets in a row with every request failed, then a search that completed.
+            results.addPublicationSearchFailed(1, allRequestsFailed());
+            results.addPublicationSearchFailed(2, allRequestsFailed());
+            results.addPublicationSearchCompleted();
+            results.addPublicationSearchFailed(3, allRequestsFailed());
+            assertFalse("A completed search should reset the count", results.isPublicationSearchStopped());
+
+            // A partial failure resets the count.
+            results.addPublicationSearchFailed(4, allRequestsFailed());
+            results.addPublicationSearchFailed(5, new NcbiSearchException("test", false));
+            results.addPublicationSearchFailed(6, allRequestsFailed());
+            assertFalse("A search where some requests completed should reset the count", results.isPublicationSearchStopped());
+
+            results.addPublicationSearchFailed(7, allRequestsFailed());
+            assertFalse("Two in a row should not stop the search", results.isPublicationSearchStopped());
+            results.addPublicationSearchFailed(8, allRequestsFailed());
+            assertTrue("Three in a row with every request failed should stop the search", results.isPublicationSearchStopped());
+
+            // Stopping the search sets the status, not the error count.
+            assertEquals("Stopping the search should not count as a missed reminder", 0, results.getTotalErrors());
+        }
+
+        private static NcbiSearchException allRequestsFailed()
+        {
+            return new NcbiSearchException("test", true);
         }
 
         @Test

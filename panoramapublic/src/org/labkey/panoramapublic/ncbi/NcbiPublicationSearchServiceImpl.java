@@ -51,6 +51,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.labkey.panoramapublic.ncbi.PublicationMatch.MATCH_DOI;
@@ -216,33 +217,34 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         maxResults = Math.max(1, Math.min(maxResults, NcbiPublicationSearchService.MAX_RESULTS));
         log.info("Starting publication search for experiment: {}", expAnnotations.getId());
 
-        // NCBI requests that failed after retries. An empty result is returned only when every request
-        // completed, so a caller can distinguish a search that found no publication from one that failed to run.
-        List<String> failedRequests = new ArrayList<>();
+        // An empty result is returned only when every request completed, so a caller can distinguish a search
+        // that found no publication from one that failed to run.
+        SearchRequests requests = new SearchRequests();
 
         // Search PubMed Central first
-        List<PublicationMatch> matchedArticles = searchPmc(expAnnotations, log, failedRequests);
+        List<PublicationMatch> matchedArticles = searchPmc(expAnnotations, log, requests);
 
         // If no PMC results, fall back to PubMed
         if (matchedArticles.isEmpty())
         {
             log.info("No PMC articles found, trying PubMed fallback");
-            matchedArticles = searchPubMed(expAnnotations, log, failedRequests);
+            matchedArticles = searchPubMed(expAnnotations, log, requests);
         }
 
-        if (!failedRequests.isEmpty())
+        if (!requests.failed.isEmpty())
         {
             log.warn("Some NCBI requests did not complete for experiment {}. Failed requests: {}",
-                    expAnnotations.getId(), StringUtils.join(failedRequests, ", "));
+                    expAnnotations.getId(), StringUtils.join(requests.failed, ", "));
         }
 
         // Build and return result
         if (matchedArticles.isEmpty())
         {
-            if (!failedRequests.isEmpty())
+            if (!requests.failed.isEmpty())
             {
                 throw new NcbiSearchException("Publication search for experiment " + expAnnotations.getId()
-                        + " did not complete. Failed requests: " + StringUtils.join(failedRequests, ", "));
+                        + " did not complete. Failed requests: " + StringUtils.join(requests.failed, ", "),
+                        !requests.anyCompleted);
             }
             log.info("No publications found");
             return Collections.emptyList();
@@ -267,11 +269,18 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         return matchedArticles;
     }
 
+    /** NCBI requests that failed during one search, and whether any request completed. */
+    private static class SearchRequests
+    {
+        private final List<String> failed = new ArrayList<>();
+        private boolean anyCompleted = false;
+    }
+
     /**
      * Search PubMed Central
      */
     private @NotNull List<PublicationMatch> searchPmc(@NotNull ExperimentAnnotations expAnnotations, Logger log,
-                                                      List<String> failedRequests)
+                                                      SearchRequests requests)
     {
         Map<String, String> searchTermsByStrategy = buildSearchTerms(expAnnotations);
 
@@ -285,6 +294,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             try
             {
                 List<String> ids = searchPmc(quote(searchTerm), log);
+                requests.anyCompleted = true;
                 if (!ids.isEmpty())
                 {
                     pmcIdsByStrategy.put(strategy, ids);
@@ -295,7 +305,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             {
                 // Each strategy is a separate request, so the remaining ones are still worth
                 // running. Not logged here, executeSearch logs the query and the cause.
-                failedRequests.add("PMC search by " + strategy);
+                requests.failed.add("PMC search by " + strategy);
             }
             rateLimit();
         }
@@ -316,7 +326,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         catch (NcbiSearchException e)
         {
             // The IDs cannot be verified without their metadata, so PMC has no usable result.
-            failedRequests.add("PMC metadata fetch");
+            requests.failed.add("PMC metadata fetch");
             return Collections.emptyList();
         }
 
@@ -619,7 +629,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
      * Fall back to PubMed search if PMC finds nothing
      */
     private List<PublicationMatch> searchPubMed(ExperimentAnnotations expAnnotations, Logger log,
-                                                List<String> failedRequests)
+                                                SearchRequests requests)
     {
         String firstName = expAnnotations.getSubmitterUser() != null
             ? expAnnotations.getSubmitterUser().getFirstName() : null;
@@ -645,10 +655,11 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         try
         {
             pmids = searchPubMed(query, log);
+            requests.anyCompleted = true;
         }
         catch (NcbiSearchException e)
         {
-            failedRequests.add("PubMed search");
+            requests.failed.add("PubMed search");
             return Collections.emptyList();
         }
 
@@ -669,7 +680,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         catch (NcbiSearchException e)
         {
             // Metadata is required to confirm that a PMID is a match.
-            failedRequests.add("PubMed metadata fetch");
+            requests.failed.add("PubMed metadata fetch");
             return Collections.emptyList();
         }
 
@@ -1568,6 +1579,49 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
                 }
             };
             return new NcbiPublicationSearchServiceImpl(client).checkApiKey(apiKey, null);
+        }
+
+        @Test
+        public void testSearchReportsWhetherAllRequestsFailed()
+        {
+            // Two PMC search requests, one per term. No submitter, so there is no PubMed fallback.
+            ExperimentAnnotations expAnnotations = new ExperimentAnnotations();
+            expAnnotations.setPxid("PXD000001");
+            expAnnotations.setDoi("10.1000/test");
+
+            NcbiSearchException allFailed = searchFailure(expAnnotations, url -> true);
+            assertTrue("A search where every request failed should report it", allFailed.isAllRequestsFailed());
+
+            NcbiSearchException someFailed = searchFailure(expAnnotations, url -> url.contains("PXD000001"));
+            assertFalse("A search where a request completed should not report that all requests failed",
+                    someFailed.isAllRequestsFailed());
+        }
+
+        /** Returns the exception from a search where requests whose URL matches {@code fails} return a 503. */
+        private NcbiSearchException searchFailure(ExperimentAnnotations expAnnotations, Predicate<String> fails)
+        {
+            NcbiHttpClient client = new NcbiHttpClient.TestCase.NoWaitClient()
+            {
+                @Override
+                protected String executeGet(String url) throws IOException
+                {
+                    if (fails.test(url))
+                    {
+                        throw new HttpResponseException(503, "Service Unavailable");
+                    }
+                    return "{\"esearchresult\":{\"idlist\":[]}}";
+                }
+            };
+            try
+            {
+                new NcbiPublicationSearchServiceImpl(client).searchForPublication(expAnnotations, LOG);
+                fail("A search with a failed request and no match should throw NcbiSearchException");
+                return null;
+            }
+            catch (NcbiSearchException e)
+            {
+                return e;
+            }
         }
 
         @Test
