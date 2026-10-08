@@ -16,6 +16,7 @@
 package org.labkey.test.tests.panoramapublic;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -26,6 +27,7 @@ import org.labkey.remoteapi.CommandException;
 import org.labkey.remoteapi.CommandResponse;
 import org.labkey.remoteapi.Connection;
 import org.labkey.remoteapi.SimpleGetCommand;
+import org.labkey.remoteapi.SimplePostCommand;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
@@ -631,7 +633,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
     /**
      * Navigate to the Private Data Reminder Settings page and read the current form values.
-     * Returns a map with keys: extensionLength, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch, publicationSearchFrequency.
+     * Returns a map with keys: extensionLength, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch, publicationSearchFrequency, ncbiApiKeySaved.
      */
     protected Map<String, String> getPrivateDataReminderSettings()
     {
@@ -645,6 +647,11 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         settings.put("reminderFrequency", getFormElement(Locator.input("reminderFrequency")));
         settings.put("enablePublicationSearch", String.valueOf(Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected()));
         settings.put("publicationSearchFrequency", getFormElement(Locator.input("publicationSearchFrequency")));
+        // The saved key is never displayed. data-key-saved on the field reports whether one is stored.
+        // The field is not rendered on a server with no encryption key, where no key can be saved.
+        settings.put("ncbiApiKeySaved", Locator.input("ncbiApiKey").findOptionalElement(getDriver())
+                .map(field -> field.getDomAttribute("data-key-saved"))
+                .orElse("false"));
         return settings;
     }
 
@@ -655,6 +662,16 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
     protected void savePrivateDataReminderSettings(String extensionLength, String delayUntilFirstReminder, String reminderFrequency, boolean enablePublicationSearch)
     {
+        savePrivateDataReminderSettings(extensionLength, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch, null);
+    }
+
+    /**
+     * Saves the site wide Private Data Reminder Settings. A null ncbiApiKey leaves the key field blank,
+     * which keeps the key already saved on the server. The page never displays a saved key, so a test
+     * restoring settings it captured earlier cannot restore the key and should pass null.
+     */
+    protected void savePrivateDataReminderSettings(String extensionLength, String delayUntilFirstReminder, String reminderFrequency, boolean enablePublicationSearch, String ncbiApiKey)
+    {
         goToAdminConsole().goToSettingsSection();
         clickAndWait(Locator.linkWithText("Panorama Public"));
         clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
@@ -662,6 +679,10 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         setFormElement(Locator.input("delayUntilFirstReminder"), delayUntilFirstReminder);
         setFormElement(Locator.input("reminderFrequency"), reminderFrequency);
         setFormElement(Locator.input("extensionLength"), extensionLength);
+        if (ncbiApiKey != null)
+        {
+            setFormElement(Locator.input("ncbiApiKey"), ncbiApiKey);
+        }
         if (enablePublicationSearch)
         {
             checkCheckbox(Locator.checkboxByName("enablePublicationSearch"));
@@ -677,6 +698,40 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         assertEquals(String.valueOf(delayUntilFirstReminder), getFormElement(Locator.input("delayUntilFirstReminder")));
         assertEquals(String.valueOf(reminderFrequency), getFormElement(Locator.input("reminderFrequency")));
         assertEquals(String.valueOf(extensionLength), getFormElement(Locator.input("extensionLength")));
+        assertEquals("The saved publication search setting should be displayed on the form", enablePublicationSearch,
+                Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected());
+        if (!StringUtils.isBlank(ncbiApiKey))
+        {
+            assertEquals("The form should report that a key is saved", "true",
+                    getPrivateDataReminderSettings().get("ncbiApiKeySaved"));
+        }
+    }
+
+    /**
+     * Restores the settings read by getPrivateDataReminderSettings through an API call, which loads no page. For
+     * use in an @After method, where loading a page would replace the failed page in the failure screenshot.
+     * @param clearNcbiApiKey true to remove the saved NCBI API key
+     */
+    protected void restorePrivateDataReminderSettings(Map<String, String> original, boolean clearNcbiApiKey)
+    {
+        Map<String, Object> params = new HashMap<>();
+        params.put("extensionLength", original.get("extensionLength"));
+        params.put("delayUntilFirstReminder", original.get("delayUntilFirstReminder"));
+        params.put("reminderFrequency", original.get("reminderFrequency"));
+        params.put("enablePublicationSearch", original.get("enablePublicationSearch"));
+        params.put("publicationSearchFrequency", original.get("publicationSearchFrequency"));
+        params.put("clearNcbiApiKey", clearNcbiApiKey);
+
+        SimplePostCommand command = new SimplePostCommand("panoramapublic", "restorePrivateDataReminderSettings");
+        command.setParameters(params);
+        try
+        {
+            command.execute(createDefaultConnection(), "/");
+        }
+        catch (IOException | CommandException e)
+        {
+            throw new RuntimeException("Failed to restore the Private Data Reminder Settings", e);
+        }
     }
 
     protected void goToSendRemindersPage(String projectName)

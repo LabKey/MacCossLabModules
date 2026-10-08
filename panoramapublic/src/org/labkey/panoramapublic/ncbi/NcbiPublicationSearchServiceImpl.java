@@ -17,15 +17,7 @@ package org.labkey.panoramapublic.ncbi;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.config.ConnectionConfig;
-import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
-import org.apache.hc.client5.http.impl.io.BasicHttpClientConnectionManager;
 import org.apache.hc.client5.http.HttpResponseException;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.util.Timeout;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -38,10 +30,12 @@ import org.labkey.api.util.Pair;
 import org.labkey.api.util.StringUtilsLabKey;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.panoramapublic.datacite.DataCiteService;
+import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.model.ExperimentAnnotations;
 import org.labkey.panoramapublic.ncbi.NcbiConstants.DB;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
@@ -57,6 +51,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.labkey.panoramapublic.ncbi.PublicationMatch.MATCH_DOI;
@@ -83,6 +78,18 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         _instance = impl;
     }
 
+    private final NcbiHttpClient _httpClient;
+
+    public NcbiPublicationSearchServiceImpl()
+    {
+        this(new NcbiHttpClient());
+    }
+
+    NcbiPublicationSearchServiceImpl(NcbiHttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
     // NCBI API endpoints
     private static final String ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi";
     private static final String ESUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi";
@@ -92,8 +99,9 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     private static final String PMC_CITATION_EXPORTER_URL =    "https://api.ncbi.nlm.nih.gov/lit/ctxp/v1/pmc/?format=citation&id=";
 
     // API parameters
-    private static final int RATE_LIMIT_DELAY_MS = 400; // NCBI allows 3 requests/sec
-    private static final int TIMEOUT_MS = 10000; // 10 seconds
+    private static final int RATE_LIMIT_DELAY_MS = 400; // NCBI allows 3 requests/sec without an API key
+
+    private static final int BAD_REQUEST = 400; // NCBI's response when the API key is not recognized
 
     // NCBI suggests using the 'tool' and 'email' parameters on E-utilities URLs
     // https://www.nlm.nih.gov/dataguide/eutilities/utilities.html
@@ -156,12 +164,13 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
         try
         {
-            String response = getString(queryUrl);
+            String response = getString(queryUrl, log);
             return parseCitation(response, publicationId, database, log);
         }
         catch (IOException e)
         {
-            log.error("Error submitting a request to NCBI Literature Citation Exporter. URL: {}", queryUrl, e);
+            // A missing citation does not fail the match. The caller displays the publication ID instead.
+            log.warn("Request to the NCBI Literature Citation Exporter did not complete. URL: {}", queryUrl, e);
         }
         return null;
     }
@@ -189,7 +198,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (JSONException e)
         {
-            log.error("Error parsing response from NCBI Literature Citation Exporter for {} ID {}", database.getLabel(), publicationId, e);
+            log.warn("Error parsing response from NCBI Literature Citation Exporter for {} ID {}", database.getLabel(), publicationId, e);
         }
         return null;
     }
@@ -208,19 +217,35 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         maxResults = Math.max(1, Math.min(maxResults, NcbiPublicationSearchService.MAX_RESULTS));
         log.info("Starting publication search for experiment: {}", expAnnotations.getId());
 
+        // An empty result is returned only when every request completed, so a caller can distinguish a search
+        // that found no publication from one that failed to run.
+        SearchRequests requests = new SearchRequests();
+
         // Search PubMed Central first
-        List<PublicationMatch> matchedArticles = searchPmc(expAnnotations, log);
+        List<PublicationMatch> matchedArticles = searchPmc(expAnnotations, log, requests);
 
         // If no PMC results, fall back to PubMed
         if (matchedArticles.isEmpty())
         {
             log.info("No PMC articles found, trying PubMed fallback");
-            matchedArticles = searchPubMed(expAnnotations, log);
+            matchedArticles = searchPubMed(expAnnotations, log, requests);
+        }
+
+        if (!requests.failed.isEmpty())
+        {
+            log.warn("Some NCBI requests did not complete for experiment {}. Failed requests: {}",
+                    expAnnotations.getId(), StringUtils.join(requests.failed, ", "));
         }
 
         // Build and return result
         if (matchedArticles.isEmpty())
         {
+            if (!requests.failed.isEmpty())
+            {
+                throw new NcbiSearchException("Publication search for experiment " + expAnnotations.getId()
+                        + " did not complete. Failed requests: " + StringUtils.join(requests.failed, ", "),
+                        !requests.anyCompleted);
+            }
             log.info("No publications found");
             return Collections.emptyList();
         }
@@ -244,10 +269,18 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         return matchedArticles;
     }
 
+    /** NCBI requests that failed during one search, and whether any request completed. */
+    private static class SearchRequests
+    {
+        private final List<String> failed = new ArrayList<>();
+        private boolean anyCompleted = false;
+    }
+
     /**
      * Search PubMed Central
      */
-    private @NotNull List<PublicationMatch> searchPmc(@NotNull ExperimentAnnotations expAnnotations, Logger log)
+    private @NotNull List<PublicationMatch> searchPmc(@NotNull ExperimentAnnotations expAnnotations, Logger log,
+                                                      SearchRequests requests)
     {
         Map<String, String> searchTermsByStrategy = buildSearchTerms(expAnnotations);
 
@@ -258,11 +291,21 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             String strategy = entry.getKey();
             String searchTerm = entry.getValue();
             log.debug("Searching PMC by {}: {}", strategy, searchTerm);
-            List<String> ids = searchPmc(quote(searchTerm), log);
-            if (!ids.isEmpty())
+            try
             {
-                pmcIdsByStrategy.put(strategy, ids);
-                log.debug("Found {} PMC articles by {}", ids.size(), strategy);
+                List<String> ids = searchPmc(quote(searchTerm), log);
+                requests.anyCompleted = true;
+                if (!ids.isEmpty())
+                {
+                    pmcIdsByStrategy.put(strategy, ids);
+                    log.debug("Found {} PMC articles by {}", ids.size(), strategy);
+                }
+            }
+            catch (NcbiSearchException e)
+            {
+                // Each strategy is a separate request, so the remaining ones are still worth
+                // running. Not logged here, executeSearch logs the query and the cause.
+                requests.failed.add("PMC search by " + strategy);
             }
             rateLimit();
         }
@@ -275,7 +318,17 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         log.info("Total unique PMC IDs found: {}", idToStrategies.size());
 
         // Fetch and verify PMC articles
-        List<PublicationMatch> pmcArticles = fetchAndVerifyPmcArticles(idToStrategies.keySet(), idToStrategies, expAnnotations, log);
+        List<PublicationMatch> pmcArticles;
+        try
+        {
+            pmcArticles = fetchAndVerifyPmcArticles(idToStrategies.keySet(), idToStrategies, expAnnotations, log);
+        }
+        catch (NcbiSearchException e)
+        {
+            // The IDs cannot be verified without their metadata, so PMC has no usable result.
+            requests.failed.add("PMC metadata fetch");
+            return Collections.emptyList();
+        }
 
         // Apply priority filtering
         return applyPriorityFiltering(pmcArticles, expAnnotations.getCreated(), log);
@@ -326,7 +379,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
         try
         {
-            JSONObject json = getJson(url);
+            JSONObject json = getJson(url, log);
             JSONObject eSearchResult = json.getJSONObject("esearchresult");
             JSONArray idList = eSearchResult.getJSONArray("idlist");
 
@@ -339,8 +392,34 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (IOException | JSONException e)
         {
-            log.error("Error searching {} with query: {}", database, query, e);
-            return Collections.emptyList();
+            // One failed request, not the outcome for the dataset. The caller carries on with the rest.
+            log.warn("Search of {} did not complete for query: {}", database, query, e);
+            throw new NcbiSearchException("Error searching " + database + " with query: " + query, e);
+        }
+    }
+
+    @Override
+    public @NotNull NcbiApiKeyCheck checkApiKey(@Nullable String apiKey, @Nullable Logger logger)
+    {
+        // A minimal ESearch request. getString retries a transient failure before the check gives up.
+        String url = ESEARCH_URL + "?" + buildCommonParams("pubmed", apiKey) + "&term=labkey&retmax=1&retmode=json";
+        try
+        {
+            getString(url, logger);
+            return NcbiApiKeyCheck.valid();
+        }
+        catch (HttpResponseException e)
+        {
+            // NCBI rejects an unrecognized key with a 400. Any other status says nothing about the
+            // key, including a 403 or 404 from a proxy between the server and NCBI.
+            String message = NcbiHttpClient.redactApiKey(e.getMessage(), apiKey);
+            return e.getStatusCode() == BAD_REQUEST
+                    ? NcbiApiKeyCheck.rejected(message)
+                    : NcbiApiKeyCheck.unconfirmed(message);
+        }
+        catch (IOException e)
+        {
+            return NcbiApiKeyCheck.unconfirmed(NcbiHttpClient.redactApiKey(e.getMessage(), apiKey));
         }
     }
 
@@ -349,44 +428,14 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
      * @throws IOException if the request fails or the server returns a non-2xx response
      * @throws JSONException if the response body is not valid JSON
      */
-    protected JSONObject getJson(String url) throws IOException
+    private JSONObject getJson(String url, Logger log) throws IOException
     {
-        return new JSONObject(getString(url));
+        return new JSONObject(getString(url, log));
     }
 
-    /**
-     * Execute an HTTP GET request and return the response body as a string.
-     * @throws IOException if the request fails or the server returns a non-2xx response
-     */
-    protected String getString(String url) throws IOException
+    private String getString(String url, @Nullable Logger log) throws IOException
     {
-        ConnectionConfig connectionConfig = ConnectionConfig.custom()
-            .setConnectTimeout(Timeout.ofMilliseconds(TIMEOUT_MS))
-            .setSocketTimeout(Timeout.ofMilliseconds(TIMEOUT_MS))
-            .build();
-
-        RequestConfig requestConfig = RequestConfig.custom()
-            .setResponseTimeout(Timeout.ofMilliseconds(TIMEOUT_MS))
-            .build();
-
-        BasicHttpClientConnectionManager connectionManager = new BasicHttpClientConnectionManager();
-        connectionManager.setConnectionConfig(connectionConfig);
-
-        try (CloseableHttpClient client = HttpClientBuilder.create()
-                .setDefaultRequestConfig(requestConfig)
-                .setConnectionManager(connectionManager)
-                .build())
-        {
-            HttpGet getRequest = new HttpGet(url);
-            return client.execute(getRequest, response -> {
-                int status = response.getCode();
-                if (status < 200 || status >= 300)
-                {
-                    throw new HttpResponseException(status, response.getReasonPhrase());
-                }
-                return EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-            });
-        }
+        return _httpClient.getString(url, getLog(log));
     }
 
     /**
@@ -420,7 +469,7 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
 
         try
         {
-            JSONObject json = getJson(url);
+            JSONObject json = getJson(url, log);
             JSONObject result = json.optJSONObject("result");
             if (result == null) return Collections.emptyMap();
 
@@ -438,8 +487,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         }
         catch (IOException | JSONException e)
         {
-            log.error("Error fetching {} metadata for IDs: {}", database, ids, e);
-            return Collections.emptyMap();
+            log.warn("Metadata fetch from {} did not complete for IDs: {}", database, ids, e);
+            throw new NcbiSearchException("Error fetching " + database + " metadata for IDs: " + ids, e);
         }
     }
 
@@ -579,7 +628,8 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Fall back to PubMed search if PMC finds nothing
      */
-    private List<PublicationMatch> searchPubMed(ExperimentAnnotations expAnnotations, Logger log)
+    private List<PublicationMatch> searchPubMed(ExperimentAnnotations expAnnotations, Logger log,
+                                                SearchRequests requests)
     {
         String firstName = expAnnotations.getSubmitterUser() != null
             ? expAnnotations.getSubmitterUser().getFirstName() : null;
@@ -601,7 +651,17 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             stripQuerySpecialChars(lastName), stripQuerySpecialChars(firstName), stripQuerySpecialChars(title));
 
         log.debug("PubMed fallback query: {}", query);
-        List<String> pmids = searchPubMed(query, log);
+        List<String> pmids;
+        try
+        {
+            pmids = searchPubMed(query, log);
+            requests.anyCompleted = true;
+        }
+        catch (NcbiSearchException e)
+        {
+            requests.failed.add("PubMed search");
+            return Collections.emptyList();
+        }
 
         if (pmids.isEmpty())
         {
@@ -612,7 +672,17 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
         log.info("PubMed fallback found {} result(s), verifying...", pmids.size());
 
         // Fetch metadata and verify
-        Map<String, JSONObject> metadata = fetchPubMedMetadata(pmids, log);
+        Map<String, JSONObject> metadata;
+        try
+        {
+            metadata = fetchPubMedMetadata(pmids, log);
+        }
+        catch (NcbiSearchException e)
+        {
+            // Metadata is required to confirm that a PMID is a match.
+            requests.failed.add("PubMed metadata fetch");
+            return Collections.emptyList();
+        }
 
         List<PublicationMatch> articles = new ArrayList<>();
         for (String pmid : pmids)
@@ -919,16 +989,9 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     /**
      * Rate limiting: wait 400ms between API requests
      */
-    private static void rateLimit()
+    private void rateLimit()
     {
-        try
-        {
-            Thread.sleep(RATE_LIMIT_DELAY_MS);
-        }
-        catch (InterruptedException e)
-        {
-            Thread.currentThread().interrupt();
-        }
+        _httpClient.sleepMs(RATE_LIMIT_DELAY_MS);
     }
 
     /**
@@ -943,13 +1006,27 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
     }
 
     /**
-     * Build the common NCBI API parameters (db, tool, email) with URL encoding.
+     * Build the common NCBI API parameters (db, tool, email, and api_key when one is configured)
+     * with URL encoding.
      */
     private static String buildCommonParams(String database)
     {
-        return "db=" + URLEncoder.encode(database, StandardCharsets.UTF_8) +
+        return buildCommonParams(database, PrivateDataReminderSettings.get().getNcbiApiKey());
+    }
+
+    // The API key is passed in rather than read from the settings, so this overload runs without a server.
+    private static String buildCommonParams(String database, @Nullable String apiKey)
+    {
+        String params = "db=" + URLEncoder.encode(database, StandardCharsets.UTF_8) +
             "&tool=" + URLEncoder.encode(TOOL, StandardCharsets.UTF_8) +
             "&email=" + URLEncoder.encode(EMAIL, StandardCharsets.UTF_8);
+
+        // An API key raises the eutils rate limit from 3 to 10 requests/sec.
+        if (!StringUtils.isBlank(apiKey))
+        {
+            params += "&api_key=" + URLEncoder.encode(apiKey.trim(), StandardCharsets.UTF_8);
+        }
+        return params;
     }
 
     /**
@@ -1420,6 +1497,148 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             // Null match info
             restored = PublicationMatch.fromMatchInfo("11111", DB.PubMed, null);
             assertFalse(restored.matchesProteomeXchangeId());
+        }
+
+        // -- Request parameter and API key check tests --
+
+        @Test
+        public void testBuildCommonParams()
+        {
+            // Always includes db, tool, email
+            String params = buildCommonParams("pmc", null);
+            assertTrue(params.contains("db=pmc"));
+            assertTrue(params.contains("tool=" + TOOL));
+            assertTrue(params.contains("email="));
+
+            // No api_key when the key is null, empty, or blank
+            assertFalse("api_key should be absent when no key is set", params.contains("api_key"));
+            assertFalse(buildCommonParams("pmc", "").contains("api_key"));
+            assertFalse(buildCommonParams("pmc", "   ").contains("api_key"));
+
+            // api_key appended (and trimmed) when a key is set
+            assertTrue(buildCommonParams("pubmed", "ABC123").contains("api_key=ABC123"));
+            assertTrue(buildCommonParams("pmc", "  ABC123  ").contains("api_key=ABC123"));
+        }
+
+        @Test
+        public void testCheckApiKey()
+        {
+            // NCBI rejects a key it does not recognize with a 400. The reminder job stops for that,
+            // so a 5xx has to be reported as a check that could not be completed.
+            assertEquals(NcbiApiKeyCheck.Status.REJECTED, checkApiKeyAgainst(new HttpResponseException(400, "Bad Request")).getStatus());
+            assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new HttpResponseException(503, "Service Unavailable")).getStatus());
+
+            // A 403 or 404 can come from a proxy between the server and NCBI, which says nothing about
+            // the key. Calling either a rejection would stop the reminder job on a key that works.
+            assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new HttpResponseException(403, "Forbidden")).getStatus());
+            assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new HttpResponseException(404, "Not Found")).getStatus());
+
+            // A 429 is the request rate, not a bad key. Calling it a rejection would stop the
+            // reminder job and send an admin to correct a key that works.
+            assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new HttpResponseException(429, "Too Many Requests")).getStatus());
+            assertEquals(NcbiApiKeyCheck.Status.UNCONFIRMED, checkApiKeyAgainst(new SocketTimeoutException("Read timed out")).getStatus());
+            assertEquals(NcbiApiKeyCheck.Status.VALID, checkApiKeyAgainst(null).getStatus());
+
+            // The key must not travel back to the caller in NCBI's reason
+            NcbiApiKeyCheck rejected = checkApiKeyAgainst(
+                    new HttpResponseException(400, "Bad Request - invalid key SECRET123"), "SECRET123");
+            assertFalse("A rejection must not carry the key", rejected.getMessage().contains("SECRET123"));
+
+            // The service's requests go through the retry loop in NcbiHttpClient.getString
+            int[] attempts = {0};
+            checkApiKeyAgainst(new HttpResponseException(503, "Service Unavailable"), "test-key", attempts);
+            assertEquals("A 503 from the key check should be tried 3 times", 3, attempts[0]);
+            attempts[0] = 0;
+            checkApiKeyAgainst(new HttpResponseException(400, "Bad Request"), "test-key", attempts);
+            assertEquals("A 400 from the key check should be tried once", 1, attempts[0]);
+        }
+
+        private NcbiApiKeyCheck checkApiKeyAgainst(IOException failure)
+        {
+            return checkApiKeyAgainst(failure, "test-key");
+        }
+
+        private NcbiApiKeyCheck checkApiKeyAgainst(IOException failure, String apiKey)
+        {
+            return checkApiKeyAgainst(failure, apiKey, new int[1]);
+        }
+
+        private NcbiApiKeyCheck checkApiKeyAgainst(IOException failure, String apiKey, int[] attempts)
+        {
+            NcbiHttpClient client = new NcbiHttpClient.TestCase.NoWaitClient()
+            {
+                @Override
+                protected String executeGet(String url) throws IOException
+                {
+                    attempts[0]++;
+                    if (failure != null)
+                    {
+                        throw failure;
+                    }
+                    return "{\"esearchresult\":{\"idlist\":[]}}";
+                }
+            };
+            return new NcbiPublicationSearchServiceImpl(client).checkApiKey(apiKey, null);
+        }
+
+        @Test
+        public void testSearchReportsWhetherAllRequestsFailed()
+        {
+            // Two PMC search requests, one per term. No submitter, so there is no PubMed fallback.
+            ExperimentAnnotations expAnnotations = new ExperimentAnnotations();
+            expAnnotations.setPxid("PXD000001");
+            expAnnotations.setDoi("10.1000/test");
+
+            NcbiSearchException allFailed = searchFailure(expAnnotations, url -> true);
+            assertTrue("A search where every request failed should report it", allFailed.isAllRequestsFailed());
+
+            NcbiSearchException someFailed = searchFailure(expAnnotations, url -> url.contains("PXD000001"));
+            assertFalse("A search where a request completed should not report that all requests failed",
+                    someFailed.isAllRequestsFailed());
+        }
+
+        /** Returns the exception from a search where requests whose URL matches {@code fails} return a 503. */
+        private NcbiSearchException searchFailure(ExperimentAnnotations expAnnotations, Predicate<String> fails)
+        {
+            NcbiHttpClient client = new NcbiHttpClient.TestCase.NoWaitClient()
+            {
+                @Override
+                protected String executeGet(String url) throws IOException
+                {
+                    if (fails.test(url))
+                    {
+                        throw new HttpResponseException(503, "Service Unavailable");
+                    }
+                    return "{\"esearchresult\":{\"idlist\":[]}}";
+                }
+            };
+            try
+            {
+                new NcbiPublicationSearchServiceImpl(client).searchForPublication(expAnnotations, LOG);
+                fail("A search with a failed request and no match should throw NcbiSearchException");
+                return null;
+            }
+            catch (NcbiSearchException e)
+            {
+                return e;
+            }
+        }
+
+        @Test
+        public void testMockResponses()
+        {
+            // The Selenium tests use the mock only on TeamCity. Requests from the service should reach the
+            // mock's canned responses through NcbiHttpClient.getString.
+            MockNcbiPublicationSearchService mock = new MockNcbiPublicationSearchService();
+            String citation = "Smith J. A test title. J Proteome Res. 2024.";
+            mock.register("pubmed", "12345", "Smith", null, "A test title", "Smith J",
+                    "2024/01/15 00:00", "J Proteome Res", "Journal of Proteome Research", citation);
+
+            assertEquals("The mock should return the registered citation", citation, mock.getCitation("12345", DB.PubMed));
+            assertNull("The mock should return no citation for an ID that was not registered",
+                    mock.getCitation("67890", DB.PubMed));
+            assertEquals("The mock should report any API key as valid", NcbiApiKeyCheck.Status.VALID,
+                    mock.checkApiKey("test-key", null).getStatus());
         }
 
         // -- Helper methods for building test JSON --

@@ -15,11 +15,13 @@
  */
 package org.labkey.panoramapublic.message;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.junit.Test;
 import org.labkey.api.data.PropertyManager;
+import org.labkey.api.security.Encryption;
 import org.labkey.api.util.DateUtil;
 import org.labkey.panoramapublic.model.DatasetStatus;
 
@@ -30,6 +32,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Date;
+import java.util.Map;
 
 public class PrivateDataReminderSettings
 {
@@ -41,6 +44,10 @@ public class PrivateDataReminderSettings
     public static final String PROP_EXTENSION_LENGTH = "Extension duration (months)";
     public static final String PROP_ENABLE_PUBLICATION_SEARCH = "Enable publication search";
     public static final String PROP_PUBLICATION_SEARCH_FREQUENCY = "Publication search frequency (months)";
+    public static final String PROP_NCBI_API_KEY = "NCBI API key";
+    public static final String PROP_NCBI_CREDENTIALS = "Panorama Public NCBI credentials";
+    public static final String NCBI_API_KEY_REQUIRES_ENCRYPTION = "An NCBI API key cannot be saved or removed because"
+            + " this server has no encryption key configured.";
 
     private static final boolean DEFAULT_ENABLE_REMINDERS = false;
     public static final String DEFAULT_REMINDER_TIME = "8:00 AM";
@@ -61,6 +68,7 @@ public class PrivateDataReminderSettings
     private int _extensionLength;
     private boolean _enablePublicationSearch;
     private int _publicationSearchFrequency;
+    private String _ncbiApiKey;
 
     public static PrivateDataReminderSettings get()
     {
@@ -113,6 +121,9 @@ public class PrivateDataReminderSettings
             settings.setPublicationSearchFrequency(DEFAULT_PUBLICATION_SEARCH_FREQUENCY);
         }
 
+        // Read the key from its own property set.
+        settings.setNcbiApiKey(getNcbiApiKeyValue());
+
         return settings;
     }
 
@@ -148,6 +159,58 @@ public class PrivateDataReminderSettings
         settingsMap.put(PROP_ENABLE_PUBLICATION_SEARCH, String.valueOf(settings.isEnablePublicationSearch()));
         settingsMap.put(PROP_PUBLICATION_SEARCH_FREQUENCY, String.valueOf(settings.getPublicationSearchFrequency()));
         settingsMap.save();
+    }
+
+    /**
+     * Save the NCBI API key, or remove it when the key is blank. The key lives in the encrypted store.
+     */
+    public static void saveNcbiApiKey(@Nullable String apiKey)
+    {
+        PropertyManager.WritablePropertyMap credentials;
+        try
+        {
+            credentials = PropertyManager.getEncryptedStore().getWritableProperties(PROP_NCBI_CREDENTIALS, true);
+        }
+        catch (Encryption.DecryptionException e)
+        {
+            // The saved key cannot be decrypted, for example after the encryption key changed. Delete it and start over.
+            PropertyManager.getEncryptedStore().deletePropertySet(PROP_NCBI_CREDENTIALS);
+            credentials = PropertyManager.getEncryptedStore().getWritableProperties(PROP_NCBI_CREDENTIALS, true);
+        }
+        if (StringUtils.isBlank(apiKey))
+        {
+            credentials.remove(PROP_NCBI_API_KEY);
+        }
+        else
+        {
+            credentials.put(PROP_NCBI_API_KEY, apiKey.trim());
+        }
+        credentials.save();
+    }
+
+    public static boolean hasNcbiApiKey()
+    {
+        return !StringUtils.isBlank(getNcbiApiKeyValue());
+    }
+
+    private static @Nullable String getNcbiApiKeyValue()
+    {
+        // The encrypted store throws when no encryption key is configured. Return null in this case.
+        if (!Encryption.isEncryptionPassPhraseSpecified())
+        {
+            return null;
+        }
+        try
+        {
+            Map<String, String> credentials =
+                    PropertyManager.getEncryptedStore().getProperties(PROP_NCBI_CREDENTIALS);
+            return credentials.get(PROP_NCBI_API_KEY);
+        }
+        catch (Encryption.DecryptionException e)
+        {
+            // The key was saved under a different encryption key. Run without it until an admin saves a new one.
+            return null;
+        }
     }
 
     public void setEnableReminders(boolean enableReminders)
@@ -223,6 +286,16 @@ public class PrivateDataReminderSettings
     public void setPublicationSearchFrequency(int publicationSearchFrequency)
     {
         _publicationSearchFrequency = publicationSearchFrequency;
+    }
+
+    public @Nullable String getNcbiApiKey()
+    {
+        return _ncbiApiKey;
+    }
+
+    public void setNcbiApiKey(@Nullable String ncbiApiKey)
+    {
+        _ncbiApiKey = ncbiApiKey;
     }
 
     public @Nullable Date getReminderValidUntilDate(@NotNull DatasetStatus status)
@@ -358,92 +431,129 @@ public class PrivateDataReminderSettings
 
         private void testExtensionIsValid(PrivateDataReminderSettings settings, int monthsOffset)
         {
-            testExtensionIsValid(settings, monthsOffset, 0, null, true);
+            testExtensionIsValid(settings, monthsOffset, true);
         }
 
         private void testExtensionIsExpired(PrivateDataReminderSettings settings, int monthsOffset)
         {
-            testExtensionIsValid(settings, monthsOffset, 0, null, false);
+            testExtensionIsValid(settings, monthsOffset, false);
         }
 
-        private void testExtensionIsValidAsOf(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset)
+        private void testExtensionIsValidAsOf(PrivateDataReminderSettings settings, int monthsOffset,
+                                              int minutesBeforeExpiry)
         {
-            testExtensionIsValid(settings, monthsOffset, minutesOffset, dateFromNow(), true);
+            testExtensionNearExpiry(settings, monthsOffset, minutesBeforeExpiry, true);
         }
 
-        private void testExtensionIsExpiredAsOf(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset)
+        private void testExtensionIsExpiredAsOf(PrivateDataReminderSettings settings, int monthsOffset,
+                                                int minutesBeforeExpiry)
         {
-            testExtensionIsValid(settings, monthsOffset, minutesOffset, dateFromNow(), false);
+            testExtensionNearExpiry(settings, monthsOffset, minutesBeforeExpiry, false);
         }
 
-        private void testExtensionIsValid(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset,
-                                              Date currentDate, boolean expectedValid)
+        /**
+         * Checks the boundary at the moment an extension expires. The current date comes from the expiry
+         * the settings calculate, because subtracting months and adding them back does not always return
+         * to the same day. From 31 August, six months back is 28 February, and six months on is 28 August.
+         *
+         * @param minutesBeforeExpiry zero is the expiry itself, and a negative value is after it.
+         */
+        private void testExtensionNearExpiry(PrivateDataReminderSettings settings, int monthsOffset,
+                                             int minutesBeforeExpiry, boolean expectedValid)
         {
-            Date extensionDate = dateFromNow(monthsOffset, 0, minutesOffset);
-
             DatasetStatus datasetStatus = new DatasetStatus();
-            datasetStatus.setExtensionRequestedDate(extensionDate);
+            datasetStatus.setExtensionRequestedDate(dateFromNow(monthsOffset, 0));
+
+            Date expiry = settings.getExtensionValidUntilDate(datasetStatus);
+            Date currentDate = Date.from(expiry.toInstant().minusSeconds(minutesBeforeExpiry * 60L));
+
+            String failureMessage = String.format(
+                    "Extension is %s; Extension Length: %d; Extension Requested On: %s; Valid Until: %s; Current Date: %s",
+                    expectedValid ? "valid" : "expired", settings.getExtensionLength(),
+                    datasetStatus.getExtensionRequestedDate(), expiry, currentDate);
+
+            boolean isValid = settings.isExtensionValidAsOf(datasetStatus, currentDate);
+            if (expectedValid) assertTrue(failureMessage, isValid);
+            else assertFalse(failureMessage, isValid);
+        }
+
+        private void testExtensionIsValid(PrivateDataReminderSettings settings, int monthsOffset, boolean expectedValid)
+        {
+            DatasetStatus datasetStatus = new DatasetStatus();
+            datasetStatus.setExtensionRequestedDate(dateFromNow(monthsOffset, 0));
 
             String failureMessage = String.format("Extension is %s; Extension Length: %d; Extension Requested On: %s; Valid Until: %s",
                     expectedValid ? "valid" : "expired",
                     settings.getExtensionLength(),
                     datasetStatus.getExtensionRequestedDate(),
                     settings.getExtensionValidUntilDate(datasetStatus));
-            if (currentDate != null)
-            {
-                failureMessage += String.format("; Current Date: %s", currentDate);
-            }
 
-            boolean isValid = currentDate == null
-                        ? settings.isExtensionValid(datasetStatus)
-                        : settings.isExtensionValidAsOf(datasetStatus, currentDate);
+            boolean isValid = settings.isExtensionValid(datasetStatus);
             if (expectedValid) assertTrue(failureMessage, isValid);
             else assertFalse(failureMessage, isValid);
         }
 
         private void testReminderIsRecent(PrivateDataReminderSettings settings, int daysOffset)
         {
-            testReminderIsRecent(settings, 0, daysOffset, 0, null, true);
+            testReminderIsRecent(settings, daysOffset, true);
         }
 
         private void testReminderIsOld(PrivateDataReminderSettings settings, int daysOffset)
         {
-            testReminderIsRecent(settings, 0, daysOffset, 0, null, false);
+            testReminderIsRecent(settings, daysOffset, false);
         }
 
-        private void testReminderIsRecentAsOf(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset)
+        private void testReminderIsRecentAsOf(PrivateDataReminderSettings settings, int monthsOffset,
+                                              int minutesBeforeExpiry)
         {
-            testReminderIsRecent(settings, monthsOffset, 0, minutesOffset, dateFromNow(), true);
+            testReminderNearExpiry(settings, monthsOffset, minutesBeforeExpiry, true);
         }
 
-        private void testReminderIsOldAsOf(PrivateDataReminderSettings settings, int monthsOffset, int minutesOffset)
+        private void testReminderIsOldAsOf(PrivateDataReminderSettings settings, int monthsOffset,
+                                           int minutesBeforeExpiry)
         {
-            testReminderIsRecent(settings, monthsOffset, 0, minutesOffset, dateFromNow(), false);
+            testReminderNearExpiry(settings, monthsOffset, minutesBeforeExpiry, false);
         }
 
-        private void testReminderIsRecent(PrivateDataReminderSettings settings, int monthsOffset, int daysOffset, int minutesOffset,
-                                              Date currentDate, boolean expectedRecent)
+        /**
+         * Checks the boundary at the moment a reminder stops counting as recent. The current date comes
+         * from the expiry, as {@link #testExtensionNearExpiry} explains.
+         *
+         * @param minutesBeforeExpiry zero is the expiry itself, and a negative value is after it.
+         */
+        private void testReminderNearExpiry(PrivateDataReminderSettings settings, int monthsOffset,
+                                            int minutesBeforeExpiry, boolean expectedRecent)
         {
-            Date reminderDate = dateFromNow(monthsOffset, daysOffset, minutesOffset);
-
             DatasetStatus datasetStatus = new DatasetStatus();
-            datasetStatus.setLastReminderDate(reminderDate);
+            datasetStatus.setLastReminderDate(dateFromNow(monthsOffset, 0));
+
+            Date expiry = settings.getReminderValidUntilDate(datasetStatus);
+            Date currentDate = Date.from(expiry.toInstant().minusSeconds(minutesBeforeExpiry * 60L));
+
+            String failureMessage = String.format(
+                    "Reminder is %s; Reminder Frequency: %d; Reminder Sent On: %s; Valid Until: %s; Current Date: %s",
+                    expectedRecent ? "recent" : "old", settings.getReminderFrequency(),
+                    datasetStatus.getLastReminderDate(), expiry, currentDate);
+
+            boolean isRecent = settings.isLastReminderRecentAsOf(datasetStatus, currentDate);
+            if (expectedRecent) assertTrue(failureMessage, isRecent);
+            else assertFalse(failureMessage, isRecent);
+        }
+
+        private void testReminderIsRecent(PrivateDataReminderSettings settings, int daysOffset, boolean expectedRecent)
+        {
+            DatasetStatus datasetStatus = new DatasetStatus();
+            datasetStatus.setLastReminderDate(dateFromNow(0, daysOffset));
 
             String failureMessage = String.format("Reminder is %s; Reminder Frequency: %d; Reminder Sent On: %s; Valid Until: %s",
                     expectedRecent ? "recent" : "old",
                     settings.getReminderFrequency(),
                     datasetStatus.getLastReminderDate(),
                     settings.getReminderValidUntilDate(datasetStatus));
-            if (currentDate != null)
-            {
-                failureMessage += String.format("; Current Date: %s", currentDate);
-            }
 
-            boolean isValid = currentDate == null
-                    ? settings.isLastReminderRecent(datasetStatus)
-                    : settings.isLastReminderRecentAsOf(datasetStatus, currentDate);
-            if (expectedRecent) assertTrue(failureMessage, isValid);
-            else assertFalse(failureMessage, isValid);
+            boolean isRecent = settings.isLastReminderRecent(datasetStatus);
+            if (expectedRecent) assertTrue(failureMessage, isRecent);
+            else assertFalse(failureMessage, isRecent);
         }
 
         private PrivateDataReminderSettings createTestSettingsExtensionLength(int extensionLength)
@@ -464,19 +574,13 @@ public class PrivateDataReminderSettings
             return testSettings;
         }
 
-        private Date dateFromNow()
-        {
-            return dateFromNow(0, 0, 0);
-        }
-
-        private Date dateFromNow(int monthsOffset, int daysOffset, int minutesOffset)
+        private Date dateFromNow(int monthsOffset, int daysOffset)
         {
             return Date.from(
                     LocalDate.now()
                             .plusMonths(monthsOffset)
                             .plusDays(daysOffset)
                             .atStartOfDay(ZoneId.systemDefault())
-                            .plusMinutes(minutesOffset)
                             .toInstant()
             );
         }
