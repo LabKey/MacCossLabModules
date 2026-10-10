@@ -35,13 +35,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter.*;
+import static org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter.IsotopeModification;
+import static org.labkey.panoramapublic.proteomexchange.ExperimentModificationGetter.PxModification;
 
 public class UnimodUtil
 {
     private static final String UNIMOD = "unimod";
     private static final BlockingCache<String, UnimodModifications> _unimodCache =
-            CacheManager.getBlockingCache(1, CacheManager.DAY, "Unimod Modifications", (key, argument) -> readUnimodMods());
+        CacheManager.getBlockingCache(String.class, 1, CacheManager.DAY, "Unimod Modifications", (_, _) -> readUnimodMods());
 
     private static final Logger LOG = LogHelper.getLogger(ExperimentModificationGetter.class, "Reads and caches Unimod modifications");
 
