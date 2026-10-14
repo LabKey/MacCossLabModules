@@ -15,42 +15,56 @@
  */
 package org.labkey.panoramapublic.ncbi;
 
+import org.apache.hc.client5.http.HttpResponseException;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Mock implementation of {@link NcbiPublicationSearchService} that returns canned data registered by tests.
- * Used by Selenium tests when running on TeamCity.
- * Extends {@link NcbiPublicationSearchServiceImpl} and only overrides {@link #getString(String)},
- * the single method that makes HTTP calls to NCBI. All search logic, filtering, author/title
- * verification, citation parsing, and priority filtering run through the real implementation code.
+ * Used by NcbiApiKeyTest on every server, and by PublicationSearchTest on TeamCity.
+ * Extends {@link NcbiPublicationSearchServiceImpl} and gives it an {@link NcbiHttpClient} whose
+ * {@code executeGet()} returns canned responses in place of the real HTTP request. The retry loop in
+ * {@link NcbiHttpClient#getString}, and all search logic, filtering, author/title verification, citation
+ * parsing, and priority filtering run through the real implementation code.
  * Tests register mock articles via {@link #register}, providing the database, ID, search key,
  * metadata fields, and citation. The mock builds internal lookup maps from this data and returns
- * appropriate responses when the real search logic calls {@code getString()}.
+ * appropriate responses when the real search logic sends a request.
  */
 public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServiceImpl
 {
-    // ESearch: searchKey -> list of IDs (per database)
-    private final Map<String, List<String>> _pmcSearchResults = new HashMap<>();
-    private final Map<String, List<String>> _pubmedSearchResults = new HashMap<>();
+    // The mock responds to a request carrying this API key with a 400, which is NCBI's response to a key it
+    // does not recognize. NcbiApiKeyTest uses the same value.
+    public static final String REJECTED_API_KEY = "mock-rejected-ncbi-api-key";
+    // The mock responds to a request carrying this API key with a 503, so the key check cannot be completed.
+    // NcbiApiKeyTest uses the same value.
+    public static final String UNCHECKED_API_KEY = "mock-unchecked-ncbi-api-key";
 
-    // ESummary: ID -> metadata JSONObject (per database)
-    private final Map<String, JSONObject> _pmcMetadata = new HashMap<>();
-    private final Map<String, JSONObject> _pubmedMetadata = new HashMap<>();
+    private final CannedResponses _responses;
 
-    // Citations: PMID -> citation string
-    private final Map<String, String> _citations = new HashMap<>();
+    public MockNcbiPublicationSearchService()
+    {
+        this(new CannedResponses());
+    }
+
+    private MockNcbiPublicationSearchService(CannedResponses responses)
+    {
+        super(responses);
+        _responses = responses;
+    }
 
     /**
      * Register a mock article. The mock stores the data in internal lookup maps used by
-     * {@link #getString(String)}.
+     * {@link CannedResponses#executeGet(String)}.
      * @param database     "pmc" or "pubmed" — the NCBI database this article is in
      * @param id           the article ID in the given database (numeric ID for pmc or pubmed)
      * @param searchKey    what ESearch query term finds this article (e.g. PXD ID for PMC, author last name for PubMed)
@@ -105,13 +119,13 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
         // Store in appropriate maps
         if (isPmc)
         {
-            _pmcSearchResults.computeIfAbsent(searchKey, k -> new ArrayList<>()).add(id);
-            _pmcMetadata.put(id, metadata);
+            _responses._pmcSearchResults.computeIfAbsent(searchKey, k -> new ArrayList<>()).add(id);
+            _responses._pmcMetadata.put(id, metadata);
         }
         else
         {
-            _pubmedSearchResults.computeIfAbsent(searchKey, k -> new ArrayList<>()).add(id);
-            _pubmedMetadata.put(id, metadata);
+            _responses._pubmedSearchResults.computeIfAbsent(searchKey, k -> new ArrayList<>()).add(id);
+            _responses._pubmedMetadata.put(id, metadata);
         }
 
         // Store citation keyed by PMID.
@@ -122,95 +136,135 @@ public class MockNcbiPublicationSearchService extends NcbiPublicationSearchServi
             String citationKey = isPmc ? pmid : id;
             if (citationKey != null)
             {
-                _citations.put(citationKey, citation);
+                _responses._citations.put(citationKey, citation);
             }
         }
     }
 
     /**
-     * Returns canned responses for NCBI API requests based on registered mock data.
-     * Handles ESearch, ESummary, and Citation Exporter URLs.
+     * An {@link NcbiHttpClient} that returns canned responses for NCBI API requests based on registered
+     * mock data. Handles ESearch, ESummary, and Citation Exporter URLs.
      */
-    @Override
-    protected String getString(String url) throws IOException
+    private static class CannedResponses extends NcbiHttpClient
     {
-        if (url.contains("esearch.fcgi"))
-        {
-            return handleESearch(url).toString();
-        }
-        else if (url.contains("esummary.fcgi"))
-        {
-            return handleESummary(url).toString();
-        }
-        else if (url.contains("lit/ctxp"))
-        {
-            return handleCitation(url).toString();
-        }
-        throw new IOException("MockNcbiPublicationSearchService: unexpected URL: " + url);
-    }
+        // ESearch: searchKey -> list of IDs (per database)
+        private final Map<String, List<String>> _pmcSearchResults = new HashMap<>();
+        private final Map<String, List<String>> _pubmedSearchResults = new HashMap<>();
 
-    private JSONObject handleESearch(String url)
-    {
-        boolean isPmc = url.contains("db=pmc");
-        Map<String, List<String>> searchMap = isPmc ? _pmcSearchResults : _pubmedSearchResults;
+        // ESummary: ID -> metadata JSONObject (per database)
+        private final Map<String, JSONObject> _pmcMetadata = new HashMap<>();
+        private final Map<String, JSONObject> _pubmedMetadata = new HashMap<>();
 
-        JSONArray idList = new JSONArray();
-        for (Map.Entry<String, List<String>> entry : searchMap.entrySet())
+        // Citations: PMID -> citation string
+        private final Map<String, String> _citations = new HashMap<>();
+
+        @Override
+        protected String executeGet(String url) throws IOException
         {
-            if (url.contains(entry.getKey()))
+            if (REJECTED_API_KEY.equals(apiKeyFrom(url)))
             {
-                entry.getValue().forEach(idList::put);
+                throw new HttpResponseException(400, "Bad Request - API key invalid");
             }
-        }
-
-        JSONObject esearchResult = new JSONObject();
-        esearchResult.put("idlist", idList);
-        return new JSONObject().put("esearchresult", esearchResult);
-    }
-
-    private JSONObject handleESummary(String url)
-    {
-        boolean isPmc = url.contains("db=pmc");
-        Map<String, JSONObject> metadataMap = isPmc ? _pmcMetadata : _pubmedMetadata;
-
-        JSONObject result = new JSONObject();
-        for (Map.Entry<String, JSONObject> entry : metadataMap.entrySet())
-        {
-            if (url.contains(entry.getKey()))
+            if (UNCHECKED_API_KEY.equals(apiKeyFrom(url)))
             {
-                result.put(entry.getKey(), entry.getValue());
+                throw new HttpResponseException(503, "Service Unavailable");
             }
-        }
-
-        return new JSONObject().put("result", result);
-    }
-
-    /**
-     * Build a citation JSON response matching the NCBI Literature Citation Exporter format.
-     * The real API returns {@code {"nlm":{"orig":"citation text..."}}}.
-     * If no citation is registered for the ID, returns an empty JSON object.
-     */
-    private JSONObject handleCitation(String url)
-    {
-        // Extract the publication ID from the URL (last segment after "id=")
-        String id = null;
-        int idIdx = url.indexOf("id=");
-        if (idIdx >= 0)
-        {
-            id = url.substring(idIdx + 3);
-            // Remove any trailing query parameters
-            int ampIdx = id.indexOf('&');
-            if (ampIdx >= 0)
+            if (url.contains("esearch.fcgi"))
             {
-                id = id.substring(0, ampIdx);
+                return handleESearch(url).toString();
             }
+            else if (url.contains("esummary.fcgi"))
+            {
+                return handleESummary(url).toString();
+            }
+            else if (url.contains("lit/ctxp"))
+            {
+                return handleCitation(url).toString();
+            }
+            throw new IOException("MockNcbiPublicationSearchService: unexpected URL: " + url);
         }
 
-        String citation = id != null ? _citations.get(id) : null;
-        if (citation != null)
+        private JSONObject handleESearch(String url)
         {
-            return new JSONObject().put("nlm", new JSONObject().put("orig", citation));
+            boolean isPmc = "pmc".equals(extractQueryParam(url, "db"));
+            Map<String, List<String>> searchMap = isPmc ? _pmcSearchResults : _pubmedSearchResults;
+
+            // Match search keys against the decoded ESearch query term, so a key cannot match part of
+            // another parameter such as tool or email.
+            String term = extractQueryParam(url, "term");
+
+            JSONArray idList = new JSONArray();
+            if (term != null)
+            {
+                for (Map.Entry<String, List<String>> entry : searchMap.entrySet())
+                {
+                    // A key is a substring of the term. searchPmc wraps the PMC term in quotes, e.g. "PXD056793".
+                    if (term.contains(entry.getKey()))
+                    {
+                        entry.getValue().forEach(idList::put);
+                    }
+                }
+            }
+
+            JSONObject esearchResult = new JSONObject();
+            esearchResult.put("idlist", idList);
+            return new JSONObject().put("esearchresult", esearchResult);
         }
-        return new JSONObject();
+
+        private JSONObject handleESummary(String url)
+        {
+            boolean isPmc = "pmc".equals(extractQueryParam(url, "db"));
+            Map<String, JSONObject> metadataMap = isPmc ? _pmcMetadata : _pubmedMetadata;
+
+            // ESummary requests a comma-separated list of IDs in the "id" parameter. Match registered
+            // IDs against that list rather than scanning the whole URL.
+            String idParam = extractQueryParam(url, "id");
+            List<String> requestedIds = idParam == null ? List.of() : Arrays.asList(idParam.split(","));
+
+            JSONObject result = new JSONObject();
+            for (Map.Entry<String, JSONObject> entry : metadataMap.entrySet())
+            {
+                if (requestedIds.contains(entry.getKey()))
+                {
+                    result.put(entry.getKey(), entry.getValue());
+                }
+            }
+
+            return new JSONObject().put("result", result);
+        }
+
+        /**
+         * Build a citation JSON response matching the NCBI Literature Citation Exporter format.
+         * The real API returns {@code {"nlm":{"orig":"citation text..."}}}.
+         * If no citation is registered for the ID, returns an empty JSON object.
+         */
+        private JSONObject handleCitation(String url)
+        {
+            String id = extractQueryParam(url, "id");
+            String citation = id != null ? _citations.get(id) : null;
+            if (citation != null)
+            {
+                return new JSONObject().put("nlm", new JSONObject().put("orig", citation));
+            }
+            return new JSONObject();
+        }
+
+        /**
+         * Returns the URL-decoded value of the given query parameter, or null if it is not present.
+         */
+        private static @Nullable String extractQueryParam(String url, String name)
+        {
+            int queryStart = url.indexOf('?');
+            String query = queryStart >= 0 ? url.substring(queryStart + 1) : url;
+            for (String pair : query.split("&"))
+            {
+                int eq = pair.indexOf('=');
+                if (eq > 0 && pair.substring(0, eq).equals(name))
+                {
+                    return URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8);
+                }
+            }
+            return null;
+        }
     }
 }
