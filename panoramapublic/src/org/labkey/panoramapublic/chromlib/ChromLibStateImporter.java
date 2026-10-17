@@ -16,6 +16,7 @@
 package org.labkey.panoramapublic.chromlib;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.logging.log4j.Logger;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.DbSchema;
@@ -136,7 +137,7 @@ public abstract class ChromLibStateImporter
     {
         String skyFile = getSkyFile(row);
         String runState = String.valueOf(row.get(RUN_STATE));
-        if (_currentRun == null || !StringUtils.equals(skyFile, _currentRun.getFileName()))
+        if (_currentRun == null || !Strings.CS.equals(skyFile, _currentRun.getFileName()))
         {
             ITargetedMSRun run = _svc.getRunByFileName(skyFile, _container);
             if (run == null)

@@ -486,18 +486,11 @@ public class ExperimentAnnotationsManager
         SQLFragment sql = new SQLFragment("SELECT Id FROM ").append(svc.getTableInfoRuns(), "r")
                 .append(" WHERE PeptideCount > 0 ")
                 .append(" AND Deleted = ? " ).add(Boolean.FALSE)
-                .append(" AND Container IN ");
-        if (experimentAnnotations.isIncludeSubfolders())
-        {
-            List<Container> containers = ContainerManager.getAllChildren(experimentAnnotations.getContainer(), user);
-            sql.append(ContainerManager.getIdsAsCsvList(new HashSet<>(containers), d));
-        }
-        else
-        {
-            sql.append("(");
-            sql.appendValue(experimentAnnotations.getContainer(),d);
-            sql.append(")");
-        }
+                .append(" AND Container");
+        List<Container> containers = experimentAnnotations.isIncludeSubfolders()
+                ? ContainerManager.getAllChildren(experimentAnnotations.getContainer(), user)
+                : List.of(experimentAnnotations.getContainer());
+        sql.appendInClause(containers, d);
 
         return new SqlSelector(targetedmsSchema.getDbSchema(), sql).exists();
     }
