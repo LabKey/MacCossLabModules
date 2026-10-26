@@ -16,11 +16,14 @@
 package org.labkey.signup;
 import org.labkey.api.data.Container;
 
+import java.util.Date;
+
 // Class TempUser contains information needed to add a user to the LabKey database as a User later on but has addition
-// field @key for use with confirmation
+// field @key for use with confirmation. The key holds a hash of the emailed key, or null once the key has been used.
 public class TempUser
 {
     private String key;
+    private Date keyTimeout;
     private String email;
     private String firstName;
     private String lastName;
@@ -98,6 +101,16 @@ public class TempUser
     public void setKey(String key)
     {
         this.key = key;
+    }
+
+    public Date getKeyTimeout()
+    {
+        return keyTimeout;
+    }
+
+    public void setKeyTimeout(Date keyTimeout)
+    {
+        this.keyTimeout = keyTimeout;
     }
 
     public Integer getLabkeyUserId()

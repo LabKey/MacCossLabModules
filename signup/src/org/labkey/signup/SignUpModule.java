@@ -52,7 +52,7 @@ public class SignUpModule extends DefaultModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 13.24;
+        return 26.001;
     }
 
     @Override
@@ -111,6 +111,12 @@ public class SignUpModule extends DefaultModule
     public boolean getRequireSitePermission()
     {
         return true;
+    }
+
+    @Override
+    public @NotNull Set<Class<?>> getUnitTests()
+    {
+        return Set.of(SignUpManager.TestCase.class);
     }
 
 }

@@ -466,8 +466,7 @@ public class SignUpController extends SpringActionController
                 if (result != null)
                     _successUrl = result.getRedirectURL();
 
-                _tempUser.setLabkeyUserId(newUser.getUserId());
-                Table.update(null, SignUpManager.getTableInfoTempUsers(), _tempUser, _tempUser.getUserId());
+                SignUpManager.get().markKeyUsed(_tempUser, newUser.getUserId());
 
                 Container c = _tempUser.getContainer();
                 WritablePropertyMap property = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, false);
@@ -729,13 +728,14 @@ public class SignUpController extends SpringActionController
     {
         try (DbScope.Transaction transaction = SignUpManager.getSchema().getScope().ensureTransaction())
         {
-            TempUser tempUser = getTempUser(form, email);
-            ActionURL confirmationUrl = getConfirmationURL(getContainer(), email, tempUser.getKey());
+            String key = SignUpManager.get().saveWithNewKey(email, form.getFirstName(), form.getLastName(),
+                    form.getOrganization(), getContainer());
+            ActionURL confirmationUrl = getConfirmationURL(getContainer(), email, key);
             User mockUser = new User();
             mockUser.setEmail(email.getEmailAddress());
             SecurityManager.sendEmail(getContainer(), mockUser,
                     SecurityManager.getRegistrationMessage(null, false),
-                    email.getEmailAddress(), confirmationUrl);
+                    email.getEmailAddress(), confirmationUrl, LoginManager.SETUP_LINK_TIMEOUT);
             transaction.commit();
         }
     }
@@ -1028,25 +1028,5 @@ public class SignUpController extends SpringActionController
             response.put("status", "SUCCESS");
             return response;
         }
-    }
-
-    private TempUser getTempUser(SignupForm signupForm, ValidEmail email)
-    {
-        // If the user does not exit in LabKey's core database, check in our temporaryusers table
-        TempUser tempUser = SignUpManager.get().getTempUserWithEmail(email.getEmailAddress());
-
-        if(tempUser == null)
-        {   // If tempUser is null create a new TempUser object and populate fields
-            tempUser = new TempUser();
-            tempUser.setEmail(email.getEmailAddress());
-            tempUser.setFirstName(signupForm.getFirstName());
-            tempUser.setLastName(signupForm.getLastName());
-            tempUser.setOrganization(signupForm.getOrganization());
-            tempUser.setKey(LoginManager.createTempPassword());
-            tempUser.setContainer(getContainer());
-
-            Table.insert(null, SignUpManager.getTableInfoTempUsers(), tempUser);
-        }
-        return tempUser;
     }
 }

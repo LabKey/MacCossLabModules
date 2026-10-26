@@ -121,13 +121,17 @@ public class SignUpSchema extends UserSchema
                             @Override
                             public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
                             {
+                                // The key is cleared once the link is used
+                                if (getValue(ctx) == null)
+                                    return;
+
                                 Container container = ContainerManager.getForId(String.valueOf(ctx.get(FieldKey.fromParts("Container"))));
                                 String email = String.valueOf(ctx.get(FieldKey.fromParts("email")));
-                                String key = String.valueOf(ctx.get(getColumnInfo().getFieldKey()));
 
+                                // Only a hash of the key is stored, so the link is shown masked
                                 ActionURL url = new ActionURL(SignUpController.ConfirmAction.class, container);
                                 url.addParameter("email", email);
-                                url.addParameter("key", key);
+                                url.addParameter("key", "**********");
                                 out.write(url.getLocalURIString());
                                 // out.write("<a href=\"" + url + "\">Confirmation URL</a>");
                             }
