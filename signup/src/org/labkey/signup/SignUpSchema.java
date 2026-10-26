@@ -42,6 +42,7 @@ import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.view.ActionURL;
 import org.labkey.api.writer.HtmlWriter;
 
+import java.util.Date;
 import java.util.Set;
 
 public class SignUpSchema extends UserSchema
@@ -118,21 +119,37 @@ public class SignUpSchema extends UserSchema
                     {
                         return new DataColumn(colInfo)
                         {
+                            // Returns the link with the key masked while the key is unused and unexpired,
+                            // otherwise null. Only a hash of the key is stored. Exports use this value, so the
+                            // hash is not exported.
                             @Override
-                            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
+                            public Object getDisplayValue(RenderContext ctx)
                             {
-                                // The key is cleared once the link is used
-                                if (getValue(ctx) == null)
-                                    return;
+                                Date keyTimeout = ctx.get(FieldKey.fromParts("keyTimeout"), Date.class);
+                                if (getValue(ctx) == null || keyTimeout == null || !keyTimeout.after(new Date()))
+                                    return null;
 
-                                Container container = ContainerManager.getForId(String.valueOf(ctx.get(FieldKey.fromParts("Container"))));
-                                String email = String.valueOf(ctx.get(FieldKey.fromParts("email")));
+                                Container container = ContainerManager.getForId(ctx.get(FieldKey.fromParts("Container"), String.class));
+                                String email = ctx.get(FieldKey.fromParts("email"), String.class);
 
-                                // Only a hash of the key is stored, so the link is shown masked
                                 ActionURL url = new ActionURL(SignUpController.ConfirmAction.class, container);
                                 url.addParameter("email", email);
                                 url.addParameter("key", "**********");
-                                out.write(url.getLocalURIString());
+                                return url.getLocalURIString();
+                            }
+
+                            @Override
+                            public Object getJsonValue(RenderContext ctx)
+                            {
+                                return getDisplayValue(ctx);
+                            }
+
+                            @Override
+                            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
+                            {
+                                Object url = getDisplayValue(ctx);
+                                if (url != null)
+                                    out.write(url.toString());
                                 // out.write("<a href=\"" + url + "\">Confirmation URL</a>");
                             }
 
@@ -142,6 +159,7 @@ public class SignUpSchema extends UserSchema
                                 super.addQueryFieldKeys(keys);
                                 keys.add(FieldKey.fromParts("Container"));
                                 keys.add(FieldKey.fromParts("email"));
+                                keys.add(FieldKey.fromParts("keyTimeout"));
                             }
                         };
                     }

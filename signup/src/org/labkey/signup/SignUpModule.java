@@ -114,7 +114,7 @@ public class SignUpModule extends DefaultModule
     }
 
     @Override
-    public @NotNull Set<Class<?>> getUnitTests()
+    public @NotNull Set<Class<?>> getIntegrationTests()
     {
         return Set.of(SignUpManager.TestCase.class);
     }

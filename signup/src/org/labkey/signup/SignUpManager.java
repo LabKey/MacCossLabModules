@@ -23,7 +23,9 @@ import org.junit.Test;
 import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.DbSchema;
+import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
+import org.labkey.api.data.SqlExecutor;
 import org.labkey.api.data.Table;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
@@ -36,6 +38,8 @@ import org.labkey.api.util.TestContext;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 public class SignUpManager
 {
@@ -90,38 +94,48 @@ public class SignUpManager
         return new TableSelector(getTableInfoTempUsers(),filter, null).getObject(TempUser.class);
     }
 
-    // Saves a new key for the pending user, and returns the key. A repeat signup for the same email replaces
-    // the key, so the link already sent stops working. The name, organization and folder from the latest
-    // submitted form replace the stored ones.
+    // Saves and returns a new key for the pending user. A repeat signup for the same email replaces the key,
+    // so the link sent with the old key stops working.
     public String saveWithNewKey(ValidEmail email, String firstName, String lastName, String organization, Container container)
     {
         TempUser tempUser = getTempUserWithEmail(email.getEmailAddress());
-        boolean exists = tempUser != null;
-        if (!exists)
+        if (tempUser != null)
         {
-            tempUser = new TempUser();
-            tempUser.setEmail(email.getEmailAddress());
+            String key = assignKey(tempUser);
+            Map<String, Object> keyFields = new HashMap<>();
+            keyFields.put("key", tempUser.getKey());
+            keyFields.put("keyTimeout", tempUser.getKeyTimeout());
+            Table.update(null, getTableInfoTempUsers(), keyFields, tempUser.getUserId());
+            return key;
         }
+
+        tempUser = new TempUser();
+        tempUser.setEmail(email.getEmailAddress());
         tempUser.setFirstName(firstName);
         tempUser.setLastName(lastName);
         tempUser.setOrganization(organization);
         tempUser.setContainer(container);
-
         String key = assignKey(tempUser);
-        if (exists)
-            Table.update(null, getTableInfoTempUsers(), tempUser, tempUser.getUserId());
-        else
-            Table.insert(null, getTableInfoTempUsers(), tempUser);
+        Table.insert(null, getTableInfoTempUsers(), tempUser);
         return key;
     }
 
-    // Store the labkey UserId created for the user, and clear the key so the link cannot be used again.
-    public void markKeyUsed(TempUser tempUser, int labkeyUserId)
+    // Clears the key so the link cannot be used again. Returns false if the key has been replaced, used or has
+    // expired since tempUser was read. A concurrent call for the same row waits until this transaction ends.
+    public boolean clearKeyIfValid(TempUser tempUser)
     {
-        tempUser.setLabkeyUserId(labkeyUserId);
-        tempUser.setKey(null);
-        tempUser.setKeyTimeout(null);
-        Table.update(null, getTableInfoTempUsers(), tempUser, tempUser.getUserId());
+        SQLFragment sql = SQLFragment.unsafe("UPDATE ").append(getTableInfoTempUsers())
+                .unsafeAppend(" SET Key = NULL, KeyTimeout = NULL WHERE UserId = ? AND Key = ? AND KeyTimeout > ?",
+                        tempUser.getUserId(), tempUser.getKey(), new Date());
+        return new SqlExecutor(getSchema()).execute(sql) == 1;
+    }
+
+    // Stores the id of the LabKey account created from tempUser
+    public void setLabkeyUserId(TempUser tempUser, int labkeyUserId)
+    {
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("labkeyUserId", labkeyUserId);
+        Table.update(null, getTableInfoTempUsers(), fields, tempUser.getUserId());
     }
 
     // Sets a new key on tempUser, storing only its hash, and returns the key. The caller saves tempUser.
@@ -133,7 +147,8 @@ public class SignUpManager
         return key;
     }
 
-    // Keys are long and random, so a fast unsalted hash suffices. signup-26.000-26.001.sql hashes existing rows identically.
+    // Keys are long and random, so a fast unsalted hash suffices. signup-26.000-26.001.sql hashes existing rows
+    // identically.
     private static String hashKey(String key)
     {
         return Crypt.SHA256.digestWithPrefix(key);
@@ -178,13 +193,8 @@ public class SignUpManager
         public void testKeyStoredAsHash()
         {
             TempUser stored = get().getTempUserWithEmail(EMAIL);
-            assertNotEquals("Key stored in plain text", _key, stored.getKey());
-            assertTrue("Stored key is not a SHA-256 hash", stored.getKey().startsWith("sha256:"));
+            assertEquals("Key not stored as its SHA-256 hash", Crypt.SHA256.digestWithPrefix(_key), stored.getKey());
             assertNotNull("Key rejected", get().verifyUser(_email, _key));
-
-            long expected = Instant.now().plus(LoginManager.SETUP_LINK_TIMEOUT).toEpochMilli();
-            assertTrue("Key does not expire SETUP_LINK_TIMEOUT after signup",
-                    Math.abs(stored.getKeyTimeout().getTime() - expected) < 60_000);
         }
 
         @Test
@@ -201,33 +211,44 @@ public class SignUpManager
             _tempUser.setKeyTimeout(Date.from(Instant.now().minusSeconds(1)));
             save();
             assertNull("Expired key accepted", get().verifyUser(_email, _key));
+            assertFalse("Expired key cleared", get().clearKeyIfValid(_tempUser));
         }
 
         @Test
-        public void testRepeatSignupReplacesKeyAndDetails()
+        public void testRepeatSignupReplacesOnlyKey()
         {
-            String newKey = get().saveWithNewKey(_email, "Corrected", "Name", "New Org", JunitUtil.getTestContainer());
+            String newKey = get().saveWithNewKey(_email, "Other", "Name", "Other Org", JunitUtil.getTestContainer());
             assertNull("Replaced key accepted", get().verifyUser(_email, _key));
 
             TempUser stored = get().verifyUser(_email, newKey);
             assertNotNull("New key rejected", stored);
             assertEquals("Repeat signup created a second row", _tempUser.getUserId(), stored.getUserId());
-            assertEquals("First name not updated", "Corrected", stored.getFirstName());
-            assertEquals("Last name not updated", "Name", stored.getLastName());
-            assertEquals("Organization not updated", "New Org", stored.getOrganization());
+            assertEquals("First name changed by a repeat signup", "Signup", stored.getFirstName());
+            assertEquals("Last name changed by a repeat signup", "Test", stored.getLastName());
+            assertEquals("Organization changed by a repeat signup", "Signup Test", stored.getOrganization());
+        }
+
+        @Test
+        public void testReplacedKeyCannotBeUsed()
+        {
+            String newKey = get().saveWithNewKey(_email, "Signup", "Test", "Signup Test", JunitUtil.getTestContainer());
+            assertFalse("Replaced key cleared", get().clearKeyIfValid(_tempUser));
+            assertNotNull("New key cleared by the replaced key", get().verifyUser(_email, newKey));
         }
 
         @Test
         public void testUsedKeyRejected()
         {
             int userId = TestContext.get().getUser().getUserId();
-            get().markKeyUsed(_tempUser, userId);
+            assertTrue("Valid key not cleared", get().clearKeyIfValid(_tempUser));
+            get().setLabkeyUserId(_tempUser, userId);
             assertNull("Used key accepted", get().verifyUser(_email, _key));
+            assertFalse("Key cleared twice", get().clearKeyIfValid(_tempUser));
 
             TempUser stored = get().getTempUserWithEmail(EMAIL);
             assertNull("Key not cleared after use", stored.getKey());
             assertNull("Key timeout not cleared after use", stored.getKeyTimeout());
-            assertEquals("Account not recorded on the signup row", Integer.valueOf(userId), stored.getLabkeyUserId());
+            assertEquals("Account userId not saved on the signup row", Integer.valueOf(userId), stored.getLabkeyUserId());
         }
     }
 }

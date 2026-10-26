@@ -450,6 +450,11 @@ public class SignUpController extends SpringActionController
             // User creation should be in a transaction
             try (DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
             {
+                // Clear the key so it cannot be reused. Returns false if the key was replaced, cleared or expired since
+                // validateRequest. The reshown view reports the error.
+                if (!SignUpManager.get().clearKeyIfValid(_tempUser))
+                    return false;
+
                 // Add user to LabKey core database
                 SecurityManager.NewUserStatus newUserStatus = SecurityManager.addUser(_email, null);
                 User newUser = newUserStatus.getUser();
@@ -466,7 +471,7 @@ public class SignUpController extends SpringActionController
                 if (result != null)
                     _successUrl = result.getRedirectURL();
 
-                SignUpManager.get().markKeyUsed(_tempUser, newUser.getUserId());
+                SignUpManager.get().setLabkeyUserId(_tempUser, newUser.getUserId());
 
                 Container c = _tempUser.getContainer();
                 WritablePropertyMap property = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, false);
@@ -720,9 +725,9 @@ public class SignUpController extends SpringActionController
         }
     }
 
-    // Creates (or reuses) a TempUser row and sends the confirmation email in a single
-    // transaction. On send failure the exception propagates and the transaction rolls back
-    // automatically so a freshly inserted TempUser row does not persist.
+    // Saves the TempUser row with a new key and sends the confirmation email in one transaction. A repeat
+    // signup replaces the key, so the link already sent stops working. If the email cannot be sent, nothing
+    // is saved, and the earlier link keeps working.
     private void createUserAndSendEmail(SignupForm form, ValidEmail email)
             throws MessagingException, ConfigurationException, java.sql.SQLException
     {
