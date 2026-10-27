@@ -450,6 +450,11 @@ public class SignUpController extends SpringActionController
             // User creation should be in a transaction
             try (DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
             {
+                // Clear the key so it cannot be reused. Returns false if the key was replaced, cleared or expired since
+                // validateRequest. The reshown view reports the error.
+                if (!SignUpManager.get().clearKeyIfValid(_tempUser))
+                    return false;
+
                 // Add user to LabKey core database
                 SecurityManager.NewUserStatus newUserStatus = SecurityManager.addUser(_email, null);
                 User newUser = newUserStatus.getUser();
@@ -466,8 +471,7 @@ public class SignUpController extends SpringActionController
                 if (result != null)
                     _successUrl = result.getRedirectURL();
 
-                _tempUser.setLabkeyUserId(newUser.getUserId());
-                Table.update(null, SignUpManager.getTableInfoTempUsers(), _tempUser, _tempUser.getUserId());
+                SignUpManager.get().setLabkeyUserId(_tempUser, newUser.getUserId());
 
                 Container c = _tempUser.getContainer();
                 WritablePropertyMap property = PropertyManager.getWritableProperties(c, SignUpModule.SIGNUP_CATEGORY, false);
@@ -721,21 +725,22 @@ public class SignUpController extends SpringActionController
         }
     }
 
-    // Creates (or reuses) a TempUser row and sends the confirmation email in a single
-    // transaction. On send failure the exception propagates and the transaction rolls back
-    // automatically so a freshly inserted TempUser row does not persist.
+    // Saves the TempUser row with a new key and sends the confirmation email in one transaction. A repeat
+    // signup replaces the key, so the link already sent stops working. If the email cannot be sent, nothing
+    // is saved, and the earlier link keeps working.
     private void createUserAndSendEmail(SignupForm form, ValidEmail email)
             throws MessagingException, ConfigurationException, java.sql.SQLException
     {
         try (DbScope.Transaction transaction = SignUpManager.getSchema().getScope().ensureTransaction())
         {
-            TempUser tempUser = getTempUser(form, email);
-            ActionURL confirmationUrl = getConfirmationURL(getContainer(), email, tempUser.getKey());
+            String key = SignUpManager.get().saveWithNewKey(email, form.getFirstName(), form.getLastName(),
+                    form.getOrganization(), getContainer());
+            ActionURL confirmationUrl = getConfirmationURL(getContainer(), email, key);
             User mockUser = new User();
             mockUser.setEmail(email.getEmailAddress());
             SecurityManager.sendEmail(getContainer(), mockUser,
                     SecurityManager.getRegistrationMessage(null, false),
-                    email.getEmailAddress(), confirmationUrl);
+                    email.getEmailAddress(), confirmationUrl, LoginManager.SETUP_LINK_TIMEOUT);
             transaction.commit();
         }
     }
@@ -1028,25 +1033,5 @@ public class SignUpController extends SpringActionController
             response.put("status", "SUCCESS");
             return response;
         }
-    }
-
-    private TempUser getTempUser(SignupForm signupForm, ValidEmail email)
-    {
-        // If the user does not exit in LabKey's core database, check in our temporaryusers table
-        TempUser tempUser = SignUpManager.get().getTempUserWithEmail(email.getEmailAddress());
-
-        if(tempUser == null)
-        {   // If tempUser is null create a new TempUser object and populate fields
-            tempUser = new TempUser();
-            tempUser.setEmail(email.getEmailAddress());
-            tempUser.setFirstName(signupForm.getFirstName());
-            tempUser.setLastName(signupForm.getLastName());
-            tempUser.setOrganization(signupForm.getOrganization());
-            tempUser.setKey(LoginManager.createTempPassword());
-            tempUser.setContainer(getContainer());
-
-            Table.insert(null, SignUpManager.getTableInfoTempUsers(), tempUser);
-        }
-        return tempUser;
     }
 }
