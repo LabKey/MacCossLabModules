@@ -16,6 +16,7 @@
 
 package org.labkey.signup;
 
+import org.jetbrains.annotations.Nullable;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -84,7 +85,7 @@ public class SignUpManager
     }
 
     // Returns the pending user whose unexpired, unused key matches
-    public TempUser verifyUser(ValidEmail email, String key)
+    public @Nullable TempUser verifyUser(ValidEmail email, @Nullable String key)
     {
         if (key == null)
             return null;
