@@ -54,6 +54,7 @@ import org.labkey.panoramapublic.ncbi.NcbiHttpClient;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchServiceImpl;
 import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.speclib.SpecLibKey;
+import org.labkey.panoramapublic.pipeline.CopyExperimentFinalTask;
 import org.labkey.panoramapublic.pipeline.CopyExperimentPipelineProvider;
 import org.labkey.panoramapublic.pipeline.PrivateDataReminderJob;
 import org.labkey.panoramapublic.pipeline.PxValidationPipelineProvider;
@@ -402,6 +403,7 @@ public class PanoramaPublicModule extends SpringModule
         set.add(NcbiPublicationSearchServiceImpl.TestCase.class);
         set.add(NcbiHttpClient.TestCase.class);
         set.add(NcbiUtils.TestCase.class);
+        set.add(CopyExperimentFinalTask.TestCase.class);
 
         return set;
     }
