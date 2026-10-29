@@ -96,6 +96,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -690,6 +691,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         }
     }
 
+    private static final int MAX_PASSWORD_ATTEMPTS = 100;
+
     private static String createPassword(User user)
     {
         return createPassword(user, PasswordGenerator::generate);
@@ -698,10 +701,11 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
     /**
      * Returns the first generated password that passes every PasswordRule. Login checks the rule configured for the site
      * at the time of login, and the Strong rule accepts some passwords that the Good rule rejects.
+     * @throws IllegalStateException if none of MAX_PASSWORD_ATTEMPTS generated passwords passes every rule
      */
     private static String createPassword(User user, Supplier<String> generator)
     {
-        while (true)
+        for (int i = 0; i < MAX_PASSWORD_ATTEMPTS; i++)
         {
             String password = generator.get();
             if (Arrays.stream(PasswordRule.values()).allMatch(rule -> rule.isValidForLogin(password, user, null)))
@@ -709,6 +713,8 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
                 return password;
             }
         }
+        throw new IllegalStateException("Could not generate a reviewer password that passes every password rule after "
+                + MAX_PASSWORD_ATTEMPTS + " attempts");
     }
 
     private static class PasswordGenerator
@@ -926,6 +932,25 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
             };
             assertEquals("Reviewer password should pass every password rule",
                     noEmailSequence, createPassword(reviewer, generator));
+        }
+
+        /**
+         * createPassword() must throw after MAX_PASSWORD_ATTEMPTS rejected passwords, not keep generating passwords.
+         */
+        @Test
+        public void testCreatePasswordStopsAfterMaxAttempts()
+        {
+            User reviewer = new User("reviewer@example.org", 0);
+            AtomicInteger attempts = new AtomicInteger();
+            Supplier<String> generator = () -> {
+                if (attempts.incrementAndGet() > 2 * MAX_PASSWORD_ATTEMPTS)
+                    fail("createPassword() did not stop after " + MAX_PASSWORD_ATTEMPTS + " rejected passwords");
+                return "Ab1!xQzk"; // Rejected by the Strong rule
+            };
+
+            assertThrows(IllegalStateException.class, () -> createPassword(reviewer, generator));
+            assertEquals("createPassword() should stop after " + MAX_PASSWORD_ATTEMPTS + " rejected passwords",
+                    MAX_PASSWORD_ATTEMPTS, attempts.get());
         }
     }
 }
