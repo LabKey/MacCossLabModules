@@ -18,6 +18,8 @@ package org.labkey.panoramapublic.pipeline;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.junit.Assert;
+import org.junit.Test;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.DbScope;
@@ -90,9 +92,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -686,14 +691,30 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         }
     }
 
-    private static String createPassword(User user)
-    {
-        String password;
-        do {
-            password = PasswordGenerator.generate();
-        } while (!PasswordRule.Strong.isValidForLogin(password, user, null));
+    private static final int MAX_PASSWORD_ATTEMPTS = 100;
 
-        return password;
+    private static String createPassword(User user) throws SecurityManager.UserManagementException
+    {
+        return createPassword(user, PasswordGenerator::generate);
+    }
+
+    /**
+     * Returns the first generated password that passes every PasswordRule. Login checks the rule configured for the site
+     * at the time of login, and the Strong rule accepts some passwords that the Good rule rejects.
+     * @throws SecurityManager.UserManagementException if none of MAX_PASSWORD_ATTEMPTS generated passwords passes every rule
+     */
+    private static String createPassword(User user, Supplier<String> generator) throws SecurityManager.UserManagementException
+    {
+        for (int i = 0; i < MAX_PASSWORD_ATTEMPTS; i++)
+        {
+            String password = generator.get();
+            if (Arrays.stream(PasswordRule.values()).allMatch(rule -> rule.isValidForLogin(password, user, null)))
+            {
+                return password;
+            }
+        }
+        throw new SecurityManager.UserManagementException(user.getEmail(),
+                "Could not generate a reviewer password that passes every password rule after " + MAX_PASSWORD_ATTEMPTS + " attempts");
     }
 
     private static class PasswordGenerator
@@ -877,6 +898,59 @@ public class CopyExperimentFinalTask extends PipelineJob.Task<CopyExperimentFina
         public boolean isJobComplete(PipelineJob job)
         {
             return false;
+        }
+    }
+
+    public static class TestCase extends Assert
+    {
+        /**
+         * createPassword() must skip a password that any PasswordRule rejects. The first test password passes only the
+         * Good rule, and the second passes only the Strong rule.
+         */
+        @Test
+        public void testCreatePasswordChecksAllRules() throws SecurityManager.UserManagementException
+        {
+            User reviewer = new User("reviewer@example.org", 0);
+            String tooShort = "Ab1!xQzk";
+            String hasEmailSequence = "k7#Wq!EXAm2zR9vT"; // "exa" is in "example"
+            String noEmailSequence = "k7#Wq!EYAm2zR9vT";
+
+            assertTrue("Good rule should accept " + tooShort,
+                    PasswordRule.Good.isValidForLogin(tooShort, reviewer, null));
+            assertFalse("Strong rule should reject " + tooShort,
+                    PasswordRule.Strong.isValidForLogin(tooShort, reviewer, null));
+            assertTrue("Strong rule should accept " + hasEmailSequence,
+                    PasswordRule.Strong.isValidForLogin(hasEmailSequence, reviewer, null));
+            assertFalse("Good rule should reject " + hasEmailSequence,
+                    PasswordRule.Good.isValidForLogin(hasEmailSequence, reviewer, null));
+
+            Iterator<String> passwords = List.of(tooShort, hasEmailSequence, noEmailSequence).iterator();
+            Supplier<String> generator = () -> {
+                if (!passwords.hasNext())
+                    fail("createPassword() rejected every test password");
+                return passwords.next();
+            };
+            assertEquals("Reviewer password should pass every password rule",
+                    noEmailSequence, createPassword(reviewer, generator));
+        }
+
+        /**
+         * createPassword() must throw after MAX_PASSWORD_ATTEMPTS rejected passwords, not keep generating passwords.
+         */
+        @Test
+        public void testCreatePasswordStopsAfterMaxAttempts()
+        {
+            User reviewer = new User("reviewer@example.org", 0);
+            AtomicInteger attempts = new AtomicInteger();
+            Supplier<String> generator = () -> {
+                if (attempts.incrementAndGet() > 2 * MAX_PASSWORD_ATTEMPTS)
+                    fail("createPassword() did not stop after " + MAX_PASSWORD_ATTEMPTS + " rejected passwords");
+                return "Ab1!xQzk"; // Rejected by the Strong rule
+            };
+
+            assertThrows(SecurityManager.UserManagementException.class, () -> createPassword(reviewer, generator));
+            assertEquals("createPassword() should stop after " + MAX_PASSWORD_ATTEMPTS + " rejected passwords",
+                    MAX_PASSWORD_ATTEMPTS, attempts.get());
         }
     }
 }
