@@ -302,10 +302,10 @@ public class PanoramaPublicBaseTest extends TargetedMSTest
         {
             uncheck("Keep Private:");
         }
-        click(Ext4Helper.Locators.ext4Button(("Resubmit")));
-        waitForText("Confirm resubmission request to");
-        click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
-        waitAndClickAndWait(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
+        clickAndWait(Ext4Helper.Locators.ext4Button("Resubmit"));
+        assertTextPresent("Confirm resubmission request to");
+        clickAndWait(Locator.lkButton("OK")); // Confirm to proceed with the submission.
+        clickAndWait(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
     }
 
     private String submitFormAndGetAccessLink()
