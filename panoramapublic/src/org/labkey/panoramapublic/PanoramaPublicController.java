@@ -10169,6 +10169,10 @@ public class PanoramaPublicController extends SpringActionController
             {
                 errors.reject(ERROR_MSG, "Value for 'Extension duration' cannot be less than 0.");
             }
+            if (form.getStopRemindersAfter() != null && form.getStopRemindersAfter() < 1)
+            {
+                errors.reject(ERROR_MSG, "Value for 'Stop reminders after' must be at least 1, or empty to never stop reminders.");
+            }
             if (form.getPublicationSearchFrequency() == null)
             {
                 errors.reject(ERROR_MSG, "Please enter a value for 'Publication search frequency'.");
@@ -10226,6 +10230,7 @@ public class PanoramaPublicController extends SpringActionController
                 form.setDelayUntilFirstReminder(settings.getDelayUntilFirstReminder());
                 form.setReminderFrequency(settings.getReminderFrequency());
                 form.setExtensionLength(settings.getExtensionLength());
+                form.setStopRemindersAfter(settings.getStopRemindersAfter());
                 form.setEnablePublicationSearch(settings.isEnablePublicationSearch());
                 form.setPublicationSearchFrequency(settings.getPublicationSearchFrequency());
             }
@@ -10249,6 +10254,7 @@ public class PanoramaPublicController extends SpringActionController
             settings.setDelayUntilFirstReminder(form.getDelayUntilFirstReminder());
             settings.setReminderFrequency(form.getReminderFrequency());
             settings.setExtensionLength(form.getExtensionLength());
+            settings.setStopRemindersAfter(form.getStopRemindersAfter());
             settings.setEnablePublicationSearch(form.isEnablePublicationSearch());
             settings.setPublicationSearchFrequency(form.getPublicationSearchFrequency());
             PrivateDataReminderSettings.save(settings);
@@ -10297,6 +10303,7 @@ public class PanoramaPublicController extends SpringActionController
         private boolean _enabled;
         private String _reminderTime;
         private Integer _extensionLength;
+        private Integer _stopRemindersAfter;
         private Integer _reminderFrequency;
         private Integer _delayUntilFirstReminder;
         private boolean _enablePublicationSearch;
@@ -10333,6 +10340,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setExtensionLength(Integer extensionLength)
         {
             _extensionLength = extensionLength;
+        }
+
+        public Integer getStopRemindersAfter()
+        {
+            return _stopRemindersAfter;
+        }
+
+        public void setStopRemindersAfter(Integer stopRemindersAfter)
+        {
+            _stopRemindersAfter = stopRemindersAfter;
         }
 
         public Integer getReminderFrequency()
@@ -10455,7 +10472,8 @@ public class PanoramaPublicController extends SpringActionController
                     JournalManager.getJournal(getContainer()),
                     form.getSelectedExperimentIds(),
                     form.getTestMode(),
-                    form.isSearchPublications());
+                    form.isSearchPublications(),
+                    form.isIgnoreReminderLimit());
             PipelineService.get().queueJob(job);
             return true;
         }
@@ -10493,6 +10511,7 @@ public class PanoramaPublicController extends SpringActionController
     {
         private boolean _testMode;
         private boolean _searchPublications;
+        private boolean _ignoreReminderLimit;
         private String _selectedIds;
         private String _dataRegionName = null;
 
@@ -10514,6 +10533,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setSearchPublications(boolean searchPublications)
         {
             _searchPublications = searchPublications;
+        }
+
+        public boolean isIgnoreReminderLimit()
+        {
+            return _ignoreReminderLimit;
+        }
+
+        public void setIgnoreReminderLimit(boolean ignoreReminderLimit)
+        {
+            _ignoreReminderLimit = ignoreReminderLimit;
         }
 
         public String getSelectedIds()
@@ -10709,6 +10738,7 @@ public class PanoramaPublicController extends SpringActionController
         protected void updateDatasetStatus(DatasetStatus datasetStatus)
         {
             datasetStatus.setExtensionRequestedDate(new Date());
+            datasetStatus.setReminderCount(0);
         }
 
         @Override
@@ -11466,6 +11496,8 @@ public class PanoramaPublicController extends SpringActionController
             {
                 settings.setExtensionLength(form.getExtensionLength());
             }
+            // Null is a valid value, so the setting is always restored.
+            settings.setStopRemindersAfter(form.getStopRemindersAfter());
             if (form.getDelayUntilFirstReminder() != null)
             {
                 settings.setDelayUntilFirstReminder(form.getDelayUntilFirstReminder());
@@ -11495,6 +11527,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class RestorePrivateDataReminderSettingsForm
     {
         private Integer _extensionLength;
+        private Integer _stopRemindersAfter;
         private Integer _delayUntilFirstReminder;
         private Integer _reminderFrequency;
         private Boolean _enablePublicationSearch;
@@ -11503,6 +11536,9 @@ public class PanoramaPublicController extends SpringActionController
 
         public Integer getExtensionLength() { return _extensionLength; }
         public void setExtensionLength(Integer extensionLength) { _extensionLength = extensionLength; }
+
+        public Integer getStopRemindersAfter() { return _stopRemindersAfter; }
+        public void setStopRemindersAfter(Integer stopRemindersAfter) { _stopRemindersAfter = stopRemindersAfter; }
 
         public Integer getDelayUntilFirstReminder() { return _delayUntilFirstReminder; }
         public void setDelayUntilFirstReminder(Integer delayUntilFirstReminder) { _delayUntilFirstReminder = delayUntilFirstReminder; }

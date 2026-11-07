@@ -84,6 +84,7 @@ public class PrivateDataReminderJob extends PipelineJob
 
     private boolean _test;
     private boolean _forcePublicationCheck;
+    private boolean _ignoreReminderLimit;
     private List<Integer> _experimentAnnotationsIds;
     private Journal _panoramaPublic;
 
@@ -103,6 +104,16 @@ public class PrivateDataReminderJob extends PipelineJob
 
     public PrivateDataReminderJob(ViewBackgroundInfo info, @NotNull PipeRoot root, Journal panoramaPublic, List<Integer> experimentAnnotationsIds, boolean test, boolean forcePublicationCheck)
     {
+        this(info, root, panoramaPublic, experimentAnnotationsIds, test, forcePublicationCheck, false);
+    }
+
+    /**
+     * @param ignoreReminderLimit post a reminder that is otherwise due even if stopRemindersAfter reminders have been
+     *                            posted without a response
+     */
+    public PrivateDataReminderJob(ViewBackgroundInfo info, @NotNull PipeRoot root, Journal panoramaPublic, List<Integer> experimentAnnotationsIds,
+                                  boolean test, boolean forcePublicationCheck, boolean ignoreReminderLimit)
+    {
         super("Panorama Public", info, root);
         setLogFile(root.getRootFileLike().resolveChild(FileUtil.makeFileNameWithTimestamp("PanoramaPublic-private-data-reminder", "log")));
         _panoramaPublic = panoramaPublic;
@@ -110,6 +121,7 @@ public class PrivateDataReminderJob extends PipelineJob
         _experimentAnnotationsIds = experimentAnnotationsIds;
         _test = test;
         _forcePublicationCheck = forcePublicationCheck;
+        _ignoreReminderLimit = ignoreReminderLimit;
     }
 
     private static Journal getPanoramaPublic()
@@ -135,7 +147,11 @@ public class PrivateDataReminderJob extends PipelineJob
         return privateDataIds;
     }
 
-    private static ReminderDecision getReminderDecision(@NotNull ExperimentAnnotations exptAnnotations, @NotNull PrivateDataReminderSettings settings)
+    /**
+     * @return a skip decision for a dataset that is neither searched for a publication nor sent a message,
+     * or null if the dataset is processed
+     */
+    private static @Nullable ReminderDecision getExclusion(@NotNull ExperimentAnnotations exptAnnotations, @Nullable DatasetStatus datasetStatus)
     {
         if (exptAnnotations.isPublic())
         {
@@ -154,17 +170,30 @@ public class PrivateDataReminderJob extends PipelineJob
             return ReminderDecision.skip("Data has a pending re-submission request");
         }
 
-        DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
+        if (datasetStatus != null && datasetStatus.deletionRequested())
+        {
+            return ReminderDecision.skip("Submitter has requested deletion");
+        }
+        return null;
+    }
+
+    /**
+     * Decides whether a reminder is posted. The publication search does not depend on this decision.
+     */
+    private static ReminderDecision getReminderDecision(@NotNull ExperimentAnnotations exptAnnotations, @Nullable DatasetStatus datasetStatus,
+                                                        @NotNull PrivateDataReminderSettings settings, boolean ignoreReminderLimit)
+    {
         if (datasetStatus != null)
         {
-            if (datasetStatus.deletionRequested())
-            {
-                return ReminderDecision.skip("Submitter has requested deletion");
-            }
-
             if (settings.isExtensionValid(datasetStatus))
             {
                 return ReminderDecision.skip("Submitter requested an extension. Extension is current");
+            }
+
+            if (!ignoreReminderLimit && settings.areRemindersStopped(datasetStatus))
+            {
+                return ReminderDecision.remindersStopped(String.format("Reminders stopped after %d reminders. The submitter has not responded",
+                        datasetStatus.getReminderCount()));
             }
 
             if (settings.isLastReminderRecent(datasetStatus))
@@ -192,34 +221,70 @@ public class PrivateDataReminderJob extends PipelineJob
 
     public static class ReminderDecision {
         private final boolean shouldPost;
+        private final boolean remindersStopped;
         private final String reason;
 
-        private ReminderDecision(boolean shouldPost, String reason) {
+        private ReminderDecision(boolean shouldPost, boolean remindersStopped, String reason) {
             this.shouldPost = shouldPost;
+            this.remindersStopped = remindersStopped;
             this.reason = reason;
         }
 
         public static ReminderDecision post() {
-            return new ReminderDecision(true, null);
+            return new ReminderDecision(true, false, null);
         }
 
         public static ReminderDecision skip(String reason) {
-            return new ReminderDecision(false, reason);
+            return new ReminderDecision(false, false, reason);
+        }
+
+        public static ReminderDecision remindersStopped(String reason) {
+            return new ReminderDecision(false, true, reason);
         }
 
         public boolean shouldPost() { return shouldPost; }
+        public boolean remindersStopped() { return remindersStopped; }
         public String getReason() { return reason; }
+    }
+
+    private enum MessageType
+    {
+        REMINDER,
+        PUBLICATION_FOUND // A new publication was found for a dataset that is not due a reminder
+    }
+
+    private static class PublicationSearchOutcome
+    {
+        private static final PublicationSearchOutcome NONE = new PublicationSearchOutcome(null, false);
+
+        private final @Nullable PublicationMatch _match;
+        private final boolean _searchCompleted;
+
+        private PublicationSearchOutcome(@Nullable PublicationMatch match, boolean searchCompleted)
+        {
+            _match = match;
+            _searchCompleted = searchCompleted;
+        }
+
+        /** @return the publication to report, from a search or from the match saved on DatasetStatus */
+        public @Nullable PublicationMatch getMatch() { return _match; }
+
+        /** @return true if NCBI was searched and the search completed */
+        public boolean isSearchCompleted() { return _searchCompleted; }
     }
 
     /**
      * Finds the publication to report for the experiment, from the dataset's cached match or by
      * searching NCBI.
      *
-     * @return null when there is nothing new to report, which includes a search that found only the
-     * publication the submitter has already dismissed
+     * A dataset with no cached match, or a cached match on author or title only, is searched once every
+     * publicationSearchFrequency months. A run with forceCheck set searches regardless of the last search date.
+     *
+     * @return an outcome with no match when there is nothing to report, which includes a search that
+     * found only the publication the submitter has already dismissed
      * @throws NcbiSearchException if a search ran and could not complete
      */
-    private PublicationMatch searchForPublication(@NotNull ExperimentAnnotations expAnnotations,
+    private PublicationSearchOutcome searchForPublication(@NotNull ExperimentAnnotations expAnnotations,
                                                          @NotNull PrivateDataReminderSettings settings,
                                                          boolean forceCheck,
                                                          @NotNull User user,
@@ -232,11 +297,12 @@ public class PrivateDataReminderJob extends PipelineJob
         if (!forceCheck && !settings.isEnablePublicationSearch())
         {
             log.debug("Publication checking is disabled in settings");
-            return null;
+            return PublicationSearchOutcome.NONE;
         }
 
         // Get existing DatasetStatus to check cached results and user dismissals
         DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(expAnnotations);
+        PublicationMatch cachedMatch = null;
         if (datasetStatus != null)
         {
             // If user has dismissed the publication suggestion, check search delay
@@ -246,7 +312,7 @@ public class PrivateDataReminderJob extends PipelineJob
                 if (settings.isPublicationDismissalRecent(datasetStatus))
                 {
                     log.info("User dismissed publication for experiment {} on {}; Publication search deferred ({} months)", expAnnotations.getId(), dismissedDate, settings.getPublicationSearchFrequency());
-                    return null;
+                    return PublicationSearchOutcome.NONE;
                 }
 
                 if (results.isPublicationSearchStopped())
@@ -254,7 +320,7 @@ public class PrivateDataReminderJob extends PipelineJob
                     // The search deferral is not reset, so the next run searches again.
                     log.info("Publication search is stopped for this run. Not re-searching for experiment {}", expAnnotations.getId());
                     results.addPublicationSearchSkipped(expAnnotations.getId());
-                    return null;
+                    return PublicationSearchOutcome.NONE;
                 }
 
                 // Search deferral expired — re-search NCBI
@@ -268,7 +334,7 @@ public class PrivateDataReminderJob extends PipelineJob
                     {
                         // Different publication found — return it (caller will save and notify)
                         log.info("New publication {} found for experiment {} (previously dismissed {})", newMatch.getPublicationId(), expAnnotations.getId(), datasetStatus.getPotentialPublicationId());
-                        return newMatch;
+                        return new PublicationSearchOutcome(newMatch, true);
                     }
                     else
                     {
@@ -283,7 +349,7 @@ public class PrivateDataReminderJob extends PipelineJob
                             datasetStatus.setUserDismissedPublication(new Date());
                             DatasetStatusManager.update(datasetStatus, user);
                         }
-                        return null;
+                        return new PublicationSearchOutcome(null, true);
                     }
                 }
                 catch (NcbiSearchException e)
@@ -293,25 +359,35 @@ public class PrivateDataReminderJob extends PipelineJob
                 }
                 catch (Exception e)
                 {
-                    // The reminder is still posted, so this costs the paper information and nothing else.
+                    // A reminder that is due is still posted, so this costs the paper information and nothing else.
                     log.warn("Error re-searching publication for experiment {}: {}", expAnnotations.getId(), e.getMessage(), e);
-                    return null;
+                    return PublicationSearchOutcome.NONE;
                 }
             }
 
-            // If we already have a cached publication ID, use it
-            if (!StringUtils.isBlank(datasetStatus.getPotentialPublicationId()))
+            cachedMatch = PublicationMatch.fromDatasetStatus(datasetStatus);
+            // A cached match that cites the dataset's identifiers is final. A match on author or title is searched
+            // again, in case a paper that cites the identifiers is published later.
+            if (cachedMatch != null && cachedMatch.matchesDataIdentifier())
             {
-                log.info("Using cached publication {} {} for experiment {}", datasetStatus.getPublicationType(), datasetStatus.getPotentialPublicationId(), expAnnotations.getId());
-                return PublicationMatch.fromDatasetStatus(datasetStatus);
+                log.info("Using cached publication {} for experiment {}", cachedMatch.getPublicationIdLabel(), expAnnotations.getId());
+                return new PublicationSearchOutcome(cachedMatch, false);
+            }
+
+            if (!forceCheck && !settings.isPublicationSearchDue(datasetStatus))
+            {
+                log.info("Experiment {} was searched for publications on {}; next search after {} months",
+                        expAnnotations.getId(), datasetStatus.getLastPublicationSearchDate(), settings.getPublicationSearchFrequency());
+                return cachedMatch != null ? new PublicationSearchOutcome(cachedMatch, false) : PublicationSearchOutcome.NONE;
             }
         }
+        PublicationSearchOutcome cachedOutcome = cachedMatch != null ? new PublicationSearchOutcome(cachedMatch, false) : PublicationSearchOutcome.NONE;
 
         if (results.isPublicationSearchStopped())
         {
             log.info("Publication search is stopped for this run. Not searching for experiment {}", expAnnotations.getId());
             results.addPublicationSearchSkipped(expAnnotations.getId());
-            return null;
+            return cachedOutcome;
         }
 
         // Perform the publication search
@@ -321,7 +397,12 @@ public class PrivateDataReminderJob extends PipelineJob
             results.addPublicationSearchAttempted();
             PublicationMatch match = NcbiPublicationSearchService.get().searchForPublication(expAnnotations, log);
             results.addPublicationSearchCompleted();
-            return match;
+            if (cachedMatch != null && (match == null || !match.matchesDataIdentifier()))
+            {
+                // Only a match on the dataset's identifiers replaces a cached match on author or title.
+                return new PublicationSearchOutcome(cachedMatch, true);
+            }
+            return new PublicationSearchOutcome(match, true);
         }
         catch (NcbiSearchException e)
         {
@@ -330,9 +411,9 @@ public class PrivateDataReminderJob extends PipelineJob
         }
         catch (Exception e)
         {
-            // The reminder is still posted, so this costs the paper information and nothing else.
+            // A reminder that is due is still posted, so this costs the paper information and nothing else.
             log.warn("Error searching for publication for experiment {}: {}", expAnnotations.getId(), e.getMessage(), e);
-            return null;
+            return cachedOutcome;
         }
     }
 
@@ -471,12 +552,65 @@ public class PrivateDataReminderJob extends PipelineJob
             return;
         }
 
-        ReminderDecision decision = getReminderDecision(expAnnotations, context.getSettings());
-        if (!decision.shouldPost())
+        DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(expAnnotations);
+        ReminderDecision exclusion = getExclusion(expAnnotations, datasetStatus);
+        if (exclusion != null)
         {
-            processingResults.addSkipped(experimentAnnotationsId, decision);
+            processingResults.addSkipped(experimentAnnotationsId, exclusion);
             return;
         }
+
+        ReminderDecision decision = getReminderDecision(expAnnotations, datasetStatus, context.getSettings(), _ignoreReminderLimit);
+        if (decision.remindersStopped())
+        {
+            processingResults.addRemindersStopped(expAnnotations);
+        }
+
+        // Search whether or not a reminder is due, so that a paper published before the first reminder is found.
+        PublicationSearchOutcome search = PublicationSearchOutcome.NONE;
+        try
+        {
+            search = searchForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, getUser(), context.isTestMode(), processingResults);
+        }
+        catch (NcbiSearchException e)
+        {
+            processingResults.addPublicationSearchFailed(experimentAnnotationsId, e);
+        }
+        PublicationMatch publicationResult = search.getMatch();
+        boolean searchCompleted = search.isSearchCompleted();
+
+        MessageType messageType = null;
+        if (decision.shouldPost())
+        {
+            messageType = MessageType.REMINDER;
+        }
+        else if (isNewPublication(publicationResult, datasetStatus))
+        {
+            if (decision.remindersStopped() && !publicationResult.matchesDataIdentifier())
+            {
+                processingResults._log.info("Not posting a notice for publication {} for experiment {}. Reminders have stopped and the match is on {}",
+                        publicationResult.getPublicationId(), experimentAnnotationsId, publicationResult.getMatchInfo());
+            }
+            else
+            {
+                messageType = MessageType.PUBLICATION_FOUND;
+            }
+        }
+
+        if (messageType == null)
+        {
+            processingResults.addSkipped(experimentAnnotationsId, decision);
+            if (searchCompleted && !context.isTestMode())
+            {
+                try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
+                {
+                    updateDatasetStatus(expAnnotations, null, null, true);
+                    transaction.commit();
+                }
+            }
+            return;
+        }
+
         JournalSubmission submission = SubmissionManager.getSubmissionForExperiment(expAnnotations);
         if (submission == null)
         {
@@ -504,29 +638,40 @@ public class PrivateDataReminderJob extends PipelineJob
             return;
         }
 
-        // Check for publications if enabled. Send a reminder even if the search fails for any reason.
-        PublicationMatch publicationResult = null;
-        try
-        {
-            publicationResult = searchForPublication(expAnnotations, context.getSettings(), _forcePublicationCheck, getUser(), context.isTestMode(), processingResults);
-        }
-        catch (NcbiSearchException e)
-        {
-            processingResults.addPublicationSearchFailed(experimentAnnotationsId, e);
-        }
-
         if (!context.isTestMode())
         {
             // The NCBI requests above run outside the transaction, so it is not held open while they wait.
             try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
             {
-                postReminderMessage(expAnnotations, submission, announcement, submitter, publicationResult, context);
-                updateDatasetStatus(expAnnotations, publicationResult);
+                updateDatasetStatus(expAnnotations, messageType, publicationResult, searchCompleted);
+                // Posting the message sends email right away. Post it after the commit so that a rollback cannot leave
+                // the submitter emailed about a message that was not saved. If posting fails, the exception is thrown
+                // from commit() and the dataset is reported as failed.
+                transaction.addCommitTask(() -> postReminderMessage(expAnnotations, submission, announcement, submitter, publicationResult, context),
+                        DbScope.CommitTaskOption.POSTCOMMIT);
                 transaction.commit();
             }
         }
 
-        processingResults.addProcessed(expAnnotations, announcement);
+        processingResults.addProcessed(expAnnotations, announcement, messageType);
+    }
+
+    /**
+     * @return true if the match is a different publication from the one saved on DatasetStatus, or the same
+     * publication now matched on the dataset's identifiers when it was saved as a match on author or title
+     */
+    private static boolean isNewPublication(@Nullable PublicationMatch match, @Nullable DatasetStatus datasetStatus)
+    {
+        if (match == null)
+        {
+            return false;
+        }
+        if (datasetStatus == null || !match.getPublicationId().equals(datasetStatus.getPotentialPublicationId()))
+        {
+            return true;
+        }
+        PublicationMatch saved = PublicationMatch.fromDatasetStatus(datasetStatus);
+        return match.matchesDataIdentifier() && (saved == null || !saved.matchesDataIdentifier());
     }
 
     private void postReminderMessage(ExperimentAnnotations expAnnotations, JournalSubmission submission,
@@ -554,44 +699,52 @@ public class PrivateDataReminderJob extends PipelineJob
         );
     }
 
-    private void updateDatasetStatus(ExperimentAnnotations expAnnotations, @Nullable PublicationMatch publicationResult)
+    /**
+     * A reminder or a publication notice sets lastReminderDate, so no reminder follows either one within the reminder
+     * frequency. Only a reminder adds to reminderCount, which decides when reminders stop.
+     */
+    private void updateDatasetStatus(ExperimentAnnotations expAnnotations, @Nullable MessageType messageType,
+                                     @Nullable PublicationMatch publicationResult, boolean searchCompleted)
     {
         DatasetStatus datasetStatus = DatasetStatusManager.getForExperiment(expAnnotations);
-        if (datasetStatus == null)
+        boolean newStatus = datasetStatus == null;
+        if (newStatus)
         {
             datasetStatus = new DatasetStatus();
             datasetStatus.setExperimentAnnotationsId(expAnnotations.getId());
-            datasetStatus.setLastReminderDate(new Date());
+        }
 
-            // Save publication search results if found
-            if (publicationResult != null)
-            {
-                datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
-                datasetStatus.setPublicationType(publicationResult.getPublicationType().name());
-                datasetStatus.setPublicationMatchInfo(publicationResult.getMatchInfo());
-                datasetStatus.setCitation(publicationResult.getCitation());
-            }
+        Date now = new Date();
+        if (messageType != null)
+        {
+            datasetStatus.setLastReminderDate(now);
+        }
+        if (messageType == MessageType.REMINDER)
+        {
+            datasetStatus.setReminderCount(datasetStatus.getReminderCount() + 1);
+        }
 
+        if (searchCompleted)
+        {
+            datasetStatus.setLastPublicationSearchDate(now);
+        }
+
+        // If this is a new/different publication, update it and clear dismissal
+        if (isNewPublication(publicationResult, datasetStatus))
+        {
+            datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
+            datasetStatus.setPublicationType(publicationResult.getPublicationType().name());
+            datasetStatus.setPublicationMatchInfo(publicationResult.getMatchInfo());
+            datasetStatus.setCitation(publicationResult.getCitation());
+            datasetStatus.setUserDismissedPublication(null);
+        }
+
+        if (newStatus)
+        {
             DatasetStatusManager.save(datasetStatus, getUser());
         }
         else
         {
-            datasetStatus.setLastReminderDate(new Date());
-
-            // Update publication search results
-            if (publicationResult != null)
-            {
-                // If this is a new/different publication, update it and clear dismissal
-                if (!publicationResult.getPublicationId().equals(datasetStatus.getPotentialPublicationId()))
-                {
-                    datasetStatus.setPotentialPublicationId(publicationResult.getPublicationId());
-                    datasetStatus.setPublicationType(publicationResult.getPublicationType().name());
-                    datasetStatus.setPublicationMatchInfo(publicationResult.getMatchInfo());
-                    datasetStatus.setCitation(publicationResult.getCitation());
-                    datasetStatus.setUserDismissedPublication(null); // Clear dismissal for new publication
-                }
-            }
-
             DatasetStatusManager.update(datasetStatus, getUser());
         }
     }
@@ -808,7 +961,9 @@ public class PrivateDataReminderJob extends PipelineJob
         private final List<Integer> _publicationSearchSkipped = new ArrayList<>();
         private final List<Integer> _processingFailed = new ArrayList<>();
         private final List<Integer> _skipped = new ArrayList<>();
+        private final List<String> _remindersStopped = new ArrayList<>();
         private int _processed = 0;
+        private int _publicationNotices = 0;
         private final int _total;
         private final Logger _log;
 
@@ -867,7 +1022,7 @@ public class PrivateDataReminderJob extends PipelineJob
         public void addPublicationSearchFailed(Integer experimentId, NcbiSearchException e)
         {
             _publicationSearchFailed.add(experimentId);
-            _log.warn("Publication search failed for experiment Id: {}. A reminder was still posted. {}", experimentId, e.getMessage(), e);
+            _log.warn("Publication search failed for experiment Id: {}. A reminder that is due is still posted. {}", experimentId, e.getMessage(), e);
 
             // Some requests completing means NCBI is responding, so the failure is intermittent.
             _consecutiveAllFailed = e.isAllRequestsFailed() ? _consecutiveAllFailed + 1 : 0;
@@ -901,10 +1056,23 @@ public class PrivateDataReminderJob extends PipelineJob
             _log.info("Skipping reminder for experiment Id {} - {}.", experimentId, decision.getReason());
         }
 
-        public void addProcessed(ExperimentAnnotations expAnnotations, Announcement announcement)
+        /**
+         * Records a dataset whose reminders stopped because the submitter has not responded. It is not an error.
+         */
+        public void addRemindersStopped(ExperimentAnnotations expAnnotations)
+        {
+            _remindersStopped.add(expAnnotations.getId() + " (" + shortUrl(expAnnotations) + ")");
+        }
+
+        public void addProcessed(ExperimentAnnotations expAnnotations, Announcement announcement, MessageType messageType)
         {
             _processed++;
-            _log.info("Experiment ID: {}; Announcement ID {}; Short URL: {}.", expAnnotations.getId(), announcement.getRowId(), expAnnotations.getShortUrl().renderShortURL());
+            if (messageType == MessageType.PUBLICATION_FOUND)
+            {
+                _publicationNotices++;
+            }
+            _log.info("Experiment ID: {}; Announcement ID {}; Short URL: {}; Message: {}.", expAnnotations.getId(), announcement.getRowId(),
+                    shortUrl(expAnnotations), messageType == MessageType.REMINDER ? "reminder" : "new publication");
             _log.info("Folder: {}", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(expAnnotations.getContainer()).getURIString());
             _log.info("Completed: {} of {}", _processed, _total);
         }
@@ -972,6 +1140,23 @@ public class PrivateDataReminderJob extends PipelineJob
             {
                 log.info("The following experiments were skipped: {}", StringUtils.join(_skipped, ", "));
             }
+
+            if (!_remindersStopped.isEmpty())
+            {
+                // WARN, not ERROR. These datasets are in a state the admin should know about, not a job failure.
+                log.warn("Reminders have stopped for {} because the submitter has not responded. Publication searches continue. Experiment Ids: {}",
+                        StringUtilsLabKey.pluralize(_remindersStopped.size(), "dataset"), StringUtils.join(_remindersStopped, ", "));
+            }
+        }
+
+        public int getRemindersStoppedCount()
+        {
+            return _remindersStopped.size();
+        }
+
+        private static String shortUrl(ExperimentAnnotations expAnnotations)
+        {
+            return expAnnotations.getShortUrl() != null ? expAnnotations.getShortUrl().renderShortURL() : "no short URL";
         }
 
         public boolean publicationSearchFailingWidely()
@@ -1004,8 +1189,9 @@ public class PrivateDataReminderJob extends PipelineJob
                 log.info("Successfully processed {}.", StringUtilsLabKey.pluralize(_processed, "experiment"));
             }
 
-            log.info("Processing complete: {} total, {} processed, {} skipped, {} with no support message thread, {} errors",
-                    _total, _processed, _skipped.size(), _noSupportThread.size(), getTotalErrors());
+            log.info("Processing complete: {} total, {} processed ({} reminders, {} new publication notices), {} skipped, {} with reminders stopped, {} with no support message thread, {} errors",
+                    _total, _processed, _processed - _publicationNotices, _publicationNotices, _skipped.size(), _remindersStopped.size(),
+                    _noSupportThread.size(), getTotalErrors());
         }
     }
 
@@ -1080,6 +1266,17 @@ public class PrivateDataReminderJob extends PipelineJob
 
             // Stopping the search sets the status, not the error count.
             assertEquals("Stopping the search should not count as a missed reminder", 0, results.getTotalErrors());
+        }
+
+        @Test
+        public void testRemindersStoppedIsNotAnError()
+        {
+            ProcessingResults results = new ProcessingResults(10, TEST_LOG);
+            ExperimentAnnotations noShortUrl = new ExperimentAnnotations();
+            noShortUrl.setId(1);
+            results.addRemindersStopped(noShortUrl);
+            assertEquals("The dataset should be listed with the datasets whose reminders stopped", 1, results.getRemindersStoppedCount());
+            assertEquals("Stopped reminders should not count as an error", 0, results.getTotalErrors());
         }
 
         private static NcbiSearchException allRequestsFailed()

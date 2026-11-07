@@ -33,6 +33,8 @@ public class DatasetStatus  extends DbEntity
     private String _publicationMatchInfo;
     private String _citation;
     private Date _userDismissedPublication;
+    private Date _lastPublicationSearchDate;
+    private int _reminderCount;
 
     public int getExperimentAnnotationsId()
     {
@@ -149,6 +151,26 @@ public class DatasetStatus  extends DbEntity
     public void setUserDismissedPublication(Date userDismissedPublication)
     {
         _userDismissedPublication = userDismissedPublication;
+    }
+
+    public Date getLastPublicationSearchDate()
+    {
+        return _lastPublicationSearchDate;
+    }
+
+    public void setLastPublicationSearchDate(Date lastPublicationSearchDate)
+    {
+        _lastPublicationSearchDate = lastPublicationSearchDate;
+    }
+
+    public int getReminderCount()
+    {
+        return _reminderCount;
+    }
+
+    public void setReminderCount(int reminderCount)
+    {
+        _reminderCount = reminderCount;
     }
 
     public boolean isPublicationDismissed(String publicationId)

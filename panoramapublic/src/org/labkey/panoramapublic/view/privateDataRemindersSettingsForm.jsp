@@ -28,7 +28,6 @@
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="java.util.List" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PrivateDataReminderSettingsAction" %>
-<%@ page import="org.labkey.panoramapublic.message.PrivateDataReminderSettings" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -45,6 +44,7 @@
 
     List<Journal> journals = JournalManager.getJournals();
 
+    Integer stopRemindersAfter = PrivateDataReminderSettings.get().getStopRemindersAfter();
 %>
 
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
@@ -81,6 +81,27 @@
             return;
         }
         window.location = LABKEY.ActionURL.buildURL("panoramapublic", "searchPublications.view", folderPath);
+    }
+
+    function clickStoppedRemindersLink()
+    {
+        const journal = document.getElementById("journal");
+        if (!journal || !journal.value)
+        {
+            alert("Please select a Panorama Public folder first.");
+            return;
+        }
+        const params = {
+            schemaName: "panoramapublic",
+            "query.queryName": "PrivateDataNoResponse",
+            "query.containerFilterName": "CurrentAndSubfolders"
+        };
+        // With "Stop reminders after" empty, reminders never stop. The link then adds no filter, and the grid
+        // lists every private dataset with ReminderCount > 0.
+        <% if (stopRemindersAfter != null) { %>
+        params["query.ReminderCount~gte"] = <%=stopRemindersAfter%>;
+        <% } %>
+        window.location = LABKEY.ActionURL.buildURL("query", "executeQuery.view", journal.value, params);
     }
 
     function showValidationResult(result, message, detail)
@@ -198,6 +219,20 @@
             </tr>
             <tr>
                 <td class="labkey-form-label">
+                    <span><%=h(PrivateDataReminderSettings.PROP_STOP_REMINDERS_AFTER)%></span>
+                </td>
+                <td>
+                    <input style="padding:0 10px 0 0;" type="text" name="stopRemindersAfter" value="<%=h(form.getStopRemindersAfter())%>" />
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
+                        Number of reminders without a response, after which reminders stop. An extension request starts
+                        the count again. Publication searches continue.
+                        <br/>
+                        Leave empty to send reminders until the submitter responds.
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="labkey-form-label">
                     <span><%=h(PrivateDataReminderSettings.PROP_ENABLE_PUBLICATION_SEARCH)%></span>
                 </td>
                 <td>
@@ -216,9 +251,10 @@
                 <td>
                     <input style="padding:0 10px 0 0;" type="text" name="publicationSearchFrequency" value="<%=form.getPublicationSearchFrequency()%>" />
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
-                        Number of months to wait after a user dismisses a publication suggestion before re-searching.
+                        Number of months between publication searches for a private dataset.
                         <br/>
-                        If a different publication is found after this delay, the submitter will be notified again.
+                        After a user dismisses a publication suggestion, the submitter is notified again only if a
+                        different publication is found.
                     </div>
                 </td>
             </tr>
@@ -270,6 +306,7 @@
         </select>
         <%=link("Send Reminders Now").onClick("clickSendRemindersLink();").build()%>
         <%=link("Search Publications").onClick("clickSearchPublicationsLink();").build()%>
+        <%=link("Stopped Reminders").onClick("clickStoppedRemindersLink();").build()%>
     </labkey:form>
     <hr/>
 

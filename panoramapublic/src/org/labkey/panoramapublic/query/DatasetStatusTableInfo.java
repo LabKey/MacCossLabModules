@@ -39,8 +39,10 @@ public class DatasetStatusTableInfo extends PanoramaPublicTable
         visibleColumns.add(FieldKey.fromParts("ExperimentAnnotationsId", "Link"));
         visibleColumns.add(FieldKey.fromParts("ExperimentAnnotationsId", "Title"));
         visibleColumns.add(FieldKey.fromParts("LastReminderDate"));
+        visibleColumns.add(FieldKey.fromParts("ReminderCount"));
         visibleColumns.add(FieldKey.fromParts("ExtensionRequestedDate"));
         visibleColumns.add(FieldKey.fromParts("DeletionRequestedDate"));
+        visibleColumns.add(FieldKey.fromParts("LastPublicationSearchDate"));
         setDefaultVisibleColumns(visibleColumns);
     }
 }

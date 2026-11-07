@@ -633,7 +633,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
     /**
      * Navigate to the Private Data Reminder Settings page and read the current form values.
-     * Returns a map with keys: extensionLength, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch, publicationSearchFrequency, ncbiApiKeySaved.
+     * Returns a map with keys: extensionLength, stopRemindersAfter, delayUntilFirstReminder, reminderFrequency, enablePublicationSearch, publicationSearchFrequency, ncbiApiKeySaved.
      */
     protected Map<String, String> getPrivateDataReminderSettings()
     {
@@ -643,6 +643,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
 
         Map<String, String> settings = new HashMap<>();
         settings.put("extensionLength", getFormElement(Locator.input("extensionLength")));
+        settings.put("stopRemindersAfter", getFormElement(Locator.input("stopRemindersAfter")));
         settings.put("delayUntilFirstReminder", getFormElement(Locator.input("delayUntilFirstReminder")));
         settings.put("reminderFrequency", getFormElement(Locator.input("reminderFrequency")));
         settings.put("enablePublicationSearch", String.valueOf(Locator.checkboxByName("enablePublicationSearch").findElement(getDriver()).isSelected()));
@@ -716,6 +717,7 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
     {
         Map<String, Object> params = new HashMap<>();
         params.put("extensionLength", original.get("extensionLength"));
+        params.put("stopRemindersAfter", original.get("stopRemindersAfter"));
         params.put("delayUntilFirstReminder", original.get("delayUntilFirstReminder"));
         params.put("reminderFrequency", original.get("reminderFrequency"));
         params.put("enablePublicationSearch", original.get("enablePublicationSearch"));

@@ -80,6 +80,16 @@
                     </div>
                 </td>
             </tr>
+            <tr>
+                <td class="labkey-form-label" style="text-align:center;">Ignore Reminder Limit:</td>
+                <td>
+                    <input type="checkbox" name="ignoreReminderLimit" <%=checked(form.isIgnoreReminderLimit())%> />
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
+                        When checked, a reminder is sent even if the submitter has not responded to the number of reminders
+                        set in "Stop reminders after". The reminder frequency and extensions still apply.
+                    </div>
+                </td>
+            </tr>
             <tr><td colspan="2"><%=button("Post Reminders").onClick("submitForm();")%></td></tr>
         </table>
         <br>

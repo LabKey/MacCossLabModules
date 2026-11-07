@@ -204,6 +204,21 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
                 privateData.get(0).getExperimentAnnotationsId());
         verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiment");
 
+        // The second experiment has been sent 2 reminders. Stop reminders after 2.
+        log("Changing reminder settings. Setting stop reminders after to 2.");
+        saveStopRemindersAfter("2");
+        postReminders(projectName, false, privateDataCount, -1, ++pipelineJobCount);
+        verifyReminderPosted(projectName, privateData.get(1), 2); // No new reminders since 2 have been sent without a response.
+        message2 = String.format("Skipping reminder for experiment Id %d - Reminders stopped after 2 reminders",
+                privateData.get(1).getExperimentAnnotationsId());
+        verifyPipelineJobLogMessage(projectName, message, message2, "Skipped posting reminders for 2 experiments");
+
+        // Ignore the reminder limit. A reminder is posted to the second experiment, but not to the first, which has a current extension.
+        postReminders(projectName, false, true, privateDataCount, -1, ++pipelineJobCount);
+        verifyReminderPosted(projectName, privateData.get(0), 1);
+        verifyReminderPosted(projectName, privateData.get(1), 3);
+        verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiment");
+
         // Request deletion for the second experiment.
         log("Requesting deletion for experiment Id " + privateData.get(1).getExperimentAnnotationsId());
         requestDeletion(projectName, privateData.get(1));
@@ -211,7 +226,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         // Post reminders again - none should be posted
         postReminders(projectName, false, privateDataCount, -1, ++pipelineJobCount);
         verifyReminderPosted(projectName, privateData.get(0),1); // No new reminders since extension requested.
-        verifyReminderPosted(projectName, privateData.get(1), 2); // No new reminders since deletion requested.
+        verifyReminderPosted(projectName, privateData.get(1), 3); // No new reminders since deletion requested.
         message2 = String.format("Skipping reminder for experiment Id %d - Submitter has requested deletion", privateData.get(1).getExperimentAnnotationsId());
         verifyPipelineJobLogMessage(projectName, message, message2, "Skipped posting reminders for 2 experiments");
     }
@@ -325,7 +340,23 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
     }
 
 
+    private void saveStopRemindersAfter(String stopRemindersAfter)
+    {
+        goToAdminConsole().goToSettingsSection();
+        clickAndWait(Locator.linkWithText("Panorama Public"));
+        clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
+        setFormElement(Locator.input("stopRemindersAfter"), stopRemindersAfter);
+        clickButton("Save", 0);
+        waitForText("Private data reminder settings saved");
+    }
+
     private void postReminders(String projectName, boolean testMode, int expectedExperimentCount, int selectRowCount, int pipelineJobCount)
+    {
+        postReminders(projectName, testMode, false, expectedExperimentCount, selectRowCount, pipelineJobCount);
+    }
+
+    private void postReminders(String projectName, boolean testMode, boolean ignoreReminderLimit, int expectedExperimentCount,
+                               int selectRowCount, int pipelineJobCount)
     {
         goToSendRemindersPage(projectName);
 
@@ -350,6 +381,10 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         if (testMode)
         {
             checkCheckbox(Locator.checkboxByName("testMode"));
+        }
+        if (ignoreReminderLimit)
+        {
+            checkCheckbox(Locator.checkboxByName("ignoreReminderLimit"));
         }
 
         clickButton("Post Reminders", 0);

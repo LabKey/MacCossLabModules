@@ -153,6 +153,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         Map<String, Object> dsStatus1 = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_1, exptId1);
         assertNotNull("Expected DatasetStatus row for dataset 1 after notification", dsStatus1);
         assertNotNull("Expected lastReminderDate to be set after notification", dsStatus1.get("LastReminderDate"));
+        assertEquals("A publication notification does not increment reminderCount, so it should be 0", 0, reminderCount(dsStatus1));
         assertEquals("Expected potentialPublicationId to be set", PMID_1, dsStatus1.get("PotentialPublicationId"));
         assertEquals("Expected publicationType to be PubMed", "PubMed", dsStatus1.get("PublicationType"));
         assertNotNull("Expected citation to be cached", dsStatus1.get("Citation"));
@@ -215,17 +216,62 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         Map<String, Object> dsStatus2TestMode = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
         assertNull("Expected no DatasetStatus row for dataset 2 after test-mode run", dsStatus2TestMode);
 
-        // Step 10: Run reminders in ACTUAL mode and verify the following:
-        // 1. pipeline job skips searching for publicaiton for dataset 1
-        // 2. message posted for dataset 1 is about reminding user to make data public rather than about a publication
-        // 3. a publication is found for dataset 2 and message posted to the message thread
-        // 4. verify DatasetStatus for dataset 2 IS updated
+        // Step 9a: Run in ACTUAL mode with both datasets younger than the first reminder delay. Dataset 2 is
+        // searched anyway, and the submitter is told about the paper. No reminder is posted for either dataset.
+        savePrivateDataReminderSettings("2", "12", "0", true);
         goToSendRemindersPage(panoramaPublicProject);
         table = new DataRegionTable("ExperimentAnnotations", getDriver());
         table.checkAllOnPage();
         assertChecked(Locator.checkboxByName("searchPublications"));
         clickButton("Post Reminders", 0);
         waitForPipelineJobsToComplete(2, "Post private data reminder messages", false);
+
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_2);
+        waitForText("Submitted - " + shortAccessUrl2);
+        assertTextPresent("Action Required: Publication Found for Your Data on Panorama Public");
+        assertTextPresent("Wen B, Hsu C, Shteynberg D");
+        assertTextNotPresent("Action Required: Status Update for Your Private Data on Panorama Public");
+
+        Map<String, Object> dsStatus2Young = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
+        assertNotNull("Expected a DatasetStatus row for dataset 2 after a publication was found", dsStatus2Young);
+        assertEquals("Expected the publication found for dataset 2 to be saved", PMID_2, dsStatus2Young.get("PotentialPublicationId"));
+        assertNotNull("Expected the search date to be saved for dataset 2", dsStatus2Young.get("LastPublicationSearchDate"));
+        assertNotNull("Expected lastReminderDate to be set by the publication notice", dsStatus2Young.get("LastReminderDate"));
+        assertEquals("A publication notification does not increment reminderCount, so it should be 0", 0, reminderCount(dsStatus2Young));
+
+        // Dataset 1 is not due a reminder and its dismissed publication is not searched again, so nothing new is posted.
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_1);
+        waitForText("Submitted - " + shortAccessUrl1);
+        assertTextNotPresent("Action Required: Status Update for Your Private Data on Panorama Public");
+
+        // Step 9b: With no first reminder delay and a reminder frequency of 1 month, a reminder is otherwise due for
+        // both datasets. Neither gets one, because both were sent a publication notice within the last month.
+        savePrivateDataReminderSettings("2", "0", "1", true);
+        goToSendRemindersPage(panoramaPublicProject);
+        table = new DataRegionTable("ExperimentAnnotations", getDriver());
+        table.checkAllOnPage();
+        clickButton("Post Reminders", 0);
+        waitForPipelineJobsToComplete(3, "Post private data reminder messages", false);
+
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_2);
+        waitForText("Submitted - " + shortAccessUrl2);
+        assertTextNotPresent("Action Required: Status Update for Your Private Data on Panorama Public");
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_1);
+        waitForText("Submitted - " + shortAccessUrl1);
+        assertTextNotPresent("Action Required: Status Update for Your Private Data on Panorama Public");
+
+        // Step 10: Run reminders in ACTUAL mode and verify the following:
+        // 1. pipeline job skips searching for publicaiton for dataset 1
+        // 2. message posted for dataset 1 is about reminding user to make data public rather than about a publication
+        // 3. the reminder for dataset 2 includes the publication found in step 9a
+        // 4. verify DatasetStatus for dataset 2 IS updated
+        savePrivateDataReminderSettings("2", "0", "0", true);
+        goToSendRemindersPage(panoramaPublicProject);
+        table = new DataRegionTable("ExperimentAnnotations", getDriver());
+        table.checkAllOnPage();
+        assertChecked(Locator.checkboxByName("searchPublications"));
+        clickButton("Post Reminders", 0);
+        waitForPipelineJobsToComplete(4, "Post private data reminder messages", false);
 
         // Verify the pipeline job log contains the skip message for the dismissed dataset 1 publication
         goToProjectHome(panoramaPublicProject);
@@ -257,6 +303,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertEquals("Expected potentialPublicationId for dataset 2", PMID_2, dsStatus2AfterPost.get("PotentialPublicationId"));
         assertNotNull("Expected publicationType for dataset 2", dsStatus2AfterPost.get("PublicationType"));
         assertNotNull("Expected lastReminderDate for dataset 2", dsStatus2AfterPost.get("LastReminderDate"));
+        assertEquals("Expected reminderCount to be 1 after the first reminder for dataset 2", 1, reminderCount(dsStatus2AfterPost));
         assertNotNull("Expected citation to be cached for dataset 2", dsStatus2AfterPost.get("Citation"));
     }
 
@@ -317,7 +364,8 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
             SelectRowsCommand cmd = new SelectRowsCommand("panoramapublic", "DatasetStatus");
             cmd.addFilter(new Filter("ExperimentAnnotationsId", exptId));
             cmd.setColumns(List.of("ExperimentAnnotationsId", "PotentialPublicationId", "PublicationType",
-                    "PublicationMatchInfo", "Citation", "LastReminderDate", "UserDismissedPublication"));
+                    "PublicationMatchInfo", "Citation", "LastReminderDate", "UserDismissedPublication",
+                    "ReminderCount", "LastPublicationSearchDate"));
             String containerPath = "/" + panoramaPublicProject + "/" + targetFolder;
             SelectRowsResponse resp = cmd.execute(connection, containerPath);
             List<Map<String, Object>> rows = resp.getRows();
@@ -333,6 +381,11 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
             fail("Failed to query DatasetStatus: " + e.getMessage());
             return null;
         }
+    }
+
+    private static int reminderCount(Map<String, Object> datasetStatus)
+    {
+        return ((Number) datasetStatus.get("ReminderCount")).intValue();
     }
 
     /*
