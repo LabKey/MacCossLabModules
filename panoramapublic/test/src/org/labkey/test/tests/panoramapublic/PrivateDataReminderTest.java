@@ -151,6 +151,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
 
         log("Changing reminder settings. Setting reminder frequency to 0.");
         savePrivateDataReminderSettings("2", "12", "0");
+        saveStopRemindersAfter("");
 
         // Do not select any experiments.  Job will not run.
         log("Attempt to send reminders without selecting any experiments. Job should not run.");

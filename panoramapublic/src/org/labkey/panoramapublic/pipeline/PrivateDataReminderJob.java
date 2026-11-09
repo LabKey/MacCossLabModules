@@ -47,6 +47,7 @@ import org.labkey.panoramapublic.model.Journal;
 import org.labkey.panoramapublic.model.JournalExperiment;
 import org.labkey.panoramapublic.model.JournalSubmission;
 import org.labkey.panoramapublic.ncbi.NcbiApiKeyCheck;
+import org.labkey.panoramapublic.ncbi.NcbiConstants;
 import org.labkey.panoramapublic.ncbi.NcbiPublicationSearchService;
 import org.labkey.panoramapublic.ncbi.NcbiSearchException;
 import org.labkey.panoramapublic.ncbi.PublicationMatch;
@@ -580,15 +581,18 @@ public class PrivateDataReminderJob extends PipelineJob
                 search = new PublicationSearchOutcome(PublicationMatch.fromDatasetStatus(datasetStatus), false);
             }
         }
-        PublicationMatch publicationResult = search.getMatch();
         boolean searchCompleted = search.isSearchCompleted();
+
+        // Read again in case the submitter dismissed the paper while the search ran.
+        DatasetStatus currentStatus = DatasetStatusManager.getForExperiment(expAnnotations);
+        PublicationMatch publicationResult = isDismissed(search.getMatch(), currentStatus) ? null : search.getMatch();
 
         MessageType messageType = null;
         if (decision.shouldPost())
         {
             messageType = MessageType.REMINDER;
         }
-        else if (isNewPublication(publicationResult, datasetStatus))
+        else if (isNewPublication(publicationResult, currentStatus))
         {
             messageType = MessageType.PUBLICATION_FOUND;
         }
@@ -627,11 +631,12 @@ public class PrivateDataReminderJob extends PipelineJob
 
     /**
      * @return true if the match is a different publication from the one saved on DatasetStatus, or the same
-     * publication now matched on the dataset's identifiers when it was saved as a match on author or title
+     * publication now matched on the dataset's identifiers when it was saved as a match on author or title.
+     * A match on the publication the submitter dismissed is not new.
      */
     private static boolean isNewPublication(@Nullable PublicationMatch match, @Nullable DatasetStatus datasetStatus)
     {
-        if (match == null)
+        if (match == null || isDismissed(match, datasetStatus))
         {
             return false;
         }
@@ -641,6 +646,12 @@ public class PrivateDataReminderJob extends PipelineJob
         }
         PublicationMatch saved = PublicationMatch.fromDatasetStatus(datasetStatus);
         return match.matchesDataIdentifier() && (saved == null || !saved.matchesDataIdentifier());
+    }
+
+    private static boolean isDismissed(@Nullable PublicationMatch match, @Nullable DatasetStatus datasetStatus)
+    {
+        return match != null && datasetStatus != null && datasetStatus.getUserDismissedPublication() != null
+                && match.getPublicationId().equals(datasetStatus.getPotentialPublicationId());
     }
 
     private void postReminderMessage(ExperimentAnnotations expAnnotations, JournalSubmission submission,
@@ -1320,6 +1331,25 @@ public class PrivateDataReminderJob extends PipelineJob
             // An announcement id whose thread could not be read is worth investigating.
             results.addAnnouncementNotFound(2, submissionWithAnnouncementId(99), container);
             assertEquals("A thread that went missing is an error", 1, results.getTotalErrors());
+        }
+
+        @Test
+        public void testIsNewPublication()
+        {
+            DatasetStatus status = new DatasetStatus();
+            status.setPotentialPublicationId("123");
+            status.setPublicationType(NcbiConstants.DB.PubMed.name());
+            status.setPublicationMatchInfo("Author, Title");
+            PublicationMatch identifierMatch = PublicationMatch.fromMatchInfo("123", NcbiConstants.DB.PubMed, "ProteomeXchange ID");
+
+            assertTrue("The same paper should be new when it is matched on the ProteomeXchange ID and was saved as an author and title match",
+                    isNewPublication(identifierMatch, status));
+
+            status.setUserDismissedPublication(new Date());
+            assertFalse("The paper the submitter dismissed should not be new, even when it is matched on the ProteomeXchange ID",
+                    isNewPublication(identifierMatch, status));
+            assertTrue("A different paper should be new after a dismissal",
+                    isNewPublication(PublicationMatch.fromMatchInfo("456", NcbiConstants.DB.PubMed, "Author, Title"), status));
         }
 
         private static JournalSubmission submissionWithAnnouncementId(Integer announcementId)
