@@ -367,7 +367,8 @@ public class PrivateDataReminderSettings
     }
 
     /**
-     * @return true if stopRemindersAfter reminders have been posted since the submitter last requested an extension.
+     * @return true if stopRemindersAfter reminders have been posted since the submitter last requested an extension
+     * or dismissed a publication suggestion.
      */
     public boolean areRemindersStopped(@NotNull DatasetStatus status)
     {

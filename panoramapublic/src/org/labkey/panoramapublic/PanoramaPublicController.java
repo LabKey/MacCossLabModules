@@ -10887,6 +10887,7 @@ public class PanoramaPublicController extends SpringActionController
         protected void updateDatasetStatus(DatasetStatus datasetStatus)
         {
             datasetStatus.setUserDismissedPublication(new Date());
+            datasetStatus.setReminderCount(0);
         }
 
         @Override
@@ -11482,7 +11483,8 @@ public class PanoramaPublicController extends SpringActionController
     /**
      * Restores the Private Data Reminder Settings a Selenium test changed, without loading a page, so a test's
      * cleanup leaves the failed page in the browser for the failure screenshot. Only the settings that are
-     * passed in are changed.
+     * passed in are changed, except stopRemindersAfter. It is always set, and a missing value means reminders
+     * never stop.
      */
     @RequiresSiteAdmin
     public static class RestorePrivateDataReminderSettingsAction extends MutatingApiAction<RestorePrivateDataReminderSettingsForm>
@@ -11496,7 +11498,6 @@ public class PanoramaPublicController extends SpringActionController
             {
                 settings.setExtensionLength(form.getExtensionLength());
             }
-            // Null is a valid value, so the setting is always restored.
             settings.setStopRemindersAfter(form.getStopRemindersAfter());
             if (form.getDelayUntilFirstReminder() != null)
             {

@@ -305,6 +305,20 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertNotNull("Expected lastReminderDate for dataset 2", dsStatus2AfterPost.get("LastReminderDate"));
         assertEquals("Expected reminderCount to be 1 after the first reminder for dataset 2", 1, reminderCount(dsStatus2AfterPost));
         assertNotNull("Expected citation to be cached for dataset 2", dsStatus2AfterPost.get("Citation"));
+
+        // Step 11: Impersonate the dataset 2 submitter and dismiss the publication suggestion
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_2);
+        impersonate(SUBMITTER_2);
+        waitForText("Submitted - " + shortAccessUrl2);
+        click(Locator.linkWithText("Dismiss Publication Suggestion"));
+        waitForText("You are dismissing the publication suggestion for your data on Panorama Public");
+        clickButton("OK", 0);
+        waitForText("The publication suggestion has been dismissed");
+        stopImpersonating();
+
+        Map<String, Object> dsStatus2Dismissed = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
+        assertNotNull("Expected userDismissedPublication to be set for dataset 2", dsStatus2Dismissed.get("UserDismissedPublication"));
+        assertEquals("Dismissing a publication should reset reminderCount to 0", 0, reminderCount(dsStatus2Dismissed));
     }
 
     /*

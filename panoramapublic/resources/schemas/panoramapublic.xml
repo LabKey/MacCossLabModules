@@ -883,7 +883,7 @@
                 <description>Date of the last publication search for this dataset that completed</description>
             </column>
             <column columnName="ReminderCount">
-                <description>Number of private data reminders posted since the submitter last requested an extension</description>
+                <description>Number of private data reminders posted since the submitter last requested an extension or dismissed a publication suggestion</description>
             </column>
         </columns>
     </table>

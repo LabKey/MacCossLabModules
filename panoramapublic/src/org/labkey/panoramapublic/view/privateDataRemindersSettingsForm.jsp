@@ -224,8 +224,8 @@
                 <td>
                     <input style="padding:0 10px 0 0;" type="text" name="stopRemindersAfter" value="<%=h(form.getStopRemindersAfter())%>" />
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
-                        Number of reminders without a response, after which reminders stop. An extension request starts
-                        the count again. Publication searches continue.
+                        Number of reminders without a response, after which reminders stop. An extension request or a
+                        dismissed publication suggestion starts the count again. Publication searches continue.
                         <br/>
                         Leave empty to send reminders until the submitter responds.
                     </div>
