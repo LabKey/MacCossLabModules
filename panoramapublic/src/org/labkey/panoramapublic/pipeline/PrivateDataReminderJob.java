@@ -613,20 +613,28 @@ public class PrivateDataReminderJob extends PipelineJob
 
         if (!context.isTestMode())
         {
-            // The NCBI requests above run outside the transaction, so it is not held open while they wait.
-            try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
-            {
-                updateDatasetStatus(expAnnotations, messageType, publicationResult, searchCompleted);
-                // Posting the message sends email right away. Post it after the commit so that a rollback cannot leave
-                // the submitter emailed about a message that was not saved. If posting fails, the exception is thrown
-                // from commit() and the dataset is reported as failed. The DatasetStatus update stays committed.
-                transaction.addCommitTask(() -> postReminderMessage(expAnnotations, submission, announcement, submitter, publicationResult, context),
-                        DbScope.CommitTaskOption.POSTCOMMIT);
-                transaction.commit();
-            }
+            final MessageType type = messageType;
+            postAndRecordMessage(() -> postReminderMessage(expAnnotations, submission, announcement, submitter, publicationResult, context),
+                    () -> updateDatasetStatus(expAnnotations, type, publicationResult, searchCompleted));
         }
 
         processingResults.addProcessed(expAnnotations, announcement, messageType, decision.remindersStopped());
+    }
+
+    /**
+     * Posts the message, then records it on DatasetStatus. Call with no transaction open. The message is then saved
+     * before the email is sent, so the submitter is never emailed about a message that was not saved. If the post
+     * throws, nothing is recorded and the next run posts the message again. The submitter gets the message a second
+     * time if the post saved it before throwing, or if the update fails after the post.
+     */
+    static void postAndRecordMessage(Runnable postMessage, Runnable recordMessage)
+    {
+        postMessage.run();
+        try (DbScope.Transaction transaction = PanoramaPublicManager.getSchema().getScope().ensureTransaction())
+        {
+            recordMessage.run();
+            transaction.commit();
+        }
     }
 
     /**
@@ -1350,6 +1358,24 @@ public class PrivateDataReminderJob extends PipelineJob
                     isNewPublication(identifierMatch, status));
             assertTrue("A different paper should be new after a dismissal",
                     isNewPublication(PublicationMatch.fromMatchInfo("456", NcbiConstants.DB.PubMed, "Author, Title"), status));
+        }
+
+        @Test
+        public void testPostAndRecordMessage()
+        {
+            List<String> calls = new ArrayList<>();
+            try
+            {
+                postAndRecordMessage(() -> { throw new IllegalStateException("Post failed"); }, () -> calls.add("record"));
+                fail("A failed post should throw");
+            }
+            catch (RuntimeException expected)
+            {
+            }
+            assertTrue("A message that failed to post should not be recorded on DatasetStatus", calls.isEmpty());
+
+            postAndRecordMessage(() -> calls.add("post"), () -> calls.add("record"));
+            assertEquals("The message should be recorded on DatasetStatus after it is posted", List.of("post", "record"), calls);
         }
 
         private static JournalSubmission submissionWithAnnouncementId(Integer announcementId)
