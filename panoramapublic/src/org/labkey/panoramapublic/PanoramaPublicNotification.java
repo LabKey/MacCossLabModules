@@ -448,6 +448,11 @@ public class PanoramaPublicNotification
 
         ActionURL dismissPublicationUrl = new ActionURL(PanoramaPublicController.DismissPublicationSuggestionAction.class, exptAnnotations.getContainer())
                 .addParameter("shortUrlEntityId", shortUrlEntityId);
+        if (articleMatch != null)
+        {
+            dismissPublicationUrl.addParameter("publicationId", articleMatch.getPublicationId())
+                    .addParameter("publicationType", articleMatch.getPublicationType().name());
+        }
 
         ExperimentAnnotations sourceExperiment = ExperimentAnnotationsManager.get(exptAnnotations.getSourceExperimentId());
 

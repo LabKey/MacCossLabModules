@@ -434,9 +434,9 @@ public class PrivateDataReminderJob extends PipelineJob
     }
 
     /**
-     * @return error when the job could not start, a dataset that should have been sent a reminder was
-     * not, or the publication search failed for half or more of the datasets it ran for or was stopped. Cancelled
-     * when the job was cancelled with nothing else to report, and complete otherwise.
+     * @return error when the job could not start, a dataset could not be processed, or the publication search
+     * failed for half or more of the datasets it ran for or was stopped. Cancelled when the job was cancelled
+     * with nothing else to report, and complete otherwise.
      */
     private TaskStatus postMessage(List<Integer> expAnnotationIds, Journal panoramaPublic)
     {
@@ -560,12 +560,6 @@ public class PrivateDataReminderJob extends PipelineJob
             return;
         }
 
-        ReminderDecision decision = getReminderDecision(expAnnotations, datasetStatus, context.getSettings(), _ignoreReminderLimit);
-        if (decision.remindersStopped())
-        {
-            processingResults.addRemindersStopped(expAnnotations);
-        }
-
         // Search whether or not a reminder is due, so that a paper published before the first reminder is found.
         PublicationSearchOutcome search = PublicationSearchOutcome.NONE;
         try
@@ -583,8 +577,28 @@ public class PrivateDataReminderJob extends PipelineJob
         }
         boolean searchCompleted = search.isSearchCompleted();
 
-        // Read again in case the submitter dismissed the paper while the search ran.
-        DatasetStatus currentStatus = DatasetStatusManager.getForExperiment(expAnnotations);
+        // Read again in case the submitter made the data public, requested an extension or deletion, or dismissed
+        // the paper while the search ran.
+        ExperimentAnnotations currentExpAnnotations = ExperimentAnnotationsManager.get(experimentAnnotationsId);
+        if (currentExpAnnotations == null)
+        {
+            processingResults.addExperimentNotFound(experimentAnnotationsId);
+            return;
+        }
+        DatasetStatus currentStatus = DatasetStatusManager.getForExperiment(currentExpAnnotations);
+        ReminderDecision exclusionAfterSearch = getExclusion(currentExpAnnotations, currentStatus);
+        if (exclusionAfterSearch != null)
+        {
+            processingResults.addSkipped(experimentAnnotationsId, exclusionAfterSearch);
+            return;
+        }
+
+        ReminderDecision decision = getReminderDecision(currentExpAnnotations, currentStatus, context.getSettings(), _ignoreReminderLimit);
+        if (decision.remindersStopped())
+        {
+            processingResults.addRemindersStopped(currentExpAnnotations);
+        }
+
         PublicationMatch publicationResult = isDismissed(search.getMatch(), currentStatus) ? null : search.getMatch();
 
         MessageType messageType = null;
@@ -1187,8 +1201,8 @@ public class PrivateDataReminderJob extends PipelineJob
         }
 
         /**
-         * @return the number of datasets that should have been sent a reminder and were not. Datasets
-         * whose publication search failed are not counted, because the reminder was still posted.
+         * @return the number of datasets that could not be processed. Datasets whose publication search
+         * failed are not counted, because the rest of the processing still ran for them.
          */
         public int getTotalErrors()
         {

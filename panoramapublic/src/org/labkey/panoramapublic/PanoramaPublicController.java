@@ -10624,19 +10624,19 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public abstract static class UpdateDatasetStatusAction extends ConfirmAction<ShortUrlForm>
+    public abstract static class UpdateDatasetStatusAction<FORM extends ShortUrlForm> extends ConfirmAction<FORM>
     {
         protected ExperimentAnnotations _exptAnnotations;
         protected DatasetStatus _datasetStatus;
 
-        protected abstract void doValidationForAction(Errors errors);
+        protected abstract void doValidationForAction(FORM form, Errors errors);
         protected abstract void updateDatasetStatus(DatasetStatus datasetStatus);
         protected abstract void postNotification();
         protected abstract String getConfirmViewTitle();
         protected abstract Renderable getConfirmViewMessage();
 
         @Override
-        public ModelAndView getConfirmView(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        public ModelAndView getConfirmView(FORM form, BindException errors) throws Exception
         {
             setTitle(getConfirmViewTitle());
             HtmlView view = new HtmlView(DIV(
@@ -10651,9 +10651,9 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public void validateCommand(ShortUrlForm shortUrlForm, Errors errors)
+        public void validateCommand(FORM form, Errors errors)
         {
-            _exptAnnotations = getValidExperimentAnnotations(shortUrlForm, errors);
+            _exptAnnotations = getValidExperimentAnnotations(form, errors);
             if (_exptAnnotations == null)
             {
                 return;
@@ -10664,14 +10664,22 @@ public class PanoramaPublicController extends SpringActionController
             _datasetStatus = DatasetStatusManager.getForExperiment(_exptAnnotations);
 
             // Action-specific validation
-            doValidationForAction(errors);
+            doValidationForAction(form, errors);
         }
 
         @Override
-        public boolean handlePost(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        public boolean handlePost(FORM form, BindException errors) throws Exception
         {
             try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
             {
+                // Read and validate again, in case the reminder job or Notify Submitter changed the row after
+                // validateCommand read it.
+                _datasetStatus = DatasetStatusManager.getForExperiment(_exptAnnotations);
+                doValidationForAction(form, errors);
+                if (errors.hasErrors())
+                {
+                    return false;
+                }
                 if (_datasetStatus == null)
                 {
                     _datasetStatus = new DatasetStatus();
@@ -10694,14 +10702,14 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public @NotNull URLHelper getSuccessURL(ShortUrlForm shortUrlForm)
+        public @NotNull URLHelper getSuccessURL(FORM form)
         {
             return PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer());
         }
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public static class RequestExtensionAction extends UpdateDatasetStatusAction
+    public static class RequestExtensionAction extends UpdateDatasetStatusAction<ShortUrlForm>
     {
         @Override
         protected String getConfirmViewTitle()
@@ -10716,7 +10724,7 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected void doValidationForAction(Errors errors)
+        protected void doValidationForAction(ShortUrlForm form, Errors errors)
         {
             if (_datasetStatus != null)
             {
@@ -10766,7 +10774,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public static class RequestDeletionAction extends UpdateDatasetStatusAction
+    public static class RequestDeletionAction extends UpdateDatasetStatusAction<ShortUrlForm>
     {
         @Override
         protected String getConfirmViewTitle()
@@ -10781,7 +10789,7 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected void doValidationForAction(Errors errors)
+        protected void doValidationForAction(ShortUrlForm form, Errors errors)
         {
             if (_datasetStatus != null)
             {
@@ -10822,18 +10830,33 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public static class DismissPublicationSuggestionAction extends UpdateDatasetStatusAction
+    public static class DismissPublicationSuggestionAction extends UpdateDatasetStatusAction<DismissPublicationForm>
     {
         private PublicationMatch _publicationMatch;
+        private boolean _formHasPublication;
+
+        @Override // Override to prevent ClassCastException
+        public boolean handlePost(DismissPublicationForm form, BindException errors) throws Exception
+        {
+            return super.handlePost(form, errors);
+        }
 
         @Override
-        protected void doValidationForAction(Errors errors)
+        protected void doValidationForAction(DismissPublicationForm form, Errors errors)
         {
             _publicationMatch = PublicationMatch.fromDatasetStatus(_datasetStatus);
+            _formHasPublication = form.getPublicationId() != null;
 
             if (_publicationMatch == null)
             {
                 errors.reject(ERROR_MSG, "No publication suggestion exists for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
+            }
+            else if (_formHasPublication && (!form.getPublicationId().equals(_publicationMatch.getPublicationId())
+                    || !_publicationMatch.getPublicationType().name().equals(form.getPublicationType())))
+            {
+                errors.reject(ERROR_MSG, "The publication suggestion for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
+                        + " has changed. The current suggestion is " + _publicationMatch.getPublicationIdLabel()
+                        + ". Please use the Dismiss Publication Suggestion link in the latest message.");
             }
             else if (_datasetStatus.getUserDismissedPublication() != null)
             {
@@ -10860,7 +10883,12 @@ public class PanoramaPublicController extends SpringActionController
                     , BR()
                     , "We will no longer suggest the following publication for this dataset - "
                     , BR(),
-                    publicationRef);
+                    publicationRef,
+                    // A Dismiss link in a message posted before the link included the publication ID. Post the
+                    // ID of the publication shown on this page, so that the POST is rejected if a different
+                    // publication was saved since.
+                    _formHasPublication ? null : INPUT(at(type, "hidden", name, "publicationId", value, _publicationMatch.getPublicationId())),
+                    _formHasPublication ? null : INPUT(at(type, "hidden", name, "publicationType", value, _publicationMatch.getPublicationType().name())));
         }
 
         // Fetch the citation from NCBI. If NCBI is unavailable, the publication ID label will be used as a fallback.
@@ -10901,7 +10929,7 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public ModelAndView getSuccessView(ShortUrlForm shortUrlForm)
+        public ModelAndView getSuccessView(DismissPublicationForm form)
         {
             setTitle("Publication Suggestion Dismissed");
             return new HtmlView(DIV("The publication suggestion has been dismissed for the data at " + _exptAnnotations.getShortUrl().renderShortURL(),
@@ -10910,6 +10938,32 @@ public class PanoramaPublicController extends SpringActionController
                             LinkBuilder.labkeyLink("Data Folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()))
                     )
             ));
+        }
+    }
+
+    public static class DismissPublicationForm extends ShortUrlForm
+    {
+        private String _publicationId;
+        private String _publicationType;
+
+        public String getPublicationId()
+        {
+            return _publicationId;
+        }
+
+        public void setPublicationId(String publicationId)
+        {
+            _publicationId = publicationId;
+        }
+
+        public String getPublicationType()
+        {
+            return _publicationType;
+        }
+
+        public void setPublicationType(String publicationType)
+        {
+            _publicationType = publicationType;
         }
     }
 
@@ -11152,7 +11206,8 @@ public class PanoramaPublicController extends SpringActionController
                         journal, submission, exptAnnotations, submitter, getUser(), notifyUsers,
                         _announcement, _announcementsContainer, getUser(), selectedMatch);
 
-                // Update DatasetStatus
+                // Read again so that a change the reminder job saved during the NCBI citation request is not overwritten.
+                datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
                 if (datasetStatus == null)
                 {
                     datasetStatus = new DatasetStatus();

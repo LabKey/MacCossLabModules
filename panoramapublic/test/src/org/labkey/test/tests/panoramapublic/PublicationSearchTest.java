@@ -166,6 +166,14 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_1);
         impersonate(SUBMITTER_1);
         waitForText("Submitted - " + shortAccessUrl1);
+
+        // A Dismiss link for a paper that is not the saved suggestion should not dismiss the saved suggestion
+        String dismissHref = getAttribute(Locator.linkWithText("Dismiss Publication Suggestion"), "href");
+        beginAt(dismissHref.replace("publicationId=" + PMID_1, "publicationId=" + PMID_2));
+        assertTextPresent("The publication suggestion for the data with short URL " + shortAccessUrl1 + " has changed");
+        goBack();
+        waitForText("Submitted - " + shortAccessUrl1);
+
         click(Locator.linkWithText("Dismiss Publication Suggestion"));
         waitForText("You are dismissing the publication suggestion for your data on Panorama Public");
         assertTextPresent(shortAccessUrl1);
@@ -310,7 +318,9 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_2);
         impersonate(SUBMITTER_2);
         waitForText("Submitted - " + shortAccessUrl2);
-        click(Locator.linkWithText("Dismiss Publication Suggestion"));
+        // A Dismiss link without the publication ID, as in messages posted before the ID was added, should still work
+        String dismissHref2 = getAttribute(Locator.linkWithText("Dismiss Publication Suggestion"), "href");
+        beginAt(dismissHref2.replaceAll("&publicationId=[^&]*|&publicationType=[^&]*", ""));
         waitForText("You are dismissing the publication suggestion for your data on Panorama Public");
         clickButton("OK", 0);
         waitForText("The publication suggestion has been dismissed");
