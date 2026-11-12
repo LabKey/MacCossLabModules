@@ -28,6 +28,9 @@ import org.labkey.remoteapi.CommandResponse;
 import org.labkey.remoteapi.Connection;
 import org.labkey.remoteapi.SimpleGetCommand;
 import org.labkey.remoteapi.SimplePostCommand;
+import org.labkey.remoteapi.query.Filter;
+import org.labkey.remoteapi.query.SelectRowsCommand;
+import org.labkey.remoteapi.query.SelectRowsResponse;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
 import org.labkey.test.TestTimeoutException;
@@ -64,6 +67,7 @@ import java.util.regex.Pattern;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.labkey.test.util.PermissionsHelper.FOLDER_ADMIN_ROLE;
 
 public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOnlyTest
@@ -734,6 +738,104 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         {
             throw new RuntimeException("Failed to restore the Private Data Reminder Settings", e);
         }
+    }
+
+    /**
+     * Routes NCBI requests through the mock NCBI service, which returns only the articles registered with
+     * registerMockPublication. Call restoreNcbiService in an @After method.
+     */
+    protected void useMockNcbiService()
+    {
+        try
+        {
+            SimplePostCommand command = new SimplePostCommand("panoramapublic", "setupMockNcbiService");
+            command.execute(createDefaultConnection(), "/");
+            log("Using mock NCBI service");
+        }
+        catch (IOException | CommandException e)
+        {
+            fail("Failed to set up the mock NCBI service: " + e.getMessage());
+        }
+    }
+
+    protected void restoreNcbiService()
+    {
+        try
+        {
+            SimplePostCommand command = new SimplePostCommand("panoramapublic", "restoreNcbiService");
+            command.execute(createDefaultConnection(), "/");
+            log("Restored real NCBI service");
+        }
+        catch (IOException | CommandException e)
+        {
+            log("Warning: Failed to restore NCBI service: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Registers an article with the mock NCBI service. A search in the given database returns the article when
+     * searchKey is part of the search term.
+     */
+    protected void registerMockPublication(String database, String id, String searchKey,
+                                           @Nullable String pmid, String title, String authors,
+                                           String sortDate, String source, String journalFull,
+                                           @Nullable String citation)
+    {
+        try
+        {
+            SimplePostCommand command = new SimplePostCommand("panoramapublic", "registerMockPublication");
+            Map<String, Object> params = new HashMap<>();
+            params.put("database", database);
+            params.put("id", id);
+            params.put("searchKey", searchKey);
+            params.put("title", title);
+            params.put("authors", authors);
+            params.put("pubDate", sortDate);
+            params.put("source", source);
+            params.put("journalFull", journalFull);
+            if (pmid != null) params.put("pmid", pmid);
+            if (citation != null) params.put("citation", citation);
+            command.setParameters(params);
+            command.execute(createDefaultConnection(), "/");
+            log("Registered mock publication: " + database + " " + id);
+        }
+        catch (IOException | CommandException e)
+        {
+            fail("Failed to register mock publication: " + e.getMessage());
+        }
+    }
+
+    /**
+     * @return the DatasetStatus row for the experiment, or null if there is none
+     */
+    protected @Nullable Map<String, Object> getDatasetStatus(String panoramaPublicProject, String targetFolder, int exptId)
+    {
+        try
+        {
+            SelectRowsCommand cmd = new SelectRowsCommand("panoramapublic", "DatasetStatus");
+            cmd.addFilter(new Filter("ExperimentAnnotationsId", exptId));
+            cmd.setColumns(List.of("ExperimentAnnotationsId", "PotentialPublicationId", "PublicationType",
+                    "PublicationMatchInfo", "Citation", "LastReminderDate", "UserDismissedPublication",
+                    "ReminderCount", "LastPublicationSearchDate"));
+            SelectRowsResponse resp = cmd.execute(createDefaultConnection(), "/" + panoramaPublicProject + "/" + targetFolder);
+            List<Map<String, Object>> rows = resp.getRows();
+            if (rows.isEmpty())
+            {
+                return null;
+            }
+            assertEquals("Expected at most one DatasetStatus row for experiment " + exptId, 1, rows.size());
+            return rows.getFirst();
+        }
+        catch (IOException | CommandException e)
+        {
+            fail("Failed to query DatasetStatus: " + e.getMessage());
+            return null;
+        }
+    }
+
+    protected static int reminderCount(Map<String, Object> datasetStatus)
+    {
+        return ((Number) datasetStatus.get("ReminderCount")).intValue();
     }
 
     protected void goToSendRemindersPage(String projectName)

@@ -19,8 +19,6 @@ import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.remoteapi.CommandException;
-import org.labkey.remoteapi.Connection;
-import org.labkey.remoteapi.SimplePostCommand;
 import org.labkey.remoteapi.query.Filter;
 import org.labkey.remoteapi.query.SelectRowsCommand;
 import org.labkey.remoteapi.query.SelectRowsResponse;
@@ -35,7 +33,6 @@ import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -431,42 +428,6 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
     }
 
     /*
-     * Query the DatasetStatus table for a given experiment ID.
-     * Returns null if no row exists, or a map of column name → value.
-     */
-    private Map<String, Object> getDatasetStatus(String panoramaPublicProject, String targetFolder, int exptId)
-    {
-        try
-        {
-            Connection connection = createDefaultConnection();
-            SelectRowsCommand cmd = new SelectRowsCommand("panoramapublic", "DatasetStatus");
-            cmd.addFilter(new Filter("ExperimentAnnotationsId", exptId));
-            cmd.setColumns(List.of("ExperimentAnnotationsId", "PotentialPublicationId", "PublicationType",
-                    "PublicationMatchInfo", "Citation", "LastReminderDate", "UserDismissedPublication",
-                    "ReminderCount", "LastPublicationSearchDate"));
-            String containerPath = "/" + panoramaPublicProject + "/" + targetFolder;
-            SelectRowsResponse resp = cmd.execute(connection, containerPath);
-            List<Map<String, Object>> rows = resp.getRows();
-            if (rows.isEmpty())
-            {
-                return null;
-            }
-            assertEquals("Expected at most one DatasetStatus row for experiment " + exptId, 1, rows.size());
-            return rows.getFirst();
-        }
-        catch (IOException | CommandException e)
-        {
-            fail("Failed to query DatasetStatus: " + e.getMessage());
-            return null;
-        }
-    }
-
-    private static int reminderCount(Map<String, Object> datasetStatus)
-    {
-        return ((Number) datasetStatus.get("ReminderCount")).intValue();
-    }
-
-    /*
      * On TeamCity: set up the mock NCBI service and register mock publication data.
      * On dev machine: verify that NCBI is reachable; fail with a clear message if not.
      */
@@ -486,19 +447,9 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
 
     private void initMockNcbiService()
     {
-        try
-        {
-            Connection connection = createDefaultConnection();
-            SimplePostCommand command = new SimplePostCommand("panoramapublic", "setupMockNcbiService");
-            command.execute(connection, "/");
-            _useMockNcbi = true;
-            log("Using mock NCBI service");
-            registerMockPublications();
-        }
-        catch (IOException | CommandException e)
-        {
-            fail("Failed to set up mock NCBI service: " + e.getMessage());
-        }
+        useMockNcbiService();
+        _useMockNcbi = true;
+        registerMockPublications();
     }
 
     private static boolean isNcbiReachable()
@@ -552,57 +503,6 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
                 "Wen B,Hsu C,Shteynberg D,Zeng WF,Riffle M,Chang A,Mudge M,Nunn BL,MacLean BX,Berg MD,Villén J,MacCoss MJ,Noble WS",
                 "2025/08/04 00:00", "bioRxiv", "bioRxiv : the preprint server for biology",
                 null);
-    }
-
-    /*
-     * Register a single mock article with the mock NCBI service via the RegisterMockPublicationAction API.
-     */
-    private void registerMockPublication(String database, String id, String searchKey,
-                                         String pmid, String title, String authors,
-                                         String sortDate, String source, String journalFull,
-                                         String citation)
-    {
-        try
-        {
-            Connection connection = createDefaultConnection();
-            SimplePostCommand command = new SimplePostCommand("panoramapublic", "registerMockPublication");
-            Map<String, Object> params = new HashMap<>();
-            params.put("database", database);
-            params.put("id", id);
-            params.put("searchKey", searchKey);
-            params.put("title", title);
-            params.put("authors", authors);
-            params.put("pubDate", sortDate);
-            params.put("source", source);
-            params.put("journalFull", journalFull);
-            if (pmid != null) params.put("pmid", pmid);
-            if (citation != null) params.put("citation", citation);
-            command.setParameters(params);
-            command.execute(connection, "/");
-            log("Registered mock publication: " + database + " " + id);
-        }
-        catch (IOException | CommandException e)
-        {
-            fail("Failed to register mock publication: " + e.getMessage());
-        }
-    }
-
-    /*
-     * Restore the real NCBI service.
-     */
-    private void restoreNcbiService()
-    {
-        try
-        {
-            Connection connection = createDefaultConnection();
-            SimplePostCommand command = new SimplePostCommand("panoramapublic", "restoreNcbiService");
-            command.execute(connection, "/");
-            log("Restored real NCBI service");
-        }
-        catch (IOException | CommandException e)
-        {
-            log("Warning: Failed to restore NCBI service: " + e.getMessage());
-        }
     }
 
     @After
