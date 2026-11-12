@@ -185,7 +185,11 @@ public class PrivateDataReminderJob extends PipelineJob
     {
         if (datasetStatus != null)
         {
-            if (settings.isExtensionValid(datasetStatus))
+            // Reminders naming a saved paper follow the first "Publication Found" message at the reminder frequency,
+            // during an extension and without waiting for the first-reminder delay.
+            boolean hasSavedPaper = getSavedPaper(datasetStatus) != null;
+
+            if (!hasSavedPaper && settings.isExtensionValid(datasetStatus))
             {
                 return ReminderDecision.skip("Submitter requested an extension. Extension is current");
             }
@@ -199,6 +203,11 @@ public class PrivateDataReminderJob extends PipelineJob
             if (settings.isLastReminderRecent(datasetStatus))
             {
                 return ReminderDecision.skip("Recent reminder already sent");
+            }
+
+            if (hasSavedPaper)
+            {
+                return ReminderDecision.post();
             }
         }
         return reminderIsDue(exptAnnotations, settings);
@@ -762,6 +771,14 @@ public class PrivateDataReminderJob extends PipelineJob
         {
             return searchMatch;
         }
+        return getSavedPaper(datasetStatus);
+    }
+
+    /**
+     * @return the saved publication if the submitter has not dismissed it, otherwise null
+     */
+    private static @Nullable PublicationMatch getSavedPaper(@Nullable DatasetStatus datasetStatus)
+    {
         if (datasetStatus == null || datasetStatus.getUserDismissedPublication() != null)
         {
             return null;
@@ -1508,6 +1525,54 @@ public class PrivateDataReminderJob extends PipelineJob
                     getPaper(identifierMatch, status));
             assertEquals("A different paper found after a dismissal should be the paper",
                     "456", getPaper(otherMatch, status).getPublicationId());
+        }
+
+        @Test
+        public void testGetReminderDecision()
+        {
+            PrivateDataReminderSettings settings = new PrivateDataReminderSettings();
+            settings.setDelayUntilFirstReminder(12);
+            settings.setReminderFrequency(1);
+            settings.setStopRemindersAfter(6);
+            settings.setExtensionLength(6);
+
+            ExperimentAnnotations expt = new ExperimentAnnotations();
+            expt.setCreated(Date.from(LocalDate.now().minusMonths(2).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+
+            assertFalse("A reminder should not be due before the first-reminder delay for a dataset with no paper",
+                    getReminderDecision(expt, null, settings, false).shouldPost());
+
+            DatasetStatus status = new DatasetStatus();
+            status.setPotentialPublicationId("123");
+            status.setPublicationType(NcbiConstants.DB.PubMed.name());
+            status.setPublicationMatchInfo("ProteomeXchange ID");
+            status.setLastReminderDate(Date.from(LocalDate.now().minusMonths(1).minusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+            assertTrue("A reminder should be due before the first-reminder delay for a dataset with a saved paper",
+                    getReminderDecision(expt, status, settings, false).shouldPost());
+
+            status.setExtensionRequestedDate(new Date());
+            assertTrue("A reminder should be due during an extension for a dataset with a saved paper",
+                    getReminderDecision(expt, status, settings, false).shouldPost());
+            status.setExtensionRequestedDate(null);
+
+            status.setLastReminderDate(new Date());
+            assertFalse("A reminder should not be due within the reminder frequency for a dataset with a saved paper",
+                    getReminderDecision(expt, status, settings, false).shouldPost());
+
+            status.setLastReminderDate(Date.from(LocalDate.now().minusMonths(1).minusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+            status.setReminderCount(6);
+            assertFalse("A reminder should not be due after reminders stopped for a dataset with a saved paper",
+                    getReminderDecision(expt, status, settings, false).shouldPost());
+
+            status.setReminderCount(0);
+            status.setUserDismissedPublication(new Date());
+            assertFalse("A reminder should not be due before the first-reminder delay for a dataset whose paper was dismissed",
+                    getReminderDecision(expt, status, settings, false).shouldPost());
+
+            expt.setCreated(Date.from(LocalDate.now().minusMonths(24).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+            status.setExtensionRequestedDate(new Date());
+            assertFalse("A reminder should not be due during an extension for a dataset whose paper was dismissed",
+                    getReminderDecision(expt, status, settings, false).shouldPost());
         }
 
         @Test

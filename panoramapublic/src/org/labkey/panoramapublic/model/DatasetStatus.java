@@ -15,6 +15,7 @@
  */
 package org.labkey.panoramapublic.model;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.panoramapublic.message.PrivateDataReminderSettings;
 import org.labkey.panoramapublic.ncbi.NcbiConstants;
@@ -171,6 +172,14 @@ public class DatasetStatus  extends DbEntity
     public void setReminderCount(int reminderCount)
     {
         _reminderCount = reminderCount;
+    }
+
+    /**
+     * @return true if a publication is saved and the submitter has not dismissed it
+     */
+    public boolean hasPublicationSuggestion()
+    {
+        return !StringUtils.isBlank(getPotentialPublicationId()) && getUserDismissedPublication() == null;
     }
 
     public boolean isPublicationDismissed(String publicationId)

@@ -139,6 +139,7 @@ import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.*;
 import org.labkey.api.view.template.ClientDependency;
+import org.labkey.api.view.template.PageConfig;
 import org.labkey.api.wiki.WikiRendererType;
 import org.labkey.api.wiki.WikiRenderingService;
 import org.labkey.api.writer.PrintWriters;
@@ -10730,23 +10731,61 @@ public class PanoramaPublicController extends SpringActionController
             return DIV("You are requesting an extension for the private data on Panorama Public at ", _exptAnnotations.getShortUrl().renderShortURL());
         }
 
+        private boolean _publicationFound;
+
         @Override
         protected void doValidationForAction(ShortUrlForm form, Errors errors)
         {
+            _publicationFound = false;
             if (_datasetStatus != null)
             {
                 PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
-                if (settings.isExtensionValid(_datasetStatus))
-                {
-                    errors.reject(ERROR_MSG, "An extension has already been requested for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
-                            + ". The extension is valid until " + settings.extensionValidUntilFormatted(_datasetStatus));
-                }
-                else if (_datasetStatus.deletionRequested())
+                if (_datasetStatus.deletionRequested())
                 {
                     errors.reject(ERROR_MSG, "A deletion request was submitted on " + _datasetStatus.getDeletionRequestedDate()
                             + " for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
                 }
+                // Checked before a current extension, which does not stop reminders about a saved paper.
+                else if (_datasetStatus.hasPublicationSuggestion())
+                {
+                    _publicationFound = true;
+                    errors.reject(ERROR_MSG, "An extension cannot be requested for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
+                            + " because a publication was found for it.");
+                }
+                else if (settings.isExtensionValid(_datasetStatus))
+                {
+                    errors.reject(ERROR_MSG, "An extension has already been requested for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
+                            + ". The extension is valid until " + settings.extensionValidUntilFormatted(_datasetStatus));
+                }
             }
+        }
+
+        @Override
+        public ModelAndView getFailView(ShortUrlForm form, BindException errors)
+        {
+            PublicationMatch paper = _publicationFound ? PublicationMatch.fromDatasetStatus(_datasetStatus) : null;
+            if (paper == null)
+            {
+                return super.getFailView(form, errors);
+            }
+
+            setTitle(getConfirmViewTitle());
+            getPageConfig().setTemplate(PageConfig.Template.Dialog);
+            ActionURL dismissUrl = new ActionURL(DismissPublicationSuggestionAction.class, _exptAnnotations.getContainer())
+                    .addParameter("shortUrlEntityId", _exptAnnotations.getShortUrl().getEntityId().toString())
+                    .addParameter("publicationId", paper.getPublicationId())
+                    .addParameter("publicationType", paper.getPublicationType().name());
+            return new VBox(new SimpleErrorView(errors, false), new HtmlView(DIV(
+                    DIV("Publication Found: ",
+                            new LinkBuilder(paper.getCitation() != null ? paper.getCitation() : paper.getPublicationIdLabel())
+                                    .href(paper.getPublicationUrl()).clearClasses().build()),
+                    BR(),
+                    DIV("If the paper is not associated with the data, please let us know by clicking ",
+                            new LinkBuilder("Dismiss Publication Suggestion").href(dismissUrl).clearClasses().build(), "."),
+                    BR(),
+                    DIV(PageFlowUtil.generateBackButton(),
+                            new ButtonBuilder("Home").href(AppProps.getInstance().getHomePageActionURL()))
+            )));
         }
 
         @Override

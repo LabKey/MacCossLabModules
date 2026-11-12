@@ -189,6 +189,8 @@
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         Number of months after data submission before sending the first reminder.
                         <br/>
+                        Does not apply to a dataset with a saved publication match the submitter has not dismissed. Its reminders follow the "Publication Found" message at the reminder frequency.
+                        <br/>
                         Entering 0 will send a reminder the next time the job runs.
                     </div>
                 </td>
@@ -214,6 +216,8 @@
                     <input style="padding:0 10px 0 0;" type="text" name="extensionLength" value="<%=form.getExtensionLength()%>" />
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         Number of months the private status of a dataset can be extended at the submitter's request.
+                        <br/>
+                        An extension cannot be requested for a dataset that has a saved publication match the submitter has not dismissed. A dataset whose publication is found during an extension still gets reminders about the publication.
                     </div>
                 </td>
             </tr>

@@ -174,6 +174,18 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         goBack();
         waitForText("Submitted - " + shortAccessUrl1);
 
+        // An extension should not be granted while the publication suggestion has not been dismissed
+        beginAt(dismissHref.replace("panoramapublic-dismissPublicationSuggestion.view", "panoramapublic-requestExtension.view"));
+        assertTextPresent("An extension cannot be requested for the data with short URL " + shortAccessUrl1
+                + " because a publication was found for it");
+        assertTextNotPresent("You are requesting an extension");
+        assertElementPresent(Locator.linkWithHref("https://pubmed.ncbi.nlm.nih.gov/" + PMID_1));
+        String extensionPageDismissHref = getAttribute(Locator.linkWithText("Dismiss Publication Suggestion"), "href");
+        assertTrue("The Dismiss Publication Suggestion link should name the saved paper",
+                extensionPageDismissHref.contains("publicationId=" + PMID_1));
+        goBack();
+        waitForText("Submitted - " + shortAccessUrl1);
+
         click(Locator.linkWithText("Dismiss Publication Suggestion"));
         waitForText("You are dismissing the publication suggestion for your data on Panorama Public");
         assertTextPresent(shortAccessUrl1);
@@ -223,6 +235,17 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         // Verify DatasetStatus for dataset 2 was NOT updated in test mode
         Map<String, Object> dsStatus2TestMode = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
         assertNull("Expected no DatasetStatus row for dataset 2 after test-mode run", dsStatus2TestMode);
+
+        // The dataset 2 submitter requests an extension before a paper is found for the dataset
+        goToProjectFolder(panoramaPublicProject, TARGET_FOLDER_2);
+        String requestExtensionUrl2 = WebTestHelper.buildURL("panoramapublic", getCurrentContainerPath(), "requestExtension",
+                Map.of("shortUrlEntityId", getShortUrlEntityId(panoramaPublicProject, TARGET_FOLDER_2, exptId2)));
+        impersonate(SUBMITTER_2);
+        beginAt(requestExtensionUrl2);
+        waitForText("You are requesting an extension for the private data on Panorama Public at " + shortAccessUrl2);
+        clickButton("OK", 0);
+        waitForText("An extension request was successfully submitted for the data at " + shortAccessUrl2);
+        stopImpersonating();
 
         // Step 9a: Run in ACTUAL mode with both datasets younger than the first reminder delay. Dataset 2 is
         // searched anyway, and the submitter is told about the paper. No reminder is posted for either dataset.
@@ -314,6 +337,16 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertEquals("Expected reminderCount to be 1 after the first reminder for dataset 2", 1, reminderCount(dsStatus2AfterPost));
         assertNotNull("Expected citation to be cached for dataset 2", dsStatus2AfterPost.get("Citation"));
 
+        // Dataset 2 has a current extension and a saved paper. Another extension request should be refused because of
+        // the paper, and the page should offer the Dismiss link.
+        impersonate(SUBMITTER_2);
+        beginAt(requestExtensionUrl2);
+        assertTextPresent("An extension cannot be requested for the data with short URL " + shortAccessUrl2
+                + " because a publication was found for it");
+        assertTextNotPresent("An extension has already been requested");
+        assertElementPresent(Locator.linkWithText("Dismiss Publication Suggestion"));
+        stopImpersonating();
+
         // Step 11: Impersonate the dataset 2 submitter and dismiss the publication suggestion
         goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_2);
         impersonate(SUBMITTER_2);
@@ -374,6 +407,27 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
     {
         goToProjectFolder(panoramaPublicProject, targetFolder);
         portalHelper.clickWebpartMenuItem("Targeted MS Experiment", true, "Support Messages");
+    }
+
+    /*
+     * Returns the entity ID of the experiment's short URL, used as the shortUrlEntityId parameter of the submitter actions.
+     */
+    private String getShortUrlEntityId(String panoramaPublicProject, String targetFolder, int exptId)
+    {
+        try
+        {
+            SelectRowsCommand cmd = new SelectRowsCommand("panoramapublic", "ExperimentAnnotations");
+            cmd.addFilter(new Filter("Id", exptId));
+            cmd.setColumns(List.of("Id", "ShortUrl"));
+            SelectRowsResponse resp = cmd.execute(createDefaultConnection(), "/" + panoramaPublicProject + "/" + targetFolder);
+            assertEquals("Expected one ExperimentAnnotations row for experiment " + exptId, 1, resp.getRows().size());
+            return String.valueOf(resp.getRows().getFirst().get("ShortUrl"));
+        }
+        catch (IOException | CommandException e)
+        {
+            fail("Failed to query ExperimentAnnotations: " + e.getMessage());
+            return null;
+        }
     }
 
     /*
