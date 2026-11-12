@@ -10651,6 +10651,13 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
+        public ModelAndView getFailView(FORM form, BindException errors)
+        {
+            setTitle(getConfirmViewTitle());
+            return super.getFailView(form, errors);
+        }
+
+        @Override
         public void validateCommand(FORM form, Errors errors)
         {
             _exptAnnotations = getValidExperimentAnnotations(form, errors);
