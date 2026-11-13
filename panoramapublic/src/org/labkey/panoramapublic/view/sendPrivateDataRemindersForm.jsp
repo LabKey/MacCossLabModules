@@ -66,24 +66,24 @@
         <input type="hidden" name="selectedIds" id="selectedIdsInput"/>
         <table class="lk-fields-table">
             <tr>
-                <td class="labkey-form-label" style="text-align:center;">Test Mode:</td>
+                <td class="labkey-form-label" style="text-align:center;"><label for="testMode">Test Mode:</label></td>
                 <td>
-                    <input type="checkbox" name="testMode" <%=checked(form.getTestMode())%> />
+                    <input type="checkbox" id="testMode" name="testMode" <%=checked(form.getTestMode())%> />
                 </td>
             </tr>
             <tr>
-                <td class="labkey-form-label" style="text-align:center;">Search for Publications:</td>
+                <td class="labkey-form-label" style="text-align:center;"><label for="searchPublications">Search for Publications:</label></td>
                 <td>
-                    <input type="checkbox" name="searchPublications" <%=checked(form.isSearchPublications())%> />
+                    <input type="checkbox" id="searchPublications" name="searchPublications" <%=checked(form.isSearchPublications())%> />
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         When checked, the system will search for publications before sending reminders.
                     </div>
                 </td>
             </tr>
             <tr>
-                <td class="labkey-form-label" style="text-align:center;">Ignore Reminder Limit:</td>
+                <td class="labkey-form-label" style="text-align:center;"><label for="ignoreReminderLimit">Ignore Reminder Limit:</label></td>
                 <td>
-                    <input type="checkbox" name="ignoreReminderLimit" <%=checked(form.isIgnoreReminderLimit())%> />
+                    <input type="checkbox" id="ignoreReminderLimit" name="ignoreReminderLimit" <%=checked(form.isIgnoreReminderLimit())%> />
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         When checked, a reminder is sent even if the submitter has not responded to the number of reminders
                         set in "Stop reminders after". The reminder frequency and extensions still apply.
