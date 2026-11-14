@@ -42,6 +42,7 @@ public class PrivateDataReminderSettings
     public static final String PROP_DELAY_UNTIL_FIRST_REMINDER = "Delay until first reminder (months)";
     public static final String PROP_REMINDER_FREQUENCY = "Reminder frequency (months)";
     public static final String PROP_EXTENSION_LENGTH = "Extension duration (months)";
+    public static final String PROP_STOP_REMINDERS_AFTER = "Stop reminders after (number of reminders)";
     public static final String PROP_ENABLE_PUBLICATION_SEARCH = "Enable publication search";
     public static final String PROP_PUBLICATION_SEARCH_FREQUENCY = "Publication search frequency (months)";
     public static final String PROP_NCBI_API_KEY = "NCBI API key";
@@ -54,8 +55,9 @@ public class PrivateDataReminderSettings
     private static final int DEFAULT_DELAY_UNTIL_FIRST_REMINDER = 12; // Send the first reminder after the data has been private for a year.
     private static final int DEFAULT_REMINDER_FREQUENCY = 1; // Send reminders once a month, unless extension or deletion was requested.
     private static final int DEFAULT_EXTENSION_LENGTH = 6; // Private status of a dataset can be extended by 6 months.
+    private static final int DEFAULT_STOP_REMINDERS_AFTER = 6; // Stop after 6 reminders if the submitter has not responded.
     private static final boolean DEFAULT_ENABLE_PUBLICATION_SEARCH = false;
-    private static final int DEFAULT_PUBLICATION_SEARCH_FREQUENCY = 3; // Re-search every 3 months after dismissal
+    private static final int DEFAULT_PUBLICATION_SEARCH_FREQUENCY = 1; // Search each private dataset once a month, including after a dismissal
 
     public static final String DATE_FORMAT_PATTERN = "MMMM d, yyyy";
     public static final String REMINDER_TIME_FORMAT = "h:mm a";
@@ -66,6 +68,7 @@ public class PrivateDataReminderSettings
     private int _delayUntilFirstReminder;
     private int _reminderFrequency;
     private int _extensionLength;
+    private Integer _stopRemindersAfter;
     private boolean _enablePublicationSearch;
     private int _publicationSearchFrequency;
     private String _ncbiApiKey;
@@ -97,6 +100,12 @@ public class PrivateDataReminderSettings
                     : Integer.valueOf(settingsMap.get(PROP_EXTENSION_LENGTH));
             settings.setExtensionLength(extensionLength);
 
+            // An empty value is saved when the admin clears the setting, so reminders never stop.
+            String stopRemindersAfter = settingsMap.get(PROP_STOP_REMINDERS_AFTER);
+            settings.setStopRemindersAfter(stopRemindersAfter == null
+                    ? Integer.valueOf(DEFAULT_STOP_REMINDERS_AFTER)
+                    : StringUtils.isBlank(stopRemindersAfter) ? null : Integer.valueOf(stopRemindersAfter));
+
             LocalTime reminderTime = tryParseReminderTime(settingsMap.get(PROP_REMINDER_TIME), DEFAULT_REMINDER_TIME);
             settings.setReminderTime(reminderTime);
 
@@ -116,6 +125,7 @@ public class PrivateDataReminderSettings
             settings.setDelayUntilFirstReminder(DEFAULT_DELAY_UNTIL_FIRST_REMINDER);
             settings.setReminderFrequency(DEFAULT_REMINDER_FREQUENCY);
             settings.setExtensionLength(DEFAULT_EXTENSION_LENGTH);
+            settings.setStopRemindersAfter(DEFAULT_STOP_REMINDERS_AFTER);
             settings.setReminderTime(parseReminderTime(DEFAULT_REMINDER_TIME));
             settings.setEnablePublicationSearch(DEFAULT_ENABLE_PUBLICATION_SEARCH);
             settings.setPublicationSearchFrequency(DEFAULT_PUBLICATION_SEARCH_FREQUENCY);
@@ -155,6 +165,7 @@ public class PrivateDataReminderSettings
         settingsMap.put(PROP_DELAY_UNTIL_FIRST_REMINDER, String.valueOf(settings.getDelayUntilFirstReminder()));
         settingsMap.put(PROP_REMINDER_FREQUENCY, String.valueOf(settings.getReminderFrequency()));
         settingsMap.put(PROP_EXTENSION_LENGTH, String.valueOf(settings.getExtensionLength()));
+        settingsMap.put(PROP_STOP_REMINDERS_AFTER, settings.getStopRemindersAfter() == null ? "" : String.valueOf(settings.getStopRemindersAfter()));
         settingsMap.put(PROP_REMINDER_TIME, settings.getReminderTimeFormatted());
         settingsMap.put(PROP_ENABLE_PUBLICATION_SEARCH, String.valueOf(settings.isEnablePublicationSearch()));
         settingsMap.put(PROP_PUBLICATION_SEARCH_FREQUENCY, String.valueOf(settings.getPublicationSearchFrequency()));
@@ -258,6 +269,20 @@ public class PrivateDataReminderSettings
         return _reminderFrequency;
     }
 
+    /**
+     * @return the number of reminders without a response from the submitter after which reminders stop. Null means
+     * reminders never stop.
+     */
+    public @Nullable Integer getStopRemindersAfter()
+    {
+        return _stopRemindersAfter;
+    }
+
+    public void setStopRemindersAfter(@Nullable Integer stopRemindersAfter)
+    {
+        _stopRemindersAfter = stopRemindersAfter;
+    }
+
     public int getDelayUntilFirstReminder()
     {
         return _delayUntilFirstReminder;
@@ -324,6 +349,30 @@ public class PrivateDataReminderSettings
         if (dismissed == null) return false;
         Date searchDeferralEnd = addMonths(dismissed, getPublicationSearchFrequency());
         return isDateInFuture(searchDeferralEnd);
+    }
+
+    /**
+     * @return true if the dataset has never had a publication search that completed, or the last one was
+     * publicationSearchFrequency months ago or more.
+     */
+    public boolean isPublicationSearchDue(@NotNull DatasetStatus status)
+    {
+        return isPublicationSearchDueAsOf(status, new Date());
+    }
+
+    private boolean isPublicationSearchDueAsOf(@NotNull DatasetStatus status, @NotNull Date currentTime)
+    {
+        Date lastSearch = status.getLastPublicationSearchDate();
+        return lastSearch == null || !isDateInFuture(addMonths(lastSearch, getPublicationSearchFrequency()), currentTime);
+    }
+
+    /**
+     * @return true if stopRemindersAfter reminders have been posted since the submitter last requested an extension
+     * or dismissed a publication suggestion.
+     */
+    public boolean areRemindersStopped(@NotNull DatasetStatus status)
+    {
+        return getStopRemindersAfter() != null && status.getReminderCount() >= getStopRemindersAfter();
     }
 
     public @Nullable String extensionValidUntilFormatted(@NotNull DatasetStatus status)
@@ -427,6 +476,58 @@ public class PrivateDataReminderSettings
             testReminderIsOld(settings, -15);
             testReminderIsOldAsOf(settings, (settings.getReminderFrequency() * -1), 0);
             testReminderIsRecent(settings, 30); // Reminder date is set in the future
+        }
+
+        @Test
+        public void testIsPublicationSearchDue()
+        {
+            PrivateDataReminderSettings settings = new PrivateDataReminderSettings();
+            settings.setPublicationSearchFrequency(1);
+
+            DatasetStatus status = new DatasetStatus();
+            assertTrue("A dataset that was never searched should be searched", settings.isPublicationSearchDue(status));
+
+            status.setLastPublicationSearchDate(dateFromNow(0, -15));
+            assertFalse("A search 15 days ago should not be repeated", settings.isPublicationSearchDue(status));
+
+            status.setLastPublicationSearchDate(dateFromNow(-2, 0));
+            assertTrue("A search 2 months ago should be repeated", settings.isPublicationSearchDue(status));
+
+            // The boundary, publicationSearchFrequency months after the last search. The current date comes from the
+            // due date, as testExtensionNearExpiry explains.
+            status.setLastPublicationSearchDate(dateFromNow(-1, 0));
+            Date dueDate = addMonths(status.getLastPublicationSearchDate(), settings.getPublicationSearchFrequency());
+            assertTrue("A search should be due exactly publicationSearchFrequency months after the last search",
+                    settings.isPublicationSearchDueAsOf(status, dueDate));
+            assertFalse("A search should not be due 1 minute before publicationSearchFrequency months have passed",
+                    settings.isPublicationSearchDueAsOf(status, minutesBefore(dueDate, 1)));
+        }
+
+        @Test
+        public void testAreRemindersStopped()
+        {
+            PrivateDataReminderSettings settings = new PrivateDataReminderSettings();
+            settings.setStopRemindersAfter(6);
+
+            DatasetStatus status = new DatasetStatus();
+            assertFalse("Reminders should not stop for a dataset with no reminders counted", settings.areRemindersStopped(status));
+
+            status.setReminderCount(5);
+            assertFalse("Reminders should continue after 5 reminders", settings.areRemindersStopped(status));
+
+            status.setReminderCount(6);
+            assertTrue("Reminders should stop after 6 reminders", settings.areRemindersStopped(status));
+
+            status.setReminderCount(9);
+            assertTrue("Reminders should stop after more than 6 reminders", settings.areRemindersStopped(status));
+
+            settings.setStopRemindersAfter(null);
+            assertFalse("Reminders should never stop when the setting is empty", settings.areRemindersStopped(status));
+        }
+
+        private static Date minutesBefore(Date date, int minutes)
+        {
+            return Date.from(date.toInstant().minusSeconds(minutes * 60L));
         }
 
         private void testExtensionIsValid(PrivateDataReminderSettings settings, int monthsOffset)

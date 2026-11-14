@@ -15,6 +15,7 @@
  */
 package org.labkey.test.tests.panoramapublic;
 
+import org.jetbrains.annotations.Nullable;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.labkey.test.util.PermissionsHelper.READER_ROLE;
 
 @Category({External.class, MacCossLabModules.class})
@@ -50,8 +52,19 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
     private static final String EXTENSION_MESSAGE_TITLE = "Title: Private Status Extended - ";
     private static final String DELETION_MESSAGE_TITLE = "Title: Data Deletion Requested - ";
     private static final String MESSAGE_PAGE_TITLE = "Submitted - ";
+    private static final String PUBLICATION_FOUND_MESSAGE_TITLE = "Title: Action Required: Publication Found for Your Data on Panorama Public";
+
+    private static final String DATA_2_TITLE = "Test for private data message reminder - DATA TWO";
+    private static final String DATA_2_SUBMITTER_FIRST_NAME = "Sam";
+    private static final String DATA_2_PMID = "90000002";
+    private static final String DATA_2_PMC_ID = "90000003";
+    // The job log when the dataset at the reminder limit is sent a "Publication Found" message, and the other private
+    // dataset, which has a current extension, is skipped
+    private static final String PUBLICATION_NOTICE_LOG = "1 processed (0 reminders, 1 new publication notices), 1 skipped";
+    private static final String AT_LIMIT_NOTIFIED_LOG = "1 dataset at the reminder limit (0 skipped, 1 sent a publication notice)";
 
     private Map<String, String> _originalReminderSettings;
+    private boolean _useMockNcbi = false;
 
     @Test
     public void testPrivateDataReminder()
@@ -72,15 +85,16 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
                 panoramaPublicProject,
                 "Private Data 1 Copy",
                 "Test for private data message reminder - DATA ONE",
-                SUBMITTER_1, "One",
+                SUBMITTER_1, "One", null,
                 ADMIN_1);
 
+        // The PubMed search by author and title needs the submitter's first name.
         DataFolderInfo folderInfo_2 = createAndSubmitFolder(testProject,
                 "Private Data 2",
                 panoramaPublicProject,
                 "Private Data 2 Copy",
-                "Test for private data message reminder - DATA TWO",
-                SUBMITTER_2, "Two",
+                DATA_2_TITLE,
+                SUBMITTER_2, "Two", DATA_2_SUBMITTER_FIRST_NAME,
                 ADMIN_2);
 
         DataFolderInfo folderInfo_3 = createAndSubmitFolder(testProject,
@@ -88,7 +102,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
                 panoramaPublicProject,
                 "Private Data 3 Copy",
                 "Test for private data message reminder - DATA THREE",
-                SUBMITTER_3, "Three",
+                SUBMITTER_3, "Three", null,
                 ADMIN_3);
 
         log("Making data 3 public.");
@@ -109,11 +123,12 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
     private DataFolderInfo createAndSubmitFolder(String testProject, String sourceFolder,
                                                  String panoramaPublicProject, String targetFolder,
                                                  String experimentTitle,
-                                                 String submitter, String submitterName, String admin)
+                                                 String submitter, String submitterLastName, @Nullable String submitterFirstName,
+                                                 String admin)
     {
         log(String.format("Creating folder '%s' and copying to Panorama Public folder '%s'.", sourceFolder, targetFolder));
         String shortAccessUrl = setupFolderSubmitAndCopy(testProject, sourceFolder, targetFolder, experimentTitle,
-                submitter, submitterName, admin, SKY_FILE_1);
+                submitter, submitterLastName, submitterFirstName, admin, SKY_FILE_1);
         goToProjectFolder(panoramaPublicProject, targetFolder);
         goToExperimentDetailsPage();
         int exptAnnotationsId = Integer.parseInt(portalHelper.getUrlParam("id"));
@@ -151,6 +166,7 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
 
         log("Changing reminder settings. Setting reminder frequency to 0.");
         savePrivateDataReminderSettings("2", "12", "0");
+        saveStopRemindersAfter("");
 
         // Do not select any experiments.  Job will not run.
         log("Attempt to send reminders without selecting any experiments. Job should not run.");
@@ -204,6 +220,24 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
                 privateData.get(0).getExperimentAnnotationsId());
         verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiment");
 
+        // The second experiment has been sent 2 reminders. Stop reminders after 2.
+        log("Changing reminder settings. Setting stop reminders after to 2.");
+        saveStopRemindersAfter("2");
+        postReminders(projectName, false, privateDataCount, -1, ++pipelineJobCount);
+        verifyReminderPosted(projectName, privateData.get(1), 2); // No new reminders since 2 have been sent without a response.
+        message2 = String.format("Skipping reminder for experiment Id %d - Reminders stopped after 2 reminders",
+                privateData.get(1).getExperimentAnnotationsId());
+        verifyPipelineJobLogMessage(projectName, message, message2, "Skipped posting reminders for 2 experiments");
+
+        // Ignore the reminder limit. A reminder is posted to the second experiment, but not to the first, which has a current extension.
+        postReminders(projectName, false, true, privateDataCount, -1, ++pipelineJobCount);
+        verifyReminderPosted(projectName, privateData.get(0), 1);
+        verifyReminderPosted(projectName, privateData.get(1), 3);
+        verifyPipelineJobLogMessage(projectName, message, "Skipped posting reminders for 1 experiment");
+
+        testPublicationFoundAtReminderLimit(projectName, privateData.get(1), privateDataCount, pipelineJobCount);
+        pipelineJobCount += 2;
+
         // Request deletion for the second experiment.
         log("Requesting deletion for experiment Id " + privateData.get(1).getExperimentAnnotationsId());
         requestDeletion(projectName, privateData.get(1));
@@ -211,9 +245,58 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         // Post reminders again - none should be posted
         postReminders(projectName, false, privateDataCount, -1, ++pipelineJobCount);
         verifyReminderPosted(projectName, privateData.get(0),1); // No new reminders since extension requested.
-        verifyReminderPosted(projectName, privateData.get(1), 2); // No new reminders since deletion requested.
+        verifyReminderPosted(projectName, privateData.get(1), 3); // No new reminders since deletion requested.
         message2 = String.format("Skipping reminder for experiment Id %d - Submitter has requested deletion", privateData.get(1).getExperimentAnnotationsId());
         verifyPipelineJobLogMessage(projectName, message, message2, "Skipped posting reminders for 2 experiments");
+    }
+
+    /**
+     * A dataset at the reminder limit is still searched for a publication. The submitter is sent a "Publication Found"
+     * message for a paper matched on author and title, and again when the same paper is later matched on the Panorama
+     * URL. Neither message adds to ReminderCount. Uses the mock NCBI service on every server.
+     */
+    private void testPublicationFoundAtReminderLimit(String projectName, DataFolderInfo atLimit, int privateDataCount,
+                                                     int pipelineJobCount)
+    {
+        useMockNcbiService();
+        _useMockNcbi = true;
+        int exptId = atLimit.getExperimentAnnotationsId();
+        int reminderCountBefore = reminderCount(getDatasetStatus(projectName, atLimit.getTargetFolder(), exptId));
+
+        // The PubMed search term has the form "LastName FirstName[Author] AND Title ..."
+        registerMockPublication("pubmed", DATA_2_PMID, "Two " + DATA_2_SUBMITTER_FIRST_NAME,
+                null, DATA_2_TITLE, "Two S", "2026/10/01 00:00", "J Proteome Res", "Journal of proteome research", null);
+        postReminders(projectName, false, false, true, privateDataCount, -1, ++pipelineJobCount);
+        verifyPipelineJobLogMessage(projectName, PUBLICATION_NOTICE_LOG, AT_LIMIT_NOTIFIED_LOG);
+        verifyPublicationFoundPosted(projectName, atLimit, 1);
+        Map<String, Object> status = getDatasetStatus(projectName, atLimit.getTargetFolder(), exptId);
+        assertEquals("The paper matched on author and title should be saved", DATA_2_PMID, status.get("PotentialPublicationId"));
+        assertEquals("The saved match should be on author and title", "Author, Title", status.get("PublicationMatchInfo"));
+        assertEquals("A \"Publication Found\" message for a new paper should not add to ReminderCount",
+                reminderCountBefore, reminderCount(status));
+
+        // The same paper, found in PubMed Central by the dataset's Panorama URL. The search is not due for another month,
+        // so "Search for Publications" on the Send Reminders page forces it.
+        String shortUrlCode = atLimit.getShortUrl().substring(atLimit.getShortUrl().lastIndexOf('/') + 1);
+        registerMockPublication("pmc", DATA_2_PMC_ID, shortUrlCode,
+                DATA_2_PMID, DATA_2_TITLE, "Two S", "2026/10/01 00:00", "J Proteome Res", "Journal of proteome research", null);
+        postReminders(projectName, false, false, true, privateDataCount, -1, ++pipelineJobCount);
+        verifyPipelineJobLogMessage(projectName, PUBLICATION_NOTICE_LOG, AT_LIMIT_NOTIFIED_LOG);
+        verifyPublicationFoundPosted(projectName, atLimit, 2);
+        status = getDatasetStatus(projectName, atLimit.getTargetFolder(), exptId);
+        assertEquals("The paper matched on the Panorama URL is the same paper", DATA_2_PMID, status.get("PotentialPublicationId"));
+        assertTrue("The match on the Panorama URL should replace the match on author and title. Saved match: "
+                + status.get("PublicationMatchInfo"), String.valueOf(status.get("PublicationMatchInfo")).contains("Panorama URL"));
+        assertEquals("A \"Publication Found\" message for a new paper should not add to ReminderCount",
+                reminderCountBefore, reminderCount(status));
+    }
+
+    private void verifyPublicationFoundPosted(String projectName, DataFolderInfo folderInfo, int count)
+    {
+        goToProjectFolder(projectName, folderInfo.getTargetFolder());
+        gotoSupportMessage(folderInfo);
+        assertTextPresent(PUBLICATION_FOUND_MESSAGE_TITLE, 1);
+        assertTextPresent("We found a paper that appears to be associated with your private data on Panorama Public", count);
     }
 
     private void requestExtension(String projectName, DataFolderInfo folderInfo)
@@ -325,7 +408,29 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
     }
 
 
+    private void saveStopRemindersAfter(String stopRemindersAfter)
+    {
+        goToAdminConsole().goToSettingsSection();
+        clickAndWait(Locator.linkWithText("Panorama Public"));
+        clickAndWait(Locator.linkWithText("Private Data Reminder Settings"));
+        setFormElement(Locator.input("stopRemindersAfter"), stopRemindersAfter);
+        clickButton("Save", 0);
+        waitForText("Private data reminder settings saved");
+    }
+
     private void postReminders(String projectName, boolean testMode, int expectedExperimentCount, int selectRowCount, int pipelineJobCount)
+    {
+        postReminders(projectName, testMode, false, expectedExperimentCount, selectRowCount, pipelineJobCount);
+    }
+
+    private void postReminders(String projectName, boolean testMode, boolean ignoreReminderLimit, int expectedExperimentCount,
+                               int selectRowCount, int pipelineJobCount)
+    {
+        postReminders(projectName, testMode, ignoreReminderLimit, false, expectedExperimentCount, selectRowCount, pipelineJobCount);
+    }
+
+    private void postReminders(String projectName, boolean testMode, boolean ignoreReminderLimit, boolean searchPublications,
+                               int expectedExperimentCount, int selectRowCount, int pipelineJobCount)
     {
         goToSendRemindersPage(projectName);
 
@@ -350,6 +455,14 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
         if (testMode)
         {
             checkCheckbox(Locator.checkboxByName("testMode"));
+        }
+        if (ignoreReminderLimit)
+        {
+            checkCheckbox(Locator.checkboxByName("ignoreReminderLimit"));
+        }
+        if (searchPublications)
+        {
+            checkCheckbox(Locator.checkboxByName("searchPublications"));
         }
 
         clickButton("Post Reminders", 0);
@@ -381,6 +494,10 @@ public class PrivateDataReminderTest extends PanoramaPublicBaseTest
     @After
     public void restoreReminderSettings()
     {
+        if (_useMockNcbi)
+        {
+            restoreNcbiService();
+        }
         if (_originalReminderSettings != null)
         {
             restorePrivateDataReminderSettings(_originalReminderSettings, false);

@@ -102,7 +102,7 @@ public class PanoramaPublicModule extends SpringModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 25.005;
+        return 25.006;
     }
 
     @Override

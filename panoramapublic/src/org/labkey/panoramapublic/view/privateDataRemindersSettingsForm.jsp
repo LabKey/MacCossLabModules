@@ -28,7 +28,6 @@
 <%@ page import="org.labkey.panoramapublic.model.Journal" %>
 <%@ page import="java.util.List" %>
 <%@ page import="org.labkey.panoramapublic.PanoramaPublicController.PrivateDataReminderSettingsAction" %>
-<%@ page import="org.labkey.panoramapublic.message.PrivateDataReminderSettings" %>
 <%@ page extends="org.labkey.api.jsp.JspBase" %>
 
 <%!
@@ -45,6 +44,7 @@
 
     List<Journal> journals = JournalManager.getJournals();
 
+    Integer stopRemindersAfter = PrivateDataReminderSettings.get().getStopRemindersAfter();
 %>
 
 <script type="text/javascript" nonce="<%=getScriptNonce()%>">
@@ -81,6 +81,27 @@
             return;
         }
         window.location = LABKEY.ActionURL.buildURL("panoramapublic", "searchPublications.view", folderPath);
+    }
+
+    function clickStoppedRemindersLink()
+    {
+        const journal = document.getElementById("journal");
+        if (!journal || !journal.value)
+        {
+            alert("Please select a Panorama Public folder first.");
+            return;
+        }
+        const params = {
+            schemaName: "panoramapublic",
+            "query.queryName": "PrivateDataNoResponse",
+            "query.containerFilterName": "CurrentAndSubfolders"
+        };
+        // With "Stop reminders after" empty, reminders never stop. The link then adds no filter, and the grid
+        // lists every private dataset with ReminderCount > 0.
+        <% if (stopRemindersAfter != null) { %>
+        params["query.ReminderCount~gte"] = <%=stopRemindersAfter%>;
+        <% } %>
+        window.location = LABKEY.ActionURL.buildURL("query", "executeQuery.view", journal.value, params);
     }
 
     function showValidationResult(result, message, detail)
@@ -142,18 +163,18 @@
         <table class="lk-fields-table">
             <tr>
                 <td class="labkey-form-label">
-                    <span><%=h(PrivateDataReminderSettings.PROP_ENABLE_REMINDER)%></span>
+                    <label for="enabled"><%=h(PrivateDataReminderSettings.PROP_ENABLE_REMINDER)%></label>
                 </td>
                 <td>
-                    <input style="padding:0 10px 0 0;" type="checkbox" name="enabled" <%=checked(form.isEnabled())%> />
+                    <input style="padding:0 10px 0 0;" type="checkbox" id="enabled" name="enabled" <%=checked(form.isEnabled())%> />
                 </td>
             </tr>
             <tr>
                 <td class="labkey-form-label">
-                    <span><%=h(PrivateDataReminderSettings.PROP_REMINDER_TIME)%></span>
+                    <label for="reminderTime"><%=h(PrivateDataReminderSettings.PROP_REMINDER_TIME)%></label>
                 </td>
                 <td>
-                    <input style="padding:0 10px 0 0;" type="text" name="reminderTime" value="<%=h(form.getReminderTime())%>" />
+                    <input style="padding:0 10px 0 0;" type="text" id="reminderTime" name="reminderTime" value="<%=h(form.getReminderTime())%>" />
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         Reminders will be sent daily at the specified time (e.g. <%=h(PrivateDataReminderSettings.DEFAULT_REMINDER_TIME)%>), if enabled.
                     </div>
@@ -161,12 +182,14 @@
             </tr>
             <tr>
                 <td class="labkey-form-label">
-                    <span><%=h(PrivateDataReminderSettings.PROP_DELAY_UNTIL_FIRST_REMINDER)%></span>
+                    <label for="delayUntilFirstReminder"><%=h(PrivateDataReminderSettings.PROP_DELAY_UNTIL_FIRST_REMINDER)%></label>
                 </td>
                 <td>
-                    <input style="padding:0 10px 0 0;" type="text" name="delayUntilFirstReminder" value="<%=form.getDelayUntilFirstReminder()%>" />
+                    <input style="padding:0 10px 0 0;" type="text" id="delayUntilFirstReminder" name="delayUntilFirstReminder" value="<%=form.getDelayUntilFirstReminder()%>" />
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         Number of months after data submission before sending the first reminder.
+                        <br/>
+                        Does not apply to a dataset with a saved publication match the submitter has not dismissed. Its reminders follow the "Publication Found" message at the reminder frequency.
                         <br/>
                         Entering 0 will send a reminder the next time the job runs.
                     </div>
@@ -174,10 +197,10 @@
             </tr>
             <tr>
                 <td class="labkey-form-label">
-                    <span><%=h(PrivateDataReminderSettings.PROP_REMINDER_FREQUENCY)%></span>
+                    <label for="reminderFrequency"><%=h(PrivateDataReminderSettings.PROP_REMINDER_FREQUENCY)%></label>
                 </td>
                 <td>
-                    <input style="padding:0 10px 0 0;" type="text" name="reminderFrequency" value="<%=form.getReminderFrequency()%>" />
+                    <input style="padding:0 10px 0 0;" type="text" id="reminderFrequency" name="reminderFrequency" value="<%=form.getReminderFrequency()%>" />
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         Interval in months between reminder messages after the first one.
                         <br/>
@@ -187,21 +210,37 @@
             </tr>
             <tr>
                 <td class="labkey-form-label">
-                    <span><%=h(PrivateDataReminderSettings.PROP_EXTENSION_LENGTH)%></span>
+                    <label for="extensionLength"><%=h(PrivateDataReminderSettings.PROP_EXTENSION_LENGTH)%></label>
                 </td>
                 <td>
-                    <input style="padding:0 10px 0 0;" type="text" name="extensionLength" value="<%=form.getExtensionLength()%>" />
+                    <input style="padding:0 10px 0 0;" type="text" id="extensionLength" name="extensionLength" value="<%=form.getExtensionLength()%>" />
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         Number of months the private status of a dataset can be extended at the submitter's request.
+                        <br/>
+                        An extension cannot be requested for a dataset that has a saved publication match the submitter has not dismissed. A dataset whose publication is found during an extension still gets reminders about the publication.
                     </div>
                 </td>
             </tr>
             <tr>
                 <td class="labkey-form-label">
-                    <span><%=h(PrivateDataReminderSettings.PROP_ENABLE_PUBLICATION_SEARCH)%></span>
+                    <label for="stopRemindersAfter"><%=h(PrivateDataReminderSettings.PROP_STOP_REMINDERS_AFTER)%></label>
                 </td>
                 <td>
-                    <input style="padding:0 10px 0 0;" type="checkbox" name="enablePublicationSearch" <%=checked(form.isEnablePublicationSearch())%> />
+                    <input style="padding:0 10px 0 0;" type="text" id="stopRemindersAfter" name="stopRemindersAfter" value="<%=h(form.getStopRemindersAfter())%>" />
+                    <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
+                        Number of reminders without a response, after which reminders stop. An extension request or a
+                        dismissed publication suggestion starts the count again. Publication searches continue.
+                        <br/>
+                        Leave empty to send reminders until the submitter responds.
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td class="labkey-form-label">
+                    <label for="enablePublicationSearch"><%=h(PrivateDataReminderSettings.PROP_ENABLE_PUBLICATION_SEARCH)%></label>
+                </td>
+                <td>
+                    <input style="padding:0 10px 0 0;" type="checkbox" id="enablePublicationSearch" name="enablePublicationSearch" <%=checked(form.isEnablePublicationSearch())%> />
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
                         When enabled, the system will search PubMed Central and PubMed for publications associated with private datasets.
                         <br/>
@@ -211,26 +250,31 @@
             </tr>
             <tr>
                 <td class="labkey-form-label">
-                    <span><%=h(PrivateDataReminderSettings.PROP_PUBLICATION_SEARCH_FREQUENCY)%></span>
+                    <label for="publicationSearchFrequency"><%=h(PrivateDataReminderSettings.PROP_PUBLICATION_SEARCH_FREQUENCY)%></label>
                 </td>
                 <td>
-                    <input style="padding:0 10px 0 0;" type="text" name="publicationSearchFrequency" value="<%=form.getPublicationSearchFrequency()%>" />
+                    <input style="padding:0 10px 0 0;" type="text" id="publicationSearchFrequency" name="publicationSearchFrequency" value="<%=form.getPublicationSearchFrequency()%>" />
                     <div style="font-size: 0.9em; color: #4682B4; margin: 4px 0 6px 0;">
-                        Number of months to wait after a user dismisses a publication suggestion before re-searching.
+                        Number of months between publication searches for a private dataset.
                         <br/>
-                        If a different publication is found after this delay, the submitter will be notified again.
+                        After a user dismisses a publication suggestion, the submitter is notified again only if a
+                        different publication is found.
                     </div>
                 </td>
             </tr>
             <tr>
                 <td class="labkey-form-label">
+                    <% if (Encryption.isEncryptionPassPhraseSpecified()) { %>
+                    <label for="ncbiApiKey"><%=h(PrivateDataReminderSettings.PROP_NCBI_API_KEY)%></label>
+                    <% } else { %>
                     <span><%=h(PrivateDataReminderSettings.PROP_NCBI_API_KEY)%></span>
+                    <% } %>
                 </td>
                 <td>
                     <% if (!Encryption.isEncryptionPassPhraseSpecified()) { %>
                     <div style="margin: 4px 0 6px 0;"><%=h(PrivateDataReminderSettings.NCBI_API_KEY_REQUIRES_ENCRYPTION)%></div>
                     <% } else { %>
-                    <input style="padding:0 10px 0 0; width: 360px;" type="password" name="ncbiApiKey" autocomplete="new-password"
+                    <input style="padding:0 10px 0 0; width: 360px;" type="password" id="ncbiApiKey" name="ncbiApiKey" autocomplete="new-password"
                            data-key-saved="<%=form.isNcbiApiKeySet()%>"
                            placeholder="<%=h(form.isNcbiApiKeySet() ? "A key is saved. Enter a new key to replace it." : "No key saved.")%>" />
                     <%=button("Validate").onClick("validateNcbiApiKey(); return false;")%>
@@ -270,6 +314,7 @@
         </select>
         <%=link("Send Reminders Now").onClick("clickSendRemindersLink();").build()%>
         <%=link("Search Publications").onClick("clickSearchPublicationsLink();").build()%>
+        <%=link("Stopped Reminders").onClick("clickStoppedRemindersLink();").build()%>
     </labkey:form>
     <hr/>
 
