@@ -49,7 +49,6 @@ import org.labkey.test.util.LogMethod;
 import org.labkey.test.util.LoggedParam;
 import org.labkey.test.util.PermissionsHelper;
 import org.labkey.test.util.PortalHelper;
-import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.TextSearcher;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -70,7 +69,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.labkey.test.util.PermissionsHelper.FOLDER_ADMIN_ROLE;
 
-public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOnlyTest
+public class PanoramaPublicBaseTest extends TargetedMSTest
 {
     static String PANORAMA_PUBLIC = "Panorama Public " + TRICKY_CHARACTERS_FOR_PROJECT_NAMES;
     static final String PANORAMA_PUBLIC_GROUP = "panoramapublictest";
@@ -307,10 +306,10 @@ public class PanoramaPublicBaseTest extends TargetedMSTest implements PostgresOn
         {
             uncheck("Keep Private:");
         }
-        click(Ext4Helper.Locators.ext4Button(("Resubmit")));
-        waitForText("Confirm resubmission request to");
-        click(Locator.lkButton("OK")); // Confirm to proceed with the submission.
-        waitAndClickAndWait(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
+        clickAndWait(Ext4Helper.Locators.ext4Button("Resubmit"));
+        assertTextPresent("Confirm resubmission request to");
+        clickAndWait(Locator.lkButton("OK")); // Confirm to proceed with the submission.
+        clickAndWait(Locator.linkWithText("Back to Experiment Details")); // Navigate to the experiment details page.
     }
 
     private String submitFormAndGetAccessLink()

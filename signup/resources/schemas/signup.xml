@@ -27,6 +27,7 @@
             <column columnName="lastname"/>
             <column columnName="organization"/>
             <column columnName="key"/>
+            <column columnName="keytimeout"/>
             <column columnName="container"/>
             <column columnName="labkeyuserid">
                 <fk>

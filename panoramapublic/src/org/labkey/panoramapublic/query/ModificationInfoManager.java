@@ -276,8 +276,9 @@ public class ModificationInfoManager
                 .append(svc.getTableInfoGeneralMolecule(), "gm").append(" ON gm.Id = mod.peptideId ")
                 .append(" INNER JOIN ")
                 .append(svc.getTableInfoPeptideGroup(), "pg").append(" ON pg.Id = gm.peptideGroupId ")
-                .append(" WHERE pg.runId IN (").append(StringUtils.join(runIds, ",")).append(") ");
+                .append(" WHERE pg.runId");
         var schema = svc.getUserSchema(user, container).getDbSchema();
+        sql.appendInClause(runIds, schema.getSqlDialect());
         sql = schema.getSqlDialect().limitRows(sql, 1);
         return new SqlSelector(schema, sql).exists();
     }

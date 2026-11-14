@@ -15,7 +15,7 @@
  */
 package org.labkey.panoramapublic.query;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
@@ -177,8 +177,8 @@ public class ContainerJoin
             String actual = Oactual instanceof SQLFragment s ? s.getRawSQL() : String.valueOf(Oactual);
 
             // strip "'s to make this less sensitive to SQL generation changes
-            expected = StringUtils.replace(expected, "\"", "").trim();
-            actual = StringUtils.replace(actual, "\"", "").trim();
+            expected = Strings.CS.replace(expected, "\"", "").trim();
+            actual = Strings.CS.replace(actual, "\"", "").trim();
             assertEquals(expected, actual);
         }
 

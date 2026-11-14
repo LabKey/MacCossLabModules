@@ -15,7 +15,7 @@
  */
 package org.labkey.panoramapublic.model.validation;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.panoramapublic.model.speclib.SpecLibInfo;
@@ -330,7 +330,7 @@ public abstract class SpecLibValidation <D extends SkylineDocSpecLib>
         {
             String modelName = getSpectrumFiles().getFirst().getName();
             return "Prositintensity_prosit_publication_v1".equals(modelName)
-                    || StringUtils.startsWith(modelName, "Koina-");
+                    || Strings.CS.startsWith(modelName, "Koina-");
         }
         return false;
     }

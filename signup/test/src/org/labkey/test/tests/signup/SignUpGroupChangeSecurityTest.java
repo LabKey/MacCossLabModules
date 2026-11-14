@@ -44,7 +44,6 @@ import org.labkey.test.util.APITestHelper;
 import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.LogMethod;
 import org.labkey.test.util.PermissionsHelper.PrincipalType;
-import org.labkey.test.util.PostgresOnlyTest;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -89,7 +88,7 @@ import static org.labkey.test.util.PermissionsHelper.FOLDER_ADMIN_ROLE;
  */
 @Category({External.class, MacCossLabModules.class})
 @BaseWebDriverTest.ClassTimeout(minutes = 2)
-public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest implements PostgresOnlyTest
+public class SignUpGroupChangeSecurityTest extends BaseWebDriverTest
 {
     private static final String PROJECT_1 = "SignUpSecurityTest P1";
     private static final String PROJECT_2 = "SignUpSecurityTest P2";
