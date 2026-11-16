@@ -210,7 +210,7 @@ public class LincsPspUtil
     {
         String gctFile = run.getBaseName() + LincsModule.getExt(level);
         Path path = WebdavService.getPath().append(run.getContainer().getParsedPath()).append(FileContentService.FILES_LINK).append("GCT").append(gctFile);
-        return ActionURL.getBaseServerURL() + path.encode();
+        return ActionURL.getBaseServerURLWithContextPath() + path.encode();
     }
 
     public static String getJobName(ITargetedMSRun run, PspEndpoint server, String jobNameSuffix, Logger log) throws LincsPspException
