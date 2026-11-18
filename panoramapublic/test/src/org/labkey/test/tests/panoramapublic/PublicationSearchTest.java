@@ -19,8 +19,6 @@ import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.labkey.remoteapi.CommandException;
-import org.labkey.remoteapi.Connection;
-import org.labkey.remoteapi.SimplePostCommand;
 import org.labkey.remoteapi.query.Filter;
 import org.labkey.remoteapi.query.SelectRowsCommand;
 import org.labkey.remoteapi.query.SelectRowsResponse;
@@ -35,7 +33,6 @@ import org.labkey.test.util.ApiPermissionsHelper;
 import org.labkey.test.util.DataRegionTable;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -153,6 +150,7 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         Map<String, Object> dsStatus1 = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_1, exptId1);
         assertNotNull("Expected DatasetStatus row for dataset 1 after notification", dsStatus1);
         assertNotNull("Expected lastReminderDate to be set after notification", dsStatus1.get("LastReminderDate"));
+        assertEquals("A publication notification does not increment reminderCount, so it should be 0", 0, reminderCount(dsStatus1));
         assertEquals("Expected potentialPublicationId to be set", PMID_1, dsStatus1.get("PotentialPublicationId"));
         assertEquals("Expected publicationType to be PubMed", "PubMed", dsStatus1.get("PublicationType"));
         assertNotNull("Expected citation to be cached", dsStatus1.get("Citation"));
@@ -165,6 +163,26 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_1);
         impersonate(SUBMITTER_1);
         waitForText("Submitted - " + shortAccessUrl1);
+
+        // A Dismiss link for a paper that is not the saved suggestion should not dismiss the saved suggestion
+        String dismissHref = getAttribute(Locator.linkWithText("Dismiss Publication Suggestion"), "href");
+        beginAt(dismissHref.replace("publicationId=" + PMID_1, "publicationId=" + PMID_2));
+        assertTextPresent("The publication suggestion for the data with short URL " + shortAccessUrl1 + " has changed");
+        goBack();
+        waitForText("Submitted - " + shortAccessUrl1);
+
+        // An extension should not be granted while the publication suggestion has not been dismissed
+        beginAt(dismissHref.replace("panoramapublic-dismissPublicationSuggestion.view", "panoramapublic-requestExtension.view"));
+        assertTextPresent("An extension cannot be requested for the data with short URL " + shortAccessUrl1
+                + " because a publication was found for it");
+        assertTextNotPresent("You are requesting an extension");
+        assertElementPresent(Locator.linkWithHref("https://pubmed.ncbi.nlm.nih.gov/" + PMID_1));
+        String extensionPageDismissHref = getAttribute(Locator.linkWithText("Dismiss Publication Suggestion"), "href");
+        assertTrue("The Dismiss Publication Suggestion link should name the saved paper",
+                extensionPageDismissHref.contains("publicationId=" + PMID_1));
+        goBack();
+        waitForText("Submitted - " + shortAccessUrl1);
+
         click(Locator.linkWithText("Dismiss Publication Suggestion"));
         waitForText("You are dismissing the publication suggestion for your data on Panorama Public");
         assertTextPresent(shortAccessUrl1);
@@ -215,17 +233,73 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         Map<String, Object> dsStatus2TestMode = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
         assertNull("Expected no DatasetStatus row for dataset 2 after test-mode run", dsStatus2TestMode);
 
-        // Step 10: Run reminders in ACTUAL mode and verify the following:
-        // 1. pipeline job skips searching for publicaiton for dataset 1
-        // 2. message posted for dataset 1 is about reminding user to make data public rather than about a publication
-        // 3. a publication is found for dataset 2 and message posted to the message thread
-        // 4. verify DatasetStatus for dataset 2 IS updated
+        // The dataset 2 submitter requests an extension before a paper is found for the dataset
+        goToProjectFolder(panoramaPublicProject, TARGET_FOLDER_2);
+        String requestExtensionUrl2 = WebTestHelper.buildURL("panoramapublic", getCurrentContainerPath(), "requestExtension",
+                Map.of("shortUrlEntityId", getShortUrlEntityId(panoramaPublicProject, TARGET_FOLDER_2, exptId2)));
+        impersonate(SUBMITTER_2);
+        beginAt(requestExtensionUrl2);
+        waitForText("You are requesting an extension for the private data on Panorama Public at " + shortAccessUrl2);
+        clickButton("OK", 0);
+        waitForText("An extension request was successfully submitted for the data at " + shortAccessUrl2);
+        stopImpersonating();
+
+        // Step 9a: Run in ACTUAL mode with both datasets younger than the first reminder delay. Dataset 2 is
+        // searched anyway, and the submitter is told about the paper. No reminder is posted for either dataset.
+        savePrivateDataReminderSettings("2", "12", "0", true);
         goToSendRemindersPage(panoramaPublicProject);
         table = new DataRegionTable("ExperimentAnnotations", getDriver());
         table.checkAllOnPage();
         assertChecked(Locator.checkboxByName("searchPublications"));
         clickButton("Post Reminders", 0);
         waitForPipelineJobsToComplete(2, "Post private data reminder messages", false);
+
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_2);
+        waitForText("Submitted - " + shortAccessUrl2);
+        assertTextPresent("Action Required: Publication Found for Your Data on Panorama Public");
+        assertTextPresent("Wen B, Hsu C, Shteynberg D");
+        assertTextNotPresent("Action Required: Status Update for Your Private Data on Panorama Public");
+
+        Map<String, Object> dsStatus2Young = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
+        assertNotNull("Expected a DatasetStatus row for dataset 2 after a publication was found", dsStatus2Young);
+        assertEquals("Expected the publication found for dataset 2 to be saved", PMID_2, dsStatus2Young.get("PotentialPublicationId"));
+        assertNotNull("Expected the search date to be saved for dataset 2", dsStatus2Young.get("LastPublicationSearchDate"));
+        assertNotNull("Expected lastReminderDate to be set by the publication notice", dsStatus2Young.get("LastReminderDate"));
+        assertEquals("A publication notification does not increment reminderCount, so it should be 0", 0, reminderCount(dsStatus2Young));
+
+        // Dataset 1 is not due a reminder and its dismissed publication is not searched again, so nothing new is posted.
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_1);
+        waitForText("Submitted - " + shortAccessUrl1);
+        assertTextNotPresent("Action Required: Status Update for Your Private Data on Panorama Public");
+
+        // Step 9b: With no first reminder delay and a reminder frequency of 1 month, a reminder is otherwise due for
+        // both datasets. Neither gets one, because both were sent a publication notice within the last month.
+        savePrivateDataReminderSettings("2", "0", "1", true);
+        goToSendRemindersPage(panoramaPublicProject);
+        table = new DataRegionTable("ExperimentAnnotations", getDriver());
+        table.checkAllOnPage();
+        clickButton("Post Reminders", 0);
+        waitForPipelineJobsToComplete(3, "Post private data reminder messages", false);
+
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_2);
+        waitForText("Submitted - " + shortAccessUrl2);
+        assertTextNotPresent("Action Required: Status Update for Your Private Data on Panorama Public");
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_1);
+        waitForText("Submitted - " + shortAccessUrl1);
+        assertTextNotPresent("Action Required: Status Update for Your Private Data on Panorama Public");
+
+        // Step 10: Run reminders in ACTUAL mode and verify the following:
+        // 1. pipeline job skips searching for publicaiton for dataset 1
+        // 2. message posted for dataset 1 is about reminding user to make data public rather than about a publication
+        // 3. the reminder for dataset 2 includes the publication found in step 9a
+        // 4. verify DatasetStatus for dataset 2 IS updated
+        savePrivateDataReminderSettings("2", "0", "0", true);
+        goToSendRemindersPage(panoramaPublicProject);
+        table = new DataRegionTable("ExperimentAnnotations", getDriver());
+        table.checkAllOnPage();
+        assertChecked(Locator.checkboxByName("searchPublications"));
+        clickButton("Post Reminders", 0);
+        waitForPipelineJobsToComplete(4, "Post private data reminder messages", false);
 
         // Verify the pipeline job log contains the skip message for the dismissed dataset 1 publication
         goToProjectHome(panoramaPublicProject);
@@ -257,7 +331,34 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
         assertEquals("Expected potentialPublicationId for dataset 2", PMID_2, dsStatus2AfterPost.get("PotentialPublicationId"));
         assertNotNull("Expected publicationType for dataset 2", dsStatus2AfterPost.get("PublicationType"));
         assertNotNull("Expected lastReminderDate for dataset 2", dsStatus2AfterPost.get("LastReminderDate"));
+        assertEquals("Expected reminderCount to be 1 after the first reminder for dataset 2", 1, reminderCount(dsStatus2AfterPost));
         assertNotNull("Expected citation to be cached for dataset 2", dsStatus2AfterPost.get("Citation"));
+
+        // Dataset 2 has a current extension and a saved paper. Another extension request should be refused because of
+        // the paper, and the page should offer the Dismiss link.
+        impersonate(SUBMITTER_2);
+        beginAt(requestExtensionUrl2);
+        assertTextPresent("An extension cannot be requested for the data with short URL " + shortAccessUrl2
+                + " because a publication was found for it");
+        assertTextNotPresent("An extension has already been requested");
+        assertElementPresent(Locator.linkWithText("Dismiss Publication Suggestion"));
+        stopImpersonating();
+
+        // Step 11: Impersonate the dataset 2 submitter and dismiss the publication suggestion
+        goToSupportMessages(panoramaPublicProject, TARGET_FOLDER_2);
+        impersonate(SUBMITTER_2);
+        waitForText("Submitted - " + shortAccessUrl2);
+        // A Dismiss link without the publication ID, as in messages posted before the ID was added, should still work
+        String dismissHref2 = getAttribute(Locator.linkWithText("Dismiss Publication Suggestion"), "href");
+        beginAt(dismissHref2.replaceAll("&publicationId=[^&]*|&publicationType=[^&]*", ""));
+        waitForText("You are dismissing the publication suggestion for your data on Panorama Public");
+        clickButton("OK", 0);
+        waitForText("The publication suggestion has been dismissed");
+        stopImpersonating();
+
+        Map<String, Object> dsStatus2Dismissed = getDatasetStatus(panoramaPublicProject, TARGET_FOLDER_2, exptId2);
+        assertNotNull("Expected userDismissedPublication to be set for dataset 2", dsStatus2Dismissed.get("UserDismissedPublication"));
+        assertEquals("Dismissing a publication should reset reminderCount to 0", 0, reminderCount(dsStatus2Dismissed));
     }
 
     /*
@@ -306,31 +407,22 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
     }
 
     /*
-     * Query the DatasetStatus table for a given experiment ID.
-     * Returns null if no row exists, or a map of column name → value.
+     * Returns the entity ID of the experiment's short URL, used as the shortUrlEntityId parameter of the submitter actions.
      */
-    private Map<String, Object> getDatasetStatus(String panoramaPublicProject, String targetFolder, int exptId)
+    private String getShortUrlEntityId(String panoramaPublicProject, String targetFolder, int exptId)
     {
         try
         {
-            Connection connection = createDefaultConnection();
-            SelectRowsCommand cmd = new SelectRowsCommand("panoramapublic", "DatasetStatus");
-            cmd.addFilter(new Filter("ExperimentAnnotationsId", exptId));
-            cmd.setColumns(List.of("ExperimentAnnotationsId", "PotentialPublicationId", "PublicationType",
-                    "PublicationMatchInfo", "Citation", "LastReminderDate", "UserDismissedPublication"));
-            String containerPath = "/" + panoramaPublicProject + "/" + targetFolder;
-            SelectRowsResponse resp = cmd.execute(connection, containerPath);
-            List<Map<String, Object>> rows = resp.getRows();
-            if (rows.isEmpty())
-            {
-                return null;
-            }
-            assertEquals("Expected at most one DatasetStatus row for experiment " + exptId, 1, rows.size());
-            return rows.getFirst();
+            SelectRowsCommand cmd = new SelectRowsCommand("panoramapublic", "ExperimentAnnotations");
+            cmd.addFilter(new Filter("Id", exptId));
+            cmd.setColumns(List.of("Id", "ShortUrl"));
+            SelectRowsResponse resp = cmd.execute(createDefaultConnection(), "/" + panoramaPublicProject + "/" + targetFolder);
+            assertEquals("Expected one ExperimentAnnotations row for experiment " + exptId, 1, resp.getRows().size());
+            return String.valueOf(resp.getRows().getFirst().get("ShortUrl"));
         }
         catch (IOException | CommandException e)
         {
-            fail("Failed to query DatasetStatus: " + e.getMessage());
+            fail("Failed to query ExperimentAnnotations: " + e.getMessage());
             return null;
         }
     }
@@ -355,19 +447,9 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
 
     private void initMockNcbiService()
     {
-        try
-        {
-            Connection connection = createDefaultConnection();
-            SimplePostCommand command = new SimplePostCommand("panoramapublic", "setupMockNcbiService");
-            command.execute(connection, "/");
-            _useMockNcbi = true;
-            log("Using mock NCBI service");
-            registerMockPublications();
-        }
-        catch (IOException | CommandException e)
-        {
-            fail("Failed to set up mock NCBI service: " + e.getMessage());
-        }
+        useMockNcbiService();
+        _useMockNcbi = true;
+        registerMockPublications();
     }
 
     private static boolean isNcbiReachable()
@@ -421,57 +503,6 @@ public class PublicationSearchTest extends PanoramaPublicBaseTest
                 "Wen B,Hsu C,Shteynberg D,Zeng WF,Riffle M,Chang A,Mudge M,Nunn BL,MacLean BX,Berg MD,Villén J,MacCoss MJ,Noble WS",
                 "2025/08/04 00:00", "bioRxiv", "bioRxiv : the preprint server for biology",
                 null);
-    }
-
-    /*
-     * Register a single mock article with the mock NCBI service via the RegisterMockPublicationAction API.
-     */
-    private void registerMockPublication(String database, String id, String searchKey,
-                                         String pmid, String title, String authors,
-                                         String sortDate, String source, String journalFull,
-                                         String citation)
-    {
-        try
-        {
-            Connection connection = createDefaultConnection();
-            SimplePostCommand command = new SimplePostCommand("panoramapublic", "registerMockPublication");
-            Map<String, Object> params = new HashMap<>();
-            params.put("database", database);
-            params.put("id", id);
-            params.put("searchKey", searchKey);
-            params.put("title", title);
-            params.put("authors", authors);
-            params.put("pubDate", sortDate);
-            params.put("source", source);
-            params.put("journalFull", journalFull);
-            if (pmid != null) params.put("pmid", pmid);
-            if (citation != null) params.put("citation", citation);
-            command.setParameters(params);
-            command.execute(connection, "/");
-            log("Registered mock publication: " + database + " " + id);
-        }
-        catch (IOException | CommandException e)
-        {
-            fail("Failed to register mock publication: " + e.getMessage());
-        }
-    }
-
-    /*
-     * Restore the real NCBI service.
-     */
-    private void restoreNcbiService()
-    {
-        try
-        {
-            Connection connection = createDefaultConnection();
-            SimplePostCommand command = new SimplePostCommand("panoramapublic", "restoreNcbiService");
-            command.execute(connection, "/");
-            log("Restored real NCBI service");
-        }
-        catch (IOException | CommandException e)
-        {
-            log("Warning: Failed to restore NCBI service: " + e.getMessage());
-        }
     }
 
     @After

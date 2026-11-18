@@ -94,6 +94,14 @@ public class PublicationMatch
         return _matchesDoi;
     }
 
+    /**
+     * @return true if the publication cites the dataset's ProteomeXchange ID, Panorama Public URL or DOI
+     */
+    public boolean matchesDataIdentifier()
+    {
+        return _matchesProteomeXchangeId || _matchesPanoramaUrl || _matchesDoi;
+    }
+
     public boolean matchesAuthor()
     {
         return _matchesAuthor;

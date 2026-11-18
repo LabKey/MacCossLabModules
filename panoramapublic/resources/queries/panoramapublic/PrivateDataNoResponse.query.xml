@@ -1,0 +1,21 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="PrivateDataNoResponse" tableDbType="NOT_IN_DB">
+                <tableTitle>Private Data With No Response</tableTitle>
+                <columns>
+                    <column columnName="ExperimentAnnotationsId">
+                        <columnTitle>Experiment</columnTitle>
+                    </column>
+                    <column columnName="ReminderCount">
+                        <columnTitle>Reminders</columnTitle>
+                        <description>Number of reminders posted since the submitter last requested an extension or dismissed a publication suggestion</description>
+                    </column>
+                    <column columnName="PotentialPublicationId">
+                        <columnTitle>Publication Found</columnTitle>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

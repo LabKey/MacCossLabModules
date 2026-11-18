@@ -1499,6 +1499,19 @@ public class NcbiPublicationSearchServiceImpl implements NcbiPublicationSearchSe
             assertFalse(restored.matchesProteomeXchangeId());
         }
 
+        @Test
+        public void testMatchesDataIdentifier()
+        {
+            assertTrue("A ProteomeXchange ID match should be a data identifier match",
+                    PublicationMatch.fromMatchInfo("1", DB.PubMed, "ProteomeXchange ID").matchesDataIdentifier());
+            assertTrue("A Panorama URL match should be a data identifier match",
+                    PublicationMatch.fromMatchInfo("1", DB.PubMed, "Panorama URL").matchesDataIdentifier());
+            assertTrue("A DOI match should be a data identifier match",
+                    PublicationMatch.fromMatchInfo("1", DB.PubMed, "DOI").matchesDataIdentifier());
+            assertFalse("An author and title match should not be a data identifier match",
+                    PublicationMatch.fromMatchInfo("1", DB.PubMed, "Author, Title").matchesDataIdentifier());
+        }
+
         // -- Request parameter and API key check tests --
 
         @Test

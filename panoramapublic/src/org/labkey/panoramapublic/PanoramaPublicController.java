@@ -139,6 +139,7 @@ import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.logging.LogHelper;
 import org.labkey.api.view.*;
 import org.labkey.api.view.template.ClientDependency;
+import org.labkey.api.view.template.PageConfig;
 import org.labkey.api.wiki.WikiRendererType;
 import org.labkey.api.wiki.WikiRenderingService;
 import org.labkey.api.writer.PrintWriters;
@@ -10169,6 +10170,10 @@ public class PanoramaPublicController extends SpringActionController
             {
                 errors.reject(ERROR_MSG, "Value for 'Extension duration' cannot be less than 0.");
             }
+            if (form.getStopRemindersAfter() != null && form.getStopRemindersAfter() < 1)
+            {
+                errors.reject(ERROR_MSG, "Value for 'Stop reminders after' must be at least 1, or empty to never stop reminders.");
+            }
             if (form.getPublicationSearchFrequency() == null)
             {
                 errors.reject(ERROR_MSG, "Please enter a value for 'Publication search frequency'.");
@@ -10226,6 +10231,7 @@ public class PanoramaPublicController extends SpringActionController
                 form.setDelayUntilFirstReminder(settings.getDelayUntilFirstReminder());
                 form.setReminderFrequency(settings.getReminderFrequency());
                 form.setExtensionLength(settings.getExtensionLength());
+                form.setStopRemindersAfter(settings.getStopRemindersAfter());
                 form.setEnablePublicationSearch(settings.isEnablePublicationSearch());
                 form.setPublicationSearchFrequency(settings.getPublicationSearchFrequency());
             }
@@ -10249,6 +10255,7 @@ public class PanoramaPublicController extends SpringActionController
             settings.setDelayUntilFirstReminder(form.getDelayUntilFirstReminder());
             settings.setReminderFrequency(form.getReminderFrequency());
             settings.setExtensionLength(form.getExtensionLength());
+            settings.setStopRemindersAfter(form.getStopRemindersAfter());
             settings.setEnablePublicationSearch(form.isEnablePublicationSearch());
             settings.setPublicationSearchFrequency(form.getPublicationSearchFrequency());
             PrivateDataReminderSettings.save(settings);
@@ -10297,6 +10304,7 @@ public class PanoramaPublicController extends SpringActionController
         private boolean _enabled;
         private String _reminderTime;
         private Integer _extensionLength;
+        private Integer _stopRemindersAfter;
         private Integer _reminderFrequency;
         private Integer _delayUntilFirstReminder;
         private boolean _enablePublicationSearch;
@@ -10333,6 +10341,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setExtensionLength(Integer extensionLength)
         {
             _extensionLength = extensionLength;
+        }
+
+        public Integer getStopRemindersAfter()
+        {
+            return _stopRemindersAfter;
+        }
+
+        public void setStopRemindersAfter(Integer stopRemindersAfter)
+        {
+            _stopRemindersAfter = stopRemindersAfter;
         }
 
         public Integer getReminderFrequency()
@@ -10455,7 +10473,8 @@ public class PanoramaPublicController extends SpringActionController
                     JournalManager.getJournal(getContainer()),
                     form.getSelectedExperimentIds(),
                     form.getTestMode(),
-                    form.isSearchPublications());
+                    form.isSearchPublications(),
+                    form.isIgnoreReminderLimit());
             PipelineService.get().queueJob(job);
             return true;
         }
@@ -10493,6 +10512,7 @@ public class PanoramaPublicController extends SpringActionController
     {
         private boolean _testMode;
         private boolean _searchPublications;
+        private boolean _ignoreReminderLimit;
         private String _selectedIds;
         private String _dataRegionName = null;
 
@@ -10514,6 +10534,16 @@ public class PanoramaPublicController extends SpringActionController
         public void setSearchPublications(boolean searchPublications)
         {
             _searchPublications = searchPublications;
+        }
+
+        public boolean isIgnoreReminderLimit()
+        {
+            return _ignoreReminderLimit;
+        }
+
+        public void setIgnoreReminderLimit(boolean ignoreReminderLimit)
+        {
+            _ignoreReminderLimit = ignoreReminderLimit;
         }
 
         public String getSelectedIds()
@@ -10595,19 +10625,19 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public abstract static class UpdateDatasetStatusAction extends ConfirmAction<ShortUrlForm>
+    public abstract static class UpdateDatasetStatusAction<FORM extends ShortUrlForm> extends ConfirmAction<FORM>
     {
         protected ExperimentAnnotations _exptAnnotations;
         protected DatasetStatus _datasetStatus;
 
-        protected abstract void doValidationForAction(Errors errors);
+        protected abstract void doValidationForAction(FORM form, Errors errors);
         protected abstract void updateDatasetStatus(DatasetStatus datasetStatus);
         protected abstract void postNotification();
         protected abstract String getConfirmViewTitle();
         protected abstract Renderable getConfirmViewMessage();
 
         @Override
-        public ModelAndView getConfirmView(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        public ModelAndView getConfirmView(FORM form, BindException errors) throws Exception
         {
             setTitle(getConfirmViewTitle());
             HtmlView view = new HtmlView(DIV(
@@ -10622,9 +10652,16 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public void validateCommand(ShortUrlForm shortUrlForm, Errors errors)
+        public ModelAndView getFailView(FORM form, BindException errors)
         {
-            _exptAnnotations = getValidExperimentAnnotations(shortUrlForm, errors);
+            setTitle(getConfirmViewTitle());
+            return super.getFailView(form, errors);
+        }
+
+        @Override
+        public void validateCommand(FORM form, Errors errors)
+        {
+            _exptAnnotations = getValidExperimentAnnotations(form, errors);
             if (_exptAnnotations == null)
             {
                 return;
@@ -10635,14 +10672,22 @@ public class PanoramaPublicController extends SpringActionController
             _datasetStatus = DatasetStatusManager.getForExperiment(_exptAnnotations);
 
             // Action-specific validation
-            doValidationForAction(errors);
+            doValidationForAction(form, errors);
         }
 
         @Override
-        public boolean handlePost(ShortUrlForm shortUrlForm, BindException errors) throws Exception
+        public boolean handlePost(FORM form, BindException errors) throws Exception
         {
             try(DbScope.Transaction transaction = CoreSchema.getInstance().getSchema().getScope().ensureTransaction())
             {
+                // Read and validate again, in case the reminder job or Notify Submitter changed the row after
+                // validateCommand read it.
+                _datasetStatus = DatasetStatusManager.getForExperiment(_exptAnnotations);
+                doValidationForAction(form, errors);
+                if (errors.hasErrors())
+                {
+                    return false;
+                }
                 if (_datasetStatus == null)
                 {
                     _datasetStatus = new DatasetStatus();
@@ -10665,14 +10710,14 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public @NotNull URLHelper getSuccessURL(ShortUrlForm shortUrlForm)
+        public @NotNull URLHelper getSuccessURL(FORM form)
         {
             return PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer());
         }
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public static class RequestExtensionAction extends UpdateDatasetStatusAction
+    public static class RequestExtensionAction extends UpdateDatasetStatusAction<ShortUrlForm>
     {
         @Override
         protected String getConfirmViewTitle()
@@ -10686,29 +10731,68 @@ public class PanoramaPublicController extends SpringActionController
             return DIV("You are requesting an extension for the private data on Panorama Public at ", _exptAnnotations.getShortUrl().renderShortURL());
         }
 
+        private boolean _publicationFound;
+
         @Override
-        protected void doValidationForAction(Errors errors)
+        protected void doValidationForAction(ShortUrlForm form, Errors errors)
         {
+            _publicationFound = false;
             if (_datasetStatus != null)
             {
                 PrivateDataReminderSettings settings = PrivateDataReminderSettings.get();
-                if (settings.isExtensionValid(_datasetStatus))
-                {
-                    errors.reject(ERROR_MSG, "An extension has already been requested for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
-                            + ". The extension is valid until " + settings.extensionValidUntilFormatted(_datasetStatus));
-                }
-                else if (_datasetStatus.deletionRequested())
+                if (_datasetStatus.deletionRequested())
                 {
                     errors.reject(ERROR_MSG, "A deletion request was submitted on " + _datasetStatus.getDeletionRequestedDate()
                             + " for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
                 }
+                // Checked before a current extension, which does not stop reminders about a saved paper.
+                else if (_datasetStatus.hasPublicationSuggestion())
+                {
+                    _publicationFound = true;
+                    errors.reject(ERROR_MSG, "An extension cannot be requested for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
+                            + " because a publication was found for it.");
+                }
+                else if (settings.isExtensionValid(_datasetStatus))
+                {
+                    errors.reject(ERROR_MSG, "An extension has already been requested for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
+                            + ". The extension is valid until " + settings.extensionValidUntilFormatted(_datasetStatus));
+                }
             }
+        }
+
+        @Override
+        public ModelAndView getFailView(ShortUrlForm form, BindException errors)
+        {
+            PublicationMatch paper = _publicationFound ? PublicationMatch.fromDatasetStatus(_datasetStatus) : null;
+            if (paper == null)
+            {
+                return super.getFailView(form, errors);
+            }
+
+            setTitle(getConfirmViewTitle());
+            getPageConfig().setTemplate(PageConfig.Template.Dialog);
+            ActionURL dismissUrl = new ActionURL(DismissPublicationSuggestionAction.class, _exptAnnotations.getContainer())
+                    .addParameter("shortUrlEntityId", _exptAnnotations.getShortUrl().getEntityId().toString())
+                    .addParameter("publicationId", paper.getPublicationId())
+                    .addParameter("publicationType", paper.getPublicationType().name());
+            return new VBox(new SimpleErrorView(errors, false), new HtmlView(DIV(
+                    DIV("Publication Found: ",
+                            new LinkBuilder(paper.getCitation() != null ? paper.getCitation() : paper.getPublicationIdLabel())
+                                    .href(paper.getPublicationUrl()).clearClasses().build()),
+                    BR(),
+                    DIV("If the paper is not associated with the data, please let us know by clicking ",
+                            new LinkBuilder("Dismiss Publication Suggestion").href(dismissUrl).clearClasses().build(), "."),
+                    BR(),
+                    DIV(PageFlowUtil.generateBackButton(),
+                            new ButtonBuilder("Home").href(AppProps.getInstance().getHomePageActionURL()))
+            )));
         }
 
         @Override
         protected void updateDatasetStatus(DatasetStatus datasetStatus)
         {
             datasetStatus.setExtensionRequestedDate(new Date());
+            datasetStatus.setReminderCount(0);
         }
 
         @Override
@@ -10736,7 +10820,7 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public static class RequestDeletionAction extends UpdateDatasetStatusAction
+    public static class RequestDeletionAction extends UpdateDatasetStatusAction<ShortUrlForm>
     {
         @Override
         protected String getConfirmViewTitle()
@@ -10751,7 +10835,7 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        protected void doValidationForAction(Errors errors)
+        protected void doValidationForAction(ShortUrlForm form, Errors errors)
         {
             if (_datasetStatus != null)
             {
@@ -10792,18 +10876,33 @@ public class PanoramaPublicController extends SpringActionController
     }
 
     @RequiresAnyOf({AdminPermission.class, PanoramaPublicSubmitterPermission.class})
-    public static class DismissPublicationSuggestionAction extends UpdateDatasetStatusAction
+    public static class DismissPublicationSuggestionAction extends UpdateDatasetStatusAction<DismissPublicationForm>
     {
         private PublicationMatch _publicationMatch;
+        private boolean _formHasPublication;
+
+        @Override // Override to prevent ClassCastException
+        public boolean handlePost(DismissPublicationForm form, BindException errors) throws Exception
+        {
+            return super.handlePost(form, errors);
+        }
 
         @Override
-        protected void doValidationForAction(Errors errors)
+        protected void doValidationForAction(DismissPublicationForm form, Errors errors)
         {
             _publicationMatch = PublicationMatch.fromDatasetStatus(_datasetStatus);
+            _formHasPublication = form.getPublicationId() != null;
 
             if (_publicationMatch == null)
             {
                 errors.reject(ERROR_MSG, "No publication suggestion exists for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL());
+            }
+            else if (_formHasPublication && (!form.getPublicationId().equals(_publicationMatch.getPublicationId())
+                    || !_publicationMatch.getPublicationType().name().equals(form.getPublicationType())))
+            {
+                errors.reject(ERROR_MSG, "The publication suggestion for the data with short URL " + _exptAnnotations.getShortUrl().renderShortURL()
+                        + " has changed. The current suggestion is " + _publicationMatch.getPublicationIdLabel()
+                        + ". Please use the Dismiss Publication Suggestion link in the latest message.");
             }
             else if (_datasetStatus.getUserDismissedPublication() != null)
             {
@@ -10830,7 +10929,12 @@ public class PanoramaPublicController extends SpringActionController
                     , BR()
                     , "We will no longer suggest the following publication for this dataset - "
                     , BR(),
-                    publicationRef);
+                    publicationRef,
+                    // A Dismiss link in a message posted before the link included the publication ID. Post the
+                    // ID of the publication shown on this page, so that the POST is rejected if a different
+                    // publication was saved since.
+                    _formHasPublication ? null : INPUT(at(type, "hidden", name, "publicationId", value, _publicationMatch.getPublicationId())),
+                    _formHasPublication ? null : INPUT(at(type, "hidden", name, "publicationType", value, _publicationMatch.getPublicationType().name())));
         }
 
         // Fetch the citation from NCBI. If NCBI is unavailable, the publication ID label will be used as a fallback.
@@ -10857,6 +10961,7 @@ public class PanoramaPublicController extends SpringActionController
         protected void updateDatasetStatus(DatasetStatus datasetStatus)
         {
             datasetStatus.setUserDismissedPublication(new Date());
+            datasetStatus.setReminderCount(0);
         }
 
         @Override
@@ -10870,7 +10975,7 @@ public class PanoramaPublicController extends SpringActionController
         }
 
         @Override
-        public ModelAndView getSuccessView(ShortUrlForm shortUrlForm)
+        public ModelAndView getSuccessView(DismissPublicationForm form)
         {
             setTitle("Publication Suggestion Dismissed");
             return new HtmlView(DIV("The publication suggestion has been dismissed for the data at " + _exptAnnotations.getShortUrl().renderShortURL(),
@@ -10879,6 +10984,32 @@ public class PanoramaPublicController extends SpringActionController
                             LinkBuilder.labkeyLink("Data Folder", PageFlowUtil.urlProvider(ProjectUrls.class).getBeginURL(_exptAnnotations.getContainer()))
                     )
             ));
+        }
+    }
+
+    public static class DismissPublicationForm extends ShortUrlForm
+    {
+        private String _publicationId;
+        private String _publicationType;
+
+        public String getPublicationId()
+        {
+            return _publicationId;
+        }
+
+        public void setPublicationId(String publicationId)
+        {
+            _publicationId = publicationId;
+        }
+
+        public String getPublicationType()
+        {
+            return _publicationType;
+        }
+
+        public void setPublicationType(String publicationType)
+        {
+            _publicationType = publicationType;
         }
     }
 
@@ -11121,7 +11252,8 @@ public class PanoramaPublicController extends SpringActionController
                         journal, submission, exptAnnotations, submitter, getUser(), notifyUsers,
                         _announcement, _announcementsContainer, getUser(), selectedMatch);
 
-                // Update DatasetStatus
+                // Read again so that a change the reminder job saved during the NCBI citation request is not overwritten.
+                datasetStatus = DatasetStatusManager.getForExperiment(exptAnnotations);
                 if (datasetStatus == null)
                 {
                     datasetStatus = new DatasetStatus();
@@ -11452,7 +11584,8 @@ public class PanoramaPublicController extends SpringActionController
     /**
      * Restores the Private Data Reminder Settings a Selenium test changed, without loading a page, so a test's
      * cleanup leaves the failed page in the browser for the failure screenshot. Only the settings that are
-     * passed in are changed.
+     * passed in are changed, except stopRemindersAfter. It is always set, and a missing value means reminders
+     * never stop.
      */
     @RequiresSiteAdmin
     public static class RestorePrivateDataReminderSettingsAction extends MutatingApiAction<RestorePrivateDataReminderSettingsForm>
@@ -11466,6 +11599,7 @@ public class PanoramaPublicController extends SpringActionController
             {
                 settings.setExtensionLength(form.getExtensionLength());
             }
+            settings.setStopRemindersAfter(form.getStopRemindersAfter());
             if (form.getDelayUntilFirstReminder() != null)
             {
                 settings.setDelayUntilFirstReminder(form.getDelayUntilFirstReminder());
@@ -11495,6 +11629,7 @@ public class PanoramaPublicController extends SpringActionController
     public static class RestorePrivateDataReminderSettingsForm
     {
         private Integer _extensionLength;
+        private Integer _stopRemindersAfter;
         private Integer _delayUntilFirstReminder;
         private Integer _reminderFrequency;
         private Boolean _enablePublicationSearch;
@@ -11503,6 +11638,9 @@ public class PanoramaPublicController extends SpringActionController
 
         public Integer getExtensionLength() { return _extensionLength; }
         public void setExtensionLength(Integer extensionLength) { _extensionLength = extensionLength; }
+
+        public Integer getStopRemindersAfter() { return _stopRemindersAfter; }
+        public void setStopRemindersAfter(Integer stopRemindersAfter) { _stopRemindersAfter = stopRemindersAfter; }
 
         public Integer getDelayUntilFirstReminder() { return _delayUntilFirstReminder; }
         public void setDelayUntilFirstReminder(Integer delayUntilFirstReminder) { _delayUntilFirstReminder = delayUntilFirstReminder; }

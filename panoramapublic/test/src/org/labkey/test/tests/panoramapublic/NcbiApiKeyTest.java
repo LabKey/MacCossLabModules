@@ -18,18 +18,14 @@ package org.labkey.test.tests.panoramapublic;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.labkey.remoteapi.CommandException;
-import org.labkey.remoteapi.SimplePostCommand;
 import org.labkey.test.BaseWebDriverTest;
 import org.labkey.test.Locator;
 import org.labkey.test.categories.External;
 import org.labkey.test.categories.MacCossLabModules;
 
-import java.io.IOException;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 /**
  * Covers the NCBI API key on the Private Data Reminder Settings page. The key is a credential, so
@@ -130,31 +126,8 @@ public class NcbiApiKeyTest extends PanoramaPublicBaseTest
      */
     private void setupMockNcbiService()
     {
-        try
-        {
-            SimplePostCommand command = new SimplePostCommand("panoramapublic", "setupMockNcbiService");
-            command.execute(createDefaultConnection(), "/");
-            _useMockNcbi = true;
-            log("Using mock NCBI service");
-        }
-        catch (IOException | CommandException e)
-        {
-            fail("Failed to set up the mock NCBI service: " + e.getMessage());
-        }
-    }
-
-    private void restoreNcbiService()
-    {
-        try
-        {
-            SimplePostCommand command = new SimplePostCommand("panoramapublic", "restoreNcbiService");
-            command.execute(createDefaultConnection(), "/");
-            log("Restored real NCBI service");
-        }
-        catch (IOException | CommandException e)
-        {
-            log("Warning: Failed to restore NCBI service: " + e.getMessage());
-        }
+        useMockNcbiService();
+        _useMockNcbi = true;
     }
 
     @After
