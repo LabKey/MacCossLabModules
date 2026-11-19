@@ -291,7 +291,7 @@ public class LincsDataTable extends FilteredTable
 
         private static String getAnalyticsScript(String eventAction, String fileName, boolean addWaitTime)
         {
-            if (!StringUtils.isBlank(AnalyticsService.getTrackingScript()))
+            if (!HtmlString.isBlank(AnalyticsService.getTrackingScript()))
             {
                 // http://www.blastam.com/blog/how-to-track-downloads-in-google-analytics
                 // Tell the browser to wait 400ms before going to the download.  This is to ensure
