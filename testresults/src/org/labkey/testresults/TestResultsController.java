@@ -1416,6 +1416,7 @@ public class TestResultsController extends SpringActionController
                 case "start":
                     // if already started
                     if (scheduler.checkExists(jobKeyEmail)) {
+                        saveEmailEnabled(true);
                         res.put("Message", "Job already exists");
                         res.put("Response", "true");
                         return new ApiSimpleResponse(res);
@@ -1424,6 +1425,7 @@ public class TestResultsController extends SpringActionController
                     scheduler = start(scheduler, jobKeyEmail); // start
                     // ensure job exists after started
                     if (scheduler.checkExists(jobKeyEmail)) {
+                        saveEmailEnabled(true);
                         res.put("Message", "Job Created");
                         res.put("Response", "true");
                     } else {
@@ -1434,6 +1436,7 @@ public class TestResultsController extends SpringActionController
                 case "stop":
                     scheduler.deleteJob(jobKeyEmail);
                     if (!scheduler.checkExists(jobKeyEmail)) {
+                        saveEmailEnabled(false);
                         res.put("Message", "Job successfully removed");
                         res.put("Response", "false");
                     } else {
@@ -1488,6 +1491,12 @@ public class TestResultsController extends SpringActionController
                     break;
             }
             return new ApiSimpleResponse(res);
+        }
+
+        private void saveEmailEnabled(boolean enabled)
+        {
+            TestResultsModule.setEmailEnabled(enabled);
+            _log.info("The daily test results email was {} by {}", enabled ? "enabled" : "disabled", getUser().getEmail());
         }
 
         @NotNull

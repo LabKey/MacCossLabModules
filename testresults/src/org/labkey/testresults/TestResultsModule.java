@@ -20,6 +20,7 @@ import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.PropertyManager;
 import org.labkey.api.module.DefaultModule;
 import org.labkey.api.module.ModuleContext;
 import org.labkey.api.security.Directive;
@@ -48,6 +49,9 @@ public class TestResultsModule extends DefaultModule
     public static final WebPartFactory _testResultsFactory = new TestResultsWebPart();
     public static final String JOB_NAME = "TestResultsEmailTrigger";
     public static final String JOB_GROUP = "TestResultsGroup";
+
+    private static final String TESTRESULTS_EMAIL_PROPS = "TestResultsEmail";
+    private static final String PROP_EMAIL_ENABLED = "enabled";
 
     // for saving
     public static final String TR_VIEW = "testresults-view";
@@ -120,6 +124,11 @@ public class TestResultsModule extends DefaultModule
     @NotNull
     public void startBackgroundThreads()
     {
+        if (!isEmailEnabled())
+        {
+            LOG.info("The daily test results email is not enabled. A site admin can start it on the training data page.");
+            return;
+        }
         try
         {
             Scheduler scheduler = new StdSchedulerFactory().getScheduler();
@@ -131,5 +140,20 @@ public class TestResultsModule extends DefaultModule
             LOG.error("Failed to start the test results email scheduler", e);
         }
 
+    }
+
+    /**
+     * Returns true if a site admin has started the daily email. A server with no saved setting returns false.
+     */
+    public static boolean isEmailEnabled()
+    {
+        return Boolean.parseBoolean(PropertyManager.getProperties(TESTRESULTS_EMAIL_PROPS).get(PROP_EMAIL_ENABLED));
+    }
+
+    public static void setEmailEnabled(boolean enabled)
+    {
+        PropertyManager.WritablePropertyMap map = PropertyManager.getWritableProperties(TESTRESULTS_EMAIL_PROPS, true);
+        map.put(PROP_EMAIL_ENABLED, String.valueOf(enabled));
+        map.save();
     }
 }
