@@ -26,6 +26,7 @@ import org.labkey.api.data.ContainerManager;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.exp.api.ExperimentService;
 import org.labkey.api.files.FileContentService;
+import org.labkey.api.migration.DatabaseMigrationService;
 import org.labkey.api.module.ModuleContext;
 import org.labkey.api.module.SpringModule;
 import org.labkey.api.pipeline.PipelineService;
@@ -118,6 +119,12 @@ public class PanoramaPublicModule extends SpringModule
         PanoramaPublicSchema.register(this);
         AttachmentService.get().registerAttachmentParentType(CatalogImageAttachmentType.get());
         AttachmentService.get().registerAttachmentParentType(PanoramaPublicLogoResourceType.get());
+    }
+
+    @Override
+    public void registerMigrationHandlers(@NotNull DatabaseMigrationService service)
+    {
+        service.registerSchemaHandler(new PanoramaPublicMigrationHandler());
     }
 
     @Override

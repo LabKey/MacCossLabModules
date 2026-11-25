@@ -43,10 +43,11 @@ public class CatalogImageAttachmentType implements AttachmentParentType
     @Override
     public @NotNull SQLFragment getSelectEntityIdContainerAndDescriptionSql()
     {
-        // The image's attachment parent uses the container of the experiment that owns the short URL
+        // The image's attachment parent uses the container of the experiment that owns the short URL; images whose short
+        // URL no experiment owns are orphans
         return SQLFragment.unsafe("SELECT su.EntityId, ea.Container, su.ShortUrl AS Description FROM ")
             .append(CoreSchema.getInstance().getTableInfoShortURL(), "su")
-            .unsafeAppend(" LEFT JOIN ")
+            .unsafeAppend(" INNER JOIN ")
             .append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "ea")
             .unsafeAppend(" ON ea.ShortUrl = su.EntityId");
     }
