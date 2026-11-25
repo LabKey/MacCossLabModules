@@ -19,6 +19,7 @@ import org.jetbrains.annotations.NotNull;
 import org.labkey.api.attachments.AttachmentParentType;
 import org.labkey.api.data.CoreSchema;
 import org.labkey.api.data.SQLFragment;
+import org.labkey.panoramapublic.PanoramaPublicManager;
 
 public class CatalogImageAttachmentType implements AttachmentParentType
 {
@@ -40,8 +41,14 @@ public class CatalogImageAttachmentType implements AttachmentParentType
     }
 
     @Override
-    public @NotNull SQLFragment getSelectEntityIdAndDescriptionSql()
+    public @NotNull SQLFragment getSelectEntityIdContainerAndDescriptionSql()
     {
-        return new SQLFragment("SELECT EntityId, ShortUrl AS Description FROM ").append(CoreSchema.getInstance().getTableInfoShortURL());
+        // The image's attachment parent uses the container of the experiment that owns the short URL; images whose short
+        // URL no experiment owns are orphans
+        return SQLFragment.unsafe("SELECT su.EntityId, ea.Container, su.ShortUrl AS Description FROM ")
+            .append(CoreSchema.getInstance().getTableInfoShortURL(), "su")
+            .unsafeAppend(" INNER JOIN ")
+            .append(PanoramaPublicManager.getTableInfoExperimentAnnotations(), "ea")
+            .unsafeAppend(" ON ea.ShortUrl = su.EntityId");
     }
 }
