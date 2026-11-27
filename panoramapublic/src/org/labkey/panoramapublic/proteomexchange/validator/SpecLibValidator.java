@@ -409,10 +409,10 @@ public class SpecLibValidator extends SpecLibValidation<ValidatorSkylineDocSpecL
 
     private static boolean hasRequiredHeaders(Path diannReportTsv)
     {
-        try
+        try (Stream<String> lines = Files.lines(diannReportTsv))
         {
             // Read the first line of the file
-            String firstLine = Files.lines(diannReportTsv).findFirst().orElse("");
+            String firstLine = lines.findFirst().orElse("");
             // Check if the first line has the expected header columns names
             return List.of(firstLine.trim().split("\t")).containsAll(LibSourceFile.DIANN_REPORT_EXPECTED_HEADERS);
         }
